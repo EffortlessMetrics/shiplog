@@ -1,0 +1,19 @@
+[package]
+name = "shiplog-engine"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+chrono.workspace = true
+serde_yaml.workspace = true
+shiplog-ids = { path = "../shiplog-ids" }
+shiplog-schema = { path = "../shiplog-schema" }
+shiplog-ports = { path = "../shiplog-ports" }
+shiplog-workstreams = { path = "../shiplog-workstreams" }
+shiplog-redact = { path = "../shiplog-redact" }
+shiplog-render-md = { path = "../shiplog-render-md" }
+shiplog-render-json = { path = "../shiplog-render-json" }
+shiplog-bundle = { path = "../shiplog-bundle" }

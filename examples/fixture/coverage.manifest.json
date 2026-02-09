@@ -1,0 +1,30 @@
+{
+  "run_id": "run_fixture",
+  "generated_at": "2026-01-01T00:00:00Z",
+  "user": "octo",
+  "window": {
+    "since": "2025-01-01",
+    "until": "2025-04-01"
+  },
+  "mode": "merged",
+  "sources": [
+    "github"
+  ],
+  "slices": [
+    {
+      "window": {
+        "since": "2025-01-01",
+        "until": "2025-04-01"
+      },
+      "query": "fixture",
+      "total_count": 3,
+      "fetched": 3,
+      "incomplete_results": false,
+      "notes": [
+        "fixture"
+      ]
+    }
+  ],
+  "warnings": [],
+  "completeness": "Complete"
+}

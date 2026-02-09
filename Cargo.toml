@@ -1,0 +1,48 @@
+[workspace]
+resolver = "2"
+members = [
+  "crates/shiplog-ids",
+  "crates/shiplog-schema",
+  "crates/shiplog-ports",
+  "crates/shiplog-coverage",
+  "crates/shiplog-workstreams",
+  "crates/shiplog-redact",
+  "crates/shiplog-render-md",
+  "crates/shiplog-render-json",
+  "crates/shiplog-bundle",
+  "crates/shiplog-engine",
+  "crates/shiplog-ingest-json",
+  "crates/shiplog-ingest-github",
+  "crates/shiplog-testkit",
+  "apps/shiplog",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.92"
+license = "MIT OR Apache-2.0"
+authors = ["EffortlessMetrics <oss@effortlessmetrics.com>"]
+
+[workspace.dependencies]
+anyhow = "1"
+thiserror = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+chrono = { version = "0.4", features = ["serde"] }
+sha2 = "0.10"
+hex = "0.4"
+clap = { version = "4", features = ["derive"] }
+reqwest = { version = "0.11", default-features = false, features = ["blocking", "json", "rustls-tls"] }
+url = "2"
+itertools = "0.13"
+proptest = "1"
+insta = { version = "1", features = ["yaml"] }
+zip = "0.6"
+
+[profile.release]
+codegen-units = 1
+lto = "thin"
+strip = "symbols"
+

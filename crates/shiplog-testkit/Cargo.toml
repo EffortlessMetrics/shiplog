@@ -1,0 +1,11 @@
+[package]
+name = "shiplog-testkit"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+chrono.workspace = true
+shiplog-ids = { path = "../shiplog-ids" }
+shiplog-schema = { path = "../shiplog-schema" }

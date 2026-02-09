@@ -1,0 +1,16 @@
+[package]
+name = "shiplog-bundle"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+chrono.workspace = true
+sha2.workspace = true
+hex.workspace = true
+serde_json.workspace = true
+zip.workspace = true
+shiplog-schema = { path = "../shiplog-schema" }
+shiplog-ids = { path = "../shiplog-ids" }

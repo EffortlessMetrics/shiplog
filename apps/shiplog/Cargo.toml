@@ -1,0 +1,18 @@
+[package]
+name = "shiplog"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+chrono.workspace = true
+shiplog-engine = { path = "../../crates/shiplog-engine" }
+shiplog-ingest-github = { path = "../../crates/shiplog-ingest-github" }
+shiplog-ingest-json = { path = "../../crates/shiplog-ingest-json" }
+shiplog-render-md = { path = "../../crates/shiplog-render-md" }
+shiplog-workstreams = { path = "../../crates/shiplog-workstreams" }
+shiplog-redact = { path = "../../crates/shiplog-redact" }
+shiplog-ports = { path = "../../crates/shiplog-ports" }
