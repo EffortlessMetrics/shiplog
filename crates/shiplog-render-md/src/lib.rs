@@ -100,7 +100,6 @@ impl Renderer for MarkdownRenderer {
         
         // Track which receipts were shown in main section (for appendix)
         let mut shown_receipts: HashMap<String, Vec<String>> = HashMap::new();
-        let mut has_truncated_receipts = false;
 
         for ws in &workstreams.workstreams {
             out.push_str(&format!("### {}\n\n", ws.title));
@@ -119,7 +118,6 @@ impl Renderer for MarkdownRenderer {
             let (main_receipts, appendix_receipts): (Vec<_>, Vec<_>) = if ws.receipts.len() <= MAX_RECEIPTS_PER_WORKSTREAM {
                 (ws.receipts.clone(), Vec::new())
             } else {
-                has_truncated_receipts = true;
                 let (main, appendix) = ws.receipts.split_at(MAX_RECEIPTS_PER_WORKSTREAM);
                 (main.to_vec(), appendix.to_vec())
             };

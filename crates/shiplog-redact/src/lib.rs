@@ -2,7 +2,7 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use shiplog_ports::Redactor;
-use shiplog_schema::event::{EventEnvelope, EventPayload, RepoRef, RepoVisibility, SourceRef};
+use shiplog_schema::event::{EventEnvelope, EventPayload, RepoRef, RepoVisibility};
 use shiplog_schema::workstream::{Workstream, WorkstreamsFile};
 use std::collections::BTreeMap;
 

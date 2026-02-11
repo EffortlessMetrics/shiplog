@@ -7,7 +7,7 @@ use anyhow::{Context, Result};
 use chrono::{Duration, Utc};
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::de::DeserializeOwned;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use std::path::Path;
 
 /// Cache for GitHub API responses.

@@ -1,7 +1,7 @@
 use anyhow::Result;
 use shiplog_schema::coverage::CoverageManifest;
 use shiplog_schema::event::EventEnvelope;
-use shiplog_schema::workstream::{Workstream, WorkstreamsFile};
+use shiplog_schema::workstream::WorkstreamsFile;
 
 /// Output of an ingestion run.
 ///
