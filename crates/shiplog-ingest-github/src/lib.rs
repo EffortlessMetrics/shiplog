@@ -63,13 +63,23 @@ impl GithubIngestor {
     }
 
     fn get_json<T: DeserializeOwned>(&self, client: &Client, url: &str, params: &[(&str, String)]) -> Result<T> {
-        let mut req = client.get(url).header("Accept", "application/vnd.github+json");
+        // Build URL with query params manually
+        let url_with_params = if params.is_empty() {
+            url.to_string()
+        } else {
+            let query: Vec<String> = params
+                .iter()
+                .map(|(k, v)| format!("{}={}", k, v))
+                .collect();
+            format!("{}?{}", url, query.join("&"))
+        };
+        
+        let mut req = client.get(&url_with_params).header("Accept", "application/vnd.github+json");
         req = req.header("X-GitHub-Api-Version", "2022-11-28");
         if let Some(t) = &self.token {
             req = req.bearer_auth(t);
         }
-        let req = req.query(params);
-        let resp = req.send().with_context(|| format!("GET {url}"))?;
+        let resp = req.send().with_context(|| format!("GET {url_with_params}"))?;
         self.throttle();
 
         if !resp.status().is_success() {
@@ -78,7 +88,7 @@ impl GithubIngestor {
             return Err(anyhow!("GitHub API error {status}: {body}"));
         }
 
-        Ok(resp.json::<T>().with_context(|| format!("parse json from {url}"))?)
+        Ok(resp.json::<T>().with_context(|| format!("parse json from {url_with_params}"))?)
     }
 }
 
