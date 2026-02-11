@@ -11,71 +11,108 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Local SQLite Cache** (`shiplog-cache`): New crate providing durable caching for GitHub API responses to reduce API calls and speed up repeated runs
-  - `ApiCache` with TTL-based expiration (default 24 hours)
-  - Cache key builder for GitHub endpoints (`CacheKey::pr_details()`, `CacheKey::pr_reviews()`)
+- **Core Ports and Traits** (`shiplog-ports`):
+  - `Ingestor` trait for data collection adapters
+  - `Renderer` trait for output format generation
+  - `Redactor` trait for privacy-aware output filtering
+  - `WorkstreamClusterer` trait for event clustering algorithms
+
+- **GitHub Ingestor** (`shiplog-ingest-github`):
+  - Fetch PRs and reviews from GitHub API
+  - Adaptive date slicing to handle GitHub's 1000-result search cap
+  - Support for both "merged" and "created" PR modes
+  - Throttling support for rate limit compliance
+  - GHES (GitHub Enterprise Server) support via custom API base
+  - **SQLite caching** for PR details and reviews to reduce API calls
+
+- **JSON Ingestor** (`shiplog-ingest-json`):
+  - Import events from JSONL files
+  - Coverage manifest validation
+
+- **Manual Events** (`shiplog-ingest-manual`):
+  - Track non-GitHub work (incidents, design docs, mentoring, launches, migrations)
+  - YAML-based manual event definitions
+  - Event type classification with emoji support
+
+- **Local SQLite Cache** (`shiplog-cache`):
+  - Durable caching for GitHub API responses
+  - TTL-based expiration (default 24 hours)
+  - Cache key builder for GitHub endpoints
   - In-memory cache support for testing
   - Cache statistics and cleanup utilities
 
-- **GitHub Ingestor Cache Integration**: `shiplog-ingest-github` now caches PR details and reviews
-  - `GithubIngestor::with_cache()` for file-based caching
-  - `GithubIngestor::with_in_memory_cache()` for testing
-  - Automatic cache lookup before API calls
-  - Transparent cache storage after fetches
-
-- **Release Preparation**: Cleaned up all compiler warnings across the workspace for a clean release build
-
-### Changed
-
-- Enhanced `ApiCache` with `Clone` and `Debug` implementations for better integration
-- Added `Serialize` derive to GitHub API response structs for cache storage
-
-## [0.1.0-alpha] - Prior to 2025-02-11
-
-### Added
-
-- Initial shiplog implementation with core functionality:
-  - **GitHub Ingestor** (`shiplog-ingest-github`): Fetch PRs and reviews with adaptive date slicing to handle GitHub's 1000-result cap
-  - **JSON Ingestor** (`shiplog-ingest-json`): Import from JSONL event files
-  - **Manual Events** (`shiplog-ingest-manual`): Track non-GitHub work (incidents, design docs, mentoring, etc.)
-  
-- **Workstream Clustering** (`shiplog-workstreams`): 
-  - Repo-based clustering algorithm
+- **Workstream Clustering** (`shiplog-workstreams`):
+  - Repository-based automatic clustering
   - Curated workstreams via `workstreams.yaml`
-  - Suggested workstreams for user editing
-  - Persistent workstream management (no auto-overwrite)
+  - Suggested workstreams generation (`workstreams.suggested.yaml`)
+  - Persistent workstream management (user edits preserved)
+  - Manager for curation workflow
 
 - **Redaction System** (`shiplog-redact`):
   - Three redaction profiles: `internal`, `manager`, `public`
-  - Deterministic aliasing for repo names and workstream titles
+  - Deterministic HMAC-based aliasing for repo names and workstream titles
+  - Per-field redaction rules:
+    - Public: strips titles, URLs, paths, descriptions
+    - Manager: keeps titles/repos but removes sensitive details
+    - Internal: no redaction
   - Property-based testing for leak detection
-  - Per-field redaction rules (titles, URLs, descriptions, paths)
 
 - **Markdown Renderer** (`shiplog-render-md`):
-  - Self-review packet generation
+  - Self-review packet generation in Markdown
   - Coverage summary with completeness tracking
-  - Receipt truncation with appendix
+  - Event counts by type (PRs, reviews, manual)
+  - Query slicing details and warnings
+  - Receipt truncation with appendix for full listing
   - Claim scaffolds for narrative writing
+
+- **JSON Renderer** (`shiplog-render-json`):
+  - JSON output format for programmatic consumption
+
+- **Bundle Format** (`shiplog-bundle`):
+  - Zip archive generation for distribution
+  - Manifest with integrity verification
+  - Structured packet organization
 
 - **Engine** (`shiplog-engine`):
   - `collect` command: Fetch events and generate workstream suggestions
   - `render` command: Regenerate packets from existing data
-  - `refresh` command: Update events while preserving curation
-  - `run` command: Legacy combined mode
-
-- **Bundle Format** (`shiplog-bundle`):
-  - Zip archive generation
-  - Manifest with integrity verification
-  - Structured packet organization
+  - `refresh` command: Update events while preserving workstream curation
+  - `run` command: Legacy combined collect+render mode
 
 - **Schema** (`shiplog-schema`):
   - Event envelopes with unique IDs
+  - Event types: PullRequest, Review, Manual
   - Coverage manifests with slicing metadata
-  - Workstream definitions
+  - Workstream definitions with receipts and stats
+  - Manual event types and classification
+
+- **IDs** (`shiplog-ids`):
+  - Type-safe ID generation (EventId, RunId, WorkstreamId)
+  - Timestamp-based run identifiers
+
+- **Coverage** (`shiplog-coverage`):
+  - Time window utilities (day, week, month windows)
+  - Completeness tracking (Complete, Partial)
+  - Coverage slicing for API cap handling
 
 - **Testing** (`shiplog-testkit`):
   - Fixture generators for property-based tests
-  - Redaction leak detection
+  - Redaction leak detection utilities
+
+### Changed
+
+- Enhanced `ApiCache` with `Clone` and `Debug` implementations
+- Added `Serialize` derive to GitHub API response structs for cache storage
+- Cleaned up all compiler warnings across the workspace
+
+## [0.0.1] - Initial Release
+
+### Added
+
+- Initial project structure
+- Basic workspace configuration with Cargo
+- MIT/Apache-2.0 dual licensing
 
 [Unreleased]: https://github.com/EffortlessMetrics/shiplog/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/EffortlessMetrics/shiplog/releases/tag/v0.1.0
+[0.1.0]: https://github.com/EffortlessMetrics/shiplog/compare/v0.0.1...v0.1.0
+[0.0.1]: https://github.com/EffortlessMetrics/shiplog/releases/tag/v0.0.1
