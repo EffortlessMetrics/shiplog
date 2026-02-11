@@ -16,3 +16,4 @@ shiplog-ids = { path = "../shiplog-ids" }
 shiplog-schema = { path = "../shiplog-schema" }
 shiplog-ports = { path = "../shiplog-ports" }
 shiplog-coverage = { path = "../shiplog-coverage" }
+shiplog-cache = { path = "../shiplog-cache" }

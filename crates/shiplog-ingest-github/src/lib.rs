@@ -2,7 +2,8 @@ use anyhow::{anyhow, Context, Result};
 use chrono::{DateTime, NaiveDate, Utc};
 use reqwest::blocking::Client;
 use serde::de::DeserializeOwned;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use shiplog_cache::{ApiCache, CacheKey};
 use shiplog_coverage::{day_windows, month_windows, week_windows, window_len_days};
 use shiplog_ids::{EventId, RunId};
 use shiplog_ports::{IngestOutput, Ingestor};
@@ -11,6 +12,7 @@ use shiplog_schema::event::{
     Actor, EventEnvelope, EventKind, EventPayload, Link, PullRequestEvent, PullRequestState,
     RepoRef, RepoVisibility, ReviewEvent, SourceRef, SourceSystem,
 };
+use std::path::PathBuf;
 use std::thread::sleep;
 use std::time::Duration;
 use url::Url;
@@ -28,6 +30,8 @@ pub struct GithubIngestor {
     pub token: Option<String>,
     /// GitHub API base URL (for GHES). Default: https://api.github.com
     pub api_base: String,
+    /// Optional cache for API responses
+    pub cache: Option<ApiCache>,
 }
 
 impl GithubIngestor {
@@ -42,7 +46,23 @@ impl GithubIngestor {
             throttle_ms: 0,
             token: None,
             api_base: "https://api.github.com".to_string(),
+            cache: None,
         }
+    }
+
+    /// Enable caching with the given cache directory.
+    pub fn with_cache(mut self, cache_dir: impl Into<PathBuf>) -> Result<Self> {
+        let cache_path = cache_dir.into().join("github-api-cache.db");
+        let cache = ApiCache::open(cache_path)?;
+        self.cache = Some(cache);
+        Ok(self)
+    }
+
+    /// Enable in-memory caching (useful for testing).
+    pub fn with_in_memory_cache(mut self) -> Result<Self> {
+        let cache = ApiCache::open_in_memory()?;
+        self.cache = Some(cache);
+        Ok(self)
     }
 
     fn client(&self) -> Result<Client> {
@@ -468,7 +488,23 @@ impl GithubIngestor {
     }
 
     fn fetch_pr_details(&self, client: &Client, pr_api_url: &str) -> Result<PullRequestDetails> {
-        self.get_json(client, pr_api_url, &[])
+        // Check cache first
+        let cache_key = CacheKey::pr_details(pr_api_url);
+        if let Some(ref cache) = self.cache {
+            if let Some(cached) = cache.get::<PullRequestDetails>(&cache_key)? {
+                return Ok(cached);
+            }
+        }
+
+        // Fetch from API
+        let details: PullRequestDetails = self.get_json(client, pr_api_url, &[])?;
+
+        // Store in cache
+        if let Some(ref cache) = self.cache {
+            cache.set(&cache_key, &details)?;
+        }
+
+        Ok(details)
     }
 
     fn fetch_pr_reviews(&self, client: &Client, pr_api_url: &str) -> Result<Vec<PullRequestReview>> {
@@ -476,14 +512,38 @@ impl GithubIngestor {
         let mut out = Vec::new();
         let per_page = 100;
         for page in 1..=10 {
-            let page_reviews: Vec<PullRequestReview> = self.get_json(
-                client,
-                &url,
-                &[
-                    ("per_page", per_page.to_string()),
-                    ("page", page.to_string()),
-                ],
-            )?;
+            let cache_key = CacheKey::pr_reviews(pr_api_url, page);
+
+            // Try to get from cache first
+            let page_reviews: Vec<PullRequestReview> = if let Some(ref cache) = self.cache {
+                if let Some(cached) = cache.get::<Vec<PullRequestReview>>(&cache_key)? {
+                    cached
+                } else {
+                    // Not in cache, fetch from API
+                    let reviews: Vec<PullRequestReview> = self.get_json(
+                        client,
+                        &url,
+                        &[
+                            ("per_page", per_page.to_string()),
+                            ("page", page.to_string()),
+                        ],
+                    )?;
+                    // Store in cache
+                    cache.set(&cache_key, &reviews)?;
+                    reviews
+                }
+            } else {
+                // No cache configured, fetch directly
+                self.get_json(
+                    client,
+                    &url,
+                    &[
+                        ("per_page", per_page.to_string()),
+                        ("page", page.to_string()),
+                    ],
+                )?
+            };
+
             let n = page_reviews.len();
             out.extend(page_reviews);
             if n < per_page {
@@ -560,7 +620,7 @@ struct SearchPullRequestRef {
     url: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 struct PullRequestDetails {
     title: String,
     created_at: DateTime<Utc>,
@@ -571,12 +631,12 @@ struct PullRequestDetails {
     base: PullBase,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 struct PullBase {
     repo: PullRepo,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 struct PullRepo {
     full_name: String,
     html_url: String,
@@ -584,7 +644,7 @@ struct PullRepo {
     private_field: bool,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 struct PullRequestReview {
     id: u64,
     state: String,
@@ -592,7 +652,7 @@ struct PullRequestReview {
     user: ReviewUser,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 struct ReviewUser {
     login: String,
 }
