@@ -246,7 +246,7 @@ impl GithubIngestor {
             slices[0].notes.push("partial:unresolvable_at_this_granularity".to_string());
         }
 
-        let mut fetched_items = self.fetch_all_search_items(client, &query)?;
+        let fetched_items = self.fetch_all_search_items(client, &query)?;
         let fetched = fetched_items.len() as u64;
 
         // Record a fetch slice (separate from the probe for clarity)
@@ -291,11 +291,12 @@ impl GithubIngestor {
                     ("page", page.to_string()),
                 ],
             )?;
+            let items_len = resp.items.len();
             out.extend(resp.items);
             if out.len() as u64 >= resp.total_count.min(1000) {
                 break;
             }
-            if resp.items.len() < per_page {
+            if items_len < per_page {
                 break;
             }
         }

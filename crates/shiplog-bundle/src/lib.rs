@@ -45,7 +45,7 @@ pub fn write_bundle_manifest(out_dir: &Path, run_id: &RunId) -> Result<BundleMan
 pub fn write_zip(out_dir: &Path, zip_path: &Path) -> Result<()> {
     let file = File::create(zip_path).with_context(|| format!("create zip {zip_path:?}"))?;
     let mut zip = zip::ZipWriter::new(file);
-    let opts = zip::write::FileOptions::default()
+    let opts: zip::write::FileOptions<()> = zip::write::FileOptions::default()
         .compression_method(zip::CompressionMethod::Deflated)
         .unix_permissions(0o644);
 

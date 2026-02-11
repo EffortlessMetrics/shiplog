@@ -14,3 +14,5 @@ shiplog-ids = { path = "../shiplog-ids" }
 shiplog-schema = { path = "../shiplog-schema" }
 shiplog-ports = { path = "../shiplog-ports" }
 
+[dev-dependencies]
+tempfile = "3"

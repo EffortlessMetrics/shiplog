@@ -13,6 +13,8 @@ members = [
   "crates/shiplog-engine",
   "crates/shiplog-ingest-json",
   "crates/shiplog-ingest-github",
+  "crates/shiplog-ingest-manual",
+  "crates/shiplog-cache",
   "crates/shiplog-testkit",
   "apps/shiplog",
 ]
@@ -34,15 +36,16 @@ chrono = { version = "0.4.43", features = ["serde"] }
 sha2 = "0.10.9"
 hex = "0.4.3"
 clap = { version = "4.5.57", features = ["derive"] }
-reqwest = { version = "0.13.2", default-features = false, features = ["blocking", "json", "rustls-tls"] }
+reqwest = { version = "0.13.2", features = ["blocking", "json"] }
 url = "2.5.8"
 itertools = "0.14.0"
 proptest = "1.10.0"
 insta = { version = "1.46.3", features = ["yaml"] }
 zip = "7.4.0"
+tokio = { version = "1.49.0", features = ["rt", "macros"] }
+tempfile = "3.25.0"
 
 [profile.release]
 codegen-units = 1
 lto = "thin"
 strip = "symbols"
-

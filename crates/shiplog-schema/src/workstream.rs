@@ -7,6 +7,7 @@ use shiplog_ids::{EventId, WorkstreamId};
 pub struct WorkstreamStats {
     pub pull_requests: usize,
     pub reviews: usize,
+    pub manual_events: usize,
 }
 
 impl WorkstreamStats {
@@ -14,6 +15,7 @@ impl WorkstreamStats {
         Self {
             pull_requests: 0,
             reviews: 0,
+            manual_events: 0,
         }
     }
 }
@@ -43,6 +45,7 @@ impl Workstream {
         match kind {
             EventKind::PullRequest => self.stats.pull_requests += 1,
             EventKind::Review => self.stats.reviews += 1,
+            EventKind::Manual => self.stats.manual_events += 1,
         }
     }
 }

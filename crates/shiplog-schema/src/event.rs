@@ -1,5 +1,5 @@
 use crate::coverage::TimeWindow;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
 use shiplog_ids::EventId;
 
@@ -11,6 +11,7 @@ pub enum SourceSystem {
     Github,
     JsonImport,
     LocalGit,
+    Manual,
     Unknown,
 }
 
@@ -55,6 +56,7 @@ pub struct Link {
 pub enum EventKind {
     PullRequest,
     Review,
+    Manual,
 }
 
 /// The canonical event record.
@@ -79,6 +81,7 @@ pub struct EventEnvelope {
 pub enum EventPayload {
     PullRequest(PullRequestEvent),
     Review(ReviewEvent),
+    Manual(ManualEvent),
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -111,4 +114,89 @@ pub struct ReviewEvent {
     pub submitted_at: DateTime<Utc>,
     pub state: String,
     pub window: Option<TimeWindow>,
+}
+
+/// Types of manual events for non-GitHub work.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub enum ManualEventType {
+    /// General note or achievement
+    Note,
+    /// Incident response or on-call
+    Incident,
+    /// Design doc or architecture work
+    Design,
+    /// Mentoring or teaching
+    Mentoring,
+    /// Feature or product launch
+    Launch,
+    /// Migration or infrastructure work
+    Migration,
+    /// Code review (non-GitHub)
+    Review,
+    /// Other uncategorized work
+    Other,
+}
+
+/// Manual event for work that doesn't have GitHub artifacts.
+///
+/// This allows the packet to include:
+/// - Incidents handled
+/// - Migrations planned
+/// - Mentoring
+/// - Cross-team design
+/// - Unmerged prototypes that still mattered
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct ManualEvent {
+    /// Type of manual event
+    pub event_type: ManualEventType,
+    /// Title/summary of the work
+    pub title: String,
+    /// Detailed description
+    pub description: Option<String>,
+    /// Start date (for multi-day work)
+    pub started_at: Option<NaiveDate>,
+    /// End/completion date
+    pub ended_at: Option<NaiveDate>,
+    /// Impact or outcome statement
+    pub impact: Option<String>,
+}
+
+/// File format for manual_events.yaml
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct ManualEventsFile {
+    pub version: u32,
+    pub generated_at: DateTime<Utc>,
+    pub events: Vec<ManualEventEntry>,
+}
+
+/// Individual manual event entry with metadata
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct ManualEventEntry {
+    /// Unique identifier for this entry
+    pub id: String,
+    /// Event type
+    #[serde(rename = "type")]
+    pub event_type: ManualEventType,
+    /// Date or date range
+    pub date: ManualDate,
+    /// Title of the work
+    pub title: String,
+    /// Optional description
+    pub description: Option<String>,
+    /// Workstream association
+    pub workstream: Option<String>,
+    /// Tags for categorization
+    pub tags: Vec<String>,
+    /// Receipts/links to evidence
+    pub receipts: Vec<Link>,
+    /// Impact statement
+    pub impact: Option<String>,
+}
+
+/// Date specification for manual events
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(untagged)]
+pub enum ManualDate {
+    Single(NaiveDate),
+    Range { start: NaiveDate, end: NaiveDate },
 }
