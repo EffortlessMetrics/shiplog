@@ -643,7 +643,7 @@ mod tests {
         assert!(ws_out.tags.contains(&"repo".into()));
     }
 
-    /// Property test using proptest: arbitrary strings should not leak through redaction
+    // Property test using proptest: arbitrary strings should not leak through redaction
     proptest! {
         #[test]
         fn prop_sensitive_strings_redacted(

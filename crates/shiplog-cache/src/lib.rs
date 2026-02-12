@@ -7,7 +7,7 @@ use anyhow::{Context, Result};
 use chrono::{Duration, Utc};
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::de::DeserializeOwned;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use std::path::Path;
 
 /// Cache for GitHub API responses.
@@ -239,7 +239,7 @@ impl CacheKey {
 mod tests {
     use super::*;
     
-    #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq, Clone)]
     struct TestData {
         name: String,
         count: u32,
