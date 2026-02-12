@@ -1,0 +1,19 @@
+[package]
+name = "shiplog-ingest-github"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+chrono.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+url.workspace = true
+shiplog-ids = { path = "../shiplog-ids" }
+shiplog-schema = { path = "../shiplog-schema" }
+shiplog-ports = { path = "../shiplog-ports" }
+shiplog-coverage = { path = "../shiplog-coverage" }
+shiplog-cache = { path = "../shiplog-cache" }

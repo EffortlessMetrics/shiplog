@@ -1,0 +1,17 @@
+[package]
+name = "shiplog-render-md"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+chrono.workspace = true
+itertools.workspace = true
+shiplog-schema = { path = "../shiplog-schema" }
+shiplog-ports = { path = "../shiplog-ports" }
+
+[dev-dependencies]
+insta.workspace = true
+shiplog-ids = { path = "../shiplog-ids" }

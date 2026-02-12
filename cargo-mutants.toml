@@ -1,0 +1,15 @@
+# Mutation testing configuration (cargo-mutants).
+#
+# Goal: verify the "coverage manifest" + redaction invariants aren't paper-thin.
+#
+# Run:
+#   cargo mutants --workspace
+#
+# Note: this is intentionally conservative for MVP.
+[mutants]
+timeout = "60s"
+exclude = [
+  "target/**",
+  "out/**",
+  "examples/**",
+]

@@ -1,0 +1,20 @@
+[package]
+name = "shiplog-redact"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+serde.workspace = true
+sha2.workspace = true
+hex.workspace = true
+shiplog-schema = { path = "../shiplog-schema" }
+shiplog-ports = { path = "../shiplog-ports" }
+
+[dev-dependencies]
+proptest.workspace = true
+serde_json.workspace = true
+chrono.workspace = true
+shiplog-ids = { path = "../shiplog-ids" }

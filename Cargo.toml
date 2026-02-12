@@ -1,0 +1,51 @@
+[workspace]
+resolver = "2"
+members = [
+  "crates/shiplog-ids",
+  "crates/shiplog-schema",
+  "crates/shiplog-ports",
+  "crates/shiplog-coverage",
+  "crates/shiplog-workstreams",
+  "crates/shiplog-redact",
+  "crates/shiplog-render-md",
+  "crates/shiplog-render-json",
+  "crates/shiplog-bundle",
+  "crates/shiplog-engine",
+  "crates/shiplog-ingest-json",
+  "crates/shiplog-ingest-github",
+  "crates/shiplog-ingest-manual",
+  "crates/shiplog-cache",
+  "crates/shiplog-testkit",
+  "apps/shiplog",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.92"
+license = "MIT OR Apache-2.0"
+authors = ["Steven Zimmerman, CPA <git@effortlesssteven.com>"]
+
+[workspace.dependencies]
+anyhow = "1.0.101"
+thiserror = "2.0.18"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.149"
+serde_yaml = { package = "serde_yaml_ng", version = "0.10.0" }
+chrono = { version = "0.4.43", features = ["serde"] }
+sha2 = "0.10.9"
+hex = "0.4.3"
+clap = { version = "4.5.57", features = ["derive"] }
+reqwest = { version = "0.13.2", features = ["blocking", "json"] }
+url = "2.5.8"
+itertools = "0.14.0"
+proptest = "1.10.0"
+insta = { version = "1.46.3", features = ["yaml"] }
+zip = "7.4.0"
+tokio = { version = "1.49.0", features = ["rt", "macros"] }
+tempfile = "3.25.0"
+
+[profile.release]
+codegen-units = 1
+lto = "thin"
+strip = "symbols"
