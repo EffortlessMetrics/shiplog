@@ -2,8 +2,8 @@
 
 use chrono::{TimeZone, Utc};
 use shiplog_ids::EventId;
-use shiplog_schema::event::*;
 use shiplog_schema::coverage::TimeWindow;
+use shiplog_schema::event::*;
 
 pub mod bdd;
 
@@ -18,7 +18,10 @@ pub fn pr_event(repo: &str, number: u64, title: &str) -> EventEnvelope {
         id: EventId::from_parts(["github", "pr", repo, &number.to_string()]),
         kind: EventKind::PullRequest,
         occurred_at: Utc.timestamp_opt(0, 0).unwrap(),
-        actor: Actor { login: "user".into(), id: None },
+        actor: Actor {
+            login: "user".into(),
+            id: None,
+        },
         repo: RepoRef {
             full_name: repo.to_string(),
             html_url: Some(format!("https://github.com/{repo}")),
@@ -56,9 +59,9 @@ pub fn pr_event(repo: &str, number: u64, title: &str) -> EventEnvelope {
 pub mod fixtures {
     use super::*;
     use chrono::NaiveDate;
-    use shiplog_schema::workstream::{Workstream, WorkstreamsFile, WorkstreamStats};
-    use shiplog_schema::coverage::{Completeness, CoverageManifest};
     use shiplog_ids::WorkstreamId;
+    use shiplog_schema::coverage::{Completeness, CoverageManifest};
+    use shiplog_schema::workstream::{Workstream, WorkstreamStats};
 
     /// Builder for creating test workstreams
     pub struct WorkstreamFixture {
@@ -121,7 +124,11 @@ pub mod fixtures {
     pub fn realistic_quarter_events(user: &str, repo: &str) -> Vec<EventEnvelope> {
         vec![
             // Feature work
-            pr_event(repo, 101, &format!("Add user authentication flow - {}", user)),
+            pr_event(
+                repo,
+                101,
+                &format!("Add user authentication flow - {}", user),
+            ),
             pr_event(repo, 102, "Implement OAuth2 integration"),
             pr_event(repo, 103, "Add session management"),
             // Performance work

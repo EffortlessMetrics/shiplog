@@ -42,7 +42,8 @@ impl ScenarioContext {
     }
 
     pub fn with_path(mut self, key: &str, value: impl AsRef<Path>) -> Self {
-        self.paths.insert(key.to_string(), value.as_ref().to_path_buf());
+        self.paths
+            .insert(key.to_string(), value.as_ref().to_path_buf());
         self
     }
 
@@ -128,14 +129,17 @@ impl Scenario {
 
 /// Assertion helpers for BDD scenarios
 pub mod assertions {
-    use super::*;
     use std::fmt::Debug;
 
     pub fn assert_present<T: Debug>(option: Option<T>, name: &str) -> Result<T, String> {
         option.ok_or_else(|| format!("Expected {} to be present, but was None", name))
     }
 
-    pub fn assert_eq<T: Debug + PartialEq>(actual: T, expected: T, name: &str) -> Result<(), String> {
+    pub fn assert_eq<T: Debug + PartialEq>(
+        actual: T,
+        expected: T,
+        name: &str,
+    ) -> Result<(), String> {
         if actual != expected {
             Err(format!(
                 "Expected {} to be {:?}, but was {:?}",
@@ -240,7 +244,10 @@ pub mod builders {
                     id,
                     kind: EventKind::PullRequest,
                     occurred_at,
-                    actor: Actor { login: "user".into(), id: None },
+                    actor: Actor {
+                        login: "user".into(),
+                        id: None,
+                    },
                     repo: repo_ref,
                     payload: EventPayload::PullRequest(PullRequestEvent {
                         number: self.number,
@@ -303,7 +310,10 @@ pub mod builders {
                 run_id: shiplog_ids::RunId::now("test"),
                 generated_at: Utc::now(),
                 user: self.user,
-                window: TimeWindow { since: self.since, until: self.until },
+                window: TimeWindow {
+                    since: self.since,
+                    until: self.until,
+                },
                 mode: "merged".to_string(),
                 sources: vec!["github".to_string()],
                 slices: vec![],
@@ -315,6 +325,12 @@ pub mod builders {
 
     pub struct WorkstreamsBuilder {
         version: u32,
+    }
+
+    impl Default for WorkstreamsBuilder {
+        fn default() -> Self {
+            Self::new()
+        }
     }
 
     impl WorkstreamsBuilder {
@@ -340,23 +356,29 @@ pub mod builders {
 #[cfg(test)]
 mod tests {
     use super::assertions::*;
+    use super::{Scenario, ScenarioContext};
 
     #[test]
     fn bdd_scenario_example() {
         let scenario = Scenario::new("User collects and renders a packet")
             .given("a GitHub user with recent PRs", |ctx| {
-                ctx.strings.insert("username".to_string(), "testuser".to_string());
-                ctx.strings.insert("repo".to_string(), "test/repo".to_string());
+                ctx.strings
+                    .insert("username".to_string(), "testuser".to_string());
+                ctx.strings
+                    .insert("repo".to_string(), "test/repo".to_string());
             })
             .when("they collect events for the past month", |ctx| {
                 // In real tests, this would call the actual collect logic
                 ctx.numbers.insert("event_count".to_string(), 5);
                 Ok(())
             })
-            .then("the packet should contain their PRs", |ctx| {
-                let count = assert_present(ctx.number("event_count"), "event_count")?;
-                assert_true(count > 0, "event count > 0")
-            });
+            .then(
+                "the packet should contain their PRs",
+                |ctx: &ScenarioContext| {
+                    let count = assert_present(ctx.number("event_count"), "event_count")?;
+                    assert_true(count > 0, "event count > 0")
+                },
+            );
 
         scenario.run().expect("scenario should pass");
     }

@@ -45,6 +45,9 @@ pub trait Renderer {
 /// Redaction is a rendering mode. Same underlying ledger, different projections.
 pub trait Redactor {
     fn redact_events(&self, events: &[EventEnvelope], profile: &str) -> Result<Vec<EventEnvelope>>;
-    fn redact_workstreams(&self, workstreams: &WorkstreamsFile, profile: &str)
-        -> Result<WorkstreamsFile>;
+    fn redact_workstreams(
+        &self,
+        workstreams: &WorkstreamsFile,
+        profile: &str,
+    ) -> Result<WorkstreamsFile>;
 }
