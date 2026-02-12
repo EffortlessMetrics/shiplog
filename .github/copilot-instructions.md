@@ -12,10 +12,16 @@ Build
 - Release build: `cargo build --workspace --release`
 
 Run CLI examples (from README)
-- GitHub mode (requires token for private repos):
-  `cargo run -p shiplog -- run github --user octocat --since 2025-01-01 --until 2026-01-01 --mode merged --out ./out --include-reviews`
+- Preferred workflow — collect, then render:
+  `cargo run -p shiplog -- collect github --user octocat --since 2025-01-01 --until 2026-01-01 --mode merged --out ./out --include-reviews`
+  Then edit `workstreams.suggested.yaml` → `workstreams.yaml`, then:
+  `cargo run -p shiplog -- render --out ./out`
+- Refresh events while preserving curated workstreams:
+  `cargo run -p shiplog -- refresh github --user octocat --since 2025-01-01 --until 2026-01-01 --mode merged --out ./out --include-reviews`
 - JSON import mode:
-  `cargo run -p shiplog -- run json --events ./examples/fixture/ledger.events.jsonl --coverage ./examples/fixture/coverage.manifest.json --out ./out`
+  `cargo run -p shiplog -- collect json --events ./examples/fixture/ledger.events.jsonl --coverage ./examples/fixture/coverage.manifest.json --out ./out`
+- Legacy one-shot mode (`run` = collect + render):
+  `cargo run -p shiplog -- run github --user octocat --since 2025-01-01 --until 2026-01-01 --mode merged --out ./out --include-reviews`
 
 Testing
 - Run all tests in the workspace: `cargo test --workspace`
@@ -42,21 +48,22 @@ Fuzzing
 
 This is a microcrated Rust workspace following Clean Architecture boundaries. Key components (from Cargo.toml workspace members):
 
-- crates/shiplog-ids — ID types and helpers
+- crates/shiplog-ids — ID types and helpers (SHA256-based deterministic IDs)
 - crates/shiplog-schema — canonical event model (the data spine)
-- crates/shiplog-ports — trait definitions (ingestors, renderers)
+- crates/shiplog-ports — trait definitions (Ingestor, Renderer, Redactor, WorkstreamClusterer)
 - crates/shiplog-coverage — slicing and completeness reporting
 - crates/shiplog-workstreams — clustering + editable YAML overrides
-- crates/shiplog-redact — deterministic redaction profiles
-- crates/shiplog-render-md — Markdown renderer (snapshot-tested)
+- crates/shiplog-redact — deterministic HMAC-SHA256 redaction (internal/manager/public profiles)
+- crates/shiplog-render-md — Markdown renderer (snapshot-tested with insta)
 - crates/shiplog-render-json — JSON renderer
 - crates/shiplog-bundle — checksums + optional zip export
 - crates/shiplog-engine — orchestration (ingest → normalize → cluster → render)
 - crates/shiplog-ingest-json — JSONL adapter
-- crates/shiplog-ingest-github — GitHub adapter
-- crates/shiplog-ingest-manual — manual ingest adapter
-- crates/shiplog-testkit — test utilities
-- apps/shiplog — CLI entrypoint
+- crates/shiplog-ingest-github — GitHub adapter (adaptive date slicing, SQLite caching)
+- crates/shiplog-ingest-manual — manual ingest adapter (YAML-based non-GitHub events)
+- crates/shiplog-cache — SQLite-backed API response caching (TTL-based, reduces GitHub API calls)
+- crates/shiplog-testkit — shared test fixtures and utilities
+- apps/shiplog — CLI entrypoint (subcommands: collect, render, refresh, run)
 
 Important workspace metadata
 - Rust edition: 2024
@@ -65,7 +72,9 @@ Important workspace metadata
 
 Primary runtime/flow: CLI (`apps/shiplog`) drives the engine which wires ingestors (ports -> adapters), normalizes events into the canonical schema, clusters into workstreams, applies deterministic redaction profiles, and renders output formats (Markdown/JSON) with a coverage manifest and optional bundling.
 
-Outputs typically produced under `out/<run_id>/` and include `packet.md`, `ledger.events.jsonl`, `coverage.manifest.json`, and `bundle.manifest.json` (see README examples).
+CLI workflow: `collect` fetches events and generates `workstreams.suggested.yaml` → user edits into `workstreams.yaml` → `render` regenerates the packet without re-fetching. `refresh` re-fetches events while preserving curated workstreams. `run` is the legacy one-shot mode.
+
+Outputs typically produced under `out/<run_id>/` and include `packet.md`, `workstreams.yaml`, `workstreams.suggested.yaml`, `ledger.events.jsonl`, `coverage.manifest.json`, and `bundle.manifest.json` (see README examples).
 
 ---
 
@@ -84,13 +93,13 @@ Outputs typically produced under `out/<run_id>/` and include `packet.md`, `ledge
   - Public packets strip titles and links by default — do not assume private data is safe unless `coverage.manifest.json` shows receipts.
 - Coverage-first design: components emit receipts and a coverage manifest; missing receipts are explicitly reported rather than silently omitted.
 - Snapshot updates: be explicit when updating insta snapshots (`INSTA_UPDATE`), and prefer small, reviewed snapshot changes.
-- CLI usage: prefer `cargo run -p shiplog -- run <mode> ...` when invoking from the workspace to target the binary directly.
+- CLI usage: prefer `cargo run -p shiplog -- <subcommand> ...` when invoking from the workspace. Use `collect`/`render`/`refresh` for the recommended workflow; `run` is legacy.
 
 ---
 
 ## Integration notes
 - Copied crucial examples and architecture from README.md (use that file for detailed usage examples and philosophy).
-- No CONTRIBUTING.md, CLAUDE.md, AGENTS.md, or other known AI-assistant config files were found in this repository when this file was created; if you add assistant-specific config, include the important rules here.
+- CLAUDE.md and GEMINI.md provide additional AI-assistant guidance. Keep all AI config files in sync when making architectural or workflow changes.
 
 ---
 

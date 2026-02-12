@@ -9,3 +9,7 @@ license.workspace = true
 chrono.workspace = true
 shiplog-ids = { path = "../shiplog-ids" }
 shiplog-schema = { path = "../shiplog-schema" }
+
+[dev-dependencies]
+shiplog-redact = { path = "../shiplog-redact" }
+serde.workspace = true

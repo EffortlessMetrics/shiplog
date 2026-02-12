@@ -10,25 +10,28 @@ This project is a modular Rust workspace following **Clean Architecture** princi
 
 ### Workspace Structure
 
-*   **`apps/shiplog`**: The CLI application entry point.
+*   **`apps/shiplog`**: The CLI application entry point (subcommands: `collect`, `render`, `refresh`, `run`).
 *   **`crates/`**:
     *   **Core Domain:**
         *   `shiplog-schema`: Canonical event model (the data spine).
-        *   `shiplog-ports`: Trait definitions (Ingestor, Renderer, Redactor, etc.).
+        *   `shiplog-ports`: Trait definitions (Ingestor, Renderer, Redactor, WorkstreamClusterer).
         *   `shiplog-engine`: Orchestration logic (ingest → normalize → cluster → render).
         *   `shiplog-workstreams`: Logic for clustering events into workstreams.
         *   `shiplog-coverage`: Logic for slicing and completeness reporting.
-        *   `shiplog-ids`: ID types and helpers.
+        *   `shiplog-ids`: Type-safe stable ID generation (SHA256-based).
+        *   `shiplog-redact`: Deterministic HMAC-SHA256 redaction (internal/manager/public profiles).
     *   **Adapters (Infrastructure):**
-        *   `shiplog-ingest-github`: GitHub API adapter.
+        *   `shiplog-ingest-github`: GitHub API adapter (adaptive date slicing, SQLite caching).
         *   `shiplog-ingest-json`: JSONL import adapter.
-        *   `shiplog-ingest-manual`: Manual entry adapter.
+        *   `shiplog-ingest-manual`: Manual entry adapter (YAML-based non-GitHub events).
         *   `shiplog-render-md`: Markdown renderer (uses `insta` for snapshots).
         *   `shiplog-render-json`: JSON renderer.
         *   `shiplog-bundle`: Zip export functionality.
-        *   `shiplog-redact`: Deterministic redaction profiles.
+        *   `shiplog-cache`: SQLite-backed API response caching (TTL-based, reduces GitHub API calls).
     *   **Testing:**
-        *   `shiplog-testkit`: Test utilities.
+        *   `shiplog-testkit`: Shared test fixtures and utilities.
+
+**Key rule:** Adapters depend on ports and schema, never the reverse.
 
 ## Building and Running
 
@@ -46,11 +49,30 @@ cargo build --workspace --release
 
 Use `cargo run -p shiplog` to run the CLI.
 
-**GitHub Mode:**
+**Recommended workflow — collect, edit, render:**
 
 ```bash
-# Requires GITHUB_TOKEN for private repos
-cargo run -p shiplog -- run github \
+# 1. Collect events and generate workstream suggestions
+export GITHUB_TOKEN="ghp_..."   # optional for public repos
+
+cargo run -p shiplog -- collect github \
+  --user <username> \
+  --since YYYY-MM-DD \
+  --until YYYY-MM-DD \
+  --mode merged \
+  --out ./out \
+  --include-reviews
+
+# 2. Edit: rename workstreams.suggested.yaml → workstreams.yaml and curate
+
+# 3. Re-render from curated workstreams (no re-fetch)
+cargo run -p shiplog -- render --out ./out
+```
+
+**Refresh events while preserving curation:**
+
+```bash
+cargo run -p shiplog -- refresh github \
   --user <username> \
   --since YYYY-MM-DD \
   --until YYYY-MM-DD \
@@ -62,10 +84,22 @@ cargo run -p shiplog -- run github \
 **JSON Import Mode:**
 
 ```bash
-cargo run -p shiplog -- run json \
+cargo run -p shiplog -- collect json \
   --events ./examples/fixture/ledger.events.jsonl \
   --coverage ./examples/fixture/coverage.manifest.json \
   --out ./out
+```
+
+**Legacy one-shot mode** (`run` = collect + render):
+
+```bash
+cargo run -p shiplog -- run github \
+  --user <username> \
+  --since YYYY-MM-DD \
+  --until YYYY-MM-DD \
+  --mode merged \
+  --out ./out \
+  --include-reviews
 ```
 
 ## Development Conventions
@@ -77,12 +111,16 @@ cargo run -p shiplog -- run json \
     *   **Snapshot Tests:** Used for rendered outputs (Markdown/JSON). Uses [insta](https://github.com/mitsuhiko/insta).
         *   Update snapshots: `INSTA_UPDATE=auto cargo test -p <crate-name>` (Unix) or `$env:INSTA_UPDATE='auto'; cargo test ...` (PowerShell).
     *   **Property Tests:** Used for invariants (e.g., redaction) using `proptest`.
-*   **Redaction:** Deterministic and profile-based. Public packets strip titles/links by default.
+    *   **Shared Fixtures:** Use `shiplog-testkit` to avoid cross-crate duplication.
+*   **Redaction:** Deterministic and profile-based (internal/manager/public). Public packets strip titles/links by default.
 *   **Coverage First:** Components must emit receipts. Missing data is explicitly reported in `coverage.manifest.json`.
 
 ## Key Commands
 
 *   **Test All:** `cargo test --workspace`
 *   **Test Specific Crate:** `cargo test -p <crate-name>`
+*   **Test Single Test:** `cargo test -p <crate-name> <test_name> -- --exact --nocapture`
 *   **Format:** `cargo fmt --all`
+*   **Format Check:** `cargo fmt --all -- --check`
 *   **Lint:** `cargo clippy --workspace --all-targets --all-features -- -D warnings`
+*   **Mutation Testing:** `cargo mutants --workspace`

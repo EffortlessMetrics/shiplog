@@ -1903,7 +1903,9 @@ name = "shiplog-testkit"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "serde",
  "shiplog-ids",
+ "shiplog-redact",
  "shiplog-schema",
 ]
 
