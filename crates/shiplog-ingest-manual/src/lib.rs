@@ -24,7 +24,12 @@ pub struct ManualIngestor {
 }
 
 impl ManualIngestor {
-    pub fn new(events_path: impl AsRef<Path>, user: String, since: chrono::NaiveDate, until: chrono::NaiveDate) -> Self {
+    pub fn new(
+        events_path: impl AsRef<Path>,
+        user: String,
+        since: chrono::NaiveDate,
+        until: chrono::NaiveDate,
+    ) -> Self {
         Self {
             events_path: events_path.as_ref().to_path_buf(),
             user,
@@ -54,7 +59,10 @@ impl Ingestor for ManualIngestor {
                         incomplete_results: Some(false),
                         notes: vec!["manual_events_file_not_found".to_string()],
                     }],
-                    warnings: vec![format!("Manual events file not found: {:?}", self.events_path)],
+                    warnings: vec![format!(
+                        "Manual events file not found: {:?}",
+                        self.events_path
+                    )],
                     completeness: Completeness::Unknown,
                 },
             });
@@ -123,8 +131,7 @@ pub fn read_manual_events(path: &Path) -> Result<ManualEventsFile> {
 /// Write manual events to a YAML file.
 pub fn write_manual_events(path: &Path, file: &ManualEventsFile) -> Result<()> {
     let yaml = serde_yaml::to_string(file)?;
-    std::fs::write(path, yaml)
-        .with_context(|| format!("write manual events to {path:?}"))?;
+    std::fs::write(path, yaml).with_context(|| format!("write manual events to {path:?}"))?;
     Ok(())
 }
 
@@ -151,10 +158,7 @@ fn entry_to_event(entry: &ManualEventEntry, user: &str) -> Result<EventEnvelope>
         .and_local_timezone(Utc)
         .unwrap();
 
-    let id = EventId::from_parts([
-        "manual",
-        &entry.id,
-    ]);
+    let id = EventId::from_parts(["manual", &entry.id]);
 
     let manual_event = ManualEvent {
         event_type: entry.event_type.clone(),
@@ -174,7 +178,10 @@ fn entry_to_event(entry: &ManualEventEntry, user: &str) -> Result<EventEnvelope>
             id: None,
         },
         repo: RepoRef {
-            full_name: entry.workstream.clone().unwrap_or_else(|| "manual/general".to_string()),
+            full_name: entry
+                .workstream
+                .clone()
+                .unwrap_or_else(|| "manual/general".to_string()),
             html_url: None,
             visibility: RepoVisibility::Unknown,
         },
@@ -295,7 +302,10 @@ mod tests {
 
         let output = ing.ingest().unwrap();
         assert_eq!(output.events.len(), 1);
-        assert_eq!(output.events[0].source.opaque_id, Some("inside".to_string()));
+        assert_eq!(
+            output.events[0].source.opaque_id,
+            Some("inside".to_string())
+        );
     }
 
     #[test]

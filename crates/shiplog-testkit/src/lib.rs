@@ -1,7 +1,7 @@
 use chrono::{TimeZone, Utc};
 use shiplog_ids::EventId;
-use shiplog_schema::event::*;
 use shiplog_schema::coverage::TimeWindow;
+use shiplog_schema::event::*;
 
 /// Small helpers for building fixtures in tests.
 ///
@@ -11,7 +11,10 @@ pub fn pr_event(repo: &str, number: u64, title: &str) -> EventEnvelope {
         id: EventId::from_parts(["github", "pr", repo, &number.to_string()]),
         kind: EventKind::PullRequest,
         occurred_at: Utc.timestamp_opt(0, 0).unwrap(),
-        actor: Actor { login: "user".into(), id: None },
+        actor: Actor {
+            login: "user".into(),
+            id: None,
+        },
         repo: RepoRef {
             full_name: repo.to_string(),
             html_url: Some(format!("https://github.com/{repo}")),

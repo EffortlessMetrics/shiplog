@@ -1,8 +1,8 @@
 use anyhow::{Context, Result};
 use chrono::Utc;
 use sha2::{Digest, Sha256};
-use shiplog_schema::bundle::{BundleManifest, FileChecksum};
 use shiplog_ids::RunId;
+use shiplog_schema::bundle::{BundleManifest, FileChecksum};
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};

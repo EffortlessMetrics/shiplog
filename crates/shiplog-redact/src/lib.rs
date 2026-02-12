@@ -116,7 +116,7 @@ impl DeterministicRedactor {
     }
 
     /// Redact an event for manager view.
-    /// 
+    ///
     /// Manager view is a middle ground:
     /// - Keep titles and repo names (managers need context)
     /// - Remove sensitive details (touched_paths, descriptions)
@@ -142,12 +142,12 @@ impl DeterministicRedactor {
         ev.links.clear();
 
         // Keep source URL for internal debugging
-        
+
         ev
     }
 
     /// Redact a workstream for manager view.
-    /// 
+    ///
     /// Keep titles readable but remove summaries (might contain sensitive details).
     fn redact_workstream_manager(&self, mut ws: Workstream) -> Workstream {
         ws.summary = None;
@@ -169,9 +169,17 @@ impl Redactor for DeterministicRedactor {
             RedactionProfile::Internal => events.to_vec(),
             RedactionProfile::Manager => {
                 // Manager view: keep titles/repo names but remove sensitive details
-                events.iter().cloned().map(|e| self.redact_event_manager(e)).collect()
+                events
+                    .iter()
+                    .cloned()
+                    .map(|e| self.redact_event_manager(e))
+                    .collect()
             }
-            RedactionProfile::Public => events.iter().cloned().map(|e| self.redact_event_public(e)).collect(),
+            RedactionProfile::Public => events
+                .iter()
+                .cloned()
+                .map(|e| self.redact_event_public(e))
+                .collect(),
         };
 
         Ok(out)
@@ -218,10 +226,10 @@ impl Redactor for DeterministicRedactor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use proptest::prelude::*;
-    use shiplog_schema::event::*;
-    use shiplog_ids::EventId;
     use chrono::Utc;
+    use proptest::prelude::*;
+    use shiplog_ids::EventId;
+    use shiplog_schema::event::*;
 
     proptest! {
         #[test]
@@ -237,11 +245,18 @@ mod tests {
     fn public_profile_strips_titles_and_links() {
         let r = DeterministicRedactor::new(b"k");
         let ev = EventEnvelope {
-            id: EventId::from_parts(["x","1"]),
+            id: EventId::from_parts(["x", "1"]),
             kind: EventKind::PullRequest,
             occurred_at: Utc::now(),
-            actor: Actor { login: "a".into(), id: None },
-            repo: RepoRef { full_name: "o/r".into(), html_url: Some("https://github.com/o/r".into()), visibility: RepoVisibility::Private },
+            actor: Actor {
+                login: "a".into(),
+                id: None,
+            },
+            repo: RepoRef {
+                full_name: "o/r".into(),
+                html_url: Some("https://github.com/o/r".into()),
+                visibility: RepoVisibility::Private,
+            },
             payload: EventPayload::PullRequest(PullRequestEvent {
                 number: 1,
                 title: "secret pr title".into(),
@@ -255,8 +270,15 @@ mod tests {
                 window: None,
             }),
             tags: vec![],
-            links: vec![Link { label: "pr".into(), url: "https://github.com/o/r/pull/1".into() }],
-            source: SourceRef { system: SourceSystem::Github, url: Some("https://api.github.com/...".into()), opaque_id: None },
+            links: vec![Link {
+                label: "pr".into(),
+                url: "https://github.com/o/r/pull/1".into(),
+            }],
+            source: SourceRef {
+                system: SourceSystem::Github,
+                url: Some("https://api.github.com/...".into()),
+                opaque_id: None,
+            },
         };
 
         let out = r.redact_events(&[ev], "public").unwrap();
@@ -277,13 +299,20 @@ mod tests {
     fn public_redaction_no_leak_pr_title() {
         let r = DeterministicRedactor::new(b"test-key");
         let sensitive_title = "Secret Feature: Internal Auth Bypass";
-        
+
         let ev = EventEnvelope {
-            id: EventId::from_parts(["x","1"]),
+            id: EventId::from_parts(["x", "1"]),
             kind: EventKind::PullRequest,
             occurred_at: Utc::now(),
-            actor: Actor { login: "a".into(), id: None },
-            repo: RepoRef { full_name: "o/r".into(), html_url: None, visibility: RepoVisibility::Private },
+            actor: Actor {
+                login: "a".into(),
+                id: None,
+            },
+            repo: RepoRef {
+                full_name: "o/r".into(),
+                html_url: None,
+                visibility: RepoVisibility::Private,
+            },
             payload: EventPayload::PullRequest(PullRequestEvent {
                 number: 1,
                 title: sensitive_title.into(),
@@ -298,14 +327,24 @@ mod tests {
             }),
             tags: vec![],
             links: vec![],
-            source: SourceRef { system: SourceSystem::Github, url: None, opaque_id: None },
+            source: SourceRef {
+                system: SourceSystem::Github,
+                url: None,
+                opaque_id: None,
+            },
         };
 
         let out = r.redact_events(&[ev], "public").unwrap();
         let json = serde_json::to_string(&out).unwrap();
-        
-        assert!(!json.contains(sensitive_title), "Sensitive PR title leaked in JSON output");
-        assert!(!json.contains("Auth Bypass"), "Partial sensitive content leaked");
+
+        assert!(
+            !json.contains(sensitive_title),
+            "Sensitive PR title leaked in JSON output"
+        );
+        assert!(
+            !json.contains("Auth Bypass"),
+            "Partial sensitive content leaked"
+        );
     }
 
     /// Property test: Repo names must not appear in public redacted output
@@ -313,13 +352,20 @@ mod tests {
     fn public_redaction_no_leak_repo_name() {
         let r = DeterministicRedactor::new(b"test-key");
         let sensitive_repo = "acme-corp/top-secret-project";
-        
+
         let ev = EventEnvelope {
-            id: EventId::from_parts(["x","1"]),
+            id: EventId::from_parts(["x", "1"]),
             kind: EventKind::PullRequest,
             occurred_at: Utc::now(),
-            actor: Actor { login: "a".into(), id: None },
-            repo: RepoRef { full_name: sensitive_repo.into(), html_url: None, visibility: RepoVisibility::Private },
+            actor: Actor {
+                login: "a".into(),
+                id: None,
+            },
+            repo: RepoRef {
+                full_name: sensitive_repo.into(),
+                html_url: None,
+                visibility: RepoVisibility::Private,
+            },
             payload: EventPayload::PullRequest(PullRequestEvent {
                 number: 1,
                 title: "test".into(),
@@ -334,33 +380,53 @@ mod tests {
             }),
             tags: vec![],
             links: vec![],
-            source: SourceRef { system: SourceSystem::Github, url: None, opaque_id: None },
+            source: SourceRef {
+                system: SourceSystem::Github,
+                url: None,
+                opaque_id: None,
+            },
         };
 
         let out = r.redact_events(&[ev], "public").unwrap();
         let json = serde_json::to_string(&out).unwrap();
-        
-        assert!(!json.contains(sensitive_repo), "Sensitive repo name leaked in JSON output");
-        assert!(!json.contains("acme-corp"), "Org name leaked in JSON output");
-        assert!(!json.contains("top-secret"), "Project name leaked in JSON output");
+
+        assert!(
+            !json.contains(sensitive_repo),
+            "Sensitive repo name leaked in JSON output"
+        );
+        assert!(
+            !json.contains("acme-corp"),
+            "Org name leaked in JSON output"
+        );
+        assert!(
+            !json.contains("top-secret"),
+            "Project name leaked in JSON output"
+        );
     }
 
     /// Property test: Manual event content must not leak in public mode
     #[test]
     fn public_redaction_no_leak_manual_content() {
         use chrono::NaiveDate;
-        
+
         let r = DeterministicRedactor::new(b"test-key");
         let sensitive_title = "Security Incident: Data Breach Response";
         let sensitive_desc = "Customer PII was exposed in production logs";
         let sensitive_impact = "Affected 10,000 user records";
-        
+
         let ev = EventEnvelope {
-            id: EventId::from_parts(["x","1"]),
+            id: EventId::from_parts(["x", "1"]),
             kind: EventKind::Manual,
             occurred_at: Utc::now(),
-            actor: Actor { login: "a".into(), id: None },
-            repo: RepoRef { full_name: "o/r".into(), html_url: None, visibility: RepoVisibility::Private },
+            actor: Actor {
+                login: "a".into(),
+                id: None,
+            },
+            repo: RepoRef {
+                full_name: "o/r".into(),
+                html_url: None,
+                visibility: RepoVisibility::Private,
+            },
             payload: EventPayload::Manual(ManualEvent {
                 event_type: ManualEventType::Incident,
                 title: sensitive_title.into(),
@@ -371,16 +437,32 @@ mod tests {
             }),
             tags: vec![],
             links: vec![],
-            source: SourceRef { system: SourceSystem::Manual, url: None, opaque_id: None },
+            source: SourceRef {
+                system: SourceSystem::Manual,
+                url: None,
+                opaque_id: None,
+            },
         };
 
         let out = r.redact_events(&[ev], "public").unwrap();
         let json = serde_json::to_string(&out).unwrap();
-        
-        assert!(!json.contains(sensitive_title), "Sensitive manual event title leaked");
-        assert!(!json.contains(sensitive_desc), "Sensitive manual event description leaked");
-        assert!(!json.contains(sensitive_impact), "Sensitive manual event impact leaked");
-        assert!(!json.contains("Data Breach"), "Partial sensitive content leaked");
+
+        assert!(
+            !json.contains(sensitive_title),
+            "Sensitive manual event title leaked"
+        );
+        assert!(
+            !json.contains(sensitive_desc),
+            "Sensitive manual event description leaked"
+        );
+        assert!(
+            !json.contains(sensitive_impact),
+            "Sensitive manual event impact leaked"
+        );
+        assert!(
+            !json.contains("Data Breach"),
+            "Partial sensitive content leaked"
+        );
         assert!(!json.contains("PII"), "Sensitive abbreviation leaked");
     }
 
@@ -388,21 +470,28 @@ mod tests {
     #[test]
     fn public_redaction_strips_all_urls() {
         let r = DeterministicRedactor::new(b"test-key");
-        
+
         let urls = vec![
             "https://github.com/acme-corp/secret/pull/42",
             "https://api.github.com/repos/acme-corp/secret/issues/1",
             "https://jira.internal.company.com/SECRET-123",
             "https://docs.google.com/document/d/secret-doc-id",
         ];
-        
+
         for url in urls {
             let ev = EventEnvelope {
-                id: EventId::from_parts(["x","1"]),
+                id: EventId::from_parts(["x", "1"]),
                 kind: EventKind::PullRequest,
                 occurred_at: Utc::now(),
-                actor: Actor { login: "a".into(), id: None },
-                repo: RepoRef { full_name: "o/r".into(), html_url: Some(url.into()), visibility: RepoVisibility::Private },
+                actor: Actor {
+                    login: "a".into(),
+                    id: None,
+                },
+                repo: RepoRef {
+                    full_name: "o/r".into(),
+                    html_url: Some(url.into()),
+                    visibility: RepoVisibility::Private,
+                },
                 payload: EventPayload::PullRequest(PullRequestEvent {
                     number: 1,
                     title: "test".into(),
@@ -416,17 +505,32 @@ mod tests {
                     window: None,
                 }),
                 tags: vec![],
-                links: vec![Link { label: "link".into(), url: url.into() }],
-                source: SourceRef { system: SourceSystem::Github, url: Some(url.into()), opaque_id: None },
+                links: vec![Link {
+                    label: "link".into(),
+                    url: url.into(),
+                }],
+                source: SourceRef {
+                    system: SourceSystem::Github,
+                    url: Some(url.into()),
+                    opaque_id: None,
+                },
             };
 
             let out = r.redact_events(&[ev], "public").unwrap();
             let json = serde_json::to_string(&out).unwrap();
-            
+
             // URLs should be completely gone
-            assert!(!json.contains("github.com/acme-corp"), "GitHub URL leaked: {}", url);
+            assert!(
+                !json.contains("github.com/acme-corp"),
+                "GitHub URL leaked: {}",
+                url
+            );
             assert!(!json.contains("jira.internal"), "Jira URL leaked: {}", url);
-            assert!(!json.contains("docs.google.com"), "Google Docs URL leaked: {}", url);
+            assert!(
+                !json.contains("docs.google.com"),
+                "Google Docs URL leaked: {}",
+                url
+            );
             assert!(!json.contains("http"), "HTTP prefix leaked in: {}", url);
         }
     }
@@ -434,42 +538,62 @@ mod tests {
     /// Property test: Workstream titles and summaries must not leak in public mode
     #[test]
     fn workstream_redaction_no_leak() {
-        use shiplog_schema::workstream::WorkstreamStats;
         use shiplog_ids::WorkstreamId;
-        
+        use shiplog_schema::workstream::WorkstreamStats;
+
         let r = DeterministicRedactor::new(b"test-key");
-        
+
         let ws = Workstream {
             id: WorkstreamId::from_parts(["ws", "test"]),
             title: "Secret Project: Quantum Encryption".into(),
-            summary: Some("Developing military-grade encryption for classified communications".into()),
+            summary: Some(
+                "Developing military-grade encryption for classified communications".into(),
+            ),
             tags: vec!["security".into(), "classified".into(), "repo".into()],
             stats: WorkstreamStats::zero(),
             events: vec![],
             receipts: vec![],
         };
-        
+
         let ws_file = WorkstreamsFile {
             workstreams: vec![ws],
             version: 1,
             generated_at: Utc::now(),
         };
-        
+
         let out = r.redact_workstreams(&ws_file, "public").unwrap();
         let json = serde_json::to_string(&out).unwrap();
-        
+
         // Original title should not appear (aliased instead)
-        assert!(!json.contains("Quantum Encryption"), "Workstream title leaked");
-        assert!(!json.contains("military-grade"), "Workstream summary leaked");
-        
+        assert!(
+            !json.contains("Quantum Encryption"),
+            "Workstream title leaked"
+        );
+        assert!(
+            !json.contains("military-grade"),
+            "Workstream summary leaked"
+        );
+
         // Summary should be None (not present in output)
-        assert!(!json.contains("Developing"), "Workstream description leaked");
-        
+        assert!(
+            !json.contains("Developing"),
+            "Workstream description leaked"
+        );
+
         // "repo" tag should be filtered out, but other tags remain
         let ws_out = &out.workstreams[0];
-        assert!(!ws_out.tags.contains(&"repo".into()), "repo tag should be filtered");
-        assert!(ws_out.tags.contains(&"security".into()), "security tag should remain");
-        assert!(ws_out.tags.contains(&"classified".into()), "classified tag should remain (only 'repo' is filtered)");
+        assert!(
+            !ws_out.tags.contains(&"repo".into()),
+            "repo tag should be filtered"
+        );
+        assert!(
+            ws_out.tags.contains(&"security".into()),
+            "security tag should remain"
+        );
+        assert!(
+            ws_out.tags.contains(&"classified".into()),
+            "classified tag should remain (only 'repo' is filtered)"
+        );
     }
 
     /// Property test: Internal profile should NOT redact (sanity check)
@@ -478,13 +602,20 @@ mod tests {
         let r = DeterministicRedactor::new(b"test-key");
         let sensitive_title = "Secret Feature Title";
         let sensitive_repo = "secret-org/secret-repo";
-        
+
         let ev = EventEnvelope {
-            id: EventId::from_parts(["x","1"]),
+            id: EventId::from_parts(["x", "1"]),
             kind: EventKind::PullRequest,
             occurred_at: Utc::now(),
-            actor: Actor { login: "a".into(), id: None },
-            repo: RepoRef { full_name: sensitive_repo.into(), html_url: Some("https://github.com/secret".into()), visibility: RepoVisibility::Private },
+            actor: Actor {
+                login: "a".into(),
+                id: None,
+            },
+            repo: RepoRef {
+                full_name: sensitive_repo.into(),
+                html_url: Some("https://github.com/secret".into()),
+                visibility: RepoVisibility::Private,
+            },
             payload: EventPayload::PullRequest(PullRequestEvent {
                 number: 1,
                 title: sensitive_title.into(),
@@ -498,17 +629,33 @@ mod tests {
                 window: None,
             }),
             tags: vec![],
-            links: vec![Link { label: "pr".into(), url: "https://github.com/secret".into() }],
-            source: SourceRef { system: SourceSystem::Github, url: Some("https://api.github.com/secret".into()), opaque_id: None },
+            links: vec![Link {
+                label: "pr".into(),
+                url: "https://github.com/secret".into(),
+            }],
+            source: SourceRef {
+                system: SourceSystem::Github,
+                url: Some("https://api.github.com/secret".into()),
+                opaque_id: None,
+            },
         };
 
         let out = r.redact_events(&[ev], "internal").unwrap();
         let json = serde_json::to_string(&out).unwrap();
-        
+
         // All sensitive data should be preserved
-        assert!(json.contains(sensitive_title), "Internal profile should preserve title");
-        assert!(json.contains(sensitive_repo), "Internal profile should preserve repo");
-        assert!(json.contains("https://github.com/secret"), "Internal profile should preserve URLs");
+        assert!(
+            json.contains(sensitive_title),
+            "Internal profile should preserve title"
+        );
+        assert!(
+            json.contains(sensitive_repo),
+            "Internal profile should preserve repo"
+        );
+        assert!(
+            json.contains("https://github.com/secret"),
+            "Internal profile should preserve URLs"
+        );
     }
 
     /// Property test: Manager profile keeps titles but removes sensitive details
@@ -516,13 +663,20 @@ mod tests {
     fn manager_profile_keeps_context_but_strips_details() {
         let r = DeterministicRedactor::new(b"test-key");
         let pr_title = "Feature: Add user authentication".to_string();
-        
+
         let ev = EventEnvelope {
-            id: EventId::from_parts(["x","1"]),
+            id: EventId::from_parts(["x", "1"]),
             kind: EventKind::PullRequest,
             occurred_at: Utc::now(),
-            actor: Actor { login: "a".into(), id: None },
-            repo: RepoRef { full_name: "myorg/auth-service".into(), html_url: Some("https://github.com/myorg/auth-service".into()), visibility: RepoVisibility::Private },
+            actor: Actor {
+                login: "a".into(),
+                id: None,
+            },
+            repo: RepoRef {
+                full_name: "myorg/auth-service".into(),
+                html_url: Some("https://github.com/myorg/auth-service".into()),
+                visibility: RepoVisibility::Private,
+            },
             payload: EventPayload::PullRequest(PullRequestEvent {
                 number: 42,
                 title: pr_title.clone(),
@@ -536,25 +690,38 @@ mod tests {
                 window: None,
             }),
             tags: vec![],
-            links: vec![Link { label: "pr".into(), url: "https://github.com/myorg/auth-service/pull/42".into() }],
-            source: SourceRef { system: SourceSystem::Github, url: Some("https://api.github.com/...".into()), opaque_id: None },
+            links: vec![Link {
+                label: "pr".into(),
+                url: "https://github.com/myorg/auth-service/pull/42".into(),
+            }],
+            source: SourceRef {
+                system: SourceSystem::Github,
+                url: Some("https://api.github.com/...".into()),
+                opaque_id: None,
+            },
         };
 
         let out = r.redact_events(&[ev], "manager").unwrap();
-        
+
         // Title should be preserved
         match &out[0].payload {
             EventPayload::PullRequest(pr) => {
                 assert_eq!(pr.title, pr_title);
                 // But touched_paths should be cleared
-                assert!(pr.touched_paths_hint.is_empty(), "touched_paths_hint should be cleared in manager view");
+                assert!(
+                    pr.touched_paths_hint.is_empty(),
+                    "touched_paths_hint should be cleared in manager view"
+                );
             }
             _ => panic!("expected pr"),
         }
-        
+
         // Links should be stripped
-        assert!(out[0].links.is_empty(), "links should be stripped in manager view");
-        
+        assert!(
+            out[0].links.is_empty(),
+            "links should be stripped in manager view"
+        );
+
         // Repo and source URL should be preserved
         assert_eq!(out[0].repo.full_name, "myorg/auth-service");
         assert!(out[0].source.url.is_some());
@@ -564,15 +731,22 @@ mod tests {
     #[test]
     fn manager_profile_handles_manual_events() {
         use chrono::NaiveDate;
-        
+
         let r = DeterministicRedactor::new(b"test-key");
-        
+
         let ev = EventEnvelope {
-            id: EventId::from_parts(["x","1"]),
+            id: EventId::from_parts(["x", "1"]),
             kind: EventKind::Manual,
             occurred_at: Utc::now(),
-            actor: Actor { login: "a".into(), id: None },
-            repo: RepoRef { full_name: "o/r".into(), html_url: None, visibility: RepoVisibility::Private },
+            actor: Actor {
+                login: "a".into(),
+                id: None,
+            },
+            repo: RepoRef {
+                full_name: "o/r".into(),
+                html_url: None,
+                visibility: RepoVisibility::Private,
+            },
             payload: EventPayload::Manual(ManualEvent {
                 event_type: ManualEventType::Incident,
                 title: "Database outage resolution".into(),
@@ -582,23 +756,36 @@ mod tests {
                 ended_at: Some(NaiveDate::from_ymd_opt(2024, 1, 15).unwrap()),
             }),
             tags: vec![],
-            links: vec![Link { label: "runbook".into(), url: "https://wiki.internal/runbook".into() }],
-            source: SourceRef { system: SourceSystem::Manual, url: None, opaque_id: None },
+            links: vec![Link {
+                label: "runbook".into(),
+                url: "https://wiki.internal/runbook".into(),
+            }],
+            source: SourceRef {
+                system: SourceSystem::Manual,
+                url: None,
+                opaque_id: None,
+            },
         };
 
         let out = r.redact_events(&[ev], "manager").unwrap();
-        
+
         match &out[0].payload {
             EventPayload::Manual(m) => {
                 // Title should be preserved
                 assert_eq!(m.title, "Database outage resolution");
                 // Description and impact should be removed
-                assert!(m.description.is_none(), "description should be removed in manager view");
-                assert!(m.impact.is_none(), "impact should be removed in manager view");
+                assert!(
+                    m.description.is_none(),
+                    "description should be removed in manager view"
+                );
+                assert!(
+                    m.impact.is_none(),
+                    "impact should be removed in manager view"
+                );
             }
             _ => panic!("expected manual event"),
         }
-        
+
         // Links should be stripped
         assert!(out[0].links.is_empty());
     }
@@ -606,11 +793,11 @@ mod tests {
     /// Property test: Manager profile handles workstreams
     #[test]
     fn manager_profile_handles_workstreams() {
-        use shiplog_schema::workstream::WorkstreamStats;
         use shiplog_ids::WorkstreamId;
-        
+        use shiplog_schema::workstream::WorkstreamStats;
+
         let r = DeterministicRedactor::new(b"test-key");
-        
+
         let ws = Workstream {
             id: WorkstreamId::from_parts(["ws", "test"]),
             title: "Authentication Service Improvements".into(),
@@ -620,23 +807,26 @@ mod tests {
             events: vec![],
             receipts: vec![],
         };
-        
+
         let ws_file = WorkstreamsFile {
             workstreams: vec![ws],
             version: 1,
             generated_at: Utc::now(),
         };
-        
+
         let out = r.redact_workstreams(&ws_file, "manager").unwrap();
-        
+
         let ws_out = &out.workstreams[0];
-        
+
         // Title should be preserved (not aliased)
         assert_eq!(ws_out.title, "Authentication Service Improvements");
-        
+
         // Summary should be removed
-        assert!(ws_out.summary.is_none(), "summary should be removed in manager view");
-        
+        assert!(
+            ws_out.summary.is_none(),
+            "summary should be removed in manager view"
+        );
+
         // All tags should be preserved (including "repo")
         assert!(ws_out.tags.contains(&"security".into()));
         assert!(ws_out.tags.contains(&"backend".into()));
@@ -651,7 +841,7 @@ mod tests {
             repo in r"[a-z0-9_-]+/[a-z0-9_-]+"
         ) {
             let r = DeterministicRedactor::new(b"test-key");
-            
+
             let ev = EventEnvelope {
                 id: EventId::from_parts(["x","1"]),
                 kind: EventKind::PullRequest,
@@ -677,15 +867,15 @@ mod tests {
 
             let out = r.redact_events(&[ev], "public").unwrap();
             let json = serde_json::to_string(&out)?;
-            
+
             // Title should be replaced, not preserved
             prop_assert!(!json.contains(&title), "Title '{}' leaked in output", title);
-            
+
             // Repo should be aliased, not preserved
             if !repo.is_empty() {
                 prop_assert!(!json.contains(&repo), "Repo '{}' leaked in output", repo);
             }
-            
+
             // Title should be the literal redaction marker
             match &out[0].payload {
                 EventPayload::PullRequest(pr) => {
