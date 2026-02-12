@@ -22,6 +22,8 @@ Snapshot tests use `insta` (YAML format). Update snapshots when intentionally ch
 
 Run the CLI: `cargo run -p shiplog -- <subcommand>`. Preferred workflow: `collect` (fetch events) → edit `workstreams.suggested.yaml` into `workstreams.yaml` → `render` (regenerate packet). `refresh` re-fetches events while preserving curated workstreams. `run` is legacy (collect + render in one shot).
 
+Key CLI flags: `--regen` (force re-fetch, ignore cache), `--no-details` (omit event details from packet), `--throttle-ms <N>` (rate-limit API calls), `--include-reviews` (include PR review events), `--mode <profile>` (redaction profile), `--api-base <URL>` (GitHub Enterprise Server base URL).
+
 ## Architecture
 
 Microcrated Rust workspace (edition 2024, MSRV 1.92) following **Clean Architecture / ports-and-adapters**. The CLI (`apps/shiplog`) drives `shiplog-engine`, which orchestrates: ingest → cluster → redact → render.
@@ -54,12 +56,27 @@ apps/shiplog (CLI, clap)
 - **Deterministic redaction:** Three profiles (internal/manager/public). Same input + same key = same alias across runs via HMAC-SHA256.
 - **Immutable event ledger:** `ledger.events.jsonl` is the canonical, append-only event log.
 
+### Error handling
+
+- `anyhow::Result<T>` with `.context("description")?` for error propagation throughout.
+- Add contextual messages with `.with_context(|| format!(...))` for dynamic info.
+- Do not introduce `thiserror` enums or bare `.unwrap()` where `anyhow` context is expected.
+
+### Runtime
+
+- All HTTP calls use `reqwest::blocking`. No async/await currently in use.
+
+### Output directory structure
+
+Outputs go under `out/<run_id>/`: `packet.md`, `ledger.events.jsonl`, `coverage.manifest.json`, `workstreams.yaml`, `profiles/{manager,public}/packet.md` (redacted), `bundle.manifest.json`.
+
 ### Testing conventions
 
 - Unit tests live inside each microcrate's source files.
 - Snapshot tests (`insta`, YAML format) in `shiplog-render-md` — review snapshot diffs carefully.
 - Property-based tests (`proptest`) in `shiplog-redact` for redaction leak detection.
 - Shared fixtures via `shiplog-testkit::fixtures` to avoid cross-crate duplication.
+- BDD-style test infrastructure in `shiplog-testkit::bdd` for scenario-driven integration tests.
 - Fuzz harnesses in `fuzz/` (not part of workspace; requires `cargo-fuzz`).
 
 ### Crate naming convention
