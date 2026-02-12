@@ -78,6 +78,9 @@ enum Command {
         /// Output directory containing existing workstreams.yaml
         #[arg(long, default_value = "./out")]
         out: PathBuf,
+        /// Run ID to refresh (uses most recent if not specified)
+        #[arg(long)]
+        run: Option<String>,
         /// Also write a zip next to the run folder.
         #[arg(long)]
         zip: bool,
@@ -262,26 +265,31 @@ fn main() -> Result<()> {
             print_outputs(&outputs, WorkstreamSource::Curated);
         }
 
-        Command::Refresh { source, out, zip, redact_key } => {
+        Command::Refresh { source, out, run, zip, redact_key } => {
             let key = get_redact_key(redact_key);
             let engine = create_engine(&key);
+
+            // Determine which run to refresh
+            let run_dir = if let Some(run_id) = run {
+                out.join(run_id)
+            } else {
+                // Find most recent run directory
+                find_most_recent_run(&out)?
+            };
+
+            if !shiplog_workstreams::WorkstreamManager::has_curated(&run_dir)
+                && !shiplog_workstreams::WorkstreamManager::suggested_path(&run_dir).exists() {
+                anyhow::bail!(
+                    "No workstreams found in {:?}. Run `shiplog collect` first.",
+                    run_dir
+                );
+            }
 
             match source {
                 Source::Github { user, since, until, mode, include_reviews, no_details, throttle_ms, token, api_base } => {
                     let ing = make_github_ingestor(&user, since, until, &mode, include_reviews, no_details, throttle_ms, token, &api_base);
                     let ingest = ing.ingest()?;
-                    let run_id = ingest.coverage.run_id.to_string();
-                    let run_dir = out.join(&run_id);
-
                     let window_label = format!("{}..{}", since, until);
-
-                    if !shiplog_workstreams::WorkstreamManager::has_curated(&run_dir) 
-                        && !shiplog_workstreams::WorkstreamManager::suggested_path(&run_dir).exists() {
-                        anyhow::bail!(
-                            "No workstreams found in {:?}. Run `shiplog collect` first.",
-                            run_dir
-                        );
-                    }
 
                     let outputs = engine.refresh(ingest, &user, &window_label, &run_dir, zip)?;
 
@@ -290,16 +298,6 @@ fn main() -> Result<()> {
                 }
 
                 Source::Json { events, coverage, user, window_label } => {
-                    let run_dir = out.join("refresh_run");
-                    
-                    if !shiplog_workstreams::WorkstreamManager::has_curated(&run_dir)
-                        && !shiplog_workstreams::WorkstreamManager::suggested_path(&run_dir).exists() {
-                        anyhow::bail!(
-                            "No workstreams found in {:?}. Run `shiplog collect` first.",
-                            run_dir
-                        );
-                    }
-
                     let ing = JsonIngestor { events_path: events, coverage_path: coverage };
                     let ingest = ing.ingest()?;
 

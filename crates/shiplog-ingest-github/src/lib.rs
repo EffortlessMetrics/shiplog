@@ -13,6 +13,7 @@ use shiplog_schema::event::{
     RepoRef, RepoVisibility, ReviewEvent, SourceRef, SourceSystem,
 };
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::thread::sleep;
 use std::time::Duration;
 use url::Url;
@@ -31,7 +32,7 @@ pub struct GithubIngestor {
     /// GitHub API base URL (for GHES). Default: https://api.github.com
     pub api_base: String,
     /// Optional cache for API responses
-    pub cache: Option<ApiCache>,
+    pub cache: Option<Arc<ApiCache>>,
 }
 
 impl GithubIngestor {
@@ -54,14 +55,14 @@ impl GithubIngestor {
     pub fn with_cache(mut self, cache_dir: impl Into<PathBuf>) -> Result<Self> {
         let cache_path = cache_dir.into().join("github-api-cache.db");
         let cache = ApiCache::open(cache_path)?;
-        self.cache = Some(cache);
+        self.cache = Some(Arc::new(cache));
         Ok(self)
     }
 
     /// Enable in-memory caching (useful for testing).
     pub fn with_in_memory_cache(mut self) -> Result<Self> {
         let cache = ApiCache::open_in_memory()?;
-        self.cache = Some(cache);
+        self.cache = Some(Arc::new(cache));
         Ok(self)
     }
 
@@ -337,7 +338,7 @@ impl GithubIngestor {
         let mut out = Vec::new();
         for item in items {
             if let Some(pr_ref) = &item.pull_request {
-                let (repo_full_name, repo_html_url) = repo_from_repo_url(&item.repository_url);
+                let (repo_full_name, repo_html_url) = repo_from_repo_url(&item.repository_url, &self.api_base);
 
                 let (title, created_at, merged_at, additions, deletions, changed_files, visibility) =
                     if self.fetch_details {
@@ -434,7 +435,7 @@ impl GithubIngestor {
         let mut out = Vec::new();
         for item in items {
             let Some(pr_ref) = &item.pull_request else { continue };
-            let (repo_full_name, repo_html_url) = repo_from_repo_url(&item.repository_url);
+            let (repo_full_name, repo_html_url) = repo_from_repo_url(&item.repository_url, &self.api_base);
 
             // Fetch reviews for this PR and filter by author + date window.
             let reviews = self.fetch_pr_reviews(client, &pr_ref.url)?;
@@ -578,7 +579,7 @@ fn github_inclusive_range(w: &TimeWindow) -> (String, String) {
     (start, end)
 }
 
-fn repo_from_repo_url(repo_api_url: &str) -> (String, String) {
+fn repo_from_repo_url(repo_api_url: &str, api_base: &str) -> (String, String) {
     if let Ok(u) = Url::parse(repo_api_url) {
         if let Some(segs) = u.path_segments() {
             let v: Vec<&str> = segs.collect();
@@ -586,12 +587,32 @@ fn repo_from_repo_url(repo_api_url: &str) -> (String, String) {
                 let owner = v[1];
                 let repo = v[2];
                 let full = format!("{}/{}", owner, repo);
-                let html = format!("https://github.com/{}/{}", owner, repo);
+                // Derive HTML host from api_base for GHES support
+                let html_base = derive_html_base(api_base);
+                let html = format!("{}/{}/{}", html_base, owner, repo);
                 return (full, html);
             }
         }
     }
-    ("unknown/unknown".to_string(), "https://github.com".to_string())
+    let html_base = derive_html_base(api_base);
+    ("unknown/unknown".to_string(), html_base)
+}
+
+/// Derive the HTML base URL from the API base URL.
+/// For github.com: api.github.com -> github.com
+/// For GHES: ghes.company.com/api/v3 -> ghes.company.com
+fn derive_html_base(api_base: &str) -> String {
+    if let Ok(url) = Url::parse(api_base) {
+        let host = url.host_str().unwrap_or("github.com");
+        if host == "api.github.com" {
+            "https://github.com".to_string()
+        } else {
+            // For GHES, use the same host without /api/v3 path
+            format!("https://{}", host)
+        }
+    } else {
+        "https://github.com".to_string()
+    }
 }
 
 /// GitHub search response envelope.
