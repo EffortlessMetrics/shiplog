@@ -22,7 +22,14 @@ Snapshot tests use `insta` (YAML format). Update snapshots when intentionally ch
 
 Run the CLI: `cargo run -p shiplog -- <subcommand>`. Preferred workflow: `collect` (fetch events) → edit `workstreams.suggested.yaml` into `workstreams.yaml` → `render` (regenerate packet). `refresh` re-fetches events while preserving curated workstreams. `run` is legacy (collect + render in one shot).
 
-Key CLI flags: `--regen` (force re-fetch, ignore cache), `--no-details` (omit event details from packet), `--throttle-ms <N>` (rate-limit API calls), `--include-reviews` (include PR review events), `--mode <profile>` (redaction profile), `--api-base <URL>` (GitHub Enterprise Server base URL).
+Key CLI flags (on `collect`/`refresh` github subcommands):
+- `--mode merged|created` (which PR lens to ingest)
+- `--include-reviews` (include review events where available)
+- `--no-details` (omit verbose details in packet)
+- `--throttle-ms <N>` (rate-limit API calls)
+- `--api-base <URL>` (GitHub Enterprise Server API base)
+- `--regen` (regenerate `workstreams.suggested.yaml`; never overwrites `workstreams.yaml`)
+- Redaction: `--redact-key` or `SHIPLOG_REDACT_KEY` controls generation of manager/public packets
 
 ## Architecture
 
@@ -64,7 +71,7 @@ apps/shiplog (CLI, clap)
 
 ### Runtime
 
-- All HTTP calls use `reqwest::blocking`. No async/await currently in use.
+- GitHub ingest currently uses `reqwest::blocking`. If introducing async, isolate it inside adapters; don't leak it into core crates.
 
 ### Output directory structure
 

@@ -65,6 +65,20 @@ impl GithubIngestor {
         Ok(self)
     }
 
+    fn html_base_url(&self) -> String {
+        if let Ok(u) = Url::parse(&self.api_base) {
+            let scheme = u.scheme();
+            if let Some(host) = u.host_str() {
+                if host == "api.github.com" {
+                    return "https://github.com".to_string();
+                }
+                let port_suffix = u.port().map(|p| format!(":{p}")).unwrap_or_default();
+                return format!("{scheme}://{host}{port_suffix}");
+            }
+        }
+        "https://github.com".to_string()
+    }
+
     fn client(&self) -> Result<Client> {
         Client::builder()
             .user_agent("shiplog/0.1")
@@ -372,7 +386,9 @@ impl GithubIngestor {
         let mut out = Vec::new();
         for item in items {
             if let Some(pr_ref) = &item.pull_request {
-                let (repo_full_name, repo_html_url) = repo_from_repo_url(&item.repository_url);
+                let html_base = self.html_base_url();
+                let (repo_full_name, repo_html_url) =
+                    repo_from_repo_url(&item.repository_url, &html_base);
 
                 let (title, created_at, merged_at, additions, deletions, changed_files, visibility) =
                     if self.fetch_details {
@@ -489,7 +505,9 @@ impl GithubIngestor {
             let Some(pr_ref) = &item.pull_request else {
                 continue;
             };
-            let (repo_full_name, repo_html_url) = repo_from_repo_url(&item.repository_url);
+            let html_base = self.html_base_url();
+            let (repo_full_name, repo_html_url) =
+                repo_from_repo_url(&item.repository_url, &html_base);
 
             // Fetch reviews for this PR and filter by author + date window.
             let reviews = self.fetch_pr_reviews(client, &pr_ref.url)?;
@@ -647,7 +665,7 @@ fn github_inclusive_range(w: &TimeWindow) -> (String, String) {
     (start, end)
 }
 
-fn repo_from_repo_url(repo_api_url: &str) -> (String, String) {
+fn repo_from_repo_url(repo_api_url: &str, html_base: &str) -> (String, String) {
     if let Ok(u) = Url::parse(repo_api_url)
         && let Some(segs) = u.path_segments()
     {
@@ -656,14 +674,11 @@ fn repo_from_repo_url(repo_api_url: &str) -> (String, String) {
             let owner = v[1];
             let repo = v[2];
             let full = format!("{}/{}", owner, repo);
-            let html = format!("https://github.com/{}/{}", owner, repo);
+            let html = format!("{}/{}/{}", html_base.trim_end_matches('/'), owner, repo);
             return (full, html);
         }
     }
-    (
-        "unknown/unknown".to_string(),
-        "https://github.com".to_string(),
-    )
+    ("unknown/unknown".to_string(), html_base.to_string())
 }
 
 /// GitHub search response envelope.

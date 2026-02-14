@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use chrono::NaiveDate;
 use clap::{Parser, Subcommand};
 use shiplog_engine::{Engine, WorkstreamSource};
@@ -78,6 +78,9 @@ enum Command {
         /// Output directory containing existing workstreams.yaml
         #[arg(long, default_value = "./out")]
         out: PathBuf,
+        /// Explicit run directory to refresh into (overrides auto-detection).
+        #[arg(long)]
+        run_dir: Option<PathBuf>,
         /// Also write a zip next to the run folder.
         #[arg(long)]
         zip: bool,
@@ -250,6 +253,16 @@ fn main() -> Result<()> {
                         eprintln!("      Use --regen to regenerate suggestions.");
                     }
 
+                    // If --regen, delete existing suggested workstreams so the engine regenerates them
+                    if regen {
+                        let suggested =
+                            shiplog_workstreams::WorkstreamManager::suggested_path(&run_dir);
+                        if suggested.exists() {
+                            std::fs::remove_file(&suggested)
+                                .with_context(|| format!("remove {:?} for --regen", suggested))?;
+                        }
+                    }
+
                     let (outputs, ws_source) =
                         engine.run(ingest, &user, &window_label, &run_dir, zip)?;
 
@@ -325,11 +338,19 @@ fn main() -> Result<()> {
         Command::Refresh {
             source,
             out,
+            run_dir: explicit_run_dir,
             zip,
             redact_key,
         } => {
             let key = get_redact_key(redact_key);
             let engine = create_engine(&key);
+
+            // Resolve run directory: explicit --run-dir, or find most recent
+            let run_dir = if let Some(rd) = explicit_run_dir {
+                rd
+            } else {
+                find_most_recent_run(&out)?
+            };
 
             match source {
                 Source::Github {
@@ -355,8 +376,6 @@ fn main() -> Result<()> {
                         &api_base,
                     );
                     let ingest = ing.ingest()?;
-                    let run_id = ingest.coverage.run_id.to_string();
-                    let run_dir = out.join(&run_id);
 
                     let window_label = format!("{}..{}", since, until);
 
@@ -382,8 +401,6 @@ fn main() -> Result<()> {
                     user,
                     window_label,
                 } => {
-                    let run_dir = out.join("refresh_run");
-
                     if !shiplog_workstreams::WorkstreamManager::has_curated(&run_dir)
                         && !shiplog_workstreams::WorkstreamManager::suggested_path(&run_dir)
                             .exists()
