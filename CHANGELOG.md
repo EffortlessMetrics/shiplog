@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-02-14
+
+### Changed
+
+- Refactored MarkdownRenderer for improved readability and consistency
+- Enhanced documentation in CLAUDE.md with error handling, runtime, and output directory details
+- Added package metadata (description, repository) for crates.io publishing
+- Fixed internal crate dependencies to specify version requirements for publishing
+
 ## [0.1.0] - 2026-02-12
 
 ### Added
@@ -113,6 +122,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Basic workspace configuration with Cargo
 - MIT/Apache-2.0 dual licensing
 
-[Unreleased]: https://github.com/EffortlessMetrics/shiplog/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/EffortlessMetrics/shiplog/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/EffortlessMetrics/shiplog/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/EffortlessMetrics/shiplog/compare/v0.0.1...v0.1.0
 [0.0.1]: https://github.com/EffortlessMetrics/shiplog/releases/tag/v0.0.1

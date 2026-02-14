@@ -1,12 +1,15 @@
 [package]
 name = "shiplog-schema"
-version.workspace = true
+version = "0.1.1"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
+description.workspace = true
+repository.workspace = true
 
 [dependencies]
 serde.workspace = true
 serde_json.workspace = true
 chrono.workspace = true
-shiplog-ids = { path = "../shiplog-ids" }
+shiplog-ids = { path = "../shiplog-ids", version = "0.1.1" }
+
