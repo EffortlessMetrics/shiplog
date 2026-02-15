@@ -1,15 +1,17 @@
 [package]
 name = "shiplog-schema"
-version = "0.1.1"
+version = "0.2.0"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
-description.workspace = true
+description = "Canonical event model and data types for shiplog"
 repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
 
 [dependencies]
 serde.workspace = true
 serde_json.workspace = true
 chrono.workspace = true
-shiplog-ids = { path = "../shiplog-ids", version = "0.1.1" }
+shiplog-ids = { path = "../shiplog-ids", version = "0.2.0" }
 

@@ -1,3 +1,9 @@
+//! Repository-based event clustering and user-curated workstream management.
+//!
+//! Groups ingested events into workstreams (default: by repository) and manages
+//! the two-file workflow: auto-generated `workstreams.suggested.yaml` and
+//! user-curated `workstreams.yaml` that is never overwritten.
+
 use anyhow::{Context, Result};
 use chrono::Utc;
 use shiplog_ids::WorkstreamId;

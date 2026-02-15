@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-02-14
+
+### Added
+
+- Module-level documentation (`//!` doc blocks) for `shiplog-schema`, `shiplog-coverage`, `shiplog-workstreams`, and `shiplog-engine`
+- CLI Reference section in README.md with full flag table
+- Missing sections in GEMINI.md and copilot-instructions.md to sync with CLAUDE.md (CLI flags, error handling, runtime, BDD testing, output directory structure)
+
+### Changed
+
+- Crate-specific descriptions for all 15 publishable crates (replacing generic workspace description)
+- Added `keywords` and `categories` to all publishable crate Cargo.toml files
+- Marked `shiplog-testkit` as `publish = false`
+
 ## [0.1.1] - 2026-02-14
 
 ### Changed
@@ -122,7 +136,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Basic workspace configuration with Cargo
 - MIT/Apache-2.0 dual licensing
 
-[Unreleased]: https://github.com/EffortlessMetrics/shiplog/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/EffortlessMetrics/shiplog/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/EffortlessMetrics/shiplog/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/EffortlessMetrics/shiplog/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/EffortlessMetrics/shiplog/compare/v0.0.1...v0.1.0
 [0.0.1]: https://github.com/EffortlessMetrics/shiplog/releases/tag/v0.0.1

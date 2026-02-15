@@ -1,15 +1,17 @@
 [package]
 name = "shiplog-coverage"
-version = "0.1.1"
+version = "0.2.0"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
-description.workspace = true
+description = "Time window utilities and completeness tracking for shiplog"
 repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
 
 [dependencies]
 chrono.workspace = true
-shiplog-schema = { path = "../shiplog-schema", version = "0.1.1" }
+shiplog-schema = { path = "../shiplog-schema", version = "0.2.0" }
 
 [dev-dependencies]
 anyhow.workspace = true

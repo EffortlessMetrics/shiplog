@@ -1,14 +1,16 @@
 [package]
 name = "shiplog-render-json"
-version = "0.1.1"
+version = "0.2.0"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
-description.workspace = true
+description = "JSON output renderer for shiplog events and coverage manifests"
 repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
 
 [dependencies]
 anyhow.workspace = true
 serde_json.workspace = true
-shiplog-schema = { path = "../shiplog-schema", version = "0.1.1" }
+shiplog-schema = { path = "../shiplog-schema", version = "0.2.0" }
 

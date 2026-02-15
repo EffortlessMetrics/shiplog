@@ -20,13 +20,15 @@ members = [
 ]
 
 [workspace.package]
-version = "0.1.1"
+version = "0.2.0"
 edition = "2024"
 rust-version = "1.92"
 license = "MIT OR Apache-2.0"
 authors = ["Steven Zimmerman, CPA <git@effortlesssteven.com>"]
 description = "A tool for engineering self-review - aggregate and organize your contributions"
 repository = "https://github.com/EffortlessMetrics/shiplog"
+keywords = ["developer-tools", "github", "self-review", "engineering", "changelog"]
+categories = ["command-line-utilities", "development-tools"]
 
 [workspace.dependencies]
 anyhow = "1.0.101"

@@ -74,6 +74,15 @@ Primary runtime/flow: CLI (`apps/shiplog`) drives the engine which wires ingesto
 
 CLI workflow: `collect` fetches events and generates `workstreams.suggested.yaml` → user edits into `workstreams.yaml` → `render` regenerates the packet without re-fetching. `refresh` re-fetches events while preserving curated workstreams. `run` is the legacy one-shot mode.
 
+Key CLI flags (on `collect`/`refresh` github subcommands):
+- `--mode merged|created` — which PR lens to ingest
+- `--include-reviews` — include review events where available
+- `--no-details` — omit verbose details in packet
+- `--throttle-ms <N>` — rate-limit API calls (milliseconds)
+- `--api-base <URL>` — GitHub Enterprise Server API base
+- `--regen` — regenerate `workstreams.suggested.yaml`; never overwrites `workstreams.yaml`
+- `--redact-key` or `SHIPLOG_REDACT_KEY` env var — controls generation of manager/public packets
+
 Outputs typically produced under `out/<run_id>/` and include `packet.md`, `workstreams.yaml`, `workstreams.suggested.yaml`, `ledger.events.jsonl`, `coverage.manifest.json`, and `bundle.manifest.json` (see README examples).
 
 ---
@@ -87,11 +96,14 @@ Outputs typically produced under `out/<run_id>/` and include `packet.md`, `works
   - Unit tests live inside each microcrate.
   - Snapshot tests use `insta` for rendered outputs (serialize to YAML/JSON as checked-in snapshots).
   - Property tests use `proptest` for invariants (redaction, etc.).
+  - BDD-style integration tests via `shiplog-testkit::bdd` for scenario-driven testing.
   - Fuzz harnesses live in `fuzz/` and are not part of the cargo workspace by default.
 - Redaction and safety:
   - Redaction is deterministic and profile-based (see `shiplog-redact`).
   - Public packets strip titles and links by default — do not assume private data is safe unless `coverage.manifest.json` shows receipts.
 - Coverage-first design: components emit receipts and a coverage manifest; missing receipts are explicitly reported rather than silently omitted.
+- Error handling: use `anyhow::Result<T>` with `.context("description")?` for error propagation. Add contextual messages with `.with_context(|| format!(...))` for dynamic info. Do not introduce `thiserror` enums or bare `.unwrap()` where `anyhow` context is expected.
+- Runtime: GitHub ingest currently uses `reqwest::blocking`. If introducing async, isolate it inside adapters; don't leak it into core crates.
 - Snapshot updates: be explicit when updating insta snapshots (`INSTA_UPDATE`), and prefer small, reviewed snapshot changes.
 - CLI usage: prefer `cargo run -p shiplog -- <subcommand> ...` when invoking from the workspace. Use `collect`/`render`/`refresh` for the recommended workflow; `run` is legacy.
 

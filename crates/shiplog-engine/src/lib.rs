@@ -1,3 +1,9 @@
+//! Orchestration engine for the shiplog pipeline.
+//!
+//! Wires together ingestors, clusterers, redactors, and renderers to drive the
+//! `collect`, `render`, `refresh`, and `run` commands. This is the main
+//! coordination layer between the CLI and the microcrate adapters.
+
 use anyhow::{Context, Result};
 use shiplog_bundle::{write_bundle_manifest, write_zip};
 use shiplog_ports::{IngestOutput, Redactor, Renderer, WorkstreamClusterer};

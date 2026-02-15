@@ -102,6 +102,29 @@ cargo run -p shiplog -- run github \
   --include-reviews
 ```
 
+### Key CLI flags
+
+Flags available on `collect`/`refresh` github subcommands:
+
+*   `--mode merged|created` — which PR lens to ingest
+*   `--include-reviews` — include review events where available
+*   `--no-details` — omit verbose details in packet
+*   `--throttle-ms <N>` — rate-limit API calls (milliseconds)
+*   `--api-base <URL>` — GitHub Enterprise Server API base
+*   `--regen` — regenerate `workstreams.suggested.yaml`; never overwrites `workstreams.yaml`
+*   `--redact-key` or `SHIPLOG_REDACT_KEY` env var — controls generation of manager/public packets
+
+### Output directory structure
+
+Outputs go under `out/<run_id>/`:
+
+*   `packet.md`
+*   `ledger.events.jsonl`
+*   `coverage.manifest.json`
+*   `workstreams.yaml`
+*   `profiles/{manager,public}/packet.md` (redacted)
+*   `bundle.manifest.json`
+
 ## Development Conventions
 
 *   **Code Style:** Standard Rust style. Use `cargo fmt` and `cargo clippy`.
@@ -111,9 +134,20 @@ cargo run -p shiplog -- run github \
     *   **Snapshot Tests:** Used for rendered outputs (Markdown/JSON). Uses [insta](https://github.com/mitsuhiko/insta).
         *   Update snapshots: `INSTA_UPDATE=auto cargo test -p <crate-name>` (Unix) or `$env:INSTA_UPDATE='auto'; cargo test ...` (PowerShell).
     *   **Property Tests:** Used for invariants (e.g., redaction) using `proptest`.
+    *   **BDD Tests:** Scenario-driven integration tests via `shiplog-testkit::bdd`.
     *   **Shared Fixtures:** Use `shiplog-testkit` to avoid cross-crate duplication.
 *   **Redaction:** Deterministic and profile-based (internal/manager/public). Public packets strip titles/links by default.
 *   **Coverage First:** Components must emit receipts. Missing data is explicitly reported in `coverage.manifest.json`.
+
+### Error handling
+
+*   Use `anyhow::Result<T>` with `.context("description")?` for error propagation throughout.
+*   Add contextual messages with `.with_context(|| format!(...))` for dynamic info.
+*   Do not introduce `thiserror` enums or bare `.unwrap()` where `anyhow` context is expected.
+
+### Runtime
+
+*   GitHub ingest currently uses `reqwest::blocking`. If introducing async, isolate it inside adapters; don't leak it into core crates.
 
 ## Key Commands
 

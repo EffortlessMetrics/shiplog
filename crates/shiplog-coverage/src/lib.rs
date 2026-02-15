@@ -1,3 +1,8 @@
+//! Time window utilities and completeness tracking for the shiplog pipeline.
+//!
+//! Provides functions to split date ranges into day, week, and month windows,
+//! and tracks whether each window was fully or partially covered during ingestion.
+
 use chrono::{Datelike, NaiveDate, Weekday};
 use shiplog_schema::coverage::TimeWindow;
 

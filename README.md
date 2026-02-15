@@ -99,6 +99,18 @@ cargo run -p shiplog -- collect github ... --redact-key "my-secret"
 export SHIPLOG_REDACT_KEY="my-secret"
 ```
 
+## CLI Reference
+
+| Flag | Subcommands | Description |
+|------|-------------|-------------|
+| `--mode merged\|created` | `collect`, `refresh` | Which PR lens to ingest |
+| `--include-reviews` | `collect`, `refresh` | Include review events |
+| `--no-details` | `collect`, `refresh`, `run` | Omit verbose details |
+| `--throttle-ms <N>` | `collect`, `refresh` | Rate-limit API calls (ms) |
+| `--api-base <URL>` | `collect`, `refresh` | GitHub Enterprise Server API base |
+| `--regen` | `refresh` | Regenerate `workstreams.suggested.yaml` |
+| `--redact-key <KEY>` | `render`, `run` | HMAC key for redacted profiles (or `SHIPLOG_REDACT_KEY` env var) |
+
 ## Why this exists
 
 Your devs do not need more PRs.
