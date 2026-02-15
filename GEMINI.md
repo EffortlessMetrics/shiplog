@@ -55,7 +55,7 @@ Use `cargo run -p shiplog` to run the CLI.
 
 ```bash
 # 1. Collect events and generate workstream suggestions
-export GITHUB_TOKEN="ghp_..."   # optional for public repos
+export GITHUB_TOKEN="..."       # optional for public repos
 
 cargo run -p shiplog -- collect github \
   --user <username> \

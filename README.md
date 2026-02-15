@@ -37,7 +37,7 @@ If the tool cannot prove it fetched something, it says so in `coverage.manifest.
 
 ```bash
 # 1. Collect events and generate workstream suggestions
-export GITHUB_TOKEN="ghp_..."   # optional for public repos
+export GITHUB_TOKEN="..."       # optional for public repos
 
 cargo run -p shiplog -- collect github \
   --user octocat \
@@ -139,7 +139,7 @@ By default, workstreams are clustered by repository name. Pass `--llm-cluster`
 to send event summaries to an OpenAI-compatible endpoint for semantic clustering:
 
 ```bash
-export SHIPLOG_LLM_API_KEY="sk-..."
+export SHIPLOG_LLM_API_KEY="..."
 cargo run -p shiplog -- collect github ... --llm-cluster
 ```
 

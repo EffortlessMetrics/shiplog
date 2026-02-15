@@ -19,3 +19,7 @@ clippy_output.txt
 .vscode/
 *.swp
 *~
+
+# OS junk
+.DS_Store
+Thumbs.db
