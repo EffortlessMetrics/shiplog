@@ -101,10 +101,11 @@ impl DeterministicRedactor {
 
     fn alias(&self, kind: &str, value: &str) -> String {
         let cache_key = format!("{kind}:{value}");
-        if let Ok(cache) = self.cache.lock()
-            && let Some(v) = cache.get(&cache_key)
-        {
-            return v.clone();
+        #[allow(clippy::collapsible_if)]
+        if let Ok(cache) = self.cache.lock() {
+            if let Some(v) = cache.get(&cache_key) {
+                return v.clone();
+            }
         }
 
         let mut h = Sha256::new();

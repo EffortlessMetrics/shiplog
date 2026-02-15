@@ -20,19 +20,6 @@ pub struct ApiCache {
     default_ttl: Duration,
 }
 
-impl Clone for ApiCache {
-    fn clone(&self) -> Self {
-        // Open a new connection to the same database
-        // This is a best-effort clone for the derive macro
-        let path = self.conn.path().unwrap_or(":memory:");
-        let conn = Connection::open(path).expect("Failed to clone cache connection");
-        Self {
-            conn,
-            default_ttl: self.default_ttl,
-        }
-    }
-}
-
 impl ApiCache {
     /// Open or create cache at the given path.
     ///

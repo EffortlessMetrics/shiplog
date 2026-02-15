@@ -17,7 +17,7 @@ use std::thread::sleep;
 use std::time::Duration;
 use url::Url;
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct GithubIngestor {
     pub user: String,
     pub since: NaiveDate,
@@ -573,10 +573,11 @@ impl GithubIngestor {
     fn fetch_pr_details(&self, client: &Client, pr_api_url: &str) -> Result<PullRequestDetails> {
         // Check cache first
         let cache_key = CacheKey::pr_details(pr_api_url);
-        if let Some(ref cache) = self.cache
-            && let Some(cached) = cache.get::<PullRequestDetails>(&cache_key)?
-        {
-            return Ok(cached);
+        #[allow(clippy::collapsible_if)]
+        if let Some(ref cache) = self.cache {
+            if let Some(cached) = cache.get::<PullRequestDetails>(&cache_key)? {
+                return Ok(cached);
+            }
         }
 
         // Fetch from API
@@ -666,16 +667,17 @@ fn github_inclusive_range(w: &TimeWindow) -> (String, String) {
 }
 
 fn repo_from_repo_url(repo_api_url: &str, html_base: &str) -> (String, String) {
-    if let Ok(u) = Url::parse(repo_api_url)
-        && let Some(segs) = u.path_segments()
-    {
-        let v: Vec<&str> = segs.collect();
-        if v.len() >= 3 && v[0] == "repos" {
-            let owner = v[1];
-            let repo = v[2];
-            let full = format!("{}/{}", owner, repo);
-            let html = format!("{}/{}/{}", html_base.trim_end_matches('/'), owner, repo);
-            return (full, html);
+    #[allow(clippy::collapsible_if)]
+    if let Ok(u) = Url::parse(repo_api_url) {
+        if let Some(segs) = u.path_segments() {
+            let v: Vec<&str> = segs.collect();
+            if v.len() >= 3 && v[0] == "repos" {
+                let owner = v[1];
+                let repo = v[2];
+                let full = format!("{}/{}", owner, repo);
+                let html = format!("{}/{}/{}", html_base.trim_end_matches('/'), owner, repo);
+                return (full, html);
+            }
         }
     }
     ("unknown/unknown".to_string(), html_base.to_string())

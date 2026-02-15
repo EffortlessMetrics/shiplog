@@ -109,18 +109,6 @@ enum Command {
         /// Bundle profile: internal (full), manager, or public.
         #[arg(long, default_value = "internal")]
         bundle_profile: BundleProfile,
-        /// Use LLM-assisted workstream clustering instead of repo-based.
-        #[arg(long)]
-        llm_cluster: bool,
-        /// LLM API endpoint (OpenAI-compatible).
-        #[arg(long, default_value = "https://api.openai.com/v1/chat/completions")]
-        llm_api_endpoint: String,
-        /// LLM model name.
-        #[arg(long, default_value = "gpt-4o-mini")]
-        llm_model: String,
-        /// LLM API key (or set SHIPLOG_LLM_API_KEY).
-        #[arg(long)]
-        llm_api_key: Option<String>,
     },
 
     /// Import a pre-built ledger directory and run the full render pipeline.
@@ -514,14 +502,9 @@ fn main() -> Result<()> {
             zip,
             redact_key,
             bundle_profile,
-            llm_cluster,
-            llm_api_endpoint,
-            llm_model,
-            llm_api_key,
         } => {
             let key = get_redact_key(redact_key);
-            let clusterer =
-                build_clusterer(llm_cluster, &llm_api_endpoint, &llm_model, llm_api_key);
+            let clusterer: Box<dyn shiplog_ports::WorkstreamClusterer> = Box::new(RepoClusterer);
             let (engine, redactor) = create_engine(&key, clusterer);
 
             // Resolve run directory: explicit --run-dir, or find most recent
@@ -667,6 +650,14 @@ fn main() -> Result<()> {
             let ingest = ing.ingest()?;
             let run_id = ingest.coverage.run_id.to_string();
             let run_dir = out.join(&run_id);
+
+            // If --regen, delete stale workstream files so the engine reclusters
+            if regen {
+                let curated = run_dir.join("workstreams.yaml");
+                let suggested = run_dir.join("workstreams.suggested.yaml");
+                let _ = std::fs::remove_file(&curated);
+                let _ = std::fs::remove_file(&suggested);
+            }
 
             // Load workstreams from import dir (unless --regen)
             let workstreams = if regen {
