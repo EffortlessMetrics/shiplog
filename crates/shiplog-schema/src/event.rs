@@ -66,15 +66,48 @@ impl<'de> Deserialize<'de> for SourceSystem {
             type Value = SourceSystem;
 
             fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                f.write_str("a source system string")
+                f.write_str("a source system string or object")
             }
 
             fn visit_str<E: serde::de::Error>(self, v: &str) -> Result<SourceSystem, E> {
                 Ok(SourceSystem::from_str_lossy(v))
             }
+
+            fn visit_map<A: serde::de::MapAccess<'de>>(
+                self,
+                mut map: A,
+            ) -> Result<SourceSystem, A::Error> {
+                let key: String = map
+                    .next_key()?
+                    .ok_or_else(|| serde::de::Error::custom("expected a single-key map"))?;
+
+                let result = match key.to_ascii_lowercase().as_str() {
+                    "github" | "jsonimport" | "json_import" | "localgit" | "local_git"
+                    | "manual" | "unknown" => {
+                        let _: serde::de::IgnoredAny = map.next_value()?;
+                        SourceSystem::from_str_lossy(&key)
+                    }
+                    "other" => {
+                        let value: String = map.next_value()?;
+                        SourceSystem::from_str_lossy(&value)
+                    }
+                    _ => {
+                        let _: serde::de::IgnoredAny = map.next_value()?;
+                        SourceSystem::Other(key)
+                    }
+                };
+
+                if map.next_key::<String>()?.is_some() {
+                    return Err(serde::de::Error::custom(
+                        "expected a single-key map for SourceSystem",
+                    ));
+                }
+
+                Ok(result)
+            }
         }
 
-        deserializer.deserialize_str(SourceSystemVisitor)
+        deserializer.deserialize_any(SourceSystemVisitor)
     }
 }
 
@@ -274,6 +307,40 @@ mod tests {
             let back: SourceSystem = serde_json::from_str(json).unwrap();
             assert_eq!(back, expected, "backward compat for {json}");
         }
+    }
+
+    #[test]
+    fn source_system_backward_compat_object_form_unit_variants() {
+        let cases = [
+            (r#"{"Github":null}"#, SourceSystem::Github),
+            (r#"{"JsonImport":null}"#, SourceSystem::JsonImport),
+            (r#"{"LocalGit":null}"#, SourceSystem::LocalGit),
+            (r#"{"Manual":null}"#, SourceSystem::Manual),
+            (r#"{"Unknown":null}"#, SourceSystem::Unknown),
+        ];
+        for (json, expected) in cases {
+            let back: SourceSystem = serde_json::from_str(json).unwrap();
+            assert_eq!(back, expected, "backward compat object form for {json}");
+        }
+    }
+
+    #[test]
+    fn source_system_backward_compat_object_form_other() {
+        let back: SourceSystem = serde_json::from_str(r#"{"Other":"gitlab"}"#).unwrap();
+        assert_eq!(back, SourceSystem::Other("gitlab".into()));
+    }
+
+    #[test]
+    fn source_system_backward_compat_object_form_other_known_name() {
+        // {"Other":"github"} should normalise to Github, not Other("github")
+        let back: SourceSystem = serde_json::from_str(r#"{"Other":"github"}"#).unwrap();
+        assert_eq!(back, SourceSystem::Github);
+    }
+
+    #[test]
+    fn source_system_object_form_rejects_multi_key_map() {
+        let result = serde_json::from_str::<SourceSystem>(r#"{"Github":null,"Other":"x"}"#);
+        assert!(result.is_err(), "multi-key map should be rejected");
     }
 
     #[test]
