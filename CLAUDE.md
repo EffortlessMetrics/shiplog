@@ -32,7 +32,8 @@ Key CLI flags (on `collect`/`refresh` github subcommands):
 - `--run-dir <PATH>` (explicit run directory for `refresh`, overrides auto-detection)
 - `--zip` (write a zip archive next to the run folder)
 - Redaction: `--redact-key` or `SHIPLOG_REDACT_KEY` controls generation of manager/public packets
-- LLM clustering: `--llm-cluster`, `--llm-api-endpoint <URL>`, `--llm-model <NAME>`, `--llm-api-key <KEY>` (or `SHIPLOG_LLM_API_KEY`)
+- `--bundle-profile internal|manager|public` (scope zip/bundle to a redaction profile)
+- LLM clustering (feature-gated, default off): `--llm-cluster`, `--llm-api-endpoint <URL>`, `--llm-model <NAME>`, `--llm-api-key <KEY>` (or `SHIPLOG_LLM_API_KEY`)
 
 ## Architecture
 
@@ -66,6 +67,7 @@ apps/shiplog (CLI, clap)
 - **User-owned workstreams:** `workstreams.yaml` is user-curated and never overwritten; auto-generated suggestions go to `workstreams.suggested.yaml`.
 - **Deterministic redaction:** Three profiles (internal/manager/public). Same input + same key = same alias across runs via HMAC-SHA256.
 - **Immutable event ledger:** `ledger.events.jsonl` is the canonical, append-only event log.
+- **SourceSystem string serde:** `SourceSystem` serialises as flat lowercase strings (`"github"`, `"json_import"`, `"local_git"`, `"manual"`, `"unknown"`). Deserialization is case-insensitive for backward compatibility with old PascalCase values.
 
 ### Error handling
 
@@ -101,7 +103,7 @@ Prefix `shiplog-` with suffix indicating role: `-schema`, `-ports`, `-ingest-*`,
 | Foundation | `shiplog-ids`, `shiplog-schema`, `shiplog-ports`, `shiplog-coverage` | No adapter deps |
 | Adapters | `shiplog-ingest-*`, `shiplog-render-*`, `shiplog-bundle`, `shiplog-cache`, `shiplog-redact`, `shiplog-workstreams`, `shiplog-cluster-llm` | Depend on foundation |
 | Orchestration | `shiplog-engine` | Wires adapters via ports |
-| App | `shiplog` (CLI) | Feature-gates: `llm` (default on) |
+| App | `shiplog` (CLI) | Feature-gates: `llm` (default off) |
 | Test-only | `shiplog-testkit` | `publish = false` |
 
 ### Publishing

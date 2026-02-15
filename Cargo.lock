@@ -1736,6 +1736,7 @@ dependencies = [
  "shiplog-ports",
  "shiplog-redact",
  "shiplog-render-md",
+ "shiplog-schema",
  "shiplog-workstreams",
 ]
 

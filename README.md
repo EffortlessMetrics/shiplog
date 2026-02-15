@@ -127,6 +127,7 @@ export SHIPLOG_REDACT_KEY="my-secret"
 | `--redact-key <KEY>` | all | HMAC key for redacted profiles (or `SHIPLOG_REDACT_KEY` env var) |
 | `--run-dir <PATH>` | `refresh` | Explicit run directory (overrides auto-detection) |
 | `--zip` | `collect`, `render`, `refresh`, `import`, `run` | Write a zip archive next to the run folder |
+| `--bundle-profile internal\|manager\|public` | `collect`, `render`, `refresh`, `import`, `run` | Scope bundle/zip to a redaction profile |
 | `--llm-cluster` | `collect`, `refresh`, `import`, `run` | Use LLM-assisted workstream clustering |
 | `--llm-api-endpoint <URL>` | `collect`, `refresh`, `import`, `run` | LLM endpoint (default: OpenAI) |
 | `--llm-model <NAME>` | `collect`, `refresh`, `import`, `run` | LLM model name (default: `gpt-4o-mini`) |
@@ -142,8 +143,10 @@ export SHIPLOG_LLM_API_KEY="sk-..."
 cargo run -p shiplog -- collect github ... --llm-cluster
 ```
 
-The LLM feature is compiled in by default. To build without it (removes the
-`reqwest` dependency): `cargo build -p shiplog --no-default-features`.
+The LLM feature must be enabled at build time:
+`cargo build -p shiplog --features llm`
+(or `cargo install shiplog --features llm`).
+Without it, `--llm-cluster` prints a clear error and exits.
 
 ### Redaction alias cache
 
@@ -181,6 +184,14 @@ This is a heavily microcrated Rust workspace with Clean Architecture boundaries:
 - **crates/shiplog-bundle**: checksums + optional zip export
 - **crates/shiplog-testkit**: shared test fixtures
 - **apps/shiplog**: CLI
+
+## Crate stability
+
+| Tier | Crates | Contract |
+|------|--------|----------|
+| **Stable** | `shiplog-schema`, `shiplog-ports`, `shiplog-ids` | SemVer-strict. Safe to depend on. |
+| **Supported** | All other `shiplog-*` crates | SemVer, but internals may shift between minors. |
+| **Dev-only** | `shiplog-testkit` | Not published. No stability guarantee. |
 
 ## Testing posture
 

@@ -7,6 +7,7 @@ use shiplog_ingest_json::JsonIngestor;
 use shiplog_ports::Ingestor;
 use shiplog_redact::DeterministicRedactor;
 use shiplog_render_md::MarkdownRenderer;
+use shiplog_schema::bundle::BundleProfile;
 use shiplog_workstreams::RepoClusterer;
 use std::path::PathBuf;
 
@@ -36,6 +37,9 @@ enum Command {
         /// Redaction key. If omitted, SHIPLOG_REDACT_KEY is used.
         #[arg(long)]
         redact_key: Option<String>,
+        /// Bundle profile: internal (full), manager, or public.
+        #[arg(long, default_value = "internal")]
+        bundle_profile: BundleProfile,
         /// Regenerate workstreams even if workstreams.yaml exists.
         /// WARNING: This will not overwrite workstreams.yaml, but will
         /// regenerate workstreams.suggested.yaml.
@@ -75,6 +79,9 @@ enum Command {
         /// Redaction key. If omitted, SHIPLOG_REDACT_KEY is used.
         #[arg(long)]
         redact_key: Option<String>,
+        /// Bundle profile: internal (full), manager, or public.
+        #[arg(long, default_value = "internal")]
+        bundle_profile: BundleProfile,
         /// Also write a zip next to the run folder.
         #[arg(long)]
         zip: bool,
@@ -99,6 +106,9 @@ enum Command {
         /// Redaction key. If omitted, SHIPLOG_REDACT_KEY is used.
         #[arg(long)]
         redact_key: Option<String>,
+        /// Bundle profile: internal (full), manager, or public.
+        #[arg(long, default_value = "internal")]
+        bundle_profile: BundleProfile,
         /// Use LLM-assisted workstream clustering instead of repo-based.
         #[arg(long)]
         llm_cluster: bool,
@@ -133,6 +143,9 @@ enum Command {
         /// Redaction key. If omitted, SHIPLOG_REDACT_KEY is used.
         #[arg(long)]
         redact_key: Option<String>,
+        /// Bundle profile: internal (full), manager, or public.
+        #[arg(long, default_value = "internal")]
+        bundle_profile: BundleProfile,
         /// Also write a zip next to the run folder.
         #[arg(long)]
         zip: bool,
@@ -169,6 +182,9 @@ enum Command {
         /// Redaction key. If omitted, SHIPLOG_REDACT_KEY is used.
         #[arg(long)]
         redact_key: Option<String>,
+        /// Bundle profile: internal (full), manager, or public.
+        #[arg(long, default_value = "internal")]
+        bundle_profile: BundleProfile,
         /// Use LLM-assisted workstream clustering instead of repo-based.
         #[arg(long)]
         llm_cluster: bool,
@@ -344,6 +360,7 @@ fn main() -> Result<()> {
             out,
             zip,
             redact_key,
+            bundle_profile,
             regen,
             llm_cluster,
             llm_api_endpoint,
@@ -404,7 +421,7 @@ fn main() -> Result<()> {
                     let _ = redactor.load_cache(&cache_path);
 
                     let (outputs, ws_source) =
-                        engine.run(ingest, &user, &window_label, &run_dir, zip)?;
+                        engine.run(ingest, &user, &window_label, &run_dir, zip, &bundle_profile)?;
 
                     redactor.save_cache(&cache_path)?;
 
@@ -430,7 +447,7 @@ fn main() -> Result<()> {
                     let _ = redactor.load_cache(&cache_path);
 
                     let (outputs, ws_source) =
-                        engine.run(ingest, &user, &window_label, &run_dir, zip)?;
+                        engine.run(ingest, &user, &window_label, &run_dir, zip, &bundle_profile)?;
 
                     redactor.save_cache(&cache_path)?;
 
@@ -446,6 +463,7 @@ fn main() -> Result<()> {
             user,
             window_label,
             redact_key,
+            bundle_profile,
             zip,
         } => {
             let key = get_redact_key(redact_key);
@@ -480,7 +498,8 @@ fn main() -> Result<()> {
             let cache_path = DeterministicRedactor::cache_path(&run_dir);
             let _ = redactor.load_cache(&cache_path);
 
-            let outputs = engine.refresh(ingest, &user, &window_label, &run_dir, zip)?;
+            let outputs =
+                engine.refresh(ingest, &user, &window_label, &run_dir, zip, &bundle_profile)?;
 
             redactor.save_cache(&cache_path)?;
 
@@ -494,6 +513,7 @@ fn main() -> Result<()> {
             run_dir: explicit_run_dir,
             zip,
             redact_key,
+            bundle_profile,
             llm_cluster,
             llm_api_endpoint,
             llm_model,
@@ -551,7 +571,14 @@ fn main() -> Result<()> {
                         );
                     }
 
-                    let outputs = engine.refresh(ingest, &user, &window_label, &run_dir, zip)?;
+                    let outputs = engine.refresh(
+                        ingest,
+                        &user,
+                        &window_label,
+                        &run_dir,
+                        zip,
+                        &bundle_profile,
+                    )?;
 
                     redactor.save_cache(&cache_path)?;
 
@@ -581,7 +608,14 @@ fn main() -> Result<()> {
                     };
                     let ingest = ing.ingest()?;
 
-                    let outputs = engine.refresh(ingest, &user, &window_label, &run_dir, zip)?;
+                    let outputs = engine.refresh(
+                        ingest,
+                        &user,
+                        &window_label,
+                        &run_dir,
+                        zip,
+                        &bundle_profile,
+                    )?;
 
                     redactor.save_cache(&cache_path)?;
 
@@ -597,6 +631,7 @@ fn main() -> Result<()> {
             user,
             window_label,
             redact_key,
+            bundle_profile,
             zip,
             regen,
             llm_cluster,
@@ -643,8 +678,15 @@ fn main() -> Result<()> {
             let cache_path = DeterministicRedactor::cache_path(&run_dir);
             let _ = redactor.load_cache(&cache_path);
 
-            let (outputs, ws_source) =
-                engine.import(ingest, &user, &window_label, &run_dir, zip, workstreams)?;
+            let (outputs, ws_source) = engine.import(
+                ingest,
+                &user,
+                &window_label,
+                &run_dir,
+                zip,
+                workstreams,
+                &bundle_profile,
+            )?;
 
             redactor.save_cache(&cache_path)?;
 
@@ -657,6 +699,7 @@ fn main() -> Result<()> {
             out,
             zip,
             redact_key,
+            bundle_profile,
             llm_cluster,
             llm_api_endpoint,
             llm_model,
@@ -700,7 +743,7 @@ fn main() -> Result<()> {
 
                     let window_label = format!("{}..{}", since, until);
                     let (outputs, ws_source) =
-                        engine.run(ingest, &user, &window_label, &run_dir, zip)?;
+                        engine.run(ingest, &user, &window_label, &run_dir, zip, &bundle_profile)?;
 
                     redactor.save_cache(&cache_path)?;
 
@@ -726,7 +769,7 @@ fn main() -> Result<()> {
                     let _ = redactor.load_cache(&cache_path);
 
                     let (outputs, ws_source) =
-                        engine.run(ingest, &user, &window_label, &run_dir, zip)?;
+                        engine.run(ingest, &user, &window_label, &run_dir, zip, &bundle_profile)?;
 
                     redactor.save_cache(&cache_path)?;
 

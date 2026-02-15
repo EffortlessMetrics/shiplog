@@ -2,11 +2,12 @@ use crate::coverage::TimeWindow;
 use chrono::{DateTime, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
 use shiplog_ids::EventId;
+use std::fmt;
 
 /// Where a record came from.
 ///
 /// This is part of the trust story: a packet is only as good as its provenance.
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum SourceSystem {
     Github,
@@ -16,6 +17,65 @@ pub enum SourceSystem {
     Unknown,
     /// Extension point for third-party source systems.
     Other(String),
+}
+
+impl SourceSystem {
+    /// Canonical lowercase string for this variant.
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Github => "github",
+            Self::JsonImport => "json_import",
+            Self::LocalGit => "local_git",
+            Self::Manual => "manual",
+            Self::Unknown => "unknown",
+            Self::Other(s) => s.as_str(),
+        }
+    }
+
+    /// Parse from a string, case-insensitively matching known variants.
+    /// Unrecognised strings become `Other(s)`.
+    pub fn from_str_lossy(s: &str) -> Self {
+        match s.to_ascii_lowercase().as_str() {
+            "github" => Self::Github,
+            "json_import" | "jsonimport" => Self::JsonImport,
+            "local_git" | "localgit" => Self::LocalGit,
+            "manual" => Self::Manual,
+            "unknown" => Self::Unknown,
+            _ => Self::Other(s.to_string()),
+        }
+    }
+}
+
+impl fmt::Display for SourceSystem {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl Serialize for SourceSystem {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for SourceSystem {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        struct SourceSystemVisitor;
+
+        impl<'de> serde::de::Visitor<'de> for SourceSystemVisitor {
+            type Value = SourceSystem;
+
+            fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                f.write_str("a source system string")
+            }
+
+            fn visit_str<E: serde::de::Error>(self, v: &str) -> Result<SourceSystem, E> {
+                Ok(SourceSystem::from_str_lossy(v))
+            }
+        }
+
+        deserializer.deserialize_str(SourceSystemVisitor)
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -170,16 +230,18 @@ mod tests {
 
     #[test]
     fn source_system_round_trip_known_variants() {
-        for variant in [
-            SourceSystem::Github,
-            SourceSystem::JsonImport,
-            SourceSystem::LocalGit,
-            SourceSystem::Manual,
-            SourceSystem::Unknown,
-        ] {
+        let cases = [
+            (SourceSystem::Github, r#""github""#),
+            (SourceSystem::JsonImport, r#""json_import""#),
+            (SourceSystem::LocalGit, r#""local_git""#),
+            (SourceSystem::Manual, r#""manual""#),
+            (SourceSystem::Unknown, r#""unknown""#),
+        ];
+        for (variant, expected_json) in cases {
             let json = serde_json::to_string(&variant).unwrap();
+            assert_eq!(json, expected_json, "serialize {:?}", variant);
             let back: SourceSystem = serde_json::from_str(&json).unwrap();
-            assert_eq!(variant, back);
+            assert_eq!(variant, back, "round-trip {:?}", variant);
         }
     }
 
@@ -187,9 +249,48 @@ mod tests {
     fn source_system_other_round_trip() {
         let variant = SourceSystem::Other("gitlab".into());
         let json = serde_json::to_string(&variant).unwrap();
+        assert_eq!(json, r#""gitlab""#);
         let back: SourceSystem = serde_json::from_str(&json).unwrap();
         assert_eq!(variant, back);
-        assert!(json.contains("gitlab"));
+    }
+
+    #[test]
+    fn source_system_other_does_not_collide_with_known() {
+        let back: SourceSystem = serde_json::from_str(r#""github""#).unwrap();
+        assert_eq!(back, SourceSystem::Github);
+    }
+
+    #[test]
+    fn source_system_backward_compat_pascal_case() {
+        // Old serialisation used PascalCase; must still deserialise.
+        let cases = [
+            (r#""Github""#, SourceSystem::Github),
+            (r#""JsonImport""#, SourceSystem::JsonImport),
+            (r#""LocalGit""#, SourceSystem::LocalGit),
+            (r#""Manual""#, SourceSystem::Manual),
+            (r#""Unknown""#, SourceSystem::Unknown),
+        ];
+        for (json, expected) in cases {
+            let back: SourceSystem = serde_json::from_str(json).unwrap();
+            assert_eq!(back, expected, "backward compat for {json}");
+        }
+    }
+
+    #[test]
+    fn source_system_display_matches_serde() {
+        for variant in [
+            SourceSystem::Github,
+            SourceSystem::JsonImport,
+            SourceSystem::LocalGit,
+            SourceSystem::Manual,
+            SourceSystem::Unknown,
+            SourceSystem::Other("gitlab".into()),
+        ] {
+            let display = format!("{variant}");
+            let serialized: String =
+                serde_json::from_str(&serde_json::to_string(&variant).unwrap()).unwrap();
+            assert_eq!(display, serialized, "Display vs serde for {:?}", variant);
+        }
     }
 }
 

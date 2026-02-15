@@ -8,6 +8,7 @@ use anyhow::{Context, Result};
 use shiplog_bundle::{write_bundle_manifest, write_zip};
 use shiplog_ports::{IngestOutput, Redactor, Renderer, WorkstreamClusterer};
 use shiplog_render_json::{write_coverage_manifest, write_events_jsonl};
+use shiplog_schema::bundle::BundleProfile;
 use shiplog_schema::coverage::CoverageManifest;
 use shiplog_schema::event::EventEnvelope;
 use shiplog_schema::workstream::WorkstreamsFile;
@@ -63,6 +64,7 @@ impl<'a> Engine<'a> {
         window_label: &str,
         out_dir: &Path,
         zip: bool,
+        bundle_profile: &BundleProfile,
     ) -> Result<(RunOutputs, WorkstreamSource)> {
         std::fs::create_dir_all(out_dir).with_context(|| format!("create {out_dir:?}"))?;
 
@@ -119,10 +121,10 @@ impl<'a> Engine<'a> {
 
         // Bundle manifest + zip
         let run_id = &coverage.run_id;
-        let _bundle = write_bundle_manifest(out_dir, run_id)?;
+        let _bundle = write_bundle_manifest(out_dir, run_id, bundle_profile)?;
         let zip_path = if zip {
-            let z = out_dir.with_extension("zip");
-            write_zip(out_dir, &z)?;
+            let z = zip_path_for_profile(out_dir, bundle_profile);
+            write_zip(out_dir, &z, bundle_profile)?;
             Some(z)
         } else {
             None
@@ -168,6 +170,7 @@ impl<'a> Engine<'a> {
     ///
     /// When `workstreams` is `Some`, uses them directly (writes as curated).
     /// When `None`, falls through to normal clustering.
+    #[allow(clippy::too_many_arguments)]
     pub fn import(
         &self,
         ingest: IngestOutput,
@@ -176,6 +179,7 @@ impl<'a> Engine<'a> {
         out_dir: &Path,
         zip: bool,
         workstreams: Option<WorkstreamsFile>,
+        bundle_profile: &BundleProfile,
     ) -> Result<(RunOutputs, WorkstreamSource)> {
         std::fs::create_dir_all(out_dir).with_context(|| format!("create {out_dir:?}"))?;
 
@@ -233,10 +237,10 @@ impl<'a> Engine<'a> {
 
         // Bundle manifest + zip
         let run_id = &coverage.run_id;
-        let _bundle = write_bundle_manifest(out_dir, run_id)?;
+        let _bundle = write_bundle_manifest(out_dir, run_id, bundle_profile)?;
         let zip_path = if zip {
-            let z = out_dir.with_extension("zip");
-            write_zip(out_dir, &z)?;
+            let z = zip_path_for_profile(out_dir, bundle_profile);
+            write_zip(out_dir, &z, bundle_profile)?;
             Some(z)
         } else {
             None
@@ -266,6 +270,7 @@ impl<'a> Engine<'a> {
         window_label: &str,
         out_dir: &Path,
         zip: bool,
+        bundle_profile: &BundleProfile,
     ) -> Result<RunOutputs> {
         std::fs::create_dir_all(out_dir).with_context(|| format!("create {out_dir:?}"))?;
 
@@ -340,10 +345,10 @@ impl<'a> Engine<'a> {
 
         // Bundle manifest + zip
         let run_id = &coverage.run_id;
-        let _bundle = write_bundle_manifest(out_dir, run_id)?;
+        let _bundle = write_bundle_manifest(out_dir, run_id, bundle_profile)?;
         let zip_path = if zip {
-            let z = out_dir.with_extension("zip");
-            write_zip(out_dir, &z)?;
+            let z = zip_path_for_profile(out_dir, bundle_profile);
+            write_zip(out_dir, &z, bundle_profile)?;
             Some(z)
         } else {
             None
@@ -386,5 +391,18 @@ impl<'a> Engine<'a> {
         )?;
         std::fs::write(prof_dir.join("packet.md"), md)?;
         Ok(())
+    }
+}
+
+/// Compute the zip file path based on bundle profile.
+/// `Internal` -> `<run_dir>.zip`, others -> `<run_dir>.<profile>.zip`.
+fn zip_path_for_profile(out_dir: &Path, profile: &BundleProfile) -> PathBuf {
+    match profile {
+        BundleProfile::Internal => out_dir.with_extension("zip"),
+        _ => {
+            let stem = out_dir.file_name().unwrap_or_default().to_string_lossy();
+            let name = format!("{}.{}.zip", stem, profile.as_str());
+            out_dir.with_file_name(name)
+        }
     }
 }
