@@ -1,11 +1,16 @@
 [package]
 name = "shiplog-ids"
-version.workspace = true
+version = "0.2.0"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
+description = "Type-safe SHA256-based ID generation for the shiplog pipeline"
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
 
 [dependencies]
 serde.workspace = true
 sha2.workspace = true
 hex.workspace = true
+

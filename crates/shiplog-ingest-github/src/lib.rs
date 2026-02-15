@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use chrono::{DateTime, NaiveDate, Utc};
 use reqwest::blocking::Client;
 use serde::de::DeserializeOwned;
@@ -17,7 +17,7 @@ use std::thread::sleep;
 use std::time::Duration;
 use url::Url;
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct GithubIngestor {
     pub user: String,
     pub since: NaiveDate,
@@ -65,11 +65,25 @@ impl GithubIngestor {
         Ok(self)
     }
 
+    fn html_base_url(&self) -> String {
+        if let Ok(u) = Url::parse(&self.api_base) {
+            let scheme = u.scheme();
+            if let Some(host) = u.host_str() {
+                if host == "api.github.com" {
+                    return "https://github.com".to_string();
+                }
+                let port_suffix = u.port().map(|p| format!(":{p}")).unwrap_or_default();
+                return format!("{scheme}://{host}{port_suffix}");
+            }
+        }
+        "https://github.com".to_string()
+    }
+
     fn client(&self) -> Result<Client> {
-        Ok(Client::builder()
+        Client::builder()
             .user_agent("shiplog/0.1")
             .build()
-            .context("build reqwest client")?)
+            .context("build reqwest client")
     }
 
     fn api_url(&self, path: &str) -> String {
@@ -82,24 +96,30 @@ impl GithubIngestor {
         }
     }
 
-    fn get_json<T: DeserializeOwned>(&self, client: &Client, url: &str, params: &[(&str, String)]) -> Result<T> {
+    fn get_json<T: DeserializeOwned>(
+        &self,
+        client: &Client,
+        url: &str,
+        params: &[(&str, String)],
+    ) -> Result<T> {
         // Build URL with query params manually
         let url_with_params = if params.is_empty() {
             url.to_string()
         } else {
-            let query: Vec<String> = params
-                .iter()
-                .map(|(k, v)| format!("{}={}", k, v))
-                .collect();
+            let query: Vec<String> = params.iter().map(|(k, v)| format!("{}={}", k, v)).collect();
             format!("{}?{}", url, query.join("&"))
         };
-        
-        let mut req = client.get(&url_with_params).header("Accept", "application/vnd.github+json");
+
+        let mut req = client
+            .get(&url_with_params)
+            .header("Accept", "application/vnd.github+json");
         req = req.header("X-GitHub-Api-Version", "2022-11-28");
         if let Some(t) = &self.token {
             req = req.bearer_auth(t);
         }
-        let resp = req.send().with_context(|| format!("GET {url_with_params}"))?;
+        let resp = req
+            .send()
+            .with_context(|| format!("GET {url_with_params}"))?;
         self.throttle();
 
         if !resp.status().is_success() {
@@ -108,7 +128,8 @@ impl GithubIngestor {
             return Err(anyhow!("GitHub API error {status}: {body}"));
         }
 
-        Ok(resp.json::<T>().with_context(|| format!("parse json from {url_with_params}"))?)
+        resp.json::<T>()
+            .with_context(|| format!("parse json from {url_with_params}"))
     }
 }
 
@@ -128,7 +149,8 @@ impl Ingestor for GithubIngestor {
 
         // PRs authored
         let pr_query_builder = |w: &TimeWindow| self.build_pr_query(w);
-        let (pr_items, pr_slices, pr_partial) = self.collect_search_items(&client, pr_query_builder, self.since, self.until, "prs")?;
+        let (pr_items, pr_slices, pr_partial) =
+            self.collect_search_items(&client, pr_query_builder, self.since, self.until, "prs")?;
         slices.extend(pr_slices);
         if pr_partial {
             completeness = Completeness::Partial;
@@ -140,7 +162,13 @@ impl Ingestor for GithubIngestor {
         if self.include_reviews {
             warnings.push("Reviews are collected via search + per-PR review fetch; treat as best-effort coverage.".to_string());
             let review_query_builder = |w: &TimeWindow| self.build_reviewed_query(w);
-            let (review_items, review_slices, review_partial) = self.collect_search_items(&client, review_query_builder, self.since, self.until, "reviews")?;
+            let (review_items, review_slices, review_partial) = self.collect_search_items(
+                &client,
+                review_query_builder,
+                self.since,
+                self.until,
+                "reviews",
+            )?;
             slices.extend(review_slices);
             if review_partial {
                 completeness = Completeness::Partial;
@@ -155,7 +183,10 @@ impl Ingestor for GithubIngestor {
             run_id,
             generated_at: Utc::now(),
             user: self.user.clone(),
-            window: TimeWindow { since: self.since, until: self.until },
+            window: TimeWindow {
+                since: self.since,
+                until: self.until,
+            },
             mode: self.mode.clone(),
             sources: vec!["github".to_string()],
             slices,
@@ -163,7 +194,10 @@ impl Ingestor for GithubIngestor {
             completeness,
         };
 
-        Ok(IngestOutput { events, coverage: cov })
+        Ok(IngestOutput {
+            events,
+            coverage: cov,
+        })
     }
 }
 
@@ -172,7 +206,10 @@ impl GithubIngestor {
         let (start, end) = github_inclusive_range(w);
         match self.mode.as_str() {
             "created" => format!("is:pr author:{} created:{}..{}", self.user, start, end),
-            _ => format!("is:pr is:merged author:{} merged:{}..{}", self.user, start, end),
+            _ => format!(
+                "is:pr is:merged author:{} merged:{}..{}",
+                self.user, start, end
+            ),
         }
     }
 
@@ -205,7 +242,8 @@ impl GithubIngestor {
         let mut partial = false;
 
         for w in month_windows(since, until) {
-            let (mut i, mut s, p) = self.collect_window(client, &make_query, &w, Granularity::Month, label)?;
+            let (mut i, mut s, p) =
+                self.collect_window(client, &make_query, &w, Granularity::Month, label)?;
             items.append(&mut i);
             slices.append(&mut s);
             partial |= p;
@@ -247,7 +285,11 @@ impl GithubIngestor {
         if need_subdivide && can_subdivide {
             slices[0].notes.push(format!(
                 "subdivide:{}",
-                if meta_total > 1000 { "cap" } else { "incomplete" }
+                if meta_total > 1000 {
+                    "cap"
+                } else {
+                    "incomplete"
+                }
             ));
 
             let mut out_items = Vec::new();
@@ -261,7 +303,8 @@ impl GithubIngestor {
             };
 
             for sub in subs {
-                let (mut i, mut s, p) = self.collect_window(client, make_query, &sub, gran.next(), label)?;
+                let (mut i, mut s, p) =
+                    self.collect_window(client, make_query, &sub, gran.next(), label)?;
                 out_items.append(&mut i);
                 out_slices.append(&mut s);
                 partial |= p;
@@ -273,7 +316,9 @@ impl GithubIngestor {
         let mut partial = false;
         if meta_total > 1000 || meta_incomplete {
             partial = true;
-            slices[0].notes.push("partial:unresolvable_at_this_granularity".to_string());
+            slices[0]
+                .notes
+                .push("partial:unresolvable_at_this_granularity".to_string());
         }
 
         let fetched_items = self.fetch_all_search_items(client, &query)?;
@@ -333,17 +378,27 @@ impl GithubIngestor {
         Ok(out)
     }
 
-    fn items_to_pr_events(&self, client: &Client, items: Vec<SearchIssueItem>) -> Result<Vec<EventEnvelope>> {
+    fn items_to_pr_events(
+        &self,
+        client: &Client,
+        items: Vec<SearchIssueItem>,
+    ) -> Result<Vec<EventEnvelope>> {
         let mut out = Vec::new();
         for item in items {
             if let Some(pr_ref) = &item.pull_request {
-                let (repo_full_name, repo_html_url) = repo_from_repo_url(&item.repository_url);
+                let html_base = self.html_base_url();
+                let (repo_full_name, repo_html_url) =
+                    repo_from_repo_url(&item.repository_url, &html_base);
 
                 let (title, created_at, merged_at, additions, deletions, changed_files, visibility) =
                     if self.fetch_details {
                         match self.fetch_pr_details(client, &pr_ref.url) {
                             Ok(d) => {
-                                let vis = if d.base.repo.private_field { RepoVisibility::Private } else { RepoVisibility::Public };
+                                let vis = if d.base.repo.private_field {
+                                    RepoVisibility::Private
+                                } else {
+                                    RepoVisibility::Public
+                                };
                                 (
                                     d.title,
                                     d.created_at,
@@ -401,7 +456,10 @@ impl GithubIngestor {
                     id,
                     kind: EventKind::PullRequest,
                     occurred_at,
-                    actor: Actor { login: self.user.clone(), id: None },
+                    actor: Actor {
+                        login: self.user.clone(),
+                        id: None,
+                    },
                     repo: RepoRef {
                         full_name: repo_full_name,
                         html_url: Some(repo_html_url),
@@ -420,8 +478,15 @@ impl GithubIngestor {
                         window: None,
                     }),
                     tags: vec![],
-                    links: vec![Link { label: "pr".into(), url: item.html_url.clone() }],
-                    source: SourceRef { system: SourceSystem::Github, url: Some(pr_ref.url.clone()), opaque_id: Some(item.id.to_string()) },
+                    links: vec![Link {
+                        label: "pr".into(),
+                        url: item.html_url.clone(),
+                    }],
+                    source: SourceRef {
+                        system: SourceSystem::Github,
+                        url: Some(pr_ref.url.clone()),
+                        opaque_id: Some(item.id.to_string()),
+                    },
                 };
 
                 out.push(ev);
@@ -430,11 +495,19 @@ impl GithubIngestor {
         Ok(out)
     }
 
-    fn items_to_review_events(&self, client: &Client, items: Vec<SearchIssueItem>) -> Result<Vec<EventEnvelope>> {
+    fn items_to_review_events(
+        &self,
+        client: &Client,
+        items: Vec<SearchIssueItem>,
+    ) -> Result<Vec<EventEnvelope>> {
         let mut out = Vec::new();
         for item in items {
-            let Some(pr_ref) = &item.pull_request else { continue };
-            let (repo_full_name, repo_html_url) = repo_from_repo_url(&item.repository_url);
+            let Some(pr_ref) = &item.pull_request else {
+                continue;
+            };
+            let html_base = self.html_base_url();
+            let (repo_full_name, repo_html_url) =
+                repo_from_repo_url(&item.repository_url, &html_base);
 
             // Fetch reviews for this PR and filter by author + date window.
             let reviews = self.fetch_pr_reviews(client, &pr_ref.url)?;
@@ -463,7 +536,10 @@ impl GithubIngestor {
                     id,
                     kind: EventKind::Review,
                     occurred_at: submitted,
-                    actor: Actor { login: self.user.clone(), id: None },
+                    actor: Actor {
+                        login: self.user.clone(),
+                        id: None,
+                    },
                     repo: RepoRef {
                         full_name: repo_full_name.clone(),
                         html_url: Some(repo_html_url.clone()),
@@ -477,8 +553,15 @@ impl GithubIngestor {
                         window: None,
                     }),
                     tags: vec![],
-                    links: vec![Link { label: "pr".into(), url: item.html_url.clone() }],
-                    source: SourceRef { system: SourceSystem::Github, url: Some(pr_ref.url.clone()), opaque_id: Some(r.id.to_string()) },
+                    links: vec![Link {
+                        label: "pr".into(),
+                        url: item.html_url.clone(),
+                    }],
+                    source: SourceRef {
+                        system: SourceSystem::Github,
+                        url: Some(pr_ref.url.clone()),
+                        opaque_id: Some(r.id.to_string()),
+                    },
                 };
 
                 out.push(ev);
@@ -490,6 +573,7 @@ impl GithubIngestor {
     fn fetch_pr_details(&self, client: &Client, pr_api_url: &str) -> Result<PullRequestDetails> {
         // Check cache first
         let cache_key = CacheKey::pr_details(pr_api_url);
+        #[allow(clippy::collapsible_if)]
         if let Some(ref cache) = self.cache {
             if let Some(cached) = cache.get::<PullRequestDetails>(&cache_key)? {
                 return Ok(cached);
@@ -507,7 +591,11 @@ impl GithubIngestor {
         Ok(details)
     }
 
-    fn fetch_pr_reviews(&self, client: &Client, pr_api_url: &str) -> Result<Vec<PullRequestReview>> {
+    fn fetch_pr_reviews(
+        &self,
+        client: &Client,
+        pr_api_url: &str,
+    ) -> Result<Vec<PullRequestReview>> {
         let url = format!("{pr_api_url}/reviews");
         let mut out = Vec::new();
         let per_page = 100;
@@ -578,7 +666,8 @@ fn github_inclusive_range(w: &TimeWindow) -> (String, String) {
     (start, end)
 }
 
-fn repo_from_repo_url(repo_api_url: &str) -> (String, String) {
+fn repo_from_repo_url(repo_api_url: &str, html_base: &str) -> (String, String) {
+    #[allow(clippy::collapsible_if)]
     if let Ok(u) = Url::parse(repo_api_url) {
         if let Some(segs) = u.path_segments() {
             let v: Vec<&str> = segs.collect();
@@ -586,12 +675,12 @@ fn repo_from_repo_url(repo_api_url: &str) -> (String, String) {
                 let owner = v[1];
                 let repo = v[2];
                 let full = format!("{}/{}", owner, repo);
-                let html = format!("https://github.com/{}/{}", owner, repo);
+                let html = format!("{}/{}/{}", html_base.trim_end_matches('/'), owner, repo);
                 return (full, html);
             }
         }
     }
-    ("unknown/unknown".to_string(), "https://github.com".to_string())
+    ("unknown/unknown".to_string(), html_base.to_string())
 }
 
 /// GitHub search response envelope.

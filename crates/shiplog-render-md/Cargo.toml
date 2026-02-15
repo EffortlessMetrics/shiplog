@@ -1,17 +1,22 @@
 [package]
 name = "shiplog-render-md"
-version.workspace = true
+version = "0.2.0"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
+description = "Markdown self-review packet renderer for shiplog"
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
 
 [dependencies]
 anyhow.workspace = true
 chrono.workspace = true
 itertools.workspace = true
-shiplog-schema = { path = "../shiplog-schema" }
-shiplog-ports = { path = "../shiplog-ports" }
+shiplog-schema = { path = "../shiplog-schema", version = "0.2.0" }
+shiplog-ports = { path = "../shiplog-ports", version = "0.2.0" }
 
 [dev-dependencies]
 insta.workspace = true
-shiplog-ids = { path = "../shiplog-ids" }
+shiplog-ids = { path = "../shiplog-ids", version = "0.2.0" }
+

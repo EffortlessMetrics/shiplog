@@ -1,18 +1,29 @@
 [package]
 name = "shiplog"
-version.workspace = true
+version = "0.2.0"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
+description.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[features]
+default = []
+llm = ["dep:shiplog-cluster-llm"]
 
 [dependencies]
 anyhow.workspace = true
 clap.workspace = true
 chrono.workspace = true
-shiplog-engine = { path = "../../crates/shiplog-engine" }
-shiplog-ingest-github = { path = "../../crates/shiplog-ingest-github" }
-shiplog-ingest-json = { path = "../../crates/shiplog-ingest-json" }
-shiplog-render-md = { path = "../../crates/shiplog-render-md" }
-shiplog-workstreams = { path = "../../crates/shiplog-workstreams" }
-shiplog-redact = { path = "../../crates/shiplog-redact" }
-shiplog-ports = { path = "../../crates/shiplog-ports" }
+shiplog-engine = { path = "../../crates/shiplog-engine", version = "0.2.0" }
+shiplog-ingest-github = { path = "../../crates/shiplog-ingest-github", version = "0.2.0" }
+shiplog-ingest-json = { path = "../../crates/shiplog-ingest-json", version = "0.2.0" }
+shiplog-render-md = { path = "../../crates/shiplog-render-md", version = "0.2.0" }
+shiplog-workstreams = { path = "../../crates/shiplog-workstreams", version = "0.2.0" }
+shiplog-redact = { path = "../../crates/shiplog-redact", version = "0.2.0" }
+shiplog-ports = { path = "../../crates/shiplog-ports", version = "0.2.0" }
+shiplog-schema = { path = "../../crates/shiplog-schema", version = "0.2.0" }
+shiplog-cluster-llm = { path = "../../crates/shiplog-cluster-llm", version = "0.2.0", optional = true }
+

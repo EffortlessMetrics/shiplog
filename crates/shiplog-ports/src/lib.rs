@@ -1,3 +1,10 @@
+//! Port trait definitions for the shiplog pipeline.
+//!
+//! Defines the four core abstractions: [`Ingestor`] (data collection),
+//! [`WorkstreamClusterer`] (event grouping), [`Renderer`] (output generation),
+//! and [`Redactor`] (privacy-aware projection). Adapters depend on ports;
+//! ports never depend on adapters.
+
 use anyhow::Result;
 use shiplog_schema::coverage::CoverageManifest;
 use shiplog_schema::event::EventEnvelope;
@@ -45,6 +52,9 @@ pub trait Renderer {
 /// Redaction is a rendering mode. Same underlying ledger, different projections.
 pub trait Redactor {
     fn redact_events(&self, events: &[EventEnvelope], profile: &str) -> Result<Vec<EventEnvelope>>;
-    fn redact_workstreams(&self, workstreams: &WorkstreamsFile, profile: &str)
-        -> Result<WorkstreamsFile>;
+    fn redact_workstreams(
+        &self,
+        workstreams: &WorkstreamsFile,
+        profile: &str,
+    ) -> Result<WorkstreamsFile>;
 }

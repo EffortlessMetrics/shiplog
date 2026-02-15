@@ -1,10 +1,10 @@
 [package]
-name = "shiplog-engine"
+name = "shiplog-cluster-llm"
 version = "0.2.0"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
-description = "Orchestration engine for the shiplog pipeline (ingest, cluster, redact, render)"
+description = "LLM-assisted workstream clustering for shiplog using OpenAI-compatible APIs"
 repository.workspace = true
 keywords.workspace = true
 categories.workspace = true
@@ -12,13 +12,10 @@ categories.workspace = true
 [dependencies]
 anyhow.workspace = true
 chrono.workspace = true
-serde_yaml.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+reqwest.workspace = true
 shiplog-ids = { path = "../shiplog-ids", version = "0.2.0" }
 shiplog-schema = { path = "../shiplog-schema", version = "0.2.0" }
 shiplog-ports = { path = "../shiplog-ports", version = "0.2.0" }
 shiplog-workstreams = { path = "../shiplog-workstreams", version = "0.2.0" }
-shiplog-redact = { path = "../shiplog-redact", version = "0.2.0" }
-shiplog-render-md = { path = "../shiplog-render-md", version = "0.2.0" }
-shiplog-render-json = { path = "../shiplog-render-json", version = "0.2.0" }
-shiplog-bundle = { path = "../shiplog-bundle", version = "0.2.0" }
-

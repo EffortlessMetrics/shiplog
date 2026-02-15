@@ -1,3 +1,9 @@
+//! Repository-based event clustering and user-curated workstream management.
+//!
+//! Groups ingested events into workstreams (default: by repository) and manages
+//! the two-file workflow: auto-generated `workstreams.suggested.yaml` and
+//! user-curated `workstreams.yaml` that is never overwritten.
+
 use anyhow::{Context, Result};
 use chrono::Utc;
 use shiplog_ids::WorkstreamId;
@@ -18,7 +24,10 @@ impl WorkstreamClusterer for RepoClusterer {
     fn cluster(&self, events: &[EventEnvelope]) -> Result<WorkstreamsFile> {
         let mut by_repo: BTreeMap<String, Vec<&EventEnvelope>> = BTreeMap::new();
         for ev in events {
-            by_repo.entry(ev.repo.full_name.clone()).or_default().push(ev);
+            by_repo
+                .entry(ev.repo.full_name.clone())
+                .or_default()
+                .push(ev);
         }
 
         let mut workstreams = Vec::new();
@@ -78,14 +87,14 @@ pub fn load_or_cluster(
     clusterer: &dyn WorkstreamClusterer,
     events: &[EventEnvelope],
 ) -> Result<WorkstreamsFile> {
-    if let Some(path) = maybe_yaml {
-        if path.exists() {
-            let text = std::fs::read_to_string(path)
-                .with_context(|| format!("read workstreams from {path:?}"))?;
-            let ws: WorkstreamsFile = serde_yaml::from_str(&text)
-                .with_context(|| format!("parse workstreams yaml {path:?}"))?;
-            return Ok(ws);
-        }
+    if let Some(path) = maybe_yaml
+        && path.exists()
+    {
+        let text = std::fs::read_to_string(path)
+            .with_context(|| format!("read workstreams from {path:?}"))?;
+        let ws: WorkstreamsFile = serde_yaml::from_str(&text)
+            .with_context(|| format!("parse workstreams yaml {path:?}"))?;
+        return Ok(ws);
     }
 
     clusterer.cluster(events)
@@ -94,8 +103,7 @@ pub fn load_or_cluster(
 /// Write workstreams to a YAML file.
 pub fn write_workstreams(path: &Path, workstreams: &WorkstreamsFile) -> Result<()> {
     let yaml = serde_yaml::to_string(workstreams)?;
-    std::fs::write(path, yaml)
-        .with_context(|| format!("write workstreams to {path:?}"))?;
+    std::fs::write(path, yaml).with_context(|| format!("write workstreams to {path:?}"))?;
     Ok(())
 }
 
@@ -171,26 +179,51 @@ impl WorkstreamManager {
     pub fn suggested_path(out_dir: &Path) -> std::path::PathBuf {
         out_dir.join(Self::SUGGESTED_FILENAME)
     }
+
+    /// Try to load workstreams from a directory. Returns None if no workstream files exist.
+    /// Checks curated first, then suggested.
+    pub fn try_load(dir: &Path) -> Result<Option<WorkstreamsFile>> {
+        let curated_path = dir.join(Self::CURATED_FILENAME);
+        if curated_path.exists() {
+            let text = std::fs::read_to_string(&curated_path)
+                .with_context(|| format!("read curated workstreams from {curated_path:?}"))?;
+            let ws: WorkstreamsFile = serde_yaml::from_str(&text)
+                .with_context(|| format!("parse curated workstreams yaml {curated_path:?}"))?;
+            return Ok(Some(ws));
+        }
+        let suggested_path = dir.join(Self::SUGGESTED_FILENAME);
+        if suggested_path.exists() {
+            let text = std::fs::read_to_string(&suggested_path)
+                .with_context(|| format!("read suggested workstreams from {suggested_path:?}"))?;
+            let ws: WorkstreamsFile = serde_yaml::from_str(&text)
+                .with_context(|| format!("parse suggested workstreams yaml {suggested_path:?}"))?;
+            return Ok(Some(ws));
+        }
+        Ok(None)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use shiplog_schema::event::*;
     use shiplog_ids::EventId;
+    use shiplog_schema::event::*;
 
     fn make_test_event(repo_name: &str, event_id: &str) -> EventEnvelope {
         EventEnvelope {
             id: EventId::from_parts(["x", event_id]),
             kind: EventKind::PullRequest,
             occurred_at: Utc::now(),
-            actor: Actor { login: "a".into(), id: None },
+            actor: Actor {
+                login: "a".into(),
+                id: None,
+            },
             repo: RepoRef {
                 full_name: repo_name.into(),
                 html_url: Some(format!("https://github.com/{repo_name}")),
                 visibility: RepoVisibility::Unknown,
             },
-            payload: EventPayload::PullRequest(PullRequestEvent{
+            payload: EventPayload::PullRequest(PullRequestEvent {
                 number: 1,
                 title: "t".into(),
                 state: PullRequestState::Merged,
@@ -204,7 +237,11 @@ mod tests {
             }),
             tags: vec![],
             links: vec![],
-            source: SourceRef { system: SourceSystem::Unknown, url: None, opaque_id: None },
+            source: SourceRef {
+                system: SourceSystem::Unknown,
+                url: None,
+                opaque_id: None,
+            },
         }
     }
 
@@ -240,7 +277,7 @@ mod tests {
         // Load effective — should return curated even with different events
         let ev = make_test_event("o/r1", "1");
         let loaded = WorkstreamManager::load_effective(out_dir, &RepoClusterer, &[ev]).unwrap();
-        
+
         assert_eq!(loaded.workstreams.len(), 1);
         assert_eq!(loaded.workstreams[0].title, "My Curated Workstream");
     }
@@ -269,9 +306,98 @@ mod tests {
         // Load effective — should return suggested
         let ev = make_test_event("o/r1", "1");
         let loaded = WorkstreamManager::load_effective(out_dir, &RepoClusterer, &[ev]).unwrap();
-        
+
         assert_eq!(loaded.workstreams.len(), 1);
         assert_eq!(loaded.workstreams[0].title, "Suggested Workstream");
+    }
+
+    #[test]
+    fn try_load_empty_dir_returns_none() {
+        let temp = tempfile::tempdir().unwrap();
+        let result = WorkstreamManager::try_load(temp.path()).unwrap();
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn try_load_with_curated_returns_curated() {
+        let temp = tempfile::tempdir().unwrap();
+        let ws = WorkstreamsFile {
+            version: 1,
+            generated_at: Utc::now(),
+            workstreams: vec![Workstream {
+                id: WorkstreamId::from_parts(["curated"]),
+                title: "Curated".into(),
+                summary: None,
+                tags: vec![],
+                stats: WorkstreamStats::zero(),
+                events: vec![],
+                receipts: vec![],
+            }],
+        };
+        write_workstreams(&temp.path().join("workstreams.yaml"), &ws).unwrap();
+
+        let loaded = WorkstreamManager::try_load(temp.path()).unwrap().unwrap();
+        assert_eq!(loaded.workstreams[0].title, "Curated");
+    }
+
+    #[test]
+    fn try_load_with_only_suggested_returns_suggested() {
+        let temp = tempfile::tempdir().unwrap();
+        let ws = WorkstreamsFile {
+            version: 1,
+            generated_at: Utc::now(),
+            workstreams: vec![Workstream {
+                id: WorkstreamId::from_parts(["suggested"]),
+                title: "Suggested".into(),
+                summary: None,
+                tags: vec![],
+                stats: WorkstreamStats::zero(),
+                events: vec![],
+                receipts: vec![],
+            }],
+        };
+        write_workstreams(&temp.path().join("workstreams.suggested.yaml"), &ws).unwrap();
+
+        let loaded = WorkstreamManager::try_load(temp.path()).unwrap().unwrap();
+        assert_eq!(loaded.workstreams[0].title, "Suggested");
+    }
+
+    #[test]
+    fn try_load_prefers_curated_over_suggested() {
+        let temp = tempfile::tempdir().unwrap();
+
+        let curated = WorkstreamsFile {
+            version: 1,
+            generated_at: Utc::now(),
+            workstreams: vec![Workstream {
+                id: WorkstreamId::from_parts(["curated"]),
+                title: "Curated".into(),
+                summary: None,
+                tags: vec![],
+                stats: WorkstreamStats::zero(),
+                events: vec![],
+                receipts: vec![],
+            }],
+        };
+        write_workstreams(&temp.path().join("workstreams.yaml"), &curated).unwrap();
+
+        let suggested = WorkstreamsFile {
+            version: 1,
+            generated_at: Utc::now(),
+            workstreams: vec![Workstream {
+                id: WorkstreamId::from_parts(["suggested"]),
+                title: "Suggested".into(),
+                summary: None,
+                tags: vec![],
+                stats: WorkstreamStats::zero(),
+                events: vec![],
+                receipts: vec![],
+            }],
+        };
+        write_workstreams(&temp.path().join("workstreams.suggested.yaml"), &suggested).unwrap();
+
+        let loaded = WorkstreamManager::try_load(temp.path()).unwrap().unwrap();
+        assert_eq!(loaded.workstreams[0].title, "Curated");
     }
 
     #[test]
@@ -282,11 +408,12 @@ mod tests {
         // No files exist — should generate from events
         let ev1 = make_test_event("o/r1", "1");
         let ev2 = make_test_event("o/r2", "2");
-        let loaded = WorkstreamManager::load_effective(out_dir, &RepoClusterer, &[ev1, ev2]).unwrap();
-        
+        let loaded =
+            WorkstreamManager::load_effective(out_dir, &RepoClusterer, &[ev1, ev2]).unwrap();
+
         // Should have generated workstreams based on repos
         assert_eq!(loaded.workstreams.len(), 2);
-        
+
         // Should have written suggested file
         assert!(out_dir.join("workstreams.suggested.yaml").exists());
     }

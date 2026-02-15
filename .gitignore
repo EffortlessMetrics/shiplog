@@ -1,3 +1,25 @@
 /target
 /out
 **/*.zip
+
+# Build artifacts
+clippy_output.txt
+
+# SQLite databases (shiplog-cache)
+*.sqlite
+*.sqlite-journal
+*.db
+
+# Environment / secrets
+.env
+.env.*
+
+# Editor / IDE
+.idea/
+.vscode/
+*.swp
+*~
+
+# OS junk
+.DS_Store
+Thumbs.db

@@ -1,20 +1,26 @@
 [package]
 name = "shiplog-redact"
-version.workspace = true
+version = "0.2.0"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
+description = "Deterministic HMAC-SHA256 redaction with internal/manager/public profiles for shiplog"
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
 
 [dependencies]
 anyhow.workspace = true
 serde.workspace = true
+serde_json.workspace = true
 sha2.workspace = true
 hex.workspace = true
-shiplog-schema = { path = "../shiplog-schema" }
-shiplog-ports = { path = "../shiplog-ports" }
+shiplog-schema = { path = "../shiplog-schema", version = "0.2.0" }
+shiplog-ports = { path = "../shiplog-ports", version = "0.2.0" }
 
 [dev-dependencies]
 proptest.workspace = true
-serde_json.workspace = true
 chrono.workspace = true
-shiplog-ids = { path = "../shiplog-ids" }
+tempfile.workspace = true
+shiplog-ids = { path = "../shiplog-ids", version = "0.2.0" }
+

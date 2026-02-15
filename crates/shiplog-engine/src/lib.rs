@@ -1,7 +1,14 @@
+//! Orchestration engine for the shiplog pipeline.
+//!
+//! Wires together ingestors, clusterers, redactors, and renderers to drive the
+//! `collect`, `render`, `refresh`, and `run` commands. This is the main
+//! coordination layer between the CLI and the microcrate adapters.
+
 use anyhow::{Context, Result};
 use shiplog_bundle::{write_bundle_manifest, write_zip};
 use shiplog_ports::{IngestOutput, Redactor, Renderer, WorkstreamClusterer};
 use shiplog_render_json::{write_coverage_manifest, write_events_jsonl};
+use shiplog_schema::bundle::BundleProfile;
 use shiplog_schema::coverage::CoverageManifest;
 use shiplog_schema::event::EventEnvelope;
 use shiplog_schema::workstream::WorkstreamsFile;
@@ -48,7 +55,7 @@ impl<'a> Engine<'a> {
     }
 
     /// Run the full pipeline: ingest → cluster → render
-    /// 
+    ///
     /// Uses WorkstreamManager to respect user-curated workstreams.
     pub fn run(
         &self,
@@ -57,6 +64,7 @@ impl<'a> Engine<'a> {
         window_label: &str,
         out_dir: &Path,
         zip: bool,
+        bundle_profile: &BundleProfile,
     ) -> Result<(RunOutputs, WorkstreamSource)> {
         std::fs::create_dir_all(out_dir).with_context(|| format!("create {out_dir:?}"))?;
 
@@ -82,35 +90,58 @@ impl<'a> Engine<'a> {
             WorkstreamSource::Generated => WorkstreamManager::suggested_path(out_dir),
         };
 
-        let packet = self
-            .renderer
-            .render_packet_markdown(user, window_label, &events, &workstreams, &coverage)?;
+        let packet = self.renderer.render_packet_markdown(
+            user,
+            window_label,
+            &events,
+            &workstreams,
+            &coverage,
+        )?;
         std::fs::write(&packet_path, packet)?;
 
         // Render profiles
-        self.render_profile("manager", user, window_label, out_dir, &events, &workstreams, &coverage)?;
-        self.render_profile("public", user, window_label, out_dir, &events, &workstreams, &coverage)?;
+        self.render_profile(
+            "manager",
+            user,
+            window_label,
+            out_dir,
+            &events,
+            &workstreams,
+            &coverage,
+        )?;
+        self.render_profile(
+            "public",
+            user,
+            window_label,
+            out_dir,
+            &events,
+            &workstreams,
+            &coverage,
+        )?;
 
         // Bundle manifest + zip
         let run_id = &coverage.run_id;
-        let _bundle = write_bundle_manifest(out_dir, run_id)?;
+        let _bundle = write_bundle_manifest(out_dir, run_id, bundle_profile)?;
         let zip_path = if zip {
-            let z = out_dir.with_extension("zip");
-            write_zip(out_dir, &z)?;
+            let z = zip_path_for_profile(out_dir, bundle_profile);
+            write_zip(out_dir, &z, bundle_profile)?;
             Some(z)
         } else {
             None
         };
 
-        Ok((RunOutputs {
-            out_dir: out_dir.to_path_buf(),
-            packet_md: packet_path,
-            workstreams_yaml: ws_path,
-            ledger_events_jsonl: ledger_path,
-            coverage_manifest_json: coverage_path,
-            bundle_manifest_json: out_dir.join("bundle.manifest.json"),
-            zip_path,
-        }, ws_source))
+        Ok((
+            RunOutputs {
+                out_dir: out_dir.to_path_buf(),
+                packet_md: packet_path,
+                workstreams_yaml: ws_path,
+                ledger_events_jsonl: ledger_path,
+                coverage_manifest_json: coverage_path,
+                bundle_manifest_json: out_dir.join("bundle.manifest.json"),
+                zip_path,
+            },
+            ws_source,
+        ))
     }
 
     /// Load workstreams using WorkstreamManager
@@ -135,8 +166,102 @@ impl<'a> Engine<'a> {
         Ok((ws, source))
     }
 
+    /// Import a pre-built ledger and run the full render pipeline.
+    ///
+    /// When `workstreams` is `Some`, uses them directly (writes as curated).
+    /// When `None`, falls through to normal clustering.
+    #[allow(clippy::too_many_arguments)]
+    pub fn import(
+        &self,
+        ingest: IngestOutput,
+        user: &str,
+        window_label: &str,
+        out_dir: &Path,
+        zip: bool,
+        workstreams: Option<WorkstreamsFile>,
+        bundle_profile: &BundleProfile,
+    ) -> Result<(RunOutputs, WorkstreamSource)> {
+        std::fs::create_dir_all(out_dir).with_context(|| format!("create {out_dir:?}"))?;
+
+        let events = ingest.events;
+        let coverage = ingest.coverage;
+
+        // Use provided workstreams or generate new ones
+        let (ws, ws_source) = if let Some(ws) = workstreams {
+            // Write imported workstreams as curated
+            let curated_path = WorkstreamManager::curated_path(out_dir);
+            shiplog_workstreams::write_workstreams(&curated_path, &ws)?;
+            (ws, WorkstreamSource::Curated)
+        } else {
+            self.load_workstreams(out_dir, &events)?
+        };
+
+        // Write canonical outputs
+        let ledger_path = out_dir.join("ledger.events.jsonl");
+        let coverage_path = out_dir.join("coverage.manifest.json");
+        let packet_path = out_dir.join("packet.md");
+
+        write_events_jsonl(&ledger_path, &events)?;
+        write_coverage_manifest(&coverage_path, &coverage)?;
+
+        let ws_path = match ws_source {
+            WorkstreamSource::Curated => WorkstreamManager::curated_path(out_dir),
+            WorkstreamSource::Suggested => WorkstreamManager::suggested_path(out_dir),
+            WorkstreamSource::Generated => WorkstreamManager::suggested_path(out_dir),
+        };
+
+        let packet =
+            self.renderer
+                .render_packet_markdown(user, window_label, &events, &ws, &coverage)?;
+        std::fs::write(&packet_path, packet)?;
+
+        // Render profiles
+        self.render_profile(
+            "manager",
+            user,
+            window_label,
+            out_dir,
+            &events,
+            &ws,
+            &coverage,
+        )?;
+        self.render_profile(
+            "public",
+            user,
+            window_label,
+            out_dir,
+            &events,
+            &ws,
+            &coverage,
+        )?;
+
+        // Bundle manifest + zip
+        let run_id = &coverage.run_id;
+        let _bundle = write_bundle_manifest(out_dir, run_id, bundle_profile)?;
+        let zip_path = if zip {
+            let z = zip_path_for_profile(out_dir, bundle_profile);
+            write_zip(out_dir, &z, bundle_profile)?;
+            Some(z)
+        } else {
+            None
+        };
+
+        Ok((
+            RunOutputs {
+                out_dir: out_dir.to_path_buf(),
+                packet_md: packet_path,
+                workstreams_yaml: ws_path,
+                ledger_events_jsonl: ledger_path,
+                coverage_manifest_json: coverage_path,
+                bundle_manifest_json: out_dir.join("bundle.manifest.json"),
+                zip_path,
+            },
+            ws_source,
+        ))
+    }
+
     /// Refresh receipts and stats without regenerating workstreams
-    /// 
+    ///
     /// This preserves user curation while updating event data.
     pub fn refresh(
         &self,
@@ -145,6 +270,7 @@ impl<'a> Engine<'a> {
         window_label: &str,
         out_dir: &Path,
         zip: bool,
+        bundle_profile: &BundleProfile,
     ) -> Result<RunOutputs> {
         std::fs::create_dir_all(out_dir).with_context(|| format!("create {out_dir:?}"))?;
 
@@ -161,10 +287,12 @@ impl<'a> Engine<'a> {
         } else {
             let suggested_path = WorkstreamManager::suggested_path(out_dir);
             if suggested_path.exists() {
-                let text = std::fs::read_to_string(&suggested_path)
-                    .with_context(|| format!("read suggested workstreams from {suggested_path:?}"))?;
-                serde_yaml::from_str(&text)
-                    .with_context(|| format!("parse suggested workstreams yaml {suggested_path:?}"))?
+                let text = std::fs::read_to_string(&suggested_path).with_context(|| {
+                    format!("read suggested workstreams from {suggested_path:?}")
+                })?;
+                serde_yaml::from_str(&text).with_context(|| {
+                    format!("parse suggested workstreams yaml {suggested_path:?}")
+                })?
             } else {
                 anyhow::bail!(
                     "No workstreams found. Run `shiplog collect` first to generate workstreams."
@@ -186,21 +314,41 @@ impl<'a> Engine<'a> {
             WorkstreamManager::suggested_path(out_dir)
         };
 
-        let packet = self
-            .renderer
-            .render_packet_markdown(user, window_label, &events, &workstreams, &coverage)?;
+        let packet = self.renderer.render_packet_markdown(
+            user,
+            window_label,
+            &events,
+            &workstreams,
+            &coverage,
+        )?;
         std::fs::write(&packet_path, packet)?;
 
         // Render profiles
-        self.render_profile("manager", user, window_label, out_dir, &events, &workstreams, &coverage)?;
-        self.render_profile("public", user, window_label, out_dir, &events, &workstreams, &coverage)?;
+        self.render_profile(
+            "manager",
+            user,
+            window_label,
+            out_dir,
+            &events,
+            &workstreams,
+            &coverage,
+        )?;
+        self.render_profile(
+            "public",
+            user,
+            window_label,
+            out_dir,
+            &events,
+            &workstreams,
+            &coverage,
+        )?;
 
         // Bundle manifest + zip
         let run_id = &coverage.run_id;
-        let _bundle = write_bundle_manifest(out_dir, run_id)?;
+        let _bundle = write_bundle_manifest(out_dir, run_id, bundle_profile)?;
         let zip_path = if zip {
-            let z = out_dir.with_extension("zip");
-            write_zip(out_dir, &z)?;
+            let z = zip_path_for_profile(out_dir, bundle_profile);
+            write_zip(out_dir, &z, bundle_profile)?;
             Some(z)
         } else {
             None
@@ -217,6 +365,7 @@ impl<'a> Engine<'a> {
         })
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn render_profile(
         &self,
         profile: &str,
@@ -242,5 +391,18 @@ impl<'a> Engine<'a> {
         )?;
         std::fs::write(prof_dir.join("packet.md"), md)?;
         Ok(())
+    }
+}
+
+/// Compute the zip file path based on bundle profile.
+/// `Internal` -> `<run_dir>.zip`, others -> `<run_dir>.<profile>.zip`.
+fn zip_path_for_profile(out_dir: &Path, profile: &BundleProfile) -> PathBuf {
+    match profile {
+        BundleProfile::Internal => out_dir.with_extension("zip"),
+        _ => {
+            let stem = out_dir.file_name().unwrap_or_default().to_string_lossy();
+            let name = format!("{}.{}.zip", stem, profile.as_str());
+            out_dir.with_file_name(name)
+        }
     }
 }
