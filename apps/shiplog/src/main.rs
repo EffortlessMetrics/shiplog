@@ -41,6 +41,18 @@ enum Command {
         /// regenerate workstreams.suggested.yaml.
         #[arg(long)]
         regen: bool,
+        /// Use LLM-assisted workstream clustering instead of repo-based.
+        #[arg(long)]
+        llm_cluster: bool,
+        /// LLM API endpoint (OpenAI-compatible).
+        #[arg(long, default_value = "https://api.openai.com/v1/chat/completions")]
+        llm_api_endpoint: String,
+        /// LLM model name.
+        #[arg(long, default_value = "gpt-4o-mini")]
+        llm_model: String,
+        /// LLM API key (or set SHIPLOG_LLM_API_KEY).
+        #[arg(long)]
+        llm_api_key: Option<String>,
     },
 
     /// Render packets from existing events and workstreams.
@@ -87,6 +99,58 @@ enum Command {
         /// Redaction key. If omitted, SHIPLOG_REDACT_KEY is used.
         #[arg(long)]
         redact_key: Option<String>,
+        /// Use LLM-assisted workstream clustering instead of repo-based.
+        #[arg(long)]
+        llm_cluster: bool,
+        /// LLM API endpoint (OpenAI-compatible).
+        #[arg(long, default_value = "https://api.openai.com/v1/chat/completions")]
+        llm_api_endpoint: String,
+        /// LLM model name.
+        #[arg(long, default_value = "gpt-4o-mini")]
+        llm_model: String,
+        /// LLM API key (or set SHIPLOG_LLM_API_KEY).
+        #[arg(long)]
+        llm_api_key: Option<String>,
+    },
+
+    /// Import a pre-built ledger directory and run the full render pipeline.
+    ///
+    /// Use this to consume output from an upstream system or a previous
+    /// shiplog run and re-render it.
+    Import {
+        /// Directory containing ledger.events.jsonl and coverage.manifest.json
+        #[arg(long)]
+        dir: PathBuf,
+        /// Output directory (a run folder will be created inside).
+        #[arg(long, default_value = "./out")]
+        out: PathBuf,
+        /// User label for rendering.
+        #[arg(long, default_value = "user")]
+        user: String,
+        /// Window label for rendering.
+        #[arg(long, default_value = "window")]
+        window_label: String,
+        /// Redaction key. If omitted, SHIPLOG_REDACT_KEY is used.
+        #[arg(long)]
+        redact_key: Option<String>,
+        /// Also write a zip next to the run folder.
+        #[arg(long)]
+        zip: bool,
+        /// Ignore imported workstreams and re-cluster from events.
+        #[arg(long)]
+        regen: bool,
+        /// Use LLM-assisted workstream clustering instead of repo-based.
+        #[arg(long)]
+        llm_cluster: bool,
+        /// LLM API endpoint (OpenAI-compatible).
+        #[arg(long, default_value = "https://api.openai.com/v1/chat/completions")]
+        llm_api_endpoint: String,
+        /// LLM model name.
+        #[arg(long, default_value = "gpt-4o-mini")]
+        llm_model: String,
+        /// LLM API key (or set SHIPLOG_LLM_API_KEY).
+        #[arg(long)]
+        llm_api_key: Option<String>,
     },
 
     /// Run the full pipeline (collect + render) in one command.
@@ -105,6 +169,18 @@ enum Command {
         /// Redaction key. If omitted, SHIPLOG_REDACT_KEY is used.
         #[arg(long)]
         redact_key: Option<String>,
+        /// Use LLM-assisted workstream clustering instead of repo-based.
+        #[arg(long)]
+        llm_cluster: bool,
+        /// LLM API endpoint (OpenAI-compatible).
+        #[arg(long, default_value = "https://api.openai.com/v1/chat/completions")]
+        llm_api_endpoint: String,
+        /// LLM model name.
+        #[arg(long, default_value = "gpt-4o-mini")]
+        llm_model: String,
+        /// LLM API key (or set SHIPLOG_LLM_API_KEY).
+        #[arg(long)]
+        llm_api_key: Option<String>,
     },
 }
 
@@ -165,18 +241,62 @@ fn get_redact_key(redact_key: Option<String>) -> String {
         })
 }
 
-fn create_engine(redact_key: &str) -> Engine<'static> {
+fn create_engine(
+    redact_key: &str,
+    clusterer: Box<dyn shiplog_ports::WorkstreamClusterer>,
+) -> (Engine<'static>, &'static DeterministicRedactor) {
     let renderer = MarkdownRenderer;
-    let clusterer = RepoClusterer;
     let redactor = DeterministicRedactor::new(redact_key.as_bytes());
 
     // We need to leak these to give them 'static lifetime
     // This is acceptable for a CLI tool that runs once
     let renderer: &'static dyn shiplog_ports::Renderer = Box::leak(Box::new(renderer));
-    let clusterer: &'static dyn shiplog_ports::WorkstreamClusterer = Box::leak(Box::new(clusterer));
-    let redactor: &'static dyn shiplog_ports::Redactor = Box::leak(Box::new(redactor));
+    let clusterer: &'static dyn shiplog_ports::WorkstreamClusterer = Box::leak(clusterer);
+    let redactor_box = Box::new(redactor);
+    let redactor_ref: &'static DeterministicRedactor = Box::leak(redactor_box);
+    let redactor_trait: &'static dyn shiplog_ports::Redactor = redactor_ref;
 
-    Engine::new(renderer, clusterer, redactor)
+    (
+        Engine::new(renderer, clusterer, redactor_trait),
+        redactor_ref,
+    )
+}
+
+fn build_clusterer(
+    llm_cluster: bool,
+    llm_api_endpoint: &str,
+    llm_model: &str,
+    llm_api_key: Option<String>,
+) -> Box<dyn shiplog_ports::WorkstreamClusterer> {
+    if llm_cluster {
+        eprintln!(
+            "WARN: --llm-cluster sends event summaries (PR titles, repo names) to {llm_api_endpoint}"
+        );
+        let api_key = llm_api_key
+            .or_else(|| std::env::var("SHIPLOG_LLM_API_KEY").ok())
+            .unwrap_or_else(|| {
+                eprintln!("ERROR: --llm-cluster requires --llm-api-key or SHIPLOG_LLM_API_KEY");
+                std::process::exit(1);
+            });
+
+        let backend = shiplog_cluster_llm::OpenAiCompatibleBackend {
+            endpoint: llm_api_endpoint.to_string(),
+            api_key,
+            model: llm_model.to_string(),
+            temperature: 0.2,
+            timeout_secs: 60,
+        };
+        let config = shiplog_cluster_llm::LlmConfig {
+            api_endpoint: llm_api_endpoint.to_string(),
+            api_key: String::new(),
+            model: llm_model.to_string(),
+            ..Default::default()
+        };
+        let llm = shiplog_cluster_llm::LlmClusterer::new(Box::new(backend), config);
+        Box::new(shiplog_cluster_llm::LlmWithFallback::new(llm))
+    } else {
+        Box::new(RepoClusterer)
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -214,9 +334,15 @@ fn main() -> Result<()> {
             zip,
             redact_key,
             regen,
+            llm_cluster,
+            llm_api_endpoint,
+            llm_model,
+            llm_api_key,
         } => {
             let key = get_redact_key(redact_key);
-            let engine = create_engine(&key);
+            let clusterer =
+                build_clusterer(llm_cluster, &llm_api_endpoint, &llm_model, llm_api_key);
+            let (engine, redactor) = create_engine(&key, clusterer);
 
             match source {
                 Source::Github {
@@ -263,8 +389,13 @@ fn main() -> Result<()> {
                         }
                     }
 
+                    let cache_path = DeterministicRedactor::cache_path(&run_dir);
+                    let _ = redactor.load_cache(&cache_path);
+
                     let (outputs, ws_source) =
                         engine.run(ingest, &user, &window_label, &run_dir, zip)?;
+
+                    redactor.save_cache(&cache_path)?;
 
                     println!("Collected and wrote:");
                     print_outputs(&outputs, ws_source);
@@ -284,8 +415,13 @@ fn main() -> Result<()> {
                     let run_id = ingest.coverage.run_id.to_string();
                     let run_dir = out.join(&run_id);
 
+                    let cache_path = DeterministicRedactor::cache_path(&run_dir);
+                    let _ = redactor.load_cache(&cache_path);
+
                     let (outputs, ws_source) =
                         engine.run(ingest, &user, &window_label, &run_dir, zip)?;
+
+                    redactor.save_cache(&cache_path)?;
 
                     println!("Collected and wrote:");
                     print_outputs(&outputs, ws_source);
@@ -302,7 +438,8 @@ fn main() -> Result<()> {
             zip,
         } => {
             let key = get_redact_key(redact_key);
-            let engine = create_engine(&key);
+            let clusterer: Box<dyn shiplog_ports::WorkstreamClusterer> = Box::new(RepoClusterer);
+            let (engine, redactor) = create_engine(&key, clusterer);
 
             // Determine which run to render
             let run_dir = if let Some(run_id) = run {
@@ -329,7 +466,12 @@ fn main() -> Result<()> {
             };
             let ingest = ing.ingest()?;
 
+            let cache_path = DeterministicRedactor::cache_path(&run_dir);
+            let _ = redactor.load_cache(&cache_path);
+
             let outputs = engine.refresh(ingest, &user, &window_label, &run_dir, zip)?;
+
+            redactor.save_cache(&cache_path)?;
 
             println!("Rendered from existing events:");
             print_outputs(&outputs, WorkstreamSource::Curated);
@@ -341,9 +483,15 @@ fn main() -> Result<()> {
             run_dir: explicit_run_dir,
             zip,
             redact_key,
+            llm_cluster,
+            llm_api_endpoint,
+            llm_model,
+            llm_api_key,
         } => {
             let key = get_redact_key(redact_key);
-            let engine = create_engine(&key);
+            let clusterer =
+                build_clusterer(llm_cluster, &llm_api_endpoint, &llm_model, llm_api_key);
+            let (engine, redactor) = create_engine(&key, clusterer);
 
             // Resolve run directory: explicit --run-dir, or find most recent
             let run_dir = if let Some(rd) = explicit_run_dir {
@@ -351,6 +499,9 @@ fn main() -> Result<()> {
             } else {
                 find_most_recent_run(&out)?
             };
+
+            let cache_path = DeterministicRedactor::cache_path(&run_dir);
+            let _ = redactor.load_cache(&cache_path);
 
             match source {
                 Source::Github {
@@ -390,6 +541,8 @@ fn main() -> Result<()> {
                     }
 
                     let outputs = engine.refresh(ingest, &user, &window_label, &run_dir, zip)?;
+
+                    redactor.save_cache(&cache_path)?;
 
                     println!("Refreshed while preserving workstream curation:");
                     print_outputs_simple(&outputs);
@@ -419,10 +572,73 @@ fn main() -> Result<()> {
 
                     let outputs = engine.refresh(ingest, &user, &window_label, &run_dir, zip)?;
 
+                    redactor.save_cache(&cache_path)?;
+
                     println!("Refreshed while preserving workstream curation:");
                     print_outputs_simple(&outputs);
                 }
             }
+        }
+
+        Command::Import {
+            dir,
+            out,
+            user,
+            window_label,
+            redact_key,
+            zip,
+            regen,
+            llm_cluster,
+            llm_api_endpoint,
+            llm_model,
+            llm_api_key,
+        } => {
+            let events_path = dir.join("ledger.events.jsonl");
+            let coverage_path = dir.join("coverage.manifest.json");
+
+            if !events_path.exists() {
+                anyhow::bail!(
+                    "No ledger.events.jsonl found in {:?}. Expected import directory.",
+                    dir
+                );
+            }
+            if !coverage_path.exists() {
+                anyhow::bail!(
+                    "No coverage.manifest.json found in {:?}. Expected import directory.",
+                    dir
+                );
+            }
+
+            let key = get_redact_key(redact_key);
+            let clusterer =
+                build_clusterer(llm_cluster, &llm_api_endpoint, &llm_model, llm_api_key);
+            let (engine, redactor) = create_engine(&key, clusterer);
+
+            let ing = JsonIngestor {
+                events_path,
+                coverage_path,
+            };
+            let ingest = ing.ingest()?;
+            let run_id = ingest.coverage.run_id.to_string();
+            let run_dir = out.join(&run_id);
+
+            // Load workstreams from import dir (unless --regen)
+            let workstreams = if regen {
+                None
+            } else {
+                shiplog_workstreams::WorkstreamManager::try_load(&dir)?
+            };
+
+            let cache_path = DeterministicRedactor::cache_path(&run_dir);
+            let _ = redactor.load_cache(&cache_path);
+
+            let (outputs, ws_source) =
+                engine.import(ingest, &user, &window_label, &run_dir, zip, workstreams)?;
+
+            redactor.save_cache(&cache_path)?;
+
+            println!("Imported and wrote:");
+            print_outputs(&outputs, ws_source);
         }
 
         Command::Run {
@@ -430,10 +646,16 @@ fn main() -> Result<()> {
             out,
             zip,
             redact_key,
+            llm_cluster,
+            llm_api_endpoint,
+            llm_model,
+            llm_api_key,
         } => {
             // Legacy mode: just do collect
             let key = get_redact_key(redact_key);
-            let engine = create_engine(&key);
+            let clusterer =
+                build_clusterer(llm_cluster, &llm_api_endpoint, &llm_model, llm_api_key);
+            let (engine, redactor) = create_engine(&key, clusterer);
 
             match source {
                 Source::Github {
@@ -462,9 +684,14 @@ fn main() -> Result<()> {
                     let run_id = ingest.coverage.run_id.to_string();
                     let run_dir = out.join(&run_id);
 
+                    let cache_path = DeterministicRedactor::cache_path(&run_dir);
+                    let _ = redactor.load_cache(&cache_path);
+
                     let window_label = format!("{}..{}", since, until);
                     let (outputs, ws_source) =
                         engine.run(ingest, &user, &window_label, &run_dir, zip)?;
+
+                    redactor.save_cache(&cache_path)?;
 
                     println!("Wrote:");
                     print_outputs(&outputs, ws_source);
@@ -483,8 +710,14 @@ fn main() -> Result<()> {
                     let ingest = ing.ingest()?;
                     let run_id = ingest.coverage.run_id.to_string();
                     let run_dir = out.join(&run_id);
+
+                    let cache_path = DeterministicRedactor::cache_path(&run_dir);
+                    let _ = redactor.load_cache(&cache_path);
+
                     let (outputs, ws_source) =
                         engine.run(ingest, &user, &window_label, &run_dir, zip)?;
+
+                    redactor.save_cache(&cache_path)?;
 
                     println!("Wrote:");
                     print_outputs(&outputs, ws_source);

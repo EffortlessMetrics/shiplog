@@ -20,4 +20,5 @@ shiplog-render-md = { path = "../../crates/shiplog-render-md", version = "0.2.0"
 shiplog-workstreams = { path = "../../crates/shiplog-workstreams", version = "0.2.0" }
 shiplog-redact = { path = "../../crates/shiplog-redact", version = "0.2.0" }
 shiplog-ports = { path = "../../crates/shiplog-ports", version = "0.2.0" }
+shiplog-cluster-llm = { path = "../../crates/shiplog-cluster-llm", version = "0.2.0" }
 

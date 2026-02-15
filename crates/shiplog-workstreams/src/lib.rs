@@ -179,6 +179,28 @@ impl WorkstreamManager {
     pub fn suggested_path(out_dir: &Path) -> std::path::PathBuf {
         out_dir.join(Self::SUGGESTED_FILENAME)
     }
+
+    /// Try to load workstreams from a directory. Returns None if no workstream files exist.
+    /// Checks curated first, then suggested.
+    pub fn try_load(dir: &Path) -> Result<Option<WorkstreamsFile>> {
+        let curated_path = dir.join(Self::CURATED_FILENAME);
+        if curated_path.exists() {
+            let text = std::fs::read_to_string(&curated_path)
+                .with_context(|| format!("read curated workstreams from {curated_path:?}"))?;
+            let ws: WorkstreamsFile = serde_yaml::from_str(&text)
+                .with_context(|| format!("parse curated workstreams yaml {curated_path:?}"))?;
+            return Ok(Some(ws));
+        }
+        let suggested_path = dir.join(Self::SUGGESTED_FILENAME);
+        if suggested_path.exists() {
+            let text = std::fs::read_to_string(&suggested_path)
+                .with_context(|| format!("read suggested workstreams from {suggested_path:?}"))?;
+            let ws: WorkstreamsFile = serde_yaml::from_str(&text)
+                .with_context(|| format!("parse suggested workstreams yaml {suggested_path:?}"))?;
+            return Ok(Some(ws));
+        }
+        Ok(None)
+    }
 }
 
 #[cfg(test)]
@@ -287,6 +309,95 @@ mod tests {
 
         assert_eq!(loaded.workstreams.len(), 1);
         assert_eq!(loaded.workstreams[0].title, "Suggested Workstream");
+    }
+
+    #[test]
+    fn try_load_empty_dir_returns_none() {
+        let temp = tempfile::tempdir().unwrap();
+        let result = WorkstreamManager::try_load(temp.path()).unwrap();
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn try_load_with_curated_returns_curated() {
+        let temp = tempfile::tempdir().unwrap();
+        let ws = WorkstreamsFile {
+            version: 1,
+            generated_at: Utc::now(),
+            workstreams: vec![Workstream {
+                id: WorkstreamId::from_parts(["curated"]),
+                title: "Curated".into(),
+                summary: None,
+                tags: vec![],
+                stats: WorkstreamStats::zero(),
+                events: vec![],
+                receipts: vec![],
+            }],
+        };
+        write_workstreams(&temp.path().join("workstreams.yaml"), &ws).unwrap();
+
+        let loaded = WorkstreamManager::try_load(temp.path()).unwrap().unwrap();
+        assert_eq!(loaded.workstreams[0].title, "Curated");
+    }
+
+    #[test]
+    fn try_load_with_only_suggested_returns_suggested() {
+        let temp = tempfile::tempdir().unwrap();
+        let ws = WorkstreamsFile {
+            version: 1,
+            generated_at: Utc::now(),
+            workstreams: vec![Workstream {
+                id: WorkstreamId::from_parts(["suggested"]),
+                title: "Suggested".into(),
+                summary: None,
+                tags: vec![],
+                stats: WorkstreamStats::zero(),
+                events: vec![],
+                receipts: vec![],
+            }],
+        };
+        write_workstreams(&temp.path().join("workstreams.suggested.yaml"), &ws).unwrap();
+
+        let loaded = WorkstreamManager::try_load(temp.path()).unwrap().unwrap();
+        assert_eq!(loaded.workstreams[0].title, "Suggested");
+    }
+
+    #[test]
+    fn try_load_prefers_curated_over_suggested() {
+        let temp = tempfile::tempdir().unwrap();
+
+        let curated = WorkstreamsFile {
+            version: 1,
+            generated_at: Utc::now(),
+            workstreams: vec![Workstream {
+                id: WorkstreamId::from_parts(["curated"]),
+                title: "Curated".into(),
+                summary: None,
+                tags: vec![],
+                stats: WorkstreamStats::zero(),
+                events: vec![],
+                receipts: vec![],
+            }],
+        };
+        write_workstreams(&temp.path().join("workstreams.yaml"), &curated).unwrap();
+
+        let suggested = WorkstreamsFile {
+            version: 1,
+            generated_at: Utc::now(),
+            workstreams: vec![Workstream {
+                id: WorkstreamId::from_parts(["suggested"]),
+                title: "Suggested".into(),
+                summary: None,
+                tags: vec![],
+                stats: WorkstreamStats::zero(),
+                events: vec![],
+                receipts: vec![],
+            }],
+        };
+        write_workstreams(&temp.path().join("workstreams.suggested.yaml"), &suggested).unwrap();
+
+        let loaded = WorkstreamManager::try_load(temp.path()).unwrap().unwrap();
+        assert_eq!(loaded.workstreams[0].title, "Curated");
     }
 
     #[test]

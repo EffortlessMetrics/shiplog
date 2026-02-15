@@ -15,3 +15,9 @@ serde_json.workspace = true
 shiplog-ports = { path = "../shiplog-ports", version = "0.2.0" }
 shiplog-schema = { path = "../shiplog-schema", version = "0.2.0" }
 
+[dev-dependencies]
+tempfile.workspace = true
+chrono.workspace = true
+serde.workspace = true
+shiplog-ids = { path = "../shiplog-ids", version = "0.2.0" }
+

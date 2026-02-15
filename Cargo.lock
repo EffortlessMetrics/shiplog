@@ -1729,6 +1729,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "clap",
+ "shiplog-cluster-llm",
  "shiplog-engine",
  "shiplog-ingest-github",
  "shiplog-ingest-json",
@@ -1764,6 +1765,21 @@ dependencies = [
  "shiplog-schema",
  "tempfile",
  "tokio",
+]
+
+[[package]]
+name = "shiplog-cluster-llm"
+version = "0.2.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "shiplog-ids",
+ "shiplog-ports",
+ "shiplog-schema",
+ "shiplog-workstreams",
 ]
 
 [[package]]
@@ -1823,9 +1839,13 @@ name = "shiplog-ingest-json"
 version = "0.2.0"
 dependencies = [
  "anyhow",
+ "chrono",
+ "serde",
  "serde_json",
+ "shiplog-ids",
  "shiplog-ports",
  "shiplog-schema",
+ "tempfile",
 ]
 
 [[package]]
@@ -1864,6 +1884,7 @@ dependencies = [
  "shiplog-ids",
  "shiplog-ports",
  "shiplog-schema",
+ "tempfile",
 ]
 
 [[package]]

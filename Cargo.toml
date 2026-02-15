@@ -16,6 +16,7 @@ members = [
   "crates/shiplog-ingest-manual",
   "crates/shiplog-cache",
   "crates/shiplog-testkit",
+  "crates/shiplog-cluster-llm",
   "apps/shiplog",
 ]
 

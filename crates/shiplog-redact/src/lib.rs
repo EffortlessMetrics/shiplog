@@ -1,10 +1,11 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use shiplog_ports::Redactor;
 use shiplog_schema::event::{EventEnvelope, EventPayload, RepoRef, RepoVisibility};
 use shiplog_schema::workstream::{Workstream, WorkstreamsFile};
 use std::collections::BTreeMap;
+use std::path::{Path, PathBuf};
 
 /// Rendering profiles.
 ///
@@ -27,6 +28,14 @@ impl RedactionProfile {
     }
 }
 
+#[derive(Serialize, Deserialize)]
+struct AliasCache {
+    version: u32,
+    entries: BTreeMap<String, String>,
+}
+
+const CACHE_FILENAME: &str = "redaction.aliases.json";
+
 /// Deterministic redactor.
 ///
 /// This intentionally does not try to be clever.
@@ -46,6 +55,47 @@ impl DeterministicRedactor {
             key: key.as_ref().to_vec(),
             cache: std::sync::Mutex::new(BTreeMap::new()),
         }
+    }
+
+    /// Path to the alias cache file in a given output directory.
+    pub fn cache_path(out_dir: &Path) -> PathBuf {
+        out_dir.join(CACHE_FILENAME)
+    }
+
+    /// Load cached aliases from disk. No-op if file is missing.
+    pub fn load_cache(&self, path: &Path) -> Result<()> {
+        if !path.exists() {
+            return Ok(());
+        }
+        let text = std::fs::read_to_string(path)
+            .with_context(|| format!("read alias cache from {path:?}"))?;
+        let cache: AliasCache =
+            serde_json::from_str(&text).with_context(|| format!("parse alias cache {path:?}"))?;
+        if cache.version != 1 {
+            anyhow::bail!("unsupported alias cache version: {}", cache.version);
+        }
+        if let Ok(mut c) = self.cache.lock() {
+            for (k, v) in cache.entries {
+                c.entry(k).or_insert(v);
+            }
+        }
+        Ok(())
+    }
+
+    /// Save current aliases to disk.
+    pub fn save_cache(&self, path: &Path) -> Result<()> {
+        let entries = self
+            .cache
+            .lock()
+            .map_err(|e| anyhow::anyhow!("lock cache: {e}"))?
+            .clone();
+        let cache = AliasCache {
+            version: 1,
+            entries,
+        };
+        let json = serde_json::to_string_pretty(&cache)?;
+        std::fs::write(path, json).with_context(|| format!("write alias cache to {path:?}"))?;
+        Ok(())
     }
 
     fn alias(&self, kind: &str, value: &str) -> String {
@@ -831,6 +881,85 @@ mod tests {
         assert!(ws_out.tags.contains(&"security".into()));
         assert!(ws_out.tags.contains(&"backend".into()));
         assert!(ws_out.tags.contains(&"repo".into()));
+    }
+
+    #[test]
+    fn cache_round_trip() {
+        let dir = tempfile::tempdir().unwrap();
+        let cache_path = dir.path().join("redaction.aliases.json");
+
+        let r1 = DeterministicRedactor::new(b"key-a");
+        let a1 = r1.alias("repo", "acme/foo");
+        let a2 = r1.alias("ws", "my-workstream");
+        r1.save_cache(&cache_path).unwrap();
+
+        let r2 = DeterministicRedactor::new(b"key-a");
+        r2.load_cache(&cache_path).unwrap();
+        assert_eq!(r2.alias("repo", "acme/foo"), a1);
+        assert_eq!(r2.alias("ws", "my-workstream"), a2);
+    }
+
+    #[test]
+    fn missing_file_is_noop() {
+        let r = DeterministicRedactor::new(b"key");
+        let result = r.load_cache(std::path::Path::new("/nonexistent/path/cache.json"));
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn corrupt_file_errors() {
+        let dir = tempfile::tempdir().unwrap();
+        let cache_path = dir.path().join("redaction.aliases.json");
+        std::fs::write(&cache_path, "this is not json!!!").unwrap();
+
+        let r = DeterministicRedactor::new(b"key");
+        let result = r.load_cache(&cache_path);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn version_mismatch_errors() {
+        let dir = tempfile::tempdir().unwrap();
+        let cache_path = dir.path().join("redaction.aliases.json");
+        let bad = serde_json::json!({ "version": 99, "entries": {} });
+        std::fs::write(&cache_path, serde_json::to_string(&bad).unwrap()).unwrap();
+
+        let r = DeterministicRedactor::new(b"key");
+        let result = r.load_cache(&cache_path);
+        assert!(result.is_err());
+        let msg = format!("{}", result.unwrap_err());
+        assert!(msg.contains("unsupported alias cache version"));
+    }
+
+    #[test]
+    fn cache_preserves_across_key_change() {
+        let dir = tempfile::tempdir().unwrap();
+        let cache_path = dir.path().join("redaction.aliases.json");
+
+        // Generate aliases with key A
+        let r1 = DeterministicRedactor::new(b"key-A");
+        let alias_a = r1.alias("repo", "acme/foo");
+        r1.save_cache(&cache_path).unwrap();
+
+        // Load into redactor with key B
+        let r2 = DeterministicRedactor::new(b"key-B");
+        r2.load_cache(&cache_path).unwrap();
+
+        // The loaded alias should be used (not regenerated with key B)
+        let alias_b = r2.alias("repo", "acme/foo");
+        assert_eq!(
+            alias_a, alias_b,
+            "cached alias should be preserved, not regenerated with new key"
+        );
+
+        // But a new value not in cache should use key B
+        let fresh_b = r2.alias("repo", "acme/bar");
+        let r3 = DeterministicRedactor::new(b"key-A");
+        let fresh_a = r3.alias("repo", "acme/bar");
+        assert_ne!(
+            fresh_b, fresh_a,
+            "uncached alias should use current key, not old key"
+        );
     }
 
     // Property test using proptest: arbitrary strings should not leak through redaction

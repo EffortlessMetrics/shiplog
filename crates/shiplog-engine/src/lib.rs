@@ -164,6 +164,98 @@ impl<'a> Engine<'a> {
         Ok((ws, source))
     }
 
+    /// Import a pre-built ledger and run the full render pipeline.
+    ///
+    /// When `workstreams` is `Some`, uses them directly (writes as curated).
+    /// When `None`, falls through to normal clustering.
+    pub fn import(
+        &self,
+        ingest: IngestOutput,
+        user: &str,
+        window_label: &str,
+        out_dir: &Path,
+        zip: bool,
+        workstreams: Option<WorkstreamsFile>,
+    ) -> Result<(RunOutputs, WorkstreamSource)> {
+        std::fs::create_dir_all(out_dir).with_context(|| format!("create {out_dir:?}"))?;
+
+        let events = ingest.events;
+        let coverage = ingest.coverage;
+
+        // Use provided workstreams or generate new ones
+        let (ws, ws_source) = if let Some(ws) = workstreams {
+            // Write imported workstreams as curated
+            let curated_path = WorkstreamManager::curated_path(out_dir);
+            shiplog_workstreams::write_workstreams(&curated_path, &ws)?;
+            (ws, WorkstreamSource::Curated)
+        } else {
+            self.load_workstreams(out_dir, &events)?
+        };
+
+        // Write canonical outputs
+        let ledger_path = out_dir.join("ledger.events.jsonl");
+        let coverage_path = out_dir.join("coverage.manifest.json");
+        let packet_path = out_dir.join("packet.md");
+
+        write_events_jsonl(&ledger_path, &events)?;
+        write_coverage_manifest(&coverage_path, &coverage)?;
+
+        let ws_path = match ws_source {
+            WorkstreamSource::Curated => WorkstreamManager::curated_path(out_dir),
+            WorkstreamSource::Suggested => WorkstreamManager::suggested_path(out_dir),
+            WorkstreamSource::Generated => WorkstreamManager::suggested_path(out_dir),
+        };
+
+        let packet =
+            self.renderer
+                .render_packet_markdown(user, window_label, &events, &ws, &coverage)?;
+        std::fs::write(&packet_path, packet)?;
+
+        // Render profiles
+        self.render_profile(
+            "manager",
+            user,
+            window_label,
+            out_dir,
+            &events,
+            &ws,
+            &coverage,
+        )?;
+        self.render_profile(
+            "public",
+            user,
+            window_label,
+            out_dir,
+            &events,
+            &ws,
+            &coverage,
+        )?;
+
+        // Bundle manifest + zip
+        let run_id = &coverage.run_id;
+        let _bundle = write_bundle_manifest(out_dir, run_id)?;
+        let zip_path = if zip {
+            let z = out_dir.with_extension("zip");
+            write_zip(out_dir, &z)?;
+            Some(z)
+        } else {
+            None
+        };
+
+        Ok((
+            RunOutputs {
+                out_dir: out_dir.to_path_buf(),
+                packet_md: packet_path,
+                workstreams_yaml: ws_path,
+                ledger_events_jsonl: ledger_path,
+                coverage_manifest_json: coverage_path,
+                bundle_manifest_json: out_dir.join("bundle.manifest.json"),
+                zip_path,
+            },
+            ws_source,
+        ))
+    }
+
     /// Refresh receipts and stats without regenerating workstreams
     ///
     /// This preserves user curation while updating event data.
