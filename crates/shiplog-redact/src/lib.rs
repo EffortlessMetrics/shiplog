@@ -34,7 +34,8 @@ struct AliasCache {
     entries: BTreeMap<String, String>,
 }
 
-const CACHE_FILENAME: &str = "redaction.aliases.json";
+/// Filename for the redaction alias cache written into each run directory.
+pub const CACHE_FILENAME: &str = "redaction.aliases.json";
 
 /// Deterministic redactor.
 ///

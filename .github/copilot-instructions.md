@@ -63,7 +63,8 @@ This is a microcrated Rust workspace following Clean Architecture boundaries. Ke
 - crates/shiplog-ingest-manual — manual ingest adapter (YAML-based non-GitHub events)
 - crates/shiplog-cache — SQLite-backed API response caching (TTL-based, reduces GitHub API calls)
 - crates/shiplog-testkit — shared test fixtures and utilities
-- apps/shiplog — CLI entrypoint (subcommands: collect, render, refresh, run)
+- crates/shiplog-cluster-llm — optional LLM-assisted workstream clustering (feature-gated in CLI)
+- apps/shiplog — CLI entrypoint (subcommands: collect, render, refresh, import, run)
 
 Important workspace metadata
 - Rust edition: 2024
@@ -72,7 +73,7 @@ Important workspace metadata
 
 Primary runtime/flow: CLI (`apps/shiplog`) drives the engine which wires ingestors (ports -> adapters), normalizes events into the canonical schema, clusters into workstreams, applies deterministic redaction profiles, and renders output formats (Markdown/JSON) with a coverage manifest and optional bundling.
 
-CLI workflow: `collect` fetches events and generates `workstreams.suggested.yaml` → user edits into `workstreams.yaml` → `render` regenerates the packet without re-fetching. `refresh` re-fetches events while preserving curated workstreams. `run` is the legacy one-shot mode.
+CLI workflow: `collect` fetches events and generates `workstreams.suggested.yaml` → user edits into `workstreams.yaml` → `render` regenerates the packet without re-fetching. `refresh` re-fetches events while preserving curated workstreams. `import` re-renders a pre-built ledger directory. `run` is the legacy one-shot mode.
 
 Key CLI flags (on `collect`/`refresh` github subcommands):
 - `--mode merged|created` — which PR lens to ingest
@@ -81,7 +82,13 @@ Key CLI flags (on `collect`/`refresh` github subcommands):
 - `--throttle-ms <N>` — rate-limit API calls (milliseconds)
 - `--api-base <URL>` — GitHub Enterprise Server API base
 - `--regen` — regenerate `workstreams.suggested.yaml`; never overwrites `workstreams.yaml`
+- `--run-dir <PATH>` — explicit run directory for `refresh` (overrides auto-detection)
+- `--zip` — write a zip archive next to the run folder
 - `--redact-key` or `SHIPLOG_REDACT_KEY` env var — controls generation of manager/public packets
+- `--llm-cluster` — use LLM-assisted workstream clustering instead of repo-based
+- `--llm-api-endpoint <URL>` — LLM endpoint (default: OpenAI-compatible)
+- `--llm-model <NAME>` — LLM model name (default: `gpt-4o-mini`)
+- `--llm-api-key <KEY>` — LLM API key (or `SHIPLOG_LLM_API_KEY` env var)
 
 Outputs typically produced under `out/<run_id>/` and include `packet.md`, `workstreams.yaml`, `workstreams.suggested.yaml`, `ledger.events.jsonl`, `coverage.manifest.json`, and `bundle.manifest.json` (see README examples).
 

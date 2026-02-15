@@ -10,7 +10,7 @@ This project is a modular Rust workspace following **Clean Architecture** princi
 
 ### Workspace Structure
 
-*   **`apps/shiplog`**: The CLI application entry point (subcommands: `collect`, `render`, `refresh`, `run`).
+*   **`apps/shiplog`**: The CLI application entry point (subcommands: `collect`, `render`, `refresh`, `import`, `run`).
 *   **`crates/`**:
     *   **Core Domain:**
         *   `shiplog-schema`: Canonical event model (the data spine).
@@ -28,6 +28,8 @@ This project is a modular Rust workspace following **Clean Architecture** princi
         *   `shiplog-render-json`: JSON renderer.
         *   `shiplog-bundle`: Zip export functionality.
         *   `shiplog-cache`: SQLite-backed API response caching (TTL-based, reduces GitHub API calls).
+    *   **Clustering:**
+        *   `shiplog-cluster-llm`: Optional LLM-assisted workstream clustering (feature-gated in CLI).
     *   **Testing:**
         *   `shiplog-testkit`: Shared test fixtures and utilities.
 
@@ -112,7 +114,13 @@ Flags available on `collect`/`refresh` github subcommands:
 *   `--throttle-ms <N>` — rate-limit API calls (milliseconds)
 *   `--api-base <URL>` — GitHub Enterprise Server API base
 *   `--regen` — regenerate `workstreams.suggested.yaml`; never overwrites `workstreams.yaml`
+*   `--run-dir <PATH>` — explicit run directory for `refresh` (overrides auto-detection)
+*   `--zip` — write a zip archive next to the run folder
 *   `--redact-key` or `SHIPLOG_REDACT_KEY` env var — controls generation of manager/public packets
+*   `--llm-cluster` — use LLM-assisted workstream clustering instead of repo-based
+*   `--llm-api-endpoint <URL>` — LLM endpoint (default: OpenAI-compatible)
+*   `--llm-model <NAME>` — LLM model name (default: `gpt-4o-mini`)
+*   `--llm-api-key <KEY>` — LLM API key (or `SHIPLOG_LLM_API_KEY` env var)
 
 ### Output directory structure
 

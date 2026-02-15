@@ -20,7 +20,7 @@ Snapshot tests use `insta` (YAML format). Update snapshots when intentionally ch
 - PowerShell: `$env:INSTA_UPDATE='auto'; cargo test -p <crate-name>`
 - Unix: `INSTA_UPDATE=auto cargo test -p <crate-name>`
 
-Run the CLI: `cargo run -p shiplog -- <subcommand>`. Preferred workflow: `collect` (fetch events) → edit `workstreams.suggested.yaml` into `workstreams.yaml` → `render` (regenerate packet). `refresh` re-fetches events while preserving curated workstreams. `run` is legacy (collect + render in one shot).
+Run the CLI: `cargo run -p shiplog -- <subcommand>`. Preferred workflow: `collect` (fetch events) → edit `workstreams.suggested.yaml` into `workstreams.yaml` → `render` (regenerate packet). `refresh` re-fetches events while preserving curated workstreams. `import` re-renders a pre-built ledger directory. `run` is legacy (collect + render in one shot).
 
 Key CLI flags (on `collect`/`refresh` github subcommands):
 - `--mode merged|created` (which PR lens to ingest)
@@ -29,7 +29,10 @@ Key CLI flags (on `collect`/`refresh` github subcommands):
 - `--throttle-ms <N>` (rate-limit API calls)
 - `--api-base <URL>` (GitHub Enterprise Server API base)
 - `--regen` (regenerate `workstreams.suggested.yaml`; never overwrites `workstreams.yaml`)
+- `--run-dir <PATH>` (explicit run directory for `refresh`, overrides auto-detection)
+- `--zip` (write a zip archive next to the run folder)
 - Redaction: `--redact-key` or `SHIPLOG_REDACT_KEY` controls generation of manager/public packets
+- LLM clustering: `--llm-cluster`, `--llm-api-endpoint <URL>`, `--llm-model <NAME>`, `--llm-api-key <KEY>` (or `SHIPLOG_LLM_API_KEY`)
 
 ## Architecture
 
@@ -42,6 +45,7 @@ apps/shiplog (CLI, clap)
   └─ shiplog-engine (orchestration)
        ├─ Ingest adapters: shiplog-ingest-github, shiplog-ingest-json, shiplog-ingest-manual
        ├─ shiplog-workstreams (clustering + user-curated YAML)
+       ├─ shiplog-cluster-llm (optional LLM-assisted clustering, feature-gated)
        ├─ shiplog-redact (deterministic HMAC-SHA256 aliasing, 3 profiles)
        ├─ shiplog-render-md, shiplog-render-json
        └─ shiplog-bundle (zip + SHA256 checksums)
@@ -89,3 +93,17 @@ Outputs go under `out/<run_id>/`: `packet.md`, `ledger.events.jsonl`, `coverage.
 ### Crate naming convention
 
 Prefix `shiplog-` with suffix indicating role: `-schema`, `-ports`, `-ingest-*`, `-render-*`, `-engine`. New orthogonal responsibilities should become new microcrates rather than enlarging existing ones.
+
+### Crate tiers
+
+| Tier | Crates | Notes |
+|------|--------|-------|
+| Foundation | `shiplog-ids`, `shiplog-schema`, `shiplog-ports`, `shiplog-coverage` | No adapter deps |
+| Adapters | `shiplog-ingest-*`, `shiplog-render-*`, `shiplog-bundle`, `shiplog-cache`, `shiplog-redact`, `shiplog-workstreams`, `shiplog-cluster-llm` | Depend on foundation |
+| Orchestration | `shiplog-engine` | Wires adapters via ports |
+| App | `shiplog` (CLI) | Feature-gates: `llm` (default on) |
+| Test-only | `shiplog-testkit` | `publish = false` |
+
+### Publishing
+
+All crates publish to crates.io except `shiplog-testkit`. Publish in dependency order (foundation → adapters → engine → CLI). Dry-run: `cargo publish -p <crate> --dry-run`.

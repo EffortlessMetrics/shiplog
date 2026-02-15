@@ -7,12 +7,15 @@ use shiplog_ids::EventId;
 ///
 /// This is part of the trust story: a packet is only as good as its provenance.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum SourceSystem {
     Github,
     JsonImport,
     LocalGit,
     Manual,
     Unknown,
+    /// Extension point for third-party source systems.
+    Other(String),
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -159,6 +162,35 @@ pub struct ManualEvent {
     pub ended_at: Option<NaiveDate>,
     /// Impact or outcome statement
     pub impact: Option<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn source_system_round_trip_known_variants() {
+        for variant in [
+            SourceSystem::Github,
+            SourceSystem::JsonImport,
+            SourceSystem::LocalGit,
+            SourceSystem::Manual,
+            SourceSystem::Unknown,
+        ] {
+            let json = serde_json::to_string(&variant).unwrap();
+            let back: SourceSystem = serde_json::from_str(&json).unwrap();
+            assert_eq!(variant, back);
+        }
+    }
+
+    #[test]
+    fn source_system_other_round_trip() {
+        let variant = SourceSystem::Other("gitlab".into());
+        let json = serde_json::to_string(&variant).unwrap();
+        let back: SourceSystem = serde_json::from_str(&json).unwrap();
+        assert_eq!(variant, back);
+        assert!(json.contains("gitlab"));
+    }
 }
 
 /// File format for manual_events.yaml

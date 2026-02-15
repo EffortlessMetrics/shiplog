@@ -7,19 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.2.0] - 2026-02-14
+## [0.2.0] - 2026-02-15
 
 ### Added
 
-- Module-level documentation (`//!` doc blocks) for `shiplog-schema`, `shiplog-coverage`, `shiplog-workstreams`, and `shiplog-engine`
+- **LLM-assisted workstream clustering** (`shiplog-cluster-llm`): optional OpenAI-compatible endpoint for semantic workstream grouping, with automatic fallback to repo-based clustering on failure
+- **`import` subcommand**: re-render a pre-built ledger directory from an upstream system or previous shiplog run
+- **Redaction alias cache persistence**: `redaction.aliases.json` provides stable alias mappings across runs
+- **`--zip` flag**: write a zip archive next to the run folder (available on `collect`, `render`, `refresh`, `import`, `run`)
+- **`--run-dir` flag**: explicit run directory for `refresh` (overrides auto-detection)
+- **`SourceSystem::Other(String)` variant**: extension point for third-party source systems (`#[non_exhaustive]`)
+- **Bundle exclusion of `redaction.aliases.json`**: alias cache is excluded from bundle manifests and zip archives to prevent redaction bypass
+- **LLM feature gate**: `shiplog-cluster-llm` is now an optional dependency behind the `llm` feature (default on); build with `--no-default-features` to omit it
+- Module-level documentation (`//!` doc blocks) for `shiplog-schema`, `shiplog-coverage`, `shiplog-workstreams`, `shiplog-engine`, and `shiplog-ports`
 - CLI Reference section in README.md with full flag table
-- Missing sections in GEMINI.md and copilot-instructions.md to sync with CLAUDE.md (CLI flags, error handling, runtime, BDD testing, output directory structure)
+- LLM clustering flags (`--llm-cluster`, `--llm-api-endpoint`, `--llm-model`, `--llm-api-key`) documented across all 4 doc files
+- Missing sections in GEMINI.md and copilot-instructions.md to sync with CLAUDE.md
 
 ### Changed
 
 - Crate-specific descriptions for all 15 publishable crates (replacing generic workspace description)
 - Added `keywords` and `categories` to all publishable crate Cargo.toml files
 - Marked `shiplog-testkit` as `publish = false`
+- `CACHE_FILENAME` in `shiplog-redact` is now `pub` for cross-crate documentation
 
 ## [0.1.1] - 2026-02-14
 

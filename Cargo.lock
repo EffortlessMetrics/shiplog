@@ -1750,6 +1750,7 @@ dependencies = [
  "sha2",
  "shiplog-ids",
  "shiplog-schema",
+ "tempfile",
  "zip",
 ]
 

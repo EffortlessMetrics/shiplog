@@ -66,6 +66,21 @@ cargo run -p shiplog -- refresh github \
   --include-reviews
 ```
 
+### Import a pre-built ledger
+
+Use the `import` subcommand to consume output from another system or a previous
+shiplog run and re-render it:
+
+```bash
+cargo run -p shiplog -- import \
+  --dir ./path/to/existing/run \
+  --out ./out
+```
+
+`import` reads `ledger.events.jsonl` and `coverage.manifest.json` from the
+given directory, re-clusters into workstreams, and renders a fresh packet.
+Pass `--regen` to ignore imported workstreams and re-cluster from scratch.
+
 ### JSON import mode
 
 ```bash
@@ -108,8 +123,34 @@ export SHIPLOG_REDACT_KEY="my-secret"
 | `--no-details` | `collect`, `refresh`, `run` | Omit verbose details |
 | `--throttle-ms <N>` | `collect`, `refresh` | Rate-limit API calls (ms) |
 | `--api-base <URL>` | `collect`, `refresh` | GitHub Enterprise Server API base |
-| `--regen` | `refresh` | Regenerate `workstreams.suggested.yaml` |
-| `--redact-key <KEY>` | `render`, `run` | HMAC key for redacted profiles (or `SHIPLOG_REDACT_KEY` env var) |
+| `--regen` | `collect`, `import` | Regenerate `workstreams.suggested.yaml` |
+| `--redact-key <KEY>` | all | HMAC key for redacted profiles (or `SHIPLOG_REDACT_KEY` env var) |
+| `--run-dir <PATH>` | `refresh` | Explicit run directory (overrides auto-detection) |
+| `--zip` | `collect`, `render`, `refresh`, `import`, `run` | Write a zip archive next to the run folder |
+| `--llm-cluster` | `collect`, `refresh`, `import`, `run` | Use LLM-assisted workstream clustering |
+| `--llm-api-endpoint <URL>` | `collect`, `refresh`, `import`, `run` | LLM endpoint (default: OpenAI) |
+| `--llm-model <NAME>` | `collect`, `refresh`, `import`, `run` | LLM model name (default: `gpt-4o-mini`) |
+| `--llm-api-key <KEY>` | `collect`, `refresh`, `import`, `run` | LLM API key (or `SHIPLOG_LLM_API_KEY` env var) |
+
+### LLM Clustering
+
+By default, workstreams are clustered by repository name. Pass `--llm-cluster`
+to send event summaries to an OpenAI-compatible endpoint for semantic clustering:
+
+```bash
+export SHIPLOG_LLM_API_KEY="sk-..."
+cargo run -p shiplog -- collect github ... --llm-cluster
+```
+
+The LLM feature is compiled in by default. To build without it (removes the
+`reqwest` dependency): `cargo build -p shiplog --no-default-features`.
+
+### Redaction alias cache
+
+When a redaction key is set, the redactor writes
+`redaction.aliases.json` to the run directory for alias stability across runs.
+This file is **excluded** from bundle manifests and zip archives to prevent
+plaintext-to-alias mappings from leaking.
 
 ## Why this exists
 

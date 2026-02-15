@@ -7,15 +7,16 @@ use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
+/// Files excluded from bundles. `redaction.aliases.json` contains
+/// plaintext-to-alias mappings that would defeat redaction.
+/// `bundle.manifest.json` is excluded because it is written *after*
+/// the file walk and must not checksum itself.
+const EXCLUDED_FILENAMES: &[&str] = &["redaction.aliases.json", "bundle.manifest.json"];
+
 pub fn write_bundle_manifest(out_dir: &Path, run_id: &RunId) -> Result<BundleManifest> {
     let mut files = Vec::new();
 
     for path in walk_files(out_dir)? {
-        // don't checksum the manifest itself if it already exists
-        if path.file_name().and_then(|s| s.to_str()) == Some("bundle.manifest.json") {
-            continue;
-        }
-
         let bytes = std::fs::metadata(&path)?.len();
         let sha256 = sha256_file(&path)?;
         let rel = path
@@ -90,6 +91,10 @@ fn walk_files(root: &Path) -> Result<Vec<PathBuf>> {
             let path = entry.path();
             if path.is_dir() {
                 stack.push(path);
+            } else if let Some(name) = path.file_name().and_then(|s| s.to_str()) {
+                if !EXCLUDED_FILENAMES.contains(&name) {
+                    out.push(path);
+                }
             } else {
                 out.push(path);
             }
@@ -97,4 +102,88 @@ fn walk_files(root: &Path) -> Result<Vec<PathBuf>> {
     }
     out.sort();
     Ok(out)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn walk_files_excludes_redaction_aliases() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("packet.md"), "# Packet").unwrap();
+        std::fs::write(dir.path().join("redaction.aliases.json"), "{}").unwrap();
+        std::fs::write(dir.path().join("ledger.events.jsonl"), "").unwrap();
+
+        let files = walk_files(dir.path()).unwrap();
+        let names: Vec<&str> = files
+            .iter()
+            .filter_map(|p| p.file_name().and_then(|s| s.to_str()))
+            .collect();
+
+        assert!(names.contains(&"packet.md"));
+        assert!(names.contains(&"ledger.events.jsonl"));
+        assert!(
+            !names.contains(&"redaction.aliases.json"),
+            "redaction.aliases.json should be excluded from walk_files"
+        );
+    }
+
+    #[test]
+    fn bundle_manifest_excludes_redaction_aliases() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("packet.md"), "# Packet").unwrap();
+        std::fs::write(
+            dir.path().join("redaction.aliases.json"),
+            r#"{"version":1,"entries":{}}"#,
+        )
+        .unwrap();
+        std::fs::write(dir.path().join("ledger.events.jsonl"), "").unwrap();
+
+        let run_id = shiplog_ids::RunId::now("test");
+        let manifest = write_bundle_manifest(dir.path(), &run_id).unwrap();
+        let paths: Vec<&str> = manifest.files.iter().map(|f| f.path.as_str()).collect();
+
+        assert!(
+            !paths.iter().any(|p| p.contains("redaction.aliases.json")),
+            "redaction.aliases.json should not appear in bundle manifest"
+        );
+        assert!(
+            !paths.iter().any(|p| p.contains("bundle.manifest.json")),
+            "bundle.manifest.json should not appear in bundle manifest"
+        );
+        assert!(
+            paths.iter().any(|p| p.contains("packet.md")),
+            "packet.md should appear in bundle manifest"
+        );
+    }
+
+    #[test]
+    fn zip_excludes_redaction_aliases() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("packet.md"), "# Packet").unwrap();
+        std::fs::write(
+            dir.path().join("redaction.aliases.json"),
+            r#"{"version":1,"entries":{}}"#,
+        )
+        .unwrap();
+
+        let zip_path = dir.path().join("test.zip");
+        write_zip(dir.path(), &zip_path).unwrap();
+
+        let file = File::open(&zip_path).unwrap();
+        let archive = zip::ZipArchive::new(file).unwrap();
+        let names: Vec<String> = (0..archive.len())
+            .map(|i| archive.name_for_index(i).unwrap().to_string())
+            .collect();
+
+        assert!(
+            names.iter().any(|n| n.contains("packet.md")),
+            "packet.md should be in zip"
+        );
+        assert!(
+            !names.iter().any(|n| n.contains("redaction.aliases.json")),
+            "redaction.aliases.json should not be in zip"
+        );
+    }
 }
