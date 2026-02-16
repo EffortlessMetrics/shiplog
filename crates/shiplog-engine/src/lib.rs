@@ -406,3 +406,171 @@ fn zip_path_for_profile(out_dir: &Path, profile: &BundleProfile) -> PathBuf {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::{NaiveDate, TimeZone, Utc};
+    use shiplog_ids::{EventId, RunId};
+    use shiplog_ports::IngestOutput;
+    use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
+    use shiplog_schema::event::*;
+
+    fn pr_event(repo: &str, number: u64, title: &str) -> EventEnvelope {
+        EventEnvelope {
+            id: EventId::from_parts(["github", "pr", repo, &number.to_string()]),
+            kind: EventKind::PullRequest,
+            occurred_at: Utc.timestamp_opt(0, 0).unwrap(),
+            actor: Actor {
+                login: "user".into(),
+                id: None,
+            },
+            repo: RepoRef {
+                full_name: repo.to_string(),
+                html_url: Some(format!("https://github.com/{repo}")),
+                visibility: RepoVisibility::Unknown,
+            },
+            payload: EventPayload::PullRequest(PullRequestEvent {
+                number,
+                title: title.to_string(),
+                state: PullRequestState::Merged,
+                created_at: Utc.timestamp_opt(0, 0).unwrap(),
+                merged_at: Some(Utc.timestamp_opt(0, 0).unwrap()),
+                additions: Some(1),
+                deletions: Some(0),
+                changed_files: Some(1),
+                touched_paths_hint: vec![],
+                window: Some(TimeWindow {
+                    since: NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
+                    until: NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),
+                }),
+            }),
+            tags: vec![],
+            links: vec![Link {
+                label: "pr".into(),
+                url: format!("https://github.com/{repo}/pull/{number}"),
+            }],
+            source: SourceRef {
+                system: SourceSystem::Github,
+                url: Some("https://api.github.com/...".into()),
+                opaque_id: None,
+            },
+        }
+    }
+
+    fn test_ingest() -> IngestOutput {
+        let events = vec![
+            pr_event("acme/foo", 1, "Add feature"),
+            pr_event("acme/foo", 2, "Fix bug"),
+        ];
+        let coverage = CoverageManifest {
+            run_id: RunId("test_run_1".into()),
+            generated_at: Utc.timestamp_opt(0, 0).unwrap(),
+            user: "tester".into(),
+            window: TimeWindow {
+                since: NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
+                until: NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),
+            },
+            mode: "merged".into(),
+            sources: vec!["github".into()],
+            slices: vec![],
+            warnings: vec![],
+            completeness: Completeness::Complete,
+        };
+        IngestOutput { events, coverage }
+    }
+
+    fn test_engine() -> Engine<'static> {
+        let renderer: &'static dyn shiplog_ports::Renderer =
+            Box::leak(Box::new(shiplog_render_md::MarkdownRenderer));
+        let clusterer: &'static dyn shiplog_ports::WorkstreamClusterer =
+            Box::leak(Box::new(shiplog_workstreams::RepoClusterer));
+        let redactor: &'static dyn shiplog_ports::Redactor = Box::leak(Box::new(
+            shiplog_redact::DeterministicRedactor::new(b"test-key"),
+        ));
+        Engine::new(renderer, clusterer, redactor)
+    }
+
+    #[test]
+    fn run_creates_expected_output_files() {
+        let dir = tempfile::tempdir().unwrap();
+        let out_dir = dir.path().join("test_run_1");
+
+        let engine = test_engine();
+        let ingest = test_ingest();
+
+        let (outputs, _) = engine
+            .run(
+                ingest,
+                "tester",
+                "2025-01-01..2025-02-01",
+                &out_dir,
+                false,
+                &BundleProfile::Internal,
+            )
+            .unwrap();
+
+        assert!(outputs.packet_md.exists(), "packet.md missing");
+        assert!(
+            outputs.ledger_events_jsonl.exists(),
+            "ledger.events.jsonl missing"
+        );
+        assert!(
+            outputs.coverage_manifest_json.exists(),
+            "coverage.manifest.json missing"
+        );
+        assert!(
+            outputs.bundle_manifest_json.exists(),
+            "bundle.manifest.json missing"
+        );
+        assert!(
+            out_dir.join("profiles/manager/packet.md").exists(),
+            "manager profile missing"
+        );
+        assert!(
+            out_dir.join("profiles/public/packet.md").exists(),
+            "public profile missing"
+        );
+    }
+
+    #[test]
+    fn run_with_zip_creates_archive() {
+        let dir = tempfile::tempdir().unwrap();
+        let out_dir = dir.path().join("test_run_zip");
+
+        let engine = test_engine();
+        let ingest = test_ingest();
+
+        let (outputs, _) = engine
+            .run(
+                ingest,
+                "tester",
+                "2025-01-01..2025-02-01",
+                &out_dir,
+                true,
+                &BundleProfile::Internal,
+            )
+            .unwrap();
+
+        assert!(
+            outputs.zip_path.is_some(),
+            "zip_path should be Some when zip=true"
+        );
+        assert!(
+            outputs.zip_path.as_ref().unwrap().exists(),
+            "zip file missing"
+        );
+    }
+
+    #[test]
+    fn zip_path_internal_uses_plain_extension() {
+        let p = zip_path_for_profile(Path::new("/tmp/run_123"), &BundleProfile::Internal);
+        assert_eq!(p, Path::new("/tmp/run_123.zip"));
+    }
+
+    #[test]
+    fn zip_path_manager_includes_profile_name() {
+        let p = zip_path_for_profile(Path::new("/tmp/run_123"), &BundleProfile::Manager);
+        assert_eq!(p, Path::new("/tmp/run_123.manager.zip"));
+    }
+}

@@ -381,6 +381,127 @@ mod tests {
         assert!(md.contains("1 PRs, 0 reviews, 0 manual"));
     }
 
+    /// Helper to build a full coverage manifest with fixed timestamps for snapshot tests.
+    fn snapshot_coverage(
+        completeness: Completeness,
+        slices: Vec<CoverageSlice>,
+        warnings: Vec<String>,
+    ) -> CoverageManifest {
+        CoverageManifest {
+            run_id: RunId("run_snap".into()),
+            generated_at: Utc.timestamp_opt(0, 0).unwrap(),
+            user: "octo".into(),
+            window: TimeWindow {
+                since: NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
+                until: NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),
+            },
+            mode: "merged".into(),
+            sources: vec!["github".into()],
+            slices,
+            warnings,
+            completeness,
+        }
+    }
+
+    #[test]
+    fn snapshot_full_packet() {
+        let ev = create_test_pr("1", 42, "Add authentication flow");
+        let ws = WorkstreamsFile {
+            version: 1,
+            generated_at: Utc.timestamp_opt(0, 0).unwrap(),
+            workstreams: vec![Workstream {
+                id: WorkstreamId::from_parts(["repo", "o/r"]),
+                title: "o/r".into(),
+                summary: Some("Auth improvements".into()),
+                tags: vec!["repo".into()],
+                stats: WorkstreamStats {
+                    pull_requests: 1,
+                    reviews: 0,
+                    manual_events: 0,
+                },
+                events: vec![ev.id.clone()],
+                receipts: vec![ev.id.clone()],
+            }],
+        };
+        let cov = snapshot_coverage(
+            Completeness::Complete,
+            vec![CoverageSlice {
+                window: TimeWindow {
+                    since: NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
+                    until: NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),
+                },
+                query: "is:pr author:octo merged:2025-01-01..2025-01-31".into(),
+                total_count: 1,
+                fetched: 1,
+                incomplete_results: Some(false),
+                notes: vec![],
+            }],
+            vec![],
+        );
+
+        let md = MarkdownRenderer
+            .render_packet_markdown("octo", "2025-01-01..2025-02-01", &[ev], &ws, &cov)
+            .unwrap();
+        insta::assert_snapshot!(md);
+    }
+
+    #[test]
+    fn snapshot_empty_packet() {
+        let ws = WorkstreamsFile {
+            version: 1,
+            generated_at: Utc.timestamp_opt(0, 0).unwrap(),
+            workstreams: vec![],
+        };
+        let cov = snapshot_coverage(Completeness::Complete, vec![], vec![]);
+
+        let md = MarkdownRenderer
+            .render_packet_markdown("octo", "2025-01-01..2025-02-01", &[], &ws, &cov)
+            .unwrap();
+        insta::assert_snapshot!(md);
+    }
+
+    #[test]
+    fn snapshot_partial_coverage() {
+        let ev = create_test_pr("1", 10, "Fix bug");
+        let ws = WorkstreamsFile {
+            version: 1,
+            generated_at: Utc.timestamp_opt(0, 0).unwrap(),
+            workstreams: vec![Workstream {
+                id: WorkstreamId::from_parts(["repo", "o/r"]),
+                title: "o/r".into(),
+                summary: None,
+                tags: vec![],
+                stats: WorkstreamStats {
+                    pull_requests: 1,
+                    reviews: 0,
+                    manual_events: 0,
+                },
+                events: vec![ev.id.clone()],
+                receipts: vec![ev.id.clone()],
+            }],
+        };
+        let cov = snapshot_coverage(
+            Completeness::Partial,
+            vec![CoverageSlice {
+                window: TimeWindow {
+                    since: NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
+                    until: NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),
+                },
+                query: "is:pr author:octo merged:2025-01-01..2025-01-31".into(),
+                total_count: 1200,
+                fetched: 1000,
+                incomplete_results: Some(true),
+                notes: vec!["partial:unresolvable_at_this_granularity".into()],
+            }],
+            vec!["Reviews are collected via search + per-PR review fetch; treat as best-effort coverage.".into()],
+        );
+
+        let md = MarkdownRenderer
+            .render_packet_markdown("octo", "2025-01-01..2025-02-01", &[ev], &ws, &cov)
+            .unwrap();
+        insta::assert_snapshot!(md);
+    }
+
     #[test]
     fn receipts_truncated_when_exceeds_limit() {
         // Create 7 PRs

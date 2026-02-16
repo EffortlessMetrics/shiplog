@@ -79,3 +79,58 @@ fn hash_hex(parts: impl IntoIterator<Item = impl AsRef<str>>) -> String {
     let out = hasher.finalize();
     hex::encode(out)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn event_id_deterministic() {
+        let a = EventId::from_parts(["github", "pr", "o/r", "42"]);
+        let b = EventId::from_parts(["github", "pr", "o/r", "42"]);
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn event_id_varies_with_parts() {
+        let a = EventId::from_parts(["github", "pr", "o/r", "1"]);
+        let b = EventId::from_parts(["github", "pr", "o/r", "2"]);
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn event_id_is_valid_sha256_hex() {
+        let id = EventId::from_parts(["x"]);
+        assert_eq!(id.0.len(), 64);
+        assert!(id.0.chars().all(|c| c.is_ascii_hexdigit()));
+    }
+
+    #[test]
+    fn workstream_id_deterministic() {
+        let a = WorkstreamId::from_parts(["repo", "acme/foo"]);
+        let b = WorkstreamId::from_parts(["repo", "acme/foo"]);
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn part_boundary_matters() {
+        let a = EventId::from_parts(["a", "bc"]);
+        let b = EventId::from_parts(["ab", "c"]);
+        assert_ne!(
+            a, b,
+            "newline separator should prevent part-boundary collisions"
+        );
+    }
+
+    #[test]
+    fn run_id_starts_with_prefix() {
+        let id = RunId::now("shiplog");
+        assert!(id.0.starts_with("shiplog_"));
+    }
+
+    #[test]
+    fn display_matches_inner() {
+        let id = EventId::from_parts(["display", "test"]);
+        assert_eq!(format!("{id}"), id.0);
+    }
+}

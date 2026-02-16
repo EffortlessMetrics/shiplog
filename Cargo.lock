@@ -960,7 +960,6 @@ checksum = "e82db8c87c7f1ccecb34ce0c24399b8a73081427f3c7c50a5d597925356115e4"
 dependencies = [
  "console",
  "once_cell",
- "serde",
  "similar",
  "tempfile",
 ]
@@ -1807,6 +1806,7 @@ dependencies = [
  "shiplog-render-md",
  "shiplog-schema",
  "shiplog-workstreams",
+ "tempfile",
 ]
 
 [[package]]
@@ -1893,8 +1893,11 @@ name = "shiplog-render-json"
 version = "0.2.0"
 dependencies = [
  "anyhow",
+ "chrono",
  "serde_json",
+ "shiplog-ids",
  "shiplog-schema",
+ "tempfile",
 ]
 
 [[package]]

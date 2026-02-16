@@ -81,7 +81,7 @@ impl GithubIngestor {
 
     fn client(&self) -> Result<Client> {
         Client::builder()
-            .user_agent("shiplog/0.1")
+            .user_agent(concat!("shiplog/", env!("CARGO_PKG_VERSION")))
             .build()
             .context("build reqwest client")
     }

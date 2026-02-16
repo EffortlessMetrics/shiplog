@@ -22,3 +22,6 @@ shiplog-render-md = { path = "../shiplog-render-md", version = "0.2.0" }
 shiplog-render-json = { path = "../shiplog-render-json", version = "0.2.0" }
 shiplog-bundle = { path = "../shiplog-bundle", version = "0.2.0" }
 
+[dev-dependencies]
+tempfile.workspace = true
+
