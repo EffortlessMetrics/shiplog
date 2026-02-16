@@ -6,6 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 description = "Deterministic HMAC-SHA256 redaction with internal/manager/public profiles for shiplog"
 repository.workspace = true
+homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
 

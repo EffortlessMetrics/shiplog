@@ -6,6 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 description = "JSON output renderer for shiplog events and coverage manifests"
 repository.workspace = true
+homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
 
@@ -13,4 +14,10 @@ categories.workspace = true
 anyhow.workspace = true
 serde_json.workspace = true
 shiplog-schema = { path = "../shiplog-schema", version = "0.2.0" }
+
+[dev-dependencies]
+tempfile.workspace = true
+shiplog-ids = { path = "../shiplog-ids", version = "0.2.0" }
+shiplog-schema = { path = "../shiplog-schema", version = "0.2.0" }
+chrono.workspace = true
 

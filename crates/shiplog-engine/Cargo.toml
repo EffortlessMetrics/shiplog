@@ -6,6 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 description = "Orchestration engine for the shiplog pipeline (ingest, cluster, redact, render)"
 repository.workspace = true
+homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
 
@@ -21,4 +22,7 @@ shiplog-redact = { path = "../shiplog-redact", version = "0.2.0" }
 shiplog-render-md = { path = "../shiplog-render-md", version = "0.2.0" }
 shiplog-render-json = { path = "../shiplog-render-json", version = "0.2.0" }
 shiplog-bundle = { path = "../shiplog-bundle", version = "0.2.0" }
+
+[dev-dependencies]
+tempfile.workspace = true
 

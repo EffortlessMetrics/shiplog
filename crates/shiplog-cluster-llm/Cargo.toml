@@ -6,6 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 description = "LLM-assisted workstream clustering for shiplog using OpenAI-compatible APIs"
 repository.workspace = true
+homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
 

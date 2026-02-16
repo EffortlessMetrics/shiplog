@@ -1,0 +1,59 @@
+---
+source: crates/shiplog-render-md/src/lib.rs
+assertion_line: 502
+expression: md
+---
+# Self review packet: octo
+
+**Window:** 2025-01-01..2025-02-01
+
+## Coverage
+
+- **Completeness:** Partial
+- **Date window:** 2025-01-01 to 2025-02-01
+- **Mode:** merged
+- **Sources:** github
+- **Events ingested:** 1 PRs, 0 reviews, 0 manual
+- **Query slices:** 1
+  - ⚠️ 1 slices had incomplete results
+  - **Slicing applied (API caps):**
+    - is:pr author:octo merged:2025-01-01..2025-01-31: fetched 1000/1200 (83%)
+- **Warnings:**
+  - ⚠️ Reviews are collected via search + per-PR review fetch; treat as best-effort coverage.
+
+## Summary
+
+- Workstreams: 1
+- Total events: 1
+
+## Workstreams
+
+### o/r
+
+**Claim scaffolds**
+
+- Problem: _fill_
+- What I shipped: _fill_
+- Why it mattered: _fill_
+- Result: _fill_
+
+**Receipts**
+
+- [o/r#10](https://github.com/o/r/pull/10) — Fix bug
+
+_PRs: 1, Reviews: 0, Manual: 0_
+
+## Appendix: All Receipts
+
+### o/r
+
+- [o/r#10](https://github.com/o/r/pull/10) — Fix bug
+
+---
+
+## File Artifacts
+
+- `ledger.events.jsonl` (canonical events)
+- `coverage.manifest.json` (completeness + slicing)
+- `workstreams.yaml` (editable clustering)
+- `manual_events.yaml` (non-GitHub work)

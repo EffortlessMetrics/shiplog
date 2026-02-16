@@ -6,6 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 description = "JSONL event and coverage manifest importer for shiplog"
 repository.workspace = true
+homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
 

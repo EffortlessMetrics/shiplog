@@ -1,0 +1,34 @@
+---
+source: crates/shiplog-render-md/src/lib.rs
+assertion_line: 460
+expression: md
+---
+# Self review packet: octo
+
+**Window:** 2025-01-01..2025-02-01
+
+## Coverage
+
+- **Completeness:** Complete
+- **Date window:** 2025-01-01 to 2025-02-01
+- **Mode:** merged
+- **Sources:** github
+- **Events ingested:** 0 PRs, 0 reviews, 0 manual
+
+## Summary
+
+- Workstreams: 0
+- Total events: 0
+
+## Workstreams
+
+## Appendix: All Receipts
+
+---
+
+## File Artifacts
+
+- `ledger.events.jsonl` (canonical events)
+- `coverage.manifest.json` (completeness + slicing)
+- `workstreams.yaml` (editable clustering)
+- `manual_events.yaml` (non-GitHub work)
