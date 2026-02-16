@@ -6,6 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 description = "SQLite-backed API response cache with TTL support for shiplog"
 repository.workspace = true
+homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
 

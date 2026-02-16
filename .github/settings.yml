@@ -1,5 +1,5 @@
 # .github/settings.yml
 repository:
-  description: "A shipping packet generator for developers: compiles GitHub activity into editable packets with receipts."
+  description: "Shipping packet generator for developers. Compiles GitHub activity into editable self-review packets with receipts."
   homepage: "https://effortlessmetrics.com/shiplog"
-  topics: rust, devex, github, reports, audit-trail
+  topics: rust, developer-tools, self-review, audit-trail, changelog, github, reports

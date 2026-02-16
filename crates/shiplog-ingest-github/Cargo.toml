@@ -6,6 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 description = "GitHub API adapter with adaptive date slicing and SQLite caching for shiplog"
 repository.workspace = true
+homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
 

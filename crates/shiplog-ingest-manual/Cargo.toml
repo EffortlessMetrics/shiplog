@@ -6,6 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 description = "YAML-based manual event ingestor for non-GitHub work in shiplog"
 repository.workspace = true
+homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
 

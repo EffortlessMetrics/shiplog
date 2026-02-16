@@ -6,6 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 description = "Zip archive generation with SHA256 checksums for shiplog output bundles"
 repository.workspace = true
+homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
 

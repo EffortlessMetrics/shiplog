@@ -26,9 +26,10 @@ edition = "2024"
 rust-version = "1.92"
 license = "MIT OR Apache-2.0"
 authors = ["Steven Zimmerman, CPA <git@effortlesssteven.com>"]
-description = "A tool for engineering self-review - aggregate and organize your contributions"
+description = "Shipping packet generator for developers: compile GitHub activity into editable self-review packets with receipts."
+homepage = "https://effortlessmetrics.com/shiplog"
 repository = "https://github.com/EffortlessMetrics/shiplog"
-keywords = ["developer-tools", "github", "self-review", "engineering", "changelog"]
+keywords = ["developer-tools", "github", "self-review", "audit-trail", "changelog"]
 categories = ["command-line-utilities", "development-tools"]
 
 [workspace.dependencies]

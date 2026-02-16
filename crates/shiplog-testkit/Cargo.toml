@@ -6,6 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 description = "Shared test fixtures and utilities for shiplog crates"
 repository.workspace = true
+homepage.workspace = true
 publish = false
 
 [dependencies]

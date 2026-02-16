@@ -6,6 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 description = "Repository-based event clustering and workstream management for shiplog"
 repository.workspace = true
+homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
 

@@ -6,6 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 description = "Type-safe SHA256-based ID generation for the shiplog pipeline"
 repository.workspace = true
+homepage.workspace = true
 keywords.workspace = true
 categories.workspace = true
 
