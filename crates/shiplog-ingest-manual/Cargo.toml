@@ -1,27 +1,28 @@
 [package]
 name = "shiplog-ingest-manual"
-version = "0.2.0"
+version = "0.2.1"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 authors.workspace = true
-description = "YAML-based manual event ingestor for non-GitHub work in shiplog"
+description = "YAML manual-event ingestor for non-GitHub work in shiplog."
 readme = "README.md"
 documentation = "https://docs.rs/shiplog-ingest-manual"
 repository.workspace = true
 homepage.workspace = true
-keywords.workspace = true
-categories.workspace = true
+keywords = ["yaml", "manual", "ingestion", "events", "worklogs"]
+categories = ["parser-implementations", "development-tools"]
 
 [dependencies]
 anyhow.workspace = true
 chrono.workspace = true
 serde.workspace = true
 serde_yaml.workspace = true
-shiplog-ids = { path = "../shiplog-ids", version = "0.2.0" }
-shiplog-schema = { path = "../shiplog-schema", version = "0.2.0" }
-shiplog-ports = { path = "../shiplog-ports", version = "0.2.0" }
+shiplog-ids = { path = "../shiplog-ids", version = "0.2.1" }
+shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
+shiplog-ports = { path = "../shiplog-ports", version = "0.2.1" }
 
 [dev-dependencies]
 tempfile = "3"
+
 

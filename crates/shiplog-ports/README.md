@@ -1,12 +1,12 @@
 # shiplog-ports
 
-Port traits for shiplog's hexagonal architecture.
+Core trait interfaces for shiplog's adapter boundaries.
 
-## Core traits
+## Traits
 
-- `Ingestor`: produces events + coverage.
-- `WorkstreamClusterer`: groups events into workstreams.
-- `Renderer`: renders packet output.
-- `Redactor`: applies profile-based projections.
+- `Ingestor`: returns canonical events plus coverage metadata.
+- `WorkstreamClusterer`: groups events into `WorkstreamsFile`.
+- `Renderer`: renders packet output from canonical data.
+- `Redactor`: projects events/workstreams for profile-specific output.
 
-Adapters should depend on ports; ports should not depend on adapters.
+Adapters (`shiplog-ingest-*`, renderers, clusterers, redactors) implement these traits.

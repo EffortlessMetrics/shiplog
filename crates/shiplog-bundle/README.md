@@ -1,14 +1,16 @@
 # shiplog-bundle
 
-Bundle and manifest generation for run outputs.
+Bundle manifest and zip generation for run directories.
 
 ## Functions
 
 - `write_bundle_manifest(out_dir, run_id, profile)`
 - `write_zip(out_dir, zip_path, profile)`
 
-## Notes
+## Profile scoping
 
-- Computes SHA-256 checksums for included files.
-- Applies profile-scoped inclusion (`internal`, `manager`, `public`).
-- Excludes sensitive/internal bookkeeping files such as `redaction.aliases.json`.
+- `internal`: includes full internal artifact set.
+- `manager`: includes `profiles/manager/packet.md` and `coverage.manifest.json`.
+- `public`: includes `profiles/public/packet.md` and `coverage.manifest.json`.
+
+`redaction.aliases.json` is always excluded to avoid alias reverse-mapping leaks.

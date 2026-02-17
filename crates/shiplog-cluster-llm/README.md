@@ -1,12 +1,16 @@
 # shiplog-cluster-llm
 
-LLM-assisted workstream clustering adapter.
+LLM-assisted workstream clustering adapters.
 
-## Key types
+## Main types
 
-- `LlmClusterer`: clusters events using an LLM backend.
-- `LlmWithFallback`: falls back to repo clustering on failure.
-- `LlmConfig`: model/request constraints.
-- `OpenAiCompatibleBackend`: backend for OpenAI-compatible chat-completions APIs.
+- `LlmClusterer`: clusters events through a configurable LLM backend.
+- `LlmWithFallback`: falls back to repo clustering when LLM clustering fails.
+- `LlmConfig`: request/model/token budget configuration.
+- `OpenAiCompatibleBackend`: OpenAI chat-completions protocol backend.
 
-The crate parses structured LLM output into canonical `WorkstreamsFile` data.
+## Notes
+
+- Prompts expect JSON object output describing workstreams and receipt indices.
+- Large event sets are chunked by estimated token budget.
+- Parsing handles invalid indices conservatively and creates an `Uncategorized` workstream for orphans.

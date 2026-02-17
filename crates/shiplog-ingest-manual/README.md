@@ -1,14 +1,18 @@
 # shiplog-ingest-manual
 
-Manual-event ingestion from YAML.
+YAML manual-event ingestor for non-GitHub work.
 
-`ManualIngestor` converts `manual_events.yaml` entries into canonical shiplog events and coverage output.
+## Main type
 
-## Helpers
+- `ManualIngestor`
+
+`ManualIngestor` reads `manual_events.yaml`, filters entries to the requested date window, and converts them into canonical manual events plus a coverage manifest.
+
+## Helper API
 
 - `read_manual_events(path)`
 - `write_manual_events(path, file)`
 - `create_empty_file()`
 - `create_entry(...)`
 
-Use this adapter to capture work that does not appear in GitHub activity.
+Use this when important work is not represented by GitHub artifacts.

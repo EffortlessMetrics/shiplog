@@ -1,13 +1,17 @@
 # shiplog-engine
 
-Pipeline orchestration layer for shiplog.
+Pipeline orchestration layer used by the CLI.
 
-`Engine` coordinates ingestion, clustering, redaction, rendering, and bundle output for CLI operations.
+## Main types
 
-## Key types
+- `Engine`: drives end-to-end flows.
+- `RunOutputs`: output artifact paths for a run.
+- `WorkstreamSource`: indicates whether workstreams were curated, suggested, or generated.
 
-- `Engine`
-- `RunOutputs`
-- `WorkstreamSource`
+## Flows
 
-Use this crate to run pipeline flows without depending on CLI argument parsing.
+- `run(...)`: ingest -> cluster/load workstreams -> render -> bundle.
+- `import(...)`: render from imported ledger artifacts, optional imported workstreams.
+- `refresh(...)`: update events/coverage while preserving existing workstream files.
+
+`Engine` delegates behavior to the injected `Ingestor`, `WorkstreamClusterer`, `Renderer`, and `Redactor` implementations.

@@ -1,16 +1,19 @@
 # shiplog-workstreams
 
-Workstream clustering and file management.
+Workstream clustering and workstream-file lifecycle management.
 
-## What it does
+## Main components
 
-- Clusters events by repository via `RepoClusterer`.
-- Supports `workstreams.suggested.yaml` + curated `workstreams.yaml` workflow.
-- Provides load/write helpers and `WorkstreamManager` safeguards.
+- `RepoClusterer`: default clusterer that groups events by repository.
+- `WorkstreamManager`: handles curated/suggested file precedence.
+- `load_or_cluster(...)`: load YAML when present, otherwise cluster.
+- `write_workstreams(...)`: write `WorkstreamsFile` to YAML.
 
-## Primary entry points
+## File precedence
 
-- `RepoClusterer`
-- `load_or_cluster(...)`
-- `write_workstreams(...)`
-- `WorkstreamManager`
+`WorkstreamManager::load_effective` resolves workstreams in this order:
+1. `workstreams.yaml` (curated)
+2. `workstreams.suggested.yaml` (generated)
+3. newly clustered suggestions
+
+This keeps user curation as the source of truth.

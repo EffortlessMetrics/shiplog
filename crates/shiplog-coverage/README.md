@@ -1,6 +1,6 @@
 # shiplog-coverage
 
-Date-window utilities and completeness helpers used during ingestion.
+Date-window slicing helpers used by adaptive ingestion.
 
 ## API
 
@@ -9,4 +9,4 @@ Date-window utilities and completeness helpers used during ingestion.
 - `day_windows(since, until)`
 - `window_len_days(window)`
 
-These helpers support adaptive slicing when providers enforce result caps.
+These utilities split an exclusive date range into smaller windows so ingestors can refine queries around provider caps.

@@ -1,17 +1,17 @@
 [package]
 name = "shiplog-redact"
-version = "0.2.0"
+version = "0.2.1"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 authors.workspace = true
-description = "Deterministic HMAC-SHA256 redaction with internal/manager/public profiles for shiplog"
+description = "Deterministic profile-based redaction engine for shiplog events and workstreams."
 readme = "README.md"
 documentation = "https://docs.rs/shiplog-redact"
 repository.workspace = true
 homepage.workspace = true
-keywords.workspace = true
-categories.workspace = true
+keywords = ["redaction", "hmac", "privacy", "anonymization", "deterministic"]
+categories = ["development-tools", "text-processing"]
 
 [dependencies]
 anyhow.workspace = true
@@ -19,12 +19,13 @@ serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
 hex.workspace = true
-shiplog-schema = { path = "../shiplog-schema", version = "0.2.0" }
-shiplog-ports = { path = "../shiplog-ports", version = "0.2.0" }
+shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
+shiplog-ports = { path = "../shiplog-ports", version = "0.2.1" }
 
 [dev-dependencies]
 proptest.workspace = true
 chrono.workspace = true
 tempfile.workspace = true
-shiplog-ids = { path = "../shiplog-ids", version = "0.2.0" }
+shiplog-ids = { path = "../shiplog-ids", version = "0.2.1" }
+
 

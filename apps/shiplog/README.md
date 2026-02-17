@@ -1,16 +1,28 @@
 # shiplog (CLI)
 
-Command-line interface for the shiplog pipeline.
+`shiplog` is the command-line entrypoint for the workspace pipeline.
 
-This binary wires together ingestion, clustering, redaction, rendering, and bundling from the workspace crates.
+It wires ingestion, clustering, redaction, rendering, and bundling into one executable.
 
 ## Commands
 
-- `collect`: fetch/import events, cluster workstreams, and render outputs.
-- `render`: re-render from existing `ledger.events.jsonl` + workstreams.
-- `refresh`: re-fetch events while preserving curated workstreams.
-- `import`: ingest an existing run directory and re-render.
-- `run`: one-shot legacy mode (`collect` + `render`).
+- `collect`: ingest from a source and generate packet artifacts.
+- `render`: re-render from existing `ledger.events.jsonl` + coverage/workstreams.
+- `refresh`: re-fetch receipts while preserving workstream curation.
+- `import`: ingest an existing run directory and render it.
+- `run`: legacy one-shot mode (`collect` + `render`).
+
+## Source adapters
+
+- `github`: PR/review ingestion with adaptive slicing and optional cache.
+- `json`: import canonical JSON artifacts.
+- `manual`: ingest `manual_events.yaml`.
+
+## Notes
+
+- Curated `workstreams.yaml` is user-owned; generated suggestions go to `workstreams.suggested.yaml`.
+- Manager/public packets are produced using deterministic redaction profiles.
+- LLM clustering (`--llm-cluster`) requires building with `--features llm`.
 
 ## Example
 
@@ -22,4 +34,4 @@ cargo run -p shiplog -- collect github \
   --out ./out
 ```
 
-For full end-to-end workflow details, see the repository `README.md`.
+See the repository `README.md` for full workflow details.

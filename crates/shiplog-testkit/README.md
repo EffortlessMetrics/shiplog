@@ -1,11 +1,11 @@
 # shiplog-testkit
 
-Shared fixtures and test helpers for shiplog crates.
+Workspace-internal test fixtures and BDD helpers.
 
 ## Includes
 
-- event fixture builders (`pr_event`)
-- BDD helpers (`bdd` module)
-- workstream/coverage fixture builders (`fixtures` module)
+- fixture builders (for events, coverage, and workstream scaffolds),
+- reusable `pr_event` fixture,
+- `bdd` scenario helpers (`Given`/`When`/`Then` style context + assertions).
 
-This crate is `publish = false` and intended for workspace-internal testing.
+This crate is `publish = false` and intended only for workspace tests.

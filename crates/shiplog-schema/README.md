@@ -1,14 +1,12 @@
 # shiplog-schema
 
-Canonical data model for the shiplog pipeline.
-
-All adapters and the engine depend on this crate for shared types.
+Canonical data model shared by shiplog crates.
 
 ## Modules
 
-- `event`: event envelope and payload types.
-- `workstream`: workstream structures and stats.
-- `coverage`: coverage manifests and query slices.
-- `bundle`: bundle profile and manifest types.
+- `event`: `EventEnvelope`, payload variants (`PullRequest`, `Review`, `Manual`), source metadata.
+- `coverage`: coverage windows, slices, and manifest completeness.
+- `workstream`: workstream structure, stats, and receipt references.
+- `bundle`: bundle manifest/checksum types and `BundleProfile`.
 
-Use this crate as the single source of truth for serialized artifacts.
+All ingestion, clustering, rendering, and redaction crates depend on these serialized contracts.

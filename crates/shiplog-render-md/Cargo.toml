@@ -1,26 +1,27 @@
 [package]
 name = "shiplog-render-md"
-version = "0.2.0"
+version = "0.2.1"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 authors.workspace = true
-description = "Markdown self-review packet renderer for shiplog"
+description = "Markdown self-review packet renderer for canonical shiplog data."
 readme = "README.md"
 documentation = "https://docs.rs/shiplog-render-md"
 repository.workspace = true
 homepage.workspace = true
-keywords.workspace = true
-categories.workspace = true
+keywords = ["markdown", "renderer", "reporting", "self-review", "packet"]
+categories = ["text-processing", "development-tools"]
 
 [dependencies]
 anyhow.workspace = true
 chrono.workspace = true
 itertools.workspace = true
-shiplog-schema = { path = "../shiplog-schema", version = "0.2.0" }
-shiplog-ports = { path = "../shiplog-ports", version = "0.2.0" }
+shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
+shiplog-ports = { path = "../shiplog-ports", version = "0.2.1" }
 
 [dev-dependencies]
 insta.workspace = true
-shiplog-ids = { path = "../shiplog-ids", version = "0.2.0" }
+shiplog-ids = { path = "../shiplog-ids", version = "0.2.1" }
+
 

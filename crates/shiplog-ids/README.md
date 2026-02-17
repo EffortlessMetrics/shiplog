@@ -1,12 +1,14 @@
 # shiplog-ids
 
-Stable identifier types for shiplog domain objects.
+Deterministic identifier types used across the shiplog workspace.
 
-## What it provides
+## Provides
 
-- `EventId`: deterministic SHA-256 ID from source parts.
-- `WorkstreamId`: deterministic SHA-256 ID for clustered work.
-- `RunId`: timestamp-based run identifier helper.
+- `EventId::from_parts(...)`
+- `WorkstreamId::from_parts(...)`
+- `RunId::now(prefix)`
+
+`EventId` and `WorkstreamId` are SHA-256 hashes derived from stable input parts. `RunId` is a timestamp-based run identifier for output directories.
 
 ## Example
 

@@ -1,17 +1,17 @@
 [package]
 name = "shiplog-bundle"
-version = "0.2.0"
+version = "0.2.1"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 authors.workspace = true
-description = "Zip archive generation with SHA256 checksums for shiplog output bundles"
+description = "Bundle manifest and profile-scoped zip writer for shiplog run directories."
 readme = "README.md"
 documentation = "https://docs.rs/shiplog-bundle"
 repository.workspace = true
 homepage.workspace = true
-keywords.workspace = true
-categories.workspace = true
+keywords = ["bundle", "zip", "checksum", "manifest", "artifacts"]
+categories = ["filesystem", "development-tools"]
 
 [dependencies]
 anyhow.workspace = true
@@ -20,9 +20,10 @@ sha2.workspace = true
 hex.workspace = true
 serde_json.workspace = true
 zip.workspace = true
-shiplog-schema = { path = "../shiplog-schema", version = "0.2.0" }
-shiplog-ids = { path = "../shiplog-ids", version = "0.2.0" }
+shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
+shiplog-ids = { path = "../shiplog-ids", version = "0.2.1" }
 
 [dev-dependencies]
 tempfile.workspace = true
+
 

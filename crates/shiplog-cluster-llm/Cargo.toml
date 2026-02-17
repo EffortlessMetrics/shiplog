@@ -1,17 +1,17 @@
 [package]
 name = "shiplog-cluster-llm"
-version = "0.2.0"
+version = "0.2.1"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 authors.workspace = true
-description = "LLM-assisted workstream clustering for shiplog using OpenAI-compatible APIs"
+description = "LLM-assisted workstream clustering with OpenAI-compatible backends and repo fallback."
 readme = "README.md"
 documentation = "https://docs.rs/shiplog-cluster-llm"
 repository.workspace = true
 homepage.workspace = true
-keywords.workspace = true
-categories.workspace = true
+keywords = ["llm", "clustering", "workstreams", "openai", "semantic"]
+categories = ["text-processing", "development-tools"]
 
 [dependencies]
 anyhow.workspace = true
@@ -19,7 +19,8 @@ chrono.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 reqwest.workspace = true
-shiplog-ids = { path = "../shiplog-ids", version = "0.2.0" }
-shiplog-schema = { path = "../shiplog-schema", version = "0.2.0" }
-shiplog-ports = { path = "../shiplog-ports", version = "0.2.0" }
-shiplog-workstreams = { path = "../shiplog-workstreams", version = "0.2.0" }
+shiplog-ids = { path = "../shiplog-ids", version = "0.2.1" }
+shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
+shiplog-ports = { path = "../shiplog-ports", version = "0.2.1" }
+shiplog-workstreams = { path = "../shiplog-workstreams", version = "0.2.1" }
+

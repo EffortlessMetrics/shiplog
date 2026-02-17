@@ -1,13 +1,16 @@
 # shiplog-ingest-github
 
-GitHub API ingestion adapter.
+GitHub API ingestion adapter for PR and review activity.
 
-## Features
+## Main type
 
-- Collects PR events (and optional review events) for a user/date range.
-- Uses adaptive month/week/day slicing around API result caps.
-- Emits detailed `CoverageManifest` slices and warnings.
-- Supports GitHub Enterprise API base URLs.
+- `GithubIngestor`
+
+## Behavior
+
+- Collects authored PRs (`merged` or `created` mode).
+- Optionally includes authored reviews (`include_reviews`).
+- Uses adaptive month/week/day slicing to work around search caps and incomplete windows.
+- Emits detailed `CoverageManifest` slices and partial-coverage notes when needed.
+- Supports GitHub Enterprise API bases.
 - Supports optional SQLite caching via `shiplog-cache`.
-
-Primary type: `GithubIngestor`.

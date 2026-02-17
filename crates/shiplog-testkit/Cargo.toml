@@ -1,25 +1,25 @@
 [package]
 name = "shiplog-testkit"
-version = "0.2.0"
+version = "0.2.1"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 authors.workspace = true
-description = "Shared test fixtures and utilities for shiplog crates"
+description = "Workspace-only fixture builders and BDD helpers for shiplog tests."
 readme = "README.md"
-documentation = "https://docs.rs/shiplog-testkit"
 repository.workspace = true
 homepage.workspace = true
-keywords.workspace = true
-categories.workspace = true
+keywords = ["testing", "fixtures", "bdd", "helpers", "shiplog"]
+categories = ["development-tools::testing"]
 publish = false
 
 [dependencies]
 chrono.workspace = true
-shiplog-ids = { path = "../shiplog-ids", version = "0.2.0" }
-shiplog-schema = { path = "../shiplog-schema", version = "0.2.0" }
+shiplog-ids = { path = "../shiplog-ids", version = "0.2.1" }
+shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
 
 [dev-dependencies]
-shiplog-redact = { path = "../shiplog-redact", version = "0.2.0" }
+shiplog-redact = { path = "../shiplog-redact", version = "0.2.1" }
 serde.workspace = true
+
 

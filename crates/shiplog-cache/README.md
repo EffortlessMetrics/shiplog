@@ -1,11 +1,11 @@
 # shiplog-cache
 
-SQLite-backed cache for API responses.
+SQLite-backed response cache used by GitHub ingestion.
 
 ## Key types
 
-- `ApiCache`: read/write JSON payloads with TTL.
-- `CacheKey`: stable cache key builders for GitHub endpoints.
-- `CacheStats`: cache metrics snapshot.
+- `ApiCache`: generic JSON value cache with TTL expiration.
+- `CacheKey`: stable key helpers for search/details/reviews endpoints.
+- `CacheStats`: counts of total/valid/expired entries.
 
-Designed to reduce repeated API calls and improve reproducibility in ingest workflows.
+Cache entries are stored in SQLite and can be cleaned with `cleanup_expired()`.

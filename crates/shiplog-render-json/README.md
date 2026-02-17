@@ -1,10 +1,10 @@
 # shiplog-render-json
 
-JSON artifact writer for canonical run files.
+JSON artifact writers for canonical shiplog outputs.
 
 ## Functions
 
-- `write_events_jsonl(path, events)`: writes line-delimited events.
-- `write_coverage_manifest(path, coverage)`: writes pretty JSON coverage manifest.
+- `write_events_jsonl(path, events)`
+- `write_coverage_manifest(path, coverage)`
 
-These files are the durable machine-readable receipts for downstream workflows.
+`write_events_jsonl` emits one event per line (`ledger.events.jsonl`), and `write_coverage_manifest` writes pretty JSON (`coverage.manifest.json`).

@@ -1,25 +1,19 @@
 # shiplog
 
-A **shipping packet generator** for developers.
+`shiplog` compiles activity data into self-review packets with receipts.
 
-It turns a date range of GitHub activity into:
+Given a user and date window, it produces:
+- an editable Markdown packet,
+- a canonical JSONL event ledger,
+- a coverage manifest that documents what was queried and what might be incomplete.
 
-- an **editable self-review packet** (Markdown)
-- an **evidence appendix** (JSONL)
-- a **coverage manifest** that tells you what was captured, and what might be missing
+## Output layout
 
-This is not a productivity scoreboard.
-It is a **report compiler with an audit trail**.
-
-## What it produces
-
-Given a user + date range, `shiplog` generates a folder like:
-
-```
+```text
 out/<run_id>/
   packet.md
-  workstreams.yaml              # user-curated (yours to edit)
-  workstreams.suggested.yaml    # auto-generated suggestions
+  workstreams.yaml              # optional user-curated file
+  workstreams.suggested.yaml    # generated suggestions
   ledger.events.jsonl
   coverage.manifest.json
   bundle.manifest.json
@@ -28,201 +22,75 @@ out/<run_id>/
     public/packet.md
 ```
 
-Key design choice: **receipts first**.
-If the tool cannot prove it fetched something, it says so in `coverage.manifest.json`.
+`bundle.manifest.json` and optional zip output are profile-aware. `redaction.aliases.json` is intentionally excluded from bundles.
 
 ## Quick start
 
-### Recommended workflow: collect, edit, render
-
 ```bash
-# 1. Collect events and generate workstream suggestions
-export GITHUB_TOKEN="..."       # optional for public repos
-
+# 1) Collect from GitHub
 cargo run -p shiplog -- collect github \
   --user octocat \
   --since 2025-01-01 \
   --until 2026-01-01 \
   --mode merged \
-  --out ./out \
-  --include-reviews
+  --out ./out
 
-# 2. Edit workstreams: rename workstreams.suggested.yaml → workstreams.yaml
-#    and curate the narrative to match your story.
+# 2) Curate workstreams
+# Rename workstreams.suggested.yaml -> workstreams.yaml and edit.
 
-# 3. Re-render the packet from your curated workstreams (no re-fetch)
+# 3) Re-render without re-fetching
 cargo run -p shiplog -- render --out ./out
 ```
 
-### Refresh: re-fetch events, keep your curation
+## Other flows
 
 ```bash
-cargo run -p shiplog -- refresh github \
-  --user octocat \
-  --since 2025-01-01 \
-  --until 2026-01-01 \
-  --mode merged \
-  --out ./out \
-  --include-reviews
+# Refresh receipts and coverage while preserving workstream curation
+cargo run -p shiplog -- refresh github --user octocat --since 2025-01-01 --until 2026-01-01 --out ./out
+
+# Import an existing ledger directory and re-render
+cargo run -p shiplog -- import --dir ./path/to/run --out ./out
+
+# Collect from prebuilt JSON artifacts
+cargo run -p shiplog -- collect json --events ./ledger.events.jsonl --coverage ./coverage.manifest.json --out ./out
+
+# Collect from manual YAML events
+cargo run -p shiplog -- collect manual --events ./manual_events.yaml --user octocat --since 2025-01-01 --until 2026-01-01 --out ./out
 ```
 
-### Import a pre-built ledger
+## Redaction and profiles
 
-Use the `import` subcommand to consume output from another system or a previous
-shiplog run and re-render it:
+Provide a redaction key with `--redact-key` or `SHIPLOG_REDACT_KEY` to generate stable manager/public projections:
+- `internal`: no structural redaction,
+- `manager`: keeps context, removes sensitive details,
+- `public`: aliases repo/workstream names and strips sensitive fields.
+
+## LLM clustering
+
+Repository clustering is the default. To enable semantic clustering:
 
 ```bash
-cargo run -p shiplog -- import \
-  --dir ./path/to/existing/run \
-  --out ./out
+cargo run -p shiplog --features llm -- collect github ... --llm-cluster
 ```
 
-`import` reads `ledger.events.jsonl` and `coverage.manifest.json` from the
-given directory, re-clusters into workstreams, and renders a fresh packet.
-Pass `--regen` to ignore imported workstreams and re-cluster from scratch.
+`--llm-cluster` requires the `llm` feature and an API key (`--llm-api-key` or `SHIPLOG_LLM_API_KEY`).
 
-### JSON import mode
+## Workspace crates
 
-```bash
-cargo run -p shiplog -- collect json \
-  --events ./examples/fixture/ledger.events.jsonl \
-  --coverage ./examples/fixture/coverage.manifest.json \
-  --out ./out
-```
-
-### Manual events mode
-
-```bash
-cargo run -p shiplog -- collect manual \
-  --events ./manual_events.yaml \
-  --user octocat \
-  --since 2025-01-01 \
-  --until 2026-01-01 \
-  --out ./out
-```
-
-Use the same `manual` source with `refresh` and `run` when working from YAML
-non-GitHub events.
-
-### One-shot mode (legacy)
-
-`run` combines collect + render in a single step:
-
-```bash
-cargo run -p shiplog -- run github \
-  --user octocat \
-  --since 2025-01-01 \
-  --until 2026-01-01 \
-  --mode merged \
-  --out ./out \
-  --include-reviews
-```
-
-### Redaction
-
-Pass a redaction key to generate privacy-filtered packets (manager/public profiles):
-
-```bash
-cargo run -p shiplog -- collect github ... --redact-key "my-secret"
-# or via environment variable:
-export SHIPLOG_REDACT_KEY="my-secret"
-```
-
-## CLI Reference
-
-| Flag | Subcommands | Description |
-|------|-------------|-------------|
-| `--mode merged\|created` | `collect`, `refresh` | Which PR lens to ingest |
-| `--include-reviews` | `collect`, `refresh` | Include review events |
-| `--no-details` | `collect`, `refresh`, `run` | Omit verbose details |
-| `--throttle-ms <N>` | `collect`, `refresh` | Rate-limit API calls (ms) |
-| `--api-base <URL>` | `collect`, `refresh` | GitHub Enterprise Server API base |
-| `--cache-dir <PATH>` | `collect`, `refresh`, `run` | Override GitHub API cache directory (default: `<out>/.cache`) |
-| `--no-cache` | `collect`, `refresh`, `run` | Disable GitHub API response caching |
-| `--regen` | `collect`, `import` | Regenerate `workstreams.suggested.yaml` |
-| `--redact-key <KEY>` | all | HMAC key for redacted profiles (or `SHIPLOG_REDACT_KEY` env var) |
-| `--run-dir <PATH>` | `refresh` | Explicit run directory (overrides auto-detection) |
-| `--zip` | `collect`, `render`, `refresh`, `import`, `run` | Write a zip archive next to the run folder |
-| `--bundle-profile internal\|manager\|public` | `collect`, `render`, `refresh`, `import`, `run` | Scope bundle/zip to a redaction profile |
-| `manual --events <PATH> --since <DATE> --until <DATE>` | `collect`, `refresh`, `run` | Ingest manual YAML events as the source |
-| `--llm-cluster` | `collect`, `import`, `run` | Use LLM-assisted workstream clustering |
-| `--llm-api-endpoint <URL>` | `collect`, `import`, `run` | LLM endpoint (default: OpenAI) |
-| `--llm-model <NAME>` | `collect`, `import`, `run` | LLM model name (default: `gpt-4o-mini`) |
-| `--llm-api-key <KEY>` | `collect`, `import`, `run` | LLM API key (or `SHIPLOG_LLM_API_KEY` env var) |
-
-### LLM Clustering
-
-By default, workstreams are clustered by repository name. Pass `--llm-cluster`
-to send event summaries to an OpenAI-compatible endpoint for semantic clustering:
-
-```bash
-export SHIPLOG_LLM_API_KEY="..."
-cargo run -p shiplog -- collect github ... --llm-cluster
-```
-
-The LLM feature must be enabled at build time:
-`cargo build -p shiplog --features llm`
-(or `cargo install shiplog --features llm`).
-Without it, `--llm-cluster` prints a clear error and exits.
-
-### Redaction alias cache
-
-When a redaction key is set, the redactor writes
-`redaction.aliases.json` to the run directory for alias stability across runs.
-This file is **excluded** from bundle manifests and zip archives to prevent
-plaintext-to-alias mappings from leaking.
-
-## Why this exists
-
-Your devs do not need more PRs.
-They need fewer surprises per PR.
-
-Performance reviews are the same shape: a year's worth of work, compressed into a handful
-of workstreams with enough receipts that a reviewer can trust it without spelunking.
-
-GitHub has the artifacts. It does not build the packet.
-
-`shiplog` does.
-
-## Architecture
-
-This is a heavily microcrated Rust workspace with Clean Architecture boundaries:
-
-- **crates/shiplog-ids**: type-safe stable ID generation (SHA256-based)
-- **crates/shiplog-schema**: canonical event model (the data spine)
-- **crates/shiplog-ports**: traits (ingestors, renderers, redactors, clusterers)
-- **crates/shiplog-ingest-\***: adapters (GitHub, JSONL, manual YAML events)
-- **crates/shiplog-engine**: orchestration (ingest → normalize → cluster → render)
-- **crates/shiplog-workstreams**: clustering + editable YAML overrides
-- **crates/shiplog-redact**: deterministic redaction profiles (internal/manager/public)
-- **crates/shiplog-coverage**: slicing + completeness reporting
-- **crates/shiplog-cache**: SQLite-backed API response caching (reduces GitHub API calls)
-- **crates/shiplog-render-\***: outputs (Markdown, JSON)
-- **crates/shiplog-bundle**: checksums + optional zip export
-- **crates/shiplog-testkit**: shared test fixtures
-- **apps/shiplog**: CLI
-
-## Crate stability
-
-| Tier | Crates | Contract |
-|------|--------|----------|
-| **Stable** | `shiplog-schema`, `shiplog-ports`, `shiplog-ids` | SemVer-strict. Safe to depend on. |
-| **Supported** | All other `shiplog-*` crates | SemVer, but internals may shift between minors. |
-| **Dev-only** | `shiplog-testkit` | Not published. No stability guarantee. |
-
-## Testing posture
-
-- Unit tests in microcrates.
-- Snapshot tests for rendered packets (`insta`).
-- Property tests for redaction invariants (`proptest`).
-- Fuzz harness scaffolding lives in `fuzz/` (not part of the workspace by default).
-
-## Safety and trust
-
-- Outputs include a **coverage manifest**.
-- Redaction is deterministic and profile-based.
-- Public packets strip titles and links by default. You should never leak private repo details.
+- `apps/shiplog`: CLI entrypoint.
+- `crates/shiplog-engine`: orchestration layer.
+- `crates/shiplog-ports`: core traits.
+- `crates/shiplog-schema`: canonical data model.
+- `crates/shiplog-ids`: stable ID types.
+- `crates/shiplog-ingest-*`: source adapters.
+- `crates/shiplog-workstreams`: clustering plus curated/suggested YAML workflow.
+- `crates/shiplog-redact`: deterministic profile-based redaction.
+- `crates/shiplog-render-*`: Markdown and JSON artifact writers.
+- `crates/shiplog-bundle`: checksum manifests and zip output.
+- `crates/shiplog-cache`: SQLite API cache.
+- `crates/shiplog-cluster-llm`: optional LLM clusterer.
+- `crates/shiplog-testkit`: internal fixture/test helpers.
 
 ## License
 
-Dual-licensed under MIT or Apache-2.0.
+Dual licensed under MIT OR Apache-2.0.
