@@ -111,16 +111,11 @@ impl GithubIngestor {
         url: &str,
         params: &[(&str, String)],
     ) -> Result<T> {
-        // Build URL with query params manually
-        let url_with_params = if params.is_empty() {
-            url.to_string()
-        } else {
-            let query: Vec<String> = params.iter().map(|(k, v)| format!("{}={}", k, v)).collect();
-            format!("{}?{}", url, query.join("&"))
-        };
+        let request_url = build_url_with_params(url, params)?;
+        let request_url_for_err = request_url.as_str().to_string();
 
         let mut req = client
-            .get(&url_with_params)
+            .get(request_url)
             .header("Accept", "application/vnd.github+json");
         req = req.header("X-GitHub-Api-Version", "2022-11-28");
         if let Some(t) = &self.token {
@@ -128,7 +123,7 @@ impl GithubIngestor {
         }
         let resp = req
             .send()
-            .with_context(|| format!("GET {url_with_params}"))?;
+            .with_context(|| format!("GET {request_url_for_err}"))?;
         self.throttle();
 
         if !resp.status().is_success() {
@@ -138,7 +133,7 @@ impl GithubIngestor {
         }
 
         resp.json::<T>()
-            .with_context(|| format!("parse json from {url_with_params}"))
+            .with_context(|| format!("parse json from {request_url_for_err}"))
     }
 }
 
@@ -675,6 +670,17 @@ fn github_inclusive_range(w: &TimeWindow) -> (String, String) {
     (start, end)
 }
 
+fn build_url_with_params(base: &str, params: &[(&str, String)]) -> Result<Url> {
+    let mut url = Url::parse(base).with_context(|| format!("parse url {base}"))?;
+    if !params.is_empty() {
+        let mut query = url.query_pairs_mut();
+        for (k, v) in params {
+            query.append_pair(k, v);
+        }
+    }
+    Ok(url)
+}
+
 fn repo_from_repo_url(repo_api_url: &str, html_base: &str) -> (String, String) {
     #[allow(clippy::collapsible_if)]
     if let Ok(u) = Url::parse(repo_api_url) {
@@ -774,5 +780,74 @@ mod tests {
 
         assert!(ing.cache.is_some());
         assert!(cache_dir.join("github-api-cache.db").exists());
+    }
+
+    #[test]
+    fn build_url_with_params_encodes_query_values() {
+        let url = build_url_with_params(
+            "https://api.github.com/search/issues",
+            &[
+                ("q", "is:pr is:merged author:octocat".to_string()),
+                ("per_page", "1".to_string()),
+            ],
+        )
+        .unwrap();
+
+        assert!(!url.as_str().contains(' '), "URL should be percent-encoded");
+
+        let pairs: Vec<(String, String)> = url
+            .query_pairs()
+            .map(|(k, v)| (k.into_owned(), v.into_owned()))
+            .collect();
+        assert_eq!(
+            pairs,
+            vec![
+                (
+                    "q".to_string(),
+                    "is:pr is:merged author:octocat".to_string()
+                ),
+                ("per_page".to_string(), "1".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn github_inclusive_range_uses_exclusive_until_date() {
+        let window = TimeWindow {
+            since: NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
+            until: NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),
+        };
+
+        let (start, end) = github_inclusive_range(&window);
+        assert_eq!(start, "2025-01-01");
+        assert_eq!(end, "2025-01-31");
+    }
+
+    #[test]
+    fn html_base_url_maps_public_and_ghes_hosts() {
+        let mut ing = GithubIngestor::new(
+            "octocat".to_string(),
+            NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
+            NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),
+        );
+        ing.api_base = "https://api.github.com".to_string();
+        assert_eq!(ing.html_base_url(), "https://github.com");
+
+        ing.api_base = "https://github.enterprise.local/api/v3".to_string();
+        assert_eq!(ing.html_base_url(), "https://github.enterprise.local");
+    }
+
+    #[test]
+    fn repo_from_repo_url_extracts_or_falls_back() {
+        let (full, html) = repo_from_repo_url(
+            "https://api.github.com/repos/owner/repo",
+            "https://github.com",
+        );
+        assert_eq!(full, "owner/repo");
+        assert_eq!(html, "https://github.com/owner/repo");
+
+        let (full_fallback, html_fallback) = repo_from_repo_url("not-a-url", "https://github.com");
+        assert_eq!(full_fallback, "unknown/unknown");
+        assert_eq!(html_fallback, "https://github.com");
     }
 }
