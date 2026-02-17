@@ -1,3 +1,8 @@
+//! GitHub API ingestor with adaptive date slicing and cache support.
+//!
+//! Collects PR/review events, tracks coverage slices, and marks partial
+//! completeness when search caps or incomplete API responses are detected.
+
 use anyhow::{Context, Result, anyhow};
 use chrono::{DateTime, NaiveDate, Utc};
 use reqwest::blocking::Client;
@@ -28,7 +33,7 @@ pub struct GithubIngestor {
     pub fetch_details: bool,
     pub throttle_ms: u64,
     pub token: Option<String>,
-    /// GitHub API base URL (for GHES). Default: https://api.github.com
+    /// GitHub API base URL (for GHES). Default: <https://api.github.com>
     pub api_base: String,
     /// Optional cache for API responses
     pub cache: Option<ApiCache>,
@@ -53,6 +58,10 @@ impl GithubIngestor {
     /// Enable caching with the given cache directory.
     pub fn with_cache(mut self, cache_dir: impl Into<PathBuf>) -> Result<Self> {
         let cache_path = cache_dir.into().join("github-api-cache.db");
+        if let Some(parent) = cache_path.parent() {
+            std::fs::create_dir_all(parent)
+                .with_context(|| format!("create GitHub cache directory {parent:?}"))?;
+        }
         let cache = ApiCache::open(cache_path)?;
         self.cache = Some(cache);
         Ok(self)
@@ -744,4 +753,26 @@ struct PullRequestReview {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 struct ReviewUser {
     login: String,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn with_cache_creates_missing_directory() {
+        let temp = tempfile::tempdir().unwrap();
+        let cache_dir = temp.path().join("nested").join("cache");
+
+        let ing = GithubIngestor::new(
+            "octocat".to_string(),
+            NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
+            NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),
+        )
+        .with_cache(&cache_dir)
+        .unwrap();
+
+        assert!(ing.cache.is_some());
+        assert!(cache_dir.join("github-api-cache.db").exists());
+    }
 }

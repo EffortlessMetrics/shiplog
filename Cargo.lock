@@ -1732,6 +1732,7 @@ dependencies = [
  "shiplog-engine",
  "shiplog-ingest-github",
  "shiplog-ingest-json",
+ "shiplog-ingest-manual",
  "shiplog-ports",
  "shiplog-redact",
  "shiplog-render-md",
@@ -1832,6 +1833,7 @@ dependencies = [
  "shiplog-ids",
  "shiplog-ports",
  "shiplog-schema",
+ "tempfile",
  "url",
 ]
 

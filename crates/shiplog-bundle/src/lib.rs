@@ -1,3 +1,8 @@
+//! Bundle writer for shiplog run outputs.
+//!
+//! Generates `bundle.manifest.json` (file checksums + sizes) and builds
+//! profile-scoped zip archives for `internal`, `manager`, and `public` handoff.
+
 use anyhow::{Context, Result};
 use chrono::Utc;
 use sha2::{Digest, Sha256};

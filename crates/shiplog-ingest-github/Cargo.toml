@@ -4,7 +4,10 @@ version = "0.2.0"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
+authors.workspace = true
 description = "GitHub API adapter with adaptive date slicing and SQLite caching for shiplog"
+readme = "README.md"
+documentation = "https://docs.rs/shiplog-ingest-github"
 repository.workspace = true
 homepage.workspace = true
 keywords.workspace = true
@@ -22,4 +25,7 @@ shiplog-schema = { path = "../shiplog-schema", version = "0.2.0" }
 shiplog-ports = { path = "../shiplog-ports", version = "0.2.0" }
 shiplog-coverage = { path = "../shiplog-coverage", version = "0.2.0" }
 shiplog-cache = { path = "../shiplog-cache", version = "0.2.0" }
+
+[dev-dependencies]
+tempfile.workspace = true
 

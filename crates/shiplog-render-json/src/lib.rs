@@ -1,3 +1,8 @@
+//! JSON writers for canonical shiplog artifacts.
+//!
+//! Emits line-delimited events (`ledger.events.jsonl`) and pretty-formatted
+//! coverage manifests (`coverage.manifest.json`).
+
 use anyhow::{Context, Result};
 use shiplog_schema::coverage::CoverageManifest;
 use shiplog_schema::event::EventEnvelope;

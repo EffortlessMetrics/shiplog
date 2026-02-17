@@ -106,21 +106,24 @@ cargo run -p shiplog -- run github \
 
 ### Key CLI flags
 
-Flags available on `collect`/`refresh` github subcommands:
+Flags:
 
 *   `--mode merged|created` — which PR lens to ingest
 *   `--include-reviews` — include review events where available
 *   `--no-details` — omit verbose details in packet
 *   `--throttle-ms <N>` — rate-limit API calls (milliseconds)
 *   `--api-base <URL>` — GitHub Enterprise Server API base
+*   `--cache-dir <PATH>` — override GitHub API cache directory (default: `<out>/.cache`)
+*   `--no-cache` — disable GitHub API response caching
 *   `--regen` — regenerate `workstreams.suggested.yaml`; never overwrites `workstreams.yaml`
 *   `--run-dir <PATH>` — explicit run directory for `refresh` (overrides auto-detection)
 *   `--zip` — write a zip archive next to the run folder
 *   `--redact-key` or `SHIPLOG_REDACT_KEY` env var — controls generation of manager/public packets
-*   `--llm-cluster` — use LLM-assisted workstream clustering instead of repo-based
-*   `--llm-api-endpoint <URL>` — LLM endpoint (default: OpenAI-compatible)
-*   `--llm-model <NAME>` — LLM model name (default: `gpt-4o-mini`)
-*   `--llm-api-key <KEY>` — LLM API key (or `SHIPLOG_LLM_API_KEY` env var)
+*   `manual` source (`collect`/`refresh`/`run`) — ingest non-GitHub YAML events with `--events`, `--since`, and `--until`
+*   `--llm-cluster` (`collect`/`import`/`run`) — use LLM-assisted workstream clustering instead of repo-based
+*   `--llm-api-endpoint <URL>` (`collect`/`import`/`run`) — LLM endpoint (default: OpenAI-compatible)
+*   `--llm-model <NAME>` (`collect`/`import`/`run`) — LLM model name (default: `gpt-4o-mini`)
+*   `--llm-api-key <KEY>` (`collect`/`import`/`run`) — LLM API key (or `SHIPLOG_LLM_API_KEY` env var)
 
 ### Output directory structure
 

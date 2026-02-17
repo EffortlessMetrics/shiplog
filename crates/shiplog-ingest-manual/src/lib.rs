@@ -1,3 +1,8 @@
+//! Manual YAML ingestor for non-GitHub work.
+//!
+//! Reads `manual_events.yaml`, filters entries by date window, converts entries
+//! into canonical events, and emits coverage metadata for the import.
+
 use anyhow::{Context, Result};
 use chrono::Utc;
 use shiplog_ids::EventId;

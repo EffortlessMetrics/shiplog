@@ -1,6 +1,6 @@
 /// Configuration for LLM-assisted clustering.
 pub struct LlmConfig {
-    /// API endpoint (e.g., "https://api.openai.com/v1/chat/completions")
+    /// API endpoint (e.g., "<https://api.openai.com/v1/chat/completions>")
     pub api_endpoint: String,
     /// API key for authentication
     pub api_key: String,

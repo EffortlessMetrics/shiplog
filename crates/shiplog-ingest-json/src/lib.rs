@@ -1,3 +1,8 @@
+//! JSONL/JSON ingestion adapter for prebuilt shiplog ledgers.
+//!
+//! Loads canonical `ledger.events.jsonl` + `coverage.manifest.json` and returns
+//! them through the [`shiplog_ports::Ingestor`] interface.
+
 use anyhow::{Context, Result};
 use shiplog_ports::{IngestOutput, Ingestor};
 use shiplog_schema::coverage::CoverageManifest;

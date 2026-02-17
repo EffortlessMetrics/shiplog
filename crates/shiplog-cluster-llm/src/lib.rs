@@ -1,3 +1,8 @@
+//! LLM-assisted workstream clustering adapters.
+//!
+//! Provides [`LlmClusterer`] plus pluggable backends for OpenAI-compatible
+//! APIs, and [`LlmWithFallback`] for repo-based fallback on LLM failure.
+
 mod client;
 mod config;
 mod parse;

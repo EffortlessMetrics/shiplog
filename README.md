@@ -90,6 +90,20 @@ cargo run -p shiplog -- collect json \
   --out ./out
 ```
 
+### Manual events mode
+
+```bash
+cargo run -p shiplog -- collect manual \
+  --events ./manual_events.yaml \
+  --user octocat \
+  --since 2025-01-01 \
+  --until 2026-01-01 \
+  --out ./out
+```
+
+Use the same `manual` source with `refresh` and `run` when working from YAML
+non-GitHub events.
+
 ### One-shot mode (legacy)
 
 `run` combines collect + render in a single step:
@@ -123,15 +137,18 @@ export SHIPLOG_REDACT_KEY="my-secret"
 | `--no-details` | `collect`, `refresh`, `run` | Omit verbose details |
 | `--throttle-ms <N>` | `collect`, `refresh` | Rate-limit API calls (ms) |
 | `--api-base <URL>` | `collect`, `refresh` | GitHub Enterprise Server API base |
+| `--cache-dir <PATH>` | `collect`, `refresh`, `run` | Override GitHub API cache directory (default: `<out>/.cache`) |
+| `--no-cache` | `collect`, `refresh`, `run` | Disable GitHub API response caching |
 | `--regen` | `collect`, `import` | Regenerate `workstreams.suggested.yaml` |
 | `--redact-key <KEY>` | all | HMAC key for redacted profiles (or `SHIPLOG_REDACT_KEY` env var) |
 | `--run-dir <PATH>` | `refresh` | Explicit run directory (overrides auto-detection) |
 | `--zip` | `collect`, `render`, `refresh`, `import`, `run` | Write a zip archive next to the run folder |
 | `--bundle-profile internal\|manager\|public` | `collect`, `render`, `refresh`, `import`, `run` | Scope bundle/zip to a redaction profile |
-| `--llm-cluster` | `collect`, `refresh`, `import`, `run` | Use LLM-assisted workstream clustering |
-| `--llm-api-endpoint <URL>` | `collect`, `refresh`, `import`, `run` | LLM endpoint (default: OpenAI) |
-| `--llm-model <NAME>` | `collect`, `refresh`, `import`, `run` | LLM model name (default: `gpt-4o-mini`) |
-| `--llm-api-key <KEY>` | `collect`, `refresh`, `import`, `run` | LLM API key (or `SHIPLOG_LLM_API_KEY` env var) |
+| `manual --events <PATH> --since <DATE> --until <DATE>` | `collect`, `refresh`, `run` | Ingest manual YAML events as the source |
+| `--llm-cluster` | `collect`, `import`, `run` | Use LLM-assisted workstream clustering |
+| `--llm-api-endpoint <URL>` | `collect`, `import`, `run` | LLM endpoint (default: OpenAI) |
+| `--llm-model <NAME>` | `collect`, `import`, `run` | LLM model name (default: `gpt-4o-mini`) |
+| `--llm-api-key <KEY>` | `collect`, `import`, `run` | LLM API key (or `SHIPLOG_LLM_API_KEY` env var) |
 
 ### LLM Clustering
 
