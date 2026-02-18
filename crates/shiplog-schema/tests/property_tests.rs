@@ -6,14 +6,14 @@
 use proptest::prelude::*;
 use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
 use shiplog_schema::event::*;
-use shiplog_schema::workstream::{Workstream, WorkstreamFile};
+use shiplog_schema::workstream::WorkstreamsFile;
 
 // ============================================================================
 // JSON Round-Trip Tests
 // ============================================================================
 
 proptest! {
-    /// Test that EventEnvelope JSON round-trip preserves all fields
+    // Test that EventEnvelope JSON round-trip preserves all fields
     #[test]
     fn prop_event_envelope_json_roundtrip(event in shiplog_testkit::proptest::strategy_event_envelope()) {
         let json = serde_json::to_string(&event).unwrap();
@@ -24,7 +24,7 @@ proptest! {
         prop_assert_eq!(event.repo.full_name, deserialized.repo.full_name);
     }
 
-    /// Test that Vec<EventEnvelope> JSONL round-trip preserves order and data
+    // Test that Vec<EventEnvelope> JSONL round-trip preserves order and data
     #[test]
     fn prop_event_vec_jsonl_roundtrip(events in shiplog_testkit::proptest::strategy_event_vec(20)) {
         let jsonl: String = events.iter()
@@ -37,20 +37,20 @@ proptest! {
             .collect();
         prop_assert_eq!(events.len(), deserialized.len());
         for (orig, deser) in events.iter().zip(deserialized.iter()) {
-            prop_assert_eq!(orig.id, deser.id);
+            prop_assert_eq!(&orig.id, &deser.id);
         }
     }
 
-    /// Test that WorkstreamsFile YAML round-trip preserves structure
+    // Test that WorkstreamsFile YAML round-trip preserves structure
     #[test]
     fn prop_workstreams_file_yaml_roundtrip(file in shiplog_testkit::proptest::strategy_workstreams_file()) {
         let yaml = serde_yaml::to_string(&file).unwrap();
-        let deserialized: WorkstreamFile = serde_yaml::from_str(&yaml).unwrap();
+        let deserialized: WorkstreamsFile = serde_yaml::from_str(&yaml).unwrap();
         prop_assert_eq!(file.version, deserialized.version);
         prop_assert_eq!(file.workstreams.len(), deserialized.workstreams.len());
     }
 
-    /// Test that CoverageManifest JSON round-trip preserves metadata
+    // Test that CoverageManifest JSON round-trip preserves metadata
     #[test]
     fn prop_coverage_manifest_json_roundtrip(manifest in shiplog_testkit::proptest::strategy_coverage_manifest()) {
         let json = serde_json::to_string(&manifest).unwrap();
@@ -67,7 +67,7 @@ proptest! {
 // ============================================================================
 
 proptest! {
-    /// Test that SourceSystem enum preserves variant information
+    // Test that SourceSystem enum preserves variant information
     #[test]
     fn prop_source_system_roundtrip(source in shiplog_testkit::proptest::strategy_source_system()) {
         let json = serde_json::to_string(&source).unwrap();
@@ -75,7 +75,7 @@ proptest! {
         prop_assert_eq!(source, deserialized);
     }
 
-    /// Test that RepoVisibility enum preserves variant information
+    // Test that RepoVisibility enum preserves variant information
     #[test]
     fn prop_repo_visibility_roundtrip(visibility in shiplog_testkit::proptest::strategy_repo_visibility()) {
         let json = serde_json::to_string(&visibility).unwrap();
@@ -83,7 +83,7 @@ proptest! {
         prop_assert_eq!(visibility, deserialized);
     }
 
-    /// Test that PullRequestState enum preserves variant information
+    // Test that PullRequestState enum preserves variant information
     #[test]
     fn prop_pr_state_roundtrip(state in shiplog_testkit::proptest::strategy_pr_state()) {
         let json = serde_json::to_string(&state).unwrap();
@@ -91,7 +91,7 @@ proptest! {
         prop_assert_eq!(state, deserialized);
     }
 
-    /// Test that EventKind enum preserves variant information
+    // Test that EventKind enum preserves variant information
     #[test]
     fn prop_event_kind_roundtrip(kind in shiplog_testkit::proptest::strategy_event_kind()) {
         let json = serde_json::to_string(&kind).unwrap();
@@ -99,7 +99,7 @@ proptest! {
         prop_assert_eq!(kind, deserialized);
     }
 
-    /// Test that Completeness enum preserves variant information
+    // Test that Completeness enum preserves variant information
     #[test]
     fn prop_completeness_roundtrip(completeness in shiplog_testkit::proptest::strategy_completeness()) {
         let json = serde_json::to_string(&completeness).unwrap();
@@ -113,7 +113,7 @@ proptest! {
 // ============================================================================
 
 proptest! {
-    /// Test that EventId string representation matches inner value
+    // Test that EventId string representation matches inner value
     #[test]
     fn prop_event_id_string_representation(parts in shiplog_testkit::proptest::strategy_event_id_parts()) {
         let id = shiplog_ids::EventId::from_parts(parts.iter().map(|s| s.as_str()).collect::<Vec<_>>().as_slice());
@@ -121,7 +121,7 @@ proptest! {
         prop_assert_eq!(id_str, format!("{}", id));
     }
 
-    /// Test that WorkstreamId string representation matches inner value
+    // Test that WorkstreamId string representation matches inner value
     #[test]
     fn prop_workstream_id_string_representation(parts in shiplog_testkit::proptest::strategy_workstream_id_parts()) {
         let id = shiplog_ids::WorkstreamId::from_parts(parts.iter().map(|s| s.as_str()).collect::<Vec<_>>().as_slice());
@@ -129,7 +129,7 @@ proptest! {
         prop_assert_eq!(id_str, format!("{}", id));
     }
 
-    /// Test that DateTime RFC3339 serialization round-trips correctly
+    // Test that DateTime RFC3339 serialization round-trips correctly
     #[test]
     fn prop_datetime_rfc3339_roundtrip(dt in shiplog_testkit::proptest::strategy_datetime_utc()) {
         let json = serde_json::to_string(&dt).unwrap();
@@ -137,32 +137,36 @@ proptest! {
         prop_assert_eq!(dt, deserialized);
     }
 
-    /// Test that NaiveDate ISO 8601 serialization round-trips correctly
+    // Test that NaiveDate ISO 8601 serialization round-trips correctly
     #[test]
     fn prop_naive_date_iso8601_roundtrip(date in shiplog_testkit::proptest::strategy_naive_date()) {
         let json = serde_json::to_string(&date).unwrap();
         let deserialized: chrono::NaiveDate = serde_json::from_str(&json).unwrap();
         prop_assert_eq!(date, deserialized);
     }
+}
 
-    /// Test that optional fields round-trip as null/missing
-    #[test]
-    fn prop_optional_fields_roundtrip() {
-        #[derive(serde::Serialize, serde::Deserialize, Debug, PartialEq)]
-        struct TestOptional {
-            #[serde(skip_serializing_if = "Option::is_none")]
-            optional_field: Option<String>,
-        }
-
-        let with_value = TestOptional { optional_field: Some("value".to_string()) };
-        let json = serde_json::to_string(&with_value).unwrap();
-        let deserialized: TestOptional = serde_json::from_str(&json).unwrap();
-        prop_assert_eq!(with_value, deserialized);
-
-        let without_value = TestOptional { optional_field: None };
-        let json = serde_json::to_string(&without_value).unwrap();
-        prop_assert!(!json.contains("optional_field"));
+// Test that optional fields round-trip as null/missing
+#[test]
+fn prop_optional_fields_roundtrip() {
+    #[derive(serde::Serialize, serde::Deserialize, Debug, PartialEq)]
+    struct TestOptional {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        optional_field: Option<String>,
     }
+
+    let with_value = TestOptional {
+        optional_field: Some("value".to_string()),
+    };
+    let json = serde_json::to_string(&with_value).unwrap();
+    let deserialized: TestOptional = serde_json::from_str(&json).unwrap();
+    assert_eq!(with_value, deserialized);
+
+    let without_value = TestOptional {
+        optional_field: None,
+    };
+    let json = serde_json::to_string(&without_value).unwrap();
+    assert!(!json.contains("optional_field"));
 }
 
 // ============================================================================
@@ -170,7 +174,7 @@ proptest! {
 // ============================================================================
 
 proptest! {
-    /// Test that TimeWindow::contains correctly identifies dates
+    // Test that TimeWindow::contains correctly identifies dates
     #[test]
     fn prop_time_window_contains_correct(
         since in shiplog_testkit::proptest::strategy_naive_date(),

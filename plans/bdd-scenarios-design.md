@@ -1682,7 +1682,7 @@ This section defines reusable Given/When/Then steps that can be composed across 
 ```rust
 // User setup
 given("a user with GitHub token configured", |ctx| {
-    ctx.strings.insert("github_token".to_string(), "ghp_test_token".to_string());
+    ctx.strings.insert("github_token".to_string(), "github_test_token".to_string());
     ctx.strings.insert("username".to_string(), "testuser".to_string());
 })
 

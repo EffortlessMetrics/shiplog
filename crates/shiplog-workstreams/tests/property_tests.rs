@@ -4,21 +4,26 @@
 //! (workstream assignment consistency).
 
 use proptest::prelude::*;
-use shiplog_workstreams::RepoClusterer;
+use shiplog_ports::WorkstreamClusterer;
+use shiplog_schema::event::EventEnvelope;
 use shiplog_testkit::proptest::*;
+use shiplog_workstreams::RepoClusterer;
+
+fn clustered_workstreams(events: &[EventEnvelope]) -> Vec<shiplog_schema::workstream::Workstream> {
+    RepoClusterer.cluster(events).unwrap().workstreams
+}
 
 // ============================================================================
 // Clustering Invariant Tests
 // ============================================================================
 
 proptest! {
-    /// Test that all events are assigned to exactly one workstream
+    // Test that all events are assigned to exactly one workstream
     #[test]
     fn prop_all_events_assigned(
         events in strategy_event_vec(50)
     ) {
-        let clusterer = RepoClusterer::new();
-        let workstreams = clusterer.cluster(&events);
+        let workstreams = clustered_workstreams(&events);
 
         // Collect all event IDs from all workstreams
         let mut assigned_ids = std::collections::HashSet::new();
@@ -37,13 +42,12 @@ proptest! {
         prop_assert_eq!(assigned_ids.len(), events.len());
     }
 
-    /// Test that no duplicate events across workstreams
+    // Test that no duplicate events across workstreams
     #[test]
     fn prop_no_duplicate_events(
         events in strategy_event_vec(50)
     ) {
-        let clusterer = RepoClusterer::new();
-        let workstreams = clusterer.cluster(&events);
+        let workstreams = clustered_workstreams(&events);
 
         // Collect all event IDs from all workstreams
         let mut all_ids: Vec<_> = Vec::new();
@@ -51,22 +55,19 @@ proptest! {
             all_ids.extend(ws.events.iter());
         }
 
-        // Sort and check for duplicates
-        all_ids.sort();
-        all_ids.dedup();
-
-        // If there were duplicates, the length would be different
+        // Compare by stable string representation because EventId doesn't implement Ord.
+        let unique_ids: std::collections::HashSet<String> =
+            all_ids.into_iter().map(|id| id.to_string()).collect();
         let original_count: usize = events.iter().map(|e| &e.id).collect::<Vec<_>>().len();
-        prop_assert_eq!(all_ids.len(), original_count);
+        prop_assert_eq!(unique_ids.len(), original_count);
     }
 
-    /// Test that receipts are subset of events
+    // Test that receipts are subset of events
     #[test]
     fn prop_receipts_subset_of_events(
         events in strategy_event_vec(50)
     ) {
-        let clusterer = RepoClusterer::new();
-        let workstreams = clusterer.cluster(&events);
+        let workstreams = clustered_workstreams(&events);
 
         for ws in &workstreams {
             for receipt_id in &ws.receipts {
@@ -75,13 +76,12 @@ proptest! {
         }
     }
 
-    /// Test that stats consistency holds
+    // Test that stats consistency holds
     #[test]
     fn prop_stats_consistency(
         events in strategy_event_vec(50)
     ) {
-        let clusterer = RepoClusterer::new();
-        let workstreams = clusterer.cluster(&events);
+        let workstreams = clustered_workstreams(&events);
 
         for ws in &workstreams {
             // Count events by kind in this workstream
@@ -106,25 +106,24 @@ proptest! {
         }
     }
 
-    /// Test that repo clusterer groups events with same repo
+    // Test that repo clusterer groups events with same repo
     #[test]
     fn prop_repo_clusterer_invariant(
         events in strategy_event_vec(50)
     ) {
-        let clusterer = RepoClusterer::new();
-        let workstreams = clusterer.cluster(&events);
+        let workstreams = clustered_workstreams(&events);
 
         // Group events by repo
         let mut repo_events: std::collections::HashMap<String, Vec<&shiplog_schema::event::EventEnvelope>> =
             std::collections::HashMap::new();
         for event in &events {
             repo_events.entry(event.repo.full_name.clone())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(event);
         }
 
         // Check that events from same repo are in same workstream
-        for (repo, repo_evs) in &repo_events {
+        for repo_evs in repo_events.values() {
             if repo_evs.len() > 1 {
                 // Find the workstream for the first event
                 let first_id = &repo_evs[0].id;
@@ -140,20 +139,17 @@ proptest! {
         }
     }
 
-    /// Test that workstream ID is deterministic
+    // Test that workstream ID is deterministic
     #[test]
     fn prop_workstream_id_determinism(
         events in strategy_event_vec(50)
     ) {
-        let clusterer1 = RepoClusterer::new();
-        let workstreams1 = clusterer1.cluster(&events);
+        let workstreams1 = clustered_workstreams(&events);
+        let workstreams2 = clustered_workstreams(&events);
 
-        let clusterer2 = RepoClusterer::new();
-        let workstreams2 = clusterer2.cluster(&events);
-
-        // Sort both workstream lists by ID for comparison
-        let mut ids1: Vec<_> = workstreams1.iter().map(|w| &w.id).collect();
-        let mut ids2: Vec<_> = workstreams2.iter().map(|w| &w.id).collect();
+        // Sort by stable string representation because WorkstreamId doesn't implement Ord.
+        let mut ids1: Vec<_> = workstreams1.iter().map(|w| w.id.to_string()).collect();
+        let mut ids2: Vec<_> = workstreams2.iter().map(|w| w.id.to_string()).collect();
         ids1.sort();
         ids2.sort();
 
@@ -166,13 +162,12 @@ proptest! {
 // ============================================================================
 
 proptest! {
-    /// Test that repo-clustered workstreams have "repo" tag
+    // Test that repo-clustered workstreams have "repo" tag
     #[test]
     fn prop_repo_tag_present(
         events in strategy_event_vec(50)
     ) {
-        let clusterer = RepoClusterer::new();
-        let workstreams = clusterer.cluster(&events);
+        let workstreams = clustered_workstreams(&events);
 
         for ws in &workstreams {
             // Repo-clustered workstreams should have "repo" tag
@@ -180,13 +175,12 @@ proptest! {
         }
     }
 
-    /// Test that workstream title matches repo name
+    // Test that workstream title matches repo name
     #[test]
     fn prop_title_consistency(
         events in strategy_event_vec(50)
     ) {
-        let clusterer = RepoClusterer::new();
-        let workstreams = clusterer.cluster(&events);
+        let workstreams = clustered_workstreams(&events);
 
         for ws in &workstreams {
             if !ws.events.is_empty() {
@@ -200,16 +194,13 @@ proptest! {
         }
     }
 
-    /// Test that workstreams file version is always 1
+    // Test that workstreams file version is always 1
     #[test]
     fn prop_version_field(
         events in strategy_event_vec(50)
     ) {
-        let clusterer = RepoClusterer::new();
-        let workstreams = clusterer.cluster(&events);
-
-        let workstreams_file = shiplog_schema::workstream::WorkstreamFile {
-            workstreams,
+        let workstreams_file = shiplog_schema::workstream::WorkstreamsFile {
+            workstreams: clustered_workstreams(&events),
             version: 1,
             generated_at: chrono::Utc::now(),
         };
@@ -223,14 +214,13 @@ proptest! {
 // ============================================================================
 
 proptest! {
-    /// Test that receipt list never exceeds configured maximum
+    // Test that receipt list never exceeds configured maximum
     #[test]
     fn prop_receipt_truncation(
         events in strategy_event_vec(100),
         max_receipts in 1usize..20usize
     ) {
-        let clusterer = RepoClusterer::new();
-        let mut workstreams = clusterer.cluster(&events);
+        let mut workstreams = clustered_workstreams(&events);
 
         // Truncate receipts to max
         for ws in &mut workstreams {

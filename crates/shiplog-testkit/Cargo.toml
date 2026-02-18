@@ -17,11 +17,12 @@ publish = false
 chrono.workspace = true
 shiplog-ids = { path = "../shiplog-ids", version = "0.2.1" }
 shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
+proptest.workspace = true
+serde_json.workspace = true
 
 [dev-dependencies]
 shiplog-redact = { path = "../shiplog-redact", version = "0.2.1" }
 shiplog-workstreams = { path = "../shiplog-workstreams", version = "0.2.1" }
 serde.workspace = true
-proptest.workspace = true
 
 

@@ -22,4 +22,5 @@ shiplog-ids = { path = "../shiplog-ids", version = "0.2.1" }
 [dev-dependencies]
 proptest.workspace = true
 shiplog-testkit = { path = "../shiplog-testkit", version = "0.2.1" }
+serde_yaml.workspace = true
 

@@ -1929,6 +1929,7 @@ dependencies = [
  "proptest",
  "serde",
  "serde_json",
+ "serde_yaml_ng",
  "shiplog-ids",
  "shiplog-testkit",
 ]
@@ -1940,6 +1941,7 @@ dependencies = [
  "chrono",
  "proptest",
  "serde",
+ "serde_json",
  "shiplog-ids",
  "shiplog-redact",
  "shiplog-schema",
