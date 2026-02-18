@@ -10,31 +10,15 @@
 //! These scenarios follow the Given/When/Then pattern and can be used
 //! to verify the behavior of these features.
 
-pub mod configurable_templates;
 pub mod gitlab_ingest;
 pub mod jira_linear_ingest;
-pub mod llm_clustering;
-#[cfg(any(
-    feature = "microcrate_export",
-    feature = "microcrate_output_layout",
-    feature = "microcrate_validate",
-    feature = "microcrate_storage",
-    feature = "microcrate_notify"
-))]
-pub mod microcrate_contracts;
 pub mod multi_source_merging;
+pub mod configurable_templates;
+pub mod llm_clustering;
 
 // Re-export all scenarios for convenience
-pub use configurable_templates::*;
 pub use gitlab_ingest::*;
 pub use jira_linear_ingest::*;
-pub use llm_clustering::*;
-#[cfg(any(
-    feature = "microcrate_export",
-    feature = "microcrate_output_layout",
-    feature = "microcrate_validate",
-    feature = "microcrate_storage",
-    feature = "microcrate_notify"
-))]
-pub use microcrate_contracts::*;
 pub use multi_source_merging::*;
+pub use configurable_templates::*;
+pub use llm_clustering::*;

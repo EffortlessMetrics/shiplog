@@ -8,6 +8,7 @@
 //! - Plugin system
 
 use proptest::prelude::*;
+use serde::Deserialize;
 
 // ============================================================================
 // GitLab API Response Strategies
@@ -22,28 +23,24 @@ pub fn strategy_gitlab_mr_event() -> impl Strategy<Value = GitLabMergeRequestEve
         any::<bool>(),
         any::<i64>(),
         any::<Option<i64>>(),
-        any::<Option<u64>>(),
-        any::<Option<u64>>(),
     )
         .prop_map(
-            |(iid, title, number, merged, created_at, merged_at, author_id, project_id)| {
-                GitLabMergeRequestEvent {
-                    iid,
-                    title,
-                    number,
-                    merged,
-                    created_at,
-                    merged_at,
-                    author: GitLabAuthor {
-                        id: author_id,
-                        username: "[a-zA-Z0-9_-]{1,50}".to_string(),
-                    },
-                    project: GitLabProject {
-                        id: project_id,
-                        name: "[a-zA-Z0-9_-]{1,50}".to_string(),
-                        web_url: "[a-zA-Z0-9_-]{10,100}".to_string(),
-                    },
-                }
+            |(iid, title, number, merged, created_at, merged_at)| GitLabMergeRequestEvent {
+                iid,
+                title,
+                number,
+                merged,
+                created_at,
+                merged_at,
+                author: GitLabAuthor {
+                    id: any::<u64>().prop_map(|id| Some(id)).boxed(),
+                    username: "[a-zA-Z0-9_-]{1,50}".prop_map(|s| s).boxed(),
+                },
+                project: GitLabProject {
+                    id: any::<u64>().prop_map(|id| Some(id)).boxed(),
+                    name: "[a-zA-Z0-9_-]{1,50}".prop_map(|s| s).boxed(),
+                    web_url: "[a-zA-Z0-9_-]{10,100}".prop_map(|s| s).boxed(),
+                },
             },
         )
 }
@@ -55,17 +52,16 @@ pub fn strategy_gitlab_review_event() -> impl Strategy<Value = GitLabReviewEvent
         "[a-zA-Z0-9_-]{1,50}",
         any::<i64>(),
         any::<bool>(),
-        any::<Option<u64>>(),
     )
         .prop_map(
-            |(mr_iid, body, created_at, approved, author_id)| GitLabReviewEvent {
+            |(mr_iid, body, created_at, approved)| GitLabReviewEvent {
                 mr_iid,
                 body,
                 created_at,
                 approved,
                 author: GitLabAuthor {
-                    id: author_id,
-                    username: "[a-zA-Z0-9_-]{1,50}".to_string(),
+                    id: any::<u64>().prop_map(|id| Some(id)).boxed(),
+                    username: "[a-zA-Z0-9_-]{1,50}".prop_map(|s| s).boxed(),
                 },
             },
         )
@@ -82,22 +78,18 @@ pub fn strategy_jira_issue() -> impl Strategy<Value = JiraIssue> {
         "[a-zA-Z0-9 ]{1,100}",
         any::<i64>(),
         any::<Option<i64>>(),
-        any::<Option<String>>(),
-        any::<Option<u64>>(),
     )
-        .prop_map(
-            |(key, summary, created, updated, description, priority)| JiraIssue {
-                key,
-                summary,
-                created,
-                updated,
-                status: JiraStatus::Done,
-                fields: JiraFields {
-                    description,
-                    priority,
-                },
+        .prop_map(|(key, summary, created, updated)| JiraIssue {
+            key,
+            summary,
+            created,
+            updated,
+            status: JiraStatus::Done,
+            fields: JiraFields {
+                description: "[a-zA-Z0-9 ]{0,500}".prop_map(|s| Some(s)).boxed(),
+                priority: any::<u64>().prop_map(|p| Some(p)).boxed(),
             },
-        )
+        })
 }
 
 /// Strategy for generating Linear issue events
@@ -106,16 +98,14 @@ pub fn strategy_linear_issue() -> impl Strategy<Value = LinearIssue> {
         "[a-zA-Z0-9_-]{1,50}",
         "[a-zA-Z0-9 ]{1,100}",
         any::<i64>(),
-        any::<Option<i64>>(),
-        "[a-zA-Z0-9_-]{1,50}",
     )
-        .prop_map(|(id, title, created, updated, project_id)| LinearIssue {
-            id: id.to_string(),
-            title: title.to_string(),
+        .prop_map(|(id, title, created)| LinearIssue {
+            id,
+            title,
             created,
-            updated,
+            updated: any::<i64>().prop_map(|u| Some(u)).boxed(),
             status: LinearStatus::Completed,
-            project_id: project_id.to_string(),
+            project_id: "[a-zA-Z0-9_-]{1,50}".prop_map(|s| s).boxed(),
         })
 }
 
@@ -126,12 +116,12 @@ pub fn strategy_linear_issue() -> impl Strategy<Value = LinearIssue> {
 /// Strategy for generating source system types
 pub fn strategy_source_system() -> impl Strategy<Value = SourceSystem> {
     prop_oneof![
-        Just(SourceSystem::Github),
-        Just(SourceSystem::Other("gitlab".to_string())),
-        Just(SourceSystem::Other("jira".to_string())),
-        Just(SourceSystem::Other("linear".to_string())),
-        Just(SourceSystem::LocalGit),
-        Just(SourceSystem::Manual),
+        SourceSystem::Github,
+        SourceSystem::Other("gitlab".to_string()),
+        SourceSystem::Other("jira".to_string()),
+        SourceSystem::Other("linear".to_string()),
+        SourceSystem::LocalGit,
+        SourceSystem::Manual,
     ]
 }
 
@@ -149,9 +139,9 @@ pub fn strategy_template_variable() -> impl Strategy<Value = TemplateVariable> {
     (
         "[a-zA-Z_][a-zA-Z0-9_]{1,50}",
         prop_oneof![
-            Just(TemplateVariableType::String),
-            Just(TemplateVariableType::Number),
-            Just(TemplateVariableType::Boolean),
+            TemplateVariableType::String,
+            TemplateVariableType::Number,
+            TemplateVariableType::Boolean,
         ],
     )
         .prop_map(|(name, var_type)| TemplateVariable { name, var_type })
@@ -162,9 +152,9 @@ pub fn strategy_template_context() -> impl Strategy<Value = TemplateContext> {
     prop::collection::hash_map(
         "[a-zA-Z_][a-zA-Z0-9_]{1,50}",
         prop_oneof![
-            "[a-zA-Z0-9 ]{1,100}".prop_map(TemplateValue::String),
-            any::<i64>().prop_map(TemplateValue::Number),
-            any::<bool>().prop_map(TemplateValue::Boolean),
+            TemplateValue::String("[a-zA-Z0-9 ]{1,100}".prop_map(|s| s).boxed()),
+            TemplateValue::Number(any::<i64>().prop_map(|n| n).boxed()),
+            TemplateValue::Boolean(any::<bool>().prop_map(|b| b).boxed()),
         ],
         0..10,
     )
@@ -191,13 +181,12 @@ pub fn strategy_plugin_config() -> impl Strategy<Value = PluginConfig> {
         "[a-zA-Z0-9_-]{1,50}",
         "[a-zA-Z0-9._/-]{1,200}",
         prop::collection::vec("[a-zA-Z0-9_-]{1,50}", 0..5),
-        any::<bool>(),
     )
-        .prop_map(|(name, path, args, enabled)| PluginConfig {
+        .prop_map(|(name, path, args)| PluginConfig {
             name,
             path,
             args,
-            enabled,
+            enabled: any::<bool>(),
         })
 }
 
@@ -209,27 +198,24 @@ pub fn strategy_plugin_manifest() -> impl Strategy<Value = PluginManifest> {
         "[0-9]+\\.[0-9]+\\.[0-9]+",
         any::<u64>(),
         any::<u64>(),
-        prop::collection::btree_set(
-            prop_oneof![
-                Just(PluginCapability::Ingest),
-                Just(PluginCapability::Render),
-                Just(PluginCapability::Cluster),
-            ],
-            0..3,
-        ),
     )
-        .prop_map(
-            |(name, version, min_shiplog, api_version, schema_version, capabilities)| {
-                PluginManifest {
-                    name,
-                    version,
-                    min_shiplog,
-                    api_version: api_version.to_string(),
-                    schema_version: schema_version.to_string(),
-                    capabilities,
-                }
-            },
-        )
+        .prop_map(|(name, version, min_shiplog, api_version, schema_version)| PluginManifest {
+            name,
+            version,
+            min_shiplog,
+            api_version,
+            schema_version,
+            capabilities: prop::collection::btree_set(
+                prop_oneof![
+                    PluginCapability::Ingest,
+                    PluginCapability::Render,
+                    PluginCapability::Cluster,
+                ],
+                0..3,
+            )
+            .prop_map(|set| set)
+            .boxed(),
+        })
 }
 
 /// Strategy for generating plugin state
@@ -250,7 +236,7 @@ pub fn strategy_plugin_state() -> impl Strategy<Value = PluginState> {
 // Mock Types for Property Testing
 // ============================================================================
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone)]
 pub struct GitLabMergeRequestEvent {
     pub iid: String,
     pub title: String,
@@ -262,20 +248,20 @@ pub struct GitLabMergeRequestEvent {
     pub project: GitLabProject,
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone)]
 pub struct GitLabAuthor {
     pub id: Option<u64>,
     pub username: String,
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone)]
 pub struct GitLabProject {
     pub id: Option<u64>,
     pub name: String,
     pub web_url: String,
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone)]
 pub struct GitLabReviewEvent {
     pub mr_iid: u64,
     pub body: String,
@@ -284,7 +270,7 @@ pub struct GitLabReviewEvent {
     pub author: GitLabAuthor,
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone)]
 pub struct JiraIssue {
     pub key: String,
     pub summary: String,
@@ -294,20 +280,20 @@ pub struct JiraIssue {
     pub fields: JiraFields,
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone)]
 pub enum JiraStatus {
     Todo,
     InProgress,
     Done,
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone)]
 pub struct JiraFields {
     pub description: Option<String>,
     pub priority: Option<u64>,
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone)]
 pub struct LinearIssue {
     pub id: String,
     pub title: String,
@@ -317,7 +303,7 @@ pub struct LinearIssue {
     pub project_id: String,
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone)]
 pub enum LinearStatus {
     Backlog,
     InProgress,
@@ -325,7 +311,7 @@ pub enum LinearStatus {
     Cancelled,
 }
 
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum SourceSystem {
     Github,
     Other(String),
@@ -333,32 +319,32 @@ pub enum SourceSystem {
     Manual,
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone)]
 pub struct TemplateVariable {
     pub name: String,
     pub var_type: TemplateVariableType,
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone)]
 pub enum TemplateVariableType {
     String,
     Number,
     Boolean,
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone)]
 pub struct TemplateContext {
     pub variables: std::collections::HashMap<String, TemplateValue>,
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone)]
 pub enum TemplateValue {
     String(String),
     Number(i64),
     Boolean(bool),
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone)]
 pub struct PluginConfig {
     pub name: String,
     pub path: String,
@@ -366,7 +352,7 @@ pub struct PluginConfig {
     pub enabled: bool,
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone)]
 pub struct PluginManifest {
     pub name: String,
     pub version: String,
@@ -376,14 +362,14 @@ pub struct PluginManifest {
     pub capabilities: std::collections::BTreeSet<PluginCapability>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum PluginCapability {
     Ingest,
     Render,
     Cluster,
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone)]
 pub struct PluginState {
     pub data: std::collections::HashMap<String, String>,
     pub enabled: bool,
