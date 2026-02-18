@@ -7,8 +7,61 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use shiplog_ingest_github::types::*;
 use serde::Deserialize;
+
+// Keep this harness decoupled from shiplog-ingest-github internals.
+// If needed later, expose those response structs behind a fuzz-only feature.
+#[derive(Debug, Deserialize)]
+struct Actor {
+    #[serde(default)]
+    login: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct Repository {
+    #[serde(default)]
+    full_name: Option<String>,
+    #[serde(default)]
+    html_url: Option<String>,
+    #[serde(default, rename = "private")]
+    private_field: Option<bool>,
+}
+
+#[derive(Debug, Deserialize)]
+struct PullBase {
+    #[serde(default)]
+    repo: Option<Repository>,
+}
+
+#[derive(Debug, Deserialize)]
+struct PullRequest {
+    #[serde(default)]
+    title: Option<String>,
+    #[serde(default)]
+    created_at: Option<serde_json::Value>,
+    #[serde(default)]
+    merged_at: Option<serde_json::Value>,
+    #[serde(default)]
+    additions: Option<u64>,
+    #[serde(default)]
+    deletions: Option<u64>,
+    #[serde(default)]
+    changed_files: Option<u64>,
+    #[serde(default)]
+    base: Option<PullBase>,
+}
+
+#[derive(Debug, Deserialize)]
+struct Review {
+    #[serde(default)]
+    id: Option<u64>,
+    #[serde(default)]
+    state: Option<String>,
+    #[serde(default)]
+    submitted_at: Option<serde_json::Value>,
+    #[serde(default)]
+    user: Option<Actor>,
+}
 
 fuzz_target!(|data: &[u8]| {
     // Ensure the input is valid UTF-8

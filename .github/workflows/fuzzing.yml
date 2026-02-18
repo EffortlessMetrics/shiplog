@@ -24,9 +24,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@nightly
         with:
-          components: rustfmt, clippy
+          components: llvm-tools-preview
 
       - name: Install cargo-fuzz
         run: cargo install cargo-fuzz --locked
@@ -34,27 +34,27 @@ jobs:
       - name: Run quick fuzzing for parse_jsonl
         run: |
           cd fuzz
-          cargo fuzz run parse_jsonl -- -max_total_time=30 -dict=fuzz/dictionaries/json.dict
+          cargo fuzz run parse_jsonl -- -max_total_time=30 -dict=dictionaries/json.dict
 
       - name: Run quick fuzzing for parse_workstreams
         run: |
           cd fuzz
-          cargo fuzz run parse_workstreams -- -max_total_time=30 -dict=fuzz/dictionaries/yaml.dict
+          cargo fuzz run parse_workstreams -- -max_total_time=30 -dict=dictionaries/yaml.dict
 
       - name: Run quick fuzzing for parse_github_api
         run: |
           cd fuzz
-          cargo fuzz run parse_github_api -- -max_total_time=30 -dict=fuzz/dictionaries/json.dict
+          cargo fuzz run parse_github_api -- -max_total_time=30 -dict=dictionaries/json.dict
 
       - name: Run quick fuzzing for parse_config
         run: |
           cd fuzz
-          cargo fuzz run parse_config -- -max_total_time=30 -dict=fuzz/dictionaries/yaml.dict
+          cargo fuzz run parse_config -- -max_total_time=30 -dict=dictionaries/yaml.dict
 
       - name: Run quick fuzzing for parse_manual_events
         run: |
           cd fuzz
-          cargo fuzz run parse_manual_events -- -max_total_time=30 -dict=fuzz/dictionaries/yaml.dict
+          cargo fuzz run parse_manual_events -- -max_total_time=30 -dict=dictionaries/yaml.dict
 
       - name: Upload fuzzing artifacts
         if: failure()
@@ -76,9 +76,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@nightly
         with:
-          components: rustfmt, clippy
+          components: llvm-tools-preview
 
       - name: Install cargo-fuzz
         run: cargo install cargo-fuzz --locked
@@ -86,27 +86,27 @@ jobs:
       - name: Run extended fuzzing for parse_jsonl
         run: |
           cd fuzz
-          cargo fuzz run parse_jsonl -- -max_total_time=3600 -dict=fuzz/dictionaries/json.dict
+          cargo fuzz run parse_jsonl -- -max_total_time=3600 -dict=dictionaries/json.dict
 
       - name: Run extended fuzzing for parse_workstreams
         run: |
           cd fuzz
-          cargo fuzz run parse_workstreams -- -max_total_time=3600 -dict=fuzz/dictionaries/yaml.dict
+          cargo fuzz run parse_workstreams -- -max_total_time=3600 -dict=dictionaries/yaml.dict
 
       - name: Run extended fuzzing for parse_github_api
         run: |
           cd fuzz
-          cargo fuzz run parse_github_api -- -max_total_time=3600 -dict=fuzz/dictionaries/json.dict
+          cargo fuzz run parse_github_api -- -max_total_time=3600 -dict=dictionaries/json.dict
 
       - name: Run extended fuzzing for parse_config
         run: |
           cd fuzz
-          cargo fuzz run parse_config -- -max_total_time=3600 -dict=fuzz/dictionaries/yaml.dict
+          cargo fuzz run parse_config -- -max_total_time=3600 -dict=dictionaries/yaml.dict
 
       - name: Run extended fuzzing for parse_manual_events
         run: |
           cd fuzz
-          cargo fuzz run parse_manual_events -- -max_total_time=3600 -dict=fuzz/dictionaries/yaml.dict
+          cargo fuzz run parse_manual_events -- -max_total_time=3600 -dict=dictionaries/yaml.dict
 
       - name: Upload fuzzing corpus
         if: always()

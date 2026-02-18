@@ -20,7 +20,7 @@ pub fn strategy_naive_date() -> impl Strategy<Value = NaiveDate> {
     prop::num::i32::ANY.prop_map(|days| {
         NaiveDate::from_ymd_opt(2020, 1, 1)
             .unwrap()
-            .checked_add_days(chrono::Days::new((days.abs() % 4000) as u64))
+            .checked_add_days(chrono::Days::new((days.unsigned_abs() % 4000) as u64))
             .unwrap()
     })
 }
@@ -33,7 +33,7 @@ pub fn strategy_datetime_utc() -> impl Strategy<Value = chrono::DateTime<Utc>> {
     })
 }
 
-/// Strategy for generating valid date ranges (since < until)
+/// Strategy for generating valid date ranges (since <= until)
 pub fn strategy_date_range() -> impl Strategy<Value = (NaiveDate, NaiveDate)> {
     (strategy_naive_date(), strategy_naive_date())
         .prop_map(|(d1, d2)| if d1 < d2 { (d1, d2) } else { (d2, d1) })
