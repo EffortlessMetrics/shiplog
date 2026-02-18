@@ -14,6 +14,7 @@ members = [
   "crates/shiplog-ingest-json",
   "crates/shiplog-ingest-github",
   "crates/shiplog-ingest-manual",
+  "crates/shiplog-ingest-git",
   "crates/shiplog-cache",
   "crates/shiplog-testkit",
   "crates/shiplog-cluster-llm",

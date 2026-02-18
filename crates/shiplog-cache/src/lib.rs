@@ -18,6 +18,7 @@ use std::path::Path;
 pub struct ApiCache {
     conn: Connection,
     default_ttl: Duration,
+    max_size_bytes: Option<u64>,
 }
 
 impl ApiCache {
@@ -46,6 +47,7 @@ impl ApiCache {
         Ok(Self {
             conn,
             default_ttl: Duration::hours(24),
+            max_size_bytes: None,
         })
     }
 
@@ -66,6 +68,7 @@ impl ApiCache {
         Ok(Self {
             conn,
             default_ttl: Duration::hours(24),
+            max_size_bytes: None,
         })
     }
 
@@ -166,10 +169,27 @@ impl ApiCache {
             |row| row.get(0),
         )?;
 
+        let valid_entries: (total - expired) as usize;
+
+        // Calculate cache size in bytes
+        let size_bytes: i64 = self.conn.query_row(
+            "SELECT SUM(LENGTH(data)) FROM cache_entries",
+            [],
+            |row| row.get::<Option<i64>>(0).unwrap_or(Ok(0)).unwrap_or(0),
+        )?;
+
+        // Format cache size
+        let size_mb = if size_bytes > 0 {
+            size_bytes / (1024 * 1024)
+        } else {
+            0
+        };
+
         Ok(CacheStats {
             total_entries: total as usize,
             expired_entries: expired as usize,
             valid_entries: (total - expired) as usize,
+            cache_size_mb: size_mb as u64,
         })
     }
 }
@@ -180,6 +200,7 @@ pub struct CacheStats {
     pub total_entries: usize,
     pub expired_entries: usize,
     pub valid_entries: usize,
+    pub cache_size_mb: u64,
 }
 
 /// Cache key builder for GitHub API requests.

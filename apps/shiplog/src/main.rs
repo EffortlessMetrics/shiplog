@@ -8,6 +8,7 @@ use chrono::NaiveDate;
 use clap::{Parser, Subcommand};
 use shiplog_engine::{Engine, WorkstreamSource};
 use shiplog_ingest_github::GithubIngestor;
+use shiplog_ingest_git::LocalGitIngestor;
 use shiplog_ingest_json::JsonIngestor;
 use shiplog_ingest_manual::ManualIngestor;
 use shiplog_ports::Ingestor;
@@ -261,6 +262,25 @@ enum Source {
         /// End date (exclusive), YYYY-MM-DD
         #[arg(long)]
         until: NaiveDate,
+    },
+
+    /// Ingest from local git repository.
+    Git {
+        /// Path to git repository.
+        #[arg(long)]
+        repo: PathBuf,
+        /// Start date (inclusive), YYYY-MM-DD
+        #[arg(long)]
+        since: NaiveDate,
+        /// End date (exclusive), YYYY-MM-DD
+        #[arg(long)]
+        until: NaiveDate,
+        /// Filter commits by author email.
+        #[arg(long)]
+        author: Option<String>,
+        /// Include merge commits.
+        #[arg(long)]
+        include_merges: bool,
     },
 }
 
@@ -543,6 +563,53 @@ fn main() -> Result<()> {
 
                     let (outputs, ws_source) =
                         engine.run(ingest, &user, &window_label, &run_dir, zip, &bundle_profile)?;
+
+                    redactor.save_cache(&cache_path)?;
+
+                    println!("Collected and wrote:");
+                    print_outputs(&outputs, ws_source);
+                }
+
+                Source::Git {
+                    repo,
+                    since,
+                    until,
+                    author,
+                    include_merges,
+                } => {
+                    let mut ing = LocalGitIngestor::new(&repo, since, until);
+                    if let Some(a) = author {
+                        ing = ing.with_author(a);
+                    }
+                    if include_merges {
+                        ing = ing.with_merges(true);
+                    }
+                    let ingest = ing.ingest()?;
+                    let run_id = ingest.coverage.run_id.to_string();
+                    let run_dir = out.join(&run_id);
+                    let window_label = format!("{}..{}", since, until);
+
+                    // Check if user has curated workstreams and warn
+                    if !regen && shiplog_workstreams::WorkstreamManager::has_curated(&run_dir) {
+                        eprintln!("Note: Using existing workstreams.yaml (user-curated).");
+                        eprintln!("      Use --regen to regenerate suggestions.");
+                    }
+
+                    // If --regen, delete existing suggested workstreams so the engine regenerates them
+                    if regen {
+                        let suggested =
+                            shiplog_workstreams::WorkstreamManager::suggested_path(&run_dir);
+                        if suggested.exists() {
+                            std::fs::remove_file(&suggested)
+                                .with_context(|| format!("remove {:?} for --regen", suggested))?;
+                        }
+                    }
+
+                    let cache_path = DeterministicRedactor::cache_path(&run_dir);
+                    let _ = redactor.load_cache(&cache_path);
+
+                    let (outputs, ws_source) =
+                        engine.run(ingest, "local", &window_label, &run_dir, zip, &bundle_profile)?;
 
                     redactor.save_cache(&cache_path)?;
 
