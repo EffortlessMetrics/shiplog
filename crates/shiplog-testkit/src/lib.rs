@@ -6,6 +6,8 @@ use shiplog_schema::coverage::TimeWindow;
 use shiplog_schema::event::*;
 
 pub mod bdd;
+pub mod bdd_scenarios;
+pub mod proptest;
 
 #[cfg(test)]
 mod bdd_tests;

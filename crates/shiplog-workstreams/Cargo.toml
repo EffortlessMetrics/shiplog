@@ -24,5 +24,7 @@ shiplog-ports = { path = "../shiplog-ports", version = "0.2.1" }
 
 [dev-dependencies]
 tempfile = "3"
+proptest.workspace = true
+shiplog-testkit = { path = "../shiplog-testkit", version = "0.2.1" }
 
 

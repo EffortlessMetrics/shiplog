@@ -26,5 +26,7 @@ features = ["bundled", "chrono", "serde_json"]
 
 [dev-dependencies]
 tempfile.workspace = true
+proptest.workspace = true
+shiplog-testkit = { path = "../shiplog-testkit", version = "0.2.1" }
 
 

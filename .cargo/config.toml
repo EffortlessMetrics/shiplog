@@ -1,0 +1,47 @@
+# Cargo configuration for shiplog project
+
+[build]
+# Use more parallel jobs for faster builds
+jobs = 4
+
+[profile.dev]
+# Optimize dependencies in dev mode for faster test runs
+opt-level = 1
+
+[profile.test]
+# Optimize test builds for speed
+opt-level = 1
+
+[profile.bench]
+# Benchmark profile
+inherits = "release"
+debug = true
+
+# ============================================================================
+# Proptest Configuration
+# ============================================================================
+
+[proptest]
+# Number of test cases to generate for each property test
+cases = 256
+
+# Maximum number of rejection sampling attempts before giving up
+max_local_rejects = 10000
+
+# Maximum number of global rejections across all test cases
+max_global_rejects = 100000
+
+# Number of test cases to use for "fuzzing" mode (when running with --fuzz)
+fuzz = 10000
+
+# Random seed for reproducible test runs (set to 0 for random)
+# seed = 12345
+
+# Enable/disable failure persistence
+persist_failures = true
+
+# File to store failure cases
+failure_persistence = "proptest-regressions"
+
+# Timeout for individual test cases (in seconds)
+timeout = 60

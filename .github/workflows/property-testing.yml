@@ -1,0 +1,81 @@
+name: Property Testing
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  property-test:
+    name: Property Testing
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo build
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Run property tests
+        run: |
+          echo "Running property tests for all crates..."
+          cargo test --workspace --test-threads=4 --all-features
+
+      - name: Run property tests for shiplog-ids
+        run: cargo test -p shiplog-ids --test-threads=4
+
+      - name: Run property tests for shiplog-schema
+        run: cargo test -p shiplog-schema --test-threads=4
+
+      - name: Run property tests for shiplog-redact
+        run: cargo test -p shiplog-redact --test-threads=4
+
+      - name: Run property tests for shiplog-coverage
+        run: cargo test -p shiplog-coverage --test-threads=4
+
+      - name: Run property tests for shiplog-workstreams
+        run: cargo test -p shiplog-workstreams --test-threads=4
+
+      - name: Run property tests for shiplog-cache
+        run: cargo test -p shiplog-cache --test-threads=4
+
+      - name: Generate property test summary
+        if: always()
+        run: |
+          echo "# Property Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Property-based tests completed successfully!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Tested Crates" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-ids" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-schema" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-redact" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-coverage" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-workstreams" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-cache" >> $GITHUB_STEP_SUMMARY

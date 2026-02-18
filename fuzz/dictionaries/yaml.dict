@@ -1,0 +1,76 @@
+# Dictionary for YAML fuzzing
+# Contains common YAML keys and values found in shiplog data
+
+# Workstream file keys
+"workstreams:"
+"version:"
+"generated_at:"
+"title:"
+"summary:"
+"tags:"
+"events:"
+"receipts:"
+"stats:"
+"event_count:"
+"receipt_count:"
+
+# YAML anchors and aliases
+"&anchor"
+"*alias"
+
+# YAML null values
+"null"
+"~"
+""
+
+# YAML booleans
+"true"
+"false"
+"yes"
+"no"
+"on"
+"off"
+
+# Common YAML structures
+"- "
+": "
+"[]"
+"{}"
+
+# Event types
+"PullRequest"
+"Review"
+"Manual"
+
+# PullRequest states
+"open"
+"closed"
+"merged"
+
+# Repo visibility
+"public"
+"private"
+
+# Completeness
+"complete"
+"partial"
+
+# Date formats
+"2025-01-01"
+"2025-02-01"
+"2025-01-01T00:00:00Z"
+
+# Common numbers
+"0"
+"1"
+"-1"
+"100"
+"1000"
+
+# Common strings
+"github"
+"local_git"
+"manual"
+"repo"
+"pr"
+"review"

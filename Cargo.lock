@@ -1761,10 +1761,12 @@ version = "0.2.1"
 dependencies = [
  "anyhow",
  "chrono",
+ "proptest",
  "rusqlite",
  "serde",
  "serde_json",
  "shiplog-schema",
+ "shiplog-testkit",
  "tempfile",
 ]
 
@@ -1789,7 +1791,9 @@ version = "0.2.1"
 dependencies = [
  "anyhow",
  "chrono",
+ "proptest",
  "shiplog-schema",
+ "shiplog-testkit",
 ]
 
 [[package]]
@@ -1815,6 +1819,7 @@ name = "shiplog-ids"
 version = "0.2.1"
 dependencies = [
  "hex",
+ "proptest",
  "serde",
  "sha2",
 ]
@@ -1887,6 +1892,7 @@ dependencies = [
  "shiplog-ids",
  "shiplog-ports",
  "shiplog-schema",
+ "shiplog-testkit",
  "tempfile",
 ]
 
@@ -1920,9 +1926,11 @@ name = "shiplog-schema"
 version = "0.2.1"
 dependencies = [
  "chrono",
+ "proptest",
  "serde",
  "serde_json",
  "shiplog-ids",
+ "shiplog-testkit",
 ]
 
 [[package]]
@@ -1930,10 +1938,12 @@ name = "shiplog-testkit"
 version = "0.2.1"
 dependencies = [
  "chrono",
+ "proptest",
  "serde",
  "shiplog-ids",
  "shiplog-redact",
  "shiplog-schema",
+ "shiplog-workstreams",
 ]
 
 [[package]]
@@ -1942,11 +1952,13 @@ version = "0.2.1"
 dependencies = [
  "anyhow",
  "chrono",
+ "proptest",
  "serde",
  "serde_yaml_ng",
  "shiplog-ids",
  "shiplog-ports",
  "shiplog-schema",
+ "shiplog-testkit",
  "tempfile",
 ]
 

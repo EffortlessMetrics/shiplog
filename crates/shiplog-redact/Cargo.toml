@@ -27,5 +27,6 @@ proptest.workspace = true
 chrono.workspace = true
 tempfile.workspace = true
 shiplog-ids = { path = "../shiplog-ids", version = "0.2.1" }
+shiplog-testkit = { path = "../shiplog-testkit", version = "0.2.1" }
 
 

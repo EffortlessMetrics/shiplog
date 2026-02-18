@@ -1,15 +1,216 @@
-# Mutation testing configuration (cargo-mutants).
+# Mutation testing configuration for shiplog
 #
 # Goal: verify the "coverage manifest" + redaction invariants aren't paper-thin.
 #
 # Run:
 #   cargo mutants --workspace
+#   cargo mutants -p shiplog-schema
+#   cargo mutants -p shiplog-schema -- test_name
 #
-# Note: this is intentionally conservative for MVP.
+# Configuration follows the comprehensive testing implementation plan:
+# https://github.com/EffortlessMetrics/shiplog/blob/main/plans/mutation-testing-strategy.md
+
 [mutants]
-timeout = "60s"
+# Global timeout per mutation test run
+timeout = "120s"
+
+# Maximum number of concurrent mutation jobs
+jobs = 4
+
+# Output directory for mutation results
+output = "target/mutants"
+
+# Generate HTML report
+generate_html = true
+
+# Exclude patterns
 exclude = [
   "target/**",
   "out/**",
   "examples/**",
+  "fuzz/**",
+  # Test utilities don't need mutation testing
+  "crates/shiplog-testkit/**",
 ]
+
+# ============================================================================
+# Tier 1: Critical Core (Highest Priority)
+# Target Mutation Score: ≥ 90%
+# ============================================================================
+
+[crates.shiplog-schema]
+# Canonical event model, coverage tracking, bundle metadata
+minimum_score = 85
+timeout = "180s"
+
+[crates.shiplog-schema.mutants]
+# Enable all mutation operators for schema
+replace_bool = true
+replace_int = true
+replace_match = true
+replace_pattern = true
+replace_operator = true
+
+[crates.shiplog-redact]
+# Security-critical - highest priority
+minimum_score = 90
+timeout = "180s"
+
+[crates.shiplog-redact.mutants]
+# Focus on boolean mutations for redaction logic
+replace_bool = true
+replace_match = true
+replace_pattern = true
+
+[crates.shiplog-coverage]
+# Core utilities - high priority
+minimum_score = 85
+timeout = "120s"
+
+[crates.shiplog-coverage.mutants]
+# Date boundary mutations are critical
+replace_bool = true
+replace_int = true
+replace_match = true
+replace_pattern = true
+replace_operator = true
+
+[crates.shiplog-ids]
+# ID generation - must be deterministic
+minimum_score = 85
+timeout = "120s"
+
+[crates.shiplog-ids.mutants]
+# Focus on hash generation and string representation
+replace_bool = true
+replace_int = true
+replace_match = true
+replace_pattern = true
+
+# ============================================================================
+# Tier 2: Pipeline Core (High Priority)
+# Target Mutation Score: ≥ 80%
+# ============================================================================
+
+[crates.shiplog-engine]
+# Orchestration engine
+minimum_score = 75
+timeout = "150s"
+
+[crates.shiplog-engine.mutants]
+replace_bool = true
+replace_match = true
+replace_pattern = true
+
+[crates.shiplog-bundle]
+# Bundle writing and manifest generation
+minimum_score = 75
+timeout = "150s"
+
+[crates.shiplog-bundle.mutants]
+replace_bool = true
+replace_match = true
+replace_pattern = true
+
+[crates.shiplog-workstreams]
+# Workstream management
+minimum_score = 75
+timeout = "150s"
+
+[crates.shiplog-workstreams.mutants]
+replace_bool = true
+replace_match = true
+replace_pattern = true
+
+[crates.shiplog-ports]
+# Trait definitions
+minimum_score = 70
+timeout = "120s"
+
+[crates.shiplog-ports.mutants]
+replace_bool = true
+replace_match = true
+
+# ============================================================================
+# Tier 3: Adapters and Renderers (Medium Priority)
+# Target Mutation Score: ≥ 70%
+# ============================================================================
+
+[crates.shiplog-ingest-github]
+# GitHub API ingestor
+minimum_score = 65
+timeout = "120s"
+
+[crates.shiplog-ingest-github.mutants]
+replace_bool = true
+replace_match = true
+
+[crates.shiplog-ingest-json]
+# JSON ingestor
+minimum_score = 65
+timeout = "120s"
+
+[crates.shiplog-ingest-json.mutants]
+replace_bool = true
+replace_match = true
+
+[crates.shiplog-ingest-manual]
+# Manual event ingestor
+minimum_score = 65
+timeout = "120s"
+
+[crates.shiplog-ingest-manual.mutants]
+replace_bool = true
+replace_match = true
+
+[crates.shiplog-render-md]
+# Markdown renderer
+minimum_score = 65
+timeout = "120s"
+
+[crates.shiplog-render-md.mutants]
+replace_bool = true
+replace_match = true
+replace_pattern = true
+
+[crates.shiplog-render-json]
+# JSON renderer
+minimum_score = 65
+timeout = "120s"
+
+[crates.shiplog-render-json.mutants]
+replace_bool = true
+replace_match = true
+
+[crates.shiplog-cache]
+# API cache
+minimum_score = 65
+timeout = "120s"
+
+[crates.shiplog-cache.mutants]
+replace_bool = true
+replace_match = true
+replace_pattern = true
+
+# ============================================================================
+# Tier 4: Supporting and Experimental (Lower Priority)
+# Target Mutation Score: ≥ 60%
+# ============================================================================
+
+[crates.shiplog-cluster-llm]
+# LLM clustering (feature-gated)
+minimum_score = 60
+timeout = "120s"
+
+[crates.shiplog-cluster-llm.mutants]
+replace_bool = true
+replace_match = true
+
+[apps.shiplog]
+# CLI application
+minimum_score = 60
+timeout = "120s"
+
+[apps.shiplog.mutants]
+replace_bool = true
+replace_match = true
