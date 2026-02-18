@@ -9,6 +9,13 @@ pub mod bdd;
 pub mod bdd_scenarios;
 pub mod proptest;
 
+// BDD scenario modules
+pub mod scenarios {
+    pub mod v02x;
+    pub mod v03x;
+    pub mod later;
+}
+
 #[cfg(test)]
 mod bdd_tests;
 
