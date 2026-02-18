@@ -9,6 +9,7 @@ use clap::{Parser, Subcommand};
 use shiplog_engine::{Engine, WorkstreamSource};
 use shiplog_ingest_git::LocalGitIngestor;
 use shiplog_ingest_github::GithubIngestor;
+use shiplog_ingest_git::LocalGitIngestor;
 use shiplog_ingest_json::JsonIngestor;
 use shiplog_ingest_manual::ManualIngestor;
 use shiplog_ports::Ingestor;
@@ -645,14 +646,8 @@ fn main() -> Result<()> {
                     let cache_path = DeterministicRedactor::cache_path(&run_dir);
                     let _ = redactor.load_cache(&cache_path);
 
-                    let (outputs, ws_source) = engine.run(
-                        ingest,
-                        "local",
-                        &window_label,
-                        &run_dir,
-                        zip,
-                        &bundle_profile,
-                    )?;
+                    let (outputs, ws_source) =
+                        engine.run(ingest, "local", &window_label, &run_dir, zip, &bundle_profile)?;
 
                     redactor.save_cache(&cache_path)?;
 

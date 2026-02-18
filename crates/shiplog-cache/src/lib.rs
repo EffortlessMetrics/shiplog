@@ -175,14 +175,14 @@ impl ApiCache {
             |row| row.get(0),
         )?;
 
-        let _valid_entries = (total - expired) as usize;
+        let valid_entries: (total - expired) as usize;
 
         // Calculate cache size in bytes
-        let size_bytes: i64 =
-            self.conn
-                .query_row("SELECT SUM(LENGTH(data)) FROM cache_entries", [], |row| {
-                    Ok(row.get::<_, Option<i64>>(0).unwrap_or(Some(0)).unwrap_or(0))
-                })?;
+        let size_bytes: i64 = self.conn.query_row(
+            "SELECT SUM(LENGTH(data)) FROM cache_entries",
+            [],
+            |row| row.get::<Option<i64>>(0).unwrap_or(Ok(0)).unwrap_or(0),
+        )?;
 
         // Format cache size
         let size_mb = if size_bytes > 0 {
