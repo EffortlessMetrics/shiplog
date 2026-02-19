@@ -10,15 +10,15 @@
 //! These scenarios follow the Given/When/Then pattern and can be used
 //! to verify the behavior of these features.
 
+pub mod configurable_templates;
 pub mod gitlab_ingest;
 pub mod jira_linear_ingest;
-pub mod multi_source_merging;
-pub mod configurable_templates;
 pub mod llm_clustering;
+pub mod multi_source_merging;
 
 // Re-export all scenarios for convenience
+pub use configurable_templates::*;
 pub use gitlab_ingest::*;
 pub use jira_linear_ingest::*;
-pub use multi_source_merging::*;
-pub use configurable_templates::*;
 pub use llm_clustering::*;
+pub use multi_source_merging::*;

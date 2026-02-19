@@ -178,11 +178,11 @@ impl ApiCache {
         let _valid_entries = (total - expired) as usize;
 
         // Calculate cache size in bytes
-        let size_bytes: i64 = self.conn.query_row(
-            "SELECT SUM(LENGTH(data)) FROM cache_entries",
-            [],
-            |row| Ok(row.get::<_, Option<i64>>(0).unwrap_or(Some(0)).unwrap_or(0)),
-        )?;
+        let size_bytes: i64 =
+            self.conn
+                .query_row("SELECT SUM(LENGTH(data)) FROM cache_entries", [], |row| {
+                    Ok(row.get::<_, Option<i64>>(0).unwrap_or(Some(0)).unwrap_or(0))
+                })?;
 
         // Format cache size
         let size_mb = if size_bytes > 0 {
@@ -235,7 +235,10 @@ impl CacheKey {
 
     /// Create a key for GitLab MR notes.
     pub fn mr_notes(project_id: u64, mr_iid: u64, page: u32) -> String {
-        format!("gitlab:mr:notes:project{}:mr{}:page{}", project_id, mr_iid, page)
+        format!(
+            "gitlab:mr:notes:project{}:mr{}:page{}",
+            project_id, mr_iid, page
+        )
     }
 
     fn hash_query(query: &str) -> String {
@@ -282,7 +285,9 @@ mod tests {
 
     #[test]
     fn cache_ttl_expiration() {
-        let cache = ApiCache::open_in_memory().unwrap().with_ttl(Duration::seconds(1));
+        let cache = ApiCache::open_in_memory()
+            .unwrap()
+            .with_ttl(Duration::seconds(1));
 
         let data = TestData {
             name: "test".to_string(),
@@ -297,7 +302,7 @@ mod tests {
         assert_eq!(result, Some(data));
 
         // Wait for expiration
-        std::thread::sleep(Duration::from_millis(1100));
+        std::thread::sleep(std::time::Duration::from_millis(1100));
 
         // Should not be retrievable after expiration
         let result: Option<TestData> = cache.get("key1").unwrap();

@@ -6,7 +6,7 @@
 //! - Loops over collections
 //! - User-defined templates
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use serde::Serialize;
 use std::collections::HashMap;
 
@@ -44,7 +44,7 @@ impl TemplateContext {
 }
 
 /// Template value that can be used in templates
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum TemplateValue {
     String(String),
     Number(i64),
@@ -70,6 +70,7 @@ impl TemplateValue {
     }
 
     /// Get a field from an object value
+    #[allow(dead_code)]
     fn get_field(&self, field: &str) -> Option<&TemplateValue> {
         match self {
             TemplateValue::Object(obj) => obj.get(field),
@@ -138,7 +139,7 @@ impl<T: Serialize> From<&T> for TemplateValue {
     fn from(value: &T) -> Self {
         serde_json::to_value(value)
             .ok()
-            .and_then(|v| Self::from_json_value(v))
+            .and_then(Self::from_json_value)
             .unwrap_or(TemplateValue::Null)
     }
 }
@@ -150,18 +151,14 @@ impl TemplateValue {
             serde_json::Value::Number(n) => {
                 if let Some(i) = n.as_i64() {
                     Some(TemplateValue::Number(i))
-                } else if let Some(f) = n.as_f64() {
-                    Some(TemplateValue::Float(f))
                 } else {
-                    None
+                    n.as_f64().map(TemplateValue::Float)
                 }
             }
             serde_json::Value::Bool(b) => Some(TemplateValue::Boolean(b)),
             serde_json::Value::Array(arr) => {
-                let items: Vec<TemplateValue> = arr
-                    .into_iter()
-                    .filter_map(Self::from_json_value)
-                    .collect();
+                let items: Vec<TemplateValue> =
+                    arr.into_iter().filter_map(Self::from_json_value).collect();
                 Some(TemplateValue::List(items))
             }
             serde_json::Value::Object(obj) => {

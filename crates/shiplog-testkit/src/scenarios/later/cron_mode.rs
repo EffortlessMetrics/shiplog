@@ -13,11 +13,16 @@ use crate::bdd::assertions::*;
 pub fn cron_mode_scheduled() -> Scenario {
     Scenario::new("User runs shiplog on schedule")
         .given("a user has configured cron mode", |ctx| {
-            ctx.strings.insert("schedule".to_string(), "0 0 * * 0".to_string());
+            ctx.strings
+                .insert("schedule".to_string(), "0 0 * * 0".to_string());
         })
-        .given("the config specifies a schedule of \"0 0 * * 0\" (weekly)", |ctx| {
-            ctx.strings.insert("schedule_desc".to_string(), "weekly".to_string());
-        })
+        .given(
+            "the config specifies a schedule of \"0 0 * * 0\" (weekly)",
+            |ctx| {
+                ctx.strings
+                    .insert("schedule_desc".to_string(), "weekly".to_string());
+            },
+        )
         .when("the cron schedule triggers", |ctx| {
             ctx.flags.insert("cron_triggered".to_string(), true);
             ctx.flags.insert("new_events_collected".to_string(), true);
@@ -25,18 +30,24 @@ pub fn cron_mode_scheduled() -> Scenario {
             ctx.flags.insert("packet_generated".to_string(), true);
             Ok(())
         })
-        .then("shiplog should collect new events since the last run", |ctx| {
-            assert_true(
-                ctx.flag("new_events_collected").unwrap_or(false),
-                "new events collected",
-            )
-        })
-        .then("new events should be appended to the existing ledger", |ctx| {
-            assert_true(
-                ctx.flag("ledger_appended").unwrap_or(false),
-                "ledger appended",
-            )
-        })
+        .then(
+            "shiplog should collect new events since the last run",
+            |ctx| {
+                assert_true(
+                    ctx.flag("new_events_collected").unwrap_or(false),
+                    "new events collected",
+                )
+            },
+        )
+        .then(
+            "new events should be appended to the existing ledger",
+            |ctx| {
+                assert_true(
+                    ctx.flag("ledger_appended").unwrap_or(false),
+                    "ledger appended",
+                )
+            },
+        )
         .then("a new packet should be generated", |ctx| {
             assert_true(
                 ctx.flag("packet_generated").unwrap_or(false),
@@ -60,10 +71,13 @@ pub fn cron_mode_incremental() -> Scenario {
             ctx.numbers.insert("new_event_count".to_string(), 10);
             Ok(())
         })
-        .then("only new events since the last run should be collected", |ctx| {
-            let count = ctx.number("new_event_count").unwrap_or(0);
-            assert_true(count > 0, "new events")
-        })
+        .then(
+            "only new events since the last run should be collected",
+            |ctx| {
+                let count = ctx.number("new_event_count").unwrap_or(0);
+                assert_true(count > 0, "new events")
+            },
+        )
         .then("the existing ledger should be preserved", |ctx| {
             assert_true(
                 ctx.flag("ledger_preserved").unwrap_or(false),
@@ -82,8 +96,10 @@ pub fn cron_mode_full() -> Scenario {
             ctx.flags.insert("incremental_disabled".to_string(), true);
         })
         .given("the config specifies a date range", |ctx| {
-            ctx.strings.insert("since".to_string(), "2025-01-01".to_string());
-            ctx.strings.insert("until".to_string(), "2025-02-01".to_string());
+            ctx.strings
+                .insert("since".to_string(), "2025-01-01".to_string());
+            ctx.strings
+                .insert("until".to_string(), "2025-02-01".to_string());
         })
         .when("the cron schedule triggers", |ctx| {
             ctx.flags.insert("full_collection".to_string(), true);
@@ -91,12 +107,15 @@ pub fn cron_mode_full() -> Scenario {
             ctx.numbers.insert("total_event_count".to_string(), 50);
             Ok(())
         })
-        .then("a full collection for the date range should be performed", |ctx| {
-            assert_true(
-                ctx.flag("full_collection").unwrap_or(false),
-                "full collection",
-            )
-        })
+        .then(
+            "a full collection for the date range should be performed",
+            |ctx| {
+                assert_true(
+                    ctx.flag("full_collection").unwrap_or(false),
+                    "full collection",
+                )
+            },
+        )
         .then("the ledger should be replaced with new data", |ctx| {
             assert_true(
                 ctx.flag("ledger_replaced").unwrap_or(false),
@@ -125,10 +144,7 @@ pub fn cron_mode_failure() -> Scenario {
             Ok(())
         })
         .then("the failure should be logged", |ctx| {
-            assert_true(
-                ctx.flag("error_logged").unwrap_or(false),
-                "error logged",
-            )
+            assert_true(ctx.flag("error_logged").unwrap_or(false), "error logged")
         })
         .then("the next scheduled run should still attempt", |ctx| {
             assert_true(
@@ -147,10 +163,13 @@ pub fn cron_mode_failure() -> Scenario {
 /// Scenario 11.5: No new events since last run
 pub fn cron_mode_no_new_events() -> Scenario {
     Scenario::new("No new events since last run")
-        .given("a user has enabled cron mode with incremental collection", |ctx| {
-            ctx.flags.insert("cron_enabled".to_string(), true);
-            ctx.flags.insert("incremental_enabled".to_string(), true);
-        })
+        .given(
+            "a user has enabled cron mode with incremental collection",
+            |ctx| {
+                ctx.flags.insert("cron_enabled".to_string(), true);
+                ctx.flags.insert("incremental_enabled".to_string(), true);
+            },
+        )
         .given("no new events have occurred since the last run", |ctx| {
             ctx.flags.insert("no_new_events".to_string(), true);
         })
@@ -191,7 +210,8 @@ pub fn cron_mode_multi_source() -> Scenario {
         })
         .when("the cron schedule triggers", |ctx| {
             ctx.flags.insert("all_sources_checked".to_string(), true);
-            ctx.flags.insert("new_events_from_all_sources".to_string(), true);
+            ctx.flags
+                .insert("new_events_from_all_sources".to_string(), true);
             ctx.flags.insert("ledger_appended".to_string(), true);
             Ok(())
         })
@@ -224,11 +244,11 @@ pub fn cron_mode_large_update() -> Scenario {
                 .insert("collection_time".to_string(), "55s".to_string());
             Ok(())
         })
-        .then("collection should complete within reasonable time (< 60 seconds)", |ctx| {
-            let time = ctx.string("collection_time").unwrap();
-            assert_true(
-                time.contains("s") && !time.contains("m"),
-                "collection time",
-            )
-        })
+        .then(
+            "collection should complete within reasonable time (< 60 seconds)",
+            |ctx| {
+                let time = ctx.string("collection_time").unwrap();
+                assert_true(time.contains("s") && !time.contains("m"), "collection time")
+            },
+        )
 }

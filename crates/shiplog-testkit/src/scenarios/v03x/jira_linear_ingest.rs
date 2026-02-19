@@ -13,15 +13,20 @@ use crate::bdd::assertions::*;
 pub fn jira_ingest_issues() -> Scenario {
     Scenario::new("User ingests Jira issues")
         .given("a user has a Jira account", |ctx| {
-            ctx.strings
-                .insert("jira_instance".to_string(), "jira.atlassian.com".to_string());
+            ctx.strings.insert(
+                "jira_instance".to_string(),
+                "jira.atlassian.com".to_string(),
+            );
             ctx.strings
                 .insert("jira_token".to_string(), "jira_test_token".to_string());
         })
-        .given("they have configured Jira instance URL and API token", |ctx| {
-            ctx.flags.insert("token_configured".to_string(), true);
-            ctx.flags.insert("instance_configured".to_string(), true);
-        })
+        .given(
+            "they have configured Jira instance URL and API token",
+            |ctx| {
+                ctx.flags.insert("token_configured".to_string(), true);
+                ctx.flags.insert("instance_configured".to_string(), true);
+            },
+        )
         .when(
             "they run \"shiplog collect --source jira --user alice --since 2025-01-01\"",
             |ctx| {
@@ -33,10 +38,7 @@ pub fn jira_ingest_issues() -> Scenario {
             },
         )
         .then("Jira issues should be collected", |ctx| {
-            assert_true(
-                ctx.flag("api_call_made").unwrap_or(false),
-                "API call made",
-            )
+            assert_true(ctx.flag("api_call_made").unwrap_or(false), "API call made")
         })
         .then(
             "each event should have SourceSystem::Other(\"jira\")",
@@ -45,10 +47,13 @@ pub fn jira_ingest_issues() -> Scenario {
                 assert_eq(source, "jira", "source system")
             },
         )
-        .then("events should include issue key, summary, status, and timestamp", |ctx| {
-            let count = ctx.number("collected_issues").unwrap_or(0);
-            assert_true(count > 0, "issues collected")
-        })
+        .then(
+            "events should include issue key, summary, status, and timestamp",
+            |ctx| {
+                let count = ctx.number("collected_issues").unwrap_or(0);
+                assert_true(count > 0, "issues collected")
+            },
+        )
 }
 
 /// Scenario 6.2: User ingests Linear issues
@@ -74,10 +79,7 @@ pub fn linear_ingest_issues() -> Scenario {
             },
         )
         .then("Linear issues should be collected", |ctx| {
-            assert_true(
-                ctx.flag("api_call_made").unwrap_or(false),
-                "API call made",
-            )
+            assert_true(ctx.flag("api_call_made").unwrap_or(false), "API call made")
         })
         .then(
             "each event should have SourceSystem::Other(\"linear\")",
@@ -86,10 +88,13 @@ pub fn linear_ingest_issues() -> Scenario {
                 assert_eq(source, "linear", "source system")
             },
         )
-        .then("events should include issue ID, title, status, and timestamp", |ctx| {
-            let count = ctx.number("collected_issues").unwrap_or(0);
-            assert_true(count > 0, "issues collected")
-        })
+        .then(
+            "events should include issue ID, title, status, and timestamp",
+            |ctx| {
+                let count = ctx.number("collected_issues").unwrap_or(0);
+                assert_true(count > 0, "issues collected")
+            },
+        )
 }
 
 /// Scenario 6.3: User filters Jira issues by status
@@ -105,15 +110,19 @@ pub fn jira_ingest_filter_by_status() -> Scenario {
             "they run \"shiplog collect --source jira --user alice --status Done\"",
             |ctx| {
                 ctx.numbers.insert("collected_issues".to_string(), 20);
-                ctx.strings.insert("filtered_status".to_string(), "Done".to_string());
+                ctx.strings
+                    .insert("filtered_status".to_string(), "Done".to_string());
                 Ok(())
             },
         )
-        .then("only issues with \"Done\" status should be collected", |ctx| {
-            let count = ctx.number("collected_issues").unwrap_or(0);
-            let expected = ctx.number("done_issues").unwrap_or(0);
-            assert_eq(count, expected, "issue count")
-        })
+        .then(
+            "only issues with \"Done\" status should be collected",
+            |ctx| {
+                let count = ctx.number("collected_issues").unwrap_or(0);
+                let expected = ctx.number("done_issues").unwrap_or(0);
+                assert_eq(count, expected, "issue count")
+            },
+        )
         .then("issues in other statuses should be excluded", |ctx| {
             let status = ctx.string("filtered_status").unwrap();
             assert_eq(status, "Done", "filtered status")
@@ -137,11 +146,14 @@ pub fn linear_ingest_filter_by_project() -> Scenario {
                 Ok(())
             },
         )
-        .then("only issues from the specified project should be collected", |ctx| {
-            let count = ctx.number("collected_issues").unwrap_or(0);
-            let expected = ctx.number("proj_a_issues").unwrap_or(0);
-            assert_eq(count, expected, "issue count")
-        })
+        .then(
+            "only issues from the specified project should be collected",
+            |ctx| {
+                let count = ctx.number("collected_issues").unwrap_or(0);
+                let expected = ctx.number("proj_a_issues").unwrap_or(0);
+                assert_eq(count, expected, "issue count")
+            },
+        )
 }
 
 /// Scenario 6.5: Invalid Jira instance URL
@@ -162,12 +174,15 @@ pub fn jira_ingest_invalid_url() -> Scenario {
                 Ok(())
             },
         )
-        .then("the command should fail with a clear error message", |ctx| {
-            assert_true(
-                ctx.flag("command_failed").unwrap_or(false),
-                "command failed",
-            )
-        })
+        .then(
+            "the command should fail with a clear error message",
+            |ctx| {
+                assert_true(
+                    ctx.flag("command_failed").unwrap_or(false),
+                    "command failed",
+                )
+            },
+        )
         .then("the error should indicate the URL is invalid", |ctx| {
             let error = ctx.string("error_message").unwrap();
             assert_contains(error, "Invalid", "error message")
@@ -192,12 +207,15 @@ pub fn jira_ingest_auth_failure() -> Scenario {
                 Ok(())
             },
         )
-        .then("the command should fail with an authentication error", |ctx| {
-            assert_true(
-                ctx.flag("command_failed").unwrap_or(false),
-                "command failed",
-            )
-        })
+        .then(
+            "the command should fail with an authentication error",
+            |ctx| {
+                assert_true(
+                    ctx.flag("command_failed").unwrap_or(false),
+                    "command failed",
+                )
+            },
+        )
         .then("the error should indicate the token is invalid", |ctx| {
             let error = ctx.string("error_message").unwrap();
             assert_contains(error, "authentication", "error message")
@@ -222,12 +240,15 @@ pub fn linear_ingest_invalid_key() -> Scenario {
                 Ok(())
             },
         )
-        .then("the command should fail with an authentication error", |ctx| {
-            assert_true(
-                ctx.flag("command_failed").unwrap_or(false),
-                "command failed",
-            )
-        })
+        .then(
+            "the command should fail with an authentication error",
+            |ctx| {
+                assert_true(
+                    ctx.flag("command_failed").unwrap_or(false),
+                    "command failed",
+                )
+            },
+        )
         .then("the error should indicate the API key is invalid", |ctx| {
             let error = ctx.string("error_message").unwrap();
             assert_contains(error, "authentication", "error message")
@@ -237,9 +258,12 @@ pub fn linear_ingest_invalid_key() -> Scenario {
 /// Scenario 6.8: Issue with missing required fields
 pub fn jira_ingest_missing_fields() -> Scenario {
     Scenario::new("Issue with missing required fields")
-        .given("a user has a Jira issue with missing summary or status", |ctx| {
-            ctx.flags.insert("issue_missing_fields".to_string(), true);
-        })
+        .given(
+            "a user has a Jira issue with missing summary or status",
+            |ctx| {
+                ctx.flags.insert("issue_missing_fields".to_string(), true);
+            },
+        )
         .when(
             "they run \"shiplog collect --source jira --user alice\"",
             |ctx| {
@@ -257,10 +281,7 @@ pub fn jira_ingest_missing_fields() -> Scenario {
             assert_true(count > 0, "issues skipped")
         })
         .then("a warning should indicate the missing fields", |ctx| {
-            assert_true(
-                ctx.flag("warning_shown").unwrap_or(false),
-                "warning shown",
-            )
+            assert_true(ctx.flag("warning_shown").unwrap_or(false), "warning shown")
         })
 }
 
@@ -270,35 +291,47 @@ pub fn jira_ingest_correlate_with_prs() -> Scenario {
         .given("a user has collected GitHub PRs", |ctx| {
             ctx.numbers.insert("github_prs".to_string(), 25);
         })
-        .given("PR titles contain Jira issue keys (e.g., \"PROJ-123: Fix bug\")", |ctx| {
-            ctx.flags.insert("pr_has_issue_key".to_string(), true);
-        })
+        .given(
+            "PR titles contain Jira issue keys (e.g., \"PROJ-123: Fix bug\")",
+            |ctx| {
+                ctx.flags.insert("pr_has_issue_key".to_string(), true);
+            },
+        )
         .when("they also collect Jira issues", |ctx| {
             ctx.numbers.insert("jira_issues".to_string(), 10);
             ctx.flags.insert("correlation_attempted".to_string(), true);
             Ok(())
         })
-        .then("the system should attempt to correlate PRs with issues", |ctx| {
-            assert_true(
-                ctx.flag("correlation_attempted").unwrap_or(false),
-                "correlation attempted",
-            )
-        })
-        .then("workstreams may group related PRs and issues together", |ctx| {
-            assert_true(
-                ctx.flag("workstreams_correlated").unwrap_or(false),
-                "workstreams correlated",
-            )
-        })
+        .then(
+            "the system should attempt to correlate PRs with issues",
+            |ctx| {
+                assert_true(
+                    ctx.flag("correlation_attempted").unwrap_or(false),
+                    "correlation attempted",
+                )
+            },
+        )
+        .then(
+            "workstreams may group related PRs and issues together",
+            |ctx| {
+                assert_true(
+                    ctx.flag("workstreams_correlated").unwrap_or(false),
+                    "workstreams correlated",
+                )
+            },
+        )
 }
 
 /// Scenario 6.10: Linear issues appear in packet
 pub fn linear_ingest_render() -> Scenario {
     Scenario::new("Linear issues appear in packet")
-        .given("a user has collected Linear issues and generated workstreams", |ctx| {
-            ctx.numbers.insert("linear_issues".to_string(), 15);
-            ctx.flags.insert("workstreams_generated".to_string(), true);
-        })
+        .given(
+            "a user has collected Linear issues and generated workstreams",
+            |ctx| {
+                ctx.numbers.insert("linear_issues".to_string(), 15);
+                ctx.flags.insert("workstreams_generated".to_string(), true);
+            },
+        )
         .when("they run \"shiplog render\"", |ctx| {
             ctx.flags.insert("packet_rendered".to_string(), true);
             ctx.paths
@@ -312,11 +345,13 @@ pub fn linear_ingest_render() -> Scenario {
             )
         })
         .then("issues should link to the Linear web interface", |ctx| {
-            let link = ctx.string("linear_link").unwrap_or(&String::new());
+            let empty = String::new();
+            let link = ctx.string("linear_link").unwrap_or(&empty);
             assert_contains(link, "linear.app", "Linear link")
         })
         .then("source should be indicated as \"linear\"", |ctx| {
-            let source = ctx.string("source_label").unwrap_or(&String::new());
+            let empty = String::new();
+            let source = ctx.string("source_label").unwrap_or(&empty);
             assert_eq(source, "linear", "source label")
         })
 }
@@ -336,11 +371,11 @@ pub fn jira_ingest_large_collection() -> Scenario {
                 Ok(())
             },
         )
-        .then("collection should complete within reasonable time (< 30 seconds)", |ctx| {
-            let time = ctx.string("collection_time").unwrap();
-            assert_true(
-                time.contains("s") && !time.contains("m"),
-                "collection time",
-            )
-        })
+        .then(
+            "collection should complete within reasonable time (< 30 seconds)",
+            |ctx| {
+                let time = ctx.string("collection_time").unwrap();
+                assert_true(time.contains("s") && !time.contains("m"), "collection time")
+            },
+        )
 }

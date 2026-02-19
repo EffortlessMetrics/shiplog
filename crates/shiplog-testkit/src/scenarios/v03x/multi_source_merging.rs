@@ -70,12 +70,15 @@ pub fn multi_source_merge_coverage() -> Scenario {
             let count = ctx.number("source_count").unwrap_or(0);
             assert_true(count >= 3, "source count")
         })
-        .then("completeness should be calculated across all sources", |ctx| {
-            assert_true(
-                ctx.flag("coverage_unified").unwrap_or(false),
-                "coverage unified",
-            )
-        })
+        .then(
+            "completeness should be calculated across all sources",
+            |ctx| {
+                assert_true(
+                    ctx.flag("coverage_unified").unwrap_or(false),
+                    "coverage unified",
+                )
+            },
+        )
         .then("warnings should be aggregated from all sources", |ctx| {
             assert_true(
                 ctx.flag("warnings_aggregated").unwrap_or(false),
@@ -87,14 +90,17 @@ pub fn multi_source_merge_coverage() -> Scenario {
 /// Scenario 7.3: User merges events from same source type
 pub fn multi_source_merge_same_type() -> Scenario {
     Scenario::new("User merges events from same source type")
-        .given("a user has collected events from GitHub for two different repos", |ctx| {
-            ctx.numbers.insert("repo_a_events".to_string(), 20);
-            ctx.numbers.insert("repo_b_events".to_string(), 15);
-            ctx.flags.insert("github_collected".to_string(), true);
-        })
+        .given(
+            "a user has collected events from GitHub for two different repos",
+            |ctx| {
+                ctx.numbers.insert("repo_a_events".to_string(), 20);
+                ctx.numbers.insert("repo_b_events".to_string(), 15);
+                ctx.flags.insert("github_collected".to_string(), true);
+            },
+        )
         .when("they merge the sources", |ctx| {
-            let total = ctx.number("repo_a_events").unwrap_or(0)
-                + ctx.number("repo_b_events").unwrap_or(0);
+            let total =
+                ctx.number("repo_a_events").unwrap_or(0) + ctx.number("repo_b_events").unwrap_or(0);
             ctx.numbers.insert("total_events".to_string(), total);
             ctx.flags.insert("merged".to_string(), true);
             ctx.flags.insert("deduplicated".to_string(), true);
@@ -115,9 +121,13 @@ pub fn multi_source_merge_same_type() -> Scenario {
 /// Scenario 7.4: Conflicting events from different sources
 pub fn multi_source_merge_conflicts() -> Scenario {
     Scenario::new("Conflicting events from different sources")
-        .given("a user has collected the same event from GitHub and local git", |ctx| {
-            ctx.flags.insert("same_event_multiple_sources".to_string(), true);
-        })
+        .given(
+            "a user has collected the same event from GitHub and local git",
+            |ctx| {
+                ctx.flags
+                    .insert("same_event_multiple_sources".to_string(), true);
+            },
+        )
         .given("the events have different metadata", |ctx| {
             ctx.flags.insert("metadata_differs".to_string(), true);
         })
@@ -136,10 +146,13 @@ pub fn multi_source_merge_conflicts() -> Scenario {
                 "conflict resolved",
             )
         })
-        .then("a warning should indicate the conflict was resolved", |ctx| {
-            let warning = ctx.string("warning_message").unwrap();
-            assert_contains(warning, "conflict", "warning message")
-        })
+        .then(
+            "a warning should indicate the conflict was resolved",
+            |ctx| {
+                let warning = ctx.string("warning_message").unwrap();
+                assert_contains(warning, "conflict", "warning message")
+            },
+        )
 }
 
 /// Scenario 7.5: Merge with no events
@@ -162,18 +175,24 @@ pub fn multi_source_merge_no_events() -> Scenario {
                 "command failed",
             )
         })
-        .then("the error should indicate no events are available to merge", |ctx| {
-            let error = ctx.string("error_message").unwrap();
-            assert_contains(error, "No events", "error message")
-        })
+        .then(
+            "the error should indicate no events are available to merge",
+            |ctx| {
+                let error = ctx.string("error_message").unwrap();
+                assert_contains(error, "No events", "error message")
+            },
+        )
 }
 
 /// Scenario 7.6: Merge with incompatible event types
 pub fn multi_source_merge_incompatible() -> Scenario {
     Scenario::new("Merge with incompatible event types")
-        .given("a user has collected events from a source with incompatible schema", |ctx| {
-            ctx.flags.insert("incompatible_schema".to_string(), true);
-        })
+        .given(
+            "a user has collected events from a source with incompatible schema",
+            |ctx| {
+                ctx.flags.insert("incompatible_schema".to_string(), true);
+            },
+        )
         .when("they attempt to merge", |ctx| {
             ctx.flags.insert("merged".to_string(), true);
             ctx.numbers.insert("skipped_events".to_string(), 3);
@@ -196,30 +215,40 @@ pub fn multi_source_merge_incompatible() -> Scenario {
 /// Scenario 7.7: Multi-source events cluster together
 pub fn multi_source_cluster() -> Scenario {
     Scenario::new("Multi-source events cluster together")
-        .given("a user has merged events from GitHub, GitLab, and Jira", |ctx| {
-            ctx.numbers.insert("github_events".to_string(), 25);
-            ctx.numbers.insert("gitlab_events".to_string(), 15);
-            ctx.numbers.insert("jira_events".to_string(), 10);
-            ctx.flags.insert("multi_source_merged".to_string(), true);
-        })
+        .given(
+            "a user has merged events from GitHub, GitLab, and Jira",
+            |ctx| {
+                ctx.numbers.insert("github_events".to_string(), 25);
+                ctx.numbers.insert("gitlab_events".to_string(), 15);
+                ctx.numbers.insert("jira_events".to_string(), 10);
+                ctx.flags.insert("multi_source_merged".to_string(), true);
+            },
+        )
         .when("they run \"shiplog cluster\"", |ctx| {
             ctx.flags.insert("workstreams_generated".to_string(), true);
             ctx.numbers.insert("workstream_count".to_string(), 8);
-            ctx.flags.insert("multi_source_workstreams".to_string(), true);
+            ctx.flags
+                .insert("multi_source_workstreams".to_string(), true);
             Ok(())
         })
-        .then("workstreams should include events from all sources", |ctx| {
-            assert_true(
-                ctx.flag("workstreams_generated").unwrap_or(false),
-                "workstreams generated",
-            )
-        })
-        .then("clustering should consider event context across sources", |ctx| {
-            assert_true(
-                ctx.flag("multi_source_workstreams").unwrap_or(false),
-                "multi-source workstreams",
-            )
-        })
+        .then(
+            "workstreams should include events from all sources",
+            |ctx| {
+                assert_true(
+                    ctx.flag("workstreams_generated").unwrap_or(false),
+                    "workstreams generated",
+                )
+            },
+        )
+        .then(
+            "clustering should consider event context across sources",
+            |ctx| {
+                assert_true(
+                    ctx.flag("multi_source_workstreams").unwrap_or(false),
+                    "multi-source workstreams",
+                )
+            },
+        )
 }
 
 /// Scenario 7.8: Multi-source packet renders correctly
@@ -267,13 +296,13 @@ pub fn multi_source_merge_large() -> Scenario {
                 .insert("memory_usage".to_string(), "450MB".to_string());
             Ok(())
         })
-        .then("merging should complete within reasonable time (< 10 seconds)", |ctx| {
-            let time = ctx.string("merge_time").unwrap();
-            assert_true(
-                time.contains("s") && !time.contains("m"),
-                "merge time",
-            )
-        })
+        .then(
+            "merging should complete within reasonable time (< 10 seconds)",
+            |ctx| {
+                let time = ctx.string("merge_time").unwrap();
+                assert_true(time.contains("s") && !time.contains("m"), "merge time")
+            },
+        )
         .then("memory usage should remain bounded", |ctx| {
             let memory = ctx.string("memory_usage").unwrap();
             assert_true(

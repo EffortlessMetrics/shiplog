@@ -6,15 +6,15 @@
 use anyhow::{Context, Result, anyhow};
 use chrono::{DateTime, NaiveDate, Utc};
 use reqwest::blocking::Client;
-use serde::de::DeserializeOwned;
 use serde::Deserialize;
+use serde::de::DeserializeOwned;
 use shiplog_cache::ApiCache;
 use shiplog_ids::{EventId, RunId};
 use shiplog_ports::{IngestOutput, Ingestor};
 use shiplog_schema::coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow};
 use shiplog_schema::event::{
-    Actor, EventEnvelope, EventKind, EventPayload, Link, ManualEvent, ManualEventType,
-    RepoRef, RepoVisibility, SourceRef, SourceSystem,
+    Actor, EventEnvelope, EventKind, EventPayload, Link, ManualEvent, ManualEventType, RepoRef,
+    RepoVisibility, SourceRef, SourceSystem,
 };
 use std::path::PathBuf;
 use std::thread::sleep;
@@ -42,8 +42,12 @@ impl IssueStatus {
             Self::All => "all",
         }
     }
+}
 
-    pub fn from_str(s: &str) -> Result<Self> {
+impl std::str::FromStr for IssueStatus {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self> {
         match s.to_lowercase().as_str() {
             "backlog" => Ok(Self::Backlog),
             "todo" => Ok(Self::Todo),
@@ -159,7 +163,7 @@ impl LinearIngestor {
         variables: &serde_json::Value,
     ) -> Result<T> {
         let mut req = client
-            .post(&self.api_base_url())
+            .post(self.api_base_url())
             .header("Accept", "application/json")
             .header("Content-Type", "application/json")
             .json(&serde_json::json!({
@@ -172,9 +176,7 @@ impl LinearIngestor {
             req = req.bearer_auth(key);
         }
 
-        let resp = req
-            .send()
-            .context("execute Linear GraphQL query")?;
+        let resp = req.send().context("execute Linear GraphQL query")?;
         self.throttle();
 
         let status = resp.status();
@@ -183,7 +185,9 @@ impl LinearIngestor {
 
             // Handle specific Linear error cases
             if status.as_u16() == 401 {
-                return Err(anyhow!("Linear authentication failed: invalid or expired API key"));
+                return Err(anyhow!(
+                    "Linear authentication failed: invalid or expired API key"
+                ));
             } else if status.as_u16() == 403 {
                 if body.to_lowercase().contains("rate limit") {
                     return Err(anyhow!("Linear API rate limit exceeded"));
@@ -196,23 +200,29 @@ impl LinearIngestor {
             return Err(anyhow!("Linear API error {status}: {body}"));
         }
 
-        let response: LinearResponse<T> = resp.json()
-            .context("parse Linear GraphQL response")?;
+        let response: LinearResponse<T> = resp.json().context("parse Linear GraphQL response")?;
 
         if let Some(errors) = response.errors {
-            return Err(anyhow!("Linear GraphQL errors: {}", 
-                errors.iter()
+            return Err(anyhow!(
+                "Linear GraphQL errors: {}",
+                errors
+                    .iter()
                     .map(|e| e.message.as_deref().unwrap_or("unknown error"))
                     .collect::<Vec<_>>()
                     .join(", ")
             ));
         }
 
-        response.data.ok_or_else(|| anyhow!("Linear response missing data"))
+        response
+            .data
+            .ok_or_else(|| anyhow!("Linear response missing data"))
     }
 
     /// Query Linear issues
-    fn query_issues(&self, client: &Client) -> Result<(Vec<LinearIssue>, Vec<CoverageSlice>, bool)> {
+    fn query_issues(
+        &self,
+        client: &Client,
+    ) -> Result<(Vec<LinearIssue>, Vec<CoverageSlice>, bool)> {
         let mut slices = Vec::new();
         let mut partial = false;
 
@@ -267,7 +277,7 @@ impl LinearIngestor {
                 variables["after"] = serde_json::json!(cursor);
             }
 
-            let response: LinearData<LinearUserResponse> = 
+            let response: LinearData<LinearUserResponse> =
                 self.execute_query(client, query, &variables)?;
 
             if let Some(user) = response.data.and_then(|u| u.user) {
@@ -324,38 +334,32 @@ impl LinearIngestor {
         let html_base = self.html_base_url();
 
         for issue in issues {
-            let issue_url = format!(
-                "{}/issue/{}",
-                html_base, issue.identifier
-            );
+            let issue_url = format!("{}/issue/{}", html_base, issue.identifier);
 
             // Determine the event timestamp
-            let occurred_at = issue.completed_at
+            let occurred_at = issue
+                .completed_at
                 .or(issue.canceled_at)
                 .unwrap_or(issue.created_at);
 
             // Determine the event type based on state
-            let event_type = if issue.state.as_ref().map(|s| s.type_.as_str()).as_deref() == Some("completed") {
-                ManualEventType::Other
-            } else if issue.state.as_ref().map(|s| s.type_.as_str()).as_deref() == Some("canceled") {
-                ManualEventType::Other
-            } else {
-                ManualEventType::Other
-            };
+            let event_type = ManualEventType::Other;
 
             let event = EventEnvelope {
                 id: EventId::from_parts(["linear", "issue", &issue.id]),
                 kind: EventKind::Manual,
                 occurred_at,
                 actor: Actor {
-                    login: issue.assignee
+                    login: issue
+                        .assignee
                         .as_ref()
                         .map(|a| a.name.clone())
                         .unwrap_or_else(|| self.user.clone()),
                     id: None, // Linear uses string-based IDs, not u64
                 },
                 repo: RepoRef {
-                    full_name: issue.project
+                    full_name: issue
+                        .project
                         .as_ref()
                         .map(|p| format!("linear/{}", p.key))
                         .unwrap_or_else(|| "linear/unknown".to_string()),
@@ -367,7 +371,8 @@ impl LinearIngestor {
                     title: issue.title.clone(),
                     description: issue.description,
                     started_at: Some(issue.created_at.date_naive()),
-                    ended_at: issue.completed_at
+                    ended_at: issue
+                        .completed_at
                         .or(issue.canceled_at)
                         .map(|d| d.date_naive()),
                     impact: Some(format!("Issue: {}", issue.identifier)),
@@ -453,6 +458,7 @@ struct LinearResponse<T> {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct LinearError {
     message: Option<String>,
     #[serde(rename = "type")]
@@ -496,6 +502,7 @@ struct LinearIssue {
     identifier: String,
     title: String,
     description: Option<String>,
+    #[allow(dead_code)]
     state: Option<LinearState>,
     project: Option<LinearProject>,
     #[serde(rename = "createdAt")]
@@ -508,6 +515,7 @@ struct LinearIssue {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct LinearState {
     id: String,
     name: String,
@@ -516,6 +524,7 @@ struct LinearState {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct LinearProject {
     id: String,
     name: String,
@@ -523,6 +532,7 @@ struct LinearProject {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct LinearUserAccount {
     id: String,
     name: String,
@@ -579,13 +589,22 @@ mod tests {
 
     #[test]
     fn issue_status_from_str() {
-        assert_eq!(IssueStatus::from_str("backlog").unwrap(), IssueStatus::Backlog);
-        assert_eq!(IssueStatus::from_str("todo").unwrap(), IssueStatus::Todo);
-        assert_eq!(IssueStatus::from_str("in_progress").unwrap(), IssueStatus::InProgress);
-        assert_eq!(IssueStatus::from_str("done").unwrap(), IssueStatus::Done);
-        assert_eq!(IssueStatus::from_str("cancelled").unwrap(), IssueStatus::Cancelled);
-        assert_eq!(IssueStatus::from_str("all").unwrap(), IssueStatus::All);
-        assert!(IssueStatus::from_str("invalid").is_err());
+        assert_eq!(
+            "backlog".parse::<IssueStatus>().unwrap(),
+            IssueStatus::Backlog
+        );
+        assert_eq!("todo".parse::<IssueStatus>().unwrap(), IssueStatus::Todo);
+        assert_eq!(
+            "in_progress".parse::<IssueStatus>().unwrap(),
+            IssueStatus::InProgress
+        );
+        assert_eq!("done".parse::<IssueStatus>().unwrap(), IssueStatus::Done);
+        assert_eq!(
+            "cancelled".parse::<IssueStatus>().unwrap(),
+            IssueStatus::Cancelled
+        );
+        assert_eq!("all".parse::<IssueStatus>().unwrap(), IssueStatus::All);
+        assert!("invalid".parse::<IssueStatus>().is_err());
     }
 
     #[test]
