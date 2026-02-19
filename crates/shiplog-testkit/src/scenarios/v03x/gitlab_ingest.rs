@@ -117,14 +117,12 @@ pub fn gitlab_ingest_reviews() -> Scenario {
             assert_true(count > 0, "reviews collected")
         })
         .then("review events should include the MR being reviewed", |ctx| {
-            ctx.flags.insert("review_has_mr".to_string(), true);
             assert_true(
                 ctx.flag("review_has_mr").unwrap_or(false),
                 "review has MR reference",
             )
         })
         .then("review events should include the reviewer and timestamp", |ctx| {
-            ctx.flags.insert("review_has_reviewer".to_string(), true);
             assert_true(
                 ctx.flag("review_has_reviewer").unwrap_or(false),
                 "review has reviewer",
@@ -368,14 +366,11 @@ pub fn gitlab_ingest_render() -> Scenario {
             )
         })
         .then("MRs should link to the GitLab instance", |ctx| {
-            ctx.strings
-                .insert("gitlab_link".to_string(), "https://gitlab.com/".to_string());
-            let link = ctx.string("gitlab_link").unwrap();
+            let link = ctx.string("gitlab_link").unwrap_or(&String::new());
             assert_contains(link, "gitlab.com", "GitLab link")
         })
         .then("source should be indicated as \"gitlab\"", |ctx| {
-            ctx.strings.insert("source_label".to_string(), "gitlab".to_string());
-            let source = ctx.string("source_label").unwrap();
+            let source = ctx.string("source_label").unwrap_or(&String::new());
             assert_eq(source, "gitlab", "source label")
         })
 }

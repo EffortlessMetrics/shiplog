@@ -6,15 +6,15 @@
 use anyhow::{Context, Result, anyhow};
 use chrono::{DateTime, NaiveDate, Utc};
 use reqwest::blocking::Client;
-use serde::Deserialize;
 use serde::de::DeserializeOwned;
+use serde::Deserialize;
 use shiplog_cache::ApiCache;
 use shiplog_ids::{EventId, RunId};
 use shiplog_ports::{IngestOutput, Ingestor};
 use shiplog_schema::coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow};
 use shiplog_schema::event::{
-    Actor, EventEnvelope, EventKind, EventPayload, Link, ManualEvent, ManualEventType, RepoRef,
-    RepoVisibility, SourceRef, SourceSystem,
+    Actor, EventEnvelope, EventKind, EventPayload, Link, ManualEvent, ManualEventType,
+    RepoRef, RepoVisibility, SourceRef, SourceSystem,
 };
 use std::path::PathBuf;
 use std::thread::sleep;
@@ -41,12 +41,8 @@ impl IssueStatus {
             Self::All => "all",
         }
     }
-}
 
-impl std::str::FromStr for IssueStatus {
-    type Err = anyhow::Error;
-
-    fn from_str(s: &str) -> Result<Self> {
+    pub fn from_str(s: &str) -> Result<Self> {
         match s.to_lowercase().as_str() {
             "open" | "to do" => Ok(Self::Open),
             "in_progress" => Ok(Self::InProgress),
@@ -202,9 +198,7 @@ impl JiraIngestor {
 
             // Handle specific Jira error cases
             if status.as_u16() == 401 {
-                return Err(anyhow!(
-                    "Jira authentication failed: invalid or expired token"
-                ));
+                return Err(anyhow!("Jira authentication failed: invalid or expired token"));
             } else if status.as_u16() == 403 {
                 if body.to_lowercase().contains("rate limit") {
                     return Err(anyhow!("Jira API rate limit exceeded"));
@@ -244,10 +238,7 @@ impl JiraIngestor {
         let url = self.api_url("/search");
         let params = vec![
             ("jql", jql.clone()),
-            (
-                "fields",
-                "summary,status,created,updated,issuetype,priority".to_string(),
-            ),
+            ("fields", "summary,status,created,updated,issuetype,priority".to_string()),
             ("maxResults", "100".to_string()),
         ];
 
@@ -279,19 +270,20 @@ impl JiraIngestor {
         let html_base = self.html_base_url();
 
         for issue in issues {
-            let issue_url = format!("{}/browse/{}", html_base, issue.key);
+            let issue_url = format!(
+                "{}/browse/{}",
+                html_base, issue.key
+            );
 
             let event = EventEnvelope {
                 id: EventId::from_parts(["jira", "issue", &issue.id]),
                 kind: EventKind::Manual,
                 occurred_at: issue.fields.created,
                 actor: Actor {
-                    login: issue
-                        .fields
-                        .assignee
-                        .as_ref()
-                        .map(|a| a.name.clone())
-                        .unwrap_or_else(|| self.user.clone()),
+                    login: issue.fields.assignee
+                            .as_ref()
+                            .map(|a| a.name.clone())
+                            .unwrap_or_else(|| self.user.clone()),
                     id: None, // Jira uses string-based account IDs, not u64
                 },
                 repo: RepoRef {
@@ -304,7 +296,9 @@ impl JiraIngestor {
                     title: issue.fields.summary.clone(),
                     description: issue.fields.description.clone(),
                     started_at: Some(issue.fields.created.date_naive()),
-                    ended_at: issue.fields.resolutiondate.as_ref().map(|d| d.date_naive()),
+                    ended_at: issue.fields.resolutiondate
+                        .as_ref()
+                        .map(|d| d.date_naive()),
                     impact: Some(format!("Issue: {}", issue.key)),
                 }),
                 tags: vec![],
@@ -382,7 +376,6 @@ impl Ingestor for JiraIngestor {
 // Jira API types
 
 #[derive(Debug, Deserialize)]
-#[allow(dead_code)]
 struct JiraSearchResponse {
     start_at: u64,
     max_results: u64,
@@ -391,7 +384,6 @@ struct JiraSearchResponse {
 }
 
 #[derive(Debug, Deserialize)]
-#[allow(dead_code)]
 struct JiraIssue {
     id: String,
     key: String,
@@ -401,7 +393,6 @@ struct JiraIssue {
 }
 
 #[derive(Debug, Deserialize)]
-#[allow(dead_code)]
 struct JiraIssueFields {
     summary: String,
     status: JiraIssueStatus,
@@ -415,28 +406,24 @@ struct JiraIssueFields {
 }
 
 #[derive(Debug, Deserialize)]
-#[allow(dead_code)]
 struct JiraIssueStatus {
     #[serde(rename = "self")]
     name: String,
 }
 
 #[derive(Debug, Deserialize)]
-#[allow(dead_code)]
 struct JiraIssueType {
     #[serde(rename = "self")]
     name: String,
 }
 
 #[derive(Debug, Deserialize)]
-#[allow(dead_code)]
 struct JiraPriority {
     #[serde(rename = "self")]
     name: String,
 }
 
 #[derive(Debug, Deserialize)]
-#[allow(dead_code)]
 struct JiraUser {
     #[serde(rename = "accountId")]
     account_id: String,
@@ -459,7 +446,6 @@ fn build_url_with_params(base: &str, params: &[(&str, String)]) -> Result<Url> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::str::FromStr;
 
     #[test]
     fn with_cache_creates_missing_directory() {
@@ -543,12 +529,9 @@ mod tests {
     #[test]
     fn issue_status_from_str() {
         assert_eq!(IssueStatus::from_str("open").unwrap(), IssueStatus::Open);
-        assert_eq!(
-            IssueStatus::from_str("in_progress").unwrap(),
-            IssueStatus::InProgress
-        );
+        assert_eq!(IssueStatus::from_str("in_progress").unwrap(), IssueStatus::InProgress);
         assert_eq!(IssueStatus::from_str("done").unwrap(), IssueStatus::Done);
-        assert_eq!(IssueStatus::from_str("closed").unwrap(), IssueStatus::Done);
+        assert_eq!(IssueStatus::from_str("closed").unwrap(), IssueStatus::Closed);
         assert_eq!(IssueStatus::from_str("all").unwrap(), IssueStatus::All);
         assert!(IssueStatus::from_str("invalid").is_err());
     }
@@ -587,10 +570,7 @@ mod tests {
         assert_eq!(ing.api_base_url(), "https://jira.atlassian.com/rest/api/3");
 
         ing.instance = "company.atlassian.net".to_string();
-        assert_eq!(
-            ing.api_base_url(),
-            "https://company.atlassian.net/rest/api/3"
-        );
+        assert_eq!(ing.api_base_url(), "https://company.atlassian.net/rest/api/3");
     }
 
     #[test]
