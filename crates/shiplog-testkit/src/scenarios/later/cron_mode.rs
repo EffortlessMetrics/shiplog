@@ -131,7 +131,6 @@ pub fn cron_mode_failure() -> Scenario {
             )
         })
         .then("the next scheduled run should still attempt", |ctx| {
-            ctx.flags.insert("next_run_scheduled".to_string(), true);
             assert_true(
                 ctx.flag("next_run_scheduled").unwrap_or(false),
                 "next run scheduled",

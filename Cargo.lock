@@ -1931,6 +1931,42 @@ dependencies = [
 ]
 
 [[package]]
+name = "shiplog-ingest-gitlab"
+version = "0.3.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "shiplog-cache",
+ "shiplog-coverage",
+ "shiplog-ids",
+ "shiplog-ports",
+ "shiplog-schema",
+ "tempfile",
+ "url",
+]
+
+[[package]]
+name = "shiplog-ingest-jira"
+version = "0.3.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "shiplog-cache",
+ "shiplog-coverage",
+ "shiplog-ids",
+ "shiplog-ports",
+ "shiplog-schema",
+ "tempfile",
+ "url",
+]
+
+[[package]]
 name = "shiplog-ingest-json"
 version = "0.2.1"
 dependencies = [
@@ -1942,6 +1978,24 @@ dependencies = [
  "shiplog-ports",
  "shiplog-schema",
  "tempfile",
+]
+
+[[package]]
+name = "shiplog-ingest-linear"
+version = "0.3.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "shiplog-cache",
+ "shiplog-coverage",
+ "shiplog-ids",
+ "shiplog-ports",
+ "shiplog-schema",
+ "tempfile",
+ "url",
 ]
 
 [[package]]
@@ -2020,6 +2074,17 @@ dependencies = [
  "serde_yaml_ng",
  "shiplog-ids",
  "shiplog-testkit",
+]
+
+[[package]]
+name = "shiplog-template"
+version = "0.3.0"
+dependencies = [
+ "anyhow",
+ "serde",
+ "serde_json",
+ "shiplog-schema",
+ "tempfile",
 ]
 
 [[package]]

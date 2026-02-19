@@ -13,7 +13,19 @@ use shiplog_schema::coverage::CoverageManifest;
 use shiplog_schema::event::EventEnvelope;
 use shiplog_schema::workstream::WorkstreamsFile;
 use shiplog_workstreams::WorkstreamManager;
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+
+/// Conflict resolution strategy for merging events
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ConflictResolution {
+    /// Prefer the event from the source with higher priority (earlier in list)
+    PreferFirst,
+    /// Prefer the event with the most recent timestamp
+    PreferMostRecent,
+    /// Prefer the event with more complete data (more non-null fields)
+    PreferMostComplete,
+}
 
 pub struct Engine<'a> {
     pub renderer: &'a dyn Renderer,
@@ -391,6 +403,195 @@ impl<'a> Engine<'a> {
         )?;
         std::fs::write(prof_dir.join("packet.md"), md)?;
         Ok(())
+    }
+
+    /// Merge events from multiple sources with deduplication and conflict resolution.
+    ///
+    /// This function:
+    /// - Deduplicates events by ID
+    /// - Resolves conflicts for events that appear in multiple sources
+    /// - Merges coverage manifests from all sources
+    /// - Sorts events by timestamp
+    pub fn merge(
+        &self,
+        ingest_outputs: Vec<IngestOutput>,
+        resolution: ConflictResolution,
+    ) -> Result<IngestOutput> {
+        if ingest_outputs.is_empty() {
+            return Err(anyhow::anyhow!("No ingest outputs to merge"));
+        }
+
+        // Collect all events and build a map for deduplication
+        let mut event_map: HashMap<String, Vec<EventEnvelope>> = HashMap::new();
+        let mut all_sources: Vec<String> = Vec::new();
+        let mut all_warnings: Vec<String> = Vec::new();
+        let mut all_slices: Vec<shiplog_schema::coverage::CoverageSlice> = Vec::new();
+
+        // Use first output's window and user as base
+        let base_output = &ingest_outputs[0];
+        let window = base_output.coverage.window.clone();
+        let user = base_output.coverage.user.clone();
+
+        for ingest in &ingest_outputs {
+            // Collect events by ID
+            for event in &ingest.events {
+                let id = event.id.to_string();
+                event_map.entry(id).or_default().push(event.clone());
+            }
+
+            // Collect sources
+            all_sources.extend(ingest.coverage.sources.clone());
+            all_warnings.extend(ingest.coverage.warnings.clone());
+            all_slices.extend(ingest.coverage.slices.clone());
+        }
+
+        // Deduplicate and resolve conflicts
+        let mut merged_events: Vec<EventEnvelope> = Vec::new();
+        let mut conflict_count = 0;
+
+        for (_id, mut events) in event_map {
+            if events.len() == 1 {
+                merged_events.push(events.remove(0));
+            } else {
+                // Multiple events with same ID - resolve conflict
+                conflict_count += 1;
+                let resolved = self.resolve_conflict(&events, resolution);
+                merged_events.push(resolved);
+            }
+        }
+
+        // Sort by timestamp
+        merged_events.sort_by_key(|e| e.occurred_at);
+
+        // Deduplicate sources
+        all_sources.sort();
+        all_sources.dedup();
+
+        // Calculate completeness - if any source is partial, result is partial
+        let completeness = if ingest_outputs.iter().any(|o| o.coverage.completeness == shiplog_schema::coverage::Completeness::Partial) {
+            shiplog_schema::coverage::Completeness::Partial
+        } else {
+            shiplog_schema::coverage::Completeness::Complete
+        };
+
+        // Add warning about conflicts if any occurred
+        if conflict_count > 0 {
+            all_warnings.push(format!(
+                "Resolved {} conflict(s) during merge using {:?} strategy",
+                conflict_count, resolution
+            ));
+        }
+
+        // Create merged coverage manifest
+        let coverage = shiplog_schema::coverage::CoverageManifest {
+            run_id: shiplog_ids::RunId::now("merge"),
+            generated_at: chrono::Utc::now(),
+            user,
+            window,
+            mode: "merged".to_string(),
+            sources: all_sources,
+            slices: all_slices,
+            warnings: all_warnings,
+            completeness,
+        };
+
+        Ok(IngestOutput {
+            events: merged_events,
+            coverage,
+        })
+    }
+
+    /// Resolve a conflict between multiple events with same ID
+    fn resolve_conflict(
+        &self,
+        events: &[EventEnvelope],
+        resolution: ConflictResolution,
+    ) -> EventEnvelope {
+        match resolution {
+            ConflictResolution::PreferFirst => {
+                events[0].clone()
+            }
+            ConflictResolution::PreferMostRecent => {
+                events
+                    .iter()
+                    .max_by_key(|e| e.occurred_at)
+                    .unwrap()
+                    .clone()
+            }
+            ConflictResolution::PreferMostComplete => {
+                events
+                    .iter()
+                    .max_by_key(|e| self.completeness_score(e))
+                    .unwrap()
+                    .clone()
+            }
+        }
+    }
+
+    /// Calculate a completeness score for an event (higher = more complete)
+    fn completeness_score(&self, event: &EventEnvelope) -> usize {
+        let mut score = 0;
+
+        // Check for non-empty fields
+        if !event.actor.login.is_empty() {
+            score += 1;
+        }
+        if event.actor.id.is_some() {
+            score += 1;
+        }
+        if !event.repo.full_name.is_empty() {
+            score += 1;
+        }
+        if event.repo.html_url.is_some() {
+            score += 1;
+        }
+        if !event.tags.is_empty() {
+            score += 1;
+        }
+        if !event.links.is_empty() {
+            score += 1;
+        }
+        if event.source.url.is_some() {
+            score += 1;
+        }
+        if event.source.opaque_id.is_some() {
+            score += 1;
+        }
+
+        // Check payload completeness
+        match &event.payload {
+            shiplog_schema::event::EventPayload::PullRequest(pr) => {
+                if pr.additions.is_some() {
+                    score += 1;
+                }
+                if pr.deletions.is_some() {
+                    score += 1;
+                }
+                if pr.changed_files.is_some() {
+                    score += 1;
+                }
+                if pr.merged_at.is_some() {
+                    score += 1;
+                }
+            }
+            shiplog_schema::event::EventPayload::Manual(manual) => {
+                if manual.description.is_some() {
+                    score += 1;
+                }
+                if manual.started_at.is_some() {
+                    score += 1;
+                }
+                if manual.ended_at.is_some() {
+                    score += 1;
+                }
+                if manual.impact.is_some() {
+                    score += 1;
+                }
+            }
+            _ => {}
+        }
+
+        score
     }
 }
 

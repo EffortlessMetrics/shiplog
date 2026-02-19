@@ -285,7 +285,6 @@ pub fn jira_ingest_correlate_with_prs() -> Scenario {
             )
         })
         .then("workstreams may group related PRs and issues together", |ctx| {
-            ctx.flags.insert("workstreams_correlated".to_string(), true);
             assert_true(
                 ctx.flag("workstreams_correlated").unwrap_or(false),
                 "workstreams correlated",
@@ -313,14 +312,11 @@ pub fn linear_ingest_render() -> Scenario {
             )
         })
         .then("issues should link to the Linear web interface", |ctx| {
-            ctx.strings
-                .insert("linear_link".to_string(), "https://linear.app/".to_string());
-            let link = ctx.string("linear_link").unwrap();
+            let link = ctx.string("linear_link").unwrap_or(&String::new());
             assert_contains(link, "linear.app", "Linear link")
         })
         .then("source should be indicated as \"linear\"", |ctx| {
-            ctx.strings.insert("source_label".to_string(), "linear".to_string());
-            let source = ctx.string("source_label").unwrap();
+            let source = ctx.string("source_label").unwrap_or(&String::new());
             assert_eq(source, "linear", "source label")
         })
 }

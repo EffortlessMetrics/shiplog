@@ -8,7 +8,7 @@
 //! - Plugin system
 
 use proptest::prelude::*;
-use serde::Deserialize;
+use serde::de::Deserialize;
 
 // ============================================================================
 // GitLab API Response Strategies
@@ -33,13 +33,13 @@ pub fn strategy_gitlab_mr_event() -> impl Strategy<Value = GitLabMergeRequestEve
                 created_at,
                 merged_at,
                 author: GitLabAuthor {
-                    id: any::<u64>().prop_map(|id| Some(id)).boxed(),
-                    username: "[a-zA-Z0-9_-]{1,50}".prop_map(|s| s).boxed(),
+                    id: any::<u64>().prop_map(|id| Some(id)),
+                    username: "[a-zA-Z0-9_-]{1,50}".to_string(),
                 },
                 project: GitLabProject {
-                    id: any::<u64>().prop_map(|id| Some(id)).boxed(),
-                    name: "[a-zA-Z0-9_-]{1,50}".prop_map(|s| s).boxed(),
-                    web_url: "[a-zA-Z0-9_-]{10,100}".prop_map(|s| s).boxed(),
+                    id: any::<u64>().prop_map(|id| Some(id)),
+                    name: "[a-zA-Z0-9_-]{1,50}".to_string(),
+                    web_url: "[a-zA-Z0-9_-]{10,100}".to_string(),
                 },
             },
         )
@@ -60,8 +60,8 @@ pub fn strategy_gitlab_review_event() -> impl Strategy<Value = GitLabReviewEvent
                 created_at,
                 approved,
                 author: GitLabAuthor {
-                    id: any::<u64>().prop_map(|id| Some(id)).boxed(),
-                    username: "[a-zA-Z0-9_-]{1,50}".prop_map(|s| s).boxed(),
+                    id: any::<u64>().prop_map(|id| Some(id)),
+                    username: "[a-zA-Z0-9_-]{1,50}".to_string(),
                 },
             },
         )
@@ -86,8 +86,8 @@ pub fn strategy_jira_issue() -> impl Strategy<Value = JiraIssue> {
             updated,
             status: JiraStatus::Done,
             fields: JiraFields {
-                description: "[a-zA-Z0-9 ]{0,500}".prop_map(|s| Some(s)).boxed(),
-                priority: any::<u64>().prop_map(|p| Some(p)).boxed(),
+                description: "[a-zA-Z0-9 ]{0,500}".to_string().prop_map(|s| Some(s)),
+                priority: any::<u64>().prop_map(|p| Some(p)),
             },
         })
 }
@@ -95,8 +95,8 @@ pub fn strategy_jira_issue() -> impl Strategy<Value = JiraIssue> {
 /// Strategy for generating Linear issue events
 pub fn strategy_linear_issue() -> impl Strategy<Value = LinearIssue> {
     (
-        "[a-zA-Z0-9_-]{1,50}",
-        "[a-zA-Z0-9 ]{1,100}",
+        "[a-zA-Z0-9_-]{1,50}".to_string(),
+        "[a-zA-Z0-9 ]{1,100}".to_string(),
         any::<i64>(),
     )
         .prop_map(|(id, title, created)| LinearIssue {

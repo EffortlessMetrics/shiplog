@@ -66,8 +66,8 @@ pub fn template_variables() -> Scenario {
         )
         .then("the template variables should be substituted with configured values", |ctx| {
             let output = ctx.string("output_content").unwrap();
-            assert_contains(output, "Alice", "output")
-            assert_contains(output, "Acme Corp", "output")
+            assert_contains(output, "Alice", "output");
+            assert_contains(output, "Acme Corp", "output");
         })
 }
 

@@ -14,7 +14,7 @@ keywords = ["cli", "github", "self-review", "workstreams", "redaction"]
 categories = ["command-line-utilities", "development-tools"]
 
 [features]
-default = []
+default = ["llm"]
 llm = ["dep:shiplog-cluster-llm"]
 
 [dependencies]
