@@ -31,12 +31,10 @@ pub fn gitlab_ingest_gitlab_com() -> Scenario {
                 Ok(())
             },
         )
-        .then("merge requests should be collected from GitLab.com", |ctx| {
-            assert_true(
-                ctx.flag("api_call_made").unwrap_or(false),
-                "API call made",
-            )
-        })
+        .then(
+            "merge requests should be collected from GitLab.com",
+            |ctx| assert_true(ctx.flag("api_call_made").unwrap_or(false), "API call made"),
+        )
         .then(
             "each event should have SourceSystem::Other(\"gitlab\")",
             |ctx| {
@@ -96,13 +94,16 @@ pub fn gitlab_ingest_self_hosted() -> Scenario {
 /// Scenario 5.3: User ingests GitLab reviews
 pub fn gitlab_ingest_reviews() -> Scenario {
     Scenario::new("User ingests GitLab reviews")
-        .given("a user has configured GitLab collection with review inclusion", |ctx| {
-            ctx.strings
-                .insert("gitlab_instance".to_string(), "gitlab.com".to_string());
-            ctx.strings
-                .insert("gitlab_token".to_string(), "glpat_test_token".to_string());
-            ctx.flags.insert("include_reviews".to_string(), true);
-        })
+        .given(
+            "a user has configured GitLab collection with review inclusion",
+            |ctx| {
+                ctx.strings
+                    .insert("gitlab_instance".to_string(), "gitlab.com".to_string());
+                ctx.strings
+                    .insert("gitlab_token".to_string(), "glpat_test_token".to_string());
+                ctx.flags.insert("include_reviews".to_string(), true);
+            },
+        )
         .when(
             "they run \"shiplog collect --source gitlab --user alice --include-reviews\"",
             |ctx| {
@@ -116,34 +117,44 @@ pub fn gitlab_ingest_reviews() -> Scenario {
             let count = ctx.number("collected_reviews").unwrap_or(0);
             assert_true(count > 0, "reviews collected")
         })
-        .then("review events should include the MR being reviewed", |ctx| {
-            assert_true(
-                ctx.flag("review_has_mr").unwrap_or(false),
-                "review has MR reference",
-            )
-        })
-        .then("review events should include the reviewer and timestamp", |ctx| {
-            assert_true(
-                ctx.flag("review_has_reviewer").unwrap_or(false),
-                "review has reviewer",
-            )
-        })
+        .then(
+            "review events should include the MR being reviewed",
+            |ctx| {
+                assert_true(
+                    ctx.flag("review_has_mr").unwrap_or(false),
+                    "review has MR reference",
+                )
+            },
+        )
+        .then(
+            "review events should include the reviewer and timestamp",
+            |ctx| {
+                assert_true(
+                    ctx.flag("review_has_reviewer").unwrap_or(false),
+                    "review has reviewer",
+                )
+            },
+        )
 }
 
 /// Scenario 5.4: User filters GitLab MRs by state
 pub fn gitlab_ingest_filter_by_state() -> Scenario {
     Scenario::new("User filters GitLab MRs by state")
-        .given("a user has GitLab MRs in various states (opened, merged, closed)", |ctx| {
-            ctx.numbers.insert("total_mrs".to_string(), 30);
-            ctx.numbers.insert("opened_mrs".to_string(), 10);
-            ctx.numbers.insert("merged_mrs".to_string(), 15);
-            ctx.numbers.insert("closed_mrs".to_string(), 5);
-        })
+        .given(
+            "a user has GitLab MRs in various states (opened, merged, closed)",
+            |ctx| {
+                ctx.numbers.insert("total_mrs".to_string(), 30);
+                ctx.numbers.insert("opened_mrs".to_string(), 10);
+                ctx.numbers.insert("merged_mrs".to_string(), 15);
+                ctx.numbers.insert("closed_mrs".to_string(), 5);
+            },
+        )
         .when(
             "they run \"shiplog collect --source gitlab --user alice --state merged\"",
             |ctx| {
                 ctx.numbers.insert("collected_mrs".to_string(), 15);
-                ctx.strings.insert("filtered_state".to_string(), "merged".to_string());
+                ctx.strings
+                    .insert("filtered_state".to_string(), "merged".to_string());
                 Ok(())
             },
         )
@@ -176,12 +187,15 @@ pub fn gitlab_ingest_invalid_url() -> Scenario {
                 Ok(())
             },
         )
-        .then("the command should fail with a clear error message", |ctx| {
-            assert_true(
-                ctx.flag("command_failed").unwrap_or(false),
-                "command failed",
-            )
-        })
+        .then(
+            "the command should fail with a clear error message",
+            |ctx| {
+                assert_true(
+                    ctx.flag("command_failed").unwrap_or(false),
+                    "command failed",
+                )
+            },
+        )
         .then("the error should indicate the URL is invalid", |ctx| {
             let error = ctx.string("error_message").unwrap();
             assert_contains(error, "Invalid", "error message")
@@ -206,16 +220,22 @@ pub fn gitlab_ingest_auth_failure() -> Scenario {
                 Ok(())
             },
         )
-        .then("the command should fail with an authentication error", |ctx| {
-            assert_true(
-                ctx.flag("command_failed").unwrap_or(false),
-                "command failed",
-            )
-        })
-        .then("the error should indicate the token is invalid or expired", |ctx| {
-            let error = ctx.string("error_message").unwrap();
-            assert_contains(error, "authentication", "error message")
-        })
+        .then(
+            "the command should fail with an authentication error",
+            |ctx| {
+                assert_true(
+                    ctx.flag("command_failed").unwrap_or(false),
+                    "command failed",
+                )
+            },
+        )
+        .then(
+            "the error should indicate the token is invalid or expired",
+            |ctx| {
+                let error = ctx.string("error_message").unwrap();
+                assert_contains(error, "authentication", "error message")
+            },
+        )
 }
 
 /// Scenario 5.7: GitLab API rate limit exceeded
@@ -241,19 +261,25 @@ pub fn gitlab_ingest_rate_limit() -> Scenario {
                 "command failed",
             )
         })
-        .then("the error should indicate when the limit will reset", |ctx| {
-            let error = ctx.string("error_message").unwrap();
-            assert_contains(error, "Reset at", "error message")
-        })
+        .then(
+            "the error should indicate when the limit will reset",
+            |ctx| {
+                let error = ctx.string("error_message").unwrap();
+                assert_contains(error, "Reset at", "error message")
+            },
+        )
 }
 
 /// Scenario 5.8: GitLab project is private and inaccessible
 pub fn gitlab_ingest_private_project() -> Scenario {
     Scenario::new("GitLab project is private and inaccessible")
-        .given("a user attempts to collect from a private GitLab project", |ctx| {
-            ctx.strings
-                .insert("gitlab_project".to_string(), "private/project".to_string());
-        })
+        .given(
+            "a user attempts to collect from a private GitLab project",
+            |ctx| {
+                ctx.strings
+                    .insert("gitlab_project".to_string(), "private/project".to_string());
+            },
+        )
         .given("they do not have access to the project", |ctx| {
             ctx.flags.insert("no_access".to_string(), true);
         })
@@ -274,10 +300,13 @@ pub fn gitlab_ingest_private_project() -> Scenario {
                 "command failed",
             )
         })
-        .then("the error should indicate the project is inaccessible", |ctx| {
-            let error = ctx.string("error_message").unwrap();
-            assert_contains(error, "Access denied", "error message")
-        })
+        .then(
+            "the error should indicate the project is inaccessible",
+            |ctx| {
+                let error = ctx.string("error_message").unwrap();
+                assert_contains(error, "Access denied", "error message")
+            },
+        )
 }
 
 /// Scenario 5.9: GitLab events merge with GitHub events
@@ -292,8 +321,8 @@ pub fn gitlab_ingest_merge_with_github() -> Scenario {
             ctx.flags.insert("gitlab_collected".to_string(), true);
         })
         .when("they merge the sources", |ctx| {
-            let total = ctx.number("github_events").unwrap_or(0)
-                + ctx.number("gitlab_events").unwrap_or(0);
+            let total =
+                ctx.number("github_events").unwrap_or(0) + ctx.number("gitlab_events").unwrap_or(0);
             ctx.numbers.insert("total_events".to_string(), total);
             ctx.flags.insert("merged".to_string(), true);
             Ok(())
@@ -306,19 +335,14 @@ pub fn gitlab_ingest_merge_with_github() -> Scenario {
             },
         )
         .then("coverage manifest should include both sources", |ctx| {
-            ctx.flags.insert("coverage_has_github".to_string(), true);
-            ctx.flags.insert("coverage_has_gitlab".to_string(), true);
-            assert_true(
-                ctx.flag("coverage_has_github").unwrap_or(false)
-                    && ctx.flag("coverage_has_gitlab").unwrap_or(false),
-                "coverage has both sources",
-            )
+            // Check if both sources are present (simulated by checking the merge was successful)
+            assert_true(ctx.flag("merged").unwrap_or(false), "sources were merged")
         })
         .then("workstreams can contain events from both sources", |ctx| {
-            ctx.flags.insert("workstreams_multi_source".to_string(), true);
             assert_true(
-                ctx.flag("workstreams_multi_source").unwrap_or(false),
-                "workstreams have multi-source events",
+                ctx.flag("github_collected").unwrap_or(false)
+                    && ctx.flag("gitlab_collected").unwrap_or(false),
+                "both sources were collected",
             )
         })
 }
@@ -334,12 +358,15 @@ pub fn gitlab_ingest_cluster() -> Scenario {
             ctx.numbers.insert("workstream_count".to_string(), 5);
             Ok(())
         })
-        .then("workstreams should be generated from GitLab events", |ctx| {
-            assert_true(
-                ctx.flag("workstreams_generated").unwrap_or(false),
-                "workstreams generated",
-            )
-        })
+        .then(
+            "workstreams should be generated from GitLab events",
+            |ctx| {
+                assert_true(
+                    ctx.flag("workstreams_generated").unwrap_or(false),
+                    "workstreams generated",
+                )
+            },
+        )
         .then("related MRs should be grouped together", |ctx| {
             let count = ctx.number("workstream_count").unwrap_or(0);
             assert_true(count > 0, "workstream count")
@@ -349,10 +376,13 @@ pub fn gitlab_ingest_cluster() -> Scenario {
 /// Scenario 5.11: GitLab events render in packet
 pub fn gitlab_ingest_render() -> Scenario {
     Scenario::new("GitLab events render in packet")
-        .given("a user has collected GitLab events and generated workstreams", |ctx| {
-            ctx.numbers.insert("gitlab_events".to_string(), 15);
-            ctx.flags.insert("workstreams_generated".to_string(), true);
-        })
+        .given(
+            "a user has collected GitLab events and generated workstreams",
+            |ctx| {
+                ctx.numbers.insert("gitlab_events".to_string(), 15);
+                ctx.flags.insert("workstreams_generated".to_string(), true);
+            },
+        )
         .when("they run \"shiplog render\"", |ctx| {
             ctx.flags.insert("packet_rendered".to_string(), true);
             ctx.paths
@@ -366,11 +396,13 @@ pub fn gitlab_ingest_render() -> Scenario {
             )
         })
         .then("MRs should link to the GitLab instance", |ctx| {
-            let link = ctx.string("gitlab_link").unwrap_or(&String::new());
+            let empty = String::new();
+            let link = ctx.string("gitlab_link").unwrap_or(&empty);
             assert_contains(link, "gitlab.com", "GitLab link")
         })
         .then("source should be indicated as \"gitlab\"", |ctx| {
-            let source = ctx.string("source_label").unwrap_or(&String::new());
+            let empty = String::new();
+            let source = ctx.string("source_label").unwrap_or(&empty);
             assert_eq(source, "gitlab", "source label")
         })
 }
@@ -396,10 +428,7 @@ pub fn gitlab_ingest_large_collection() -> Scenario {
             "collection should complete within reasonable time (< 60 seconds)",
             |ctx| {
                 let time = ctx.string("collection_time").unwrap();
-                assert_true(
-                    time.contains("s") && !time.contains("m"),
-                    "collection time",
-                )
+                assert_true(time.contains("s") && !time.contains("m"), "collection time")
             },
         )
         .then("memory usage should remain bounded (< 500MB)", |ctx| {

@@ -10,8 +10,8 @@ use shiplog_ids::{EventId, RunId};
 use shiplog_ports::{IngestOutput, Ingestor};
 use shiplog_schema::coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow};
 use shiplog_schema::event::{
-    Actor, EventEnvelope, EventKind, EventPayload, PullRequestEvent, PullRequestState,
-    RepoRef, RepoVisibility, SourceRef, SourceSystem,
+    Actor, EventEnvelope, EventKind, EventPayload, PullRequestEvent, PullRequestState, RepoRef,
+    RepoVisibility, SourceRef, SourceSystem,
 };
 use std::path::{Path, PathBuf};
 
@@ -71,14 +71,14 @@ impl LocalGitIngestor {
     /// Get the repository name from the git config.
     fn get_repo_name(&self, repo: &Repository) -> Result<String> {
         // Try to get the remote URL and extract the repo name
-        if let Ok(remote) = repo.find_remote("origin") {
-            if let Some(url) = remote.url() {
-                // Extract repo name from URL like:
-                // https://github.com/owner/repo.git
-                // git@github.com:owner/repo.git
-                if let Some(name) = url.split('/').last() {
-                    return Ok(name.trim_end_matches(".git").to_string());
-                }
+        if let Ok(remote) = repo.find_remote("origin")
+            && let Some(url) = remote.url()
+        {
+            // Extract repo name from URL like:
+            // https://github.com/owner/repo.git
+            // git@github.com:owner/repo.git
+            if let Some(name) = url.split('/').next_back() {
+                return Ok(name.trim_end_matches(".git").to_string());
             }
         }
 
@@ -136,10 +136,7 @@ impl LocalGitIngestor {
         let commit_hash = commit.id().to_string();
 
         // Extract first line of commit message as title
-        let title = commit
-            .summary()
-            .unwrap_or("<no message>")
-            .to_string();
+        let title = commit.summary().unwrap_or("<no message>").to_string();
 
         let author = commit.author();
         let author_name = author.name().unwrap_or("Unknown").to_string();
@@ -221,7 +218,9 @@ impl LocalGitIngestor {
 
         // Walk the commit history
         let mut revwalk = repo.revwalk().context("Failed to create revwalk")?;
-        revwalk.push(head_commit.id()).context("Failed to push HEAD to revwalk")?;
+        revwalk
+            .push(head_commit.id())
+            .context("Failed to push HEAD to revwalk")?;
 
         for commit_id in revwalk {
             let commit_id = commit_id.context("Failed to get commit id")?;
@@ -333,16 +332,9 @@ mod tests {
         let tree_id = index.write_tree()?;
         {
             let tree = repo.find_tree(tree_id)?;
-            let _oid = repo.commit(
-                Some("HEAD"),
-                &sig,
-                &sig,
-                "Initial commit",
-                &tree,
-                &[],
-            )?;
+            let _oid = repo.commit(Some("HEAD"), &sig, &sig, "Initial commit", &tree, &[])?;
         }
- 
+
         // Create a second commit
         let tree_id = {
             let oid = repo.head()?.peel_to_commit()?;
@@ -403,11 +395,11 @@ mod tests {
             NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
             NaiveDate::from_ymd_opt(2025, 1, 31).unwrap(),
         );
- 
+
         let inside = DateTime::from_timestamp(1735689600, 0).unwrap(); // 2025-01-01
         let before = DateTime::from_timestamp(1733011200, 0).unwrap(); // 2024-12-01
         let after = DateTime::from_timestamp(1738368000, 0).unwrap(); // 2025-02-01
- 
+
         assert!(!ingestor.is_in_date_range(&before));
         assert!(ingestor.is_in_date_range(&inside));
         assert!(!ingestor.is_in_date_range(&after));

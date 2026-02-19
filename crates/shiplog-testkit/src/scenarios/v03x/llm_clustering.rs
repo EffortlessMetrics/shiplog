@@ -37,10 +37,13 @@ pub fn llm_clustering_default() -> Scenario {
                 "no feature flag needed",
             )
         })
-        .then("workstreams should be generated using LLM analysis", |ctx| {
-            let count = ctx.number("workstream_count").unwrap_or(0);
-            assert_true(count > 0, "workstream count")
-        })
+        .then(
+            "workstreams should be generated using LLM analysis",
+            |ctx| {
+                let count = ctx.number("workstream_count").unwrap_or(0);
+                assert_true(count > 0, "workstream count")
+            },
+        )
 }
 
 /// Scenario 9.2: User falls back to repo-based clustering on LLM failure
@@ -63,12 +66,10 @@ pub fn llm_clustering_fallback() -> Scenario {
             );
             Ok(())
         })
-        .then("the system should fall back to repo-based clustering", |ctx| {
-            assert_true(
-                ctx.flag("fallback_used").unwrap_or(false),
-                "fallback used",
-            )
-        })
+        .then(
+            "the system should fall back to repo-based clustering",
+            |ctx| assert_true(ctx.flag("fallback_used").unwrap_or(false), "fallback used"),
+        )
         .then("a warning should indicate the fallback occurred", |ctx| {
             let warning = ctx.string("warning_message").unwrap();
             assert_contains(warning, "fallback", "warning message")
@@ -83,7 +84,8 @@ pub fn llm_clustering_fallback() -> Scenario {
 pub fn llm_clustering_config() -> Scenario {
     Scenario::new("User configures LLM clustering parameters")
         .given("a user has a config file with LLM settings", |ctx| {
-            ctx.strings.insert("config_file".to_string(), "shiplog.yaml".to_string());
+            ctx.strings
+                .insert("config_file".to_string(), "shiplog.yaml".to_string());
         })
         .given("the config specifies max_workstreams: 10", |ctx| {
             ctx.numbers.insert("max_workstreams".to_string(), 10);
@@ -100,18 +102,22 @@ pub fn llm_clustering_config() -> Scenario {
                 .insert("model_used".to_string(), "gpt-4".to_string());
             Ok(())
         })
-        .then("LLM clustering should use the configured parameters", |ctx| {
-            assert_true(ctx.flag("llm_used").unwrap_or(false), "LLM used")
-        })
+        .then(
+            "LLM clustering should use the configured parameters",
+            |ctx| assert_true(ctx.flag("llm_used").unwrap_or(false), "LLM used"),
+        )
         .then("the specified model should be used", |ctx| {
             let model = ctx.string("model_used").unwrap();
             assert_eq(model, "gpt-4", "model")
         })
-        .then("workstreams should be limited to the configured maximum", |ctx| {
-            let count = ctx.number("workstream_count").unwrap_or(0);
-            let max = ctx.number("max_workstreams").unwrap_or(0);
-            assert_true(count <= max, "workstream count <= max")
-        })
+        .then(
+            "workstreams should be limited to the configured maximum",
+            |ctx| {
+                let count = ctx.number("workstream_count").unwrap_or(0);
+                let max = ctx.number("max_workstreams").unwrap_or(0);
+                assert_true(count <= max, "workstream count <= max")
+            },
+        )
 }
 
 /// Scenario 9.4: LLM API key not configured
@@ -130,12 +136,10 @@ pub fn llm_clustering_no_key() -> Scenario {
             );
             Ok(())
         })
-        .then("the system should fall back to repo-based clustering", |ctx| {
-            assert_true(
-                ctx.flag("fallback_used").unwrap_or(false),
-                "fallback used",
-            )
-        })
+        .then(
+            "the system should fall back to repo-based clustering",
+            |ctx| assert_true(ctx.flag("fallback_used").unwrap_or(false), "fallback used"),
+        )
         .then("a warning should indicate LLM is not configured", |ctx| {
             let warning = ctx.string("warning_message").unwrap();
             assert_contains(warning, "not configured", "warning message")
@@ -162,16 +166,17 @@ pub fn llm_clustering_invalid_response() -> Scenario {
             );
             Ok(())
         })
-        .then("the system should fall back to repo-based clustering", |ctx| {
-            assert_true(
-                ctx.flag("fallback_used").unwrap_or(false),
-                "fallback used",
-            )
-        })
-        .then("a warning should indicate the LLM response was invalid", |ctx| {
-            let warning = ctx.string("warning_message").unwrap();
-            assert_contains(warning, "invalid", "warning message")
-        })
+        .then(
+            "the system should fall back to repo-based clustering",
+            |ctx| assert_true(ctx.flag("fallback_used").unwrap_or(false), "fallback used"),
+        )
+        .then(
+            "a warning should indicate the LLM response was invalid",
+            |ctx| {
+                let warning = ctx.string("warning_message").unwrap();
+                assert_contains(warning, "invalid", "warning message")
+            },
+        )
 }
 
 /// Scenario 9.6: LLM API rate limit exceeded
@@ -190,70 +195,89 @@ pub fn llm_clustering_rate_limit() -> Scenario {
             );
             Ok(())
         })
-        .then("the system should fall back to repo-based clustering", |ctx| {
-            assert_true(
-                ctx.flag("fallback_used").unwrap_or(false),
-                "fallback used",
-            )
-        })
-        .then("a warning should indicate the rate limit was exceeded", |ctx| {
-            let warning = ctx.string("warning_message").unwrap();
-            assert_contains(warning, "rate limit", "warning message")
-        })
+        .then(
+            "the system should fall back to repo-based clustering",
+            |ctx| assert_true(ctx.flag("fallback_used").unwrap_or(false), "fallback used"),
+        )
+        .then(
+            "a warning should indicate the rate limit was exceeded",
+            |ctx| {
+                let warning = ctx.string("warning_message").unwrap();
+                assert_contains(warning, "rate limit", "warning message")
+            },
+        )
 }
 
 /// Scenario 9.7: LLM clustering works with multi-source events
 pub fn llm_clustering_multi_source() -> Scenario {
     Scenario::new("LLM clustering works with multi-source events")
-        .given("a user has collected events from GitHub, GitLab, and Jira", |ctx| {
-            ctx.numbers.insert("github_events".to_string(), 25);
-            ctx.numbers.insert("gitlab_events".to_string(), 15);
-            ctx.numbers.insert("jira_events".to_string(), 10);
-        })
+        .given(
+            "a user has collected events from GitHub, GitLab, and Jira",
+            |ctx| {
+                ctx.numbers.insert("github_events".to_string(), 25);
+                ctx.numbers.insert("gitlab_events".to_string(), 15);
+                ctx.numbers.insert("jira_events".to_string(), 10);
+            },
+        )
         .when("they run \"shiplog cluster\"", |ctx| {
             ctx.flags.insert("llm_used".to_string(), true);
             ctx.flags.insert("workstreams_generated".to_string(), true);
             ctx.numbers.insert("workstream_count".to_string(), 8);
-            ctx.flags.insert("multi_source_workstreams".to_string(), true);
+            ctx.flags
+                .insert("multi_source_workstreams".to_string(), true);
             Ok(())
         })
-        .then("LLM clustering should consider events from all sources", |ctx| {
-            assert_true(ctx.flag("llm_used").unwrap_or(false), "LLM used")
-        })
-        .then("workstreams may group events from different sources together", |ctx| {
-            assert_true(
-                ctx.flag("multi_source_workstreams").unwrap_or(false),
-                "multi-source workstreams",
-            )
-        })
+        .then(
+            "LLM clustering should consider events from all sources",
+            |ctx| assert_true(ctx.flag("llm_used").unwrap_or(false), "LLM used"),
+        )
+        .then(
+            "workstreams may group events from different sources together",
+            |ctx| {
+                assert_true(
+                    ctx.flag("multi_source_workstreams").unwrap_or(false),
+                    "multi-source workstreams",
+                )
+            },
+        )
 }
 
 /// Scenario 9.8: LLM clustering preserves user curation
 pub fn llm_clustering_preserve_curation() -> Scenario {
     Scenario::new("LLM clustering preserves user curation")
         .given("a user has curated workstreams with custom titles", |ctx| {
-            ctx.strings
-                .insert("custom_title".to_string(), "Custom Workstream Title".to_string());
+            ctx.strings.insert(
+                "custom_title".to_string(),
+                "Custom Workstream Title".to_string(),
+            );
             ctx.flags.insert("user_curated".to_string(), true);
         })
-        .when("they refresh with new events and run \"shiplog cluster\"", |ctx| {
-            ctx.flags.insert("llm_used".to_string(), true);
-            ctx.flags.insert("workstreams_generated".to_string(), true);
-            ctx.strings
-                .insert("preserved_title".to_string(), "Custom Workstream Title".to_string());
-            ctx.flags.insert("new_events_added".to_string(), true);
-            Ok(())
-        })
+        .when(
+            "they refresh with new events and run \"shiplog cluster\"",
+            |ctx| {
+                ctx.flags.insert("llm_used".to_string(), true);
+                ctx.flags.insert("workstreams_generated".to_string(), true);
+                ctx.strings.insert(
+                    "preserved_title".to_string(),
+                    "Custom Workstream Title".to_string(),
+                );
+                ctx.flags.insert("new_events_added".to_string(), true);
+                Ok(())
+            },
+        )
         .then("the curated workstream titles should be preserved", |ctx| {
             let title = ctx.string("preserved_title").unwrap();
             assert_eq(title, "Custom Workstream Title", "title")
         })
-        .then("new events should be added to appropriate workstreams", |ctx| {
-            assert_true(
-                ctx.flag("new_events_added").unwrap_or(false),
-                "new events added",
-            )
-        })
+        .then(
+            "new events should be added to appropriate workstreams",
+            |ctx| {
+                assert_true(
+                    ctx.flag("new_events_added").unwrap_or(false),
+                    "new events added",
+                )
+            },
+        )
 }
 
 /// Scenario 9.9: LLM clustering with many events
@@ -271,13 +295,13 @@ pub fn llm_clustering_large() -> Scenario {
             ctx.flags.insert("events_chunked".to_string(), true);
             Ok(())
         })
-        .then("clustering should complete within reasonable time (< 60 seconds)", |ctx| {
-            let time = ctx.string("cluster_time").unwrap();
-            assert_true(
-                time.contains("s") && !time.contains("m"),
-                "cluster time",
-            )
-        })
+        .then(
+            "clustering should complete within reasonable time (< 60 seconds)",
+            |ctx| {
+                let time = ctx.string("cluster_time").unwrap();
+                assert_true(time.contains("s") && !time.contains("m"), "cluster time")
+            },
+        )
         .then("the system should chunk events if needed", |ctx| {
             assert_true(
                 ctx.flag("events_chunked").unwrap_or(false),

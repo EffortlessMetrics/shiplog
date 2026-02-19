@@ -14,18 +14,13 @@ use std::collections::HashMap;
 const MAX_RECEIPTS_PER_WORKSTREAM: usize = 5;
 
 /// Section ordering configuration
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum SectionOrder {
     /// Default order: Summary, Workstreams, Receipts, Coverage
+    #[default]
     Default,
     /// Alternative order: Coverage, Summary, Workstreams, Receipts
     CoverageFirst,
-}
-
-impl Default for SectionOrder {
-    fn default() -> Self {
-        Self::Default
-    }
 }
 
 /// Minimal renderer that produces a copy-ready Markdown packet.
@@ -135,16 +130,10 @@ fn render_summary(
     ));
 
     // Completeness
-    out.push_str(&format!(
-        "**Coverage:** {:?}\n\n",
-        coverage.completeness
-    ));
+    out.push_str(&format!("**Coverage:** {:?}\n\n", coverage.completeness));
 
     // Sources
-    out.push_str(&format!(
-        "**Sources:** {}\n\n",
-        coverage.sources.join(", ")
-    ));
+    out.push_str(&format!("**Sources:** {}\n\n", coverage.sources.join(", ")));
 
     // Warnings
     if !coverage.warnings.is_empty() {
@@ -156,11 +145,7 @@ fn render_summary(
     }
 }
 
-fn render_workstreams(
-    out: &mut String,
-    events: &[EventEnvelope],
-    workstreams: &WorkstreamsFile,
-) {
+fn render_workstreams(out: &mut String, events: &[EventEnvelope], workstreams: &WorkstreamsFile) {
     out.push_str("## Workstreams\n\n");
 
     if workstreams.workstreams.is_empty() {
@@ -193,11 +178,7 @@ fn render_workstreams(
     }
 }
 
-fn render_receipts(
-    out: &mut String,
-    events: &[EventEnvelope],
-    workstreams: &WorkstreamsFile,
-) {
+fn render_receipts(out: &mut String, events: &[EventEnvelope], workstreams: &WorkstreamsFile) {
     out.push_str("## Receipts\n\n");
 
     if workstreams.workstreams.is_empty() {
@@ -363,7 +344,7 @@ fn format_receipt_clean(ev: &EventEnvelope) -> String {
                 .map(|l| l.url.as_str())
                 .unwrap_or("");
             let date_str = ev.occurred_at.format("%Y-%m-%d").to_string();
-            
+
             if url.is_empty() {
                 format!("- [PR] {} ({}) — {}", title, date_str, repo)
             } else {
@@ -380,11 +361,14 @@ fn format_receipt_clean(ev: &EventEnvelope) -> String {
                 .map(|l| l.url.as_str())
                 .unwrap_or("");
             let date_str = ev.occurred_at.format("%Y-%m-%d").to_string();
-            
+
             if url.is_empty() {
                 format!("- [Review] {} ({}) — {}", r.state, date_str, repo)
             } else {
-                format!("- [Review] {} ({}) — [{}]({})", r.state, date_str, repo, url)
+                format!(
+                    "- [Review] {} ({}) — [{}]({})",
+                    r.state, date_str, repo, url
+                )
             }
         }
         (EventKind::Manual, EventPayload::Manual(m)) => {
@@ -401,7 +385,7 @@ fn format_receipt_clean(ev: &EventEnvelope) -> String {
                 format!(" — {}", links.join(", "))
             };
             let date_str = ev.occurred_at.format("%Y-%m-%d").to_string();
-            
+
             format!("- [{}] {} ({}){}", emoji, title, date_str, links_str)
         }
         _ => format!("- event {}", ev.id),
@@ -469,11 +453,7 @@ mod tests {
         }
     }
 
-    fn create_test_manual(
-        id: &str,
-        event_type: ManualEventType,
-        title: &str,
-    ) -> EventEnvelope {
+    fn create_test_manual(id: &str, event_type: ManualEventType, title: &str) -> EventEnvelope {
         EventEnvelope {
             id: EventId::from_parts(["manual", id]),
             kind: EventKind::Manual,

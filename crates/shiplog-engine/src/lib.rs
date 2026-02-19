@@ -468,7 +468,10 @@ impl<'a> Engine<'a> {
         all_sources.dedup();
 
         // Calculate completeness - if any source is partial, result is partial
-        let completeness = if ingest_outputs.iter().any(|o| o.coverage.completeness == shiplog_schema::coverage::Completeness::Partial) {
+        let completeness = if ingest_outputs
+            .iter()
+            .any(|o| o.coverage.completeness == shiplog_schema::coverage::Completeness::Partial)
+        {
             shiplog_schema::coverage::Completeness::Partial
         } else {
             shiplog_schema::coverage::Completeness::Complete
@@ -508,23 +511,15 @@ impl<'a> Engine<'a> {
         resolution: ConflictResolution,
     ) -> EventEnvelope {
         match resolution {
-            ConflictResolution::PreferFirst => {
-                events[0].clone()
-            }
+            ConflictResolution::PreferFirst => events[0].clone(),
             ConflictResolution::PreferMostRecent => {
-                events
-                    .iter()
-                    .max_by_key(|e| e.occurred_at)
-                    .unwrap()
-                    .clone()
+                events.iter().max_by_key(|e| e.occurred_at).unwrap().clone()
             }
-            ConflictResolution::PreferMostComplete => {
-                events
-                    .iter()
-                    .max_by_key(|e| self.completeness_score(e))
-                    .unwrap()
-                    .clone()
-            }
+            ConflictResolution::PreferMostComplete => events
+                .iter()
+                .max_by_key(|e| self.completeness_score(e))
+                .unwrap()
+                .clone(),
         }
     }
 
@@ -683,7 +678,7 @@ mod tests {
 
     fn test_engine() -> Engine<'static> {
         let renderer: &'static dyn shiplog_ports::Renderer =
-            Box::leak(Box::new(shiplog_render_md::MarkdownRenderer));
+            Box::leak(Box::new(shiplog_render_md::MarkdownRenderer::default()));
         let clusterer: &'static dyn shiplog_ports::WorkstreamClusterer =
             Box::leak(Box::new(shiplog_workstreams::RepoClusterer));
         let redactor: &'static dyn shiplog_ports::Redactor = Box::leak(Box::new(

@@ -7,8 +7,8 @@ use anyhow::{Context, Result};
 use chrono::NaiveDate;
 use clap::{Parser, Subcommand};
 use shiplog_engine::{Engine, WorkstreamSource};
-use shiplog_ingest_github::GithubIngestor;
 use shiplog_ingest_git::LocalGitIngestor;
+use shiplog_ingest_github::GithubIngestor;
 use shiplog_ingest_json::JsonIngestor;
 use shiplog_ingest_manual::ManualIngestor;
 use shiplog_ports::Ingestor;
@@ -297,7 +297,7 @@ fn create_engine(
     redact_key: &str,
     clusterer: Box<dyn shiplog_ports::WorkstreamClusterer>,
 ) -> (Engine<'static>, &'static DeterministicRedactor) {
-    let renderer = Box::new(MarkdownRenderer);
+    let renderer = Box::new(MarkdownRenderer::default());
     let redactor = DeterministicRedactor::new(redact_key.as_bytes());
 
     // We need to leak these to give them 'static lifetime
@@ -597,8 +597,14 @@ fn main() -> Result<()> {
                     let cache_path = DeterministicRedactor::cache_path(&run_dir);
                     let _ = redactor.load_cache(&cache_path);
 
-                    let (outputs, ws_source) =
-                        engine.run(ingest, "local", &window_label, &run_dir, zip, &bundle_profile)?;
+                    let (outputs, ws_source) = engine.run(
+                        ingest,
+                        "local",
+                        &window_label,
+                        &run_dir,
+                        zip,
+                        &bundle_profile,
+                    )?;
 
                     redactor.save_cache(&cache_path)?;
 
@@ -681,6 +687,10 @@ fn main() -> Result<()> {
             let _ = redactor.load_cache(&cache_path);
 
             match source {
+                Source::Git { .. } => {
+                    eprintln!("ERROR: Git source not yet implemented");
+                    std::process::exit(1);
+                }
                 Source::Github {
                     user,
                     since,
@@ -909,6 +919,10 @@ fn main() -> Result<()> {
             let (engine, redactor) = create_engine(&key, clusterer);
 
             match source {
+                Source::Git { .. } => {
+                    eprintln!("ERROR: Git source not yet implemented");
+                    std::process::exit(1);
+                }
                 Source::Github {
                     user,
                     since,

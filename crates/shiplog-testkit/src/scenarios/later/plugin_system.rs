@@ -12,12 +12,17 @@ use crate::bdd::assertions::*;
 /// Scenario 14.1: User installs a third-party ingest adapter plugin
 pub fn plugin_install() -> Scenario {
     Scenario::new("User installs a third-party ingest adapter plugin")
-        .given("a third-party has published a shiplog ingest adapter plugin", |ctx| {
-            ctx.strings
-                .insert("plugin_name".to_string(), "shiplog-ingest-custom".to_string());
-            ctx.strings
-                .insert("plugin_version".to_string(), "1.0.0".to_string());
-        })
+        .given(
+            "a third-party has published a shiplog ingest adapter plugin",
+            |ctx| {
+                ctx.strings.insert(
+                    "plugin_name".to_string(),
+                    "shiplog-ingest-custom".to_string(),
+                );
+                ctx.strings
+                    .insert("plugin_version".to_string(), "1.0.0".to_string());
+            },
+        )
         .when(
             "they run \"shiplog plugin install shiplog-ingest-custom\"",
             |ctx| {
@@ -44,10 +49,13 @@ pub fn plugin_install() -> Scenario {
 /// Scenario 14.2: User uses a plugin ingest adapter
 pub fn plugin_use() -> Scenario {
     Scenario::new("User uses a plugin ingest adapter")
-        .given("a user has installed a custom ingest adapter plugin", |ctx| {
-            ctx.strings
-                .insert("plugin_name".to_string(), "custom".to_string());
-        })
+        .given(
+            "a user has installed a custom ingest adapter plugin",
+            |ctx| {
+                ctx.strings
+                    .insert("plugin_name".to_string(), "custom".to_string());
+            },
+        )
         .given("the plugin is named \"custom\"", |ctx| {
             ctx.flags.insert("plugin_available".to_string(), true);
         })
@@ -73,10 +81,13 @@ pub fn plugin_use() -> Scenario {
                 "events collected",
             )
         })
-        .then("events should have SourceSystem::Other(\"custom\")", |ctx| {
-            let source = ctx.string("source_system").unwrap();
-            assert_eq(source, "custom", "source system")
-        })
+        .then(
+            "events should have SourceSystem::Other(\"custom\")",
+            |ctx| {
+                let source = ctx.string("source_system").unwrap();
+                assert_eq(source, "custom", "source system")
+            },
+        )
 }
 
 /// Scenario 14.3: User lists installed plugins
@@ -110,8 +121,10 @@ pub fn plugin_list() -> Scenario {
 pub fn plugin_remove() -> Scenario {
     Scenario::new("User removes a plugin")
         .given("a user has installed a plugin", |ctx| {
-            ctx.strings
-                .insert("plugin_name".to_string(), "shiplog-ingest-custom".to_string());
+            ctx.strings.insert(
+                "plugin_name".to_string(),
+                "shiplog-ingest-custom".to_string(),
+            );
         })
         .when(
             "they run \"shiplog plugin remove shiplog-ingest-custom\"",
@@ -156,12 +169,15 @@ pub fn plugin_install_failure() -> Scenario {
                 Ok(())
             },
         )
-        .then("an error message should indicate the installation failed", |ctx| {
-            assert_true(
-                ctx.flag("command_failed").unwrap_or(false),
-                "command failed",
-            )
-        })
+        .then(
+            "an error message should indicate the installation failed",
+            |ctx| {
+                assert_true(
+                    ctx.flag("command_failed").unwrap_or(false),
+                    "command failed",
+                )
+            },
+        )
         .then("the reason should be clearly stated", |ctx| {
             let error = ctx.string("error_message").unwrap();
             assert_contains(error, "Could not download", "error message")
@@ -187,15 +203,19 @@ pub fn plugin_incompatible_version() -> Scenario {
                 ctx.flags.insert("command_failed".to_string(), true);
                 ctx.strings.insert(
                     "error_message".to_string(),
-                    "Plugin incompatible: requires shiplog 0.3.0, current version is 0.2.0".to_string(),
+                    "Plugin incompatible: requires shiplog 0.3.0, current version is 0.2.0"
+                        .to_string(),
                 );
                 Ok(())
             },
         )
-        .then("an error should indicate the version incompatibility", |ctx| {
-            let error = ctx.string("error_message").unwrap();
-            assert_contains(error, "incompatible", "error message")
-        })
+        .then(
+            "an error should indicate the version incompatibility",
+            |ctx| {
+                let error = ctx.string("error_message").unwrap();
+                assert_contains(error, "incompatible", "error message")
+            },
+        )
         .then("the required shiplog version should be shown", |ctx| {
             let error = ctx.string("error_message").unwrap();
             assert_contains(error, "0.3.0", "error message")
@@ -212,27 +232,25 @@ pub fn plugin_crash() -> Scenario {
         .given("the plugin crashes during execution", |ctx| {
             ctx.flags.insert("plugin_crashed".to_string(), true);
         })
-        .when(
-            "they run \"shiplog collect --source custom\"",
+        .when("they run \"shiplog collect --source custom\"", |ctx| {
+            ctx.flags.insert("crash_caught".to_string(), true);
+            ctx.flags.insert("error_message_shown".to_string(), true);
+            ctx.flags
+                .insert("shiplog_still_functional".to_string(), true);
+            Ok(())
+        })
+        .then("the crash should be caught", |ctx| {
+            assert_true(ctx.flag("crash_caught").unwrap_or(false), "crash caught")
+        })
+        .then(
+            "an error message should indicate the plugin failed",
             |ctx| {
-                ctx.flags.insert("crash_caught".to_string(), true);
-                ctx.flags.insert("error_message_shown".to_string(), true);
-                ctx.flags.insert("shiplog_still_functional".to_string(), true);
-                Ok(())
+                assert_true(
+                    ctx.flag("error_message_shown").unwrap_or(false),
+                    "error message shown",
+                )
             },
         )
-        .then("the crash should be caught", |ctx| {
-            assert_true(
-                ctx.flag("crash_caught").unwrap_or(false),
-                "crash caught",
-            )
-        })
-        .then("an error message should indicate the plugin failed", |ctx| {
-            assert_true(
-                ctx.flag("error_message_shown").unwrap_or(false),
-                "error message shown",
-            )
-        })
         .then("shiplog should not crash", |ctx| {
             assert_true(
                 ctx.flag("shiplog_still_functional").unwrap_or(false),
@@ -253,7 +271,8 @@ pub fn plugin_merge() -> Scenario {
         .when("they merge the sources", |ctx| {
             ctx.flags.insert("merged".to_string(), true);
             ctx.numbers.insert("total_events".to_string(), 40);
-            ctx.flags.insert("multi_source_workstreams".to_string(), true);
+            ctx.flags
+                .insert("multi_source_workstreams".to_string(), true);
             Ok(())
         })
         .then("events from both sources should be merged", |ctx| {
@@ -271,20 +290,20 @@ pub fn plugin_merge() -> Scenario {
 /// Scenario 14.9: Plugin with slow ingest
 pub fn plugin_slow_ingest() -> Scenario {
     Scenario::new("Plugin with slow ingest")
-        .given("a user has a plugin that takes time to ingest events", |ctx| {
-            ctx.strings
-                .insert("plugin_name".to_string(), "custom".to_string());
-        })
-        .when(
-            "they run \"shiplog collect --source custom\"",
+        .given(
+            "a user has a plugin that takes time to ingest events",
             |ctx| {
-                ctx.flags.insert("progress_displayed".to_string(), true);
-                ctx.flags.insert("cancellable".to_string(), true);
                 ctx.strings
-                    .insert("ingest_time".to_string(), "30s".to_string());
-                Ok(())
+                    .insert("plugin_name".to_string(), "custom".to_string());
             },
         )
+        .when("they run \"shiplog collect --source custom\"", |ctx| {
+            ctx.flags.insert("progress_displayed".to_string(), true);
+            ctx.flags.insert("cancellable".to_string(), true);
+            ctx.strings
+                .insert("ingest_time".to_string(), "30s".to_string());
+            Ok(())
+        })
         .then("progress should be displayed", |ctx| {
             assert_true(
                 ctx.flag("progress_displayed").unwrap_or(false),
@@ -292,9 +311,6 @@ pub fn plugin_slow_ingest() -> Scenario {
             )
         })
         .then("the user should be able to cancel with Ctrl+C", |ctx| {
-            assert_true(
-                ctx.flag("cancellable").unwrap_or(false),
-                "cancellable",
-            )
+            assert_true(ctx.flag("cancellable").unwrap_or(false), "cancellable")
         })
 }

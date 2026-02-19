@@ -6,8 +6,8 @@
 use anyhow::{Context, Result, anyhow};
 use chrono::{DateTime, NaiveDate, Utc};
 use reqwest::blocking::Client;
-use serde::de::DeserializeOwned;
 use serde::Deserialize;
+use serde::de::DeserializeOwned;
 use shiplog_cache::{ApiCache, CacheKey};
 use shiplog_ids::{EventId, RunId};
 use shiplog_ports::{IngestOutput, Ingestor};
@@ -38,8 +38,12 @@ impl MrState {
             Self::All => "all",
         }
     }
+}
 
-    pub fn from_str(s: &str) -> Result<Self> {
+impl std::str::FromStr for MrState {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self> {
         match s.to_lowercase().as_str() {
             "opened" => Ok(Self::Opened),
             "merged" => Ok(Self::Merged),
@@ -202,7 +206,9 @@ impl GitlabIngestor {
 
             // Handle specific GitLab error cases
             if status.as_u16() == 401 {
-                return Err(anyhow!("GitLab authentication failed: invalid or expired token"));
+                return Err(anyhow!(
+                    "GitLab authentication failed: invalid or expired token"
+                ));
             } else if status.as_u16() == 403 {
                 if body.to_lowercase().contains("rate limit") {
                     return Err(anyhow!("GitLab API rate limit exceeded"));
@@ -271,10 +277,7 @@ impl GitlabIngestor {
         let partial = false;
 
         for project in projects {
-            let url = self.api_url(&format!(
-                "/projects/{}/merge_requests",
-                project.id
-            ));
+            let url = self.api_url(&format!("/projects/{}/merge_requests", project.id));
 
             let mut params = vec![
                 ("author_username", self.user.clone()),
@@ -311,7 +314,10 @@ impl GitlabIngestor {
                     since: self.since,
                     until: self.until,
                 },
-                query: format!("project:{} MRs by {}", project.path_with_namespace, self.user),
+                query: format!(
+                    "project:{} MRs by {}",
+                    project.path_with_namespace, self.user
+                ),
                 total_count: mr_count,
                 fetched: mr_count,
                 incomplete_results: Some(false),
@@ -325,7 +331,12 @@ impl GitlabIngestor {
     }
 
     /// Collect notes (reviews) for an MR
-    fn collect_mr_notes(&self, client: &Client, project_id: u64, mr_iid: u64) -> Result<Vec<GitlabNote>> {
+    fn collect_mr_notes(
+        &self,
+        client: &Client,
+        project_id: u64,
+        mr_iid: u64,
+    ) -> Result<Vec<GitlabNote>> {
         let url = self.api_url(&format!(
             "/projects/{}/merge_requests/{}/notes",
             project_id, mr_iid
@@ -410,7 +421,7 @@ impl GitlabIngestor {
                     },
                 },
                 payload: EventPayload::PullRequest(PullRequestEvent {
-                    number: mr.iid as u64,
+                    number: mr.iid,
                     title: mr.title,
                     state,
                     created_at: mr.created_at,
@@ -440,7 +451,11 @@ impl GitlabIngestor {
     }
 
     /// Convert GitLab notes to shiplog review events
-    fn notes_to_review_events(&self, notes: Vec<GitlabNote>, mr: &GitlabMergeRequest) -> Result<Vec<EventEnvelope>> {
+    fn notes_to_review_events(
+        &self,
+        notes: Vec<GitlabNote>,
+        mr: &GitlabMergeRequest,
+    ) -> Result<Vec<EventEnvelope>> {
         let mut events = Vec::new();
         let html_base = self.html_base_url();
 
@@ -473,7 +488,7 @@ impl GitlabIngestor {
                     },
                 },
                 payload: EventPayload::Review(ReviewEvent {
-                    pull_number: mr.iid as u64,
+                    pull_number: mr.iid,
                     pull_title: mr.title.clone(),
                     submitted_at: note.created_at,
                     state: "approved".to_string(),
@@ -538,7 +553,9 @@ impl Ingestor for GitlabIngestor {
 
         // Collect reviews if enabled
         if self.include_reviews {
-            warnings.push("Reviews are collected via MR notes; treat as best-effort coverage.".to_string());
+            warnings.push(
+                "Reviews are collected via MR notes; treat as best-effort coverage.".to_string(),
+            );
 
             let client = self.client()?;
             let user_id = self.get_user_id(&client)?;
@@ -586,6 +603,7 @@ struct GitlabUser {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct GitlabProject {
     id: u64,
     path_with_namespace: String,
@@ -593,6 +611,7 @@ struct GitlabProject {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct GitlabMergeRequest {
     id: u64,
     iid: u64,
@@ -617,6 +636,7 @@ struct GitlabAuthor {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct GitlabProjectInfo {
     id: u64,
     path_with_namespace: String,
@@ -727,11 +747,11 @@ mod tests {
 
     #[test]
     fn mr_state_from_str() {
-        assert_eq!(MrState::from_str("opened").unwrap(), MrState::Opened);
-        assert_eq!(MrState::from_str("merged").unwrap(), MrState::Merged);
-        assert_eq!(MrState::from_str("closed").unwrap(), MrState::Closed);
-        assert_eq!(MrState::from_str("all").unwrap(), MrState::All);
-        assert!(MrState::from_str("invalid").is_err());
+        assert_eq!("opened".parse::<MrState>().unwrap(), MrState::Opened);
+        assert_eq!("merged".parse::<MrState>().unwrap(), MrState::Merged);
+        assert_eq!("closed".parse::<MrState>().unwrap(), MrState::Closed);
+        assert_eq!("all".parse::<MrState>().unwrap(), MrState::All);
+        assert!("invalid".parse::<MrState>().is_err());
     }
 
     #[test]

@@ -11,9 +11,9 @@ pub mod proptest;
 
 // BDD scenario modules
 pub mod scenarios {
+    pub mod later;
     pub mod v02x;
     pub mod v03x;
-    pub mod later;
 }
 
 #[cfg(test)]

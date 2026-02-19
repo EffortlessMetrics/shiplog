@@ -50,6 +50,7 @@ pub fn tui_editor_rename() -> Scenario {
         })
         .when("they press the rename key (e.g., 'r')", |ctx| {
             ctx.flags.insert("rename_mode_active".to_string(), true);
+            Ok(())
         })
         .when("they enter a new title", |ctx| {
             ctx.strings
@@ -58,10 +59,7 @@ pub fn tui_editor_rename() -> Scenario {
             Ok(())
         })
         .then("the workstream title should be updated", |ctx| {
-            assert_true(
-                ctx.flag("title_updated").unwrap_or(false),
-                "title updated",
-            )
+            assert_true(ctx.flag("title_updated").unwrap_or(false), "title updated")
         })
         .then("the change should be reflected in the UI", |ctx| {
             let title = ctx.string("new_title").unwrap();
@@ -80,10 +78,13 @@ pub fn tui_editor_add_summary() -> Scenario {
         })
         .when("they press the edit summary key (e.g., 's')", |ctx| {
             ctx.flags.insert("summary_mode_active".to_string(), true);
+            Ok(())
         })
         .when("they enter a summary", |ctx| {
-            ctx.strings
-                .insert("summary".to_string(), "This workstream covers feature X".to_string());
+            ctx.strings.insert(
+                "summary".to_string(),
+                "This workstream covers feature X".to_string(),
+            );
             ctx.flags.insert("summary_updated".to_string(), true);
             Ok(())
         })
@@ -111,18 +112,23 @@ pub fn tui_editor_select_receipts() -> Scenario {
         .when("they press the edit receipts key (e.g., 'e')", |ctx| {
             ctx.flags.insert("receipts_mode_active".to_string(), true);
             ctx.flags.insert("events_displayed".to_string(), true);
+            Ok(())
         })
         .when("they can toggle events as receipts", |ctx| {
             ctx.flags.insert("receipts_toggled".to_string(), true);
-            ctx.flags.insert("selected_receipts_highlighted".to_string(), true);
+            ctx.flags
+                .insert("selected_receipts_highlighted".to_string(), true);
             Ok(())
         })
-        .then("a list of events in the workstream should be displayed", |ctx| {
-            assert_true(
-                ctx.flag("events_displayed").unwrap_or(false),
-                "events displayed",
-            )
-        })
+        .then(
+            "a list of events in the workstream should be displayed",
+            |ctx| {
+                assert_true(
+                    ctx.flag("events_displayed").unwrap_or(false),
+                    "events displayed",
+                )
+            },
+        )
         .then("the user can toggle events as receipts", |ctx| {
             assert_true(
                 ctx.flag("receipts_toggled").unwrap_or(false),
@@ -144,7 +150,8 @@ pub fn tui_editor_save() -> Scenario {
             ctx.flags.insert("changes_made".to_string(), true);
         })
         .when("they press the save key (e.g., 'Ctrl+S')", |ctx| {
-            ctx.flags.insert("workstreams_file_updated".to_string(), true);
+            ctx.flags
+                .insert("workstreams_file_updated".to_string(), true);
             ctx.flags.insert("confirmation_displayed".to_string(), true);
             ctx.flags.insert("tui_remains_open".to_string(), true);
             Ok(())
@@ -177,6 +184,7 @@ pub fn tui_editor_exit() -> Scenario {
         })
         .when("they press the quit key (e.g., 'q')", |ctx| {
             ctx.flags.insert("save_prompt_shown".to_string(), true);
+            Ok(())
         })
         .when("they choose not to save", |ctx| {
             ctx.flags.insert("changes_discarded".to_string(), true);
@@ -208,29 +216,41 @@ pub fn tui_editor_no_workstreams() -> Scenario {
             );
             Ok(())
         })
-        .then("the TUI should display a message indicating no workstreams", |ctx| {
-            let msg = ctx.string("message").unwrap();
-            assert_contains(msg, "No workstreams", "message")
-        })
-        .then("the user should be prompted to generate workstreams first", |ctx| {
-            let msg = ctx.string("message").unwrap();
-            assert_contains(msg, "generate workstreams", "message")
-        })
+        .then(
+            "the TUI should display a message indicating no workstreams",
+            |ctx| {
+                let msg = ctx.string("message").unwrap();
+                assert_contains(msg, "No workstreams", "message")
+            },
+        )
+        .then(
+            "the user should be prompted to generate workstreams first",
+            |ctx| {
+                let msg = ctx.string("message").unwrap();
+                assert_contains(msg, "generate workstreams", "message")
+            },
+        )
 }
 
 /// Scenario 12.8: TUI with very long workstream title
 pub fn tui_editor_long_title() -> Scenario {
     Scenario::new("TUI with very long workstream title")
-        .given("a user has a workstream with a very long title (> 200 characters)", |ctx| {
-            ctx.strings.insert(
-                "long_title".to_string(),
-                "This is a very long workstream title that exceeds 200 characters...".to_string(),
-            );
-        })
+        .given(
+            "a user has a workstream with a very long title (> 200 characters)",
+            |ctx| {
+                ctx.strings.insert(
+                    "long_title".to_string(),
+                    "This is a very long workstream title that exceeds 200 characters..."
+                        .to_string(),
+                );
+            },
+        )
         .when("they open the TUI editor", |ctx| {
             ctx.flags.insert("tui_opened".to_string(), true);
-            ctx.flags.insert("title_truncated_in_list".to_string(), true);
-            ctx.flags.insert("full_title_visible_in_edit".to_string(), true);
+            ctx.flags
+                .insert("title_truncated_in_list".to_string(), true);
+            ctx.flags
+                .insert("full_title_visible_in_edit".to_string(), true);
             Ok(())
         })
         .then("the title should be truncated in the list view", |ctx| {
@@ -251,26 +271,33 @@ pub fn tui_editor_long_title() -> Scenario {
 pub fn tui_editor_reflect_in_packet() -> Scenario {
     Scenario::new("TUI changes reflected in rendered packet")
         .given("a user has edited workstreams in the TUI", |ctx| {
-            ctx.strings
-                .insert("edited_title".to_string(), "Edited Workstream Title".to_string());
+            ctx.strings.insert(
+                "edited_title".to_string(),
+                "Edited Workstream Title".to_string(),
+            );
         })
         .given("they have saved the changes", |ctx| {
             ctx.flags.insert("changes_saved".to_string(), true);
         })
         .when("they run \"shiplog render\"", |ctx| {
             ctx.flags.insert("packet_rendered".to_string(), true);
-            ctx.strings
-                .insert("packet_content".to_string(), "# Packet\n## Edited Workstream Title".to_string());
+            ctx.strings.insert(
+                "packet_content".to_string(),
+                "# Packet\n## Edited Workstream Title".to_string(),
+            );
             Ok(())
         })
         .then("the packet should reflect the TUI edits", |ctx| {
             let content = ctx.string("packet_content").unwrap();
             assert_contains(content, "Edited Workstream Title", "packet content")
         })
-        .then("workstream titles and summaries should match the TUI", |ctx| {
-            let content = ctx.string("packet_content").unwrap();
-            assert_contains(content, "Edited Workstream Title", "packet content")
-        })
+        .then(
+            "workstream titles and summaries should match the TUI",
+            |ctx| {
+                let content = ctx.string("packet_content").unwrap();
+                assert_contains(content, "Edited Workstream Title", "packet content")
+            },
+        )
 }
 
 /// Scenario 12.10: TUI with many workstreams
@@ -286,13 +313,13 @@ pub fn tui_editor_large() -> Scenario {
             ctx.flags.insert("navigation_responsive".to_string(), true);
             Ok(())
         })
-        .then("the TUI should open within reasonable time (< 2 seconds)", |ctx| {
-            let time = ctx.string("open_time").unwrap();
-            assert_true(
-                time.contains("s") && !time.contains("m"),
-                "open time",
-            )
-        })
+        .then(
+            "the TUI should open within reasonable time (< 2 seconds)",
+            |ctx| {
+                let time = ctx.string("open_time").unwrap();
+                assert_true(time.contains("s") && !time.contains("m"), "open time")
+            },
+        )
         .then("navigation should remain responsive", |ctx| {
             assert_true(
                 ctx.flag("navigation_responsive").unwrap_or(false),
