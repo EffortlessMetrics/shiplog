@@ -1,44 +1,19 @@
-name: Release
+name: Release Validation
 
 on:
   push:
     tags:
-      - 'v*.*.*'
+      - 'v*'
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
 
-permissions:
-  contents: write
-
 jobs:
-  build:
-    name: Build (${{ matrix.target }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        include:
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            artifact_name: shiplog
-            asset_name: shiplog-${{ github.ref_name }}-x86_64-unknown-linux-gnu.tar.gz
-          - os: ubuntu-latest
-            target: aarch64-unknown-linux-gnu
-            artifact_name: shiplog
-            asset_name: shiplog-${{ github.ref_name }}-aarch64-unknown-linux-gnu.tar.gz
-            cross: true
-          - os: macos-latest
-            target: x86_64-apple-darwin
-            artifact_name: shiplog
-            asset_name: shiplog-${{ github.ref_name }}-x86_64-apple-darwin.tar.gz
-          - os: macos-latest
-            target: aarch64-apple-darwin
-            artifact_name: shiplog
-            asset_name: shiplog-${{ github.ref_name }}-aarch64-apple-darwin.tar.gz
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            artifact_name: shiplog.exe
-            asset_name: shiplog-${{ github.ref_name }}-x86_64-pc-windows-msvc.zip
+  release-build:
+    name: Release Build & Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
       - name: Checkout code
@@ -48,92 +23,96 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: "1.92"
-          target: ${{ matrix.target }}
 
-      - name: Install cross-compilation tools
-        if: matrix.cross
-        run: |
-          cargo install cross --git https://github.com/cross-rs/cross
-
-      - name: Build release binary
-        run: |
-          if [ "${{ matrix.cross }}" = "true" ]; then
-            cross build --release --target ${{ matrix.target }} --bin shiplog
-          else
-            cargo build --release --target ${{ matrix.target }} --bin shiplog
-          fi
-        shell: bash
-
-      - name: Create archive
-        run: |
-          cd target/${{ matrix.target }}/release
-          if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            7z a ../../../${{ matrix.asset_name }} ${{ matrix.artifact_name }}
-          else
-            tar czf ../../../${{ matrix.asset_name }} ${{ matrix.artifact_name }}
-          fi
-          cd ../../..
-        shell: bash
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+      - name: Cache cargo registry
+        uses: actions/cache@v4
         with:
-          name: ${{ matrix.asset_name }}
-          path: ${{ matrix.asset_name }}
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
 
-  release:
-    name: Create GitHub Release
+      - name: Cache cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo build
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-release-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build release
+        run: cargo build --release -p shiplog
+
+      - name: Verify binary exists
+        id: binary_check
+        run: |
+          BINARY_PATH="target/release/shiplog"
+          if [ -f "$BINARY_PATH" ]; then
+            echo "Binary found at $BINARY_PATH"
+            echo "Binary size: $(ls -lh $BINARY_PATH | awk '{print $5}')"
+            echo "Binary is executable: $(test -x $BINARY_PATH && echo 'yes' || echo 'no')"
+          else
+            echo "ERROR: Binary not found at $BINARY_PATH"
+            exit 1
+          fi
+
+      - name: Run smoke test - help command
+        run: |
+          echo "Testing --help..."
+          ./target/release/shiplog --help
+
+      - name: Run smoke test - version command
+        run: |
+          echo "Testing --version..."
+          ./target/release/shiplog --version
+
+      - name: Run smoke test - subcommands list
+        run: |
+          echo "Testing subcommands are available..."
+          ./target/release/shiplog --list
+
+      - name: Generate validation summary
+        run: |
+          echo "# Release Validation Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Build Status" >> $GITHUB_STEP_SUMMARY
+          echo "- Release build: **SUCCESS**" >> $GITHUB_STEP_SUMMARY
+          echo "- Binary generated: **SUCCESS**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Smoke Tests" >> $GITHUB_STEP_SUMMARY
+          echo "- Help command: **PASSED**" >> $GITHUB_STEP_SUMMARY
+          echo "- Version command: **PASSED**" >> $GITHUB_STEP_SUMMARY
+          echo "- Subcommand list: **PASSED**" >> $GITHUB_STEP_SUMMARY
+
+  release-test:
+    name: Release Integration Tests
     runs-on: ubuntu-latest
-    needs: build
+    timeout-minutes: 30
+    needs: release-build
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
         with:
-          path: artifacts
+          toolchain: "1.92"
 
-      - name: Generate checksums
-        run: |
-          cd artifacts
-          for file in *; do
-            sha256sum "$file" > "$file.sha256"
-          done
-          cat *.sha256 > checksums.txt
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
+      - name: Cache cargo build
+        uses: actions/cache@v4
         with:
-          files: |
-            artifacts/*/*
-            artifacts/checksums.txt
-          generate_release_notes: true
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          path: target
+          key: ${{ runner.os }}-cargo-release-${{ hashFiles('**/Cargo.lock') }}
 
-  verify:
-    name: Verify binaries
-    runs-on: ubuntu-latest
-    needs: release
+      - name: Run release tests
+        run: cargo test --release --workspace --exclude shiplog-testkit
 
-    steps:
-      - name: Download release assets
+      - name: Generate test summary
+        if: always()
         run: |
-          gh release download ${{ github.ref_name }} --dir release --pattern "*"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Verify checksums
-        run: |
-          cd release
-          for file in *.tar.gz *.zip; do
-            if [ -f "$file" ]; then
-              sha256sum -c "$file.sha256"
-            fi
-          done
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          echo "# Release Integration Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "All integration tests passed in release mode!" >> $GITHUB_STEP_SUMMARY

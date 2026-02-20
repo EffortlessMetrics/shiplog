@@ -18,13 +18,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
       - name: Install cargo-deny
-        uses: taiki-e/install-action@v2
+        uses: dtolnay/rust-toolchain@master
         with:
-          tool: cargo-deny
+          toolchain: stable
+          components: cargo-deny
 
       - name: Check for security vulnerabilities
         run: cargo deny check advisories
