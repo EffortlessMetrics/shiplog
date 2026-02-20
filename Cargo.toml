@@ -22,12 +22,46 @@ members = [
   "crates/shiplog-template",
   "crates/shiplog-testkit",
   "crates/shiplog-cluster-llm",
+  # New microcrates
+  "crates/shiplog-validate",
+  "crates/shiplog-export",
+  "crates/shiplog-storage",
+  "crates/shiplog-notify",
+  # New filter/merge/diff/query crates
+  "crates/shiplog-filter",
+  "crates/shiplog-merge",
+  "crates/shiplog-diff",
+  "crates/shiplog-query",
   # New Later feature crates
   "crates/shiplog-team",
   "crates/shiplog-cron",
   "crates/shiplog-tui",
   "crates/shiplog-web",
   "crates/shiplog-plugin",
+  # New utility crates
+  "crates/shiplog-stats",
+  "crates/shiplog-sync",
+  "crates/shiplog-archive",
+  "crates/shiplog-report",
+  # New config/watch/transform/migrate crates
+  "crates/shiplog-config",
+  "crates/shiplog-watch",
+  "crates/shiplog-transform",
+  "crates/shiplog-migrate",
+  # New pipeline extension crates
+  "crates/shiplog-scheduler",
+  "crates/shiplog-hooks",
+  "crates/shiplog-backup",
+  # New utility crates (auth, crypto, logging, metrics)
+  "crates/shiplog-auth",
+  "crates/shiplog-crypto",
+  "crates/shiplog-logging",
+  "crates/shiplog-metrics",
+  # New messaging crates (pubsub, queue, eventbus, workflow)
+  "crates/shiplog-pubsub",
+  "crates/shiplog-queue",
+  "crates/shiplog-eventbus",
+  "crates/shiplog-workflow",
   "apps/shiplog",
 ]
 
