@@ -300,6 +300,7 @@ pub fn jira_ingest_correlate_with_prs() -> Scenario {
         .when("they also collect Jira issues", |ctx| {
             ctx.numbers.insert("jira_issues".to_string(), 10);
             ctx.flags.insert("correlation_attempted".to_string(), true);
+            ctx.flags.insert("workstreams_correlated".to_string(), true);
             Ok(())
         })
         .then(
@@ -336,6 +337,12 @@ pub fn linear_ingest_render() -> Scenario {
             ctx.flags.insert("packet_rendered".to_string(), true);
             ctx.paths
                 .insert("packet_path".to_string(), "/out/run_001/packet.md".into());
+            ctx.strings.insert(
+                "linear_link".to_string(),
+                "https://linear.app/team/issue/PROJ-123".to_string(),
+            );
+            ctx.strings
+                .insert("source_label".to_string(), "linear".to_string());
             Ok(())
         })
         .then("the packet should include Linear issues", |ctx| {

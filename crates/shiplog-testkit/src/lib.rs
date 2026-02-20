@@ -19,6 +19,12 @@ pub mod scenarios {
 #[cfg(test)]
 mod bdd_tests;
 
+#[cfg(test)]
+mod bdd_v03x_tests;
+
+#[cfg(test)]
+mod bdd_later_tests;
+
 /// Small helpers for building fixtures in tests.
 ///
 /// Keeping these in a microcrate avoids copy-paste across render/cluster/redact tests.

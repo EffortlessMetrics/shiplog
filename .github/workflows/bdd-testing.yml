@@ -1,0 +1,64 @@
+name: BDD Testing
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  bdd-test:
+    name: BDD & Property Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.92"
+          components: rustfmt, clippy
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo build
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Run v0.3.x BDD Tests
+        run: cargo test -p shiplog-testkit bdd_v03x_tests -- --test-threads=4
+
+      - name: Run Later BDD Tests
+        run: cargo test -p shiplog-testkit bdd_later_tests -- --test-threads=4
+
+      - name: Run Roadmap Property Tests
+        run: cargo test -p shiplog-testkit roadmap_property -- --test-threads=4
+
+      - name: Generate test summary
+        if: always()
+        run: |
+          echo "# BDD & Property Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "BDD and property-based tests completed!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Test Categories" >> $GITHUB_STEP_SUMMARY
+          echo "- v0.3.x BDD scenarios (51 scenarios)" >> $GITHUB_STEP_SUMMARY
+          echo "- Later BDD scenarios (41 scenarios)" >> $GITHUB_STEP_SUMMARY
+          echo "- Roadmap property tests" >> $GITHUB_STEP_SUMMARY

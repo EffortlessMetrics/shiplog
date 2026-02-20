@@ -56,6 +56,26 @@ jobs:
           cd fuzz
           cargo fuzz run parse_manual_events -- -max_total_time=30 -dict=dictionaries/yaml.dict
 
+      - name: Run quick fuzzing for parse_gitlab_api
+        run: |
+          cd fuzz
+          cargo fuzz run parse_gitlab_api -- -max_total_time=30 -dict=dictionaries/json.dict
+
+      - name: Run quick fuzzing for parse_jira_linear_api
+        run: |
+          cd fuzz
+          cargo fuzz run parse_jira_linear_api -- -max_total_time=30 -dict=dictionaries/json.dict
+
+      - name: Run quick fuzzing for parse_template
+        run: |
+          cd fuzz
+          cargo fuzz run parse_template -- -max_total_time=30 -dict=dictionaries/yaml.dict
+
+      - name: Run quick fuzzing for parse_plugin_manifest
+        run: |
+          cd fuzz
+          cargo fuzz run parse_plugin_manifest -- -max_total_time=30 -dict=dictionaries/json.dict
+
       - name: Upload fuzzing artifacts
         if: failure()
         uses: actions/upload-artifact@v4
@@ -107,6 +127,26 @@ jobs:
         run: |
           cd fuzz
           cargo fuzz run parse_manual_events -- -max_total_time=3600 -dict=dictionaries/yaml.dict
+
+      - name: Run extended fuzzing for parse_gitlab_api
+        run: |
+          cd fuzz
+          cargo fuzz run parse_gitlab_api -- -max_total_time=3600 -dict=dictionaries/json.dict
+
+      - name: Run extended fuzzing for parse_jira_linear_api
+        run: |
+          cd fuzz
+          cargo fuzz run parse_jira_linear_api -- -max_total_time=3600 -dict=dictionaries/json.dict
+
+      - name: Run extended fuzzing for parse_template
+        run: |
+          cd fuzz
+          cargo fuzz run parse_template -- -max_total_time=3600 -dict=dictionaries/yaml.dict
+
+      - name: Run extended fuzzing for parse_plugin_manifest
+        run: |
+          cd fuzz
+          cargo fuzz run parse_plugin_manifest -- -max_total_time=3600 -dict=dictionaries/json.dict
 
       - name: Upload fuzzing corpus
         if: always()

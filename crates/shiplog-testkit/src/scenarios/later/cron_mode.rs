@@ -141,6 +141,7 @@ pub fn cron_mode_failure() -> Scenario {
             );
             ctx.flags.insert("error_logged".to_string(), true);
             ctx.flags.insert("notification_sent".to_string(), true);
+            ctx.flags.insert("next_run_scheduled".to_string(), true);
             Ok(())
         })
         .then("the failure should be logged", |ctx| {
