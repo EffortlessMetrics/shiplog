@@ -1871,6 +1871,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "shiplog-cron"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "serde",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
 name = "shiplog-engine"
 version = "0.2.1"
 dependencies = [
@@ -2013,6 +2023,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "shiplog-plugin"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "serde",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
 name = "shiplog-ports"
 version = "0.2.1"
 dependencies = [
@@ -2082,6 +2102,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "shiplog-team"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "serde",
+ "serde_json",
+ "serde_yaml_ng",
+ "tempfile",
+]
+
+[[package]]
 name = "shiplog-template"
 version = "0.3.0"
 dependencies = [
@@ -2104,6 +2135,25 @@ dependencies = [
  "shiplog-redact",
  "shiplog-schema",
  "shiplog-workstreams",
+]
+
+[[package]]
+name = "shiplog-tui"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "serde",
+ "tempfile",
+]
+
+[[package]]
+name = "shiplog-web"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "serde",
+ "serde_json",
+ "tempfile",
 ]
 
 [[package]]

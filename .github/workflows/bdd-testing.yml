@@ -302,6 +302,22 @@ jobs:
       - name: Test shiplog-ports integration tests
         run: cargo test -p shiplog-ports --test ports_tests
 
+      # New Later feature crates
+      - name: Test shiplog-team
+        run: cargo test -p shiplog-team
+
+      - name: Test shiplog-cron
+        run: cargo test -p shiplog-cron
+
+      - name: Test shiplog-tui
+        run: cargo test -p shiplog-tui
+
+      - name: Test shiplog-web
+        run: cargo test -p shiplog-web
+
+      - name: Test shiplog-plugin
+        run: cargo test -p shiplog-plugin
+
       - name: Generate remaining crate test summary
         if: always()
         run: |
@@ -318,6 +334,11 @@ jobs:
           echo "- shiplog-redact (property tests)" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog-ports (unit tests)" >> $GITHUB_STEP_SUMMARY
           echo "  - ports_tests.rs (integration tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-team (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-cron (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-tui (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-web (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-plugin (unit tests)" >> $GITHUB_STEP_SUMMARY
 
   app-tests:
     name: App Tests
