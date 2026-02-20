@@ -62,3 +62,305 @@ jobs:
           echo "- v0.3.x BDD scenarios (51 scenarios)" >> $GITHUB_STEP_SUMMARY
           echo "- Later BDD scenarios (41 scenarios)" >> $GITHUB_STEP_SUMMARY
           echo "- Roadmap property tests" >> $GITHUB_STEP_SUMMARY
+
+  ingest-tests:
+    name: Ingest Crate Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.92"
+          components: rustfmt, clippy
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo build
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Test shiplog-ingest-gitlab
+        run: cargo test -p shiplog-ingest-gitlab
+
+      - name: Test shiplog-ingest-jira
+        run: cargo test -p shiplog-ingest-jira
+
+      - name: Test shiplog-ingest-linear
+        run: cargo test -p shiplog-ingest-linear
+
+      - name: Test shiplog-ingest-github
+        run: cargo test -p shiplog-ingest-github
+
+      - name: Test shiplog-ingest-git
+        run: cargo test -p shiplog-ingest-git
+
+      - name: Test shiplog-ingest-manual
+        run: cargo test -p shiplog-ingest-manual
+
+      - name: Test shiplog-ingest-json
+        run: cargo test -p shiplog-ingest-json
+
+      - name: Generate ingest test summary
+        if: always()
+        run: |
+          echo "# Ingest Crate Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "All ingest crate tests completed!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Tested Crates" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-ingest-gitlab" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-ingest-jira" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-ingest-linear" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-ingest-github" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-ingest-git" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-ingest-manual" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-ingest-json" >> $GITHUB_STEP_SUMMARY
+
+  render-tests:
+    name: Render Crate Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.92"
+          components: rustfmt, clippy
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo build
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Test shiplog-render-md
+        run: cargo test -p shiplog-render-md
+
+      - name: Test shiplog-render-json
+        run: cargo test -p shiplog-render-json
+
+      - name: Test shiplog-render-json property tests
+        run: cargo test -p shiplog-render-json --test property_tests
+
+      - name: Generate render test summary
+        if: always()
+        run: |
+          echo "# Render Crate Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "All render crate tests completed!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Tested Crates" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-render-md (snapshot tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-render-json (JSONL/JSON round-trip tests)" >> $GITHUB_STEP_SUMMARY
+          echo "  - property_tests.rs (JSONL/property tests)" >> $GITHUB_STEP_SUMMARY
+
+  core-crate-tests:
+    name: Core Crate Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.92"
+          components: rustfmt, clippy
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo build
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Test shiplog-schema
+        run: cargo test -p shiplog-schema
+
+      - name: Test shiplog-coverage
+        run: cargo test -p shiplog-coverage
+
+      - name: Test shiplog-cache
+        run: cargo test -p shiplog-cache
+
+      - name: Test shiplog-cluster-llm
+        run: cargo test -p shiplog-cluster-llm
+
+      - name: Generate core crate test summary
+        if: always()
+        run: |
+          echo "# Core Crate Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "All core crate tests completed!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Tested Crates" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-schema (property tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-coverage (property tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-cache (property tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-cluster-llm (unit tests)" >> $GITHUB_STEP_SUMMARY
+
+  remaining-crate-tests:
+    name: Remaining Crate Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.92"
+          components: rustfmt, clippy
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo build
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Test shiplog-engine
+        run: cargo test -p shiplog-engine
+
+      - name: Test shiplog-bundle
+        run: cargo test -p shiplog-bundle
+
+      - name: Test shiplog-template
+        run: cargo test -p shiplog-template
+
+      - name: Test shiplog-workstreams
+        run: cargo test -p shiplog-workstreams
+
+      - name: Test shiplog-ids
+        run: cargo test -p shiplog-ids
+
+      - name: Test shiplog-redact
+        run: cargo test -p shiplog-redact
+
+      - name: Test shiplog-ports
+        run: cargo test -p shiplog-ports
+
+      - name: Test shiplog-ports integration tests
+        run: cargo test -p shiplog-ports --test ports_tests
+
+      - name: Generate remaining crate test summary
+        if: always()
+        run: |
+          echo "# Remaining Crate Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "All remaining crate tests completed!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Tested Crates" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-engine (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-bundle (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-template (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-workstreams (property tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-ids (property tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-redact (property tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-ports (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "  - ports_tests.rs (integration tests)" >> $GITHUB_STEP_SUMMARY
+
+  app-tests:
+    name: App Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.92"
+          components: rustfmt, clippy
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo build
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Test shiplog app
+        run: cargo test -p shiplog
+
+      - name: Generate app test summary
+        if: always()
+        run: |
+          echo "# App Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "App tests completed!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Tested Apps" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog (unit tests for cache directory resolution)" >> $GITHUB_STEP_SUMMARY

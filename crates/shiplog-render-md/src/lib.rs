@@ -614,4 +614,252 @@ mod tests {
 
         insta::assert_snapshot!(result);
     }
+
+    #[test]
+    fn test_snapshot_coverage_first_section_order() {
+        let renderer = MarkdownRenderer::new().with_section_order(SectionOrder::CoverageFirst);
+        let events = vec![
+            create_test_pr("1", 1, "Fix bug"),
+            create_test_pr("2", 2, "Add feature"),
+        ];
+        let workstreams = WorkstreamsFile {
+            version: 1,
+            generated_at: Utc::now(),
+            workstreams: vec![Workstream {
+                id: WorkstreamId::from_parts(["ws", "1"]),
+                title: "Workstream 1".into(),
+                summary: Some("Summary".into()),
+                tags: vec![],
+                receipts: vec![EventId::from_parts(["pr", "1"])],
+                events: vec![EventId::from_parts(["pr", "1"])],
+                stats: WorkstreamStats {
+                    pull_requests: 1,
+                    reviews: 0,
+                    manual_events: 0,
+                },
+            }],
+        };
+        let coverage = CoverageManifest {
+            run_id: RunId::now("test"),
+            generated_at: Utc::now(),
+            user: "test".into(),
+            window: TimeWindow {
+                since: NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
+                until: NaiveDate::from_ymd_opt(2024, 12, 31).unwrap(),
+            },
+            mode: "merged".into(),
+            sources: vec!["github".into()],
+            slices: vec![],
+            warnings: vec![],
+            completeness: Completeness::Complete,
+        };
+
+        let result = renderer
+            .render_packet_markdown("testuser", "2024-W01", &events, &workstreams, &coverage)
+            .unwrap();
+
+        // Coverage should appear first
+        assert!(result.starts_with("## Coverage"));
+    }
+
+    #[test]
+    fn test_snapshot_events_with_reviews() {
+        let renderer = MarkdownRenderer::new();
+        let pr_event = create_test_pr("1", 1, "Add feature");
+        let review_event = EventEnvelope {
+            id: EventId::from_parts(["review", "1"]),
+            kind: EventKind::Review,
+            occurred_at: Utc.timestamp_opt(0, 0).unwrap(),
+            actor: Actor {
+                login: "reviewer".into(),
+                id: None,
+            },
+            repo: RepoRef {
+                full_name: "owner/repo".into(),
+                html_url: None,
+                visibility: RepoVisibility::Public,
+            },
+            payload: EventPayload::Review(ReviewEvent {
+                pull_number: 1,
+                pull_title: "Add feature".into(),
+                submitted_at: Utc.timestamp_opt(0, 0).unwrap(),
+                state: "approved".into(),
+                window: None,
+            }),
+            tags: vec![],
+            links: vec![Link {
+                label: "pr".into(),
+                url: "https://github.com/owner/repo/pull/1".into(),
+            }],
+            source: SourceRef {
+                system: SourceSystem::Github,
+                url: None,
+                opaque_id: None,
+            },
+        };
+        let events = vec![pr_event, review_event];
+        let workstreams = WorkstreamsFile {
+            version: 1,
+            generated_at: Utc::now(),
+            workstreams: vec![Workstream {
+                id: WorkstreamId::from_parts(["ws", "1"]),
+                title: "Feature Work".into(),
+                summary: None,
+                tags: vec![],
+                receipts: vec![],
+                events: vec![EventId::from_parts(["pr", "1"]), EventId::from_parts(["review", "1"])],
+                stats: WorkstreamStats {
+                    pull_requests: 1,
+                    reviews: 1,
+                    manual_events: 0,
+                },
+            }],
+        };
+        let coverage = CoverageManifest {
+            run_id: RunId::now("test"),
+            generated_at: Utc::now(),
+            user: "test".into(),
+            window: TimeWindow {
+                since: NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
+                until: NaiveDate::from_ymd_opt(2024, 12, 31).unwrap(),
+            },
+            mode: "test".into(),
+            sources: vec!["github".into()],
+            slices: vec![],
+            warnings: vec![],
+            completeness: Completeness::Complete,
+        };
+
+        let result = renderer
+            .render_packet_markdown("test", "2024", &events, &workstreams, &coverage)
+            .unwrap();
+
+        // Should show both PRs and reviews in summary
+        assert!(result.contains("1 PRs, 1 reviews"));
+    }
+
+    #[test]
+    fn test_snapshot_multiple_workstreams() {
+        let renderer = MarkdownRenderer::new();
+        let events = vec![
+            create_test_pr("1", 1, "Feature A"),
+            create_test_pr("2", 2, "Feature B"),
+            create_test_pr("3", 3, "Fix bug"),
+        ];
+        let workstreams = WorkstreamsFile {
+            version: 1,
+            generated_at: Utc::now(),
+            workstreams: vec![
+                Workstream {
+                    id: WorkstreamId::from_parts(["ws", "a"]),
+                    title: "Feature A".into(),
+                    summary: Some("Work on feature A".into()),
+                    tags: vec![],
+                    receipts: vec![EventId::from_parts(["pr", "1"])],
+                    events: vec![EventId::from_parts(["pr", "1"])],
+                    stats: WorkstreamStats {
+                        pull_requests: 1,
+                        reviews: 0,
+                        manual_events: 0,
+                    },
+                },
+                Workstream {
+                    id: WorkstreamId::from_parts(["ws", "b"]),
+                    title: "Feature B & Bugfix".into(),
+                    summary: Some("Work on feature B and bugfix".into()),
+                    tags: vec![],
+                    receipts: vec![EventId::from_parts(["pr", "2"]), EventId::from_parts(["pr", "3"])],
+                    events: vec![EventId::from_parts(["pr", "2"]), EventId::from_parts(["pr", "3"])],
+                    stats: WorkstreamStats {
+                        pull_requests: 2,
+                        reviews: 0,
+                        manual_events: 0,
+                    },
+                },
+            ],
+        };
+        let coverage = CoverageManifest {
+            run_id: RunId::now("test"),
+            generated_at: Utc::now(),
+            user: "test".into(),
+            window: TimeWindow {
+                since: NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
+                until: NaiveDate::from_ymd_opt(2024, 12, 31).unwrap(),
+            },
+            mode: "test".into(),
+            sources: vec!["github".into()],
+            slices: vec![],
+            warnings: vec![],
+            completeness: Completeness::Complete,
+        };
+
+        let result = renderer
+            .render_packet_markdown("test", "2024", &events, &workstreams, &coverage)
+            .unwrap();
+
+        // Should show 2 workstreams
+        assert!(result.contains("**Workstreams:** 2"));
+    }
+
+    #[test]
+    fn test_snapshot_events_with_all_manual_types() {
+        let renderer = MarkdownRenderer::new();
+        let events = vec![
+            create_test_manual("1", ManualEventType::Note, "Take notes"),
+            create_test_manual("2", ManualEventType::Incident, "Fix outage"),
+            create_test_manual("3", ManualEventType::Design, "Design review"),
+            create_test_manual("4", ManualEventType::Mentoring, "Mentor junior"),
+            create_test_manual("5", ManualEventType::Launch, "Launch feature"),
+            create_test_manual("6", ManualEventType::Migration, "Migrate data"),
+            create_test_manual("7", ManualEventType::Review, "Code review"),
+            create_test_manual("8", ManualEventType::Other, "Other work"),
+        ];
+        let workstreams = WorkstreamsFile {
+            version: 1,
+            generated_at: Utc::now(),
+            workstreams: vec![Workstream {
+                id: WorkstreamId::from_parts(["ws", "1"]),
+                title: "Mixed Work".into(),
+                summary: None,
+                tags: vec![],
+                receipts: vec![],
+                events: events.iter().map(|e| e.id.clone()).collect(),
+                stats: WorkstreamStats {
+                    pull_requests: 0,
+                    reviews: 0,
+                    manual_events: 8,
+                },
+            }],
+        };
+        let coverage = CoverageManifest {
+            run_id: RunId::now("test"),
+            generated_at: Utc::now(),
+            user: "test".into(),
+            window: TimeWindow {
+                since: NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
+                until: NaiveDate::from_ymd_opt(2024, 12, 31).unwrap(),
+            },
+            mode: "test".into(),
+            sources: vec!["manual".into()],
+            slices: vec![],
+            warnings: vec![],
+            completeness: Completeness::Complete,
+        };
+
+        let result = renderer
+            .render_packet_markdown("test", "2024", &events, &workstreams, &coverage)
+            .unwrap();
+
+        // Should show manual events in summary
+        assert!(result.contains("0 PRs, 0 reviews, 8 manual"));
+        // Should have all emoji types
+        assert!(result.contains("📝")); // Note
+        assert!(result.contains("🚨")); // Incident
+        assert!(result.contains("🏗️")); // Design
+        assert!(result.contains("👨‍🏫")); // Mentoring
+        assert!(result.contains("🚀")); // Launch
+        assert!(result.contains("🔄")); // Migration
+        assert!(result.contains("👀")); // Review
+        assert!(result.contains("📌")); // Other
+    }
 }

@@ -65,6 +65,9 @@ jobs:
       - name: Run property tests for shiplog-cache
         run: cargo test -p shiplog-cache -- --test-threads=4
 
+      - name: Run property tests for shiplog-testkit (roadmap)
+        run: cargo test -p shiplog-testkit roadmap_property_tests -- --test-threads=4
+
       - name: Generate property test summary
         if: always()
         run: |
@@ -79,3 +82,4 @@ jobs:
           echo "- shiplog-coverage" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog-workstreams" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog-cache" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-testkit (roadmap property tests)" >> $GITHUB_STEP_SUMMARY

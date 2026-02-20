@@ -71,6 +71,24 @@ jobs:
           cargo mutants -p shiplog-render-json --timeout 120s --no-copy-target || true
           cargo mutants -p shiplog-cache --timeout 120s --no-copy-target || true
 
+      - name: Run mutation tests for Tier 4 crates
+        run: |
+          echo "Testing Tier 4: LLM Clustering and App crates..."
+          cargo mutants -p shiplog-cluster-llm --timeout 120s --no-copy-target || true
+
+      - name: Run mutation tests for v0.2.x (Now) crates
+        run: |
+          echo "Testing v0.2.x Now: Local git ingest adapter..."
+          cargo mutants -p shiplog-ingest-git --timeout 120s --no-copy-target || true
+
+      - name: Run mutation tests for v0.3.x (Next) roadmap crates
+        run: |
+          echo "Testing v0.3.x Roadmap: GitLab, Jira, Linear, Template..."
+          cargo mutants -p shiplog-ingest-gitlab --timeout 120s --no-copy-target || true
+          cargo mutants -p shiplog-ingest-jira --timeout 120s --no-copy-target || true
+          cargo mutants -p shiplog-ingest-linear --timeout 120s --no-copy-target || true
+          cargo mutants -p shiplog-template --timeout 120s --no-copy-target || true
+
       - name: Upload mutation test results
         if: always()
         uses: actions/upload-artifact@v4
@@ -92,3 +110,7 @@ jobs:
           echo "- Tier 1 (Critical Core): ≥ 85%" >> $GITHUB_STEP_SUMMARY
           echo "- Tier 2 (Pipeline Core): ≥ 75%" >> $GITHUB_STEP_SUMMARY
           echo "- Tier 3 (Adapters/Renderers): ≥ 65%" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Roadmap Crate Coverage" >> $GITHUB_STEP_SUMMARY
+          echo "- v0.2.x (Now): shiplog-ingest-git" >> $GITHUB_STEP_SUMMARY
+          echo "- v0.3.x (Next): shiplog-ingest-gitlab, shiplog-ingest-jira, shiplog-ingest-linear, shiplog-template" >> $GITHUB_STEP_SUMMARY

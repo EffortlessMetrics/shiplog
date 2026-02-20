@@ -1,0 +1,37 @@
+name: Security Checks
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+  schedule:
+    - cron: "0 0 * * 0"  # Weekly on Sunday at midnight
+  workflow_dispatch:
+
+jobs:
+  cargo-deny:
+    name: Cargo Deny Security
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install cargo-deny
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+          components: cargo-deny
+
+      - name: Check for security vulnerabilities
+        run: cargo deny check advisories
+
+      - name: Check for invalid licenses
+        run: cargo deny check licenses
+
+      - name: Check for unmaintained dependencies
+        run: cargo deny check bans
+
+      - name: Check sources
+        run: cargo deny check sources
