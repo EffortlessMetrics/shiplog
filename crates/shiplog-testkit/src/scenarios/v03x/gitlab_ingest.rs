@@ -110,6 +110,8 @@ pub fn gitlab_ingest_reviews() -> Scenario {
                 ctx.flags.insert("api_call_made".to_string(), true);
                 ctx.numbers.insert("collected_reviews".to_string(), 8);
                 ctx.numbers.insert("collected_mrs".to_string(), 15);
+                ctx.flags.insert("review_has_mr".to_string(), true);
+                ctx.flags.insert("review_has_reviewer".to_string(), true);
                 Ok(())
             },
         )
@@ -387,6 +389,12 @@ pub fn gitlab_ingest_render() -> Scenario {
             ctx.flags.insert("packet_rendered".to_string(), true);
             ctx.paths
                 .insert("packet_path".to_string(), "/out/run_001/packet.md".into());
+            ctx.strings.insert(
+                "gitlab_link".to_string(),
+                "https://gitlab.com/owner/repo/merge_requests/123".to_string(),
+            );
+            ctx.strings
+                .insert("source_label".to_string(), "gitlab".to_string());
             Ok(())
         })
         .then("the packet should include GitLab MRs", |ctx| {

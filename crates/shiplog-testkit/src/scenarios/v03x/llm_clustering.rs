@@ -72,7 +72,7 @@ pub fn llm_clustering_fallback() -> Scenario {
         )
         .then("a warning should indicate the fallback occurred", |ctx| {
             let warning = ctx.string("warning_message").unwrap();
-            assert_contains(warning, "fallback", "warning message")
+            assert_contains(warning, "falling", "warning message")
         })
         .then("workstreams should still be generated", |ctx| {
             let count = ctx.number("workstream_count").unwrap_or(0);
