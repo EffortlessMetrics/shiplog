@@ -1,6 +1,46 @@
-//! Team aggregation facade crate.
+//! Team aggregation mode for generating team-level shipping summaries.
 //!
-//! `shiplog-team` is retained as the stable public entrypoint while the runtime
-//! implementation now lives in [`shiplog-team-aggregate`].
+//! This crate provides minimal functionality for aggregating team member ledgers.
 
-pub use shiplog_team_aggregate::*;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::path::PathBuf;
+
+/// Team configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TeamConfig {
+    pub members: Vec<String>,
+    #[serde(default)]
+    pub aliases: HashMap<String, String>,
+    #[serde(default)]
+    pub sections: Vec<String>,
+    #[serde(default)]
+    pub template: Option<PathBuf>,
+}
+
+/// Team aggregator
+pub struct TeamAggregator {
+    config: TeamConfig,
+}
+
+impl TeamAggregator {
+    pub fn new(config: TeamConfig) -> Self {
+        Self { config }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn team_config_default() {
+        let config = TeamConfig {
+            members: vec!["alice".to_string()],
+            aliases: HashMap::new(),
+            sections: vec![],
+            template: None,
+        };
+        assert_eq!(config.members.len(), 1);
+    }
+}

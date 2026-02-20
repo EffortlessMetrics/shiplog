@@ -24,7 +24,6 @@ fn default_port() -> u16 {
 
 /// Web viewer
 pub struct WebViewer {
-    #[allow(dead_code)]
     config: WebConfig,
 }
 

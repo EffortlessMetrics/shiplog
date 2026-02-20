@@ -27,9 +27,7 @@ pub enum TuiMode {
 
 /// TUI editor
 pub struct TuiEditor {
-    #[allow(dead_code)]
     config: TuiConfig,
-    #[allow(dead_code)]
     mode: TuiMode,
 }
 

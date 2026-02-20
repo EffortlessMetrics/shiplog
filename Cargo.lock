@@ -2302,62 +2302,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "shiplog-crypto"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "hex",
- "serde",
- "serde_json",
- "sha2",
- "tempfile",
-]
-
-[[package]]
-name = "shiplog-dedupe"
-version = "0.2.1"
-dependencies = [
- "hex",
- "proptest",
- "serde",
- "sha2",
-]
-
-[[package]]
-name = "shiplog-delayqueue"
-version = "0.2.1"
-dependencies = [
- "anyhow",
-]
-
-[[package]]
-name = "shiplog-deque"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "shiplog-diff"
-version = "0.2.1"
-dependencies = [
- "chrono",
- "proptest",
- "serde",
- "shiplog-ids",
- "shiplog-schema",
-]
-
-[[package]]
-name = "shiplog-emitter"
-version = "0.2.1"
-dependencies = [
- "anyhow",
-]
-
-[[package]]
 name = "shiplog-engine"
 version = "0.2.1"
 dependencies = [
@@ -2655,187 +2599,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "shiplog-interceptor"
-version = "0.2.1"
-dependencies = [
- "anyhow",
-]
-
-[[package]]
-name = "shiplog-iter"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "itertools",
-]
-
-[[package]]
-name = "shiplog-iterator"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "itertools",
-]
-
-[[package]]
-name = "shiplog-joiner"
-version = "0.2.1"
-dependencies = [
- "anyhow",
-]
-
-[[package]]
-name = "shiplog-latch"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "tokio",
-]
-
-[[package]]
-name = "shiplog-leakybucket"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "chrono",
-]
-
-[[package]]
-name = "shiplog-logging"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "chrono",
- "serde",
- "serde_json",
- "tempfile",
-]
-
-[[package]]
-name = "shiplog-lru"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "proptest",
- "serde",
-]
-
-[[package]]
-name = "shiplog-matrix"
-version = "0.2.1"
-dependencies = [
- "proptest",
- "serde",
-]
-
-[[package]]
-name = "shiplog-merge"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "chrono",
- "proptest",
- "serde",
- "shiplog-ids",
- "shiplog-ports",
- "shiplog-schema",
-]
-
-[[package]]
-name = "shiplog-meter"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "chrono",
- "serde",
- "serde_json",
- "tempfile",
-]
-
-[[package]]
-name = "shiplog-metrics"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "chrono",
- "serde",
- "serde_json",
- "tempfile",
-]
-
-[[package]]
-name = "shiplog-middleware"
-version = "0.2.1"
-dependencies = [
- "anyhow",
-]
-
-[[package]]
-name = "shiplog-migrate"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "chrono",
- "serde",
- "serde_json",
- "tempfile",
-]
-
-[[package]]
-name = "shiplog-normalize"
-version = "0.2.1"
-
-[[package]]
-name = "shiplog-normalizer"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "proptest",
- "serde",
-]
-
-[[package]]
-name = "shiplog-notify"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "chrono",
- "proptest",
- "serde",
-]
-
-[[package]]
-name = "shiplog-once"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "tokio",
-]
-
-[[package]]
-name = "shiplog-output-layout"
-version = "0.2.1"
-
-[[package]]
-name = "shiplog-parse"
-version = "0.2.1"
-
-[[package]]
-name = "shiplog-path"
-version = "0.2.1"
-
-[[package]]
-name = "shiplog-percentile"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "chrono",
- "serde",
- "serde_json",
- "tempfile",
-]
-
-[[package]]
 name = "shiplog-plugin"
 version = "0.2.1"
 dependencies = [
@@ -2843,13 +2606,6 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
-]
-
-[[package]]
-name = "shiplog-pool"
-version = "0.2.1"
-dependencies = [
- "anyhow",
 ]
 
 [[package]]
@@ -2983,6 +2739,17 @@ dependencies = [
  "serde_yaml_ng",
  "shiplog-ids",
  "shiplog-testkit",
+]
+
+[[package]]
+name = "shiplog-team"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "serde",
+ "serde_json",
+ "serde_yaml_ng",
+ "tempfile",
 ]
 
 [[package]]
@@ -3224,6 +2991,25 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+]
+
+[[package]]
+name = "shiplog-tui"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "serde",
+ "tempfile",
+]
+
+[[package]]
+name = "shiplog-web"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "serde",
+ "serde_json",
+ "tempfile",
 ]
 
 [[package]]

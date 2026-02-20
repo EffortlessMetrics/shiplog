@@ -22,7 +22,6 @@ pub enum PluginStatus {
 }
 
 /// Plugin manager
-#[allow(dead_code)]
 pub struct PluginManager {
     plugins_dir: PathBuf,
     plugins: HashMap<String, PluginManifest>,
