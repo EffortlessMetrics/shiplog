@@ -1,0 +1,22 @@
+[package]
+name = "shiplog-export"
+version = "0.2.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Export utilities for shiplog in various output formats."
+readme = "README.md"
+documentation = "https://docs.rs/shiplog-export"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["export", "output", "formats"]
+categories = ["data-structures", "development-tools"]
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true

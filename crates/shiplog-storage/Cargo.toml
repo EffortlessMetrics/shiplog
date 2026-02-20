@@ -1,0 +1,21 @@
+[package]
+name = "shiplog-storage"
+version = "0.2.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Storage backend abstractions for shiplog."
+readme = "README.md"
+documentation = "https://docs.rs/shiplog-storage"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["storage", "backend", "abstraction"]
+categories = ["data-structures", "development-tools"]
+
+[dependencies]
+serde.workspace = true
+anyhow.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true

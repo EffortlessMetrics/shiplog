@@ -302,6 +302,19 @@ jobs:
       - name: Test shiplog-ports integration tests
         run: cargo test -p shiplog-ports --test ports_tests
 
+      # New microcrates
+      - name: Test shiplog-validate
+        run: cargo test -p shiplog-validate
+
+      - name: Test shiplog-export
+        run: cargo test -p shiplog-export
+
+      - name: Test shiplog-storage
+        run: cargo test -p shiplog-storage
+
+      - name: Test shiplog-notify
+        run: cargo test -p shiplog-notify
+
       # New Later feature crates
       - name: Test shiplog-team
         run: cargo test -p shiplog-team
@@ -317,6 +330,81 @@ jobs:
 
       - name: Test shiplog-plugin
         run: cargo test -p shiplog-plugin
+
+      # Filter/merge/diff/query crates
+      - name: Test shiplog-filter
+        run: cargo test -p shiplog-filter
+
+      - name: Test shiplog-merge
+        run: cargo test -p shiplog-merge
+
+      - name: Test shiplog-diff
+        run: cargo test -p shiplog-diff
+
+      - name: Test shiplog-query
+        run: cargo test -p shiplog-query
+
+      # New utility crates
+      - name: Test shiplog-stats
+        run: cargo test -p shiplog-stats
+
+      - name: Test shiplog-sync
+        run: cargo test -p shiplog-sync
+
+      - name: Test shiplog-archive
+        run: cargo test -p shiplog-archive
+
+      - name: Test shiplog-report
+        run: cargo test -p shiplog-report
+
+      # New config/watch/transform/migrate crates
+      - name: Test shiplog-config
+        run: cargo test -p shiplog-config
+
+      - name: Test shiplog-watch
+        run: cargo test -p shiplog-watch
+
+      - name: Test shiplog-transform
+        run: cargo test -p shiplog-transform
+
+      - name: Test shiplog-migrate
+        run: cargo test -p shiplog-migrate
+
+      # New pipeline extension crates
+      - name: Test shiplog-scheduler
+        run: cargo test -p shiplog-scheduler
+
+      - name: Test shiplog-hooks
+        run: cargo test -p shiplog-hooks
+
+      - name: Test shiplog-backup
+        run: cargo test -p shiplog-backup
+
+      # New utility crates (auth, crypto, logging, metrics)
+      - name: Test shiplog-auth
+        run: cargo test -p shiplog-auth
+
+      - name: Test shiplog-crypto
+        run: cargo test -p shiplog-crypto
+
+      - name: Test shiplog-logging
+        run: cargo test -p shiplog-logging
+
+      - name: Test shiplog-metrics
+        run: cargo test -p shiplog-metrics
+
+      # New messaging crates (pubsub, queue, eventbus, workflow)
+      - name: Test shiplog-pubsub
+        run: cargo test -p shiplog-pubsub
+
+      - name: Test shiplog-queue
+        run: cargo test -p shiplog-queue
+
+      - name: Test shiplog-eventbus
+        run: cargo test -p shiplog-eventbus
+
+      - name: Test shiplog-workflow
+        run: cargo test -p shiplog-workflow
 
       - name: Generate remaining crate test summary
         if: always()
@@ -339,6 +427,25 @@ jobs:
           echo "- shiplog-tui (unit tests)" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog-web (unit tests)" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog-plugin (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-filter (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-merge (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-diff (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-query (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-stats (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-sync (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-archive (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-report (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-config (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-watch (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-transform (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-migrate (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-scheduler (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-hooks (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-backup (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-auth (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-crypto (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-logging (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-metrics (unit tests)" >> $GITHUB_STEP_SUMMARY
 
   app-tests:
     name: App Tests

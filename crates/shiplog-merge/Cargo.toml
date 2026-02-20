@@ -1,0 +1,24 @@
+[package]
+name = "shiplog-merge"
+version = "0.2.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Merging utilities for combining multiple event sources."
+readme = "README.md"
+documentation = "https://docs.rs/shiplog-merge"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["merge", "events", "combine", "sources"]
+categories = ["data-structures", "development-tools"]
+
+[dependencies]
+serde.workspace = true
+shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
+shiplog-ids = { path = "../shiplog-ids", version = "0.2.1" }
+itertools.workspace = true
+chrono.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
