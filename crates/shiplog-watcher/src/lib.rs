@@ -1,9 +1,9 @@
 //! File system watcher for real-time shiplog sync.
 
-use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher, Event, EventKind};
+use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use std::sync::mpsc::{channel, Receiver};
+use std::sync::mpsc::{Receiver, channel};
 use std::time::Duration;
 
 /// Watcher configuration
@@ -37,22 +37,22 @@ impl FileWatcher {
     /// Create a new file watcher
     pub fn new(config: &WatcherConfig) -> anyhow::Result<Self> {
         let (tx, rx) = channel();
-        
+
         let mut watcher = RecommendedWatcher::new(
             move |res| {
                 let _ = tx.send(res);
             },
             Config::default().with_poll_interval(Duration::from_secs(config.poll_interval)),
         )?;
-        
+
         watcher.watch(&config.path, RecursiveMode::Recursive)?;
-        
+
         Ok(Self {
             _watcher: watcher,
             receiver: rx,
         })
     }
-    
+
     /// Try to receive an event (non-blocking)
     pub fn try_recv(&self) -> Option<Result<Event, notify::Error>> {
         match self.receiver.try_recv() {
@@ -123,16 +123,16 @@ mod tests {
             recursive: true,
             poll_interval: 1,
         };
-        
+
         let _watcher = FileWatcher::new(&config)?;
-        
+
         // Create a test file to trigger an event
         let test_file = temp_dir.path().join("test.txt");
         fs::write(&test_file, "test content")?;
-        
+
         // Give the watcher a moment to detect the change
         std::thread::sleep(std::time::Duration::from_millis(100));
-        
+
         Ok(())
     }
 }

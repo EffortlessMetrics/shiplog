@@ -70,7 +70,10 @@ impl TumblingWindow {
 
     /// Get the current window
     pub fn current(&self) -> Window {
-        Window::new(self.current_window_start, self.current_window_start + self.size_ms)
+        Window::new(
+            self.current_window_start,
+            self.current_window_start + self.size_ms,
+        )
     }
 
     /// Advance to the next window
@@ -105,7 +108,10 @@ impl SlidingWindow {
 
     /// Get the current window
     pub fn current(&self) -> Window {
-        Window::new(self.latest_window_start, self.latest_window_start + self.size_ms)
+        Window::new(
+            self.latest_window_start,
+            self.latest_window_start + self.size_ms,
+        )
     }
 
     /// Advance to the next window
@@ -122,10 +128,10 @@ impl SlidingWindow {
     /// Get all windows that overlap with the given window
     pub fn overlapping_windows(&self, window: &Window) -> Vec<Window> {
         let mut windows = Vec::new();
-        
+
         // Calculate the first window start that could overlap
         let mut window_start = window.start - (window.start % self.slide_ms);
-        
+
         while window_start < window.end {
             let w = Window::new(window_start, window_start + self.size_ms);
             if w.overlaps(window) {
@@ -133,7 +139,7 @@ impl SlidingWindow {
             }
             window_start += self.slide_ms;
         }
-        
+
         windows
     }
 }
@@ -162,7 +168,7 @@ impl SessionWindow {
                 return;
             }
         }
-        
+
         // Create a new session
         self.sessions.push(Window::new(timestamp, timestamp));
     }
@@ -253,7 +259,7 @@ mod tests {
         let w1 = Window::new(0, 500);
         let w2 = Window::new(400, 900);
         let w3 = Window::new(500, 1000);
-        
+
         assert!(w1.overlaps(&w2));
         assert!(!w1.overlaps(&w3));
     }
@@ -261,10 +267,10 @@ mod tests {
     #[test]
     fn test_tumbling_window() {
         let mut tw = TumblingWindow::new(1000);
-        
+
         let w = tw.current();
         assert!(w.size() == 1000);
-        
+
         tw.advance();
         let w2 = tw.current();
         assert_eq!(w2.start(), w.start() + 1000);
@@ -273,7 +279,7 @@ mod tests {
     #[test]
     fn test_tumbling_window_for_timestamp() {
         let tw = TumblingWindow::new(1000);
-        
+
         let w = tw.window_for(1500);
         assert_eq!(w.start(), 1000);
         assert_eq!(w.end(), 2000);
@@ -282,10 +288,10 @@ mod tests {
     #[test]
     fn test_sliding_window() {
         let mut sw = SlidingWindow::new(1000, 500);
-        
+
         let w = sw.current();
         assert_eq!(w.size(), 1000);
-        
+
         sw.advance();
         let w2 = sw.current();
         assert_eq!(w2.start(), w.start() + 500);
@@ -294,9 +300,9 @@ mod tests {
     #[test]
     fn test_sliding_window_overlapping() {
         let sw = SlidingWindow::new(1000, 500);
-        
+
         let windows = sw.overlapping_windows(&Window::new(800, 1200));
-        
+
         // Should have windows starting at 500 and 1000
         assert!(windows.len() >= 2);
     }
@@ -304,17 +310,17 @@ mod tests {
     #[test]
     fn test_session_window() {
         let mut sw = SessionWindow::new(1000);
-        
+
         sw.add(0);
         sw.add(100);
         sw.add(200);
-        
+
         // All within 1000ms gap, should be one session
         assert_eq!(sw.sessions().len(), 1);
-        
+
         // Add a gap > 1000ms
         sw.add(1500);
-        
+
         // Should now have 2 sessions
         assert_eq!(sw.sessions().len(), 2);
     }
@@ -328,7 +334,7 @@ mod tests {
     #[test]
     fn test_tumbling_window_assigner() {
         let assigner = TumblingWindowAssigner::new(1000);
-        
+
         let w = assigner.assign(1500);
         assert_eq!(w.start(), 1000);
         assert_eq!(w.end(), 2000);
@@ -337,7 +343,7 @@ mod tests {
     #[test]
     fn test_sliding_window_assigner() {
         let assigner = SlidingWindowAssigner::new(1000, 500);
-        
+
         let w = assigner.assign(1500);
         assert_eq!(w.start(), 1500);
         assert_eq!(w.end(), 2500);

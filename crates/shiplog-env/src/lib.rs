@@ -21,7 +21,7 @@ pub fn get_var_as<T: std::str::FromStr>(name: &str) -> Option<T> {
 }
 
 /// Gets an environment variable, returning a default if not set or parsing fails.
-pub fn get_var_or_parse<T: std::str::FromStr>(name: &str, default: &str) -> T
+pub fn get_var_or_parse<T>(name: &str, default: &str) -> T
 where
     T: std::str::FromStr,
     T::Err: std::fmt::Debug,
@@ -92,11 +92,7 @@ pub fn current_dir() -> Result<std::path::PathBuf, EnvError> {
 
 /// Returns the path separator for the current platform.
 pub fn path_separator() -> char {
-    if cfg!(windows) {
-        ';'
-    } else {
-        ':'
-    }
+    if cfg!(windows) { ';' } else { ':' }
 }
 
 /// Returns the list of paths from the PATH environment variable.
@@ -104,13 +100,7 @@ pub fn get_paths() -> Vec<std::path::PathBuf> {
     env::var_os("PATH")
         .map(|paths| {
             env::split_paths(&paths)
-                .filter_map(|p| {
-                    if p.exists() {
-                        Some(p)
-                    } else {
-                        None
-                    }
-                })
+                .filter_map(|p| if p.exists() { Some(p) } else { None })
                 .collect()
         })
         .unwrap_or_default()
@@ -161,7 +151,7 @@ mod tests {
         // Use a variable that should exist on all systems
         let result = is_set("PATH");
         assert!(result);
-        
+
         let result2 = is_set("SHIPLOG_ENV_TEST_NONEXISTENT_VAR_12345");
         assert!(!result2);
     }

@@ -17,6 +17,12 @@ pub struct CoGrouper<K, T> {
     streams: Vec<Vec<(K, T)>>,
 }
 
+impl<K: Eq + std::hash::Hash + Clone, T: Clone> Default for CoGrouper<K, T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<K: Eq + std::hash::Hash + Clone, T: Clone> CoGrouper<K, T> {
     pub fn new() -> Self {
         Self {
@@ -124,9 +130,9 @@ impl<T: Clone, K: Eq + std::hash::Hash + Clone> StreamCoGrouper<T, K> {
         for stream in &self.streams {
             for item in stream {
                 let key = (self.key_fn)(item);
-                if !result.contains_key(&key) {
-                    result.insert(key, vec![Vec::new(); self.streams.len()]);
-                }
+                result
+                    .entry(key)
+                    .or_insert_with(|| vec![Vec::new(); self.streams.len()]);
             }
         }
 
@@ -150,16 +156,8 @@ mod tests {
 
     #[test]
     fn test_cogrouper_basic() {
-        let stream1 = vec![
-            (1, "a"),
-            (1, "b"),
-            (2, "c"),
-        ];
-        let stream2 = vec![
-            (1, "x"),
-            (2, "y"),
-            (2, "z"),
-        ];
+        let stream1 = vec![(1, "a"), (1, "b"), (2, "c")];
+        let stream2 = vec![(1, "x"), (2, "y"), (2, "z")];
 
         let result = CoGrouper::new()
             .add_stream(stream1)
@@ -179,15 +177,9 @@ mod tests {
 
     #[test]
     fn test_cogrouper_single_stream() {
-        let stream = vec![
-            (1, "a"),
-            (2, "b"),
-            (1, "c"),
-        ];
+        let stream = vec![(1, "a"), (2, "b"), (1, "c")];
 
-        let result = CoGrouper::new()
-            .add_stream(stream)
-            .execute();
+        let result = CoGrouper::new().add_stream(stream).execute();
 
         assert_eq!(result.len(), 2);
         assert_eq!(result[&1].groups[0], vec!["a", "c"]);
@@ -232,12 +224,24 @@ mod tests {
         }
 
         let stream1 = vec![
-            Item { id: 1, category: "fruit".to_string() },
-            Item { id: 2, category: "fruit".to_string() },
+            Item {
+                id: 1,
+                category: "fruit".to_string(),
+            },
+            Item {
+                id: 2,
+                category: "fruit".to_string(),
+            },
         ];
         let stream2 = vec![
-            Item { id: 3, category: "vegetable".to_string() },
-            Item { id: 4, category: "fruit".to_string() },
+            Item {
+                id: 3,
+                category: "vegetable".to_string(),
+            },
+            Item {
+                id: 4,
+                category: "fruit".to_string(),
+            },
         ];
 
         let cogrouper = StreamCoGrouper::new(|item: &Item| item.category.clone())

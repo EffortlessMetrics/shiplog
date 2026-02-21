@@ -52,7 +52,12 @@ impl BackupArchive {
     }
 
     /// Set the metadata after backup is created.
-    pub fn set_metadata(&mut self, size_bytes: u64, file_count: usize, checksum: impl Into<String>) {
+    pub fn set_metadata(
+        &mut self,
+        size_bytes: u64,
+        file_count: usize,
+        checksum: impl Into<String>,
+    ) {
         self.metadata.size_bytes = size_bytes;
         self.metadata.file_count = file_count;
         self.metadata.checksum = checksum.into();
@@ -86,11 +91,7 @@ impl BackupManager {
         // Ensure backup directory exists
         fs::create_dir_all(&self.backup_dir)?;
 
-        let backup_id = format!(
-            "{}_{}",
-            backup_name,
-            Utc::now().format("%Y%m%d_%H%M%S")
-        );
+        let backup_id = format!("{}_{}", backup_name, Utc::now().format("%Y%m%d_%H%M%S"));
         let backup_path = self.backup_dir.join(format!("{}.zip", backup_id));
 
         let mut archive = BackupArchive::new(backup_id, None, &backup_path);
@@ -189,12 +190,11 @@ impl BackupManager {
             let entry = entry?;
             let path = entry.path();
 
-            if path.extension().map_or(false, |e| e == "json") {
-                if let Ok(content) = fs::read_to_string(&path) {
-                    if let Ok(metadata) = serde_json::from_str::<BackupMetadata>(&content) {
-                        backups.push(metadata);
-                    }
-                }
+            if path.extension().is_some_and(|e| e == "json")
+                && let Ok(content) = fs::read_to_string(&path)
+                && let Ok(metadata) = serde_json::from_str::<BackupMetadata>(&content)
+            {
+                backups.push(metadata);
             }
         }
 
@@ -222,9 +222,7 @@ impl BackupManager {
 
     /// Get a specific backup metadata.
     pub fn get_backup(&self, backup_id: &str) -> anyhow::Result<BackupMetadata> {
-        let metadata_path = self
-            .backup_dir
-            .join(format!("{}.meta.json", backup_id));
+        let metadata_path = self.backup_dir.join(format!("{}.meta.json", backup_id));
 
         if !metadata_path.exists() {
             anyhow::bail!("Backup not found: {}", backup_id);
@@ -243,7 +241,7 @@ fn calculate_checksum(path: &Path) -> anyhow::Result<String> {
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer)?;
 
-    use sha2::{Sha256, Digest};
+    use sha2::{Digest, Sha256};
     let mut hasher = Sha256::new();
     hasher.update(&buffer);
     let result = hasher.finalize();
@@ -295,7 +293,7 @@ mod tests {
     fn test_backup_manager_with_temp_dir() {
         let temp_dir = TempDir::new().unwrap();
         let manager = BackupManager::new(temp_dir.path());
-        
+
         // List backups on empty directory should work
         let backups = manager.list_backups().unwrap();
         assert!(backups.is_empty());
@@ -322,7 +320,9 @@ mod tests {
         assert!(backup.metadata.file_count >= 2);
 
         // Restore backup
-        manager.restore_backup(&backup.metadata.id, &target_dir).unwrap();
+        manager
+            .restore_backup(&backup.metadata.id, &target_dir)
+            .unwrap();
 
         // Verify restored files
         assert!(target_dir.join("test.txt").exists());

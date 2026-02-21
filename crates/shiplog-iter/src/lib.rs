@@ -128,7 +128,7 @@ where
                 }
             }
         }
-        
+
         // Return the window if we have enough elements
         if self.buffer.len() == self.window_size {
             Some(self.buffer.clone())
@@ -161,17 +161,14 @@ where
     I: Iterator,
     F: Fn(&I::Item) -> bool,
 {
-    iter.fold(
-        (Vec::new(), Vec::new()),
-        |(mut yes, mut no), item| {
-            if predicate(&item) {
-                yes.push(item);
-            } else {
-                no.push(item);
-            }
-            (yes, no)
-        },
-    )
+    iter.fold((Vec::new(), Vec::new()), |(mut yes, mut no), item| {
+        if predicate(&item) {
+            yes.push(item);
+        } else {
+            no.push(item);
+        }
+        (yes, no)
+    })
 }
 
 /// Unique iterator adapter using hash
@@ -185,7 +182,7 @@ impl<I: Iterator, H: std::hash::Hash + Eq> Iterator for UniqueIter<I, H> {
     type Item = I::Item;
 
     fn next(&mut self) -> Option<Self::Item> {
-        while let Some(item) = self.iter.next() {
+        for item in self.iter.by_ref() {
             let hash = (self.hash_fn)(&item);
             if self.seen.insert(hash) {
                 return Some(item);
@@ -235,7 +232,7 @@ mod tests {
     fn test_group_by() {
         let items = vec![1, 2, 3, 4, 5, 6];
         let groups = group_by(items.into_iter(), |&x| x % 2);
-        
+
         assert_eq!(groups.get(&0), Some(&vec![2, 4, 6]));
         assert_eq!(groups.get(&1), Some(&vec![1, 3, 5]));
     }
@@ -251,7 +248,7 @@ mod tests {
     fn test_chunk() {
         let items = vec![1, 2, 3, 4, 5, 6, 7, 8, 9];
         let chunks = chunk(items.into_iter(), 3);
-        
+
         assert_eq!(chunks.len(), 3);
         assert_eq!(chunks[0], vec![1, 2, 3]);
         assert_eq!(chunks[1], vec![4, 5, 6]);
@@ -262,7 +259,7 @@ mod tests {
     fn test_chunk_remainder() {
         let items = vec![1, 2, 3, 4, 5];
         let chunks = chunk(items.into_iter(), 2);
-        
+
         assert_eq!(chunks.len(), 3);
         assert_eq!(chunks[0], vec![1, 2]);
         assert_eq!(chunks[1], vec![3, 4]);
@@ -273,7 +270,7 @@ mod tests {
     fn test_window() {
         let items = vec![1, 2, 3, 4, 5];
         let windows: Vec<_> = window(items.into_iter(), 3).collect();
-        
+
         assert_eq!(windows.len(), 3);
         assert_eq!(windows[0], vec![1, 2, 3]);
         assert_eq!(windows[1], vec![2, 3, 4]);
@@ -284,7 +281,7 @@ mod tests {
     fn test_partition() {
         let items = vec![1, 2, 3, 4, 5, 6];
         let (even, odd) = partition(items.into_iter(), |&x| x % 2 == 0);
-        
+
         assert_eq!(even, vec![2, 4, 6]);
         assert_eq!(odd, vec![1, 3, 5]);
     }
@@ -293,7 +290,7 @@ mod tests {
     fn test_unique() {
         let items = vec![1, 2, 2, 3, 3, 3, 4];
         let unique_items: Vec<_> = unique(items.into_iter(), |&x| x).collect();
-        
+
         assert_eq!(unique_items, vec![1, 2, 3, 4]);
     }
 
@@ -301,7 +298,7 @@ mod tests {
     fn test_count() {
         let items = vec![1, 2, 3, 4, 5];
         assert_eq!(count(items.into_iter()), 5);
-        
+
         let empty: Vec<i32> = vec![];
         assert_eq!(count(empty.into_iter()), 0);
     }

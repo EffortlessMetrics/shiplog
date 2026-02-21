@@ -33,7 +33,7 @@ impl Watermark {
 
     /// Get the watermark as a DateTime
     pub fn to_datetime(&self) -> DateTime<Utc> {
-        DateTime::from_timestamp_millis(self.timestamp).unwrap_or_else(|| DateTime::<Utc>::MIN_UTC)
+        DateTime::from_timestamp_millis(self.timestamp).unwrap_or(DateTime::<Utc>::MIN_UTC)
     }
 
     /// Check if the watermark is earlier than another timestamp
@@ -49,7 +49,9 @@ impl Watermark {
 
 impl Default for Watermark {
     fn default() -> Self {
-        Self { timestamp: i64::MIN }
+        Self {
+            timestamp: i64::MIN,
+        }
     }
 }
 
@@ -105,12 +107,12 @@ impl TumblingWatermarkGenerator {
     /// Get the current watermark, advancing if necessary
     pub fn current(&mut self) -> Watermark {
         let now = Utc::now().timestamp_millis();
-        
+
         // Advance to next interval if we've passed it
         while self.next_watermark <= now {
             self.next_watermark += self.interval_ms;
         }
-        
+
         Watermark::new(self.next_watermark - self.interval_ms)
     }
 }
@@ -196,15 +198,15 @@ mod tests {
     #[test]
     fn test_periodic_watermark_generator() {
         let mut generator = PeriodicWatermarkGenerator::new(100);
-        
+
         // Initial update
         let wm1 = generator.update(1000);
         assert_eq!(wm1.timestamp_millis(), 900); // 1000 - 100 lag
-        
+
         // Advance with higher timestamp
         let wm2 = generator.update(1500);
         assert_eq!(wm2.timestamp_millis(), 1400); // 1500 - 100 lag
-        
+
         // No advance with lower timestamp
         let wm3 = generator.update(1200);
         assert_eq!(wm3.timestamp_millis(), 1400); // Still the previous watermark
@@ -214,7 +216,7 @@ mod tests {
     fn test_tumbling_watermark_generator() {
         let mut generator = TumblingWatermarkGenerator::new(1000);
         let wm = generator.current();
-        
+
         // Just verify it returns a valid watermark (not checking exact alignment)
         assert!(wm.timestamp_millis() > 0);
     }
@@ -222,17 +224,17 @@ mod tests {
     #[test]
     fn test_watermark_tracker() {
         let mut tracker = WatermarkTracker::new(3);
-        
+
         tracker.add(Watermark::new(100));
         tracker.add(Watermark::new(200));
         tracker.add(Watermark::new(300));
-        
+
         assert_eq!(tracker.latest().unwrap().timestamp_millis(), 300);
         assert_eq!(tracker.earliest().unwrap().timestamp_millis(), 100);
-        
+
         // Add one more to exceed max history
         tracker.add(Watermark::new(400));
-        
+
         assert_eq!(tracker.earliest().unwrap().timestamp_millis(), 200);
     }
 

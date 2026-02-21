@@ -1,7 +1,6 @@
 //! Continuous/cron mode for scheduled shiplog collection.
 
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::path::PathBuf;
 
 /// Cron configuration
@@ -20,6 +19,7 @@ fn default_true() -> bool {
 
 /// Cron scheduler
 pub struct CronScheduler {
+    #[allow(dead_code)]
     config: CronConfig,
 }
 

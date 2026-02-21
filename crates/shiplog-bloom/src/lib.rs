@@ -24,8 +24,8 @@ impl BloomConfig {
 
     /// Calculates the optimal number of bits
     pub fn optimal_bits(&self) -> usize {
-        let m = -(self.expected_items as f64 * self.false_positive_rate.ln())
-            / (2.0_f64.ln().powi(2));
+        let m =
+            -(self.expected_items as f64 * self.false_positive_rate.ln()) / (2.0_f64.ln().powi(2));
         m.ceil() as usize
     }
 
@@ -55,7 +55,7 @@ impl<T: Hash> BloomFilter<T> {
     pub fn with_config(config: &BloomConfig) -> Self {
         let bits = vec![false; config.optimal_bits()];
         let hash_count = config.optimal_hash_count();
-        
+
         Self {
             bits,
             hash_count,
@@ -104,7 +104,7 @@ impl<T: Hash> BloomFilter<T> {
         let set_bits = self.bits.iter().filter(|&&b| b).count() as f64;
         let total_bits = self.bits.len() as f64;
         let k = self.hash_count as f64;
-        
+
         (1.0 - (-k * set_bits / total_bits).exp()).powi(k as i32)
     }
 
@@ -119,13 +119,13 @@ impl<T: Hash> BloomFilter<T> {
     fn get_bit_indices(&self, item: &T) -> Vec<usize> {
         let mut hasher1 = std::collections::hash_map::DefaultHasher::new();
         let mut hasher2 = std::collections::hash_map::DefaultHasher::new();
-        
+
         item.hash(&mut hasher1);
         item.hash(&mut hasher2);
-        
+
         let h1 = hasher1.finish();
         let h2 = hasher2.finish();
-        
+
         (0..self.hash_count)
             .map(|i| {
                 let combined = h1.wrapping_add((i as u64).wrapping_mul(h2));
@@ -184,10 +184,10 @@ mod tests {
     #[test]
     fn test_bloom_filter_insert_contains() {
         let mut filter: BloomFilter<String> = BloomFilter::new();
-        
+
         filter.insert(&"hello".to_string());
         filter.insert(&"world".to_string());
-        
+
         assert!(filter.contains(&"hello".to_string()));
         assert!(filter.contains(&"world".to_string()));
         assert!(!filter.contains(&"not present".to_string()));
@@ -196,7 +196,7 @@ mod tests {
     #[test]
     fn test_bloom_filter_default_config() {
         let config = BloomConfig::default();
-        
+
         assert_eq!(config.expected_items, 1000);
         assert!((config.false_positive_rate - 0.01).abs() < 0.001);
     }
@@ -204,15 +204,15 @@ mod tests {
     #[test]
     fn test_bloom_filter_optimal_calculations() {
         let config = BloomConfig::new(1000, 0.01);
-        
+
         let bits = config.optimal_bits();
         let hash_count = config.optimal_hash_count();
-        
+
         // With 1000 items and 1% false positive rate:
         // bits should be around 9580
         assert!(bits > 9000);
         assert!(bits < 10000);
-        
+
         // hash count should be around 7
         assert!(hash_count >= 6);
         assert!(hash_count <= 8);
@@ -221,7 +221,7 @@ mod tests {
     #[test]
     fn test_bloom_filter_with_size() {
         let filter: BloomFilter<i32> = BloomFilter::with_size(100, 3);
-        
+
         assert_eq!(filter.bits(), 100);
         assert_eq!(filter.hash_count(), 3);
     }
@@ -229,10 +229,10 @@ mod tests {
     #[test]
     fn test_bloom_filter_clear() {
         let mut filter: BloomFilter<String> = BloomFilter::new();
-        
+
         filter.insert(&"test".to_string());
         assert!(filter.contains(&"test".to_string()));
-        
+
         filter.clear();
         // Note: after clear, items may still show as contained due to
         // the probabilistic nature - this is expected behavior
@@ -245,7 +245,7 @@ mod tests {
             .expected_items(500)
             .false_positive_rate(0.05)
             .build_config();
-        
+
         assert_eq!(config.expected_items, 500);
         assert!((config.false_positive_rate - 0.05).abs() < 0.001);
     }
@@ -253,11 +253,11 @@ mod tests {
     #[test]
     fn test_bloom_filter_false_positive_rate() {
         let mut filter: BloomFilter<i32> = BloomFilter::with_size(1000, 10);
-        
+
         for i in 0..100 {
             filter.insert(&i);
         }
-        
+
         // Should have some false positives but not too many
         let rate = filter.false_positive_rate();
         assert!(rate > 0.0);
@@ -267,9 +267,9 @@ mod tests {
     #[test]
     fn test_bloom_filter_contains_not_inserted() {
         let mut filter: BloomFilter<String> = BloomFilter::new();
-        
+
         filter.insert(&"hello".to_string());
-        
+
         // "world" was never inserted, should not contain
         assert!(!filter.contains(&"world".to_string()));
     }

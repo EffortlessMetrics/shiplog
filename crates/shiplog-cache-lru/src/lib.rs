@@ -55,11 +55,11 @@ where
         }
 
         // Evict if at capacity
-        if self.items.len() >= self.capacity {
-            if let Some(lru_key) = self.access_order.first().cloned() {
-                self.items.remove(&lru_key);
-                self.access_order.remove(0);
-            }
+        if self.items.len() >= self.capacity
+            && let Some(lru_key) = self.access_order.first().cloned()
+        {
+            self.items.remove(&lru_key);
+            self.access_order.remove(0);
         }
 
         // Insert new item

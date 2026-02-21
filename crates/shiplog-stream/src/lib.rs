@@ -176,7 +176,9 @@ impl<S: Stream + Unpin> Stream for MeteredStream<S> {
 }
 
 /// Create an iterator stream from an iterable
-pub fn iter_stream<T: Send + Sync + 'static>(iter: impl IntoIterator<Item = T>) -> impl Stream<Item = T> {
+pub fn iter_stream<T: Send + Sync + 'static>(
+    iter: impl IntoIterator<Item = T>,
+) -> impl Stream<Item = T> {
     stream::iter(iter)
 }
 
@@ -199,7 +201,7 @@ mod tests {
             .batch_size(20)
             .name("test-stream")
             .build();
-        
+
         assert_eq!(config.buffer_size, 200);
         assert_eq!(config.batch_size, 20);
         assert_eq!(config.name, "test-stream");
@@ -215,13 +217,13 @@ mod tests {
     fn test_stream_metrics() {
         let mut metrics = StreamMetrics::new();
         assert_eq!(metrics.items_processed, 0);
-        
+
         metrics.record_processed();
         assert_eq!(metrics.items_processed, 1);
-        
+
         metrics.record_filtered();
         assert_eq!(metrics.items_filtered, 1);
-        
+
         metrics.record_error();
         assert_eq!(metrics.errors, 1);
     }
@@ -244,11 +246,11 @@ mod tests {
     async fn test_metered_stream() {
         let s = stream::iter(vec![1, 2, 3]);
         let mut metered = MeteredStream::new(s);
-        
+
         while let Some(_item) = metered.next().await {
             // Process items
         }
-        
+
         assert_eq!(metered.metrics().items_processed, 3);
     }
 }

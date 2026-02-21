@@ -3,7 +3,7 @@
 //! Provides a simple query parser that converts query strings into
 //! filter criteria for searching events.
 
-use shiplog_filter::{filter_events, EventFilter};
+use shiplog_filter::{EventFilter, filter_events};
 use shiplog_schema::event::{EventEnvelope, EventKind, SourceSystem};
 use thiserror::Error;
 
@@ -70,7 +70,7 @@ impl Query {
                         return Err(QueryError::UnknownOperator(format!(
                             "Unknown field: {}",
                             field
-                        )))
+                        )));
                     }
                 };
                 clauses.push(clause);
@@ -111,7 +111,7 @@ impl Query {
                             return Err(QueryError::InvalidValue(format!(
                                 "Unknown kind: {}",
                                 value
-                            )))
+                            )));
                         }
                     };
                     filter = filter.with_event_kind(kind);
@@ -149,7 +149,7 @@ impl Query {
 /// Parse a date string in YYYY-MM-DD format.
 fn parse_date(s: &str) -> Result<chrono::DateTime<chrono::Utc>, QueryError> {
     use chrono::TimeZone;
-    
+
     let parts: Vec<_> = s.split('-').collect();
     if parts.len() != 3 {
         return Err(QueryError::InvalidValue(format!(
@@ -175,7 +175,10 @@ fn parse_date(s: &str) -> Result<chrono::DateTime<chrono::Utc>, QueryError> {
 }
 
 /// Execute a query string against events.
-pub fn query_events(query: &str, events: &[EventEnvelope]) -> Result<Vec<EventEnvelope>, QueryError> {
+pub fn query_events(
+    query: &str,
+    events: &[EventEnvelope],
+) -> Result<Vec<EventEnvelope>, QueryError> {
     let query = Query::parse(query)?;
     query.execute(events)
 }

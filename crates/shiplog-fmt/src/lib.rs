@@ -3,21 +3,16 @@
 //! This crate provides formatting utilities for displaying shiplog data
 //! in various formats.
 
-use chrono::{DateTime, Utc, Duration};
+use chrono::{DateTime, Duration, Utc};
 
 /// Output format for displaying data
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub enum OutputFormat {
+    #[default]
     Plain,
     Compact,
     Detailed,
     Json,
-}
-
-impl Default for OutputFormat {
-    fn default() -> Self {
-        OutputFormat::Plain
-    }
 }
 
 /// Configuration for formatting
@@ -49,7 +44,7 @@ pub fn format_timestamp(dt: &DateTime<Utc>) -> String {
 pub fn format_relative_time(dt: &DateTime<Utc>) -> String {
     let now = Utc::now();
     let diff = now.signed_duration_since(*dt);
-    
+
     if diff.num_days() > 365 {
         let years = diff.num_days() / 365;
         return format!("{} year{} ago", years, if years > 1 { "s" } else { "" });
@@ -59,13 +54,25 @@ pub fn format_relative_time(dt: &DateTime<Utc>) -> String {
         return format!("{} month{} ago", months, if months > 1 { "s" } else { "" });
     }
     if diff.num_days() > 0 {
-        return format!("{} day{} ago", diff.num_days(), if diff.num_days() > 1 { "s" } else { "" });
+        return format!(
+            "{} day{} ago",
+            diff.num_days(),
+            if diff.num_days() > 1 { "s" } else { "" }
+        );
     }
     if diff.num_hours() > 0 {
-        return format!("{} hour{} ago", diff.num_hours(), if diff.num_hours() > 1 { "s" } else { "" });
+        return format!(
+            "{} hour{} ago",
+            diff.num_hours(),
+            if diff.num_hours() > 1 { "s" } else { "" }
+        );
     }
     if diff.num_minutes() > 0 {
-        return format!("{} minute{} ago", diff.num_minutes(), if diff.num_minutes() > 1 { "s" } else { "" });
+        return format!(
+            "{} minute{} ago",
+            diff.num_minutes(),
+            if diff.num_minutes() > 1 { "s" } else { "" }
+        );
     }
     "just now".to_string()
 }
@@ -73,7 +80,7 @@ pub fn format_relative_time(dt: &DateTime<Utc>) -> String {
 /// Format a duration in human-readable form
 pub fn format_duration(duration: Duration) -> String {
     let total_seconds = duration.num_seconds();
-    
+
     if total_seconds < 60 {
         return format!("{}s", total_seconds);
     }
@@ -85,7 +92,7 @@ pub fn format_duration(duration: Duration) -> String {
         }
         return format!("{}m", minutes);
     }
-    
+
     let hours = total_seconds / 3600;
     let minutes = (total_seconds % 3600) / 60;
     if minutes > 0 {
@@ -99,7 +106,7 @@ pub fn format_size(bytes: u64) -> String {
     const KB: u64 = 1024;
     const MB: u64 = KB * 1024;
     const GB: u64 = MB * 1024;
-    
+
     if bytes >= GB {
         return format!("{:.2} GB", bytes as f64 / GB as f64);
     }
@@ -117,9 +124,9 @@ pub fn format_number(n: u64) -> String {
     let s = n.to_string();
     let chars: Vec<char> = s.chars().collect();
     let mut result = String::new();
-    
+
     for (i, c) in chars.iter().enumerate() {
-        if i > 0 && (chars.len() - i) % 3 == 0 {
+        if i > 0 && (chars.len() - i).is_multiple_of(3) {
             result.push(',');
         }
         result.push(*c);

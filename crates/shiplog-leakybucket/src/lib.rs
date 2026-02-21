@@ -77,13 +77,14 @@ impl LeakyBucket {
     /// Try to add an item to the bucket.
     pub fn try_add(&mut self, key: &str) -> bool {
         let now = Utc::now();
-        
-        let state = self.buckets.entry(key.to_string()).or_insert_with(|| {
-            LeakyBucketState {
+
+        let state = self
+            .buckets
+            .entry(key.to_string())
+            .or_insert_with(|| LeakyBucketState {
                 current_level: 0,
                 last_leak: now,
-            }
-        });
+            });
 
         // Leak based on time elapsed
         let elapsed = now - state.last_leak;
@@ -91,7 +92,9 @@ impl LeakyBucket {
             let elapsed_ms = elapsed.num_milliseconds();
             let interval_ms = self.config.leak_interval.num_milliseconds();
             let intervals = (elapsed_ms / interval_ms) as u64;
-            state.current_level = state.current_level.saturating_sub(intervals * self.config.leak_rate);
+            state.current_level = state
+                .current_level
+                .saturating_sub(intervals * self.config.leak_rate);
             state.last_leak = now;
         }
 
@@ -113,7 +116,9 @@ impl LeakyBucket {
                 let elapsed_ms = elapsed.num_milliseconds();
                 let interval_ms = self.config.leak_interval.num_milliseconds();
                 let intervals = (elapsed_ms / interval_ms) as u64;
-                return state.current_level.saturating_sub(intervals * self.config.leak_rate);
+                return state
+                    .current_level
+                    .saturating_sub(intervals * self.config.leak_rate);
             }
             state.current_level
         } else {
@@ -197,7 +202,7 @@ mod tests {
         assert!(bucket.try_add("user1"));
         assert!(bucket.try_add("user1"));
         assert!(bucket.try_add("user1"));
-        
+
         // Should fail when bucket is full
         assert!(!bucket.try_add("user1"));
     }

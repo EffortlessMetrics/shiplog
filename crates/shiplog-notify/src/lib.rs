@@ -60,7 +60,12 @@ pub struct Notification {
 
 impl Notification {
     /// Create a new notification.
-    pub fn new(title: impl Into<String>, message: impl Into<String>, priority: Priority, channel: Channel) -> Self {
+    pub fn new(
+        title: impl Into<String>,
+        message: impl Into<String>,
+        priority: Priority,
+        channel: Channel,
+    ) -> Self {
         let now = Utc::now();
         let id = format!("notif_{}", now.timestamp_millis());
         Self {
@@ -136,7 +141,8 @@ impl NotificationService {
     pub fn send(&self, notification: &Notification) -> anyhow::Result<()> {
         for notifier in &self.notifiers {
             // Only send to matching channel
-            if notifier.channel() == notification.channel || notifier.channel() == Channel::Console {
+            if notifier.channel() == notification.channel || notifier.channel() == Channel::Console
+            {
                 notifier.notify(notification)?;
             }
         }
@@ -144,7 +150,12 @@ impl NotificationService {
     }
 
     /// Send a simple notification to console.
-    pub fn send_simple(&self, title: &str, message: &str, priority: Priority) -> anyhow::Result<()> {
+    pub fn send_simple(
+        &self,
+        title: &str,
+        message: &str,
+        priority: Priority,
+    ) -> anyhow::Result<()> {
         let notification = Notification::new(title, message, priority, Channel::Console);
         self.send(&notification)
     }
@@ -211,7 +222,11 @@ mod tests {
     #[test]
     fn notification_service_simple() {
         let service = NotificationService::default();
-        assert!(service.send_simple("Test", "Message", Priority::Medium).is_ok());
+        assert!(
+            service
+                .send_simple("Test", "Message", Priority::Medium)
+                .is_ok()
+        );
     }
 
     #[test]

@@ -2,8 +2,8 @@
 //!
 //! This crate provides functionality for generating reports from workstream data.
 
-use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 /// Report format
@@ -62,7 +62,11 @@ impl Report {
 
     /// Add a section to the report
     pub fn add_section(&mut self, title: String, content: String, order: usize) {
-        self.sections.push(ReportSection { title, content, order });
+        self.sections.push(ReportSection {
+            title,
+            content,
+            order,
+        });
     }
 
     /// Sort sections by order
@@ -116,7 +120,8 @@ impl ReportGenerator {
         // Add summary section
         let total_events: usize = self.workstreams.values().map(|w| w.event_count).sum();
         let avg_coverage: f64 = if !self.workstreams.is_empty() {
-            self.workstreams.values().map(|w| w.coverage).sum::<f64>() / self.workstreams.len() as f64
+            self.workstreams.values().map(|w| w.coverage).sum::<f64>()
+                / self.workstreams.len() as f64
         } else {
             0.0
         };
@@ -133,10 +138,7 @@ impl ReportGenerator {
         // Add workstream details
         let mut order = 1;
         for ws in self.workstreams.values() {
-            let content = format!(
-                "Events: {}\nCoverage: {:.1}%",
-                ws.event_count, ws.coverage
-            );
+            let content = format!("Events: {}\nCoverage: {:.1}%", ws.event_count, ws.coverage);
             report.add_section(ws.name.clone(), content, order);
             order += 1;
         }
@@ -164,7 +166,7 @@ mod tests {
             Utc::now(),
             ReportFormat::Json,
         );
-        
+
         assert_eq!(report.metadata.title, "Test Report");
         assert!(report.sections.is_empty());
     }
@@ -177,10 +179,14 @@ mod tests {
             Utc::now(),
             ReportFormat::Markdown,
         );
-        
-        report.add_section("Introduction".to_string(), "This is the intro".to_string(), 1);
+
+        report.add_section(
+            "Introduction".to_string(),
+            "This is the intro".to_string(),
+            1,
+        );
         report.add_section("Summary".to_string(), "Summary here".to_string(), 0);
-        
+
         assert_eq!(report.sections.len(), 2);
     }
 
@@ -192,13 +198,13 @@ mod tests {
             Utc::now(),
             ReportFormat::Json,
         );
-        
+
         report.add_section("Third".to_string(), "third".to_string(), 2);
         report.add_section("First".to_string(), "first".to_string(), 0);
         report.add_section("Second".to_string(), "second".to_string(), 1);
-        
+
         report.sort_sections();
-        
+
         assert_eq!(report.sections[0].title, "First");
         assert_eq!(report.sections[1].title, "Second");
         assert_eq!(report.sections[2].title, "Third");
@@ -207,17 +213,17 @@ mod tests {
     #[test]
     fn test_report_generator() {
         let mut generator = ReportGenerator::new();
-        
+
         generator.add_workstream("backend", 50, 85.0);
         generator.add_workstream("frontend", 30, 90.0);
-        
+
         let report = generator.generate(
             "Weekly Report".to_string(),
             Utc::now(),
             Utc::now(),
             ReportFormat::Html,
         );
-        
+
         assert_eq!(report.metadata.title, "Weekly Report");
         assert_eq!(report.sections.len(), 3); // Summary + 2 workstreams
     }
@@ -229,7 +235,7 @@ mod tests {
             event_count: 100,
             coverage: 75.5,
         };
-        
+
         assert_eq!(ws.name, "test");
         assert_eq!(ws.event_count, 100);
         assert_eq!(ws.coverage, 75.5);

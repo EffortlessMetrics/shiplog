@@ -1,5 +1,5 @@
 //! Counter utilities for shiplog.
-//! 
+//!
 //! This crate provides specialized counter functionality including
 //! atomic counters, increment-only counters, and counter aggregation.
 
@@ -159,6 +159,7 @@ impl BoundedCounter {
 /// Delta counter - tracks the change in value since last snapshot
 #[derive(Debug, Clone)]
 pub struct DeltaCounter {
+    #[allow(dead_code)]
     name: String,
     current: u64,
     last_snapshot: u64,
@@ -223,7 +224,9 @@ impl CounterRegistry {
     /// Get or create a counter
     pub fn get_or_create(&mut self, name: impl Into<String> + Clone) -> &mut Counter {
         let key = name.clone().into();
-        self.counters.entry(key).or_insert_with(|| Counter::new(name))
+        self.counters
+            .entry(key)
+            .or_insert_with(|| Counter::new(name))
     }
 
     /// Increment a counter
@@ -264,21 +267,21 @@ mod tests {
     #[test]
     fn counter_basic() {
         let mut counter = Counter::new("requests");
-        
+
         counter.inc();
         counter.inc();
         counter.inc_by(5);
-        
+
         assert_eq!(counter.value(), 7);
     }
 
     #[test]
     fn counter_reset() {
         let mut counter = Counter::new("test");
-        
+
         counter.inc_by(10);
         assert_eq!(counter.value(), 10);
-        
+
         counter.reset();
         assert_eq!(counter.value(), 0);
     }
@@ -293,12 +296,12 @@ mod tests {
     #[test]
     fn wrapping_counter() {
         let mut counter = WrappingCounter::new("wrap", 5);
-        
+
         for _ in 0..5 {
             counter.inc();
         }
         assert_eq!(counter.value(), 5);
-        
+
         counter.inc(); // wraps to 0
         assert_eq!(counter.value(), 0);
     }
@@ -306,7 +309,7 @@ mod tests {
     #[test]
     fn bounded_counter() {
         let mut counter = BoundedCounter::new("bounded", 3);
-        
+
         assert!(counter.try_inc());
         assert!(counter.try_inc());
         assert!(counter.try_inc());
@@ -317,10 +320,10 @@ mod tests {
     #[test]
     fn delta_counter() {
         let mut counter = DeltaCounter::new("delta");
-        
+
         counter.inc_by(10);
         assert_eq!(counter.delta(), 10);
-        
+
         let snap = counter.snapshot();
         assert_eq!(snap, 10);
         assert_eq!(counter.delta(), 0); // delta reset after snapshot
@@ -329,12 +332,12 @@ mod tests {
     #[test]
     fn counter_registry() {
         let mut registry = CounterRegistry::new();
-        
+
         registry.inc("requests");
         registry.inc("requests");
         registry.inc_by("requests", 5);
         registry.inc("errors");
-        
+
         assert_eq!(registry.get("requests").unwrap().value(), 7);
         assert_eq!(registry.get("errors").unwrap().value(), 1);
     }
@@ -342,11 +345,11 @@ mod tests {
     #[test]
     fn counter_registry_total() {
         let mut registry = CounterRegistry::new();
-        
+
         registry.inc_by("a", 10);
         registry.inc_by("b", 20);
         registry.inc_by("c", 30);
-        
+
         assert_eq!(registry.total(), 60);
     }
 }

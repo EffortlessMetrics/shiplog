@@ -2,8 +2,8 @@
 //!
 //! This crate provides regex utilities for the shiplog ecosystem.
 
-use regex::Regex;
 use anyhow::Result;
+use regex::Regex;
 
 /// Compiles a regex pattern
 pub fn compile(pattern: &str) -> Result<Regex> {
@@ -32,15 +32,16 @@ pub fn replace_all(pattern: &str, text: &str, replacement: &str) -> Result<Strin
 pub fn capture_groups(pattern: &str, text: &str) -> Result<Vec<Vec<String>>> {
     let re = compile(pattern)?;
     let mut results = Vec::new();
-    
+
     for cap in re.captures_iter(text) {
-        let groups: Vec<String> = cap.iter()
+        let groups: Vec<String> = cap
+            .iter()
             .skip(1) // Skip the full match
             .filter_map(|m| m.map(|m| m.as_str().to_string()))
             .collect();
         results.push(groups);
     }
-    
+
     Ok(results)
 }
 

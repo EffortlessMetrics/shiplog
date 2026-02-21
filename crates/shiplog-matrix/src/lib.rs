@@ -207,16 +207,13 @@ impl<T: Clone> Grid<T> {
 
     /// Iterate over all occupied positions.
     pub fn occupied(&self) -> impl Iterator<Item = (Position, &T)> {
-        self.cells
-            .iter()
-            .enumerate()
-            .filter_map(|(i, cell)| {
-                cell.as_ref().map(|v| {
-                    let row = i / self.cols;
-                    let col = i % self.cols;
-                    (Position { row, col }, v)
-                })
+        self.cells.iter().enumerate().filter_map(|(i, cell)| {
+            cell.as_ref().map(|v| {
+                let row = i / self.cols;
+                let col = i % self.cols;
+                (Position { row, col }, v)
             })
+        })
     }
 }
 
@@ -245,7 +242,7 @@ mod tests {
         let mut matrix = Matrix::filled(2, 2, 0);
         matrix.set(0, 0, 1);
         matrix.set(1, 1, 2);
-        
+
         assert_eq!(matrix.get(0, 0), Some(&1));
         assert_eq!(matrix.get(1, 1), Some(&2));
     }
@@ -311,7 +308,7 @@ mod tests {
         let mut grid = Grid::new(2, 2);
         grid.set(&Position::new(0, 0), 1);
         grid.set_at(1, 1, 2);
-        
+
         assert_eq!(grid.get(&Position::new(0, 0)), Some(&1));
         assert_eq!(grid.get_at(1, 1), Some(&2));
     }
@@ -321,7 +318,7 @@ mod tests {
         let mut grid = Grid::new(2, 2);
         grid.set(&Position::new(0, 0), 1);
         grid.clear(&Position::new(0, 0));
-        
+
         assert_eq!(grid.get(&Position::new(0, 0)), None);
     }
 
@@ -339,7 +336,7 @@ mod tests {
         let mut grid = Grid::new(2, 2);
         grid.set(&Position::new(0, 0), 1);
         grid.set(&Position::new(1, 1), 2);
-        
+
         let occupied: Vec<_> = grid.occupied().collect();
         assert_eq!(occupied.len(), 2);
     }

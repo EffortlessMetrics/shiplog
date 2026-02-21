@@ -29,7 +29,11 @@ impl<T> PriorityItem<T> {
 
     /// Create with custom sequence number.
     pub fn with_seq(item: T, priority: i32, seq: usize) -> Self {
-        Self { item, priority, seq }
+        Self {
+            item,
+            priority,
+            seq,
+        }
     }
 }
 
@@ -105,7 +109,7 @@ impl<T: Clone> PriorityQueue<T> {
         }
 
         let result = self.data.first().cloned();
-        
+
         if self.data.len() == 1 {
             self.data.pop();
         } else {
@@ -140,11 +144,11 @@ impl<T: Clone> PriorityQueue<T> {
     fn bubble_up(&mut self, mut idx: usize) {
         while idx > 0 {
             let parent = (idx - 1) / 2;
-            
+
             if self.cmp(idx, parent) != Ordering::Greater {
                 break;
             }
-            
+
             self.data.swap(idx, parent);
             idx = parent;
         }
@@ -152,24 +156,24 @@ impl<T: Clone> PriorityQueue<T> {
 
     fn bubble_down(&mut self, mut idx: usize) {
         let n = self.data.len();
-        
+
         loop {
             let left = 2 * idx + 1;
             let right = 2 * idx + 2;
             let mut largest = idx;
-            
+
             if left < n && self.cmp(left, largest) == Ordering::Greater {
                 largest = left;
             }
-            
+
             if right < n && self.cmp(right, largest) == Ordering::Greater {
                 largest = right;
             }
-            
+
             if largest == idx {
                 break;
             }
-            
+
             self.data.swap(idx, largest);
             idx = largest;
         }
@@ -209,13 +213,13 @@ mod tests {
     #[test]
     fn test_priority_queue_push_pop() {
         let mut pq: PriorityQueue<&str> = PriorityQueue::new(10);
-        
+
         pq.push("low", 1).unwrap();
         pq.push("high", 10).unwrap();
         pq.push("medium", 5).unwrap();
-        
+
         assert_eq!(pq.len(), 3);
-        
+
         let item = pq.pop().unwrap();
         assert_eq!(item.item, "high");
         assert_eq!(item.priority, 10);
@@ -224,11 +228,11 @@ mod tests {
     #[test]
     fn test_priority_queue_ordering() {
         let mut pq: PriorityQueue<&str> = PriorityQueue::new(10);
-        
+
         pq.push("a", 1).unwrap();
         pq.push("b", 2).unwrap();
         pq.push("c", 3).unwrap();
-        
+
         assert_eq!(pq.pop().unwrap().item, "c"); // Highest priority
         assert_eq!(pq.pop().unwrap().item, "b");
         assert_eq!(pq.pop().unwrap().item, "a");
@@ -237,11 +241,11 @@ mod tests {
     #[test]
     fn test_priority_queue_same_priority_fifo() {
         let mut pq: PriorityQueue<&str> = PriorityQueue::new(10);
-        
+
         pq.push("first", 5).unwrap();
         pq.push("second", 5).unwrap();
         pq.push("third", 5).unwrap();
-        
+
         assert_eq!(pq.pop().unwrap().item, "first");
         assert_eq!(pq.pop().unwrap().item, "second");
         assert_eq!(pq.pop().unwrap().item, "third");
@@ -250,23 +254,23 @@ mod tests {
     #[test]
     fn test_priority_queue_peek() {
         let mut pq: PriorityQueue<&str> = PriorityQueue::new(10);
-        
+
         pq.push("low", 1).unwrap();
         pq.push("high", 10).unwrap();
-        
+
         let peeked = pq.peek().unwrap();
         assert_eq!(peeked.item, "high");
-        
+
         assert_eq!(pq.len(), 2);
     }
 
     #[test]
     fn test_priority_queue_peek_mut() {
         let mut pq: PriorityQueue<i32> = PriorityQueue::new(10);
-        
+
         pq.push(10, 1).unwrap();
         pq.push(20, 5).unwrap();
-        
+
         // Note: peek_mut allows mutation but doesn't re-heapify
         // The highest priority item (20) is still at the front
         assert_eq!(pq.peek().unwrap().item, 20);
@@ -275,7 +279,7 @@ mod tests {
     #[test]
     fn test_priority_queue_empty() {
         let mut pq: PriorityQueue<i32> = PriorityQueue::new(10);
-        
+
         assert!(pq.is_empty());
         assert_eq!(pq.pop(), None);
         assert_eq!(pq.peek(), None);
@@ -284,12 +288,12 @@ mod tests {
     #[test]
     fn test_priority_queue_full() {
         let mut pq: PriorityQueue<i32> = PriorityQueue::new(2);
-        
+
         pq.push(1, 1).unwrap();
         pq.push(2, 2).unwrap();
-        
+
         assert!(pq.is_full());
-        
+
         let result = pq.push(3, 3);
         assert!(result.is_none());
     }
@@ -297,12 +301,12 @@ mod tests {
     #[test]
     fn test_priority_queue_clear() {
         let mut pq: PriorityQueue<i32> = PriorityQueue::new(10);
-        
+
         pq.push(1, 1).unwrap();
         pq.push(2, 2).unwrap();
-        
+
         assert!(!pq.is_empty());
-        
+
         pq.clear();
         assert!(pq.is_empty());
     }
@@ -310,17 +314,17 @@ mod tests {
     #[test]
     fn test_priority_queue_max_size() {
         let pq: PriorityQueue<i32> = PriorityQueue::new(100);
-        
+
         assert_eq!(pq.max_size(), 100);
     }
 
     #[test]
     fn test_priority_queue_iter() {
         let mut pq: PriorityQueue<i32> = PriorityQueue::new(10);
-        
+
         pq.push(1, 1).unwrap();
         pq.push(2, 2).unwrap();
-        
+
         let sum_priority: i32 = pq.iter().map(|p| p.priority).sum();
         assert_eq!(sum_priority, 3);
     }
@@ -328,25 +332,31 @@ mod tests {
     #[test]
     fn test_priority_queue_unlimited() {
         let mut pq: PriorityQueue<i32> = PriorityQueue::new(usize::MAX);
-        
+
         for i in 0..1000 {
-            pq.push(i, i as i32).unwrap();
+            pq.push(i, i).unwrap();
         }
-        
+
         assert_eq!(pq.len(), 1000);
     }
 
     #[test]
     fn test_priority_item_new() {
         let item = PriorityItem::new("test", 5);
-        
+
         assert_eq!(item.item, "test");
         assert_eq!(item.priority, 5);
     }
 
     #[test]
     fn test_priority_queue_error_display() {
-        assert_eq!(PriorityQueueError::Empty.to_string(), "Priority queue is empty");
-        assert_eq!(PriorityQueueError::Full.to_string(), "Priority queue is full");
+        assert_eq!(
+            PriorityQueueError::Empty.to_string(),
+            "Priority queue is empty"
+        );
+        assert_eq!(
+            PriorityQueueError::Full.to_string(),
+            "Priority queue is full"
+        );
     }
 }

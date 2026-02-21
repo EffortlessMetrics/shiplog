@@ -161,10 +161,7 @@ impl TrackerCollection {
 
     /// Filter items by source.
     pub fn filter_by_source(&self, source: &str) -> Vec<&TrackerItem> {
-        self.items
-            .iter()
-            .filter(|i| i.source == source)
-            .collect()
+        self.items.iter().filter(|i| i.source == source).collect()
     }
 
     /// Get all open issues.

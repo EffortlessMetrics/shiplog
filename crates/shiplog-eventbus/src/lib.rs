@@ -76,7 +76,7 @@ impl EventBus {
         let mut handlers = self.handlers.write().unwrap();
         handlers
             .entry(event_type.to_string())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(Box::new(handler));
     }
 
@@ -131,10 +131,7 @@ impl EventBus {
     /// Get the number of handlers for an event type.
     pub fn handler_count(&self, event_type: &str) -> usize {
         let handlers = self.handlers.read().unwrap();
-        handlers
-            .get(event_type)
-            .map(|h| h.len())
-            .unwrap_or(0)
+        handlers.get(event_type).map(|h| h.len()).unwrap_or(0)
     }
 
     /// Get all registered event types.
@@ -160,7 +157,7 @@ mod tests {
     #[test]
     fn test_event_creation() {
         let event = Event::new("test.event", "payload".to_string(), "source");
-        
+
         assert_eq!(event.event_type, "test.event");
         assert_eq!(event.payload, "payload");
         assert_eq!(event.source, "source");
@@ -173,9 +170,9 @@ mod tests {
         struct Payload {
             value: i32,
         }
-        
+
         let event = Event::with_payload("test", &Payload { value: 42 }, "source");
-        
+
         assert_eq!(event.event_type, "test");
         assert!(event.payload.contains("42"));
     }
@@ -200,10 +197,10 @@ mod tests {
     #[test]
     fn test_eventbus_history() {
         let bus = EventBus::new(10);
-        
+
         bus.emit_simple("event.1", "data1".to_string(), "source");
         bus.emit_simple("event.2", "data2".to_string(), "source");
-        
+
         let history = bus.history();
         assert_eq!(history.len(), 2);
     }
@@ -211,11 +208,11 @@ mod tests {
     #[test]
     fn test_eventbus_history_by_type() {
         let bus = EventBus::new(10);
-        
+
         bus.emit_simple("same.event", "a".to_string(), "source");
         bus.emit_simple("other.event", "b".to_string(), "source");
         bus.emit_simple("same.event", "c".to_string(), "source");
-        
+
         let same_events = bus.history_by_type("same.event");
         assert_eq!(same_events.len(), 2);
     }
@@ -223,10 +220,10 @@ mod tests {
     #[test]
     fn test_eventbus_clear_history() {
         let bus = EventBus::new(10);
-        
+
         bus.emit_simple("event", "data".to_string(), "source");
         assert!(!bus.history().is_empty());
-        
+
         bus.clear_history();
         assert!(bus.history().is_empty());
     }
@@ -234,12 +231,12 @@ mod tests {
     #[test]
     fn test_eventbus_handler_count() {
         let bus = EventBus::new(10);
-        
+
         assert_eq!(bus.handler_count("test"), 0);
-        
+
         bus.subscribe("test", |_: Event| {});
         assert_eq!(bus.handler_count("test"), 1);
-        
+
         bus.subscribe("test", |_: Event| {});
         assert_eq!(bus.handler_count("test"), 2);
     }
@@ -247,10 +244,10 @@ mod tests {
     #[test]
     fn test_eventbus_event_types() {
         let bus = EventBus::new(10);
-        
+
         bus.subscribe("type.a", |_: Event| {});
         bus.subscribe("type.b", |_: Event| {});
-        
+
         let types = bus.event_types();
         assert!(types.contains(&"type.a".to_string()));
         assert!(types.contains(&"type.b".to_string()));
@@ -259,11 +256,11 @@ mod tests {
     #[test]
     fn test_eventbus_history_limit() {
         let bus = EventBus::new(3);
-        
+
         for i in 0..5 {
             bus.emit_simple("event", format!("data{}", i), "source");
         }
-        
+
         assert_eq!(bus.history().len(), 3);
     }
 }

@@ -103,6 +103,7 @@ impl<T> Collector<T> {
 }
 
 /// A simple collector that collects items until a predicate is satisfied
+#[allow(clippy::type_complexity)]
 pub struct ConditionalCollector<T> {
     items: Vec<T>,
     predicate: Box<dyn Fn(&[T]) -> bool>,
@@ -148,41 +149,41 @@ mod tests {
     #[test]
     fn test_collector_basic() {
         let mut collector: Collector<i32> = Collector::new(3);
-        
+
         assert!(collector.is_empty());
-        
+
         collector.push(1);
         collector.push(2);
-        
+
         assert_eq!(collector.len(), 2);
     }
 
     #[test]
     fn test_collector_batch_ready() {
         let mut collector: Collector<i32> = Collector::new(3);
-        
+
         collector.push(1);
         collector.push(2);
-        
+
         assert!(!collector.is_batch_ready());
-        
+
         collector.push(3);
-        
+
         assert!(collector.is_batch_ready());
     }
 
     #[test]
     fn test_collector_drain_batch() {
         let mut collector: Collector<i32> = Collector::new(3);
-        
+
         collector.push(1);
         collector.push(2);
         collector.push(3);
         collector.push(4);
         collector.push(5);
-        
+
         let batch = collector.drain_batch();
-        
+
         assert_eq!(batch, vec![1, 2, 3]);
         assert_eq!(collector.len(), 2); // 4 and 5 remain
     }
@@ -190,13 +191,13 @@ mod tests {
     #[test]
     fn test_collector_drain_all() {
         let mut collector: Collector<i32> = Collector::new(3);
-        
+
         collector.push(1);
         collector.push(2);
         collector.push(3);
-        
+
         let all = collector.drain_all();
-        
+
         assert_eq!(all, vec![1, 2, 3]);
         assert!(collector.is_empty());
     }
@@ -208,9 +209,9 @@ mod tests {
             flush_interval_ms: 500,
             name: "test-collector".to_string(),
         };
-        
+
         let collector: Collector<i32> = Collector::with_config(&config);
-        
+
         assert_eq!(collector.batch_size(), 50);
         assert_eq!(collector.name(), "test-collector");
     }
@@ -218,11 +219,11 @@ mod tests {
     #[test]
     fn test_conditional_collector() {
         let mut collector = ConditionalCollector::new(|items| items.len() >= 3);
-        
+
         assert!(!collector.push(1));
         assert!(!collector.push(2));
         assert!(collector.push(3)); // Now we have 3 items
-        
+
         assert_eq!(collector.len(), 3);
         assert_eq!(collector.collect(), &vec![1, 2, 3]);
     }
@@ -233,9 +234,9 @@ mod tests {
         let mut c = collector;
         c.push(1);
         c.push(2);
-        
+
         let items = c.into_inner();
-        
+
         assert_eq!(items, vec![1, 2]);
     }
 }

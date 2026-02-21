@@ -154,7 +154,7 @@ mod tests {
     fn test_ttl_entry_remaining_ttl() {
         let entry = TtlEntry::new("test", Duration::seconds(3600));
         assert!(entry.remaining_ttl().is_some());
-        
+
         let expired_entry = TtlEntry::new("test", Duration::seconds(-1));
         assert!(expired_entry.remaining_ttl().is_none());
     }
@@ -163,7 +163,7 @@ mod tests {
     fn test_ttl_cache_insert_and_get() {
         let mut cache = TtlCache::new(Duration::seconds(3600));
         cache.insert("key1", "value1");
-        
+
         assert_eq!(cache.get(&"key1"), Some(&"value1"));
         assert!(!cache.contains(&"key2"));
     }
@@ -172,10 +172,10 @@ mod tests {
     fn test_ttl_cache_expired_entry() {
         let mut cache = TtlCache::new(Duration::milliseconds(1));
         cache.insert("key1", "value1");
-        
+
         // Wait for expiration
         std::thread::sleep(std::time::Duration::from_millis(10));
-        
+
         assert!(cache.get(&"key1").is_none());
     }
 
@@ -183,7 +183,7 @@ mod tests {
     fn test_ttl_cache_remove() {
         let mut cache = TtlCache::new(Duration::seconds(3600));
         cache.insert("key1", "value1");
-        
+
         assert_eq!(cache.remove(&"key1"), Some("value1"));
         assert!(cache.is_empty());
     }
@@ -193,7 +193,7 @@ mod tests {
         let mut cache = TtlCache::new(Duration::seconds(-1));
         cache.insert("key1", "value1");
         cache.insert("key2", "value2");
-        
+
         let cleaned = cache.cleanup();
         assert_eq!(cleaned, 2);
         assert!(cache.is_empty());

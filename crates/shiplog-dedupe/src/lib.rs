@@ -255,9 +255,18 @@ mod tests {
         }
 
         let items = vec![
-            Item { id: 1, name: "a".to_string() },
-            Item { id: 2, name: "b".to_string() },
-            Item { id: 1, name: "c".to_string() },
+            Item {
+                id: 1,
+                name: "a".to_string(),
+            },
+            Item {
+                id: 2,
+                name: "b".to_string(),
+            },
+            Item {
+                id: 1,
+                name: "c".to_string(),
+            },
         ];
 
         let result = dedup.deduplicate(&items, |item| item.id.to_string());

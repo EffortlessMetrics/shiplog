@@ -20,6 +20,7 @@ pub struct TeamConfig {
 
 /// Team aggregator
 pub struct TeamAggregator {
+    #[allow(dead_code)]
     config: TeamConfig,
 }
 

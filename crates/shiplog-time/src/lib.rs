@@ -100,7 +100,7 @@ impl TimePeriod {
     pub fn to_range(&self) -> Option<TimeRange> {
         let now = Utc::now();
         let today = now.date_naive();
-        
+
         match self {
             TimePeriod::Today => {
                 let start = today.and_hms_opt(0, 0, 0)?;
@@ -160,10 +160,8 @@ impl TimePeriod {
                 })
             }
             TimePeriod::ThisYear => {
-                let start = NaiveDate::from_ymd_opt(today.year(), 1, 1)?
-                    .and_hms_opt(0, 0, 0)?;
-                let end = NaiveDate::from_ymd_opt(today.year(), 12, 31)?
-                    .and_hms_opt(23, 59, 59)?;
+                let start = NaiveDate::from_ymd_opt(today.year(), 1, 1)?.and_hms_opt(0, 0, 0)?;
+                let end = NaiveDate::from_ymd_opt(today.year(), 12, 31)?.and_hms_opt(23, 59, 59)?;
                 Some(TimeRange {
                     start: DateTime::from_naive_utc_and_offset(start, Utc),
                     end: DateTime::from_naive_utc_and_offset(end, Utc),
@@ -207,14 +205,16 @@ pub fn parse_iso8601(s: &str) -> Option<DateTime<Utc>> {
 
 /// Get the start of the day for a given date.
 pub fn start_of_day(dt: DateTime<Utc>) -> DateTime<Utc> {
-    dt.date_naive().and_hms_opt(0, 0, 0)
+    dt.date_naive()
+        .and_hms_opt(0, 0, 0)
         .map(|d| DateTime::from_naive_utc_and_offset(d, Utc))
         .unwrap_or(dt)
 }
 
 /// Get the end of the day for a given date.
 pub fn end_of_day(dt: DateTime<Utc>) -> DateTime<Utc> {
-    dt.date_naive().and_hms_opt(23, 59, 59)
+    dt.date_naive()
+        .and_hms_opt(23, 59, 59)
         .map(|d| DateTime::from_naive_utc_and_offset(d, Utc))
         .unwrap_or(dt)
 }
@@ -233,9 +233,9 @@ pub fn is_weekend(dt: DateTime<Utc>) -> bool {
 pub fn relative_time(dt: DateTime<Utc>) -> String {
     let now = Utc::now();
     let diff = now - dt;
-    
+
     let secs = diff.num_seconds();
-    
+
     if secs < 60 {
         format!("{} seconds ago", secs)
     } else if secs < 3600 {
@@ -261,10 +261,10 @@ mod tests {
     fn test_time_range_creation() {
         let start = Utc::now();
         let end = start + Duration::hours(1);
-        
+
         let range = TimeRange::new(start, end);
         assert!(range.is_some());
-        
+
         // Invalid range (start > end)
         let invalid = TimeRange::new(end, start);
         assert!(invalid.is_none());
@@ -275,11 +275,11 @@ mod tests {
         let start = Utc::now();
         let end = start + Duration::hours(1);
         let range = TimeRange::new(start, end).unwrap();
-        
+
         // Within range
         let middle = start + Duration::minutes(30);
         assert!(range.contains(middle));
-        
+
         // Outside range
         let after = end + Duration::hours(1);
         assert!(!range.contains(after));
@@ -289,20 +289,26 @@ mod tests {
     fn test_time_range_overlaps() {
         let start1 = Utc::now();
         let end1 = start1 + Duration::hours(2);
-        
+
         let start2 = start1 + Duration::hours(1);
         let end2 = start2 + Duration::hours(2);
-        
+
         let range1 = TimeRange::new(start1, end1).unwrap();
         let range2 = TimeRange::new(start2, end2).unwrap();
-        
+
         assert!(range1.overlaps(&range2));
     }
 
     #[test]
     fn test_duration_helpers() {
-        assert_eq!(DurationHelper::seconds(60).as_duration(), Duration::seconds(60));
-        assert_eq!(DurationHelper::minutes(5).as_duration(), Duration::minutes(5));
+        assert_eq!(
+            DurationHelper::seconds(60).as_duration(),
+            Duration::seconds(60)
+        );
+        assert_eq!(
+            DurationHelper::minutes(5).as_duration(),
+            Duration::minutes(5)
+        );
         assert_eq!(DurationHelper::hours(2).as_duration(), Duration::hours(2));
         assert_eq!(DurationHelper::days(1).as_duration(), Duration::days(1));
         assert_eq!(DurationHelper::weeks(1).as_duration(), Duration::weeks(1));
@@ -313,7 +319,7 @@ mod tests {
         let period = TimePeriod::Today;
         let range = period.to_range();
         assert!(range.is_some());
-        
+
         let r = range.unwrap();
         assert!(r.contains(Utc::now()));
     }
@@ -322,14 +328,14 @@ mod tests {
     fn test_time_period_last_7_days() {
         let period = TimePeriod::Last7Days;
         let range = period.to_range().unwrap();
-        
+
         let now = Utc::now();
-        let seven_days_ago = now - Duration::days(7);
-        
+        let _seven_days_ago = now - Duration::days(7);
+
         // Check range spans roughly 7 days
         assert!(range.duration() >= Duration::days(6));
         assert!(range.duration() <= Duration::days(8));
-        
+
         // Check that old date is not in range
         assert!(!range.contains(now - Duration::days(10)));
     }
@@ -339,13 +345,13 @@ mod tests {
         let dt = DateTime::parse_from_rfc3339("2024-01-15T10:30:00Z")
             .unwrap()
             .with_timezone(&Utc);
-        
+
         let formatted = format_timestamp(dt);
         assert!(formatted.contains("2024-01-15"));
-        
+
         let iso = format_iso8601(dt);
         assert!(iso.contains("2024-01-15"));
-        
+
         let parsed = parse_iso8601(&iso);
         assert!(parsed.is_some());
     }
@@ -353,12 +359,12 @@ mod tests {
     #[test]
     fn test_start_end_of_day() {
         let dt = Utc::now();
-        
+
         let start = start_of_day(dt);
         assert_eq!(start.hour(), 0);
         assert_eq!(start.minute(), 0);
         assert_eq!(start.second(), 0);
-        
+
         let end = end_of_day(dt);
         assert_eq!(end.hour(), 23);
         assert_eq!(end.minute(), 59);
@@ -373,17 +379,17 @@ mod tests {
             .and_hms_opt(12, 0, 0)
             .unwrap();
         let sat_dt = DateTime::from_naive_utc_and_offset(sat, Utc);
-        
+
         assert!(is_weekend(sat_dt));
         assert!(!is_weekday(sat_dt));
-        
+
         // Create a known Monday
         let mon = NaiveDate::from_ymd_opt(2024, 1, 8)
             .unwrap()
             .and_hms_opt(12, 0, 0)
             .unwrap();
         let mon_dt = DateTime::from_naive_utc_and_offset(mon, Utc);
-        
+
         assert!(is_weekday(mon_dt));
         assert!(!is_weekend(mon_dt));
     }

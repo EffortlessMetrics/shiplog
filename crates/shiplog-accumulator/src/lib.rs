@@ -105,7 +105,7 @@ impl<K: std::hash::Hash + Eq + Clone, V> GroupAccumulator<K, V> {
     }
 
     pub fn insert(&mut self, key: K, value: V) {
-        self.groups.entry(key).or_insert_with(Vec::new).push(value);
+        self.groups.entry(key).or_default().push(value);
     }
 
     pub fn get(&self, key: &K) -> Option<&Vec<V>> {
@@ -138,13 +138,13 @@ mod tests {
     #[test]
     fn test_accumulator_basic() {
         let mut acc: Accumulator<i32> = Accumulator::new();
-        
+
         assert!(acc.is_empty());
-        
+
         acc.add(1);
         acc.add(2);
         acc.add(3);
-        
+
         assert_eq!(acc.len(), 3);
         assert_eq!(acc.values(), &[1, 2, 3]);
     }
@@ -154,9 +154,9 @@ mod tests {
         let mut acc: Accumulator<i32> = Accumulator::new();
         acc.add(1);
         acc.add(2);
-        
+
         acc.clear();
-        
+
         assert!(acc.is_empty());
         assert_eq!(acc.len(), 0);
     }
@@ -164,11 +164,11 @@ mod tests {
     #[test]
     fn test_sum_accumulator() {
         let mut acc: SumAccumulator<i32> = SumAccumulator::new();
-        
+
         acc.add(10);
         acc.add(20);
         acc.add(30);
-        
+
         assert_eq!(acc.sum(), 60);
         assert_eq!(acc.count(), 3);
         assert_eq!(acc.average(), Some(20));
@@ -177,7 +177,7 @@ mod tests {
     #[test]
     fn test_sum_accumulator_empty() {
         let acc: SumAccumulator<i32> = SumAccumulator::new();
-        
+
         assert_eq!(acc.sum(), 0);
         assert_eq!(acc.count(), 0);
         assert!(acc.average().is_none());
@@ -186,14 +186,14 @@ mod tests {
     #[test]
     fn test_group_accumulator() {
         let mut acc: GroupAccumulator<&str, i32> = GroupAccumulator::new();
-        
+
         acc.insert("even", 2);
         acc.insert("even", 4);
         acc.insert("odd", 1);
         acc.insert("odd", 3);
-        
+
         assert_eq!(acc.len(), 2);
-        
+
         assert_eq!(acc.get(&"even"), Some(&vec![2, 4]));
         assert_eq!(acc.get(&"odd"), Some(&vec![1, 3]));
     }
@@ -201,7 +201,7 @@ mod tests {
     #[test]
     fn test_group_accumulator_empty() {
         let acc: GroupAccumulator<&str, i32> = GroupAccumulator::new();
-        
+
         assert!(acc.is_empty());
         assert_eq!(acc.len(), 0);
     }

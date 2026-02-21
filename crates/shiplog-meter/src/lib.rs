@@ -1,5 +1,5 @@
 //! Metering utilities for shiplog.
-//! 
+//!
 //! This crate provides utilities for measuring rates, throughput, and timing.
 
 use serde::{Deserialize, Serialize};
@@ -83,7 +83,9 @@ impl MeterRegistry {
     /// Get or create a meter
     pub fn get_or_create(&mut self, name: impl Into<String> + Clone) -> &mut MeterData {
         let key = name.clone().into();
-        self.meters.entry(key).or_insert_with(|| MeterData::new(name))
+        self.meters
+            .entry(key)
+            .or_insert_with(|| MeterData::new(name))
     }
 
     /// Record an event on a meter
@@ -123,6 +125,7 @@ impl MeterRegistry {
 /// Timing context for measuring duration
 pub struct TimingContext {
     start: Instant,
+    #[allow(dead_code)]
     name: String,
 }
 
@@ -178,7 +181,7 @@ impl TimingRecorder {
     pub fn record(&mut self, name: impl Into<String>, duration_secs: f64) {
         self.timings
             .entry(name.into())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(duration_secs);
     }
 
@@ -254,22 +257,22 @@ mod tests {
     #[test]
     fn meter_data() {
         let mut meter = MeterData::new("test");
-        
+
         meter.record();
         meter.record();
         meter.record_many(5);
-        
+
         assert_eq!(meter.count, 7);
     }
 
     #[test]
     fn meter_registry() {
         let mut registry = MeterRegistry::new();
-        
+
         registry.record("api_calls");
         registry.record("api_calls");
         registry.record_many("api_calls", 5);
-        
+
         let meter = registry.get("api_calls").unwrap();
         assert_eq!(meter.count, 7);
     }
@@ -283,13 +286,13 @@ mod tests {
     #[test]
     fn timing_recorder() {
         let mut recorder = TimingRecorder::new();
-        
+
         recorder.record("query", 0.1);
         recorder.record("query", 0.2);
         recorder.record("query", 0.3);
-        
+
         let stats = recorder.stats("query").unwrap();
-        
+
         assert_eq!(stats.count, 3);
         assert!((stats.sum - 0.6).abs() < 0.001);
     }
@@ -297,13 +300,13 @@ mod tests {
     #[test]
     fn timing_stats_percentiles() {
         let mut recorder = TimingRecorder::new();
-        
+
         for i in 1..=100 {
             recorder.record("latency", i as f64);
         }
-        
+
         let stats = recorder.stats("latency").unwrap();
-        
+
         assert_eq!(stats.count, 100);
         assert!(stats.p50 > 0.0);
         assert!(stats.p95 > stats.p50);
@@ -313,10 +316,10 @@ mod tests {
     #[test]
     fn timing_recorder_names() {
         let mut recorder = TimingRecorder::new();
-        
+
         recorder.record("op1", 0.1);
         recorder.record("op2", 0.2);
-        
+
         let names = recorder.names();
         assert_eq!(names.len(), 2);
     }

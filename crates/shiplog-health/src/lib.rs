@@ -8,21 +8,16 @@ use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
 
 /// Health status of a component
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum HealthStatus {
     /// Component is healthy
+    #[default]
     Healthy,
     /// Component is degraded but working
     Degraded,
     /// Component is unhealthy
     Unhealthy,
-}
-
-impl Default for HealthStatus {
-    fn default() -> Self {
-        Self::Healthy
-    }
 }
 
 impl std::fmt::Display for HealthStatus {
@@ -132,7 +127,7 @@ impl HealthRegistry {
     /// Returns the overall health status
     pub async fn overall_status(&self) -> HealthStatus {
         let results = self.check_all().await;
-        
+
         if results.iter().any(|r| r.status == HealthStatus::Unhealthy) {
             HealthStatus::Unhealthy
         } else if results.iter().any(|r| r.status == HealthStatus::Degraded) {
@@ -282,18 +277,18 @@ mod tests {
     #[tokio::test]
     async fn test_health_registry() {
         let registry = HealthRegistry::new();
-        
+
         assert!(registry.is_empty().await);
         assert_eq!(registry.len().await, 0);
-        
+
         // Register a simple health check
-        registry.register_simple("test_check", || {
-            HealthCheckResult::healthy("test_check")
-        }).await;
-        
+        registry
+            .register_simple("test_check", || HealthCheckResult::healthy("test_check"))
+            .await;
+
         assert!(!registry.is_empty().await);
         assert_eq!(registry.len().await, 1);
-        
+
         // Check all
         let results = registry.check_all().await;
         assert_eq!(results.len(), 1);
@@ -303,38 +298,42 @@ mod tests {
     #[tokio::test]
     async fn test_health_registry_overall_status() {
         let registry = HealthRegistry::new();
-        
+
         // Register a healthy check
-        registry.register_simple("healthy", || {
-            HealthCheckResult::healthy("healthy")
-        }).await;
-        
+        registry
+            .register_simple("healthy", || HealthCheckResult::healthy("healthy"))
+            .await;
+
         assert_eq!(registry.overall_status().await, HealthStatus::Healthy);
-        
+
         // Add a degraded check
-        registry.register_simple("degraded", || {
-            HealthCheckResult::degraded("degraded", "slow")
-        }).await;
-        
+        registry
+            .register_simple("degraded", || {
+                HealthCheckResult::degraded("degraded", "slow")
+            })
+            .await;
+
         assert_eq!(registry.overall_status().await, HealthStatus::Degraded);
-        
+
         // Add an unhealthy check
-        registry.register_simple("unhealthy", || {
-            HealthCheckResult::unhealthy("unhealthy", "broken")
-        }).await;
-        
+        registry
+            .register_simple("unhealthy", || {
+                HealthCheckResult::unhealthy("unhealthy", "broken")
+            })
+            .await;
+
         assert_eq!(registry.overall_status().await, HealthStatus::Unhealthy);
     }
 
     #[tokio::test]
     async fn test_health_monitor() {
         let monitor = HealthMonitor::new(Duration::from_secs(60));
-        
+
         assert_eq!(monitor.get_status().await, HealthStatus::Healthy);
-        
+
         monitor.set_status(HealthStatus::Degraded).await;
         assert_eq!(monitor.get_status().await, HealthStatus::Degraded);
-        
+
         assert!(monitor.time_since_last_check().await.is_some());
         assert_eq!(monitor.check_interval(), Duration::from_secs(60));
     }
@@ -342,12 +341,12 @@ mod tests {
     #[tokio::test]
     async fn test_readiness_check() {
         let check = ReadinessCheck::new();
-        
+
         assert!(!check.is_ready().await);
-        
+
         check.set_ready().await;
         assert!(check.is_ready().await);
-        
+
         check.set_not_ready().await;
         assert!(!check.is_ready().await);
     }

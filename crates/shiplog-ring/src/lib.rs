@@ -28,11 +28,11 @@ impl<T: Clone> RingBuffer<T> {
     /// Creates a new Ring Buffer with the specified capacity and fills it with initial values
     pub fn from_vec(capacity: usize, data: Vec<T>) -> Self {
         let mut buffer = Self::new(capacity);
-        
+
         for item in data {
             let _ = buffer.push(item);
         }
-        
+
         buffer
     }
 
@@ -48,10 +48,10 @@ impl<T: Clone> RingBuffer<T> {
             self.count += 1;
             None
         };
-        
+
         self.buffer[self.head] = Some(item);
         self.head = (self.head + 1) % self.capacity;
-        
+
         overwritten
     }
 
@@ -60,11 +60,11 @@ impl<T: Clone> RingBuffer<T> {
         if self.count == 0 {
             return None;
         }
-        
+
         self.count -= 1;
         let item = self.buffer[self.tail].take();
         self.tail = (self.tail + 1) % self.capacity;
-        
+
         item
     }
 
@@ -80,7 +80,7 @@ impl<T: Clone> RingBuffer<T> {
         } else {
             self.head - 1
         };
-        
+
         self.buffer[back_idx].as_ref()
     }
 
@@ -122,11 +122,11 @@ impl<T: Clone> RingBuffer<T> {
     /// Returns all items as a vector (in order from oldest to newest)
     pub fn to_vec(&self) -> Vec<T> {
         let mut result = Vec::with_capacity(self.count);
-        
+
         if self.count == 0 {
             return result;
         }
-        
+
         let mut idx = self.tail;
         for _ in 0..self.count {
             if let Some(ref item) = self.buffer[idx] {
@@ -134,7 +134,7 @@ impl<T: Clone> RingBuffer<T> {
             }
             idx = (idx + 1) % self.capacity;
         }
-        
+
         result
     }
 }
@@ -214,32 +214,32 @@ mod tests {
     #[test]
     fn test_ring_buffer_push_pop() {
         let mut buffer: RingBuffer<i32> = RingBuffer::new(3);
-        
+
         assert!(buffer.push(1).is_none());
         assert!(buffer.push(2).is_none());
         assert!(buffer.push(3).is_none());
-        
+
         assert!(buffer.is_full());
-        
+
         assert_eq!(buffer.pop(), Some(1));
         assert_eq!(buffer.pop(), Some(2));
         assert_eq!(buffer.pop(), Some(3));
-        
+
         assert!(buffer.is_empty());
     }
 
     #[test]
     fn test_ring_buffer_overflow() {
         let mut buffer: RingBuffer<i32> = RingBuffer::new(3);
-        
+
         buffer.push(1);
         buffer.push(2);
         buffer.push(3);
-        
+
         // This should overwrite the oldest (1)
         let overwritten = buffer.push(4);
         assert_eq!(overwritten, Some(1));
-        
+
         // Order should be 2, 3, 4
         assert_eq!(buffer.pop(), Some(2));
         assert_eq!(buffer.pop(), Some(3));
@@ -249,10 +249,10 @@ mod tests {
     #[test]
     fn test_ring_buffer_front_back() {
         let mut buffer: RingBuffer<i32> = RingBuffer::new(3);
-        
+
         buffer.push(1);
         buffer.push(2);
-        
+
         assert_eq!(buffer.front(), Some(&1));
         assert_eq!(buffer.back(), Some(&2));
     }
@@ -260,11 +260,11 @@ mod tests {
     #[test]
     fn test_ring_buffer_clear() {
         let mut buffer: RingBuffer<i32> = RingBuffer::new(3);
-        
+
         buffer.push(1);
         buffer.push(2);
         buffer.clear();
-        
+
         assert!(buffer.is_empty());
         assert_eq!(buffer.front(), None);
     }
@@ -272,18 +272,18 @@ mod tests {
     #[test]
     fn test_ring_buffer_to_vec() {
         let mut buffer: RingBuffer<i32> = RingBuffer::new(5);
-        
+
         buffer.push(1);
         buffer.push(2);
         buffer.push(3);
-        
+
         assert_eq!(buffer.to_vec(), vec![1, 2, 3]);
     }
 
     #[test]
     fn test_ring_buffer_from_vec() {
         let buffer = RingBuffer::from_vec(5, vec![1, 2, 3]);
-        
+
         assert_eq!(buffer.len(), 3);
         assert_eq!(buffer.to_vec(), vec![1, 2, 3]);
     }
@@ -291,19 +291,19 @@ mod tests {
     #[test]
     fn test_ring_buffer_wrap_around() {
         let mut buffer: RingBuffer<i32> = RingBuffer::new(3);
-        
+
         // Fill the buffer
         buffer.push(1);
         buffer.push(2);
         buffer.push(3);
-        
+
         // Pop one (removes 1)
         buffer.pop();
-        
+
         // Add two more - should wrap around
         buffer.push(4);
         buffer.push(5);
-        
+
         // Now we should have: 3, 4, 5
         assert_eq!(buffer.to_vec(), vec![3, 4, 5]);
     }
@@ -311,34 +311,31 @@ mod tests {
     #[test]
     fn test_ring_buffer_available_space() {
         let mut buffer: RingBuffer<i32> = RingBuffer::new(3);
-        
+
         assert_eq!(buffer.available_space(), 3);
-        
+
         buffer.push(1);
         assert_eq!(buffer.available_space(), 2);
-        
+
         buffer.push(2);
         buffer.push(3);
         assert_eq!(buffer.available_space(), 0);
-        
+
         buffer.pop();
         assert_eq!(buffer.available_space(), 1);
     }
 
     #[test]
     fn test_ring_builder() {
-        let buffer: RingBuffer<i32> = RingBuilder::new()
-            .capacity(10)
-            .overwrite(true)
-            .build();
-        
+        let buffer: RingBuffer<i32> = RingBuilder::new().capacity(10).overwrite(true).build();
+
         assert_eq!(buffer.capacity(), 10);
     }
 
     #[test]
     fn test_ring_config_default() {
         let config = RingConfig::default();
-        
+
         assert_eq!(config.capacity, 64);
         assert!(config.overwrite);
     }

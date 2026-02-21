@@ -138,10 +138,7 @@ impl TaskScope {
 
     /// Check if there were any errors
     pub fn has_errors(&self) -> bool {
-        self.errors
-            .lock()
-            .map(|e| !e.is_empty())
-            .unwrap_or(false)
+        self.errors.lock().map(|e| !e.is_empty()).unwrap_or(false)
     }
 }
 
@@ -287,9 +284,7 @@ mod tests {
     fn test_scoped_task() {
         let scope = Arc::new(TaskScope::default_scope());
 
-        let task = scope.spawn(|s| {
-            42
-        });
+        let task = scope.spawn(|_s| 42);
 
         assert!(task.is_some());
         let task = task.unwrap();

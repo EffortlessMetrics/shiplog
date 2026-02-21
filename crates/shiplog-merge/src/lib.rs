@@ -68,37 +68,59 @@ pub fn merge_two(
 /// Calculate a completeness score for an event (higher = more complete).
 fn completeness_score(event: &EventEnvelope) -> u32 {
     let mut score = 0;
-    
+
     // Check payload completeness
     match &event.payload {
         shiplog_schema::event::EventPayload::PullRequest(pr) => {
             score += 10;
-            if pr.additions.is_some() { score += 1; }
-            if pr.deletions.is_some() { score += 1; }
-            if pr.changed_files.is_some() { score += 1; }
-            if !pr.touched_paths_hint.is_empty() { score += 1; }
+            if pr.additions.is_some() {
+                score += 1;
+            }
+            if pr.deletions.is_some() {
+                score += 1;
+            }
+            if pr.changed_files.is_some() {
+                score += 1;
+            }
+            if !pr.touched_paths_hint.is_empty() {
+                score += 1;
+            }
         }
         shiplog_schema::event::EventPayload::Review(r) => {
             score += 8;
-            if !r.pull_title.is_empty() { score += 1; }
+            if !r.pull_title.is_empty() {
+                score += 1;
+            }
         }
         shiplog_schema::event::EventPayload::Manual(m) => {
             score += 5;
-            if m.description.is_some() { score += 2; }
-            if m.impact.is_some() { score += 2; }
+            if m.description.is_some() {
+                score += 2;
+            }
+            if m.impact.is_some() {
+                score += 2;
+            }
         }
     }
-    
+
     // Check source completeness
-    if event.source.url.is_some() { score += 1; }
-    if event.source.opaque_id.is_some() { score += 1; }
-    
+    if event.source.url.is_some() {
+        score += 1;
+    }
+    if event.source.opaque_id.is_some() {
+        score += 1;
+    }
+
     // Check links
-    if !event.links.is_empty() { score += 2; }
-    
+    if !event.links.is_empty() {
+        score += 2;
+    }
+
     // Check tags
-    if !event.tags.is_empty() { score += 1; }
-    
+    if !event.tags.is_empty() {
+        score += 1;
+    }
+
     score
 }
 
@@ -164,7 +186,7 @@ mod tests {
     fn merge_deduplicates_by_id() {
         let event1 = make_event("1", Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap());
         let event2 = make_event("1", Utc.with_ymd_and_hms(2025, 1, 2, 0, 0, 0).unwrap());
-        
+
         let result = merge_events(
             vec![vec![event1.clone()], vec![event2.clone()]],
             &MergeStrategy::KeepLast,
@@ -177,7 +199,7 @@ mod tests {
     fn merge_keeps_first_strategy() {
         let event1 = make_event("1", Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap());
         let event2 = make_event("1", Utc.with_ymd_and_hms(2025, 1, 2, 0, 0, 0).unwrap());
-        
+
         let result = merge_events(
             vec![vec![event1.clone()], vec![event2]],
             &MergeStrategy::KeepFirst,
@@ -190,7 +212,7 @@ mod tests {
     fn merge_keeps_last_strategy() {
         let event1 = make_event("1", Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap());
         let event2 = make_event("1", Utc.with_ymd_and_hms(2025, 1, 2, 0, 0, 0).unwrap());
-        
+
         let result = merge_events(
             vec![vec![event1], vec![event2.clone()]],
             &MergeStrategy::KeepLast,
@@ -201,13 +223,15 @@ mod tests {
 
     #[test]
     fn merge_two_helper() {
-        let left = vec![
-            make_event("1", Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap()),
-        ];
-        let right = vec![
-            make_event("2", Utc.with_ymd_and_hms(2025, 1, 2, 0, 0, 0).unwrap()),
-        ];
-        
+        let left = vec![make_event(
+            "1",
+            Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap(),
+        )];
+        let right = vec![make_event(
+            "2",
+            Utc.with_ymd_and_hms(2025, 1, 2, 0, 0, 0).unwrap(),
+        )];
+
         let result = merge_two(&left, &right, &MergeStrategy::default());
         assert_eq!(result.len(), 2);
     }
@@ -219,9 +243,9 @@ mod tests {
             make_event("b", Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap()),
             make_event("c", Utc.with_ymd_and_hms(2025, 1, 2, 0, 0, 0).unwrap()),
         ];
-        
+
         let result = merge_events(vec![events], &MergeStrategy::default());
-        
+
         // Should be sorted by occurred_at (Jan 1, Jan 2, Jan 3)
         assert_eq!(result.len(), 3);
         assert!(result[0].occurred_at <= result[1].occurred_at);

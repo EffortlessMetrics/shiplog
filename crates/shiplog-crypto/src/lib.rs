@@ -6,17 +6,13 @@ use sha2::{Digest, Sha256, Sha512};
 /// Hash algorithm selection
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum HashAlgorithm {
     /// SHA-256 hash (default)
+    #[default]
     Sha256,
     /// SHA-512 hash
     Sha512,
-}
-
-impl Default for HashAlgorithm {
-    fn default() -> Self {
-        HashAlgorithm::Sha256
-    }
 }
 
 /// Computed hash with metadata
@@ -110,17 +106,20 @@ mod tests {
     fn sha256_hash() {
         let data = b"hello world";
         let hash = Hash::sha256(data);
-        
+
         assert_eq!(hash.algorithm, HashAlgorithm::Sha256);
         // Known SHA-256 hash of "hello world"
-        assert_eq!(hash.value, "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9");
+        assert_eq!(
+            hash.value,
+            "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9"
+        );
     }
 
     #[test]
     fn sha512_hash() {
         let data = b"hello world";
         let hash = Hash::sha512(data);
-        
+
         assert_eq!(hash.algorithm, HashAlgorithm::Sha512);
     }
 
@@ -128,7 +127,7 @@ mod tests {
     fn hash_verify() {
         let data = b"test data";
         let hash = Hash::sha256(data);
-        
+
         assert!(hash.verify(data));
         assert!(!hash.verify(b"other data"));
     }
@@ -136,11 +135,11 @@ mod tests {
     #[test]
     fn xor_cipher() {
         let cipher = XorCipher::new(b"secret_key");
-        
+
         let plaintext = b"Hello, World!";
         let encrypted = cipher.encrypt(plaintext);
         let decrypted = cipher.decrypt(&encrypted);
-        
+
         assert_eq!(plaintext.to_vec(), decrypted);
     }
 

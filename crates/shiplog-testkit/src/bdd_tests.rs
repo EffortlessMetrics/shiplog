@@ -371,7 +371,7 @@ mod edge_case_tests {
             .then("the event should not have broken link markers", |ctx| {
                 // Should render cleanly without null/none link references
                 assert_true(
-                    ctx.flag("has_links").unwrap_or(false) == false,
+                    !ctx.flag("has_links").unwrap_or(false),
                     "no links flag preserved",
                 )
             });
@@ -492,7 +492,7 @@ mod edge_case_tests {
             .then("the output should not panic", |ctx| {
                 assert_true(ctx.flag("redacted").unwrap_or(false), "redacted flag")
             })
-            .then("empty fields should be handled gracefully", |ctx| {
+            .then("empty fields should be handled gracefully", |_ctx| {
                 // Should render without errors
                 assert_true(true, "empty fields handled")
             });
@@ -519,7 +519,7 @@ mod edge_case_tests {
                 Ok(())
             })
             .then("the ledger should be consistent", |ctx| {
-                assert_true(
+                let _ = assert_true(
                     ctx.flag("first_complete").unwrap_or(false),
                     "first refresh complete",
                 );

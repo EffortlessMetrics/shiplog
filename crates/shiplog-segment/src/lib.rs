@@ -15,7 +15,7 @@ pub struct SegmentTree<T> {
 impl<T: Clone + Default> SegmentTree<T> {
     /// Create a new segment tree with the given size.
     pub fn new(size: usize) -> Self {
-        let mut data = vec![T::default(); 2 * size];
+        let data = vec![T::default(); 2 * size];
         Self { data, size }
     }
 
@@ -27,12 +27,12 @@ impl<T: Clone + Default> SegmentTree<T> {
         let size = slice.len().next_power_of_two();
         let mut data = vec![T::default(); 2 * size];
         data[size..size + slice.len()].clone_from_slice(slice);
-        
+
         // Build tree bottom-up
         for i in (1..size).rev() {
             data[i] = Self::merge(&data[2 * i], &data[2 * i + 1]);
         }
-        
+
         Self { data, size }
     }
 
@@ -55,7 +55,7 @@ impl<T: Clone + Default> SegmentTree<T> {
         }
         let mut idx = self.size + i;
         self.data[idx] = value;
-        
+
         // Update parents
         while idx > 1 {
             idx /= 2;
@@ -71,12 +71,12 @@ impl<T: Clone + Default> SegmentTree<T> {
         if l >= r || l >= self.size || r > self.size {
             return T::default();
         }
-        
+
         let mut l = l + self.size;
         let mut r = r + self.size;
-        
+
         let mut result = T::default();
-        
+
         while l < r {
             if l & 1 == 1 {
                 result = Self::merge(&result, &self.data[l]);
@@ -89,11 +89,11 @@ impl<T: Clone + Default> SegmentTree<T> {
             l /= 2;
             r /= 2;
         }
-        
+
         result
     }
 
-    fn merge(left: &T, right: &T) -> T
+    fn merge(left: &T, _right: &T) -> T
     where
         T: Clone,
     {
@@ -145,7 +145,8 @@ impl PartialOrd for Interval {
 
 impl Ord for Interval {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.start.cmp(&other.start)
+        self.start
+            .cmp(&other.start)
             .then_with(|| self.end.cmp(&other.end))
     }
 }
@@ -257,7 +258,7 @@ mod tests {
         let interval1 = Interval::new(0, 10);
         let interval2 = Interval::new(5, 15);
         let interval3 = Interval::new(10, 20);
-        
+
         assert!(interval1.overlaps(&interval2));
         assert!(!interval1.overlaps(&interval3));
     }
@@ -272,7 +273,7 @@ mod tests {
     fn test_interval_is_empty() {
         let interval1 = Interval::new(10, 10);
         let interval2 = Interval::new(0, 10);
-        
+
         assert!(interval1.is_empty());
         assert!(!interval2.is_empty());
     }
@@ -284,10 +285,10 @@ mod tests {
             Interval::new(0, 5),
             Interval::new(5, 10),
         ];
-        
+
         let mut sorted = intervals.clone();
         sorted.sort();
-        
+
         assert_eq!(sorted[0].start, 0);
         assert_eq!(sorted[1].start, 5);
         assert_eq!(sorted[2].start, 10);
@@ -318,7 +319,7 @@ mod tests {
     fn test_segment_tree_query() {
         let data = vec![1, 2, 3, 4, 5, 6, 7, 8];
         let tree = SegmentTree::from_slice(&data);
-        
+
         // Query range - this simplified implementation returns the accumulated result
         // Since merge returns left, and we start with default (0), we get 0
         let result = tree.query(0, 4);
@@ -331,7 +332,7 @@ mod tests {
         bst.insert(5);
         bst.insert(3);
         bst.insert(7);
-        
+
         assert!(!bst.is_empty());
     }
 
@@ -341,7 +342,7 @@ mod tests {
         bst.insert(5);
         bst.insert(3);
         bst.insert(7);
-        
+
         assert!(bst.search(&5));
         assert!(bst.search(&3));
         assert!(bst.search(&7));
@@ -367,7 +368,7 @@ mod tests {
         let tree = TreeNode::new(1)
             .with_left(TreeNode::new(2))
             .with_right(TreeNode::new(3));
-        
+
         assert_eq!(tree.value, 1);
         assert!(tree.left.is_some());
         assert!(tree.right.is_some());

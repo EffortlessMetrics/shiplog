@@ -47,7 +47,9 @@ pub fn is_http(url: &Url) -> bool {
 
 /// Gets a query parameter value by name
 pub fn get_query_param<'a>(url: &'a Url, name: &str) -> Option<Cow<'a, str>> {
-    url.query_pairs().find(|(key, _)| key == name).map(|(_, value)| value)
+    url.query_pairs()
+        .find(|(key, _)| key == name)
+        .map(|(_, value)| value)
 }
 
 /// Builds a URL from parts
@@ -107,7 +109,7 @@ mod tests {
     fn test_is_https() {
         let url = parse_url("https://example.com").unwrap();
         assert!(is_https(&url));
-        
+
         let http_url = parse_url("http://example.com").unwrap();
         assert!(!is_https(&http_url));
     }
@@ -121,8 +123,14 @@ mod tests {
     #[test]
     fn test_get_query_param() {
         let url = parse_url("https://example.com?foo=bar&baz=qux").unwrap();
-        assert_eq!(get_query_param(&url, "foo"), Some(std::borrow::Cow::Borrowed("bar")));
-        assert_eq!(get_query_param(&url, "baz"), Some(std::borrow::Cow::Borrowed("qux")));
+        assert_eq!(
+            get_query_param(&url, "foo"),
+            Some(std::borrow::Cow::Borrowed("bar"))
+        );
+        assert_eq!(
+            get_query_param(&url, "baz"),
+            Some(std::borrow::Cow::Borrowed("qux"))
+        );
         assert_eq!(get_query_param(&url, "missing"), None);
     }
 
@@ -130,7 +138,7 @@ mod tests {
     fn test_build_url() {
         let url = build_url("https", "example.com", Some(8080), "/path");
         assert_eq!(url, "https://example.com:8080/path");
-        
+
         let url_no_port = build_url("https", "example.com", None, "/path");
         assert_eq!(url_no_port, "https://example.com/path");
     }

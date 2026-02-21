@@ -3,8 +3,8 @@
 //! This crate provides delayed queue data structures for managing
 //! items that should be processed after a specified delay.
 
-use std::collections::{BinaryHeap, HashMap};
 use std::cmp::Ordering;
+use std::collections::{BinaryHeap, HashMap};
 use std::time::{Duration, Instant};
 
 /// An entry in the delay queue
@@ -73,21 +73,21 @@ impl<T: Eq> DelayQueue<T> {
     pub fn insert(&mut self, data: T, delay: Duration) -> u64 {
         let id = self.next_id;
         self.next_id += 1;
-        
+
         let item = DelayItem::new(id, data, delay);
         self.heap.push(item);
         self.len += 1;
-        
+
         id
     }
 
     /// Try to pop an item that's ready (deadline passed)
     pub fn try_pop(&mut self) -> Option<DelayItem<T>> {
-        if let Some(item) = self.heap.peek() {
-            if item.is_ready() {
-                self.len -= 1;
-                return self.heap.pop();
-            }
+        if let Some(item) = self.heap.peek()
+            && item.is_ready()
+        {
+            self.len -= 1;
+            return self.heap.pop();
         }
         None
     }
@@ -95,7 +95,7 @@ impl<T: Eq> DelayQueue<T> {
     /// Pop all ready items
     pub fn pop_all_ready(&mut self) -> Vec<DelayItem<T>> {
         let mut ready = Vec::new();
-        
+
         while let Some(item) = self.heap.peek() {
             if item.is_ready() {
                 self.len -= 1;
@@ -104,7 +104,7 @@ impl<T: Eq> DelayQueue<T> {
                 break;
             }
         }
-        
+
         ready
     }
 
@@ -136,7 +136,7 @@ impl<T: Eq> DelayQueue<T> {
         // This is O(n) - for frequent removals, consider a different structure
         let mut found = None;
         let mut temp = BinaryHeap::new();
-        
+
         while let Some(item) = self.heap.pop() {
             if item.id == id {
                 found = Some(item);
@@ -146,12 +146,12 @@ impl<T: Eq> DelayQueue<T> {
                 temp.push(item);
             }
         }
-        
+
         // Put back remaining items
         while let Some(item) = temp.pop() {
             self.heap.push(item);
         }
-        
+
         found
     }
 
@@ -289,7 +289,7 @@ mod tests {
     #[test]
     fn test_delay_item() {
         let item = DelayItem::new(1, "test", Duration::from_millis(100));
-        
+
         assert_eq!(item.id, 1);
         assert!(!item.is_ready());
     }
@@ -297,10 +297,10 @@ mod tests {
     #[test]
     fn test_delay_queue_insert() {
         let mut queue: DelayQueue<i32> = DelayQueue::new();
-        
+
         let id1 = queue.insert(1, Duration::from_millis(100));
         let id2 = queue.insert(2, Duration::from_millis(50));
-        
+
         assert_eq!(id1, 0);
         assert_eq!(id2, 1);
         assert_eq!(queue.len(), 2);
@@ -309,9 +309,9 @@ mod tests {
     #[test]
     fn test_delay_queue_pop_not_ready() {
         let mut queue: DelayQueue<i32> = DelayQueue::new();
-        
+
         queue.insert(1, Duration::from_millis(100));
-        
+
         let item = queue.try_pop();
         assert!(item.is_none());
     }
@@ -319,11 +319,11 @@ mod tests {
     #[test]
     fn test_delay_queue_pop_ready() {
         let mut queue: DelayQueue<i32> = DelayQueue::new();
-        
+
         queue.insert(1, Duration::from_millis(10));
-        
+
         thread::sleep(Duration::from_millis(20));
-        
+
         let item = queue.try_pop();
         assert!(item.is_some());
         assert_eq!(item.unwrap().data, 1);
@@ -332,12 +332,12 @@ mod tests {
     #[test]
     fn test_delay_queue_pop_all_ready() {
         let mut queue: DelayQueue<i32> = DelayQueue::new();
-        
+
         queue.insert(1, Duration::from_millis(10));
         queue.insert(2, Duration::from_millis(10));
-        
+
         thread::sleep(Duration::from_millis(20));
-        
+
         let items = queue.pop_all_ready();
         assert_eq!(items.len(), 2);
     }
@@ -345,22 +345,22 @@ mod tests {
     #[test]
     fn test_delay_queue_peek() {
         let mut queue: DelayQueue<i32> = DelayQueue::new();
-        
+
         queue.insert(1, Duration::from_millis(100));
-        
+
         let peeked = queue.peek();
         assert!(peeked.is_some());
         assert_eq!(peeked.unwrap().data, 1);
-        
+
         assert_eq!(queue.len(), 1); // Peek doesn't remove
     }
 
     #[test]
     fn test_delay_queue_remove() {
         let mut queue: DelayQueue<i32> = DelayQueue::new();
-        
+
         let id = queue.insert(1, Duration::from_millis(100));
-        
+
         let removed = queue.remove(id);
         assert!(removed.is_some());
         assert_eq!(queue.len(), 0);
@@ -369,14 +369,14 @@ mod tests {
     #[test]
     fn test_delay_queue_ordering() {
         let mut queue: DelayQueue<i32> = DelayQueue::new();
-        
+
         queue.insert(1, Duration::from_millis(100));
         queue.insert(2, Duration::from_millis(50));
-        
-        let deadline = queue.next_deadline().unwrap();
-        
+
+        let _deadline = queue.next_deadline().unwrap();
+
         thread::sleep(Duration::from_millis(60));
-        
+
         let item = queue.try_pop();
         assert!(item.is_some());
         assert_eq!(item.unwrap().data, 2); // 50ms delay should come first
@@ -385,22 +385,22 @@ mod tests {
     #[test]
     fn test_updateable_delay_queue() {
         let mut queue: UpdateableDelayQueue<i32> = UpdateableDelayQueue::new();
-        
+
         let id = queue.insert(1, Duration::from_millis(100));
-        
+
         // Update the deadline
         let updated = queue.update(id, Duration::from_millis(200));
         assert!(updated);
-        
+
         assert_eq!(queue.len(), 1);
     }
 
     #[test]
     fn test_updateable_delay_queue_get_deadline() {
         let mut queue: UpdateableDelayQueue<i32> = UpdateableDelayQueue::new();
-        
+
         let id = queue.insert(1, Duration::from_millis(100));
-        
+
         let deadline = queue.get_deadline(id);
         assert!(deadline.is_some());
     }
@@ -408,12 +408,12 @@ mod tests {
     #[test]
     fn test_delay_queue_stats() {
         let mut stats = DelayQueueStats::new();
-        
+
         stats.record_insert();
         stats.record_insert();
         stats.record_pop();
         stats.record_remove();
-        
+
         assert_eq!(stats.total_inserted, 2);
         assert_eq!(stats.total_popped, 1);
         assert_eq!(stats.total_removed, 1);
@@ -422,12 +422,12 @@ mod tests {
     #[test]
     fn test_delay_queue_clear() {
         let mut queue: DelayQueue<i32> = DelayQueue::new();
-        
+
         queue.insert(1, Duration::from_millis(100));
         queue.insert(2, Duration::from_millis(100));
-        
+
         queue.clear();
-        
+
         assert!(queue.is_empty());
     }
 }

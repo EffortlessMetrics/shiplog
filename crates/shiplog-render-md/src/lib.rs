@@ -707,7 +707,10 @@ mod tests {
                 summary: None,
                 tags: vec![],
                 receipts: vec![],
-                events: vec![EventId::from_parts(["pr", "1"]), EventId::from_parts(["review", "1"])],
+                events: vec![
+                    EventId::from_parts(["pr", "1"]),
+                    EventId::from_parts(["review", "1"]),
+                ],
                 stats: WorkstreamStats {
                     pull_requests: 1,
                     reviews: 1,
@@ -768,8 +771,14 @@ mod tests {
                     title: "Feature B & Bugfix".into(),
                     summary: Some("Work on feature B and bugfix".into()),
                     tags: vec![],
-                    receipts: vec![EventId::from_parts(["pr", "2"]), EventId::from_parts(["pr", "3"])],
-                    events: vec![EventId::from_parts(["pr", "2"]), EventId::from_parts(["pr", "3"])],
+                    receipts: vec![
+                        EventId::from_parts(["pr", "2"]),
+                        EventId::from_parts(["pr", "3"]),
+                    ],
+                    events: vec![
+                        EventId::from_parts(["pr", "2"]),
+                        EventId::from_parts(["pr", "3"]),
+                    ],
                     stats: WorkstreamStats {
                         pull_requests: 2,
                         reviews: 0,

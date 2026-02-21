@@ -53,11 +53,11 @@ where
         }
 
         // If cache is full, evict LRU item
-        if self.map.len() >= self.capacity {
-            if let Some(lru_key) = self.order.first().cloned() {
-                self.map.remove(&lru_key);
-                self.order.remove(0);
-            }
+        if self.map.len() >= self.capacity
+            && let Some(lru_key) = self.order.first().cloned()
+        {
+            self.map.remove(&lru_key);
+            self.order.remove(0);
         }
 
         // Insert new item
@@ -118,7 +118,7 @@ mod tests {
         let mut cache = LruCache::new(3);
         cache.insert(1, "one");
         cache.insert(2, "two");
-        
+
         assert_eq!(cache.get(&1), Some(&"one"));
         assert_eq!(cache.get(&2), Some(&"two"));
     }
@@ -129,10 +129,10 @@ mod tests {
         cache.insert(1, "one");
         cache.insert(2, "two");
         cache.insert(3, "three");
-        
+
         // This should evict key 1 (least recently used) when we add the 4th item
         cache.insert(4, "four");
-        
+
         // Key 1 should be evicted now (oldest)
         assert!(!cache.contains(&1));
         // Keys 2, 3, 4 should still be there
@@ -146,13 +146,13 @@ mod tests {
         let mut cache = LruCache::new(2);
         cache.insert(1, "one");
         cache.insert(2, "two");
-        
+
         // Access key 1, making key 2 the LRU
         cache.get(&1);
-        
+
         // This should evict key 2
         cache.insert(3, "three");
-        
+
         assert!(cache.contains(&1));
         assert!(!cache.contains(&2));
         assert!(cache.contains(&3));
@@ -163,7 +163,7 @@ mod tests {
         let mut cache = LruCache::new(3);
         cache.insert(1, "one");
         cache.insert(1, "updated");
-        
+
         assert_eq!(cache.get(&1), Some(&"updated"));
         assert_eq!(cache.len(), 1);
     }
@@ -172,7 +172,7 @@ mod tests {
     fn test_lru_cache_remove() {
         let mut cache = LruCache::new(3);
         cache.insert(1, "one");
-        
+
         assert_eq!(cache.remove(&1), Some("one"));
         assert!(!cache.contains(&1));
         assert!(cache.is_empty());
@@ -183,9 +183,9 @@ mod tests {
         let mut cache = LruCache::new(3);
         cache.insert(1, "one");
         cache.insert(2, "two");
-        
+
         cache.clear();
-        
+
         assert!(cache.is_empty());
         assert_eq!(cache.len(), 0);
     }
@@ -195,13 +195,13 @@ mod tests {
         let mut cache = LruCache::new(2);
         cache.insert(1, "one");
         cache.insert(2, "two");
-        
+
         // Access key 1, making it recently used
         cache.get(&1);
-        
+
         // Insert new item - should evict key 2
         cache.insert(3, "three");
-        
+
         assert!(cache.contains(&1));
         assert!(!cache.contains(&2));
         assert!(cache.contains(&3));

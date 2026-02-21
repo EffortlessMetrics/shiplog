@@ -72,7 +72,7 @@ impl MetricsCollector {
     pub fn record_histogram(&mut self, name: &str, value: f64) {
         self.histograms
             .entry(name.to_string())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(value);
     }
 
@@ -97,10 +97,10 @@ impl MetricsCollector {
             let count = values.len() as f64;
             let sum: f64 = values.iter().sum();
             let mean = sum / count;
-            
+
             let mut sorted = values.clone();
             sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-            
+
             let min = sorted.first().copied();
             let max = sorted.last().copied();
             let median = if count > 0.0 {
@@ -108,7 +108,7 @@ impl MetricsCollector {
             } else {
                 0.0
             };
-            
+
             HistogramStats {
                 count: count as u64,
                 sum,
@@ -123,21 +123,21 @@ impl MetricsCollector {
     /// Export all metrics as points
     pub fn export(&self) -> Vec<MetricPoint> {
         let mut points = Vec::new();
-        
+
         for (name, &value) in &self.counters {
             points.push(MetricPoint::new(name, MetricType::Counter, value));
         }
-        
+
         for (name, &value) in &self.gauges {
             points.push(MetricPoint::new(name, MetricType::Gauge, value));
         }
-        
+
         for (name, values) in &self.histograms {
             for &value in values {
                 points.push(MetricPoint::new(name, MetricType::Histogram, value));
             }
         }
-        
+
         points
     }
 
@@ -189,33 +189,33 @@ mod tests {
     #[test]
     fn counter_metrics() {
         let mut collector = MetricsCollector::new();
-        
+
         collector.inc_counter("requests", 1.0);
         collector.inc_counter("requests", 2.0);
-        
+
         assert_eq!(collector.get_counter("requests"), Some(3.0));
     }
 
     #[test]
     fn gauge_metrics() {
         let mut collector = MetricsCollector::new();
-        
+
         collector.set_gauge("temperature", 72.5);
         collector.set_gauge("temperature", 73.0);
-        
+
         assert_eq!(collector.get_gauge("temperature"), Some(73.0));
     }
 
     #[test]
     fn histogram_metrics() {
         let mut collector = MetricsCollector::new();
-        
+
         collector.record_histogram("response_time", 10.0);
         collector.record_histogram("response_time", 20.0);
         collector.record_histogram("response_time", 30.0);
-        
+
         let stats = collector.histogram_stats("response_time").unwrap();
-        
+
         assert_eq!(stats.count, 3);
         assert_eq!(stats.sum, 60.0);
         assert_eq!(stats.mean, 20.0);
@@ -226,13 +226,13 @@ mod tests {
     #[test]
     fn export_metrics() {
         let mut collector = MetricsCollector::new();
-        
+
         collector.inc_counter("events", 5.0);
         collector.set_gauge("active", 10.0);
         collector.record_histogram("latency", 100.0);
-        
+
         let exported = collector.export();
-        
+
         assert_eq!(exported.len(), 3);
     }
 
@@ -240,10 +240,10 @@ mod tests {
     fn metrics_report() {
         let mut collector = MetricsCollector::new();
         collector.inc_counter("test", 1.0);
-        
+
         let report = MetricsReport::new(collector.export());
         let json = report.to_json();
-        
+
         assert!(json.contains("test"));
     }
 
@@ -252,7 +252,7 @@ mod tests {
         let point = MetricPoint::new("request", MetricType::Counter, 1.0)
             .with_label("method", "GET")
             .with_label("status", "200");
-        
+
         assert_eq!(point.labels.get("method"), Some(&"GET".to_string()));
         assert_eq!(point.labels.get("status"), Some(&"200".to_string()));
     }

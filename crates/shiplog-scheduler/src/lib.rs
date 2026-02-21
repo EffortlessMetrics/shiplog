@@ -65,7 +65,11 @@ pub struct ScheduledTask {
 
 impl ScheduledTask {
     /// Create a new scheduled task.
-    pub fn new(id: impl Into<String>, name: impl Into<String>, frequency: ScheduleFrequency) -> Self {
+    pub fn new(
+        id: impl Into<String>,
+        name: impl Into<String>,
+        frequency: ScheduleFrequency,
+    ) -> Self {
         let next_run = frequency.next_occurrence(&Utc::now());
         Self {
             id: id.into(),
@@ -107,7 +111,7 @@ impl ScheduleFrequency {
                 }
             }
             ScheduleFrequency::Daily { hour, minute } => {
-                let mut next = from.date_naive().and_hms_opt(*hour, *minute, 0)?;
+                let next = from.date_naive().and_hms_opt(*hour, *minute, 0)?;
                 let next = DateTime::<Utc>::from_naive_utc_and_offset(next, Utc);
                 if next <= *from {
                     Some(next + Duration::days(1))
@@ -131,7 +135,7 @@ impl ScheduleFrequency {
                 } else {
                     7 - (current_day - day_num)
                 };
-                let mut next = (from.date_naive() + Duration::days(days_until as i64))
+                let next = (from.date_naive() + Duration::days(days_until as i64))
                     .and_hms_opt(*hour, *minute, 0)?;
                 let next = DateTime::<Utc>::from_naive_utc_and_offset(next, Utc);
                 if next <= *from {
@@ -215,13 +219,16 @@ mod tests {
 
     #[test]
     fn test_daily_schedule_next_occurrence() {
-        let freq = ScheduleFrequency::Daily { hour: 10, minute: 0 };
+        let freq = ScheduleFrequency::Daily {
+            hour: 10,
+            minute: 0,
+        };
         let now = Utc::now();
-        
+
         // Should return a time today or tomorrow at 10:00
         let next = freq.next_occurrence(&now);
         assert!(next.is_some());
-        
+
         let next = next.unwrap();
         assert_eq!(next.hour(), 10);
         assert_eq!(next.minute(), 0);
@@ -231,10 +238,10 @@ mod tests {
     fn test_interval_minutes() {
         let freq = ScheduleFrequency::IntervalMinutes(30);
         let now = Utc::now();
-        
+
         let next = freq.next_occurrence(&now);
         assert!(next.is_some());
-        
+
         let diff = next.unwrap() - now;
         assert!(diff.num_minutes() >= 29 && diff.num_minutes() <= 31);
     }
@@ -246,7 +253,7 @@ mod tests {
             "Test Task",
             ScheduleFrequency::Daily { hour: 9, minute: 0 },
         );
-        
+
         assert_eq!(task.id, "test-task");
         assert_eq!(task.name, "Test Task");
         assert!(task.enabled);
@@ -256,14 +263,14 @@ mod tests {
     #[test]
     fn test_scheduler_add_and_get() {
         let mut scheduler = Scheduler::new();
-        
+
         let task = ScheduledTask::new(
             "task-1",
             "Task 1",
             ScheduleFrequency::Daily { hour: 8, minute: 0 },
         );
         scheduler.add_task(task);
-        
+
         assert_eq!(scheduler.len(), 1);
         assert!(scheduler.get_task("task-1").is_some());
         assert!(scheduler.get_task("nonexistent").is_none());
@@ -272,17 +279,17 @@ mod tests {
     #[test]
     fn test_mark_task_run() {
         let mut scheduler = Scheduler::new();
-        
+
         let task = ScheduledTask::new(
             "task-1",
             "Task 1",
             ScheduleFrequency::Daily { hour: 8, minute: 0 },
         );
         scheduler.add_task(task);
-        
+
         // Mark as run
         scheduler.mark_task_run("task-1");
-        
+
         let after_run = scheduler.get_task("task-1").unwrap();
         // Verify last_run was set
         assert!(after_run.last_run.is_some());

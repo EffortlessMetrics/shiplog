@@ -88,11 +88,11 @@ impl<T> ObjectPool<T> {
 
     /// Return an object to the pool
     pub fn put(&self, item: T) -> bool {
-        if let Ok(mut pool) = self.pool.lock() {
-            if pool.len() < self.max_size {
-                pool.push_back(item);
-                return true;
-            }
+        if let Ok(mut pool) = self.pool.lock()
+            && pool.len() < self.max_size
+        {
+            pool.push_back(item);
+            return true;
         }
         false
     }

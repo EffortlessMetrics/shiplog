@@ -1,11 +1,14 @@
 //! Tests for shiplog-ports crate.
 
-use shiplog_ports::{Ingestor, IngestOutput, Redactor, Renderer, WorkstreamClusterer};
-use shiplog_schema::coverage::{CoverageManifest, TimeWindow, Completeness};
-use shiplog_schema::event::{EventEnvelope, EventKind, EventPayload, PullRequestEvent, PullRequestState, Actor, RepoRef, RepoVisibility, Link, SourceRef, SourceSystem};
-use shiplog_schema::workstream::{Workstream, WorkstreamsFile, WorkstreamStats};
-use shiplog_ids::{EventId, RunId, WorkstreamId};
 use chrono::{NaiveDate, TimeZone, Utc};
+use shiplog_ids::{EventId, RunId, WorkstreamId};
+use shiplog_ports::{IngestOutput, Ingestor, Redactor, Renderer, WorkstreamClusterer};
+use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
+use shiplog_schema::event::{
+    Actor, EventEnvelope, EventKind, EventPayload, Link, PullRequestEvent, PullRequestState,
+    RepoRef, RepoVisibility, SourceRef, SourceSystem,
+};
+use shiplog_schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
 use std::sync::Arc;
 
 /// Mock ingestor that returns empty results.
@@ -82,11 +85,19 @@ impl Renderer for MockRenderer {
 struct MockRedactor;
 
 impl Redactor for MockRedactor {
-    fn redact_events(&self, events: &[EventEnvelope], _profile: &str) -> anyhow::Result<Vec<EventEnvelope>> {
+    fn redact_events(
+        &self,
+        events: &[EventEnvelope],
+        _profile: &str,
+    ) -> anyhow::Result<Vec<EventEnvelope>> {
         Ok(events.to_vec())
     }
 
-    fn redact_workstreams(&self, workstreams: &WorkstreamsFile, _profile: &str) -> anyhow::Result<WorkstreamsFile> {
+    fn redact_workstreams(
+        &self,
+        workstreams: &WorkstreamsFile,
+        _profile: &str,
+    ) -> anyhow::Result<WorkstreamsFile> {
         Ok(workstreams.clone())
     }
 }
@@ -274,7 +285,7 @@ fn trait_objects_work_with_arc() {
 #[test]
 fn ingest_output_with_events() {
     let event = create_test_pr_event("test123", 42, "Fix bug");
-    
+
     let output = IngestOutput {
         events: vec![event.clone()],
         coverage: CoverageManifest {
@@ -307,10 +318,10 @@ fn clusterer_produces_valid_workstreams() {
     ];
 
     let result = clusterer.cluster(&events).unwrap();
-    
+
     // Each event should produce one workstream
     assert_eq!(result.workstreams.len(), 2);
-    
+
     // Workstreams should have valid structure
     for ws in &result.workstreams {
         assert!(!ws.id.0.is_empty());

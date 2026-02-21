@@ -4,9 +4,9 @@
 //! standard library's RNG.
 
 use rand::Rng;
+use rand::prelude::IndexedRandom;
 use rand::rng;
 use rand::seq::SliceRandom;
-use rand::prelude::IndexedRandom;
 
 /// Generate a random integer in the given range.
 pub fn random_in_range(min: i32, max: i32) -> i32 {
@@ -42,31 +42,41 @@ pub fn random_lowercase_char() -> char {
 
 /// Generate a random alphanumeric character.
 pub fn random_alphanumeric_char() -> char {
-    let chars: Vec<char> = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789".chars().collect();
+    let chars: Vec<char> = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+        .chars()
+        .collect();
     let idx = rng().random_range(0..chars.len());
     chars[idx]
 }
 
 /// Generate a random string of the given length.
 pub fn random_string(length: usize) -> String {
-    let chars: Vec<char> = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789".chars().collect();
-    (0..length).map(|_| chars[rng().random_range(0..chars.len())]).collect()
+    let chars: Vec<char> = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+        .chars()
+        .collect();
+    (0..length)
+        .map(|_| chars[rng().random_range(0..chars.len())])
+        .collect()
 }
 
 /// Generate a random string of lowercase letters.
 pub fn random_lowercase_string(length: usize) -> String {
-    (0..length).map(|_| {
-        let idx = rng().random_range(0..26);
-        (b'a' + idx) as char
-    }).collect()
+    (0..length)
+        .map(|_| {
+            let idx = rng().random_range(0..26);
+            (b'a' + idx) as char
+        })
+        .collect()
 }
 
 /// Generate a random string of uppercase letters.
 pub fn random_uppercase_string(length: usize) -> String {
-    (0..length).map(|_| {
-        let idx = rng().random_range(0..26);
-        (b'A' + idx) as char
-    }).collect()
+    (0..length)
+        .map(|_| {
+            let idx = rng().random_range(0..26);
+            (b'A' + idx) as char
+        })
+        .collect()
 }
 
 /// Generate random bytes of the given length.
@@ -125,7 +135,7 @@ mod tests {
     fn random_in_range_test() {
         for _ in 0..100 {
             let val = random_in_range(1, 10);
-            assert!(val >= 1 && val <= 10);
+            assert!((1..=10).contains(&val));
         }
     }
 
@@ -133,7 +143,7 @@ mod tests {
     fn random_float_test() {
         for _ in 0..100 {
             let val = random_float();
-            assert!(val >= 0.0 && val < 1.0);
+            assert!((0.0..1.0).contains(&val));
         }
     }
 
@@ -155,7 +165,7 @@ mod tests {
     fn random_byte_test() {
         for _ in 0..100 {
             let val = random_byte();
-            assert!(val <= 255);
+            let _ = val; // u8 is always <= 255
         }
     }
 
@@ -214,7 +224,7 @@ mod tests {
     fn thread_rng_range_test() {
         for _ in 0..100 {
             let val = ThreadRng::range(1, 10);
-            assert!(val >= 1 && val <= 10);
+            assert!((1..=10).contains(&val));
         }
     }
 
@@ -222,7 +232,7 @@ mod tests {
     fn thread_rng_float_test() {
         for _ in 0..100 {
             let val = ThreadRng::float();
-            assert!(val >= 0.0 && val < 1.0);
+            assert!((0.0..1.0).contains(&val));
         }
     }
 

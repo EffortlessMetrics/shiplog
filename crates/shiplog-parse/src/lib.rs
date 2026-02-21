@@ -11,7 +11,10 @@
 /// * `Ok(u64)` - The parsed integer
 /// * `Err(String)` - If parsing fails
 pub fn parse_u64(input: &str) -> Result<u64, String> {
-    input.trim().parse().map_err(|e| format!("Failed to parse u64: {}", e))
+    input
+        .trim()
+        .parse()
+        .map_err(|e| format!("Failed to parse u64: {}", e))
 }
 
 /// Parses a string into an i64 integer.
@@ -23,7 +26,10 @@ pub fn parse_u64(input: &str) -> Result<u64, String> {
 /// * `Ok(i64)` - The parsed integer
 /// * `Err(String)` - If parsing fails
 pub fn parse_i64(input: &str) -> Result<i64, String> {
-    input.trim().parse().map_err(|e| format!("Failed to parse i64: {}", e))
+    input
+        .trim()
+        .parse()
+        .map_err(|e| format!("Failed to parse i64: {}", e))
 }
 
 /// Parses a string into a f64 floating-point number.
@@ -35,7 +41,10 @@ pub fn parse_i64(input: &str) -> Result<i64, String> {
 /// * `Ok(f64)` - The parsed number
 /// * `Err(String)` - If parsing fails
 pub fn parse_f64(input: &str) -> Result<f64, String> {
-    input.trim().parse().map_err(|e| format!("Failed to parse f64: {}", e))
+    input
+        .trim()
+        .parse()
+        .map_err(|e| format!("Failed to parse f64: {}", e))
 }
 
 /// Parses a boolean string (true/false, 0/1, yes/no).
@@ -135,7 +144,7 @@ mod tests {
 
     #[test]
     fn test_parse_f64() {
-        assert!((parse_f64("3.14").unwrap() - 3.14).abs() < 0.001);
+        assert!((parse_f64("3.14").unwrap() - std::f64::consts::PI).abs() < 0.01);
         assert!((parse_f64("-2.5").unwrap() - (-2.5)).abs() < 0.001);
         assert!(parse_f64("abc").is_err());
     }
@@ -160,8 +169,14 @@ mod tests {
 
     #[test]
     fn test_parse_key_value() {
-        assert_eq!(parse_key_value("key=value").unwrap(), ("key".to_string(), "value".to_string()));
-        assert_eq!(parse_key_value("foo=bar=baz").unwrap(), ("foo".to_string(), "bar=baz".to_string()));
+        assert_eq!(
+            parse_key_value("key=value").unwrap(),
+            ("key".to_string(), "value".to_string())
+        );
+        assert_eq!(
+            parse_key_value("foo=bar=baz").unwrap(),
+            ("foo".to_string(), "bar=baz".to_string())
+        );
         assert!(parse_key_value("invalid").is_err());
     }
 

@@ -44,19 +44,19 @@ impl Migration {
             down_script: String::new(),
         }
     }
-    
+
     /// Set the description
     pub fn with_description(mut self, description: impl Into<String>) -> Self {
         self.description = description.into();
         self
     }
-    
+
     /// Set the up migration script
     pub fn with_up_script(mut self, script: impl Into<String>) -> Self {
         self.up_script = script.into();
         self
     }
-    
+
     /// Set the down migration script
     pub fn with_down_script(mut self, script: impl Into<String>) -> Self {
         self.down_script = script.into();
@@ -87,7 +87,7 @@ impl MigrationRunner {
     pub fn new(migrations: Vec<Migration>) -> Self {
         Self { migrations }
     }
-    
+
     /// Get the latest version
     pub fn latest_version(&self) -> SchemaVersion {
         self.migrations
@@ -96,7 +96,7 @@ impl MigrationRunner {
             .max()
             .unwrap_or(0)
     }
-    
+
     /// Get pending migrations from a given version
     pub fn get_pending_migrations(&self, from_version: SchemaVersion) -> Vec<&Migration> {
         self.migrations
@@ -104,7 +104,7 @@ impl MigrationRunner {
             .filter(|m| m.from_version >= from_version)
             .collect()
     }
-    
+
     /// Apply a migration (simulated - actual implementation would execute the script)
     pub fn apply_migration(&self, migration: &Migration) -> anyhow::Result<MigrationRecord> {
         // In a real implementation, this would execute the up_script
@@ -119,21 +119,12 @@ impl MigrationRunner {
 }
 
 /// Schema state
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct SchemaState {
     /// Current schema version
     pub current_version: SchemaVersion,
     /// Migration history
     pub history: Vec<MigrationRecord>,
-}
-
-impl Default for SchemaState {
-    fn default() -> Self {
-        Self {
-            current_version: 0,
-            history: Vec::new(),
-        }
-    }
 }
 
 impl SchemaState {
@@ -144,13 +135,13 @@ impl SchemaState {
             history: Vec::new(),
         }
     }
-    
+
     /// Record a migration
     pub fn record_migration(&mut self, record: MigrationRecord) {
         self.current_version = record.version;
         self.history.push(record);
     }
-    
+
     /// Check if migration is needed
     pub fn needs_migration(&self, target_version: SchemaVersion) -> bool {
         self.current_version < target_version
@@ -168,7 +159,7 @@ mod tests {
             .with_description("Add workstream field to events")
             .with_up_script(r#"{"add_field": "workstream_id"}"#)
             .with_down_script(r#"{"remove_field": "workstream_id"}"#);
-        
+
         assert_eq!(migration.from_version, 1);
         assert_eq!(migration.to_version, 2);
         assert_eq!(migration.name, "add_workstream_field");
@@ -181,7 +172,7 @@ mod tests {
             Migration::new(2, 3, "v2_to_v3"),
             Migration::new(3, 4, "v3_to_v4"),
         ];
-        
+
         let runner = MigrationRunner::new(migrations);
         assert_eq!(runner.latest_version(), 4);
     }
@@ -193,10 +184,10 @@ mod tests {
             Migration::new(2, 3, "v2_to_v3"),
             Migration::new(3, 4, "v3_to_v4"),
         ];
-        
+
         let runner = MigrationRunner::new(migrations);
         let pending = runner.get_pending_migrations(2);
-        
+
         assert_eq!(pending.len(), 2);
         assert_eq!(pending[0].to_version, 3);
         assert_eq!(pending[1].to_version, 4);
@@ -220,16 +211,16 @@ mod tests {
     #[test]
     fn schema_state_record_migration() {
         let mut state = SchemaState::new(1);
-        
+
         let record = MigrationRecord {
             version: 2,
             name: "v1_to_v2".to_string(),
             applied_at: chrono::Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap(),
             status: MigrationStatus::Completed,
         };
-        
+
         state.record_migration(record);
-        
+
         assert_eq!(state.current_version, 2);
         assert_eq!(state.history.len(), 1);
         assert_eq!(state.history[0].name, "v1_to_v2");
@@ -239,9 +230,9 @@ mod tests {
     fn migration_apply() {
         let migration = Migration::new(1, 2, "test_migration");
         let runner = MigrationRunner::new(vec![migration]);
-        
+
         let result = runner.apply_migration(&runner.migrations[0]);
-        
+
         assert!(result.is_ok());
         let record = result.unwrap();
         assert_eq!(record.version, 2);

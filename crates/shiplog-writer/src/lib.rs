@@ -34,10 +34,10 @@ impl<W: Write> BufferedWriter<W> {
         if self.buffer.len() + data.len() >= self.capacity {
             self.flush()?;
         }
-        
+
         if data.len() >= self.capacity {
             // Data is larger than buffer, write directly
-            self.inner.write(data)?;
+            self.inner.write_all(data)?;
             Ok(data.len())
         } else {
             self.buffer.extend_from_slice(data);
@@ -190,10 +190,10 @@ mod tests {
         let cursor = Cursor::new(Vec::new());
         let mut writer = CountingWriter::new(cursor);
 
-        writer.write(b"hello").unwrap();
+        writer.write_all(b"hello").unwrap();
         assert_eq!(writer.bytes_written(), 5);
 
-        writer.write(b" world").unwrap();
+        writer.write_all(b" world").unwrap();
         assert_eq!(writer.bytes_written(), 11);
     }
 
@@ -202,8 +202,8 @@ mod tests {
         let cursor = Cursor::new(Vec::new());
         let mut writer = CountingWriter::new(cursor);
 
-        writer.write(b"test").unwrap();
-        
+        writer.write_all(b"test").unwrap();
+
         let cursor = writer.get_mut();
         assert_eq!(cursor.get_ref(), b"test");
     }

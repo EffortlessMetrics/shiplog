@@ -96,7 +96,11 @@ impl<T> TaskHandle<T> {
 
     /// Get the current status
     pub fn status(&self) -> TaskStatus {
-        self.status.lock().ok().map(|s| s.clone()).unwrap_or(TaskStatus::Pending)
+        self.status
+            .lock()
+            .ok()
+            .map(|s| s.clone())
+            .unwrap_or(TaskStatus::Pending)
     }
 
     /// Set the result of the task

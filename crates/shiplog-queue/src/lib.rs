@@ -44,23 +44,24 @@ impl<T: Clone> MessageQueue<T> {
     /// Enqueue an item.
     pub fn enqueue(&self, payload: T, priority: i32) -> Result<QueuedItem<T>, QueueError> {
         let mut items = self.items.write().unwrap();
-        
+
         if items.len() >= self.max_size {
             return Err(QueueError::QueueFull);
         }
-        
+
         let item = QueuedItem {
             id: uuid_simple(),
             payload,
             priority,
             retries: 0,
         };
-        
+
         // Insert in priority order (higher priority first)
-        let pos = items.iter()
+        let pos = items
+            .iter()
             .position(|i| i.priority < item.priority)
             .unwrap_or(items.len());
-        
+
         items.insert(pos, item.clone());
         Ok(item)
     }
@@ -141,32 +142,32 @@ mod tests {
     #[test]
     fn test_queue_enqueue_dequeue() {
         let queue: MessageQueue<String> = MessageQueue::new(10);
-        
+
         queue.enqueue("item1".to_string(), 0).unwrap();
         queue.enqueue("item2".to_string(), 0).unwrap();
-        
+
         assert_eq!(queue.len(), 2);
-        
+
         let item = queue.dequeue().unwrap();
         assert_eq!(item.payload, "item1");
-        
+
         assert_eq!(queue.len(), 1);
     }
 
     #[test]
     fn test_queue_priority_ordering() {
         let queue: MessageQueue<String> = MessageQueue::new(10);
-        
+
         queue.enqueue("low".to_string(), 1).unwrap();
         queue.enqueue("high".to_string(), 10).unwrap();
         queue.enqueue("medium".to_string(), 5).unwrap();
-        
+
         let item = queue.dequeue().unwrap();
         assert_eq!(item.payload, "high");
-        
+
         let item = queue.dequeue().unwrap();
         assert_eq!(item.payload, "medium");
-        
+
         let item = queue.dequeue().unwrap();
         assert_eq!(item.payload, "low");
     }
@@ -174,10 +175,10 @@ mod tests {
     #[test]
     fn test_queue_max_size() {
         let queue: MessageQueue<String> = MessageQueue::new(2);
-        
+
         queue.enqueue("1".to_string(), 0).unwrap();
         queue.enqueue("2".to_string(), 0).unwrap();
-        
+
         let result = queue.enqueue("3".to_string(), 0);
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), QueueError::QueueFull);
@@ -186,23 +187,23 @@ mod tests {
     #[test]
     fn test_queue_peek() {
         let queue: MessageQueue<String> = MessageQueue::new(10);
-        
+
         queue.enqueue("first".to_string(), 0).unwrap();
         queue.enqueue("second".to_string(), 0).unwrap();
-        
+
         let peeked = queue.peek().unwrap();
         assert_eq!(peeked.payload, "first");
-        
+
         assert_eq!(queue.len(), 2);
     }
 
     #[test]
     fn test_queue_clear() {
         let queue: MessageQueue<String> = MessageQueue::new(10);
-        
+
         queue.enqueue("item".to_string(), 0).unwrap();
         assert!(!queue.is_empty());
-        
+
         queue.clear();
         assert!(queue.is_empty());
     }
@@ -210,16 +211,22 @@ mod tests {
     #[test]
     fn test_queue_retries() {
         let queue: MessageQueue<String> = MessageQueue::new(10);
-        
+
         let item = queue.enqueue("test".to_string(), 0).unwrap();
         let retries = queue.increment_retries(&item.id);
-        
+
         assert_eq!(retries, Some(1));
     }
 
     #[test]
     fn test_queue_error_display() {
-        assert_eq!(QueueError::QueueFull.to_string(), "Queue is at maximum capacity");
-        assert_eq!(QueueError::ItemNotFound.to_string(), "Item not found in queue");
+        assert_eq!(
+            QueueError::QueueFull.to_string(),
+            "Queue is at maximum capacity"
+        );
+        assert_eq!(
+            QueueError::ItemNotFound.to_string(),
+            "Item not found in queue"
+        );
     }
 }

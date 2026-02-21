@@ -11,7 +11,7 @@ pub fn trim(s: &str) -> String {
 pub fn to_title_case(s: &str) -> String {
     let mut result = String::with_capacity(s.len());
     let mut capitalize_next = true;
-    
+
     for c in s.chars() {
         if c.is_whitespace() || c == '_' || c == '-' {
             capitalize_next = true;
@@ -29,7 +29,7 @@ pub fn to_title_case(s: &str) -> String {
 /// Converts a string to snake_case
 pub fn to_snake_case(s: &str) -> String {
     let mut result = String::with_capacity(s.len());
-    
+
     for (i, c) in s.chars().enumerate() {
         if c.is_uppercase() && i > 0 {
             result.push('_');
@@ -40,15 +40,19 @@ pub fn to_snake_case(s: &str) -> String {
             result.push('_');
         }
     }
-    
+
     // Remove consecutive underscores
-    result.split('_').filter(|s| !s.is_empty()).collect::<Vec<_>>().join("_")
+    result
+        .split('_')
+        .filter(|s| !s.is_empty())
+        .collect::<Vec<_>>()
+        .join("_")
 }
 
 /// Converts a string to kebab-case
 pub fn to_kebab_case(s: &str) -> String {
     let mut result = String::with_capacity(s.len());
-    
+
     for (i, c) in s.chars().enumerate() {
         if c.is_uppercase() && i > 0 {
             result.push('-');
@@ -59,9 +63,13 @@ pub fn to_kebab_case(s: &str) -> String {
             result.push('-');
         }
     }
-    
+
     // Remove consecutive dashes
-    result.split('-').filter(|s| !s.is_empty()).collect::<Vec<_>>().join("-")
+    result
+        .split('-')
+        .filter(|s| !s.is_empty())
+        .collect::<Vec<_>>()
+        .join("-")
 }
 
 /// Checks if a string is empty or contains only whitespace

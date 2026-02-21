@@ -197,7 +197,7 @@ mod tests {
         let adapter = AdapterBuilder::new()
             .name("my-adapter")
             .build(ConcreteAdaptee::new("value"));
-        
+
         assert_eq!(adapter.name(), "my-adapter");
         assert_eq!(adapter.adapt(), "[my-adapter] Adaptee: value");
     }
@@ -206,7 +206,7 @@ mod tests {
     fn test_named_adapter_debug() {
         let adaptee = ConcreteAdaptee::new("debug-test");
         let adapter = NamedAdapter::new("test", adaptee);
-        
+
         let debug_str = format!("{:?}", adapter);
         assert!(debug_str.contains("NamedAdapter"));
         assert!(debug_str.contains("test"));
@@ -240,9 +240,8 @@ mod tests {
 
     #[test]
     fn test_adapter_builder_default() {
-        let adapter = AdapterBuilder::default()
-            .build(ConcreteAdaptee::new("default"));
-        
+        let adapter = AdapterBuilder::default().build(ConcreteAdaptee::new("default"));
+
         assert_eq!(adapter.name(), "adapter");
     }
 }
