@@ -7,6 +7,10 @@ use anyhow::{Context, Result};
 use chrono::Utc;
 use sha2::{Digest, Sha256};
 use shiplog_ids::RunId;
+use shiplog_output_layout::{
+    DIR_PROFILES, FILE_BUNDLE_MANIFEST_JSON, FILE_COVERAGE_MANIFEST_JSON, FILE_PACKET_MD,
+    FILE_REDACTION_ALIASES_JSON, PROFILE_MANAGER, PROFILE_PUBLIC,
+};
 use shiplog_schema::bundle::{BundleManifest, BundleProfile, FileChecksum};
 use std::fs::File;
 use std::io::{Read, Write};
@@ -16,7 +20,7 @@ use std::path::{Path, PathBuf};
 /// contains plaintext-to-alias mappings that would defeat redaction.
 /// `bundle.manifest.json` is excluded because it is written *after*
 /// the file walk and must not checksum itself.
-const ALWAYS_EXCLUDED: &[&str] = &["redaction.aliases.json", "bundle.manifest.json"];
+const ALWAYS_EXCLUDED: &[&str] = &[FILE_REDACTION_ALIASES_JSON, FILE_BUNDLE_MANIFEST_JSON];
 
 /// Decide whether `rel_path` (forward-slash normalised, relative to the run
 /// directory) should be included in a bundle for the given profile.
@@ -24,10 +28,12 @@ fn is_scoped_include(rel_path: &str, profile: &BundleProfile) -> bool {
     match profile {
         BundleProfile::Internal => true,
         BundleProfile::Manager => {
-            rel_path == "profiles/manager/packet.md" || rel_path == "coverage.manifest.json"
+            rel_path == format!("{DIR_PROFILES}/{PROFILE_MANAGER}/{FILE_PACKET_MD}")
+                || rel_path == FILE_COVERAGE_MANIFEST_JSON
         }
         BundleProfile::Public => {
-            rel_path == "profiles/public/packet.md" || rel_path == "coverage.manifest.json"
+            rel_path == format!("{DIR_PROFILES}/{PROFILE_PUBLIC}/{FILE_PACKET_MD}")
+                || rel_path == FILE_COVERAGE_MANIFEST_JSON
         }
     }
 }
@@ -63,7 +69,7 @@ pub fn write_bundle_manifest(
     };
 
     let text = serde_json::to_string_pretty(&manifest)?;
-    std::fs::write(out_dir.join("bundle.manifest.json"), text)?;
+    std::fs::write(out_dir.join(FILE_BUNDLE_MANIFEST_JSON), text)?;
     Ok(manifest)
 }
 
@@ -140,25 +146,26 @@ fn walk_files(root: &Path, profile: &BundleProfile) -> Result<Vec<PathBuf>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use shiplog_output_layout::FILE_LEDGER_EVENTS_JSONL;
 
     /// Helper: create a minimal run directory for testing.
     fn make_test_dir(dir: &Path) {
-        std::fs::write(dir.join("packet.md"), "# Packet").unwrap();
-        std::fs::write(dir.join("ledger.events.jsonl"), "").unwrap();
-        std::fs::write(dir.join("coverage.manifest.json"), "{}").unwrap();
+        std::fs::write(dir.join(FILE_PACKET_MD), "# Packet").unwrap();
+        std::fs::write(dir.join(FILE_LEDGER_EVENTS_JSONL), "").unwrap();
+        std::fs::write(dir.join(FILE_COVERAGE_MANIFEST_JSON), "{}").unwrap();
         std::fs::write(
-            dir.join("redaction.aliases.json"),
+            dir.join(FILE_REDACTION_ALIASES_JSON),
             r#"{"version":1,"entries":{}}"#,
         )
         .unwrap();
 
-        let mgr = dir.join("profiles").join("manager");
+        let mgr = dir.join(DIR_PROFILES).join(PROFILE_MANAGER);
         std::fs::create_dir_all(&mgr).unwrap();
-        std::fs::write(mgr.join("packet.md"), "# Manager").unwrap();
+        std::fs::write(mgr.join(FILE_PACKET_MD), "# Manager").unwrap();
 
-        let pub_dir = dir.join("profiles").join("public");
+        let pub_dir = dir.join(DIR_PROFILES).join(PROFILE_PUBLIC);
         std::fs::create_dir_all(&pub_dir).unwrap();
-        std::fs::write(pub_dir.join("packet.md"), "# Public").unwrap();
+        std::fs::write(pub_dir.join(FILE_PACKET_MD), "# Public").unwrap();
     }
 
     fn file_names(files: &[PathBuf]) -> Vec<String> {
@@ -183,17 +190,17 @@ mod tests {
     #[test]
     fn walk_files_excludes_redaction_aliases() {
         let dir = tempfile::tempdir().unwrap();
-        std::fs::write(dir.path().join("packet.md"), "# Packet").unwrap();
-        std::fs::write(dir.path().join("redaction.aliases.json"), "{}").unwrap();
-        std::fs::write(dir.path().join("ledger.events.jsonl"), "").unwrap();
+        std::fs::write(dir.path().join(FILE_PACKET_MD), "# Packet").unwrap();
+        std::fs::write(dir.path().join(FILE_REDACTION_ALIASES_JSON), "{}").unwrap();
+        std::fs::write(dir.path().join(FILE_LEDGER_EVENTS_JSONL), "").unwrap();
 
         let files = walk_files(dir.path(), &BundleProfile::Internal).unwrap();
         let names = file_names(&files);
 
-        assert!(names.contains(&"packet.md".to_string()));
-        assert!(names.contains(&"ledger.events.jsonl".to_string()));
+        assert!(names.contains(&FILE_PACKET_MD.to_string()));
+        assert!(names.contains(&FILE_LEDGER_EVENTS_JSONL.to_string()));
         assert!(
-            !names.contains(&"redaction.aliases.json".to_string()),
+            !names.contains(&FILE_REDACTION_ALIASES_JSON.to_string()),
             "redaction.aliases.json should be excluded from walk_files"
         );
     }
@@ -201,13 +208,13 @@ mod tests {
     #[test]
     fn bundle_manifest_excludes_redaction_aliases() {
         let dir = tempfile::tempdir().unwrap();
-        std::fs::write(dir.path().join("packet.md"), "# Packet").unwrap();
+        std::fs::write(dir.path().join(FILE_PACKET_MD), "# Packet").unwrap();
         std::fs::write(
-            dir.path().join("redaction.aliases.json"),
+            dir.path().join(FILE_REDACTION_ALIASES_JSON),
             r#"{"version":1,"entries":{}}"#,
         )
         .unwrap();
-        std::fs::write(dir.path().join("ledger.events.jsonl"), "").unwrap();
+        std::fs::write(dir.path().join(FILE_LEDGER_EVENTS_JSONL), "").unwrap();
 
         let run_id = shiplog_ids::RunId::now("test");
         let manifest =
@@ -215,15 +222,17 @@ mod tests {
         let paths: Vec<&str> = manifest.files.iter().map(|f| f.path.as_str()).collect();
 
         assert!(
-            !paths.iter().any(|p| p.contains("redaction.aliases.json")),
+            !paths
+                .iter()
+                .any(|p| p.contains(FILE_REDACTION_ALIASES_JSON)),
             "redaction.aliases.json should not appear in bundle manifest"
         );
         assert!(
-            !paths.iter().any(|p| p.contains("bundle.manifest.json")),
+            !paths.iter().any(|p| p.contains(FILE_BUNDLE_MANIFEST_JSON)),
             "bundle.manifest.json should not appear in bundle manifest"
         );
         assert!(
-            paths.iter().any(|p| p.contains("packet.md")),
+            paths.iter().any(|p| p.contains(FILE_PACKET_MD)),
             "packet.md should appear in bundle manifest"
         );
     }
@@ -231,9 +240,9 @@ mod tests {
     #[test]
     fn zip_excludes_redaction_aliases() {
         let dir = tempfile::tempdir().unwrap();
-        std::fs::write(dir.path().join("packet.md"), "# Packet").unwrap();
+        std::fs::write(dir.path().join(FILE_PACKET_MD), "# Packet").unwrap();
         std::fs::write(
-            dir.path().join("redaction.aliases.json"),
+            dir.path().join(FILE_REDACTION_ALIASES_JSON),
             r#"{"version":1,"entries":{}}"#,
         )
         .unwrap();
@@ -248,11 +257,13 @@ mod tests {
             .collect();
 
         assert!(
-            names.iter().any(|n| n.contains("packet.md")),
+            names.iter().any(|n| n.contains(FILE_PACKET_MD)),
             "packet.md should be in zip"
         );
         assert!(
-            !names.iter().any(|n| n.contains("redaction.aliases.json")),
+            !names
+                .iter()
+                .any(|n| n.contains(FILE_REDACTION_ALIASES_JSON)),
             "redaction.aliases.json should not be in zip"
         );
     }
@@ -265,11 +276,13 @@ mod tests {
         let files = walk_files(dir.path(), &BundleProfile::Manager).unwrap();
         let rels = rel_paths(dir.path(), &files);
 
-        assert!(rels.contains(&"coverage.manifest.json".to_string()));
-        assert!(rels.contains(&"profiles/manager/packet.md".to_string()));
-        assert!(!rels.contains(&"packet.md".to_string()));
-        assert!(!rels.contains(&"ledger.events.jsonl".to_string()));
-        assert!(!rels.contains(&"profiles/public/packet.md".to_string()));
+        assert!(rels.contains(&FILE_COVERAGE_MANIFEST_JSON.to_string()));
+        assert!(rels.contains(&format!(
+            "{DIR_PROFILES}/{PROFILE_MANAGER}/{FILE_PACKET_MD}"
+        )));
+        assert!(!rels.contains(&FILE_PACKET_MD.to_string()));
+        assert!(!rels.contains(&FILE_LEDGER_EVENTS_JSONL.to_string()));
+        assert!(!rels.contains(&format!("{DIR_PROFILES}/{PROFILE_PUBLIC}/{FILE_PACKET_MD}")));
         assert_eq!(rels.len(), 2);
     }
 
@@ -281,10 +294,12 @@ mod tests {
         let files = walk_files(dir.path(), &BundleProfile::Public).unwrap();
         let rels = rel_paths(dir.path(), &files);
 
-        assert!(rels.contains(&"coverage.manifest.json".to_string()));
-        assert!(rels.contains(&"profiles/public/packet.md".to_string()));
-        assert!(!rels.contains(&"packet.md".to_string()));
-        assert!(!rels.contains(&"profiles/manager/packet.md".to_string()));
+        assert!(rels.contains(&FILE_COVERAGE_MANIFEST_JSON.to_string()));
+        assert!(rels.contains(&format!("{DIR_PROFILES}/{PROFILE_PUBLIC}/{FILE_PACKET_MD}")));
+        assert!(!rels.contains(&FILE_PACKET_MD.to_string()));
+        assert!(!rels.contains(&format!(
+            "{DIR_PROFILES}/{PROFILE_MANAGER}/{FILE_PACKET_MD}"
+        )));
         assert_eq!(rels.len(), 2);
     }
 
@@ -301,7 +316,7 @@ mod tests {
             let files = walk_files(dir.path(), &profile).unwrap();
             let names = file_names(&files);
             assert!(
-                !names.contains(&"redaction.aliases.json".to_string()),
+                !names.contains(&FILE_REDACTION_ALIASES_JSON.to_string()),
                 "aliases leaked in {profile:?}"
             );
         }
@@ -334,7 +349,15 @@ mod tests {
             .collect();
 
         assert_eq!(names.len(), 2, "public zip should have exactly 2 files");
-        assert!(names.iter().any(|n| n.contains("public/packet.md")));
-        assert!(names.iter().any(|n| n.contains("coverage.manifest.json")));
+        assert!(
+            names
+                .iter()
+                .any(|n| n.contains(&format!("{DIR_PROFILES}/{PROFILE_PUBLIC}/{FILE_PACKET_MD}")))
+        );
+        assert!(
+            names
+                .iter()
+                .any(|n| n.contains(FILE_COVERAGE_MANIFEST_JSON))
+        );
     }
 }

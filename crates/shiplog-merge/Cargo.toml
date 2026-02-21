@@ -17,7 +17,8 @@ categories = ["data-structures", "development-tools"]
 serde.workspace = true
 shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
 shiplog-ids = { path = "../shiplog-ids", version = "0.2.1" }
-itertools.workspace = true
+anyhow.workspace = true
+shiplog-ports = { path = "../shiplog-ports", version = "0.2.1" }
 chrono.workspace = true
 
 [dev-dependencies]

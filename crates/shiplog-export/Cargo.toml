@@ -17,6 +17,7 @@ categories = ["data-structures", "development-tools"]
 serde.workspace = true
 serde_json.workspace = true
 anyhow.workspace = true
+shiplog-output-layout = { path = "../shiplog-output-layout", version = "0.2.1" }
 
 [dev-dependencies]
 proptest.workspace = true

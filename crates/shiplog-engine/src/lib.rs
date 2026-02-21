@@ -6,6 +6,8 @@
 
 use anyhow::{Context, Result};
 use shiplog_bundle::{write_bundle_manifest, write_zip};
+pub use shiplog_merge::ConflictResolution;
+use shiplog_output_layout::{DIR_PROFILES, FILE_PACKET_MD, RunArtifactPaths, zip_path_for_profile};
 use shiplog_ports::{IngestOutput, Redactor, Renderer, WorkstreamClusterer};
 use shiplog_render_json::{write_coverage_manifest, write_events_jsonl};
 use shiplog_schema::bundle::BundleProfile;
@@ -13,19 +15,7 @@ use shiplog_schema::coverage::CoverageManifest;
 use shiplog_schema::event::EventEnvelope;
 use shiplog_schema::workstream::WorkstreamsFile;
 use shiplog_workstreams::WorkstreamManager;
-use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-
-/// Conflict resolution strategy for merging events
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ConflictResolution {
-    /// Prefer the event from the source with higher priority (earlier in list)
-    PreferFirst,
-    /// Prefer the event with the most recent timestamp
-    PreferMostRecent,
-    /// Prefer the event with more complete data (more non-null fields)
-    PreferMostComplete,
-}
 
 pub struct Engine<'a> {
     pub renderer: &'a dyn Renderer,
@@ -82,14 +72,15 @@ impl<'a> Engine<'a> {
 
         let events = ingest.events;
         let coverage = ingest.coverage;
+        let paths = RunArtifactPaths::new(out_dir);
 
         // Use WorkstreamManager to load or generate workstreams
         let (workstreams, ws_source) = self.load_workstreams(out_dir, &events)?;
 
         // Write canonical outputs
-        let ledger_path = out_dir.join("ledger.events.jsonl");
-        let coverage_path = out_dir.join("coverage.manifest.json");
-        let packet_path = out_dir.join("packet.md");
+        let ledger_path = paths.ledger_events();
+        let coverage_path = paths.coverage_manifest();
+        let packet_path = paths.packet_md();
 
         write_events_jsonl(&ledger_path, &events)?;
         write_coverage_manifest(&coverage_path, &coverage)?;
@@ -135,7 +126,7 @@ impl<'a> Engine<'a> {
         let run_id = &coverage.run_id;
         let _bundle = write_bundle_manifest(out_dir, run_id, bundle_profile)?;
         let zip_path = if zip {
-            let z = zip_path_for_profile(out_dir, bundle_profile);
+            let z = zip_path_for_profile(out_dir, bundle_profile.as_str());
             write_zip(out_dir, &z, bundle_profile)?;
             Some(z)
         } else {
@@ -149,7 +140,7 @@ impl<'a> Engine<'a> {
                 workstreams_yaml: ws_path,
                 ledger_events_jsonl: ledger_path,
                 coverage_manifest_json: coverage_path,
-                bundle_manifest_json: out_dir.join("bundle.manifest.json"),
+                bundle_manifest_json: paths.bundle_manifest(),
                 zip_path,
             },
             ws_source,
@@ -197,6 +188,7 @@ impl<'a> Engine<'a> {
 
         let events = ingest.events;
         let coverage = ingest.coverage;
+        let paths = RunArtifactPaths::new(out_dir);
 
         // Use provided workstreams or generate new ones
         let (ws, ws_source) = if let Some(ws) = workstreams {
@@ -209,9 +201,9 @@ impl<'a> Engine<'a> {
         };
 
         // Write canonical outputs
-        let ledger_path = out_dir.join("ledger.events.jsonl");
-        let coverage_path = out_dir.join("coverage.manifest.json");
-        let packet_path = out_dir.join("packet.md");
+        let ledger_path = paths.ledger_events();
+        let coverage_path = paths.coverage_manifest();
+        let packet_path = paths.packet_md();
 
         write_events_jsonl(&ledger_path, &events)?;
         write_coverage_manifest(&coverage_path, &coverage)?;
@@ -251,7 +243,7 @@ impl<'a> Engine<'a> {
         let run_id = &coverage.run_id;
         let _bundle = write_bundle_manifest(out_dir, run_id, bundle_profile)?;
         let zip_path = if zip {
-            let z = zip_path_for_profile(out_dir, bundle_profile);
+            let z = zip_path_for_profile(out_dir, bundle_profile.as_str());
             write_zip(out_dir, &z, bundle_profile)?;
             Some(z)
         } else {
@@ -265,7 +257,7 @@ impl<'a> Engine<'a> {
                 workstreams_yaml: ws_path,
                 ledger_events_jsonl: ledger_path,
                 coverage_manifest_json: coverage_path,
-                bundle_manifest_json: out_dir.join("bundle.manifest.json"),
+                bundle_manifest_json: paths.bundle_manifest(),
                 zip_path,
             },
             ws_source,
@@ -288,6 +280,7 @@ impl<'a> Engine<'a> {
 
         let events = ingest.events;
         let coverage = ingest.coverage;
+        let paths = RunArtifactPaths::new(out_dir);
 
         // Load existing workstreams — error if none exist
         let workstreams = if WorkstreamManager::has_curated(out_dir) {
@@ -313,9 +306,9 @@ impl<'a> Engine<'a> {
         };
 
         // Write canonical outputs
-        let ledger_path = out_dir.join("ledger.events.jsonl");
-        let coverage_path = out_dir.join("coverage.manifest.json");
-        let packet_path = out_dir.join("packet.md");
+        let ledger_path = paths.ledger_events();
+        let coverage_path = paths.coverage_manifest();
+        let packet_path = paths.packet_md();
 
         write_events_jsonl(&ledger_path, &events)?;
         write_coverage_manifest(&coverage_path, &coverage)?;
@@ -359,7 +352,7 @@ impl<'a> Engine<'a> {
         let run_id = &coverage.run_id;
         let _bundle = write_bundle_manifest(out_dir, run_id, bundle_profile)?;
         let zip_path = if zip {
-            let z = zip_path_for_profile(out_dir, bundle_profile);
+            let z = zip_path_for_profile(out_dir, bundle_profile.as_str());
             write_zip(out_dir, &z, bundle_profile)?;
             Some(z)
         } else {
@@ -372,7 +365,7 @@ impl<'a> Engine<'a> {
             workstreams_yaml: ws_path,
             ledger_events_jsonl: ledger_path,
             coverage_manifest_json: coverage_path,
-            bundle_manifest_json: out_dir.join("bundle.manifest.json"),
+            bundle_manifest_json: paths.bundle_manifest(),
             zip_path,
         })
     }
@@ -388,7 +381,7 @@ impl<'a> Engine<'a> {
         workstreams: &WorkstreamsFile,
         coverage: &CoverageManifest,
     ) -> Result<()> {
-        let prof_dir = out_dir.join("profiles").join(profile);
+        let prof_dir = out_dir.join(DIR_PROFILES).join(profile);
         std::fs::create_dir_all(&prof_dir)?;
 
         let red_events = self.redactor.redact_events(events, profile)?;
@@ -401,7 +394,7 @@ impl<'a> Engine<'a> {
             &red_ws,
             coverage,
         )?;
-        std::fs::write(prof_dir.join("packet.md"), md)?;
+        std::fs::write(prof_dir.join(FILE_PACKET_MD), md)?;
         Ok(())
     }
 
@@ -417,188 +410,15 @@ impl<'a> Engine<'a> {
         ingest_outputs: Vec<IngestOutput>,
         resolution: ConflictResolution,
     ) -> Result<IngestOutput> {
-        if ingest_outputs.is_empty() {
-            return Err(anyhow::anyhow!("No ingest outputs to merge"));
-        }
-
-        // Collect all events and build a map for deduplication
-        let mut event_map: HashMap<String, Vec<EventEnvelope>> = HashMap::new();
-        let mut all_sources: Vec<String> = Vec::new();
-        let mut all_warnings: Vec<String> = Vec::new();
-        let mut all_slices: Vec<shiplog_schema::coverage::CoverageSlice> = Vec::new();
-
-        // Use first output's window and user as base
-        let base_output = &ingest_outputs[0];
-        let window = base_output.coverage.window.clone();
-        let user = base_output.coverage.user.clone();
-
-        for ingest in &ingest_outputs {
-            // Collect events by ID
-            for event in &ingest.events {
-                let id = event.id.to_string();
-                event_map.entry(id).or_default().push(event.clone());
-            }
-
-            // Collect sources
-            all_sources.extend(ingest.coverage.sources.clone());
-            all_warnings.extend(ingest.coverage.warnings.clone());
-            all_slices.extend(ingest.coverage.slices.clone());
-        }
-
-        // Deduplicate and resolve conflicts
-        let mut merged_events: Vec<EventEnvelope> = Vec::new();
-        let mut conflict_count = 0;
-
-        for (_id, mut events) in event_map {
-            if events.len() == 1 {
-                merged_events.push(events.remove(0));
-            } else {
-                // Multiple events with same ID - resolve conflict
-                conflict_count += 1;
-                let resolved = self.resolve_conflict(&events, resolution);
-                merged_events.push(resolved);
-            }
-        }
-
-        // Sort by timestamp
-        merged_events.sort_by_key(|e| e.occurred_at);
-
-        // Deduplicate sources
-        all_sources.sort();
-        all_sources.dedup();
-
-        // Calculate completeness - if any source is partial, result is partial
-        let completeness = if ingest_outputs
-            .iter()
-            .any(|o| o.coverage.completeness == shiplog_schema::coverage::Completeness::Partial)
+        #[cfg(feature = "merge-pipeline")]
         {
-            shiplog_schema::coverage::Completeness::Partial
-        } else {
-            shiplog_schema::coverage::Completeness::Complete
-        };
-
-        // Add warning about conflicts if any occurred
-        if conflict_count > 0 {
-            all_warnings.push(format!(
-                "Resolved {} conflict(s) during merge using {:?} strategy",
-                conflict_count, resolution
-            ));
+            let merged = shiplog_merge::merge_ingest_outputs(&ingest_outputs, resolution)?;
+            Ok(merged.ingest_output)
         }
 
-        // Create merged coverage manifest
-        let coverage = shiplog_schema::coverage::CoverageManifest {
-            run_id: shiplog_ids::RunId::now("merge"),
-            generated_at: chrono::Utc::now(),
-            user,
-            window,
-            mode: "merged".to_string(),
-            sources: all_sources,
-            slices: all_slices,
-            warnings: all_warnings,
-            completeness,
-        };
-
-        Ok(IngestOutput {
-            events: merged_events,
-            coverage,
-        })
-    }
-
-    /// Resolve a conflict between multiple events with same ID
-    fn resolve_conflict(
-        &self,
-        events: &[EventEnvelope],
-        resolution: ConflictResolution,
-    ) -> EventEnvelope {
-        match resolution {
-            ConflictResolution::PreferFirst => events[0].clone(),
-            ConflictResolution::PreferMostRecent => {
-                events.iter().max_by_key(|e| e.occurred_at).unwrap().clone()
-            }
-            ConflictResolution::PreferMostComplete => events
-                .iter()
-                .max_by_key(|e| self.completeness_score(e))
-                .unwrap()
-                .clone(),
-        }
-    }
-
-    /// Calculate a completeness score for an event (higher = more complete)
-    fn completeness_score(&self, event: &EventEnvelope) -> usize {
-        let mut score = 0;
-
-        // Check for non-empty fields
-        if !event.actor.login.is_empty() {
-            score += 1;
-        }
-        if event.actor.id.is_some() {
-            score += 1;
-        }
-        if !event.repo.full_name.is_empty() {
-            score += 1;
-        }
-        if event.repo.html_url.is_some() {
-            score += 1;
-        }
-        if !event.tags.is_empty() {
-            score += 1;
-        }
-        if !event.links.is_empty() {
-            score += 1;
-        }
-        if event.source.url.is_some() {
-            score += 1;
-        }
-        if event.source.opaque_id.is_some() {
-            score += 1;
-        }
-
-        // Check payload completeness
-        match &event.payload {
-            shiplog_schema::event::EventPayload::PullRequest(pr) => {
-                if pr.additions.is_some() {
-                    score += 1;
-                }
-                if pr.deletions.is_some() {
-                    score += 1;
-                }
-                if pr.changed_files.is_some() {
-                    score += 1;
-                }
-                if pr.merged_at.is_some() {
-                    score += 1;
-                }
-            }
-            shiplog_schema::event::EventPayload::Manual(manual) => {
-                if manual.description.is_some() {
-                    score += 1;
-                }
-                if manual.started_at.is_some() {
-                    score += 1;
-                }
-                if manual.ended_at.is_some() {
-                    score += 1;
-                }
-                if manual.impact.is_some() {
-                    score += 1;
-                }
-            }
-            _ => {}
-        }
-
-        score
-    }
-}
-
-/// Compute the zip file path based on bundle profile.
-/// `Internal` -> `<run_dir>.zip`, others -> `<run_dir>.<profile>.zip`.
-fn zip_path_for_profile(out_dir: &Path, profile: &BundleProfile) -> PathBuf {
-    match profile {
-        BundleProfile::Internal => out_dir.with_extension("zip"),
-        _ => {
-            let stem = out_dir.file_name().unwrap_or_default().to_string_lossy();
-            let name = format!("{}.{}.zip", stem, profile.as_str());
-            out_dir.with_file_name(name)
+        #[cfg(not(feature = "merge-pipeline"))]
+        {
+            shiplog_merge::merge_ingest_outputs_legacy(&ingest_outputs, resolution)
         }
     }
 }
@@ -608,6 +428,7 @@ mod tests {
     use super::*;
     use chrono::{NaiveDate, TimeZone, Utc};
     use shiplog_ids::{EventId, RunId};
+    use shiplog_output_layout::{PROFILE_MANAGER, PROFILE_PUBLIC};
     use shiplog_ports::IngestOutput;
     use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
     use shiplog_schema::event::*;
@@ -720,11 +541,19 @@ mod tests {
             "bundle.manifest.json missing"
         );
         assert!(
-            out_dir.join("profiles/manager/packet.md").exists(),
+            out_dir
+                .join(DIR_PROFILES)
+                .join(PROFILE_MANAGER)
+                .join(FILE_PACKET_MD)
+                .exists(),
             "manager profile missing"
         );
         assert!(
-            out_dir.join("profiles/public/packet.md").exists(),
+            out_dir
+                .join(DIR_PROFILES)
+                .join(PROFILE_PUBLIC)
+                .join(FILE_PACKET_MD)
+                .exists(),
             "public profile missing"
         );
     }
@@ -760,13 +589,13 @@ mod tests {
 
     #[test]
     fn zip_path_internal_uses_plain_extension() {
-        let p = zip_path_for_profile(Path::new("/tmp/run_123"), &BundleProfile::Internal);
+        let p = zip_path_for_profile(Path::new("/tmp/run_123"), "internal");
         assert_eq!(p, Path::new("/tmp/run_123.zip"));
     }
 
     #[test]
     fn zip_path_manager_includes_profile_name() {
-        let p = zip_path_for_profile(Path::new("/tmp/run_123"), &BundleProfile::Manager);
+        let p = zip_path_for_profile(Path::new("/tmp/run_123"), "manager");
         assert_eq!(p, Path::new("/tmp/run_123.manager.zip"));
     }
 }

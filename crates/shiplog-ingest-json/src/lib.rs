@@ -1,6 +1,6 @@
 //! JSONL/JSON ingestion adapter for prebuilt shiplog ledgers.
 //!
-//! Loads canonical `ledger.events.jsonl` + `coverage.manifest.json` and returns
+//! Loads canonical ledger artifacts and returns
 //! them through the [`shiplog_ports::Ingestor`] interface.
 
 use anyhow::{Context, Result};
@@ -61,6 +61,7 @@ mod tests {
     use super::*;
     use chrono::{NaiveDate, Utc};
     use shiplog_ids::{EventId, RunId};
+    use shiplog_output_layout::{FILE_COVERAGE_MANIFEST_JSON, FILE_LEDGER_EVENTS_JSONL};
     use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
     use shiplog_schema::event::*;
     use std::io::Write;
@@ -121,8 +122,8 @@ mod tests {
     #[test]
     fn valid_jsonl_roundtrip() {
         let temp = tempfile::tempdir().unwrap();
-        let events_path = temp.path().join("ledger.events.jsonl");
-        let coverage_path = temp.path().join("coverage.manifest.json");
+        let events_path = temp.path().join(FILE_LEDGER_EVENTS_JSONL);
+        let coverage_path = temp.path().join(FILE_COVERAGE_MANIFEST_JSON);
 
         let ev1 = make_test_event("org/repo1", "ev1");
         let ev2 = make_test_event("org/repo2", "ev2");
@@ -151,7 +152,7 @@ mod tests {
     fn missing_events_file_returns_error() {
         let temp = tempfile::tempdir().unwrap();
         let events_path = temp.path().join("nonexistent.jsonl");
-        let coverage_path = temp.path().join("coverage.manifest.json");
+        let coverage_path = temp.path().join(FILE_COVERAGE_MANIFEST_JSON);
 
         let coverage = make_test_coverage();
         std::fs::write(&coverage_path, serde_json::to_string(&coverage).unwrap()).unwrap();
@@ -167,8 +168,8 @@ mod tests {
     #[test]
     fn blank_lines_in_jsonl_are_skipped() {
         let temp = tempfile::tempdir().unwrap();
-        let events_path = temp.path().join("ledger.events.jsonl");
-        let coverage_path = temp.path().join("coverage.manifest.json");
+        let events_path = temp.path().join(FILE_LEDGER_EVENTS_JSONL);
+        let coverage_path = temp.path().join(FILE_COVERAGE_MANIFEST_JSON);
 
         let ev = make_test_event("org/repo", "ev1");
         let coverage = make_test_coverage();
@@ -194,8 +195,8 @@ mod tests {
     #[test]
     fn invalid_json_line_returns_error_with_line_number() {
         let temp = tempfile::tempdir().unwrap();
-        let events_path = temp.path().join("ledger.events.jsonl");
-        let coverage_path = temp.path().join("coverage.manifest.json");
+        let events_path = temp.path().join(FILE_LEDGER_EVENTS_JSONL);
+        let coverage_path = temp.path().join(FILE_COVERAGE_MANIFEST_JSON);
 
         let ev = make_test_event("org/repo", "ev1");
         let coverage = make_test_coverage();
