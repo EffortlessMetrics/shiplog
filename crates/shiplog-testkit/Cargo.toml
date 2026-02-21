@@ -13,17 +13,46 @@ keywords = ["testing", "fixtures", "bdd", "helpers", "shiplog"]
 categories = ["development-tools::testing"]
 publish = false
 
+[features]
+default = []
+merge_pipeline = []
+team = ["shiplog-team", "shiplog-team-core", "shiplog-team-aggregate"]
+microcrate_export = ["shiplog-export"]
+microcrate_output_layout = ["shiplog-output-layout"]
+microcrate_validate = ["shiplog-validate"]
+microcrate_storage = ["shiplog-storage"]
+microcrate_notify = ["shiplog-notify"]
+microcrate_contracts = [
+    "microcrate_export",
+    "microcrate_output_layout",
+    "microcrate_validate",
+    "microcrate_storage",
+    "microcrate_notify",
+]
+
 [dependencies]
 chrono.workspace = true
 shiplog-ids = { path = "../shiplog-ids", version = "0.2.1" }
 shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
+shiplog-merge = { path = "../shiplog-merge", version = "0.2.1" }
+shiplog-team = { path = "../shiplog-team", version = "0.2.1", optional = true }
+shiplog-team-core = { path = "../shiplog-team-core", version = "0.2.1", optional = true }
+shiplog-team-aggregate = { path = "../shiplog-team-aggregate", version = "0.2.1", optional = true }
+shiplog-ports = { path = "../shiplog-ports", version = "0.2.1" }
+shiplog-render-md = { path = "../shiplog-render-md", version = "0.2.1" }
+shiplog-workstreams = { path = "../shiplog-workstreams", version = "0.2.1" }
+shiplog-export = { path = "../shiplog-export", version = "0.2.1", optional = true }
+shiplog-output-layout = { path = "../shiplog-output-layout", version = "0.2.1", optional = true }
+shiplog-validate = { path = "../shiplog-validate", version = "0.2.1", optional = true }
+shiplog-storage = { path = "../shiplog-storage", version = "0.2.1", optional = true }
+shiplog-notify = { path = "../shiplog-notify", version = "0.2.1", optional = true }
 proptest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+tempfile.workspace = true
 
 [dev-dependencies]
 shiplog-redact = { path = "../shiplog-redact", version = "0.2.1" }
-shiplog-workstreams = { path = "../shiplog-workstreams", version = "0.2.1" }
 serde.workspace = true
 
 

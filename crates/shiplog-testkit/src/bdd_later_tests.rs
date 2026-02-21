@@ -8,45 +8,70 @@ mod later_tests {
     use crate::scenarios::later::*;
 
     // ===========================================================================
-    // Feature 10: Team Aggregation Mode (Scenarios 10.1 - 10.7)
+    // Feature 10: Team Aggregation Mode (Scenarios 10.1 - 10.8)
     // ===========================================================================
 
+    #[cfg(feature = "team")]
     #[test]
     fn team_aggregation_scenario_10_1_summary() {
         let scenario = team_aggregate_summary();
         scenario.run().expect("Scenario 10.1 should pass");
     }
 
+    #[cfg(feature = "team")]
+    #[test]
+    fn team_aggregation_resolver_contract() {
+        let scenario = team_aggregate_resolver_contract();
+        scenario
+            .run()
+            .expect("Scenario 10.1.5 contract-style resolver test should pass");
+    }
+
+    #[cfg(feature = "team")]
+    #[test]
+    fn team_aggregation_runtime_constructor_contract() {
+        let scenario = team_aggregate_runtime_constructor_contract();
+        scenario
+            .run()
+            .expect("Scenario 10.1.6 runtime constructor contract should pass");
+    }
+
+    #[cfg(feature = "team")]
     #[test]
     fn team_aggregation_scenario_10_2_sections() {
         let scenario = team_aggregate_sections();
         scenario.run().expect("Scenario 10.2 should pass");
     }
 
+    #[cfg(feature = "team")]
     #[test]
     fn team_aggregation_scenario_10_3_aliases() {
         let scenario = team_aggregate_aliases();
         scenario.run().expect("Scenario 10.3 should pass");
     }
 
+    #[cfg(feature = "team")]
     #[test]
     fn team_aggregation_scenario_10_4_missing_ledger() {
         let scenario = team_aggregate_missing_ledger();
         scenario.run().expect("Scenario 10.4 should pass");
     }
 
+    #[cfg(feature = "team")]
     #[test]
     fn team_aggregation_scenario_10_5_incompatible_version() {
         let scenario = team_aggregate_incompatible_version();
         scenario.run().expect("Scenario 10.5 should pass");
     }
 
+    #[cfg(feature = "team")]
     #[test]
     fn team_aggregation_scenario_10_6_custom_template() {
         let scenario = team_aggregate_custom_template();
         scenario.run().expect("Scenario 10.6 should pass");
     }
 
+    #[cfg(feature = "team")]
     #[test]
     fn team_aggregation_scenario_10_7_large() {
         let scenario = team_aggregate_large();
