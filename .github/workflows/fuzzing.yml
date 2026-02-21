@@ -29,14 +29,6 @@ jobs:
           toolchain: nightly-2026-02-18
           components: llvm-tools-preview
 
-      - name: Cache cargo binaries
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/bin
-          key: ${{ runner.os }}-cargo-bin-nightly-2026-02-18
-          restore-keys: |
-            ${{ runner.os }}-cargo-bin-
-
       - name: Cache Rust build artifacts
         uses: Swatinem/rust-cache@v2
         with:
@@ -141,14 +133,6 @@ jobs:
           toolchain: nightly-2026-02-18
           components: llvm-tools-preview
 
-      - name: Cache cargo binaries
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/bin
-          key: ${{ runner.os }}-cargo-bin-nightly-2026-02-18
-          restore-keys: |
-            ${{ runner.os }}-cargo-bin-
-
       - name: Cache Rust build artifacts
         uses: Swatinem/rust-cache@v2
         with:
@@ -164,26 +148,6 @@ jobs:
         run: |
           cd fuzz
           cargo fuzz run ${{ matrix.target }} -- -max_total_time=3600 -dict=dictionaries/${{ matrix.dict }}
-
-      - name: Run extended fuzzing for parse_gitlab_api
-        run: |
-          cd fuzz
-          cargo fuzz run parse_gitlab_api -- -max_total_time=3600 -dict=dictionaries/json.dict
-
-      - name: Run extended fuzzing for parse_jira_linear_api
-        run: |
-          cd fuzz
-          cargo fuzz run parse_jira_linear_api -- -max_total_time=3600 -dict=dictionaries/json.dict
-
-      - name: Run extended fuzzing for parse_template
-        run: |
-          cd fuzz
-          cargo fuzz run parse_template -- -max_total_time=3600 -dict=dictionaries/yaml.dict
-
-      - name: Run extended fuzzing for parse_plugin_manifest
-        run: |
-          cd fuzz
-          cargo fuzz run parse_plugin_manifest -- -max_total_time=3600 -dict=dictionaries/json.dict
 
       - name: Upload fuzzing corpus
         if: always()

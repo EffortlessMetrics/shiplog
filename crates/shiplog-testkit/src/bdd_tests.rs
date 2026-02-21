@@ -299,8 +299,10 @@ mod edge_case_tests {
     fn empty_date_range_produces_empty_packet() {
         let scenario = Scenario::new("Empty date range produces empty packet")
             .given("a date range with no events", |ctx| {
-                ctx.strings.insert("since".to_string(), "2025-01-01".to_string());
-                ctx.strings.insert("until".to_string(), "2025-01-02".to_string());
+                ctx.strings
+                    .insert("since".to_string(), "2025-01-01".to_string());
+                ctx.strings
+                    .insert("until".to_string(), "2025-01-02".to_string());
                 ctx.numbers.insert("event_count".to_string(), 0);
             })
             .when("events are collected from all sources", |ctx| {
@@ -312,10 +314,15 @@ mod edge_case_tests {
                 assert_eq(count, 0, "event count should be zero")
             })
             .then("the packet should still be valid markdown", |ctx| {
-                assert_true(ctx.flag("collection_complete").unwrap_or(false), "collection complete")
+                assert_true(
+                    ctx.flag("collection_complete").unwrap_or(false),
+                    "collection complete",
+                )
             });
 
-        scenario.run().expect("empty date range should produce valid packet");
+        scenario
+            .run()
+            .expect("empty date range should produce valid packet");
     }
 
     #[test]
@@ -335,17 +342,23 @@ mod edge_case_tests {
             .then("events should all be assigned to workstreams", |ctx| {
                 let pr_count = assert_present(ctx.number("pr_count"), "PR count")?;
                 let ws_count = assert_present(ctx.number("workstream_count"), "workstream count")?;
-                assert_true(ws_count > 0 && ws_count < pr_count, "workstreams created from PRs")
+                assert_true(
+                    ws_count > 0 && ws_count < pr_count,
+                    "workstreams created from PRs",
+                )
             });
 
-        scenario.run().expect("large event counts should be handled");
+        scenario
+            .run()
+            .expect("large event counts should be handled");
     }
 
     #[test]
     fn event_without_links_renders_correctly() {
         let scenario = Scenario::new("Event without links renders with placeholder")
             .given("a PR event with no external links", |ctx| {
-                ctx.strings.insert("title".to_string(), "Internal refactor".to_string());
+                ctx.strings
+                    .insert("title".to_string(), "Internal refactor".to_string());
                 ctx.flags.insert("has_links".to_string(), false);
             })
             .when("the packet is rendered", |ctx| {
@@ -357,17 +370,25 @@ mod edge_case_tests {
             })
             .then("the event should not have broken link markers", |ctx| {
                 // Should render cleanly without null/none link references
-                assert_true(ctx.flag("has_links").unwrap_or(false) == false, "no links flag preserved")
+                assert_true(
+                    ctx.flag("has_links").unwrap_or(false) == false,
+                    "no links flag preserved",
+                )
             });
 
-        scenario.run().expect("event without links should render cleanly");
+        scenario
+            .run()
+            .expect("event without links should render cleanly");
     }
 
     #[test]
     fn workstream_with_no_events_is_skipped() {
         let scenario = Scenario::new("Empty workstream is handled gracefully")
             .given("a workstream with no events assigned", |ctx| {
-                ctx.strings.insert("workstream_title".to_string(), "Unused Category".to_string());
+                ctx.strings.insert(
+                    "workstream_title".to_string(),
+                    "Unused Category".to_string(),
+                );
                 ctx.numbers.insert("event_count".to_string(), 0);
             })
             .when("workstreams are processed for rendering", |ctx| {
@@ -402,7 +423,8 @@ mod edge_case_tests {
                 let gitlab = ctx.number("gitlab_mrs").unwrap_or(0);
                 let manual = ctx.number("manual_events").unwrap_or(0);
                 let jira = ctx.number("jira_issues").unwrap_or(0);
-                ctx.numbers.insert("total".to_string(), github + gitlab + manual + jira);
+                ctx.numbers
+                    .insert("total".to_string(), github + gitlab + manual + jira);
                 Ok(())
             })
             .then("the total should equal sum of all sources", |ctx| {
@@ -411,10 +433,16 @@ mod edge_case_tests {
                 let gitlab = assert_present(ctx.number("gitlab_mrs"), "gitlab")?;
                 let manual = assert_present(ctx.number("manual_events"), "manual")?;
                 let jira = assert_present(ctx.number("jira_issues"), "jira")?;
-                assert_eq(total, github + gitlab + manual + jira, "total matches sources")
+                assert_eq(
+                    total,
+                    github + gitlab + manual + jira,
+                    "total matches sources",
+                )
             });
 
-        scenario.run().expect("multiple sources should merge correctly");
+        scenario
+            .run()
+            .expect("multiple sources should merge correctly");
     }
 
     #[test]
@@ -436,18 +464,25 @@ mod edge_case_tests {
                 )
             })
             .then("the warning should be included in manifest", |ctx| {
-                assert_true(ctx.flag("rate_limited").unwrap_or(false), "rate limited flag")
+                assert_true(
+                    ctx.flag("rate_limited").unwrap_or(false),
+                    "rate limited flag",
+                )
             });
 
-        scenario.run().expect("rate limiting should be handled gracefully");
+        scenario
+            .run()
+            .expect("rate limiting should be handled gracefully");
     }
 
     #[test]
     fn redaction_with_empty_fields() {
         let scenario = Scenario::new("Redaction handles events with missing optional fields")
             .given("an event with null/empty optional fields", |ctx| {
-                ctx.strings.insert("title".to_string(), "Test PR".to_string());
-                ctx.strings.insert("description".to_string(), "".to_string()); // empty
+                ctx.strings
+                    .insert("title".to_string(), "Test PR".to_string());
+                ctx.strings
+                    .insert("description".to_string(), "".to_string()); // empty
                 ctx.strings.insert("url".to_string(), "".to_string()); // empty
             })
             .when("the event is redacted for public profile", |ctx| {
@@ -462,14 +497,17 @@ mod edge_case_tests {
                 assert_true(true, "empty fields handled")
             });
 
-        scenario.run().expect("redaction should handle empty fields");
+        scenario
+            .run()
+            .expect("redaction should handle empty fields");
     }
 
     #[test]
     fn concurrent_refresh_no_race_condition() {
         let scenario = Scenario::new("Concurrent refresh operations don't cause race conditions")
             .given("a valid run directory exists", |ctx| {
-                ctx.strings.insert("run_dir".to_string(), "/out/run_001".to_string());
+                ctx.strings
+                    .insert("run_dir".to_string(), "/out/run_001".to_string());
                 ctx.flags.insert("run_exists".to_string(), true);
             })
             .given("two refresh processes start simultaneously", |ctx| {
@@ -481,8 +519,14 @@ mod edge_case_tests {
                 Ok(())
             })
             .then("the ledger should be consistent", |ctx| {
-                assert_true(ctx.flag("first_complete").unwrap_or(false), "first refresh complete");
-                assert_true(ctx.flag("second_complete").unwrap_or(false), "second refresh complete")
+                assert_true(
+                    ctx.flag("first_complete").unwrap_or(false),
+                    "first refresh complete",
+                );
+                assert_true(
+                    ctx.flag("second_complete").unwrap_or(false),
+                    "second refresh complete",
+                )
             });
 
         scenario.run().expect("concurrent refresh should be safe");
