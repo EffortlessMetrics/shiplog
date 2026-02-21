@@ -1,0 +1,13 @@
+[package]
+name = "shiplog-latch"
+version = "0.2.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Latch and barrier utilities for synchronization in shiplog."
+readme = "README.md"
+
+[dependencies]
+tokio = { version = "1.49.0", features = ["rt", "rt-multi-thread", "macros", "sync"] }
+anyhow.workspace = true

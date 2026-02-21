@@ -1,0 +1,20 @@
+[package]
+name = "shiplog-cache-lru"
+version = "0.2.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "LRU (Least Recently Used) cache implementation for shiplog."
+readme = "README.md"
+documentation = "https://docs.rs/shiplog-cache-lru"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["cache", "lru", "shiplog"]
+categories = ["caching"]
+
+[dependencies]
+shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
+
+[dev-dependencies]
+proptest.workspace = true

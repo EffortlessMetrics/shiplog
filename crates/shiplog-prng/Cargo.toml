@@ -1,0 +1,20 @@
+[package]
+name = "shiplog-prng"
+version = "0.2.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Pseudo-random number generator utilities for shiplog."
+readme = "README.md"
+documentation = "https://docs.rs/shiplog-prng"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["prng", "rng", "random", "generator"]
+categories = ["data-structures", "development-tools"]
+
+[dependencies]
+rand = "0.9"
+
+[dev-dependencies]
+proptest.workspace = true

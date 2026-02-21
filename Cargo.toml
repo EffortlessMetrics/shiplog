@@ -57,11 +57,145 @@ members = [
   "crates/shiplog-crypto",
   "crates/shiplog-logging",
   "crates/shiplog-metrics",
+  "crates/shiplog-meter",
+  "crates/shiplog-counter",
+  "crates/shiplog-gauge",
   # New messaging crates (pubsub, queue, eventbus, workflow)
   "crates/shiplog-pubsub",
   "crates/shiplog-queue",
+  "crates/shiplog-deque",
+  "crates/shiplog-heap",
+  "crates/shiplog-priorityqueue",
   "crates/shiplog-eventbus",
   "crates/shiplog-workflow",
+  # New utility crates (watcher, batcher, compressor, retry)
+  "crates/shiplog-watcher",
+  "crates/shiplog-batcher",
+  "crates/shiplog-compressor",
+  "crates/shiplog-retry",
+  # New utility crates (ttl, rate, circuit, time)
+  "crates/shiplog-ttl",
+  "crates/shiplog-rate",
+  "crates/shiplog-circuit",
+  "crates/shiplog-time",
+  # New utility crates (tracker, dedupe, uuid, hash)
+  "crates/shiplog-tracker",
+  "crates/shiplog-dedupe",
+  "crates/shiplog-uuid",
+  "crates/shiplog-hash",
+  # New utility crates (serde, iter, error, fmt)
+  "crates/shiplog-serde",
+  "crates/shiplog-iter",
+  "crates/shiplog-error",
+  "crates/shiplog-fmt",
+  # New utility crates (path, url, base64, hex)
+  "crates/shiplog-path",
+  "crates/shiplog-url",
+  "crates/shiplog-base64",
+  "crates/shiplog-hex",
+  # New utility crates (async, channel, timeout, pool)
+  "crates/shiplog-async",
+  "crates/shiplog-channel",
+  "crates/shiplog-timeout",
+  "crates/shiplog-pool",
+  # New utility crates (guard, scope, spawn)
+  "crates/shiplog-guard",
+  "crates/shiplog-scope",
+  "crates/shiplog-spawn",
+  # New synchronization crates (latch, once, shared, atomic)
+  "crates/shiplog-latch",
+  "crates/shiplog-once",
+  "crates/shiplog-shared",
+  "crates/shiplog-atomic",
+  # New utility crates (signal, shutdown, health)
+  "crates/shiplog-signal",
+  "crates/shiplog-shutdown",
+  "crates/shiplog-health",
+  # New utility crates (version, semver, env, proc)
+  "crates/shiplog-version",
+  "crates/shiplog-semver",
+  "crates/shiplog-env",
+  "crates/shiplog-proc",
+  # New utility crates (str, chars, regex)
+  "crates/shiplog-str",
+  "crates/shiplog-chars",
+  "crates/shiplog-regex",
+  # New utility crates (parse, normalize, sanitize)
+  "crates/shiplog-parse",
+  "crates/shiplog-normalize",
+  # New validator/normalizer crates
+  "crates/shiplog-validator",
+  "crates/shiplog-normalizer",
+  "crates/shiplog-sanitize",
+  # New utility crates (actor, stream, buffer, window)
+  "crates/shiplog-actor",
+  "crates/shiplog-stream",
+  "crates/shiplog-buffer",
+  "crates/shiplog-window",
+  "crates/shiplog-slidingwindow",
+  "crates/shiplog-timewheel",
+  "crates/shiplog-delayqueue",
+  # New iterator/enumerator/chunker crates
+  "crates/shiplog-iterator",
+  "crates/shiplog-enumerator",
+  "crates/shiplog-chunker",
+  # New cache crates (lru, segment, cache-lru, cache-arc, cache-ttl, cache-2q)
+  "crates/shiplog-lru",
+  "crates/shiplog-segment",
+  "crates/shiplog-cache-lru",
+  "crates/shiplog-cache-arc",
+  "crates/shiplog-cache-ttl",
+  "crates/shiplog-cache-2q",
+  # New data structure crates (trie, bloom, skiplist, ring, graph, matrix)
+  "crates/shiplog-trie",
+  "crates/shiplog-bloom",
+  "crates/shiplog-skiplist",
+  "crates/shiplog-ring",
+  "crates/shiplog-graph",
+  "crates/shiplog-matrix",
+  # New random crates (random, prng)
+  "crates/shiplog-random",
+  "crates/shiplog-prng",
+  # New data processing crates (accumulator, collector, aggregator, processor)
+  "crates/shiplog-accumulator",
+  "crates/shiplog-collector",
+  "crates/shiplog-aggregator",
+  "crates/shiplog-processor",
+  "crates/shiplog-emitter",
+  "crates/shiplog-reducer",
+  "crates/shiplog-sink",
+  "crates/shiplog-writer",
+  # New pattern crates (interceptor, middleware, adapter, resolver)
+  "crates/shiplog-interceptor",
+  "crates/shiplog-middleware",
+  "crates/shiplog-adapter",
+  "crates/shiplog-resolver",
+  # New rate limiting crates (throttler, circuitbreaker, bucket, leakybucket)
+  "crates/shiplog-throttler",
+  "crates/shiplog-circuitbreaker",
+  "crates/shiplog-bucket",
+  "crates/shiplog-leakybucket",
+  # New data structure crates (stack, fenwick)
+  "crates/shiplog-stack",
+  "crates/shiplog-fenwick",
+  # New tree crates (tree, bst, btree)
+  "crates/shiplog-tree",
+  "crates/shiplog-bst",
+  "crates/shiplog-btree",
+  # New statistics crates (histogram, percentile, quantile, summary)
+  "crates/shiplog-histogram",
+  "crates/shiplog-percentile",
+  "crates/shiplog-quantile",
+  "crates/shiplog-summary",
+  # New stream processing crates (watermark, windowing, triggers)
+  "crates/shiplog-watermark",
+  "crates/shiplog-windowing",
+  "crates/shiplog-triggers",
+  # New stream join/split/union/cogroup crates
+  "crates/shiplog-joiner",
+  "crates/shiplog-cogrouper",
+  "crates/shiplog-union",
+  "crates/shiplog-split",
   "apps/shiplog",
 ]
 
@@ -85,12 +219,14 @@ serde_yaml = { package = "serde_yaml_ng", version = "0.10.0" }
 chrono = { version = "0.4.43", features = ["serde"] }
 sha2 = "0.10.9"
 hex = "0.4.3"
+base64 = "0.22"
 clap = { version = "4.5.58", features = ["derive"] }
 reqwest = { version = "0.13.2", features = ["blocking", "json"] }
 url = "2.5.8"
 itertools = "0.14.0"
 proptest = "1.10.0"
 insta = "1.46.3"
+regex = "1.11"
 zip = "8.0.0"
 tokio = { version = "1.49.0", features = ["rt", "macros"] }
 tempfile = "3.25.0"

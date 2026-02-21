@@ -1,0 +1,18 @@
+[package]
+name = "shiplog-throttler"
+version = "0.2.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Rate limiting and throttling utilities for shiplog."
+readme = "README.md"
+documentation = "https://docs.rs/shiplog-throttler"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["throttler", "rate-limit", "throttling", "rate-limiting"]
+categories = ["caching", "development-tools"]
+
+[dependencies]
+anyhow.workspace = true
+chrono.workspace = true
