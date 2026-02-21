@@ -25,6 +25,7 @@ members = [
   # New microcrates
   "crates/shiplog-validate",
   "crates/shiplog-export",
+  "crates/shiplog-output-layout",
   "crates/shiplog-storage",
   "crates/shiplog-notify",
   # New filter/merge/diff/query crates
@@ -34,6 +35,8 @@ members = [
   "crates/shiplog-query",
   # New Later feature crates
   "crates/shiplog-team",
+  "crates/shiplog-team-core",
+  "crates/shiplog-team-aggregate",
   "crates/shiplog-cron",
   "crates/shiplog-tui",
   "crates/shiplog-web",

@@ -1966,6 +1966,7 @@ dependencies = [
  "shiplog-redact",
  "shiplog-render-md",
  "shiplog-schema",
+ "shiplog-team",
  "shiplog-workstreams",
 ]
 
@@ -2113,6 +2114,7 @@ dependencies = [
  "serde_json",
  "sha2",
  "shiplog-ids",
+ "shiplog-output-layout",
  "shiplog-schema",
  "tempfile",
  "zip",
@@ -2352,6 +2354,8 @@ dependencies = [
  "serde_yaml_ng",
  "shiplog-bundle",
  "shiplog-ids",
+ "shiplog-merge",
+ "shiplog-output-layout",
  "shiplog-ports",
  "shiplog-redact",
  "shiplog-render-json",
@@ -2398,6 +2402,7 @@ dependencies = [
  "proptest",
  "serde",
  "serde_json",
+ "shiplog-output-layout",
 ]
 
 [[package]]
@@ -2599,6 +2604,7 @@ dependencies = [
  "serde",
  "serde_json",
  "shiplog-ids",
+ "shiplog-output-layout",
  "shiplog-ports",
  "shiplog-schema",
  "tempfile",
@@ -2714,11 +2720,12 @@ dependencies = [
 name = "shiplog-merge"
 version = "0.2.1"
 dependencies = [
+ "anyhow",
  "chrono",
- "itertools",
  "proptest",
  "serde",
  "shiplog-ids",
+ "shiplog-ports",
  "shiplog-schema",
 ]
 
@@ -2792,6 +2799,10 @@ dependencies = [
  "anyhow",
  "tokio",
 ]
+
+[[package]]
+name = "shiplog-output-layout"
+version = "0.2.1"
 
 [[package]]
 name = "shiplog-parse"
@@ -3216,11 +3227,34 @@ dependencies = [
 name = "shiplog-team"
 version = "0.2.1"
 dependencies = [
+ "shiplog-team-aggregate",
+]
+
+[[package]]
+name = "shiplog-team-aggregate"
+version = "0.2.1"
+dependencies = [
  "anyhow",
+ "chrono",
  "serde",
  "serde_json",
- "serde_yaml_ng",
+ "shiplog-ids",
+ "shiplog-merge",
+ "shiplog-ports",
+ "shiplog-schema",
+ "shiplog-team-core",
+ "shiplog-template",
  "tempfile",
+]
+
+[[package]]
+name = "shiplog-team-core"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "serde",
+ "serde_yaml_ng",
 ]
 
 [[package]]
@@ -3242,10 +3276,22 @@ dependencies = [
  "proptest",
  "serde",
  "serde_json",
+ "shiplog-export",
  "shiplog-ids",
+ "shiplog-merge",
+ "shiplog-notify",
+ "shiplog-output-layout",
+ "shiplog-ports",
  "shiplog-redact",
+ "shiplog-render-md",
  "shiplog-schema",
+ "shiplog-storage",
+ "shiplog-team",
+ "shiplog-team-aggregate",
+ "shiplog-team-core",
+ "shiplog-validate",
  "shiplog-workstreams",
+ "tempfile",
 ]
 
 [[package]]
