@@ -12,6 +12,7 @@
 
 pub mod cron_mode;
 pub mod plugin_system;
+#[cfg(feature = "team")]
 pub mod team_aggregation;
 pub mod tui_editor;
 pub mod web_viewer;
@@ -19,6 +20,7 @@ pub mod web_viewer;
 // Re-export all scenarios for convenience
 pub use cron_mode::*;
 pub use plugin_system::*;
+#[cfg(feature = "team")]
 pub use team_aggregation::*;
 pub use tui_editor::*;
 pub use web_viewer::*;
