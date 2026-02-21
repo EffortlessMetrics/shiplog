@@ -15,6 +15,8 @@ use shiplog_ports::Ingestor;
 use shiplog_redact::DeterministicRedactor;
 use shiplog_render_md::MarkdownRenderer;
 use shiplog_schema::bundle::BundleProfile;
+#[cfg(feature = "team")]
+use shiplog_team::{TeamAggregator, resolve_team_config, write_team_outputs};
 use shiplog_workstreams::RepoClusterer;
 use std::path::{Path, PathBuf};
 
@@ -192,6 +194,41 @@ enum Command {
         /// LLM API key (or set SHIPLOG_LLM_API_KEY).
         #[arg(long)]
         llm_api_key: Option<String>,
+    },
+
+    /// Aggregate multiple member ledgers into a team-level packet.
+    #[cfg(feature = "team")]
+    TeamAggregate {
+        /// Directory containing team member run folders.
+        #[arg(long, default_value = "./out")]
+        members_root: PathBuf,
+        /// Output directory for the generated team packet.
+        #[arg(long, default_value = "./out/team")]
+        out: PathBuf,
+        /// Comma-separated list of member IDs.
+        #[arg(long)]
+        members: Option<String>,
+        /// Path to team configuration file.
+        #[arg(long)]
+        config: Option<PathBuf>,
+        /// Optional inclusive start date.
+        #[arg(long)]
+        since: Option<NaiveDate>,
+        /// Optional exclusive end date.
+        #[arg(long)]
+        until: Option<NaiveDate>,
+        /// Optional comma-separated output sections.
+        #[arg(long)]
+        sections: Option<String>,
+        /// Optional custom team template file.
+        #[arg(long)]
+        template: Option<PathBuf>,
+        /// Require a specific schema version from member ledgers.
+        #[arg(long)]
+        required_schema_version: Option<String>,
+        /// Alias mapping in `member=Display Name` format.
+        #[arg(long)]
+        alias: Vec<String>,
     },
 }
 
@@ -820,6 +857,48 @@ fn main() -> Result<()> {
 
                     println!("Refreshed while preserving workstream curation:");
                     print_outputs_simple(&outputs);
+                }
+            }
+        }
+
+        #[cfg(feature = "team")]
+        Command::TeamAggregate {
+            members_root,
+            out,
+            members,
+            config,
+            since,
+            until,
+            sections,
+            template,
+            required_schema_version,
+            alias,
+        } => {
+            let cfg = resolve_team_config(
+                config,
+                members,
+                since,
+                until,
+                sections,
+                template,
+                required_schema_version,
+                alias,
+            )?;
+
+            let aggregator = TeamAggregator::new(cfg);
+            let result = aggregator.aggregate(&members_root)?;
+            let packet = aggregator.render_packet_markdown(&result)?;
+
+            let output_paths = write_team_outputs(&out, &packet, &result)?;
+
+            println!("Team packet generated:");
+            println!("- {}", output_paths.packet.display());
+            println!("- {}", output_paths.events.display());
+            println!("- {}", output_paths.coverage.display());
+            if !result.warnings.is_empty() {
+                println!("Team aggregation warnings:");
+                for warning in result.warnings {
+                    println!("  - {warning}");
                 }
             }
         }
