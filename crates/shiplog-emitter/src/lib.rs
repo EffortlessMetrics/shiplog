@@ -6,7 +6,6 @@ use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
 /// A simple event emitter that allows subscribing to and emitting events.
-#[allow(clippy::type_complexity)]
 pub struct Emitter<T> {
     listeners: HashMap<String, Vec<Box<dyn FnMut(&T) + Send + Sync>>>,
 }
@@ -25,7 +24,7 @@ impl<T> Emitter<T> {
     {
         self.listeners
             .entry(event.to_string())
-            .or_default()
+            .or_insert_with(Vec::new)
             .push(Box::new(callback));
     }
 
@@ -147,7 +146,7 @@ mod tests {
     #[test]
     fn test_shared_emitter() {
         let emitter: SharedEmitter<String> = shared();
-
+        
         {
             let mut e = emitter.write().unwrap();
             e.on("test", |data| {

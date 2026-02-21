@@ -27,12 +27,6 @@ pub struct StreamSplitter<T> {
     data: Vec<T>,
 }
 
-impl<T: Clone> Default for StreamSplitter<T> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl<T: Clone> StreamSplitter<T> {
     pub fn new() -> Self {
         Self { data: Vec::new() }
@@ -93,15 +87,13 @@ impl<T: Clone> StreamSplitter<T> {
 
         for item in self.data {
             let idx = part_fn(&item);
-            result.entry(idx).or_default().push(item);
+            result.entry(idx).or_insert_with(Vec::new).push(item);
         }
 
         // Convert to sorted vector by key
         let mut keys: Vec<_> = result.keys().cloned().collect();
         keys.sort();
-        keys.into_iter()
-            .map(|k| result.remove(&k).unwrap())
-            .collect()
+        keys.into_iter().map(|k| result.remove(&k).unwrap()).collect()
     }
 
     /// Group by key extractor
@@ -113,7 +105,7 @@ impl<T: Clone> StreamSplitter<T> {
 
         for item in self.data {
             let key = key_fn(&item);
-            groups.entry(key).or_default().push(item);
+            groups.entry(key).or_insert_with(Vec::new).push(item);
         }
 
         groups
@@ -204,7 +196,9 @@ mod tests {
     fn test_split_into_n() {
         let data = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
-        let result = StreamSplitter::new().with_data(data).split_into_n(3);
+        let result = StreamSplitter::new()
+            .with_data(data)
+            .split_into_n(3);
 
         assert_eq!(result.len(), 3);
         assert_eq!(result[0], vec![1, 2, 3, 4]);
@@ -216,7 +210,9 @@ mod tests {
     fn test_split_into_n_uneven() {
         let data = vec![1, 2, 3, 4, 5];
 
-        let result = StreamSplitter::new().with_data(data).split_into_n(3);
+        let result = StreamSplitter::new()
+            .with_data(data)
+            .split_into_n(3);
 
         assert_eq!(result.len(), 3);
         assert_eq!(result[0], vec![1, 2]);
@@ -247,18 +243,9 @@ mod tests {
         }
 
         let data = vec![
-            Item {
-                id: 1,
-                category: "fruit".to_string(),
-            },
-            Item {
-                id: 2,
-                category: "vegetable".to_string(),
-            },
-            Item {
-                id: 3,
-                category: "fruit".to_string(),
-            },
+            Item { id: 1, category: "fruit".to_string() },
+            Item { id: 2, category: "vegetable".to_string() },
+            Item { id: 3, category: "fruit".to_string() },
         ];
 
         let result = StreamSplitter::new()
@@ -274,7 +261,9 @@ mod tests {
     fn test_take() {
         let data = vec![1, 2, 3, 4, 5];
 
-        let result = StreamSplitter::new().with_data(data).take(3);
+        let result = StreamSplitter::new()
+            .with_data(data)
+            .take(3);
 
         assert_eq!(result, vec![1, 2, 3]);
     }
@@ -283,7 +272,9 @@ mod tests {
     fn test_skip() {
         let data = vec![1, 2, 3, 4, 5];
 
-        let result = StreamSplitter::new().with_data(data).skip(2);
+        let result = StreamSplitter::new()
+            .with_data(data)
+            .skip(2);
 
         assert_eq!(result, vec![3, 4, 5]);
     }
@@ -292,7 +283,9 @@ mod tests {
     fn test_split_at() {
         let data = vec![1, 2, 3, 4, 5];
 
-        let (first, second) = StreamSplitter::new().with_data(data).split_at(3);
+        let (first, second) = StreamSplitter::new()
+            .with_data(data)
+            .split_at(3);
 
         assert_eq!(first, vec![1, 2, 3]);
         assert_eq!(second, vec![4, 5]);
@@ -302,7 +295,9 @@ mod tests {
     fn test_round_robin_splitter() {
         let data = vec![1, 2, 3, 4, 5, 6];
 
-        let result = RoundRobinSplitter::new(3).with_data(data).execute();
+        let result = RoundRobinSplitter::new(3)
+            .with_data(data)
+            .execute();
 
         assert_eq!(result.len(), 3);
         assert_eq!(result[0], vec![1, 4]);
@@ -314,7 +309,9 @@ mod tests {
     fn test_split_empty() {
         let data: Vec<i32> = vec![];
 
-        let result = StreamSplitter::new().with_data(data).split_by(|x| *x > 5);
+        let result = StreamSplitter::new()
+            .with_data(data)
+            .split_by(|x| *x > 5);
 
         assert!(result.matched.is_empty());
         assert!(result.unmatched.is_empty());
@@ -324,7 +321,9 @@ mod tests {
     fn test_split_into_n_zero() {
         let data = vec![1, 2, 3];
 
-        let result = StreamSplitter::new().with_data(data).split_into_n(0);
+        let result = StreamSplitter::new()
+            .with_data(data)
+            .split_into_n(0);
 
         assert!(result.is_empty());
     }

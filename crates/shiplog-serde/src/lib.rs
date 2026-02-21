@@ -8,11 +8,16 @@ use std::collections::HashMap;
 use std::fmt;
 
 /// Serialized data format
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum DataFormat {
-    #[default]
     Json,
     Yaml,
+}
+
+impl Default for DataFormat {
+    fn default() -> Self {
+        DataFormat::Json
+    }
 }
 
 impl fmt::Display for DataFormat {
@@ -49,35 +54,39 @@ pub fn to_json<T: Serialize>(value: &T) -> anyhow::Result<String> {
 }
 
 /// Serialize data to JSON string with custom config
-pub fn to_json_with_config<T: Serialize>(
-    value: &T,
-    config: &SerdeConfig,
-) -> anyhow::Result<String> {
+pub fn to_json_with_config<T: Serialize>(value: &T, config: &SerdeConfig) -> anyhow::Result<String> {
     match config.format {
-        DataFormat::Json => if config.pretty {
-            serde_json::to_string_pretty(value)
-        } else {
-            serde_json::to_string(value)
+        DataFormat::Json => {
+            if config.pretty {
+                serde_json::to_string_pretty(value)
+            } else {
+                serde_json::to_string(value)
+            }
+            .map_err(|e| anyhow::anyhow!("JSON serialization failed: {}", e))
         }
-        .map_err(|e| anyhow::anyhow!("JSON serialization failed: {}", e)),
-        DataFormat::Yaml => serde_yaml::to_string(value)
-            .map_err(|e| anyhow::anyhow!("YAML serialization failed: {}", e)),
+        DataFormat::Yaml => {
+            serde_yaml::to_string(value)
+                .map_err(|e| anyhow::anyhow!("YAML serialization failed: {}", e))
+        }
     }
 }
 
 /// Deserialize data from JSON string
 pub fn from_json<T: for<'de> Deserialize<'de>>(json: &str) -> anyhow::Result<T> {
-    serde_json::from_str(json).map_err(|e| anyhow::anyhow!("JSON deserialization failed: {}", e))
+    serde_json::from_str(json)
+        .map_err(|e| anyhow::anyhow!("JSON deserialization failed: {}", e))
 }
 
 /// Serialize data to YAML string
 pub fn to_yaml<T: Serialize>(value: &T) -> anyhow::Result<String> {
-    serde_yaml::to_string(value).map_err(|e| anyhow::anyhow!("YAML serialization failed: {}", e))
+    serde_yaml::to_string(value)
+        .map_err(|e| anyhow::anyhow!("YAML serialization failed: {}", e))
 }
 
 /// Deserialize data from YAML string
 pub fn from_yaml<T: for<'de> Deserialize<'de>>(yaml: &str) -> anyhow::Result<T> {
-    serde_yaml::from_str(yaml).map_err(|e| anyhow::anyhow!("YAML deserialization failed: {}", e))
+    serde_yaml::from_str(yaml)
+        .map_err(|e| anyhow::anyhow!("YAML deserialization failed: {}", e))
 }
 
 /// Serialize/deserialize wrapper for flexible format handling
@@ -180,7 +189,7 @@ mod tests {
         };
         let json = to_json(&data).unwrap();
         let flex = FlexibleData::new(DataFormat::Json, json);
-
+        
         let deserialized: TestData = flex.deserialize().unwrap();
         assert_eq!(deserialized.name, "test");
         assert_eq!(deserialized.value, 42);
@@ -190,7 +199,7 @@ mod tests {
     fn test_flexible_data_with_metadata() {
         let flex = FlexibleData::new(DataFormat::Json, "{}".to_string())
             .with_metadata("source".to_string(), "test".to_string());
-
+        
         assert_eq!(flex.metadata.get("source"), Some(&"test".to_string()));
     }
 
@@ -200,10 +209,10 @@ mod tests {
             name: "roundtrip".to_string(),
             value: 123,
         };
-
+        
         let json = to_json(&original).unwrap();
         let deserialized: TestData = from_json(&json).unwrap();
-
+        
         assert_eq!(original, deserialized);
     }
 
@@ -213,10 +222,10 @@ mod tests {
             name: "roundtrip".to_string(),
             value: 456,
         };
-
+        
         let yaml = to_yaml(&original).unwrap();
         let deserialized: TestData = from_yaml(&yaml).unwrap();
-
+        
         assert_eq!(original, deserialized);
     }
 }

@@ -1,7 +1,7 @@
 //! Compression utilities for shiplog data.
 
+use flate2::write::{GzEncoder, GzDecoder};
 use flate2::Compression;
-use flate2::write::{GzDecoder, GzEncoder};
 use serde::{Deserialize, Serialize};
 use std::io::Write;
 
@@ -39,25 +39,21 @@ impl Compressor {
     pub fn new(config: CompressionConfig) -> Self {
         Self { config }
     }
-
+    
     /// Compress data using gzip
     pub fn compress_gzip(&self, data: &[u8]) -> anyhow::Result<Vec<u8>> {
         let mut encoder = GzEncoder::new(Vec::new(), Compression::new(self.config.level));
         encoder.write_all(data)?;
-        encoder
-            .finish()
-            .map_err(|e| anyhow::anyhow!("Compression failed: {}", e))
+        encoder.finish().map_err(|e| anyhow::anyhow!("Compression failed: {}", e))
     }
-
+    
     /// Decompress gzip data
     pub fn decompress_gzip(&self, data: &[u8]) -> anyhow::Result<Vec<u8>> {
         let mut decoder = GzDecoder::new(Vec::new());
         decoder.write_all(data)?;
-        decoder
-            .finish()
-            .map_err(|e| anyhow::anyhow!("Decompression failed: {}", e))
+        decoder.finish().map_err(|e| anyhow::anyhow!("Decompression failed: {}", e))
     }
-
+    
     /// Compress data using configured algorithm
     pub fn compress(&self, data: &[u8]) -> anyhow::Result<Vec<u8>> {
         match self.config.algorithm {
@@ -66,7 +62,7 @@ impl Compressor {
             CompressionAlgorithm::None => Ok(data.to_vec()),
         }
     }
-
+    
     /// Decompress data using configured algorithm
     pub fn decompress(&self, data: &[u8]) -> anyhow::Result<Vec<u8>> {
         match self.config.algorithm {
@@ -75,7 +71,7 @@ impl Compressor {
             CompressionAlgorithm::None => Ok(data.to_vec()),
         }
     }
-
+    
     /// Compress using Snappy
     fn compress_snappy(&self, data: &[u8]) -> anyhow::Result<Vec<u8>> {
         let compressed = snap::raw::Encoder::new()
@@ -83,7 +79,7 @@ impl Compressor {
             .map_err(|e| anyhow::anyhow!("Snappy compression failed: {}", e))?;
         Ok(compressed)
     }
-
+    
     /// Decompress Snappy data
     fn decompress_snappy(&self, data: &[u8]) -> anyhow::Result<Vec<u8>> {
         let decompressed = snap::raw::Decoder::new()
@@ -108,7 +104,7 @@ impl CompressionStats {
         }
         self.compressed_size as f64 / self.original_size as f64
     }
-
+    
     /// Calculate space savings percentage
     pub fn savings_percent(&self) -> f64 {
         (1.0 - self.ratio()) * 100.0
@@ -135,20 +131,19 @@ mod tests {
             algorithm: CompressionAlgorithm::Gzip,
             level: 6,
         };
-
+        
         let compressor = Compressor::new(config);
         // Use larger data to ensure compression is effective
-        let original =
-            b"Hello, this is test data for compression! It contains multiple bytes. ".repeat(10);
-
+        let original = b"Hello, this is test data for compression! It contains multiple bytes. ".repeat(10);
+        
         let compressed = compressor.compress(&original)?;
         let decompressed = compressor.decompress(&compressed)?;
-
+        
         assert_eq!(original.as_slice(), decompressed.as_slice());
-
+        
         // Verify compression actually reduced size (for larger data)
         assert!(compressed.len() < original.len());
-
+        
         Ok(())
     }
 
@@ -158,15 +153,15 @@ mod tests {
             algorithm: CompressionAlgorithm::Snappy,
             level: 6,
         };
-
+        
         let compressor = Compressor::new(config);
         let original = b"Hello, this is test data for Snappy compression!";
-
+        
         let compressed = compressor.compress(original)?;
         let decompressed = compressor.decompress(&compressed)?;
-
+        
         assert_eq!(original.as_slice(), decompressed.as_slice());
-
+        
         Ok(())
     }
 
@@ -176,16 +171,16 @@ mod tests {
             algorithm: CompressionAlgorithm::None,
             level: 6,
         };
-
+        
         let compressor = Compressor::new(config);
         let original = b"Test data";
-
+        
         let compressed = compressor.compress(original)?;
         let decompressed = compressor.decompress(&compressed)?;
-
+        
         assert_eq!(original.as_slice(), compressed);
         assert_eq!(original.as_slice(), decompressed);
-
+        
         Ok(())
     }
 
@@ -195,7 +190,7 @@ mod tests {
             original_size: 100,
             compressed_size: 50,
         };
-
+        
         assert_eq!(stats.ratio(), 0.5);
         assert_eq!(stats.savings_percent(), 50.0);
     }

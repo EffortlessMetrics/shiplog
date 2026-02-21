@@ -76,13 +76,12 @@ impl Throttler {
         let window = self.config.window;
         let max_requests = self.config.max_requests;
 
-        let state = self
-            .states
-            .entry(key.to_string())
-            .or_insert_with(|| ThrottlerState {
+        let state = self.states.entry(key.to_string()).or_insert_with(|| {
+            ThrottlerState {
                 request_count: 0,
                 window_start: now,
-            });
+            }
+        });
 
         // Check if window has expired
         if now - state.window_start >= window {

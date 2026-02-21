@@ -2,6 +2,8 @@
 //!
 //! This crate provides Hex encoding/decoding utilities for the shiplog ecosystem.
 
+use hex;
+
 /// Encodes bytes to hex string (lowercase)
 pub fn encode(data: &[u8]) -> String {
     hex::encode(data)
@@ -46,7 +48,7 @@ mod tests {
         let data = b"Hello, World!";
         let encoded = encode(data);
         assert_eq!(encoded, "48656c6c6f2c20576f726c6421");
-
+        
         let decoded = decode(&encoded).unwrap();
         assert_eq!(decoded, data);
     }

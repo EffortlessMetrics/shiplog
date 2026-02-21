@@ -1306,6 +1306,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4d3d07927151ff8575b7087f245456e549fea62edf0ec4e565a5ee50c8402bc3"
 dependencies = [
  "bitflags 2.10.0",
+ "fsevent-sys",
  "inotify",
  "kqueue",
  "libc",
@@ -1970,6 +1971,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "shiplog-accumulator"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+]
+
+[[package]]
+name = "shiplog-actor"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "tokio",
+]
+
+[[package]]
+name = "shiplog-adapter"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+]
+
+[[package]]
+name = "shiplog-aggregator"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+]
+
+[[package]]
 name = "shiplog-archive"
 version = "0.2.1"
 dependencies = [
@@ -1979,6 +2009,21 @@ dependencies = [
  "serde_json",
  "tempfile",
  "zip",
+]
+
+[[package]]
+name = "shiplog-async"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "tokio",
+]
+
+[[package]]
+name = "shiplog-atomic"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
 ]
 
 [[package]]
@@ -2004,6 +2049,59 @@ dependencies = [
  "tempfile",
  "walkdir",
  "zip",
+]
+
+[[package]]
+name = "shiplog-base64"
+version = "0.2.1"
+dependencies = [
+ "base64",
+]
+
+[[package]]
+name = "shiplog-batcher"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "serde",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
+name = "shiplog-bloom"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+]
+
+[[package]]
+name = "shiplog-bst"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+]
+
+[[package]]
+name = "shiplog-btree"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+]
+
+[[package]]
+name = "shiplog-bucket"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "chrono",
+]
+
+[[package]]
+name = "shiplog-buffer"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
 ]
 
 [[package]]
@@ -2123,6 +2221,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "shiplog-cogrouper"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+]
+
+[[package]]
+name = "shiplog-collector"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+]
+
+[[package]]
+name = "shiplog-compressor"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "flate2",
+ "serde",
+ "serde_json",
+ "snap",
+ "tempfile",
+]
+
+[[package]]
 name = "shiplog-config"
 version = "0.2.1"
 dependencies = [
@@ -2130,6 +2254,17 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml_ng",
+ "tempfile",
+]
+
+[[package]]
+name = "shiplog-counter"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "serde",
+ "serde_json",
  "tempfile",
 ]
 
@@ -2167,6 +2302,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "shiplog-dedupe"
+version = "0.2.1"
+dependencies = [
+ "hex",
+ "proptest",
+ "serde",
+ "sha2",
+]
+
+[[package]]
+name = "shiplog-delayqueue"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+]
+
+[[package]]
+name = "shiplog-deque"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "shiplog-diff"
 version = "0.2.1"
 dependencies = [
@@ -2175,6 +2336,13 @@ dependencies = [
  "serde",
  "shiplog-ids",
  "shiplog-schema",
+]
+
+[[package]]
+name = "shiplog-emitter"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
 ]
 
 [[package]]
@@ -2195,6 +2363,24 @@ dependencies = [
  "shiplog-schema",
  "shiplog-workstreams",
  "tempfile",
+]
+
+[[package]]
+name = "shiplog-enumerator"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+]
+
+[[package]]
+name = "shiplog-env"
+version = "0.2.1"
+
+[[package]]
+name = "shiplog-error"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
 ]
 
 [[package]]
@@ -2219,6 +2405,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "shiplog-fenwick"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "proptest",
+]
+
+[[package]]
 name = "shiplog-filter"
 version = "0.2.1"
 dependencies = [
@@ -2228,6 +2422,87 @@ dependencies = [
  "serde",
  "shiplog-ids",
  "shiplog-schema",
+]
+
+[[package]]
+name = "shiplog-fmt"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "chrono",
+]
+
+[[package]]
+name = "shiplog-gauge"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "serde",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
+name = "shiplog-graph"
+version = "0.2.1"
+dependencies = [
+ "proptest",
+ "serde",
+]
+
+[[package]]
+name = "shiplog-guard"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+]
+
+[[package]]
+name = "shiplog-hash"
+version = "0.2.1"
+dependencies = [
+ "hex",
+ "proptest",
+ "serde",
+ "sha2",
+]
+
+[[package]]
+name = "shiplog-health"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "serde",
+ "tokio",
+]
+
+[[package]]
+name = "shiplog-heap"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "shiplog-hex"
+version = "0.2.1"
+dependencies = [
+ "hex",
+]
+
+[[package]]
+name = "shiplog-histogram"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "serde",
+ "serde_json",
+ "tempfile",
 ]
 
 [[package]]
@@ -2367,6 +2642,52 @@ dependencies = [
 ]
 
 [[package]]
+name = "shiplog-interceptor"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+]
+
+[[package]]
+name = "shiplog-iter"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "itertools",
+]
+
+[[package]]
+name = "shiplog-iterator"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "itertools",
+]
+
+[[package]]
+name = "shiplog-joiner"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+]
+
+[[package]]
+name = "shiplog-latch"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "tokio",
+]
+
+[[package]]
+name = "shiplog-leakybucket"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "chrono",
+]
+
+[[package]]
 name = "shiplog-logging"
 version = "0.2.1"
 dependencies = [
@@ -2375,6 +2696,23 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
+]
+
+[[package]]
+name = "shiplog-lru"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "proptest",
+ "serde",
+]
+
+[[package]]
+name = "shiplog-matrix"
+version = "0.2.1"
+dependencies = [
+ "proptest",
+ "serde",
 ]
 
 [[package]]
@@ -2390,6 +2728,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "shiplog-meter"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "serde",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
 name = "shiplog-metrics"
 version = "0.2.1"
 dependencies = [
@@ -2398,6 +2747,13 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
+]
+
+[[package]]
+name = "shiplog-middleware"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
 ]
 
 [[package]]
@@ -2412,6 +2768,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "shiplog-normalize"
+version = "0.2.1"
+
+[[package]]
+name = "shiplog-normalizer"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "proptest",
+ "serde",
+]
+
+[[package]]
 name = "shiplog-notify"
 version = "0.2.1"
 dependencies = [
@@ -2422,6 +2791,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "shiplog-once"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "tokio",
+]
+
+[[package]]
+name = "shiplog-parse"
+version = "0.2.1"
+
+[[package]]
+name = "shiplog-path"
+version = "0.2.1"
+
+[[package]]
+name = "shiplog-percentile"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "serde",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
 name = "shiplog-plugin"
 version = "0.2.1"
 dependencies = [
@@ -2429,6 +2825,13 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
+]
+
+[[package]]
+name = "shiplog-pool"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
 ]
 
 [[package]]
@@ -2443,6 +2846,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "shiplog-priorityqueue"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "shiplog-prng"
+version = "0.2.1"
+dependencies = [
+ "proptest",
+ "rand",
+]
+
+[[package]]
+name = "shiplog-proc"
+version = "0.2.1"
+
+[[package]]
+name = "shiplog-processor"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+]
+
+[[package]]
 name = "shiplog-pubsub"
 version = "0.2.1"
 dependencies = [
@@ -2450,6 +2881,17 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+]
+
+[[package]]
+name = "shiplog-quantile"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "serde",
+ "serde_json",
+ "tempfile",
 ]
 
 [[package]]
@@ -2472,6 +2914,23 @@ dependencies = [
  "anyhow",
  "serde",
  "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "shiplog-random"
+version = "0.2.1"
+dependencies = [
+ "proptest",
+ "rand",
+]
+
+[[package]]
+name = "shiplog-rate"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "chrono",
  "tokio",
 ]
 
@@ -2546,6 +3005,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "shiplog-resolver"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+]
+
+[[package]]
+name = "shiplog-retry"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
+name = "shiplog-ring"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+]
+
+[[package]]
+name = "shiplog-sanitize"
+version = "0.2.1"
+
+[[package]]
 name = "shiplog-scheduler"
 version = "0.2.1"
 dependencies = [
@@ -2569,6 +3057,107 @@ dependencies = [
 ]
 
 [[package]]
+name = "shiplog-scope"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+]
+
+[[package]]
+name = "shiplog-segment"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "proptest",
+ "serde",
+]
+
+[[package]]
+name = "shiplog-semver"
+version = "0.2.1"
+
+[[package]]
+name = "shiplog-serde"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "serde",
+ "serde_json",
+ "serde_yaml_ng",
+]
+
+[[package]]
+name = "shiplog-shared"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "shiplog-shutdown"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "tokio",
+]
+
+[[package]]
+name = "shiplog-signal"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "tokio",
+]
+
+[[package]]
+name = "shiplog-sink"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+]
+
+[[package]]
+name = "shiplog-skiplist"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "rand",
+]
+
+[[package]]
+name = "shiplog-slidingwindow"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+]
+
+[[package]]
+name = "shiplog-spawn"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+]
+
+[[package]]
+name = "shiplog-split"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+]
+
+[[package]]
+name = "shiplog-stack"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "proptest",
+]
+
+[[package]]
 name = "shiplog-stats"
 version = "0.2.1"
 dependencies = [
@@ -2586,6 +3175,33 @@ dependencies = [
  "anyhow",
  "proptest",
  "serde",
+]
+
+[[package]]
+name = "shiplog-str"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+]
+
+[[package]]
+name = "shiplog-stream"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "futures",
+ "tokio",
+]
+
+[[package]]
+name = "shiplog-summary"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "serde",
+ "serde_json",
+ "tempfile",
 ]
 
 [[package]]
@@ -2853,6 +3469,47 @@ dependencies = [
 ]
 
 [[package]]
+name = "shiplog-throttler"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "chrono",
+]
+
+[[package]]
+name = "shiplog-time"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "shiplog-timeout"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "tokio",
+]
+
+[[package]]
+name = "shiplog-timewheel"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+]
+
+[[package]]
+name = "shiplog-tracker"
+version = "0.2.1"
+dependencies = [
+ "proptest",
+ "serde",
+]
+
+[[package]]
 name = "shiplog-transform"
 version = "0.2.1"
 dependencies = [
@@ -2861,6 +3518,37 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
+]
+
+[[package]]
+name = "shiplog-tree"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+]
+
+[[package]]
+name = "shiplog-trie"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+]
+
+[[package]]
+name = "shiplog-triggers"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "chrono",
+]
+
+[[package]]
+name = "shiplog-ttl"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "tokio",
 ]
 
 [[package]]
@@ -2873,6 +3561,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "shiplog-union"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+]
+
+[[package]]
+name = "shiplog-url"
+version = "0.2.1"
+dependencies = [
+ "url",
+]
+
+[[package]]
+name = "shiplog-uuid"
+version = "0.2.1"
+dependencies = [
+ "proptest",
+ "serde",
+]
+
+[[package]]
 name = "shiplog-validate"
 version = "0.2.1"
 dependencies = [
@@ -2880,6 +3590,20 @@ dependencies = [
  "proptest",
  "serde",
 ]
+
+[[package]]
+name = "shiplog-validator"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "proptest",
+ "regex",
+ "serde",
+]
+
+[[package]]
+name = "shiplog-version"
+version = "0.2.1"
 
 [[package]]
 name = "shiplog-watch"
@@ -2894,6 +3618,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "shiplog-watcher"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "notify",
+ "serde",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
+name = "shiplog-watermark"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "chrono",
+]
+
+[[package]]
 name = "shiplog-web"
 version = "0.2.1"
 dependencies = [
@@ -2901,6 +3644,21 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
+]
+
+[[package]]
+name = "shiplog-window"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+]
+
+[[package]]
+name = "shiplog-windowing"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "chrono",
 ]
 
 [[package]]

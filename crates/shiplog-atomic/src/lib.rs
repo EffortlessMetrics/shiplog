@@ -2,9 +2,7 @@
 //!
 //! This crate provides atomic counter primitives for lock-free synchronization.
 
-use std::sync::atomic::{
-    AtomicBool, AtomicI64 as StdAtomicI64, AtomicU64 as StdAtomicU64, AtomicUsize, Ordering,
-};
+use std::sync::atomic::{AtomicU64 as StdAtomicU64, AtomicI64 as StdAtomicI64, AtomicUsize, AtomicBool, Ordering};
 
 /// A simple atomic counter using `AtomicUsize`.
 #[derive(Debug)]
@@ -65,8 +63,7 @@ impl Counter {
     /// If the current value equals `current`, it is replaced with `new`.
     /// Returns the old value.
     pub fn compare_and_swap(&self, current: usize, new: usize) -> usize {
-        self.inner
-            .compare_exchange(current, new, Ordering::SeqCst, Ordering::SeqCst)
+        self.inner.compare_exchange(current, new, Ordering::SeqCst, Ordering::SeqCst)
             .unwrap_or_else(|e| e)
     }
 
@@ -217,9 +214,7 @@ impl AtomicFlag {
     /// If the current value equals `current`, it is replaced with `new`.
     /// Returns true if successful.
     pub fn compare_and_set(&self, current: bool, new: bool) -> bool {
-        self.inner
-            .compare_exchange(current, new, Ordering::SeqCst, Ordering::SeqCst)
-            .is_ok()
+        self.inner.compare_exchange(current, new, Ordering::SeqCst, Ordering::SeqCst).is_ok()
     }
 }
 
@@ -317,12 +312,12 @@ mod tests {
     #[test]
     fn test_counter_compare_and_swap() {
         let counter = Counter::new(5);
-
+        
         // Successful CAS - returns old value
         let old = counter.compare_and_swap(5, 10);
         assert_eq!(old, 5);
         assert_eq!(counter.get(), 10);
-
+        
         // Failed CAS - returns current value
         let old = counter.compare_and_swap(5, 20);
         assert_eq!(old, 10); // Still 10, not changed
@@ -339,7 +334,7 @@ mod tests {
     fn test_counter_concurrent() {
         let counter = Arc::new(Counter::new(0));
         let mut handles = Vec::new();
-
+        
         for _ in 0..10 {
             let counter = Arc::clone(&counter);
             let handle = thread::spawn(move || {
@@ -349,11 +344,11 @@ mod tests {
             });
             handles.push(handle);
         }
-
+        
         for handle in handles {
             handle.join().unwrap();
         }
-
+        
         assert_eq!(counter.get(), 10000);
     }
 
@@ -361,10 +356,10 @@ mod tests {
     fn test_atomic_u64() {
         let atomic = AtomicU64::new(42);
         assert_eq!(atomic.get(), 42);
-
+        
         atomic.set(100);
         assert_eq!(atomic.get(), 100);
-
+        
         assert_eq!(atomic.increment(), 101);
         assert_eq!(atomic.decrement(), 100);
     }
@@ -373,13 +368,13 @@ mod tests {
     fn test_atomic_i64() {
         let atomic = AtomicI64::new(-10);
         assert_eq!(atomic.get(), -10);
-
+        
         atomic.set(50);
         assert_eq!(atomic.get(), 50);
-
+        
         assert_eq!(atomic.increment(), 51);
         assert_eq!(atomic.decrement(), 50);
-
+        
         assert_eq!(atomic.add(-5), 45);
     }
 
@@ -387,14 +382,14 @@ mod tests {
     fn test_atomic_flag() {
         let flag = AtomicFlag::new(false);
         assert!(!flag.get());
-
+        
         flag.set(true);
         assert!(flag.get());
-
+        
         let old = flag.set_true();
         assert!(old);
         assert!(flag.get());
-
+        
         let old = flag.set_false();
         assert!(old);
         assert!(!flag.get());
@@ -403,22 +398,22 @@ mod tests {
     #[test]
     fn test_atomic_flag_compare_and_set() {
         let flag = AtomicFlag::new(false);
-
+        
         assert!(flag.compare_and_set(false, true));
         assert!(!flag.compare_and_set(false, true)); // Already true
-
+        
         assert!(flag.compare_and_set(true, false));
     }
 
     #[test]
     fn test_sequence() {
         let seq = Sequence::new(1);
-
+        
         // next() returns the value after incrementing
-        assert_eq!(seq.next(), 2); // First call: starts at 1, returns 2
+        assert_eq!(seq.next(), 2);  // First call: starts at 1, returns 2
         assert_eq!(seq.current(), 2);
-        assert_eq!(seq.next(), 3); // Second call: now at 2, returns 3
-
+        assert_eq!(seq.next(), 3);   // Second call: now at 2, returns 3
+        
         seq.reset(100);
         assert_eq!(seq.current(), 100);
     }

@@ -14,6 +14,7 @@ pub fn parent_pid() -> Option<u32> {
     // Note: This is not available on all platforms
     #[cfg(unix)]
     {
+        use std::os::unix::process::ParentProcessExt;
         process::Command::new("sh")
             .arg("-c")
             .arg("echo $PPID")
@@ -58,15 +59,14 @@ pub fn process_name() -> String {
 pub fn uid() -> Option<u32> {
     #[cfg(unix)]
     {
-        Some(
-            process::Command::new("id")
-                .arg("-u")
-                .output()
-                .ok()
-                .and_then(|o| String::from_utf8(o.stdout).ok())
-                .and_then(|s| s.trim().parse().ok())
-                .unwrap_or(0),
-        )
+        use std::os::unix::process::CommandExt;
+        Some(process::Command::new("id")
+            .arg("-u")
+            .output()
+            .ok()
+            .and_then(|o| String::from_utf8(o.stdout).ok())
+            .and_then(|s| s.trim().parse().ok())
+            .unwrap_or(0))
     }
     #[cfg(not(unix))]
     {
@@ -78,6 +78,7 @@ pub fn uid() -> Option<u32> {
 pub fn username() -> Option<String> {
     #[cfg(unix)]
     {
+        use std::os::unix::process::CommandExt;
         process::Command::new("whoami")
             .output()
             .ok()
@@ -92,20 +93,23 @@ pub fn username() -> Option<String> {
 
 /// Returns the hostname.
 pub fn hostname() -> Option<String> {
-    std::env::var("HOSTNAME").ok().or({
-        #[cfg(unix)]
-        {
-            process::Command::new("hostname")
-                .output()
-                .ok()
-                .and_then(|o| String::from_utf8(o.stdout).ok())
-                .map(|s| s.trim().to_string())
-        }
-        #[cfg(not(unix))]
-        {
-            None
-        }
-    })
+    std::env::var("HOSTNAME")
+        .ok()
+        .or_else(|| {
+            #[cfg(unix)]
+            {
+                use std::os::unix::process::CommandExt;
+                process::Command::new("hostname")
+                    .output()
+                    .ok()
+                    .and_then(|o| String::from_utf8(o.stdout).ok())
+                    .map(|s| s.trim().to_string())
+            }
+            #[cfg(not(unix))]
+            {
+                None
+            }
+        })
 }
 
 /// Exits the process with the specified exit code.
