@@ -1,19 +1,25 @@
 [package]
 name = "shiplog-coverage"
-version = "0.2.0"
+version = "0.2.1"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
-description = "Time window utilities and completeness tracking for shiplog"
+authors.workspace = true
+description = "Date-window slicing utilities used by shiplog adaptive ingestion."
+readme = "README.md"
+documentation = "https://docs.rs/shiplog-coverage"
 repository.workspace = true
 homepage.workspace = true
-keywords.workspace = true
-categories.workspace = true
+keywords = ["coverage", "date-range", "time-window", "slicing", "ingestion"]
+categories = ["date-and-time", "development-tools"]
 
 [dependencies]
 chrono.workspace = true
-shiplog-schema = { path = "../shiplog-schema", version = "0.2.0" }
+shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
 
 [dev-dependencies]
 anyhow.workspace = true
+proptest.workspace = true
+shiplog-testkit = { path = "../shiplog-testkit", version = "0.2.1" }
+
 

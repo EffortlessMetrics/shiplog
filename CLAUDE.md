@@ -22,18 +22,21 @@ Snapshot tests use `insta` (YAML format). Update snapshots when intentionally ch
 
 Run the CLI: `cargo run -p shiplog -- <subcommand>`. Preferred workflow: `collect` (fetch events) → edit `workstreams.suggested.yaml` into `workstreams.yaml` → `render` (regenerate packet). `refresh` re-fetches events while preserving curated workstreams. `import` re-renders a pre-built ledger directory. `run` is legacy (collect + render in one shot).
 
-Key CLI flags (on `collect`/`refresh` github subcommands):
+Key CLI flags:
 - `--mode merged|created` (which PR lens to ingest)
 - `--include-reviews` (include review events where available)
 - `--no-details` (omit verbose details in packet)
 - `--throttle-ms <N>` (rate-limit API calls)
 - `--api-base <URL>` (GitHub Enterprise Server API base)
+- `--cache-dir <PATH>` (override GitHub API cache directory; default `<out>/.cache`)
+- `--no-cache` (disable GitHub API caching)
 - `--regen` (regenerate `workstreams.suggested.yaml`; never overwrites `workstreams.yaml`)
 - `--run-dir <PATH>` (explicit run directory for `refresh`, overrides auto-detection)
 - `--zip` (write a zip archive next to the run folder)
 - Redaction: `--redact-key` or `SHIPLOG_REDACT_KEY` controls generation of manager/public packets
 - `--bundle-profile internal|manager|public` (scope zip/bundle to a redaction profile)
-- LLM clustering (feature-gated, default off): `--llm-cluster`, `--llm-api-endpoint <URL>`, `--llm-model <NAME>`, `--llm-api-key <KEY>` (or `SHIPLOG_LLM_API_KEY`)
+- `manual` source for non-GitHub YAML events: `collect|refresh|run manual --events <PATH> --since <DATE> --until <DATE> [--user <NAME>]`
+- LLM clustering (feature-gated, default off; `collect`/`import`/`run`): `--llm-cluster`, `--llm-api-endpoint <URL>`, `--llm-model <NAME>`, `--llm-api-key <KEY>` (or `SHIPLOG_LLM_API_KEY`)
 
 ## Architecture
 

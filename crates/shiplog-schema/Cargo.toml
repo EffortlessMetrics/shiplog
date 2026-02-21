@@ -1,18 +1,26 @@
 [package]
 name = "shiplog-schema"
-version = "0.2.0"
+version = "0.2.1"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
-description = "Canonical event model and data types for shiplog"
+authors.workspace = true
+description = "Canonical shiplog schema: events, coverage manifests, workstreams, and bundle types."
+readme = "README.md"
+documentation = "https://docs.rs/shiplog-schema"
 repository.workspace = true
 homepage.workspace = true
-keywords.workspace = true
-categories.workspace = true
+keywords = ["schema", "events", "coverage", "workstreams", "serde"]
+categories = ["data-structures", "development-tools"]
 
 [dependencies]
 serde.workspace = true
 serde_json.workspace = true
 chrono.workspace = true
-shiplog-ids = { path = "../shiplog-ids", version = "0.2.0" }
+shiplog-ids = { path = "../shiplog-ids", version = "0.2.1" }
+
+[dev-dependencies]
+proptest.workspace = true
+shiplog-testkit = { path = "../shiplog-testkit", version = "0.2.1" }
+serde_yaml.workspace = true
 

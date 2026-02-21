@@ -1,0 +1,109 @@
+# Dictionary for JSON fuzzing
+# Contains common JSON keys and values found in shiplog data
+
+# Event envelope keys
+"id"
+"kind"
+"occurred_at"
+"actor"
+"repo"
+"payload"
+"tags"
+"links"
+"source"
+
+# Event kinds
+"PullRequest"
+"Review"
+"Manual"
+
+# PullRequest keys
+"number"
+"title"
+"state"
+"created_at"
+"merged_at"
+"additions"
+"deletions"
+"changed_files"
+"touched_paths_hint"
+"window"
+
+# PullRequest states
+"open"
+"closed"
+"merged"
+
+# Actor keys
+"login"
+"id"
+
+# Repo keys
+"full_name"
+"html_url"
+"visibility"
+
+# Repo visibility
+"public"
+"private"
+
+# Source keys
+"system"
+"url"
+"opaque_id"
+
+# Source systems
+"github"
+"local_git"
+"manual"
+
+# Link keys
+"label"
+"url"
+
+# Coverage manifest keys
+"run_id"
+"generated_at"
+"user"
+"window"
+"mode"
+"sources"
+"slices"
+"warnings"
+"completeness"
+
+# Time window keys
+"since"
+"until"
+
+# Completeness values
+"complete"
+"partial"
+
+# Workstream keys
+"workstreams"
+"version"
+"generated_at"
+"title"
+"summary"
+"tags"
+"events"
+"receipts"
+"stats"
+
+# Workstream stats keys
+"event_count"
+"receipt_count"
+
+# Common values
+"null"
+"true"
+"false"
+"0"
+"1"
+"-1"
+"100"
+"1000"
+"2025-01-01"
+"2025-02-01"
+"2025-01-01T00:00:00Z"

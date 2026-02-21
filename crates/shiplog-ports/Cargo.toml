@@ -1,16 +1,20 @@
 [package]
 name = "shiplog-ports"
-version = "0.2.0"
+version = "0.2.1"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
-description = "Trait definitions (Ingestor, Renderer, Redactor, WorkstreamClusterer) for shiplog"
+authors.workspace = true
+description = "Core port traits for shiplog adapters: Ingestor, WorkstreamClusterer, Renderer, Redactor."
+readme = "README.md"
+documentation = "https://docs.rs/shiplog-ports"
 repository.workspace = true
 homepage.workspace = true
-keywords.workspace = true
-categories.workspace = true
+keywords = ["traits", "ports", "hexagonal", "architecture", "pipeline"]
+categories = ["development-tools", "rust-patterns"]
 
 [dependencies]
 anyhow.workspace = true
-shiplog-schema = { path = "../shiplog-schema", version = "0.2.0" }
+shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
+
 

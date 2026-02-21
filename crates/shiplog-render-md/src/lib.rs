@@ -1,3 +1,8 @@
+//! Markdown packet renderer for shiplog.
+//!
+//! Converts canonical events, workstreams, and coverage metadata into an
+//! editable self-review packet with receipts and appendix sections.
+
 use anyhow::Result;
 use shiplog_ports::Renderer;
 use shiplog_schema::coverage::CoverageManifest;

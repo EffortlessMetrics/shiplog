@@ -1,3 +1,8 @@
+//! Stable identifier types used across the shiplog pipeline.
+//!
+//! Includes deterministic SHA-256 constructors for event/workstream IDs and a
+//! timestamp-based run ID helper.
+
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::fmt;

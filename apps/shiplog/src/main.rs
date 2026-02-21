@@ -1,15 +1,21 @@
+//! `shiplog` CLI entrypoint.
+//!
+//! Exposes `collect`, `render`, `refresh`, `import`, and `run` commands over
+//! the workspace engine and adapter crates.
+
 use anyhow::{Context, Result};
 use chrono::NaiveDate;
 use clap::{Parser, Subcommand};
 use shiplog_engine::{Engine, WorkstreamSource};
 use shiplog_ingest_github::GithubIngestor;
 use shiplog_ingest_json::JsonIngestor;
+use shiplog_ingest_manual::ManualIngestor;
 use shiplog_ports::Ingestor;
 use shiplog_redact::DeterministicRedactor;
 use shiplog_render_md::MarkdownRenderer;
 use shiplog_schema::bundle::BundleProfile;
 use shiplog_workstreams::RepoClusterer;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Parser, Debug)]
 #[command(name = "shiplog")]
@@ -219,6 +225,12 @@ enum Source {
         /// API base for GHES.
         #[arg(long, default_value = "https://api.github.com")]
         api_base: String,
+        /// Override GitHub API cache directory (defaults to `<out>/.cache`).
+        #[arg(long)]
+        cache_dir: Option<PathBuf>,
+        /// Disable GitHub API caching.
+        #[arg(long)]
+        no_cache: bool,
     },
 
     /// Ingest from JSONL events + a coverage manifest.
@@ -233,6 +245,22 @@ enum Source {
         /// Optional window label for rendering.
         #[arg(long, default_value = "window")]
         window_label: String,
+    },
+
+    /// Ingest manual non-GitHub events from YAML.
+    Manual {
+        /// Path to manual events YAML file.
+        #[arg(long)]
+        events: PathBuf,
+        /// User label for rendering.
+        #[arg(long, default_value = "user")]
+        user: String,
+        /// Start date (inclusive), YYYY-MM-DD
+        #[arg(long)]
+        since: NaiveDate,
+        /// End date (exclusive), YYYY-MM-DD
+        #[arg(long)]
+        until: NaiveDate,
     },
 }
 
@@ -314,6 +342,18 @@ fn build_clusterer(
     }
 }
 
+fn resolve_cache_dir(
+    out_root: &Path,
+    explicit_cache_dir: Option<PathBuf>,
+    no_cache: bool,
+) -> Option<PathBuf> {
+    if no_cache {
+        None
+    } else {
+        Some(explicit_cache_dir.unwrap_or_else(|| out_root.join(".cache")))
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 fn make_github_ingestor(
     user: &str,
@@ -325,7 +365,8 @@ fn make_github_ingestor(
     throttle_ms: u64,
     token: Option<String>,
     api_base: &str,
-) -> GithubIngestor {
+    cache_dir: Option<PathBuf>,
+) -> Result<GithubIngestor> {
     let token = token.or_else(|| std::env::var("GITHUB_TOKEN").ok());
 
     let mut ing = GithubIngestor::new(user.to_string(), since, until);
@@ -336,7 +377,13 @@ fn make_github_ingestor(
     ing.token = token;
     ing.api_base = api_base.to_string();
 
-    ing
+    if let Some(cache_dir) = cache_dir {
+        ing = ing
+            .with_cache(cache_dir)
+            .context("configure GitHub API cache")?;
+    }
+
+    Ok(ing)
 }
 
 fn main() -> Result<()> {
@@ -371,7 +418,10 @@ fn main() -> Result<()> {
                     throttle_ms,
                     token,
                     api_base,
+                    cache_dir,
+                    no_cache,
                 } => {
+                    let cache_dir = resolve_cache_dir(&out, cache_dir, no_cache);
                     let ing = make_github_ingestor(
                         &user,
                         since,
@@ -382,7 +432,8 @@ fn main() -> Result<()> {
                         throttle_ms,
                         token,
                         &api_base,
-                    );
+                        cache_dir,
+                    )?;
                     let ingest = ing.ingest()?;
                     let run_id = ingest.coverage.run_id.to_string();
                     let run_dir = out.join(&run_id);
@@ -430,6 +481,62 @@ fn main() -> Result<()> {
                     let ingest = ing.ingest()?;
                     let run_id = ingest.coverage.run_id.to_string();
                     let run_dir = out.join(&run_id);
+
+                    // Check if user has curated workstreams and warn
+                    if !regen && shiplog_workstreams::WorkstreamManager::has_curated(&run_dir) {
+                        eprintln!("Note: Using existing workstreams.yaml (user-curated).");
+                        eprintln!("      Use --regen to regenerate suggestions.");
+                    }
+
+                    // If --regen, delete existing suggested workstreams so the engine regenerates them
+                    if regen {
+                        let suggested =
+                            shiplog_workstreams::WorkstreamManager::suggested_path(&run_dir);
+                        if suggested.exists() {
+                            std::fs::remove_file(&suggested)
+                                .with_context(|| format!("remove {:?} for --regen", suggested))?;
+                        }
+                    }
+
+                    let cache_path = DeterministicRedactor::cache_path(&run_dir);
+                    let _ = redactor.load_cache(&cache_path);
+
+                    let (outputs, ws_source) =
+                        engine.run(ingest, &user, &window_label, &run_dir, zip, &bundle_profile)?;
+
+                    redactor.save_cache(&cache_path)?;
+
+                    println!("Collected and wrote:");
+                    print_outputs(&outputs, ws_source);
+                }
+
+                Source::Manual {
+                    events,
+                    user,
+                    since,
+                    until,
+                } => {
+                    let ing = ManualIngestor::new(&events, user.clone(), since, until);
+                    let ingest = ing.ingest()?;
+                    let run_id = ingest.coverage.run_id.to_string();
+                    let run_dir = out.join(&run_id);
+                    let window_label = format!("{}..{}", since, until);
+
+                    // Check if user has curated workstreams and warn
+                    if !regen && shiplog_workstreams::WorkstreamManager::has_curated(&run_dir) {
+                        eprintln!("Note: Using existing workstreams.yaml (user-curated).");
+                        eprintln!("      Use --regen to regenerate suggestions.");
+                    }
+
+                    // If --regen, delete existing suggested workstreams so the engine regenerates them
+                    if regen {
+                        let suggested =
+                            shiplog_workstreams::WorkstreamManager::suggested_path(&run_dir);
+                        if suggested.exists() {
+                            std::fs::remove_file(&suggested)
+                                .with_context(|| format!("remove {:?} for --regen", suggested))?;
+                        }
+                    }
 
                     let cache_path = DeterministicRedactor::cache_path(&run_dir);
                     let _ = redactor.load_cache(&cache_path);
@@ -528,7 +635,14 @@ fn main() -> Result<()> {
                     throttle_ms,
                     token,
                     api_base,
+                    cache_dir,
+                    no_cache,
                 } => {
+                    let cache_root = run_dir
+                        .parent()
+                        .map(|p| p.to_path_buf())
+                        .unwrap_or_else(|| out.clone());
+                    let cache_dir = resolve_cache_dir(&cache_root, cache_dir, no_cache);
                     let ing = make_github_ingestor(
                         &user,
                         since,
@@ -539,7 +653,8 @@ fn main() -> Result<()> {
                         throttle_ms,
                         token,
                         &api_base,
-                    );
+                        cache_dir,
+                    )?;
                     let ingest = ing.ingest()?;
 
                     let window_label = format!("{}..{}", since, until);
@@ -590,6 +705,41 @@ fn main() -> Result<()> {
                         coverage_path: coverage,
                     };
                     let ingest = ing.ingest()?;
+
+                    let outputs = engine.refresh(
+                        ingest,
+                        &user,
+                        &window_label,
+                        &run_dir,
+                        zip,
+                        &bundle_profile,
+                    )?;
+
+                    redactor.save_cache(&cache_path)?;
+
+                    println!("Refreshed while preserving workstream curation:");
+                    print_outputs_simple(&outputs);
+                }
+
+                Source::Manual {
+                    events,
+                    user,
+                    since,
+                    until,
+                } => {
+                    if !shiplog_workstreams::WorkstreamManager::has_curated(&run_dir)
+                        && !shiplog_workstreams::WorkstreamManager::suggested_path(&run_dir)
+                            .exists()
+                    {
+                        anyhow::bail!(
+                            "No workstreams found in {:?}. Run `shiplog collect` first.",
+                            run_dir
+                        );
+                    }
+
+                    let ing = ManualIngestor::new(&events, user.clone(), since, until);
+                    let ingest = ing.ingest()?;
+                    let window_label = format!("{}..{}", since, until);
 
                     let outputs = engine.refresh(
                         ingest,
@@ -713,7 +863,10 @@ fn main() -> Result<()> {
                     throttle_ms,
                     token,
                     api_base,
+                    cache_dir,
+                    no_cache,
                 } => {
+                    let cache_dir = resolve_cache_dir(&out, cache_dir, no_cache);
                     let ing = make_github_ingestor(
                         &user,
                         since,
@@ -724,7 +877,8 @@ fn main() -> Result<()> {
                         throttle_ms,
                         token,
                         &api_base,
-                    );
+                        cache_dir,
+                    )?;
                     let ingest = ing.ingest()?;
                     let run_id = ingest.coverage.run_id.to_string();
                     let run_dir = out.join(&run_id);
@@ -755,6 +909,30 @@ fn main() -> Result<()> {
                     let ingest = ing.ingest()?;
                     let run_id = ingest.coverage.run_id.to_string();
                     let run_dir = out.join(&run_id);
+
+                    let cache_path = DeterministicRedactor::cache_path(&run_dir);
+                    let _ = redactor.load_cache(&cache_path);
+
+                    let (outputs, ws_source) =
+                        engine.run(ingest, &user, &window_label, &run_dir, zip, &bundle_profile)?;
+
+                    redactor.save_cache(&cache_path)?;
+
+                    println!("Wrote:");
+                    print_outputs(&outputs, ws_source);
+                }
+
+                Source::Manual {
+                    events,
+                    user,
+                    since,
+                    until,
+                } => {
+                    let ing = ManualIngestor::new(&events, user.clone(), since, until);
+                    let ingest = ing.ingest()?;
+                    let run_id = ingest.coverage.run_id.to_string();
+                    let run_dir = out.join(&run_id);
+                    let window_label = format!("{}..{}", since, until);
 
                     let cache_path = DeterministicRedactor::cache_path(&run_dir);
                     let _ = redactor.load_cache(&cache_path);
@@ -805,7 +983,7 @@ fn print_outputs_simple(outputs: &shiplog_engine::RunOutputs) {
     }
 }
 
-fn find_most_recent_run(out_dir: &PathBuf) -> Result<PathBuf> {
+fn find_most_recent_run(out_dir: &Path) -> Result<PathBuf> {
     if !out_dir.exists() {
         anyhow::bail!("Output directory {:?} does not exist.", out_dir);
     }
@@ -827,4 +1005,32 @@ fn find_most_recent_run(out_dir: &PathBuf) -> Result<PathBuf> {
         .next()
         .map(|e| e.path())
         .ok_or_else(|| anyhow::anyhow!("No run directories found in {:?}", out_dir))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn resolve_cache_dir_uses_default_out_cache() {
+        let out_root = Path::new("C:/tmp/shiplog-out");
+        let resolved = resolve_cache_dir(out_root, None, false);
+        assert_eq!(resolved, Some(out_root.join(".cache")));
+    }
+
+    #[test]
+    fn resolve_cache_dir_uses_explicit_cache_path() {
+        let out_root = Path::new("C:/tmp/shiplog-out");
+        let explicit = PathBuf::from("D:/cache-root");
+        let resolved = resolve_cache_dir(out_root, Some(explicit.clone()), false);
+        assert_eq!(resolved, Some(explicit));
+    }
+
+    #[test]
+    fn resolve_cache_dir_disables_cache_when_requested() {
+        let out_root = Path::new("C:/tmp/shiplog-out");
+        let explicit = PathBuf::from("D:/cache-root");
+        let resolved = resolve_cache_dir(out_root, Some(explicit), true);
+        assert_eq!(resolved, None);
+    }
 }

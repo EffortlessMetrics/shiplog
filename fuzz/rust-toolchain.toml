@@ -1,0 +1,6 @@
+# Fuzzing uses sanitizer flags (-Zsanitizer=address) which require nightly.
+# Keeping the repo root on stable is fine; fuzz/ opts into nightly.
+
+[toolchain]
+channel = "nightly"
+components = ["llvm-tools-preview"]

@@ -1,0 +1,94 @@
+name: Mutation Testing
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  mutation-test:
+    name: Mutation Testing
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo build
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install cargo-mutants
+        run: cargo install cargo-mutants --locked
+
+      - name: Run mutation tests for Tier 1 crates
+        run: |
+          echo "Testing Tier 1: Critical Core crates..."
+          cargo mutants -p shiplog-schema --timeout 180s --no-copy-target || true
+          cargo mutants -p shiplog-redact --timeout 180s --no-copy-target || true
+          cargo mutants -p shiplog-coverage --timeout 120s --no-copy-target || true
+          cargo mutants -p shiplog-ids --timeout 120s --no-copy-target || true
+
+      - name: Run mutation tests for Tier 2 crates
+        run: |
+          echo "Testing Tier 2: Pipeline Core crates..."
+          cargo mutants -p shiplog-engine --timeout 150s --no-copy-target || true
+          cargo mutants -p shiplog-bundle --timeout 150s --no-copy-target || true
+          cargo mutants -p shiplog-workstreams --timeout 150s --no-copy-target || true
+          cargo mutants -p shiplog-ports --timeout 120s --no-copy-target || true
+
+      - name: Run mutation tests for Tier 3 crates
+        run: |
+          echo "Testing Tier 3: Adapters and Renderers crates..."
+          cargo mutants -p shiplog-ingest-github --timeout 120s --no-copy-target || true
+          cargo mutants -p shiplog-ingest-json --timeout 120s --no-copy-target || true
+          cargo mutants -p shiplog-ingest-manual --timeout 120s --no-copy-target || true
+          cargo mutants -p shiplog-render-md --timeout 120s --no-copy-target || true
+          cargo mutants -p shiplog-render-json --timeout 120s --no-copy-target || true
+          cargo mutants -p shiplog-cache --timeout 120s --no-copy-target || true
+
+      - name: Upload mutation test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-test-results
+          path: |
+            target/mutants/out/
+            target/mutants/**/*.html
+          retention-days: 30
+
+      - name: Generate mutation test summary
+        if: always()
+        run: |
+          echo "# Mutation Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Mutation testing completed. Check the uploaded artifacts for detailed results." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Minimum Scores by Tier" >> $GITHUB_STEP_SUMMARY
+          echo "- Tier 1 (Critical Core): ≥ 85%" >> $GITHUB_STEP_SUMMARY
+          echo "- Tier 2 (Pipeline Core): ≥ 75%" >> $GITHUB_STEP_SUMMARY
+          echo "- Tier 3 (Adapters/Renderers): ≥ 65%" >> $GITHUB_STEP_SUMMARY

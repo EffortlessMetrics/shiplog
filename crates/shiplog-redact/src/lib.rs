@@ -1,3 +1,8 @@
+//! Deterministic structural redaction for shiplog packets.
+//!
+//! Supports `internal`, `manager`, and `public` projections with stable alias
+//! generation backed by keyed hashing and optional alias cache persistence.
+
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};

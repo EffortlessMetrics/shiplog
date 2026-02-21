@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-02-17
+
+### Added
+
+- CLI `manual` source wiring for `collect`, `refresh`, and `run`, enabling YAML manual-event ingestion through `shiplog-ingest-manual`
+- GitHub CLI cache controls: `--cache-dir <PATH>` and `--no-cache`
+
+### Changed
+
+- GitHub ingestion now enables persistent API caching by default at `<out>/.cache` unless `--no-cache` is used
+- `collect json` now honors `--regen` for suggested workstream regeneration, matching other collect sources
+- `GithubIngestor::with_cache` now creates missing cache directories automatically
+
 ## [0.2.0] - 2026-02-15
 
 ### Added
@@ -146,7 +159,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Basic workspace configuration with Cargo
 - MIT/Apache-2.0 dual licensing
 
-[Unreleased]: https://github.com/EffortlessMetrics/shiplog/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/EffortlessMetrics/shiplog/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/EffortlessMetrics/shiplog/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/EffortlessMetrics/shiplog/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/EffortlessMetrics/shiplog/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/EffortlessMetrics/shiplog/compare/v0.0.1...v0.1.0

@@ -4,11 +4,31 @@
 
 # Build artifacts
 clippy_output.txt
+*.pdb
 
 # SQLite databases (shiplog-cache)
 *.sqlite
 *.sqlite-journal
 *.db
+
+# Fuzz artifacts (cargo-fuzz)
+fuzz/corpus/
+fuzz/artifacts/
+fuzz/coverage/
+
+# Coverage
+*.profraw
+*.profdata
+lcov.info
+coverage/
+tarpaulin-report.*
+
+# Mutation testing (cargo-mutants)
+mutants.out/
+mutants.out.*
+
+# Insta snapshot review
+*.snap.new
 
 # Environment / secrets
 .env
@@ -23,3 +43,4 @@ clippy_output.txt
 # OS junk
 .DS_Store
 Thumbs.db
+Desktop.ini

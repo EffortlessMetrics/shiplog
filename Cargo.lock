@@ -1723,7 +1723,7 @@ dependencies = [
 
 [[package]]
 name = "shiplog"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1732,6 +1732,7 @@ dependencies = [
  "shiplog-engine",
  "shiplog-ingest-github",
  "shiplog-ingest-json",
+ "shiplog-ingest-manual",
  "shiplog-ports",
  "shiplog-redact",
  "shiplog-render-md",
@@ -1741,7 +1742,7 @@ dependencies = [
 
 [[package]]
 name = "shiplog-bundle"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1756,20 +1757,22 @@ dependencies = [
 
 [[package]]
 name = "shiplog-cache"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "anyhow",
  "chrono",
+ "proptest",
  "rusqlite",
  "serde",
  "serde_json",
  "shiplog-schema",
+ "shiplog-testkit",
  "tempfile",
 ]
 
 [[package]]
 name = "shiplog-cluster-llm"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1784,16 +1787,18 @@ dependencies = [
 
 [[package]]
 name = "shiplog-coverage"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "anyhow",
  "chrono",
+ "proptest",
  "shiplog-schema",
+ "shiplog-testkit",
 ]
 
 [[package]]
 name = "shiplog-engine"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1811,16 +1816,17 @@ dependencies = [
 
 [[package]]
 name = "shiplog-ids"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "hex",
+ "proptest",
  "serde",
  "sha2",
 ]
 
 [[package]]
 name = "shiplog-ingest-github"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1832,12 +1838,13 @@ dependencies = [
  "shiplog-ids",
  "shiplog-ports",
  "shiplog-schema",
+ "tempfile",
  "url",
 ]
 
 [[package]]
 name = "shiplog-ingest-json"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1851,7 +1858,7 @@ dependencies = [
 
 [[package]]
 name = "shiplog-ingest-manual"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1865,7 +1872,7 @@ dependencies = [
 
 [[package]]
 name = "shiplog-ports"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "anyhow",
  "shiplog-schema",
@@ -1873,7 +1880,7 @@ dependencies = [
 
 [[package]]
 name = "shiplog-redact"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1885,12 +1892,13 @@ dependencies = [
  "shiplog-ids",
  "shiplog-ports",
  "shiplog-schema",
+ "shiplog-testkit",
  "tempfile",
 ]
 
 [[package]]
 name = "shiplog-render-json"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1902,7 +1910,7 @@ dependencies = [
 
 [[package]]
 name = "shiplog-render-md"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1915,36 +1923,44 @@ dependencies = [
 
 [[package]]
 name = "shiplog-schema"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "chrono",
+ "proptest",
  "serde",
  "serde_json",
+ "serde_yaml_ng",
  "shiplog-ids",
+ "shiplog-testkit",
 ]
 
 [[package]]
 name = "shiplog-testkit"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "chrono",
+ "proptest",
  "serde",
+ "serde_json",
  "shiplog-ids",
  "shiplog-redact",
  "shiplog-schema",
+ "shiplog-workstreams",
 ]
 
 [[package]]
 name = "shiplog-workstreams"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "anyhow",
  "chrono",
+ "proptest",
  "serde",
  "serde_yaml_ng",
  "shiplog-ids",
  "shiplog-ports",
  "shiplog-schema",
+ "shiplog-testkit",
  "tempfile",
 ]
 

@@ -1,21 +1,24 @@
 [package]
 name = "shiplog-cache"
-version = "0.2.0"
+version = "0.2.1"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
-description = "SQLite-backed API response cache with TTL support for shiplog"
+authors.workspace = true
+description = "SQLite cache with TTL and key helpers for shiplog GitHub API calls."
+readme = "README.md"
+documentation = "https://docs.rs/shiplog-cache"
 repository.workspace = true
 homepage.workspace = true
-keywords.workspace = true
-categories.workspace = true
+keywords = ["cache", "sqlite", "ttl", "github", "api"]
+categories = ["caching", "development-tools"]
 
 [dependencies]
 anyhow.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 chrono.workspace = true
-shiplog-schema = { path = "../shiplog-schema", version = "0.2.0" }
+shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
 
 [dependencies.rusqlite]
 version = "0.38.0"
@@ -23,4 +26,7 @@ features = ["bundled", "chrono", "serde_json"]
 
 [dev-dependencies]
 tempfile.workspace = true
+proptest.workspace = true
+shiplog-testkit = { path = "../shiplog-testkit", version = "0.2.1" }
+
 
