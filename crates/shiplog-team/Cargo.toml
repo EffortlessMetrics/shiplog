@@ -9,10 +9,4 @@ description = "Team aggregation mode for generating team-level shipping summarie
 readme = "README.md"
 
 [dependencies]
-anyhow.workspace = true
-serde.workspace = true
-serde_json.workspace = true
-serde_yaml.workspace = true
-
-[dev-dependencies]
-tempfile.workspace = true
+shiplog-team-aggregate = { path = "../shiplog-team-aggregate", version = "0.2.1" }
