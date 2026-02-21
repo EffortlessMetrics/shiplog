@@ -48,6 +48,15 @@ jobs:
       - name: Run Later BDD Tests
         run: cargo test -p shiplog-testkit bdd_later_tests -- --test-threads=4
 
+      - name: Run Later Team BDD Tests (team feature flag)
+        run: cargo test -p shiplog-testkit --features team team_aggregation -- --test-threads=4
+
+      - name: Run v0.3.x Merge Pipeline BDD Contracts (merge_pipeline feature flag)
+        run: cargo test -p shiplog-testkit --features merge_pipeline multi_source_merging_scenario_7_10_pipeline_contract -- --test-threads=4
+
+      - name: Run v0.3.x Microcrate contract BDD tests
+        run: cargo test -p shiplog-testkit --features microcrate_contracts microcrate_contracts -- --test-threads=4
+
       - name: Run Roadmap Property Tests
         run: cargo test -p shiplog-testkit roadmap_property -- --test-threads=4
 
@@ -60,7 +69,10 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "## Test Categories" >> $GITHUB_STEP_SUMMARY
           echo "- v0.3.x BDD scenarios (51 scenarios)" >> $GITHUB_STEP_SUMMARY
-          echo "- Later BDD scenarios (41 scenarios)" >> $GITHUB_STEP_SUMMARY
+          echo "- Later BDD scenarios (34 scenarios, base feature set)" >> $GITHUB_STEP_SUMMARY
+          echo "- Later BDD team scenarios (9 scenarios) with --features team" >> $GITHUB_STEP_SUMMARY
+          echo "- v0.3.x merge pipeline contract scenario (1 scenario) with --features merge_pipeline" >> $GITHUB_STEP_SUMMARY
+          echo "- v0.3.x microcrate contract scenarios (5 scenarios) with --features microcrate_contracts" >> $GITHUB_STEP_SUMMARY
           echo "- Roadmap property tests" >> $GITHUB_STEP_SUMMARY
 
   ingest-tests:
@@ -318,6 +330,8 @@ jobs:
       # New Later feature crates
       - name: Test shiplog-team
         run: cargo test -p shiplog-team
+      - name: Test shiplog-team-aggregate
+        run: cargo test -p shiplog-team-aggregate
 
       - name: Test shiplog-cron
         run: cargo test -p shiplog-cron
@@ -774,6 +788,7 @@ jobs:
           echo "- shiplog-ports (unit tests)" >> $GITHUB_STEP_SUMMARY
           echo "  - ports_tests.rs (integration tests)" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog-team (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-team-aggregate (unit tests)" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog-cron (unit tests)" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog-tui (unit tests)" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog-web (unit tests)" >> $GITHUB_STEP_SUMMARY
