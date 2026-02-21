@@ -180,11 +180,11 @@ impl<T: Clone> CircularBuffer<T> {
             let old = self.buffer[self.tail].take();
             self.tail = (self.tail + 1) % self.capacity;
             self.count -= 1;
-            
+
             self.buffer[self.head] = Some(item);
             self.head = (self.head + 1) % self.capacity;
             self.count += 1;
-            
+
             old
         } else {
             self.buffer[self.head] = Some(item);
@@ -237,7 +237,7 @@ mod tests {
             .strategy(BufferStrategy::DropNewest)
             .name("test-buffer")
             .build();
-        
+
         assert_eq!(config.capacity, 200);
         assert_eq!(config.strategy, BufferStrategy::DropNewest);
         assert_eq!(config.name, "test-buffer");
@@ -246,14 +246,14 @@ mod tests {
     #[test]
     fn test_buffer_push_pop() {
         let mut buffer: Buffer<i32> = Buffer::new(3);
-        
+
         assert!(buffer.push(1).is_none());
         assert!(buffer.push(2).is_none());
         assert!(buffer.push(3).is_none());
-        
+
         assert_eq!(buffer.len(), 3);
         assert!(buffer.is_full());
-        
+
         assert_eq!(buffer.pop(), Some(1));
         assert_eq!(buffer.pop(), Some(2));
         assert_eq!(buffer.pop(), Some(3));
@@ -263,12 +263,12 @@ mod tests {
     #[test]
     fn test_buffer_drop_oldest() {
         let mut buffer: Buffer<i32> = Buffer::new(3);
-        
+
         buffer.push(1);
         buffer.push(2);
         buffer.push(3);
         buffer.push(4); // Should drop 1
-        
+
         assert_eq!(buffer.pop(), Some(2));
         assert_eq!(buffer.pop(), Some(3));
         assert_eq!(buffer.pop(), Some(4));
@@ -276,18 +276,18 @@ mod tests {
 
     #[test]
     fn test_buffer_drop_newest() {
-        let mut buffer = BufferBuilder::new()
+        let buffer = BufferBuilder::new()
             .capacity(3)
             .strategy(BufferStrategy::DropNewest)
             .build();
-        
+
         let mut buf: Buffer<i32> = Buffer::with_config(&buffer);
-        
+
         buf.push(1);
         buf.push(2);
         buf.push(3);
         buf.push(4); // Should drop 4
-        
+
         assert_eq!(buf.pop(), Some(1));
         assert_eq!(buf.pop(), Some(2));
         assert_eq!(buf.pop(), Some(3));
@@ -296,15 +296,15 @@ mod tests {
     #[test]
     fn test_circular_buffer() {
         let mut buffer: CircularBuffer<i32> = CircularBuffer::new(3);
-        
+
         assert!(buffer.push(1).is_none());
         assert!(buffer.push(2).is_none());
         assert!(buffer.push(3).is_none());
         assert!(buffer.is_full());
-        
+
         // This should return 1 (the oldest)
         assert_eq!(buffer.push(4), Some(1));
-        
+
         assert_eq!(buffer.pop(), Some(2));
         assert_eq!(buffer.pop(), Some(3));
         assert_eq!(buffer.pop(), Some(4));

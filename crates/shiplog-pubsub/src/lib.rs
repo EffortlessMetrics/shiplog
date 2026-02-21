@@ -47,7 +47,7 @@ impl<T: Clone + Send + 'static> PubSub<T> {
     {
         let mut subs = self.subscribers.write().unwrap();
         subs.entry(topic.to_string())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(Box::new(callback));
     }
 
@@ -124,12 +124,12 @@ mod tests {
     #[test]
     fn test_subscriber_count() {
         let pubsub: PubSub<String> = PubSub::new();
-        
+
         assert_eq!(pubsub.subscriber_count("test"), 0);
-        
+
         pubsub.subscribe("test", |_: Message<String>| {});
         assert_eq!(pubsub.subscriber_count("test"), 1);
-        
+
         pubsub.subscribe("test", |_: Message<String>| {});
         assert_eq!(pubsub.subscriber_count("test"), 2);
     }
@@ -137,10 +137,10 @@ mod tests {
     #[test]
     fn test_topics() {
         let pubsub: PubSub<String> = PubSub::new();
-        
+
         pubsub.subscribe("topic-a", |_: Message<String>| {});
         pubsub.subscribe("topic-b", |_: Message<String>| {});
-        
+
         let topics = pubsub.topics();
         assert!(topics.contains(&"topic-a".to_string()));
         assert!(topics.contains(&"topic-b".to_string()));
@@ -149,10 +149,10 @@ mod tests {
     #[test]
     fn test_message_id_unique() {
         let pubsub: PubSub<String> = PubSub::new();
-        
+
         let msg1 = pubsub.publish("test", "a".to_string());
         let msg2 = pubsub.publish("test", "b".to_string());
-        
+
         assert_ne!(msg1.id, msg2.id);
     }
 }

@@ -6,6 +6,7 @@
 pub type Reducer<State, Action> = fn(State, &Action) -> State;
 
 /// A simple store that holds state and applies reducers
+#[allow(clippy::type_complexity)]
 pub struct Store<State, Action> {
     state: State,
     reducer: Box<dyn Fn(State, &Action) -> State>,
@@ -44,7 +45,9 @@ where
     State: Clone,
 {
     move |state: State, action: &Action| {
-        reducers.iter().fold(state, |acc, reducer| reducer(acc, action))
+        reducers
+            .iter()
+            .fold(state, |acc, reducer| reducer(acc, action))
     }
 }
 
@@ -113,8 +116,14 @@ mod tests {
             b: i32,
         }
 
-        let reducer_a = |state: State, _: &i32| State { a: state.a + 1, ..state };
-        let reducer_b = |state: State, _: &i32| State { b: state.b + 10, ..state };
+        let reducer_a = |state: State, _: &i32| State {
+            a: state.a + 1,
+            ..state
+        };
+        let reducer_b = |state: State, _: &i32| State {
+            b: state.b + 10,
+            ..state
+        };
 
         let combined = combine_reducers(vec![reducer_a, reducer_b]);
 
@@ -132,8 +141,12 @@ mod tests {
             value: i32,
         }
 
-        let increment = |state: State, _: &i32| State { value: state.value + 1, ..state };
-        let double = |state: State, _: &i32| State { value: state.value * 2, ..state };
+        let increment = |state: State, _: &i32| State {
+            value: state.value + 1,
+        };
+        let double = |state: State, _: &i32| State {
+            value: state.value * 2,
+        };
 
         let combined = combine_reducers(vec![increment, double]);
 

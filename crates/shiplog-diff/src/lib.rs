@@ -222,9 +222,9 @@ mod tests {
     fn diff_empty_to_events() {
         let old: Vec<EventEnvelope> = vec![];
         let new = vec![make_event("1", "event 1")];
-        
+
         let diff = diff_events(&old, &new);
-        
+
         assert_eq!(diff.added.len(), 1);
         assert!(diff.removed.is_empty());
         assert!(diff.modified.is_empty());
@@ -234,9 +234,9 @@ mod tests {
     fn diff_events_to_empty() {
         let old = vec![make_event("1", "event 1")];
         let new: Vec<EventEnvelope> = vec![];
-        
+
         let diff = diff_events(&old, &new);
-        
+
         assert!(diff.added.is_empty());
         assert_eq!(diff.removed.len(), 1);
         assert!(diff.modified.is_empty());
@@ -245,40 +245,34 @@ mod tests {
     #[test]
     fn diff_identifies_added() {
         let old = vec![make_event("a", "event 1")];
-        let new = vec![
-            make_event("a", "event 1"),
-            make_event("b", "event 2"),
-        ];
-        
+        let new = vec![make_event("a", "event 1"), make_event("b", "event 2")];
+
         let diff = diff_events(&old, &new);
-        
+
         assert_eq!(diff.added.len(), 1);
         // The added event has id from "b"
     }
 
     #[test]
     fn diff_identifies_removed() {
-        let old = vec![
-            make_event("a", "event 1"),
-            make_event("b", "event 2"),
-        ];
+        let old = vec![make_event("a", "event 1"), make_event("b", "event 2")];
         let new = vec![make_event("a", "event 1")];
-        
+
         let diff = diff_events(&old, &new);
-        
+
         assert_eq!(diff.removed.len(), 1);
         // The removed event has id from "b"
     }
 
     #[test]
     fn diff_identifies_modified() {
-        let mut old_event = make_event("1", "original title");
+        let old_event = make_event("1", "original title");
         let mut new_event = make_event("1", "new title");
         // Make sure IDs match but content differs
         new_event.id = old_event.id.clone();
-        
+
         let diff = diff_events(&[old_event], &[new_event]);
-        
+
         assert!(diff.added.is_empty());
         assert!(diff.removed.is_empty());
         assert_eq!(diff.modified.len(), 1);
@@ -288,9 +282,9 @@ mod tests {
     fn diff_identifies_unchanged() {
         let old_event = make_event("1", "same title");
         let new_event = make_event("1", "same title");
-        
+
         let diff = diff_events(&[old_event], &[new_event]);
-        
+
         assert!(diff.added.is_empty());
         assert!(diff.removed.is_empty());
         assert!(diff.modified.is_empty());
@@ -299,18 +293,15 @@ mod tests {
 
     #[test]
     fn diff_summary_totals() {
-        let old = vec![
-            make_event("1", "event 1"),
-            make_event("2", "event 2"),
-        ];
+        let old = vec![make_event("1", "event 1"), make_event("2", "event 2")];
         let new = vec![
             make_event("1", "event 1 modified"),
             make_event("3", "event 3"),
         ];
-        
+
         let diff = diff_events(&old, &new);
         let summary = diff_summary(&diff);
-        
+
         assert_eq!(summary.added_count, 1);
         assert_eq!(summary.removed_count, 1);
         assert_eq!(summary.modified_count, 1);

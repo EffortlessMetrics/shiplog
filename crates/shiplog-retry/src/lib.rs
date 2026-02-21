@@ -76,10 +76,10 @@ impl Retry {
                 delay.min(config.max_delay_ms)
             }
         };
-        
+
         Duration::from_millis(delay_ms)
     }
-    
+
     /// Execute a synchronous operation with retry
     pub fn execute<T, E, F>(config: &RetryConfig, mut operation: F) -> RetryResult<T>
     where
@@ -87,10 +87,10 @@ impl Retry {
         E: std::fmt::Debug,
     {
         let mut attempts = 0;
-        
+
         loop {
             attempts += 1;
-            
+
             match operation() {
                 Ok(result) => {
                     return RetryResult {
@@ -115,7 +115,7 @@ impl Retry {
             }
         }
     }
-    
+
     /// Create a default retry config
     pub fn default_config() -> RetryConfig {
         RetryConfig {
@@ -131,19 +131,22 @@ impl Retry {
 /// Async retry utilities
 pub mod async_retry {
     use super::*;
-    
+
     /// Execute an async operation with retry
-    pub async fn execute_async<T, E, F, Fut>(config: &RetryConfig, mut operation: F) -> RetryResult<T>
+    pub async fn execute_async<T, E, F, Fut>(
+        config: &RetryConfig,
+        mut operation: F,
+    ) -> RetryResult<T>
     where
         F: FnMut() -> Fut,
         Fut: std::future::Future<Output = Result<T, E>>,
         E: std::fmt::Debug,
     {
         let mut attempts = 0;
-        
+
         loop {
             attempts += 1;
-            
+
             match operation().await {
                 Ok(result) => {
                     return RetryResult {
@@ -190,11 +193,9 @@ mod tests {
     #[test]
     fn retry_execute_success() {
         let config = Retry::default_config();
-        
-        let result = Retry::execute(&config, || {
-            Ok::<_, ()>("success".to_string())
-        });
-        
+
+        let result = Retry::execute(&config, || Ok::<_, ()>("success".to_string()));
+
         assert!(result.success);
         assert_eq!(result.attempts, 1);
         assert_eq!(result.result.unwrap(), "success");
@@ -209,9 +210,9 @@ mod tests {
             strategy: RetryStrategy::Fixed,
             multiplier: 2.0,
         };
-        
+
         let mut call_count = 0;
-        
+
         let result = Retry::execute(&config, || {
             call_count += 1;
             if call_count < 2 {
@@ -220,7 +221,7 @@ mod tests {
                 Ok("success".to_string())
             }
         });
-        
+
         assert!(result.success);
         assert_eq!(result.attempts, 2);
     }
@@ -234,11 +235,9 @@ mod tests {
             strategy: RetryStrategy::Fixed,
             multiplier: 2.0,
         };
-        
-        let result = Retry::execute(&config, || {
-            Err::<String, _>(())
-        });
-        
+
+        let result = Retry::execute(&config, || Err::<String, _>(()));
+
         assert!(!result.success);
         assert_eq!(result.attempts, 3);
         assert!(result.result.is_none());
@@ -253,7 +252,7 @@ mod tests {
             strategy: RetryStrategy::Fixed,
             multiplier: 2.0,
         };
-        
+
         let delay = Retry::calculate_delay(0, &config);
         assert_eq!(delay, Duration::from_millis(100));
     }
@@ -267,14 +266,14 @@ mod tests {
             strategy: RetryStrategy::Exponential,
             multiplier: 2.0,
         };
-        
+
         let delay1 = Retry::calculate_delay(0, &config);
         let delay2 = Retry::calculate_delay(1, &config);
         let delay3 = Retry::calculate_delay(2, &config);
-        
-        assert_eq!(delay1, Duration::from_millis(100));   // 100 * 2^0
-        assert_eq!(delay2, Duration::from_millis(200));   // 100 * 2^1
-        assert_eq!(delay3, Duration::from_millis(400));    // 100 * 2^2
+
+        assert_eq!(delay1, Duration::from_millis(100)); // 100 * 2^0
+        assert_eq!(delay2, Duration::from_millis(200)); // 100 * 2^1
+        assert_eq!(delay3, Duration::from_millis(400)); // 100 * 2^2
     }
 
     #[test]
@@ -286,7 +285,7 @@ mod tests {
             strategy: RetryStrategy::Exponential,
             multiplier: 2.0,
         };
-        
+
         let delay = Retry::calculate_delay(10, &config);
         assert_eq!(delay, Duration::from_millis(500)); // capped at max_delay
     }

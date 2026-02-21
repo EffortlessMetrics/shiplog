@@ -98,7 +98,8 @@ pub struct JsonExporter;
 impl Exporter for JsonExporter {
     fn export(&self, data: &ExportData, options: &ExportOptions) -> anyhow::Result<String> {
         if options.pretty {
-            serde_json::to_string_pretty(data).map_err(|e| anyhow::anyhow!("JSON export failed: {}", e))
+            serde_json::to_string_pretty(data)
+                .map_err(|e| anyhow::anyhow!("JSON export failed: {}", e))
         } else {
             serde_json::to_string(data).map_err(|e| anyhow::anyhow!("JSON export failed: {}", e))
         }

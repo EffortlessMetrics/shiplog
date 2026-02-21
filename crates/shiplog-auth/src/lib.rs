@@ -4,21 +4,16 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
 /// Permission levels for shiplog operations
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Permission {
     /// Read-only access
+    #[default]
     Read,
     /// Read and write access
     Write,
     /// Full administrative access
     Admin,
-}
-
-impl Default for Permission {
-    fn default() -> Self {
-        Permission::Read
-    }
 }
 
 /// Represents an authenticated user or service
@@ -57,7 +52,7 @@ impl Identity {
             Permission::Write => 1,
             Permission::Admin => 2,
         };
-        
+
         self.permissions
             .iter()
             .any(|p| level(p) >= level(&required))
@@ -129,7 +124,7 @@ mod tests {
         let identity = Identity::new("user1", "Test User")
             .with_permission(Permission::Read)
             .with_permission(Permission::Write);
-        
+
         assert!(identity.has_permission(Permission::Read));
         assert!(identity.has_permission(Permission::Write));
         assert!(!identity.has_permission(Permission::Admin));
@@ -137,12 +132,10 @@ mod tests {
 
     #[test]
     fn identity_min_permission() {
-        let read_only = Identity::new("user1", "Reader")
-            .with_permission(Permission::Read);
-        
-        let writer = Identity::new("user2", "Writer")
-            .with_permission(Permission::Write);
-        
+        let read_only = Identity::new("user1", "Reader").with_permission(Permission::Read);
+
+        let writer = Identity::new("user2", "Writer").with_permission(Permission::Write);
+
         assert!(read_only.has_min_permission(Permission::Read));
         assert!(!read_only.has_min_permission(Permission::Write));
         assert!(writer.has_min_permission(Permission::Read));
@@ -151,11 +144,10 @@ mod tests {
 
     #[test]
     fn auth_context_can() {
-        let identity = Identity::new("user1", "Test User")
-            .with_permission(Permission::Write);
-        
+        let identity = Identity::new("user1", "Test User").with_permission(Permission::Write);
+
         let ctx = AuthContext::new(identity);
-        
+
         assert!(ctx.can(Permission::Read));
         assert!(ctx.can(Permission::Write));
         assert!(!ctx.can(Permission::Admin));
@@ -164,17 +156,17 @@ mod tests {
     #[test]
     fn api_token_expiry() {
         let token = ApiToken::new("test_token", Identity::new("user1", "User"));
-        
+
         // No expiry set, should not be expired
         assert!(!token.is_expired(1000));
-        
+
         // With expiry in the future
         let future_token = ApiToken {
             token: "future".to_string(),
             identity: Identity::new("user1", "User"),
             expires_at: Some(2000),
         };
-        
+
         assert!(!future_token.is_expired(1000));
         assert!(future_token.is_expired(3000));
     }

@@ -27,7 +27,7 @@ impl Hash {
     }
 
     /// Hash a string.
-    pub fn from_str(s: &str) -> Self {
+    pub fn hash_str(s: &str) -> Self {
         Self::from_bytes(s.as_bytes())
     }
 
@@ -43,7 +43,7 @@ impl Hash {
 
     /// Verify content matches this hash.
     pub fn verify(&self, content: &str) -> bool {
-        Self::from_str(content).0 == self.0
+        Self::hash_str(content).0 == self.0
     }
 }
 
@@ -74,7 +74,7 @@ pub fn hash_items(items: &[&str]) -> Hash {
 
 /// Compute a simple hash of content.
 pub fn hash_content(content: &str) -> Hash {
-    Hash::from_str(content)
+    Hash::hash_str(content)
 }
 
 /// Compute a hash of multiple content strings.
@@ -166,7 +166,7 @@ mod tests {
 
     #[test]
     fn hash_from_str() {
-        let hash = Hash::from_str("hello");
+        let hash = Hash::hash_str("hello");
         assert_eq!(hash.0.len(), 64);
     }
 
@@ -178,14 +178,14 @@ mod tests {
 
     #[test]
     fn hash_verify() {
-        let hash = Hash::from_str("hello");
+        let hash = Hash::hash_str("hello");
         assert!(hash.verify("hello"));
         assert!(!hash.verify("world"));
     }
 
     #[test]
     fn hash_prefix() {
-        let hash = Hash::from_str("hello");
+        let hash = Hash::hash_str("hello");
         let prefix = hash.prefix(8);
         assert_eq!(prefix.len(), 8);
     }
@@ -211,7 +211,7 @@ mod tests {
         hasher.update("world");
         let hash = hasher.finalize();
 
-        let direct = Hash::from_str("helloworld");
+        let _direct = Hash::hash_str("helloworld");
         // Note: these won't match because the hasher adds no separator
         // but the functionality works
         assert_eq!(hash.0.len(), 64);

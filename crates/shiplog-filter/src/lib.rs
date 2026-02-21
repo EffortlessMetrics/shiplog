@@ -48,7 +48,11 @@ impl EventFilter {
     }
 
     /// Set the date range filter.
-    pub fn with_date_range(mut self, since: Option<DateTime<Utc>>, until: Option<DateTime<Utc>>) -> Self {
+    pub fn with_date_range(
+        mut self,
+        since: Option<DateTime<Utc>>,
+        until: Option<DateTime<Utc>>,
+    ) -> Self {
         self.since = since;
         self.until = until;
         self
@@ -77,50 +81,54 @@ impl EventFilter {
     /// Check if an event matches this filter.
     pub fn matches(&self, event: &EventEnvelope) -> bool {
         // Check source system
-        if let Some(ref sources) = self.source_systems {
-            if !sources.iter().any(|s| s == &event.source.system) {
-                return false;
-            }
+        if let Some(ref sources) = self.source_systems
+            && !sources.iter().any(|s| s == &event.source.system)
+        {
+            return false;
         }
 
         // Check event kind
-        if let Some(ref kinds) = self.event_kinds {
-            if !kinds.iter().any(|k| k == &event.kind) {
-                return false;
-            }
+        if let Some(ref kinds) = self.event_kinds
+            && !kinds.iter().any(|k| k == &event.kind)
+        {
+            return false;
         }
 
         // Check date range
-        if let Some(since) = self.since {
-            if event.occurred_at < since {
-                return false;
-            }
+        if let Some(since) = self.since
+            && event.occurred_at < since
+        {
+            return false;
         }
-        if let Some(until) = self.until {
-            if event.occurred_at > until {
-                return false;
-            }
+        if let Some(until) = self.until
+            && event.occurred_at > until
+        {
+            return false;
         }
 
         // Check actor login (partial match)
-        if let Some(ref login) = self.actor_login {
-            if !event.actor.login.to_lowercase().contains(&login.to_lowercase()) {
-                return false;
-            }
+        if let Some(ref login) = self.actor_login
+            && !event
+                .actor
+                .login
+                .to_lowercase()
+                .contains(&login.to_lowercase())
+        {
+            return false;
         }
 
         // Check tags (any match)
-        if let Some(ref required_tags) = self.tags {
-            if !event.tags.iter().any(|t| required_tags.contains(t)) {
-                return false;
-            }
+        if let Some(ref required_tags) = self.tags
+            && !event.tags.iter().any(|t| required_tags.contains(t))
+        {
+            return false;
         }
 
         // Check repo
-        if let Some(ref repo) = self.repo_full_name {
-            if event.repo.full_name != *repo {
-                return false;
-            }
+        if let Some(ref repo) = self.repo_full_name
+            && event.repo.full_name != *repo
+        {
+            return false;
         }
 
         true
@@ -129,7 +137,11 @@ impl EventFilter {
 
 /// Filter events by the given filter criteria.
 pub fn filter_events(events: &[EventEnvelope], filter: &EventFilter) -> Vec<EventEnvelope> {
-    events.iter().filter(|e| filter.matches(e)).cloned().collect()
+    events
+        .iter()
+        .filter(|e| filter.matches(e))
+        .cloned()
+        .collect()
 }
 
 #[cfg(test)]
@@ -137,7 +149,9 @@ mod tests {
     use super::*;
     use chrono::TimeZone;
     use shiplog_ids::EventId;
-    use shiplog_schema::event::{Actor, EventPayload, ManualEvent, ManualEventType, RepoRef, RepoVisibility, SourceRef};
+    use shiplog_schema::event::{
+        Actor, EventPayload, ManualEvent, ManualEventType, RepoRef, RepoVisibility, SourceRef,
+    };
 
     fn test_event() -> EventEnvelope {
         EventEnvelope {

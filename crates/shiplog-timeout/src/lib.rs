@@ -171,7 +171,10 @@ impl TokioTimeout {
     }
 
     /// Run a future with a default timeout from config
-    pub async fn run_with_config<F, T, E>(future: F, config: &TimeoutConfig) -> Result<T, TimeoutError>
+    pub async fn run_with_config<F, T, E>(
+        future: F,
+        config: &TimeoutConfig,
+    ) -> Result<T, TimeoutError>
     where
         F: Future<Output = Result<T, E>>,
         E: std::fmt::Debug,
@@ -245,7 +248,7 @@ mod tests {
             .retry_on_timeout(true)
             .max_retries(5)
             .build();
-        
+
         assert_eq!(config.default_timeout_ms, 1000);
         assert!(config.retry_on_timeout);
         assert_eq!(config.max_retries, 5);
@@ -256,7 +259,7 @@ mod tests {
         let ok_result = TimeoutResult::ok(42, 100);
         assert!(ok_result.is_ok());
         assert!(!ok_result.is_timeout());
-        
+
         let err_result = TimeoutResult::<i32>::err(5000, "timeout");
         assert!(!err_result.is_ok());
         assert!(err_result.is_timeout());
@@ -265,13 +268,12 @@ mod tests {
     #[test]
     fn test_timer() {
         let mut timer = Timer::new(Duration::from_secs(1));
-        
+
         assert!(!timer.is_expired());
         assert!(timer.remaining().is_some());
-        
+
         timer.start();
         assert!(!timer.is_expired());
         assert!(timer.elapsed().is_some());
     }
-
 }

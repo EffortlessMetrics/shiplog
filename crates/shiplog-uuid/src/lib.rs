@@ -22,7 +22,10 @@ impl Uuid {
             .unwrap_or_default()
             .as_nanos();
         let random_part = (nanos % 65536) as u64;
-        Self(format!("{:08x}-{:04x}-0000-0000-{:012x}", nanos as u32, random_part, nanos))
+        Self(format!(
+            "{:08x}-{:04x}-0000-0000-{:012x}",
+            nanos as u32, random_part, nanos
+        ))
     }
 
     /// Create a UUID from a string (validated format).
@@ -50,11 +53,22 @@ impl Uuid {
     pub fn from_bytes(bytes: [u8; 16]) -> Self {
         Self(format!(
             "{:02x}{:02x}{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
-            bytes[0], bytes[1], bytes[2], bytes[3],
-            bytes[4], bytes[5],
-            bytes[6], bytes[7],
-            bytes[8], bytes[9],
-            bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15]
+            bytes[0],
+            bytes[1],
+            bytes[2],
+            bytes[3],
+            bytes[4],
+            bytes[5],
+            bytes[6],
+            bytes[7],
+            bytes[8],
+            bytes[9],
+            bytes[10],
+            bytes[11],
+            bytes[12],
+            bytes[13],
+            bytes[14],
+            bytes[15]
         ))
     }
 
@@ -243,7 +257,7 @@ mod tests {
     fn parse_uuid_valid() {
         let result = parse_uuid("550e8400-e29b-41d4-a716-446655440000");
         assert!(result.is_some());
-        let (time_low, time_mid, time_hi, clock_seq, node) = result.unwrap();
+        let (time_low, time_mid, _time_hi, _clock_seq, _node) = result.unwrap();
         assert_eq!(time_low, 0x550e8400);
         assert_eq!(time_mid, 0xe29b);
     }

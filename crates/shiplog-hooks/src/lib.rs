@@ -146,10 +146,7 @@ impl HookRegistry {
 
     /// Register a hook for a pipeline stage.
     pub fn register<H: Hook + 'static>(&mut self, stage: PipelineStage, hook: H) {
-        self.hooks
-            .entry(stage)
-            .or_insert_with(Vec::new)
-            .push(Box::new(hook));
+        self.hooks.entry(stage).or_default().push(Box::new(hook));
     }
 
     /// Execute all hooks for a pipeline stage.
@@ -167,11 +164,11 @@ impl HookRegistry {
         for hook in stage_hooks {
             context.data = final_data.clone();
             let result = hook.execute(&context);
-            
+
             if !result.success {
                 all_success = false;
             }
-            
+
             if let Some(data) = result.data {
                 final_data = data;
             }

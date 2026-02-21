@@ -2,8 +2,8 @@
 //!
 //! This crate provides functionality for synchronizing data from remote sources.
 
-use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 
 /// Sync status
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -123,7 +123,7 @@ mod tests {
     fn test_sync_state_creation() {
         let config = SyncConfig::default();
         let state = SyncState::new(config);
-        
+
         assert_eq!(state.status, SyncStatus::Pending);
         assert_eq!(state.items_synced, 0);
     }
@@ -132,7 +132,7 @@ mod tests {
     fn test_sync_state_start() {
         let config = SyncConfig::default();
         let mut state = SyncState::new(config);
-        
+
         state.start();
         assert_eq!(state.status, SyncStatus::InProgress);
     }
@@ -141,10 +141,10 @@ mod tests {
     fn test_sync_state_complete() {
         let config = SyncConfig::default();
         let mut state = SyncState::new(config);
-        
+
         state.start();
         state.complete(42);
-        
+
         assert_eq!(state.items_synced, 42);
         assert_eq!(state.status, SyncStatus::Completed);
         assert!(state.config.last_sync.is_some());
@@ -154,9 +154,9 @@ mod tests {
     fn test_sync_state_fail() {
         let config = SyncConfig::default();
         let mut state = SyncState::new(config);
-        
+
         state.fail("Network error".to_string());
-        
+
         assert!(matches!(state.status, SyncStatus::Failed(msg) if msg == "Network error"));
     }
 
@@ -164,7 +164,7 @@ mod tests {
     fn test_needs_sync_pending() {
         let config = SyncConfig::default();
         let state = SyncState::new(config);
-        
+
         assert!(state.needs_sync());
     }
 
@@ -178,7 +178,7 @@ mod tests {
             last_sync: Some(Utc::now() - chrono::Duration::hours(2)),
         };
         let state = SyncState::new(config);
-        
+
         // Interval elapsed, sync needed
         assert!(state.needs_sync());
     }
@@ -187,7 +187,7 @@ mod tests {
     fn test_needs_sync_in_progress() {
         let config = SyncConfig::default();
         let mut state = SyncState::new(config);
-        
+
         state.start();
         assert!(!state.needs_sync());
     }
@@ -202,7 +202,7 @@ mod tests {
             last_sync: Some(Utc::now()),
         };
         let state = SyncState::new(config);
-        
+
         // With interval 0, always need to sync
         assert!(state.needs_sync());
     }
@@ -210,7 +210,7 @@ mod tests {
     #[test]
     fn test_sync_result_success() {
         let result = SyncResult::success(100);
-        
+
         assert!(result.success);
         assert_eq!(result.items_synced, 100);
         assert!(result.error.is_none());
@@ -219,7 +219,7 @@ mod tests {
     #[test]
     fn test_sync_result_failure() {
         let result = SyncResult::failure("Timeout".to_string());
-        
+
         assert!(!result.success);
         assert_eq!(result.items_synced, 0);
         assert!(result.error.is_some());

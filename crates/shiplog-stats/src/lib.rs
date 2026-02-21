@@ -3,9 +3,9 @@
 //! This crate provides functionality for computing statistics on shipping packets
 //! and workstream data.
 
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use chrono::{DateTime, Utc};
 
 /// Event statistics
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -41,15 +41,25 @@ impl StatsAnalyzer {
     /// Record an event
     pub fn record_event(&mut self, event_type: &str, source: &str) {
         self.event_stats.total_count += 1;
-        *self.event_stats.by_type.entry(event_type.to_string()).or_insert(0) += 1;
-        *self.event_stats.by_source.entry(source.to_string()).or_insert(0) += 1;
+        *self
+            .event_stats
+            .by_type
+            .entry(event_type.to_string())
+            .or_insert(0) += 1;
+        *self
+            .event_stats
+            .by_source
+            .entry(source.to_string())
+            .or_insert(0) += 1;
     }
 
     /// Record a workstream with event count
     pub fn record_workstream(&mut self, name: &str, event_count: usize) {
         self.workstream_stats.total_workstreams += 1;
         self.workstream_stats.total_events += event_count;
-        self.workstream_stats.events_per_workstream.insert(name.to_string(), event_count);
+        self.workstream_stats
+            .events_per_workstream
+            .insert(name.to_string(), event_count);
     }
 
     /// Calculate coverage percentage
@@ -102,11 +112,11 @@ mod tests {
     #[test]
     fn test_event_stats_recording() {
         let mut analyzer = StatsAnalyzer::new();
-        
+
         analyzer.record_event("commit", "github");
         analyzer.record_event("commit", "github");
         analyzer.record_event("pr", "github");
-        
+
         assert_eq!(analyzer.event_stats().total_count, 3);
         assert_eq!(analyzer.event_stats().by_type.get("commit"), Some(&2));
         assert_eq!(analyzer.event_stats().by_type.get("pr"), Some(&1));
@@ -115,10 +125,10 @@ mod tests {
     #[test]
     fn test_workstream_stats() {
         let mut analyzer = StatsAnalyzer::new();
-        
+
         analyzer.record_workstream("backend", 10);
         analyzer.record_workstream("frontend", 5);
-        
+
         assert_eq!(analyzer.workstream_stats().total_workstreams, 2);
         assert_eq!(analyzer.workstream_stats().total_events, 15);
     }
@@ -126,10 +136,10 @@ mod tests {
     #[test]
     fn test_coverage_calculation() {
         let mut analyzer = StatsAnalyzer::new();
-        
+
         analyzer.calculate_coverage(80, 100);
         assert_eq!(analyzer.workstream_stats().coverage_percentage, 80.0);
-        
+
         analyzer.calculate_coverage(3, 4);
         assert_eq!(analyzer.workstream_stats().coverage_percentage, 75.0);
     }
@@ -137,7 +147,7 @@ mod tests {
     #[test]
     fn test_stats_summary() {
         let analyzer = StatsAnalyzer::new();
-        
+
         let summary = analyzer.generate_summary();
         assert!(summary.generated_at <= Utc::now());
     }

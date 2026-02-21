@@ -24,6 +24,12 @@ pub struct StreamUnion<T> {
     mode: UnionMode,
 }
 
+impl<T: Clone + Eq + std::hash::Hash> Default for StreamUnion<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T: Clone + Eq + std::hash::Hash> StreamUnion<T> {
     pub fn new() -> Self {
         Self {
@@ -109,11 +115,7 @@ impl<T: Clone + Eq + std::hash::Hash> StreamUnion<T> {
     /// Execute union with metadata about source counts
     pub fn execute_with_counts(&self) -> MergedStream<T> {
         let items = self.execute();
-        let source_counts: Vec<usize> = self
-            .streams
-            .iter()
-            .map(|s| s.len())
-            .collect();
+        let source_counts: Vec<usize> = self.streams.iter().map(|s| s.len()).collect();
 
         MergedStream {
             items,
@@ -125,6 +127,12 @@ impl<T: Clone + Eq + std::hash::Hash> StreamUnion<T> {
 /// Interleaved stream merger - merges streams in round-robin fashion
 pub struct InterleavedMerger<T> {
     streams: Vec<Vec<T>>,
+}
+
+impl<T: Clone> Default for InterleavedMerger<T> {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl<T: Clone> InterleavedMerger<T> {
@@ -159,6 +167,12 @@ impl<T: Clone> InterleavedMerger<T> {
 /// Chained merger - appends streams sequentially
 pub struct ChainedMerger<T> {
     streams: Vec<Vec<T>>,
+}
+
+impl<T: Clone> Default for ChainedMerger<T> {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl<T: Clone> ChainedMerger<T> {

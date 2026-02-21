@@ -71,7 +71,7 @@ impl<T> OnceCell<T> {
 
         // Initialize the value
         let value = f();
-        
+
         // Try to set it (another thread may have beaten us)
         // We need a way to handle this - use a simple approach
         if self.initialized.load(Ordering::Acquire) {
@@ -151,11 +151,11 @@ impl<T> Lazy<T> {
         // Get the init function
         let init_fn = unsafe { &mut *self.init_fn.get() };
         let f = init_fn.take().expect("Lazy already initialized");
-        
+
         // Initialize
         let value = f();
         self.cell.set(value).ok();
-        
+
         // Return the value
         self.cell.get().expect("Lazy should be initialized")
     }
@@ -197,7 +197,7 @@ impl<T> AsyncOnceCell<T> {
     }
 
     /// Get the value or initialize it.
-    pub async fn get_or_init<F>(&self, f: F) -> &T
+    pub async fn get_or_init<F>(&self, _f: F) -> &T
     where
         F: FnOnce() -> T + Send + 'static,
     {
@@ -207,14 +207,14 @@ impl<T> AsyncOnceCell<T> {
 
         // Register to be notified when initialized
         let notified = self.notify.notified();
-        
+
         // Try to initialize
         // Note: In a real implementation, you'd need proper synchronization
         // This is simplified for demonstration
         if let Some(value) = self.get() {
             return value;
         }
-        
+
         notified.await;
         self.get().expect("Value should be initialized")
     }
@@ -248,13 +248,13 @@ mod tests {
     #[test]
     fn test_once_cell_set() {
         let cell = OnceCell::new();
-        
+
         let result = cell.set(42);
         assert!(result.is_ok());
-        
+
         assert!(cell.is_initialized());
         assert_eq!(*cell.get().unwrap(), 42);
-        
+
         // Second set should fail
         let result = cell.set(100);
         assert!(result.is_err());
@@ -265,10 +265,10 @@ mod tests {
     #[test]
     fn test_once_cell_get_or_init() {
         let cell = OnceCell::new();
-        
+
         let value = cell.get_or_init(|| 42);
         assert_eq!(*value, 42);
-        
+
         // Second call should return the same value
         let value2 = cell.get_or_init(|| 0);
         assert_eq!(*value2, 42);
@@ -278,7 +278,7 @@ mod tests {
     fn test_once_cell_take() {
         let mut cell = OnceCell::new();
         cell.set(42).unwrap();
-        
+
         let value = cell.take();
         assert_eq!(value, Some(42));
         assert!(!cell.is_initialized());
@@ -287,7 +287,7 @@ mod tests {
     #[test]
     fn test_lazy() {
         let lazy = Lazy::new(|| 42);
-        
+
         assert!(!lazy.is_initialized());
         assert_eq!(*lazy.get(), 42);
         assert!(lazy.is_initialized());
@@ -302,7 +302,7 @@ mod tests {
     #[test]
     fn test_async_once_cell_set() {
         let cell = AsyncOnceCell::new();
-        
+
         let result = cell.set(42);
         assert!(result.is_ok());
         assert_eq!(*cell.get().unwrap(), 42);

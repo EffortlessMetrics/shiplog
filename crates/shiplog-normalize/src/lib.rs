@@ -22,17 +22,17 @@ pub fn normalize_string(input: &str) -> String {
 /// * `String` - The normalized path
 pub fn normalize_path(input: &str) -> String {
     let mut result = input.trim().to_string();
-    
+
     // Replace multiple slashes with single slash
     while result.contains("//") {
         result = result.replace("//", "/");
     }
-    
+
     // Remove trailing slash (but keep root)
     if result.len() > 1 && result.ends_with('/') {
         result.pop();
     }
-    
+
     result
 }
 
@@ -46,7 +46,7 @@ pub fn normalize_path(input: &str) -> String {
 pub fn normalize_whitespace(input: &str) -> String {
     let mut result = String::new();
     let mut last_was_space = false;
-    
+
     for c in input.chars() {
         if c.is_whitespace() {
             if !last_was_space && !result.is_empty() {
@@ -58,7 +58,7 @@ pub fn normalize_whitespace(input: &str) -> String {
             last_was_space = false;
         }
     }
-    
+
     result.trim().to_string()
 }
 
@@ -97,34 +97,38 @@ pub fn normalize_bool(input: &str) -> String {
 /// * `String` - The normalized number string
 pub fn normalize_number(input: &str) -> String {
     let trimmed = input.trim();
-    
+
     // Handle negative numbers
-    if trimmed.starts_with('-') {
-        let abs_normalized = normalize_number(&trimmed[1..]);
+    if let Some(stripped) = trimmed.strip_prefix('-') {
+        let abs_normalized = normalize_number(stripped);
         if abs_normalized.is_empty() {
             return "0".to_string();
         }
         return format!("-{}", abs_normalized);
     }
-    
+
     // Remove leading zeros
     let result = trimmed.to_string();
-    
+
     // Handle decimal numbers
     if let Some(dot_pos) = result.find('.') {
         let int_part = &result[..dot_pos];
         let frac_part = &result[dot_pos..];
-        
+
         let normalized_int = int_part.trim_start_matches('0');
-        let int_result = if normalized_int.is_empty() { "0" } else { normalized_int };
-        
+        let int_result = if normalized_int.is_empty() {
+            "0"
+        } else {
+            normalized_int
+        };
+
         // Remove trailing zeros from fractional part
         let frac = frac_part.trim_end_matches('0');
         let frac_result = if frac == "." { "" } else { frac };
-        
+
         return format!("{}{}", int_result, frac_result);
     }
-    
+
     // Integer case
     let normalized = result.trim_start_matches('0');
     if normalized.is_empty() {

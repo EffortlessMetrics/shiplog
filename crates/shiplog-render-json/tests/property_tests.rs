@@ -1,25 +1,25 @@
 //! Tests for shiplog-render-json.
 
+use chrono::{NaiveDate, Utc};
+use shiplog_ids::{EventId, RunId};
 use shiplog_render_json::{write_coverage_manifest, write_events_jsonl};
 use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
 use shiplog_schema::event::*;
-use shiplog_ids::{EventId, RunId};
-use chrono::{NaiveDate, Utc};
 
 // Test: JSONL roundtrip preserves all fields
 #[test]
 fn jsonl_roundtrip_preserves_all_fields() {
     let event = create_test_event("test1", "Test PR");
-    
+
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("events.jsonl");
-    
-    write_events_jsonl(&path, &[event.clone()]).unwrap();
-    
+
+    write_events_jsonl(&path, std::slice::from_ref(&event)).unwrap();
+
     let text = std::fs::read_to_string(&path).unwrap();
     let lines: Vec<_> = text.lines().collect();
     assert_eq!(lines.len(), 1);
-    
+
     let loaded: EventEnvelope = serde_json::from_str(lines[0]).unwrap();
     assert_eq!(loaded.id, event.id);
     assert_eq!(loaded.kind, event.kind);
@@ -32,12 +32,12 @@ fn jsonl_multiple_events_all_preserved() {
         create_test_event("2", "PR 2"),
         create_test_event("3", "PR 3"),
     ];
-    
+
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("events.jsonl");
-    
+
     write_events_jsonl(&path, &events).unwrap();
-    
+
     let text = std::fs::read_to_string(&path).unwrap();
     let lines: Vec<_> = text.lines().collect();
     assert_eq!(lines.len(), 3);
@@ -59,15 +59,15 @@ fn coverage_manifest_roundtrip_preserves_all_fields() {
         warnings: vec![],
         completeness: Completeness::Complete,
     };
-    
+
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("coverage.json");
-    
+
     write_coverage_manifest(&path, &cov).unwrap();
-    
+
     let text = std::fs::read_to_string(&path).unwrap();
     let loaded: CoverageManifest = serde_json::from_str(&text).unwrap();
-    
+
     assert_eq!(loaded.run_id, cov.run_id);
     assert_eq!(loaded.user, cov.user);
     assert_eq!(loaded.mode, cov.mode);
@@ -78,10 +78,10 @@ fn coverage_manifest_roundtrip_preserves_all_fields() {
 fn empty_events_produces_valid_output() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("events.jsonl");
-    
+
     let events: Vec<EventEnvelope> = vec![];
     write_events_jsonl(&path, &events).unwrap();
-    
+
     let text = std::fs::read_to_string(&path).unwrap();
     assert!(text.is_empty() || text == "\n");
 }
@@ -102,12 +102,12 @@ fn coverage_with_zero_slices_is_valid() {
         warnings: vec![],
         completeness: Completeness::Complete,
     };
-    
+
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("coverage.json");
-    
+
     write_coverage_manifest(&path, &cov).unwrap();
-    
+
     let text = std::fs::read_to_string(&path).unwrap();
     let loaded: CoverageManifest = serde_json::from_str(&text).unwrap();
     assert!(loaded.slices.is_empty());
@@ -139,15 +139,15 @@ fn coverage_with_slices_shows_partial() {
         warnings: vec!["API cap hit".to_string()],
         completeness: Completeness::Partial,
     };
-    
+
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("coverage.json");
-    
+
     write_coverage_manifest(&path, &cov).unwrap();
-    
+
     let text = std::fs::read_to_string(&path).unwrap();
     let loaded: CoverageManifest = serde_json::from_str(&text).unwrap();
-    
+
     assert_eq!(loaded.slices.len(), 1);
     assert_eq!(loaded.slices[0].fetched, 500);
     assert_eq!(loaded.completeness, Completeness::Partial);

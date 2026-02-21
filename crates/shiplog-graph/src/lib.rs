@@ -78,7 +78,7 @@ impl Graph {
     /// Add a node to the graph.
     pub fn add_node(&mut self, node: NodeId) {
         self.nodes.insert(node.clone());
-        self.adjacency.entry(node).or_insert_with(HashSet::new);
+        self.adjacency.entry(node).or_default();
     }
 
     /// Add an edge to the graph.
@@ -236,7 +236,7 @@ mod tests {
         let mut graph = Graph::new();
         graph.add_edge(Edge::new(NodeId::new("a"), NodeId::new("b")));
         graph.add_edge(Edge::new(NodeId::new("a"), NodeId::new("c")));
-        
+
         let neighbors = graph.neighbors(&NodeId::new("a"));
         assert_eq!(neighbors.len(), 2);
     }
@@ -245,7 +245,7 @@ mod tests {
     fn graph_has_edge() {
         let mut graph = Graph::new();
         graph.add_edge(Edge::new(NodeId::new("a"), NodeId::new("b")));
-        
+
         assert!(graph.has_edge(&NodeId::new("a"), &NodeId::new("b")));
         assert!(!graph.has_edge(&NodeId::new("b"), &NodeId::new("a")));
     }
@@ -256,7 +256,7 @@ mod tests {
         dag.add_node(NodeId::new("a"));
         dag.add_node(NodeId::new("b"));
         dag.add_edge(Edge::new(NodeId::new("a"), NodeId::new("b")));
-        
+
         assert_eq!(dag.node_count(), 2);
         assert_eq!(dag.edge_count(), 1);
     }

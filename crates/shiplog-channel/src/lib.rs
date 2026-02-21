@@ -2,7 +2,7 @@
 //!
 //! This crate provides channel utilities for communication between async tasks.
 
-use tokio::sync::{mpsc, broadcast};
+use tokio::sync::{broadcast, mpsc};
 
 /// Configuration for channel operations
 #[derive(Debug, Clone)]
@@ -74,7 +74,9 @@ pub fn create_mpsc_channel<T>(buffer_size: usize) -> (mpsc::Sender<T>, mpsc::Rec
 }
 
 /// Create a broadcast channel with configuration
-pub fn create_broadcast_channel<T: Clone>(buffer_size: usize) -> (broadcast::Sender<T>, broadcast::Receiver<T>) {
+pub fn create_broadcast_channel<T: Clone>(
+    buffer_size: usize,
+) -> (broadcast::Sender<T>, broadcast::Receiver<T>) {
     broadcast::channel(buffer_size)
 }
 
@@ -203,7 +205,7 @@ mod tests {
             .channel_type(ChannelType::Broadcast)
             .name("test-channel")
             .build();
-        
+
         assert_eq!(config.buffer_size, 200);
         assert_eq!(config.channel_type, ChannelType::Broadcast);
         assert_eq!(config.name, "test-channel");
@@ -214,7 +216,7 @@ mod tests {
         let msg = ChannelMessage::new(42)
             .with_sender("sender-1")
             .with_priority(5);
-        
+
         assert_eq!(msg.payload, 42);
         assert_eq!(msg.metadata.sender_id, Some("sender-1".to_string()));
         assert_eq!(msg.metadata.priority, 5);
@@ -225,10 +227,10 @@ mod tests {
         let (tx, rx) = create_mpsc_channel::<i32>(10);
         let sender = MpscSender::new(tx);
         let mut receiver = MpscReceiver::new(rx);
-        
+
         sender.send(1).await.unwrap();
         sender.send(2).await.unwrap();
-        
+
         assert_eq!(receiver.recv().await, Some(1));
         assert_eq!(receiver.recv().await, Some(2));
     }
@@ -238,9 +240,9 @@ mod tests {
         let (tx, rx) = create_broadcast_channel::<i32>(10);
         let sender = BroadcastSender::new(tx);
         let mut receiver = BroadcastReceiver::new(rx);
-        
+
         sender.send(42).unwrap();
-        
+
         let result = receiver.recv().await.unwrap();
         assert_eq!(result, 42);
     }

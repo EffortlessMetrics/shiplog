@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 pub fn normalize_json_key(key: &str) -> String {
     let mut result = String::new();
     let chars: Vec<char> = key.chars().collect();
-    
+
     for (i, c) in chars.iter().enumerate() {
         if c.is_uppercase() {
             // Check if previous char was lowercase (e.g., camelCase)
@@ -39,19 +39,22 @@ pub fn normalize_json_key(key: &str) -> String {
             result.push(*c);
         }
     }
-    
+
     // Handle case where uppercase is followed by lowercase (HTTPResponse -> HTTP_Response)
     let mut final_result = String::new();
     let final_chars: Vec<char> = result.chars().collect();
     for (i, c) in final_chars.iter().enumerate() {
-        if c.is_lowercase() && i > 0 && i + 1 < final_chars.len() {
-            if final_chars[i - 1].is_uppercase() && final_chars[i + 1].is_uppercase() {
-                final_result.push('_');
-            }
+        if c.is_lowercase()
+            && i > 0
+            && i + 1 < final_chars.len()
+            && final_chars[i - 1].is_uppercase()
+            && final_chars[i + 1].is_uppercase()
+        {
+            final_result.push('_');
         }
         final_result.push(*c);
     }
-    
+
     final_result
 }
 
@@ -80,7 +83,7 @@ pub fn normalize_yaml_key(key: &str) -> String {
 /// * `String` - The slugified name
 pub fn normalize_slug(name: &str) -> String {
     let mut result = String::new();
-    
+
     for c in name.chars() {
         if c.is_alphanumeric() {
             if c.is_uppercase() {
@@ -88,13 +91,11 @@ pub fn normalize_slug(name: &str) -> String {
             } else {
                 result.push(c);
             }
-        } else if c.is_whitespace() || c == '_' {
-            if !result.is_empty() && !result.ends_with('-') {
-                result.push('-');
-            }
+        } else if (c.is_whitespace() || c == '_') && !result.is_empty() && !result.ends_with('-') {
+            result.push('-');
         }
     }
-    
+
     // Remove trailing hyphen
     result.trim_matches('-').to_string()
 }
@@ -108,7 +109,7 @@ pub fn normalize_slug(name: &str) -> String {
 /// * `String` - The normalized version (e.g., "1.0.0")
 pub fn normalize_version(version: &str) -> String {
     let v = version.trim().trim_start_matches('v').trim();
-    
+
     // Split by dots and normalize each part
     let parts: Vec<String> = v
         .split('.')
@@ -117,7 +118,7 @@ pub fn normalize_version(version: &str) -> String {
             n.to_string()
         })
         .collect();
-    
+
     // Return at least 3 parts (x.y.z)
     match parts.len() {
         0 => "0.0.0".to_string(),
@@ -130,18 +131,18 @@ pub fn normalize_version(version: &str) -> String {
 /// Normalizes a semver range to canonical format.
 pub fn normalize_semver_range(range: &str) -> String {
     let r = range.trim();
-    
+
     // Handle caret (^) and tilde (~) prefixes
-    if r.starts_with('^') {
-        let inner = normalize_version(&r[1..]);
+    if let Some(stripped) = r.strip_prefix('^') {
+        let inner = normalize_version(stripped);
         return format!("^{}", inner);
     }
-    
-    if r.starts_with('~') {
-        let inner = normalize_version(&r[1..]);
+
+    if let Some(stripped) = r.strip_prefix('~') {
+        let inner = normalize_version(stripped);
         return format!("~{}", inner);
     }
-    
+
     normalize_version(r)
 }
 
@@ -158,11 +159,9 @@ pub fn normalize_csv_header(header: &str) -> String {
 /// Normalizes a phone number to E.164 format (basic implementation).
 pub fn normalize_phone(phone: &str) -> String {
     let digits: String = phone.chars().filter(|c| c.is_ascii_digit()).collect();
-    
+
     if digits.len() == 10 {
         format!("+1{}", digits)
-    } else if digits.len() == 11 && digits.starts_with('1') {
-        format!("+{}", digits)
     } else if !digits.is_empty() {
         format!("+{}", digits)
     } else {
@@ -207,33 +206,33 @@ impl StringNormalizer {
     pub fn new(config: NormalizerConfig) -> Self {
         Self { config }
     }
-    
+
     /// Create a new string normalizer with default config.
     pub fn default_config() -> Self {
         Self::new(NormalizerConfig::default())
     }
-    
+
     /// Normalize a string using the configured rules.
     pub fn normalize(&self, input: &str) -> String {
         let mut result = input.to_string();
-        
+
         if self.config.trim {
             result = result.trim().to_string();
         }
-        
+
         if self.config.lowercase {
             result = result.to_lowercase();
         }
-        
+
         if self.config.remove_special {
-            result = result.chars().map(|c| {
-                if c.is_alphanumeric() { c }
-                else { ' ' }
-            }).collect();
+            result = result
+                .chars()
+                .map(|c| if c.is_alphanumeric() { c } else { ' ' })
+                .collect();
             // Normalize whitespace after replacing special chars with spaces
             result = result.split_whitespace().collect::<Vec<_>>().join(" ");
         }
-        
+
         result
     }
 }

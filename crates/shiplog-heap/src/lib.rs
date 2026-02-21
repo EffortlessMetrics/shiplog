@@ -72,26 +72,26 @@ impl<T: Ord + Clone> BinaryHeap<T> {
         if self.data.is_empty() {
             return None;
         }
-        
+
         let top = self.data.first().cloned();
         let last = self.data.pop();
-        
+
         if !self.data.is_empty() {
             self.data[0] = last.unwrap();
             self.bubble_down(0);
         }
-        
+
         top
     }
 
     /// Convert the heap to a sorted vector.
     pub fn into_sorted_vec(mut self) -> Vec<T> {
         let mut result = Vec::with_capacity(self.data.len());
-        
+
         while let Some(item) = self.pop() {
             result.push(item);
         }
-        
+
         result
     }
 
@@ -120,24 +120,24 @@ impl<T: Ord + Clone> BinaryHeap<T> {
 
     fn bubble_down(&mut self, mut idx: usize) {
         let n = self.data.len();
-        
+
         loop {
             let left = 2 * idx + 1;
             let right = 2 * idx + 2;
             let mut largest = idx;
-            
+
             if left < n && self.data[left] > self.data[largest] {
                 largest = left;
             }
-            
+
             if right < n && self.data[right] > self.data[largest] {
                 largest = right;
             }
-            
+
             if largest == idx {
                 break;
             }
-            
+
             self.data.swap(idx, largest);
             idx = largest;
         }
@@ -215,11 +215,15 @@ impl<T: Ord + Clone> BinaryHeapWithOrder<T> {
             let right = 2 * idx + 2;
             let mut smallest_or_largest = idx;
 
-            if left < self.data.len() && self.cmp(&self.data[left], &self.data[smallest_or_largest]) == Ordering::Greater {
+            if left < self.data.len()
+                && self.cmp(&self.data[left], &self.data[smallest_or_largest]) == Ordering::Greater
+            {
                 smallest_or_largest = left;
             }
 
-            if right < self.data.len() && self.cmp(&self.data[right], &self.data[smallest_or_largest]) == Ordering::Greater {
+            if right < self.data.len()
+                && self.cmp(&self.data[right], &self.data[smallest_or_largest]) == Ordering::Greater
+            {
                 smallest_or_largest = right;
             }
 
@@ -234,8 +238,8 @@ impl<T: Ord + Clone> BinaryHeapWithOrder<T> {
 
     fn cmp(&self, a: &T, b: &T) -> Ordering {
         match self.order {
-            HeapOrder::Max => a.cmp(b),  // Larger is "greater" for max-heap
-            HeapOrder::Min => b.cmp(a),  // Smaller is "greater" for min-heap
+            HeapOrder::Max => a.cmp(b), // Larger is "greater" for max-heap
+            HeapOrder::Min => b.cmp(a), // Smaller is "greater" for min-heap
         }
     }
 }
@@ -263,13 +267,13 @@ mod tests {
     #[test]
     fn test_binary_heap_push_pop() {
         let mut heap: BinaryHeap<i32> = BinaryHeap::new();
-        
+
         heap.push(3);
         heap.push(1);
         heap.push(4);
         heap.push(1);
         heap.push(5);
-        
+
         assert_eq!(heap.len(), 5);
         assert_eq!(heap.pop(), Some(5)); // Max heap returns largest
     }
@@ -277,30 +281,30 @@ mod tests {
     #[test]
     fn test_binary_heap_from_vec() {
         let heap = BinaryHeap::from_vec(vec![3, 1, 4, 1, 5, 9, 2, 6]);
-        
+
         assert_eq!(heap.len(), 8);
     }
 
     #[test]
     fn test_binary_heap_peek() {
         let mut heap: BinaryHeap<i32> = BinaryHeap::new();
-        
+
         heap.push(3);
         heap.push(1);
         heap.push(4);
-        
+
         assert_eq!(heap.peek(), Some(&4));
     }
 
     #[test]
     fn test_binary_heap_pop_all() {
         let mut heap = BinaryHeap::from_vec(vec![3, 1, 4, 1, 5]);
-        
+
         let mut results = Vec::new();
         while let Some(item) = heap.pop() {
             results.push(item);
         }
-        
+
         // Should be in descending order (max heap)
         assert_eq!(results, vec![5, 4, 3, 1, 1]);
     }
@@ -308,9 +312,9 @@ mod tests {
     #[test]
     fn test_binary_heap_into_sorted() {
         let heap = BinaryHeap::from_vec(vec![3, 1, 4, 1, 5]);
-        
+
         let sorted = heap.into_sorted_vec();
-        
+
         // Sorted in descending order (max heap)
         assert_eq!(sorted, vec![5, 4, 3, 1, 1]);
     }
@@ -318,7 +322,7 @@ mod tests {
     #[test]
     fn test_binary_heap_empty() {
         let mut heap: BinaryHeap<i32> = BinaryHeap::new();
-        
+
         assert!(heap.is_empty());
         assert_eq!(heap.pop(), None);
         assert_eq!(heap.peek(), None);
@@ -327,29 +331,29 @@ mod tests {
     #[test]
     fn test_binary_heap_with_order_min() {
         let mut heap = BinaryHeapWithOrder::new(HeapOrder::Min);
-        
+
         heap.push(3);
         heap.push(1);
         heap.push(4);
-        
+
         assert_eq!(heap.pop(), Some(1)); // Min heap returns smallest first
     }
 
     #[test]
     fn test_binary_heap_with_order_max() {
         let mut heap = BinaryHeapWithOrder::new(HeapOrder::Max);
-        
+
         heap.push(3);
         heap.push(1);
         heap.push(4);
-        
+
         assert_eq!(heap.pop(), Some(4)); // Max heap returns largest first
     }
 
     #[test]
     fn test_binary_heap_with_order_empty() {
         let mut heap: BinaryHeapWithOrder<i32> = BinaryHeapWithOrder::new(HeapOrder::Min);
-        
+
         assert!(heap.is_empty());
         assert_eq!(heap.pop(), None);
     }
@@ -357,11 +361,11 @@ mod tests {
     #[test]
     fn test_binary_heap_iter() {
         let mut heap: BinaryHeap<i32> = BinaryHeap::new();
-        
+
         heap.push(3);
         heap.push(1);
         heap.push(4);
-        
+
         let sum: i32 = heap.iter().sum();
         assert_eq!(sum, 8);
     }
@@ -374,12 +378,12 @@ mod tests {
     #[test]
     fn test_binary_heap_with_order_multiple_pops() {
         let mut heap = BinaryHeapWithOrder::new(HeapOrder::Min);
-        
+
         heap.push(5);
         heap.push(3);
         heap.push(7);
         heap.push(1);
-        
+
         assert_eq!(heap.pop(), Some(1));
         assert_eq!(heap.pop(), Some(3));
         assert_eq!(heap.pop(), Some(5));

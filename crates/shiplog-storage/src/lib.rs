@@ -193,9 +193,15 @@ mod tests {
     fn in_memory_storage_list() {
         let mut storage = InMemoryStorage::new();
 
-        storage.set(&StorageKey::from_path("events/1"), b"a".to_vec()).unwrap();
-        storage.set(&StorageKey::from_path("events/2"), b"b".to_vec()).unwrap();
-        storage.set(&StorageKey::from_path("other/1"), b"c".to_vec()).unwrap();
+        storage
+            .set(&StorageKey::from_path("events/1"), b"a".to_vec())
+            .unwrap();
+        storage
+            .set(&StorageKey::from_path("events/2"), b"b".to_vec())
+            .unwrap();
+        storage
+            .set(&StorageKey::from_path("other/1"), b"c".to_vec())
+            .unwrap();
 
         let prefix = StorageKey::from_path("events/");
         let keys = storage.list(&prefix).unwrap();

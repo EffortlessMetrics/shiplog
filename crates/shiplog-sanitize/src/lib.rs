@@ -4,7 +4,10 @@
 
 /// Removes control characters from a string (except whitespace).
 pub fn remove_control_characters(input: &str) -> String {
-    input.chars().filter(|c| !c.is_control() || c.is_whitespace()).collect()
+    input
+        .chars()
+        .filter(|c| !c.is_control() || c.is_whitespace())
+        .collect()
 }
 
 /// Removes non-ASCII characters from a string.
@@ -50,7 +53,7 @@ pub fn escape_shell(input: &str) -> String {
 pub fn sanitize_whitespace(input: &str) -> String {
     let mut result = String::new();
     let mut last_was_space = false;
-    
+
     for c in input.chars() {
         if c.is_whitespace() {
             if !last_was_space {
@@ -62,7 +65,7 @@ pub fn sanitize_whitespace(input: &str) -> String {
             last_was_space = false;
         }
     }
-    
+
     result.trim().to_string()
 }
 
@@ -77,7 +80,10 @@ mod tests {
 
     #[test]
     fn test_remove_control_characters() {
-        assert_eq!(remove_control_characters("hello\tworld\n"), "hello\tworld\n");
+        assert_eq!(
+            remove_control_characters("hello\tworld\n"),
+            "hello\tworld\n"
+        );
         assert_eq!(remove_control_characters("hel\x00lo"), "hello");
     }
 

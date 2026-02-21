@@ -3,10 +3,9 @@
 //! Provides reproducible pseudo-random number generators with seeding capabilities.
 
 use rand::Rng;
-use rand::rng;
 use rand::SeedableRng;
-use rand::seq::SliceRandom;
 use rand::prelude::IndexedRandom;
+use rand::seq::SliceRandom;
 
 /// A seeded pseudo-random number generator.
 pub struct SeededRng {
@@ -67,24 +66,32 @@ impl SeededRng {
 
     /// Generate a random string.
     pub fn string(&mut self, length: usize) -> String {
-        let chars: Vec<char> = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789".chars().collect();
-        (0..length).map(|_| chars[self.rng.random_range(0..chars.len())]).collect()
+        let chars: Vec<char> = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+            .chars()
+            .collect();
+        (0..length)
+            .map(|_| chars[self.rng.random_range(0..chars.len())])
+            .collect()
     }
 
     /// Generate a random lowercase string.
     pub fn lowercase_string(&mut self, length: usize) -> String {
-        (0..length).map(|_| {
-            let idx = self.rng.random_range(0..26);
-            (b'a' + idx) as char
-        }).collect()
+        (0..length)
+            .map(|_| {
+                let idx = self.rng.random_range(0..26);
+                (b'a' + idx) as char
+            })
+            .collect()
     }
 
     /// Generate a random uppercase string.
     pub fn uppercase_string(&mut self, length: usize) -> String {
-        (0..length).map(|_| {
-            let idx = self.rng.random_range(0..26);
-            (b'A' + idx) as char
-        }).collect()
+        (0..length)
+            .map(|_| {
+                let idx = self.rng.random_range(0..26);
+                (b'A' + idx) as char
+            })
+            .collect()
     }
 
     /// Shuffle a slice.
@@ -115,9 +122,13 @@ pub fn deterministic_seq(seed: u64, count: usize) -> Vec<u32> {
 
 /// Generate a deterministic random string for testing.
 pub fn deterministic_string(seed: u64, length: usize) -> String {
-    let chars: Vec<char> = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789".chars().collect();
+    let chars: Vec<char> = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+        .chars()
+        .collect();
     let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
-    (0..length).map(|_| chars[rng.random_range(0..chars.len())]).collect()
+    (0..length)
+        .map(|_| chars[rng.random_range(0..chars.len())])
+        .collect()
 }
 
 /// Generate a deterministic random bytes for testing.
@@ -156,19 +167,23 @@ impl Lcg {
     }
 
     /// Generate the next random number.
-    pub fn next(&mut self) -> u64 {
-        self.state = self.state.wrapping_mul(self.multiplier).wrapping_add(self.increment) % self.modulus;
+    pub fn next_val(&mut self) -> u64 {
+        self.state = self
+            .state
+            .wrapping_mul(self.multiplier)
+            .wrapping_add(self.increment)
+            % self.modulus;
         self.state
     }
 
     /// Generate a random number in the given range.
     pub fn range(&mut self, min: u64, max: u64) -> u64 {
-        min + (self.next() % (max - min + 1))
+        min + (self.next_val() % (max - min + 1))
     }
 
     /// Generate a random float between 0 and 1.
     pub fn float(&mut self) -> f64 {
-        (self.next() as f64) / (u64::MAX as f64)
+        (self.next_val() as f64) / (u64::MAX as f64)
     }
 
     /// Reset the generator with a new seed.
@@ -191,14 +206,14 @@ mod tests {
     fn seeded_rng_creation() {
         let mut rng = SeededRng::new(42);
         let val1 = rng.range(1, 100);
-        assert!(val1 >= 1 && val1 <= 100);
+        assert!((1..=100).contains(&val1));
     }
 
     #[test]
     fn seeded_rng_deterministic() {
         let mut rng1 = SeededRng::new(42);
         let mut rng2 = SeededRng::new(42);
-        
+
         for _ in 0..10 {
             assert_eq!(rng1.range(1, 100), rng2.range(1, 100));
         }
@@ -208,18 +223,19 @@ mod tests {
     fn seeded_rng_different_seeds() {
         let mut rng1 = SeededRng::new(42);
         let mut rng2 = SeededRng::new(43);
-        
+
         let val1 = rng1.range(1, 100);
         let val2 = rng2.range(1, 100);
         // Very unlikely to be equal
-        assert!(val1 != val2 || val1 == val2); // Always passes
+        // Different seeds should (generally) produce different values
+        let _ = (val1, val2);
     }
 
     #[test]
     fn seeded_rng_float() {
         let mut rng = SeededRng::new(42);
         let val = rng.float();
-        assert!(val >= 0.0 && val < 1.0);
+        assert!((0.0..1.0).contains(&val));
     }
 
     #[test]
@@ -292,7 +308,7 @@ mod tests {
     #[test]
     fn lcg_creation() {
         let mut lcg = Lcg::new(42);
-        let val = lcg.next();
+        let val = lcg.next_val();
         assert!(val > 0);
     }
 
@@ -300,9 +316,9 @@ mod tests {
     fn lcg_deterministic() {
         let mut lcg1 = Lcg::new(42);
         let mut lcg2 = Lcg::new(42);
-        
+
         for _ in 0..10 {
-            assert_eq!(lcg1.next(), lcg2.next());
+            assert_eq!(lcg1.next_val(), lcg2.next_val());
         }
     }
 
@@ -310,22 +326,22 @@ mod tests {
     fn lcg_range() {
         let mut lcg = Lcg::new(42);
         let val = lcg.range(1, 100);
-        assert!(val >= 1 && val <= 100);
+        assert!((1..=100).contains(&val));
     }
 
     #[test]
     fn lcg_float() {
         let mut lcg = Lcg::new(42);
         let val = lcg.float();
-        assert!(val >= 0.0 && val < 1.0);
+        assert!((0.0..1.0).contains(&val));
     }
 
     #[test]
     fn lcg_reset() {
         let mut lcg = Lcg::new(42);
-        let val1 = lcg.next();
+        let val1 = lcg.next_val();
         lcg.reset(42);
-        let val2 = lcg.next();
+        let val2 = lcg.next_val();
         assert_eq!(val1, val2);
     }
 
@@ -341,6 +357,6 @@ mod tests {
         let mut lcg = Lcg::default();
         let mut lcg2 = Lcg::new(12345);
         // Default seed should be 12345
-        assert_eq!(lcg.next(), lcg2.next());
+        assert_eq!(lcg.next_val(), lcg2.next_val());
     }
 }

@@ -59,7 +59,7 @@ impl EmailValidator {
     /// Validates an email address format.
     pub fn validate(email: &str) -> ValidatorResult<()> {
         let email_regex = Regex::new(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$").unwrap();
-        
+
         if email.is_empty() {
             return Err(ValidatorError {
                 field: "email".to_string(),
@@ -67,7 +67,7 @@ impl EmailValidator {
                 code: ErrorCode::Empty,
             });
         }
-        
+
         if !email_regex.is_match(email) {
             return Err(ValidatorError {
                 field: "email".to_string(),
@@ -75,7 +75,7 @@ impl EmailValidator {
                 code: ErrorCode::InvalidFormat,
             });
         }
-        
+
         Ok(())
     }
 }
@@ -87,7 +87,7 @@ impl UrlValidator {
     /// Validates a URL format.
     pub fn validate(url: &str) -> ValidatorResult<()> {
         let url_regex = Regex::new(r"^https?://[^\s/$.?#].[^\s]*$").unwrap();
-        
+
         if url.is_empty() {
             return Err(ValidatorError {
                 field: "url".to_string(),
@@ -95,7 +95,7 @@ impl UrlValidator {
                 code: ErrorCode::Empty,
             });
         }
-        
+
         if !url_regex.is_match(url) {
             return Err(ValidatorError {
                 field: "url".to_string(),
@@ -103,7 +103,7 @@ impl UrlValidator {
                 code: ErrorCode::InvalidFormat,
             });
         }
-        
+
         Ok(())
     }
 }
@@ -114,7 +114,7 @@ pub struct UsernameValidator;
 impl UsernameValidator {
     const MIN_LENGTH: usize = 3;
     const MAX_LENGTH: usize = 32;
-    
+
     /// Validates a username format.
     pub fn validate(username: &str) -> ValidatorResult<()> {
         if username.is_empty() {
@@ -124,7 +124,7 @@ impl UsernameValidator {
                 code: ErrorCode::Empty,
             });
         }
-        
+
         if username.len() < Self::MIN_LENGTH {
             return Err(ValidatorError {
                 field: "username".to_string(),
@@ -132,7 +132,7 @@ impl UsernameValidator {
                 code: ErrorCode::TooShort,
             });
         }
-        
+
         if username.len() > Self::MAX_LENGTH {
             return Err(ValidatorError {
                 field: "username".to_string(),
@@ -140,16 +140,17 @@ impl UsernameValidator {
                 code: ErrorCode::TooLong,
             });
         }
-        
+
         let username_regex = Regex::new(r"^[a-zA-Z0-9_-]+$").unwrap();
         if !username_regex.is_match(username) {
             return Err(ValidatorError {
                 field: "username".to_string(),
-                message: "username can only contain letters, numbers, underscores, and hyphens".to_string(),
+                message: "username can only contain letters, numbers, underscores, and hyphens"
+                    .to_string(),
                 code: ErrorCode::InvalidFormat,
             });
         }
-        
+
         Ok(())
     }
 }
@@ -159,7 +160,7 @@ pub struct PasswordValidator;
 
 impl PasswordValidator {
     const MIN_LENGTH: usize = 8;
-    
+
     /// Validates password strength.
     pub fn validate(password: &str) -> ValidatorResult<()> {
         if password.is_empty() {
@@ -169,7 +170,7 @@ impl PasswordValidator {
                 code: ErrorCode::Empty,
             });
         }
-        
+
         if password.len() < Self::MIN_LENGTH {
             return Err(ValidatorError {
                 field: "password".to_string(),
@@ -177,11 +178,11 @@ impl PasswordValidator {
                 code: ErrorCode::TooShort,
             });
         }
-        
+
         let has_upper = password.chars().any(|c| c.is_uppercase());
         let has_lower = password.chars().any(|c| c.is_lowercase());
         let has_digit = password.chars().any(|c| c.is_ascii_digit());
-        
+
         if !has_upper || !has_lower || !has_digit {
             return Err(ValidatorError {
                 field: "password".to_string(),
@@ -189,7 +190,7 @@ impl PasswordValidator {
                 code: ErrorCode::InvalidValue,
             });
         }
-        
+
         Ok(())
     }
 }
@@ -201,7 +202,7 @@ impl IpAddressValidator {
     /// Validates an IPv4 address format.
     pub fn validate_ipv4(ip: &str) -> ValidatorResult<()> {
         let parts: Vec<&str> = ip.split('.').collect();
-        
+
         if parts.len() != 4 {
             return Err(ValidatorError {
                 field: "ip_address".to_string(),
@@ -209,14 +210,14 @@ impl IpAddressValidator {
                 code: ErrorCode::InvalidFormat,
             });
         }
-        
+
         for part in parts {
             let octet: u32 = part.parse().map_err(|_| ValidatorError {
                 field: "ip_address".to_string(),
                 message: format!("invalid octet: {}", part),
                 code: ErrorCode::InvalidFormat,
             })?;
-            
+
             if octet > 255 {
                 return Err(ValidatorError {
                     field: "ip_address".to_string(),
@@ -225,7 +226,7 @@ impl IpAddressValidator {
                 });
             }
         }
-        
+
         Ok(())
     }
 }
@@ -241,29 +242,29 @@ impl<T: PartialOrd + Copy + std::fmt::Display> RangeValidator<T> {
     pub fn new(min: Option<T>, max: Option<T>) -> Self {
         Self { min, max }
     }
-    
+
     /// Validate a value is within range.
     pub fn validate(&self, value: T) -> ValidatorResult<()> {
-        if let Some(min) = self.min {
-            if value < min {
-                return Err(ValidatorError {
-                    field: "value".to_string(),
-                    message: format!("value {} is less than minimum {}", value, min),
-                    code: ErrorCode::OutOfRange,
-                });
-            }
+        if let Some(min) = self.min
+            && value < min
+        {
+            return Err(ValidatorError {
+                field: "value".to_string(),
+                message: format!("value {} is less than minimum {}", value, min),
+                code: ErrorCode::OutOfRange,
+            });
         }
-        
-        if let Some(max) = self.max {
-            if value > max {
-                return Err(ValidatorError {
-                    field: "value".to_string(),
-                    message: format!("value {} is greater than maximum {}", value, max),
-                    code: ErrorCode::OutOfRange,
-                });
-            }
+
+        if let Some(max) = self.max
+            && value > max
+        {
+            return Err(ValidatorError {
+                field: "value".to_string(),
+                message: format!("value {} is greater than maximum {}", value, max),
+                code: ErrorCode::OutOfRange,
+            });
         }
-        
+
         Ok(())
     }
 }
@@ -340,11 +341,11 @@ mod tests {
     #[test]
     fn test_range_validator() {
         let validator = RangeValidator::new(Some(0), Some(100));
-        
+
         assert!(validator.validate(50).is_ok());
         assert!(validator.validate(0).is_ok());
         assert!(validator.validate(100).is_ok());
-        
+
         assert!(validator.validate(-1).is_err());
         assert!(validator.validate(101).is_err());
     }
@@ -356,7 +357,10 @@ mod tests {
             message: "invalid format".to_string(),
             code: ErrorCode::InvalidFormat,
         };
-        
-        assert_eq!(format!("{}", error), "[INVALID_FORMAT] email: invalid format");
+
+        assert_eq!(
+            format!("{}", error),
+            "[INVALID_FORMAT] email: invalid format"
+        );
     }
 }

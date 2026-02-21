@@ -9,19 +9,14 @@ use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
 /// Workflow states.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum WorkflowState {
+    #[default]
     Pending,
     Running,
     Completed,
     Failed,
     Cancelled,
-}
-
-impl Default for WorkflowState {
-    fn default() -> Self {
-        WorkflowState::Pending
-    }
 }
 
 /// A workflow definition.
@@ -155,13 +150,13 @@ impl WorkflowEngine {
     pub fn create_workflow(&self, name: &str) -> Workflow {
         let workflow = Workflow::new(name);
         let id = workflow.id.clone();
-        
+
         let mut workflows = self.workflows.write().unwrap();
         workflows.insert(id.clone(), workflow.clone());
-        
+
         let mut tasks = self.tasks.write().unwrap();
         tasks.insert(id, Vec::new());
-        
+
         workflow
     }
 
@@ -207,7 +202,7 @@ impl WorkflowEngine {
     /// Add a task to a workflow.
     pub fn add_task(&self, workflow_id: &str, name: &str, order: u32) -> Option<Task> {
         let task = Task::new(name, order);
-        
+
         let mut tasks = self.tasks.write().unwrap();
         if let Some(workflow_tasks) = tasks.get_mut(workflow_id) {
             workflow_tasks.push(task.clone());
@@ -226,11 +221,11 @@ impl WorkflowEngine {
     /// Start a task in a workflow.
     pub fn start_task(&self, workflow_id: &str, task_id: &str) -> bool {
         let mut tasks = self.tasks.write().unwrap();
-        if let Some(workflow_tasks) = tasks.get_mut(workflow_id) {
-            if let Some(task) = workflow_tasks.iter_mut().find(|t| t.id == task_id) {
-                task.start();
-                return true;
-            }
+        if let Some(workflow_tasks) = tasks.get_mut(workflow_id)
+            && let Some(task) = workflow_tasks.iter_mut().find(|t| t.id == task_id)
+        {
+            task.start();
+            return true;
         }
         false
     }
@@ -238,11 +233,11 @@ impl WorkflowEngine {
     /// Complete a task in a workflow.
     pub fn complete_task(&self, workflow_id: &str, task_id: &str) -> bool {
         let mut tasks = self.tasks.write().unwrap();
-        if let Some(workflow_tasks) = tasks.get_mut(workflow_id) {
-            if let Some(task) = workflow_tasks.iter_mut().find(|t| t.id == task_id) {
-                task.complete();
-                return true;
-            }
+        if let Some(workflow_tasks) = tasks.get_mut(workflow_id)
+            && let Some(task) = workflow_tasks.iter_mut().find(|t| t.id == task_id)
+        {
+            task.complete();
+            return true;
         }
         false
     }
@@ -280,7 +275,7 @@ mod tests {
     #[test]
     fn test_workflow_creation() {
         let workflow = Workflow::new("test-workflow");
-        
+
         assert_eq!(workflow.name, "test-workflow");
         assert_eq!(workflow.state, WorkflowState::Pending);
         assert!(!workflow.id.is_empty());
@@ -289,17 +284,17 @@ mod tests {
     #[test]
     fn test_workflow_state_transitions() {
         let mut workflow = Workflow::new("test");
-        
+
         workflow.start();
         assert_eq!(workflow.state, WorkflowState::Running);
-        
+
         workflow.complete();
         assert_eq!(workflow.state, WorkflowState::Completed);
-        
+
         let mut workflow2 = Workflow::new("test2");
         workflow2.fail();
         assert_eq!(workflow2.state, WorkflowState::Failed);
-        
+
         let mut workflow3 = Workflow::new("test3");
         workflow3.cancel();
         assert_eq!(workflow3.state, WorkflowState::Cancelled);
@@ -309,14 +304,14 @@ mod tests {
     fn test_workflow_metadata() {
         let mut workflow = Workflow::new("test");
         workflow.set_metadata("key", "value");
-        
+
         assert_eq!(workflow.metadata.get("key"), Some(&"value".to_string()));
     }
 
     #[test]
     fn test_task_creation() {
         let task = Task::new("task1", 1);
-        
+
         assert_eq!(task.name, "task1");
         assert_eq!(task.order, 1);
         assert_eq!(task.state, WorkflowState::Pending);
@@ -325,13 +320,13 @@ mod tests {
     #[test]
     fn test_task_state_transitions() {
         let mut task = Task::new("test", 0);
-        
+
         task.start();
         assert_eq!(task.state, WorkflowState::Running);
-        
+
         task.complete();
         assert_eq!(task.state, WorkflowState::Completed);
-        
+
         let mut task2 = Task::new("test2", 0);
         task2.fail("error message");
         assert_eq!(task2.state, WorkflowState::Failed);
@@ -342,7 +337,7 @@ mod tests {
     fn test_workflow_engine_create() {
         let engine = WorkflowEngine::new();
         let workflow = engine.create_workflow("my-workflow");
-        
+
         assert_eq!(workflow.name, "my-workflow");
         assert!(engine.get_workflow(&workflow.id).is_some());
     }
@@ -351,10 +346,10 @@ mod tests {
     fn test_workflow_engine_tasks() {
         let engine = WorkflowEngine::new();
         let workflow = engine.create_workflow("test");
-        
+
         engine.add_task(&workflow.id, "Step 1", 1).unwrap();
         engine.add_task(&workflow.id, "Step 2", 2).unwrap();
-        
+
         let tasks = engine.get_tasks(&workflow.id).unwrap();
         assert_eq!(tasks.len(), 2);
     }
@@ -362,16 +357,16 @@ mod tests {
     #[test]
     fn test_workflow_engine_workflow_states() {
         let engine = WorkflowEngine::new();
-        
+
         let w1 = engine.create_workflow("workflow-1");
         let w2 = engine.create_workflow("workflow-2");
-        
+
         engine.start_workflow(&w1.id);
         engine.complete_workflow(&w2.id);
-        
+
         let running = engine.workflows_by_state(WorkflowState::Running);
         let completed = engine.workflows_by_state(WorkflowState::Completed);
-        
+
         assert_eq!(running.len(), 1);
         assert_eq!(completed.len(), 1);
     }
@@ -380,12 +375,12 @@ mod tests {
     fn test_workflow_engine_task_transitions() {
         let engine = WorkflowEngine::new();
         let workflow = engine.create_workflow("test");
-        
+
         let task = engine.add_task(&workflow.id, "Step 1", 1).unwrap();
-        
+
         engine.start_task(&workflow.id, &task.id);
         engine.complete_task(&workflow.id, &task.id);
-        
+
         let tasks = engine.get_tasks(&workflow.id).unwrap();
         assert_eq!(tasks[0].state, WorkflowState::Completed);
     }

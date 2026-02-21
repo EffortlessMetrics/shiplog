@@ -18,6 +18,12 @@ pub struct InnerJoin<L, R, K> {
     right_data: Vec<(K, R)>,
 }
 
+impl<L: Clone, R: Clone, K: Eq + std::hash::Hash + Clone> Default for InnerJoin<L, R, K> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<L: Clone, R: Clone, K: Eq + std::hash::Hash + Clone> InnerJoin<L, R, K> {
     pub fn new() -> Self {
         Self {
@@ -58,6 +64,12 @@ impl<L: Clone, R: Clone, K: Eq + std::hash::Hash + Clone> InnerJoin<L, R, K> {
 pub struct LeftJoin<L, R, K> {
     left_data: Vec<(K, L)>,
     right_data: Vec<(K, R)>,
+}
+
+impl<L: Clone, R: Clone, K: Eq + std::hash::Hash + Clone> Default for LeftJoin<L, R, K> {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl<L: Clone, R: Clone, K: Eq + std::hash::Hash + Clone> LeftJoin<L, R, K> {
@@ -112,7 +124,7 @@ impl<T: Clone, K: Eq + std::hash::Hash + Clone> StreamJoiner<T, K> {
         }
     }
 
-    pub fn add(mut self, value: T) -> Self {
+    pub fn push(mut self, value: T) -> Self {
         self.data.push(value);
         self
     }
@@ -127,7 +139,7 @@ impl<T: Clone, K: Eq + std::hash::Hash + Clone> StreamJoiner<T, K> {
         let mut groups: HashMap<K, Vec<T>> = HashMap::new();
         for item in &self.data {
             let key = (self.extractor)(item);
-            groups.entry(key).or_insert_with(Vec::new).push(item.clone());
+            groups.entry(key).or_default().push(item.clone());
         }
         groups
     }
@@ -139,16 +151,8 @@ mod tests {
 
     #[test]
     fn test_inner_join_basic() {
-        let left = vec![
-            (1, "apple"),
-            (2, "banana"),
-            (3, "cherry"),
-        ];
-        let right = vec![
-            (1, "red"),
-            (2, "yellow"),
-            (4, "green"),
-        ];
+        let left = vec![(1, "apple"), (2, "banana"), (3, "cherry")];
+        let right = vec![(1, "red"), (2, "yellow"), (4, "green")];
 
         let result = InnerJoin::new()
             .with_left_data(left)
@@ -164,14 +168,8 @@ mod tests {
 
     #[test]
     fn test_inner_join_no_matches() {
-        let left = vec![
-            (1, "apple"),
-            (2, "banana"),
-        ];
-        let right = vec![
-            (3, "cherry"),
-            (4, "date"),
-        ];
+        let left = vec![(1, "apple"), (2, "banana")];
+        let right = vec![(3, "cherry"), (4, "date")];
 
         let result = InnerJoin::new()
             .with_left_data(left)
@@ -183,15 +181,8 @@ mod tests {
 
     #[test]
     fn test_left_join_basic() {
-        let left = vec![
-            (1, "apple"),
-            (2, "banana"),
-            (3, "cherry"),
-        ];
-        let right = vec![
-            (1, "red"),
-            (2, "yellow"),
-        ];
+        let left = vec![(1, "apple"), (2, "banana"), (3, "cherry")];
+        let right = vec![(1, "red"), (2, "yellow")];
 
         let result = LeftJoin::new()
             .with_left_data(left)
@@ -218,9 +209,18 @@ mod tests {
         let extractor = |item: &Item| item.category.clone();
 
         let items = vec![
-            Item { id: 1, category: "fruit".to_string() },
-            Item { id: 2, category: "vegetable".to_string() },
-            Item { id: 3, category: "fruit".to_string() },
+            Item {
+                id: 1,
+                category: "fruit".to_string(),
+            },
+            Item {
+                id: 2,
+                category: "vegetable".to_string(),
+            },
+            Item {
+                id: 3,
+                category: "fruit".to_string(),
+            },
         ];
 
         let joiner = StreamJoiner::new(extractor).add_many(items);

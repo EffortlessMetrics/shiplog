@@ -2,8 +2,8 @@
 //!
 //! This crate provides functionality for archiving and compressing old shipping packets.
 
-use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 /// Archive format
@@ -138,7 +138,7 @@ mod tests {
     #[test]
     fn test_archive_config_default() {
         let config = ArchiveConfig::default();
-        
+
         assert_eq!(config.format, ArchiveFormat::Zip);
         assert_eq!(config.retention_days, 90);
     }
@@ -146,7 +146,7 @@ mod tests {
     #[test]
     fn test_archive_manifest() {
         let mut manifest = ArchiveManifest::new();
-        
+
         manifest.add_entry(ArchiveEntry {
             original_path: PathBuf::from("packet1.json"),
             archived_at: Utc::now(),
@@ -154,7 +154,7 @@ mod tests {
             size_compressed: 400,
             checksum: "abc123".to_string(),
         });
-        
+
         assert_eq!(manifest.entries.len(), 1);
         assert_eq!(manifest.total_original_size, 1000);
         assert_eq!(manifest.total_compressed_size, 400);
@@ -163,7 +163,7 @@ mod tests {
     #[test]
     fn test_compression_ratio() {
         let mut manifest = ArchiveManifest::new();
-        
+
         manifest.add_entry(ArchiveEntry {
             original_path: PathBuf::from("packet1.json"),
             archived_at: Utc::now(),
@@ -171,7 +171,7 @@ mod tests {
             size_compressed: 500,
             checksum: "abc123".to_string(),
         });
-        
+
         assert_eq!(manifest.compression_ratio(), 50.0);
     }
 
@@ -179,7 +179,7 @@ mod tests {
     fn test_archive_state_creation() {
         let config = ArchiveConfig::default();
         let state = ArchiveState::new(config);
-        
+
         assert_eq!(state.status, ArchiveStatus::Pending);
     }
 
@@ -191,11 +191,11 @@ mod tests {
             compression_level: Some(6),
         };
         let state = ArchiveState::new(config);
-        
+
         // Created 60 days ago should be archived
         let old_date = Utc::now() - chrono::Duration::days(60);
         assert!(state.should_archive(&old_date));
-        
+
         // Created 10 days ago should not be archived
         let recent_date = Utc::now() - chrono::Duration::days(10);
         assert!(!state.should_archive(&recent_date));
@@ -205,14 +205,14 @@ mod tests {
     fn test_archive_state_transitions() {
         let config = ArchiveConfig::default();
         let mut state = ArchiveState::new(config);
-        
+
         state.start();
         assert!(matches!(state.status, ArchiveStatus::InProgress));
-        
+
         let manifest = ArchiveManifest::new();
         state.complete(manifest);
         assert!(matches!(state.status, ArchiveStatus::Completed));
-        
+
         let config2 = ArchiveConfig::default();
         let mut state2 = ArchiveState::new(config2);
         state2.fail("Disk full".to_string());

@@ -178,7 +178,7 @@ impl<T> TumblingWindow<T> {
     /// Add an item and return a window if ready
     pub fn push(&mut self, item: T) -> Option<Vec<T>> {
         self.data.push(item);
-        
+
         if self.data.len() >= self.size {
             Some(std::mem::take(&mut self.data))
         } else {
@@ -235,7 +235,7 @@ mod tests {
             .step(2)
             .name("test-window")
             .build();
-        
+
         assert_eq!(config.size, 20);
         assert_eq!(config.step, 2);
         assert_eq!(config.name, "test-window");
@@ -244,16 +244,16 @@ mod tests {
     #[test]
     fn test_sliding_window_basic() {
         let mut window: SlidingWindow<i32> = SlidingWindow::new(3);
-        
+
         window.push(1);
         window.push(2);
-        
+
         assert_eq!(window.len(), 2);
         assert!(!window.is_full());
-        
+
         window.push(3);
         assert!(window.is_full());
-        
+
         let items: Vec<i32> = window.to_vec();
         assert_eq!(items, vec![1, 2, 3]);
     }
@@ -261,12 +261,12 @@ mod tests {
     #[test]
     fn test_sliding_window_overflow() {
         let mut window: SlidingWindow<i32> = SlidingWindow::new(3);
-        
+
         window.push(1);
         window.push(2);
         window.push(3);
         window.push(4); // Should drop 1
-        
+
         let items: Vec<i32> = window.to_vec();
         assert_eq!(items, vec![2, 3, 4]);
     }
@@ -274,10 +274,10 @@ mod tests {
     #[test]
     fn test_sliding_window_get() {
         let mut window: SlidingWindow<i32> = SlidingWindow::new(3);
-        
+
         window.push(1);
         window.push(2);
-        
+
         let window_refs = window.get_window();
         assert_eq!(window_refs, vec![&1, &2]);
     }
@@ -285,11 +285,11 @@ mod tests {
     #[test]
     fn test_sliding_window_map() {
         let mut window: SlidingWindow<i32> = SlidingWindow::new(3);
-        
+
         window.push(1);
         window.push(2);
         window.push(3);
-        
+
         let doubled: Vec<i32> = window.map(|x| x * 2);
         assert_eq!(doubled, vec![2, 4, 6]);
     }
@@ -297,14 +297,14 @@ mod tests {
     #[test]
     fn test_tumbling_window() {
         let mut window: TumblingWindow<i32> = TumblingWindow::new(3);
-        
+
         assert!(window.push(1).is_none());
         assert!(window.push(2).is_none());
-        
+
         let result = window.push(3);
         assert!(result.is_some());
         assert_eq!(result.unwrap(), vec![1, 2, 3]);
-        
+
         // Window should be reset
         assert!(window.is_empty());
     }
@@ -312,25 +312,21 @@ mod tests {
     #[test]
     fn test_window_stats() {
         let mut stats = WindowStats::new();
-        
+
         stats.record_item();
         stats.record_item();
         stats.record_window();
-        
+
         assert_eq!(stats.items_processed, 2);
         assert_eq!(stats.windows_created, 1);
     }
 
     #[test]
     fn test_sliding_window_with_config() {
-        let config = WindowBuilder::new()
-            .size(5)
-            .step(2)
-            .name("custom")
-            .build();
-        
+        let config = WindowBuilder::new().size(5).step(2).name("custom").build();
+
         let window: SlidingWindow<i32> = SlidingWindow::with_config(&config);
-        
+
         assert_eq!(window.size(), 5);
         assert_eq!(window.name(), "custom");
     }

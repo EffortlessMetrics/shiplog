@@ -101,7 +101,7 @@ impl<K: std::hash::Hash + Eq + Clone, V: Clone> KeyedAggregator<K, V> {
     }
 
     pub fn insert(&mut self, key: K, value: V) {
-        self.groups.entry(key).or_insert_with(Vec::new).push(value);
+        self.groups.entry(key).or_default().push(value);
     }
 
     pub fn get(&self, key: &K) -> Option<&Vec<V>> {
@@ -148,43 +148,43 @@ mod tests {
     #[test]
     fn test_aggregator_basic() {
         let mut agg: Aggregator<i32> = Aggregator::new();
-        
+
         assert!(agg.is_empty());
-        
+
         agg.add(1);
         agg.add(2);
         agg.add(3);
-        
+
         assert_eq!(agg.len(), 3);
     }
 
     #[test]
     fn test_aggregator_sum() {
         let mut agg: Aggregator<i32> = Aggregator::new();
-        
+
         agg.add(10);
         agg.add(20);
         agg.add(30);
-        
+
         assert_eq!(agg.sum(), Some(60));
     }
 
     #[test]
     fn test_aggregator_sum_empty() {
         let agg: Aggregator<i32> = Aggregator::new();
-        
+
         assert_eq!(agg.sum(), None);
     }
 
     #[test]
     fn test_aggregator_min_max() {
         let mut agg: Aggregator<i32> = Aggregator::new();
-        
+
         agg.add(5);
         agg.add(2);
         agg.add(8);
         agg.add(1);
-        
+
         assert_eq!(agg.min(), Some(1));
         assert_eq!(agg.max(), Some(8));
     }
@@ -192,29 +192,29 @@ mod tests {
     #[test]
     fn test_aggregator_average() {
         let mut agg: Aggregator<i32> = Aggregator::new();
-        
+
         agg.add(10);
         agg.add(20);
         agg.add(30);
-        
+
         assert_eq!(agg.average(), Some(20.0));
     }
 
     #[test]
     fn test_aggregator_average_empty() {
         let agg: Aggregator<i32> = Aggregator::new();
-        
+
         assert_eq!(agg.average(), None);
     }
 
     #[test]
     fn test_keyed_aggregator() {
         let mut agg: KeyedAggregator<&str, i32> = KeyedAggregator::new();
-        
+
         agg.insert("a", 1);
         agg.insert("a", 2);
         agg.insert("b", 3);
-        
+
         assert_eq!(agg.len(), 2);
         assert_eq!(agg.get(&"a"), Some(&vec![1, 2]));
         assert_eq!(agg.get(&"b"), Some(&vec![3]));
@@ -223,13 +223,13 @@ mod tests {
     #[test]
     fn test_keyed_aggregator_totals() {
         let mut agg: KeyedAggregator<&str, i32> = KeyedAggregator::new();
-        
+
         agg.insert("a", 1);
         agg.insert("a", 2);
         agg.insert("b", 3);
-        
+
         let totals = agg.totals();
-        
+
         assert_eq!(totals.get(&"a"), Some(&2));
         assert_eq!(totals.get(&"b"), Some(&1));
     }
@@ -237,7 +237,7 @@ mod tests {
     #[test]
     fn test_keyed_aggregator_empty() {
         let agg: KeyedAggregator<&str, i32> = KeyedAggregator::new();
-        
+
         assert!(agg.is_empty());
         assert_eq!(agg.len(), 0);
     }

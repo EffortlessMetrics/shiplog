@@ -100,7 +100,7 @@ impl ShiplogError {
 impl fmt::Display for ShiplogError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "[{}] {}", self.category, self.message)?;
-        
+
         if !self.context.is_empty() {
             write!(f, " (")?;
             for (i, (key, value)) in self.context.iter().enumerate() {
@@ -111,11 +111,11 @@ impl fmt::Display for ShiplogError {
             }
             write!(f, ")")?;
         }
-        
+
         if let Some(source) = &self.source {
             write!(f, "\nCaused by: {}", source)?;
         }
-        
+
         Ok(())
     }
 }
@@ -195,11 +195,7 @@ pub fn network_error(message: impl Into<String>) -> ShiplogError {
 /// Convert anyhow errors to shiplog errors
 impl From<anyhow::Error> for ShiplogError {
     fn from(err: anyhow::Error) -> Self {
-        ShiplogError::with_source(
-            err.to_string(),
-            ErrorCategory::Unknown,
-            err.into(),
-        )
+        ShiplogError::with_source(err.to_string(), ErrorCategory::Unknown, err.into())
     }
 }
 
@@ -227,7 +223,7 @@ mod tests {
         let err = ShiplogError::new("validation failed", ErrorCategory::Validation)
             .with_context("field", "email")
             .with_context("value", "invalid");
-        
+
         let ctx = err.context();
         assert_eq!(ctx.len(), 2);
         assert_eq!(ctx[0], ("field".to_string(), "email".to_string()));
@@ -239,7 +235,7 @@ mod tests {
             .with_context("host", "example.com")
             .with_context("port", "8080")
             .build();
-        
+
         assert_eq!(err.category(), &ErrorCategory::Network);
         assert_eq!(err.context().len(), 2);
     }
@@ -274,7 +270,7 @@ mod tests {
     fn test_error_display_with_context() {
         let err = ShiplogError::new("test error", ErrorCategory::Validation)
             .with_context("field", "name");
-        
+
         let display = format!("{}", err);
         assert!(display.contains("field=name"));
     }
@@ -283,7 +279,7 @@ mod tests {
     fn test_anyhow_conversion() {
         let anyhow_err = anyhow::anyhow!("original error");
         let shiplog_err: ShiplogError = anyhow_err.into();
-        
+
         assert_eq!(shiplog_err.category(), &ErrorCategory::Unknown);
         assert!(shiplog_err.source().is_some());
     }

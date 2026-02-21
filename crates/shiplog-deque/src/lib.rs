@@ -131,11 +131,11 @@ mod tests {
     #[test]
     fn test_deque_push_pop_front() {
         let mut deque: Deque<i32> = Deque::new();
-        
+
         deque.push_front(1);
         deque.push_front(2);
         deque.push_front(3);
-        
+
         assert_eq!(deque.pop_front(), Some(3));
         assert_eq!(deque.pop_front(), Some(2));
         assert_eq!(deque.pop_front(), Some(1));
@@ -145,11 +145,11 @@ mod tests {
     #[test]
     fn test_deque_push_pop_back() {
         let mut deque: Deque<i32> = Deque::new();
-        
+
         deque.push_back(1);
         deque.push_back(2);
         deque.push_back(3);
-        
+
         assert_eq!(deque.pop_back(), Some(3));
         assert_eq!(deque.pop_back(), Some(2));
         assert_eq!(deque.pop_back(), Some(1));
@@ -159,12 +159,12 @@ mod tests {
     #[test]
     fn test_deque_mixed_operations() {
         let mut deque: Deque<i32> = Deque::new();
-        
+
         deque.push_back(1);
         deque.push_front(2);
         deque.push_back(3);
         deque.push_front(4);
-        
+
         assert_eq!(deque.pop_front(), Some(4));
         assert_eq!(deque.pop_back(), Some(3));
         assert_eq!(deque.pop_front(), Some(2));
@@ -174,24 +174,24 @@ mod tests {
     #[test]
     fn test_deque_peek() {
         let mut deque: Deque<i32> = Deque::new();
-        
+
         deque.push_back(1);
         deque.push_back(2);
-        
+
         assert_eq!(deque.front(), Some(&1));
         assert_eq!(deque.back(), Some(&2));
-        
+
         assert_eq!(deque.len(), 2);
     }
 
     #[test]
     fn test_deque_clear() {
         let mut deque: Deque<i32> = Deque::new();
-        
+
         deque.push_back(1);
         deque.push_back(2);
         assert!(!deque.is_empty());
-        
+
         deque.clear();
         assert!(deque.is_empty());
     }
@@ -199,14 +199,14 @@ mod tests {
     #[test]
     fn test_deque_rotate() {
         let mut deque: Deque<i32> = Deque::new();
-        
+
         deque.push_back(1);
         deque.push_back(2);
         deque.push_back(3);
         deque.push_back(4);
-        
+
         deque.rotate_left(2);
-        
+
         assert_eq!(deque.pop_front(), Some(3));
         assert_eq!(deque.pop_front(), Some(4));
         assert_eq!(deque.pop_front(), Some(1));
@@ -216,14 +216,14 @@ mod tests {
     #[test]
     fn test_deque_split_at() {
         let mut deque: Deque<i32> = Deque::new();
-        
+
         deque.push_back(1);
         deque.push_back(2);
         deque.push_back(3);
         deque.push_back(4);
-        
+
         let (left, right) = deque.split_at(2);
-        
+
         assert_eq!(left.len(), 2);
         assert_eq!(right.len(), 2);
     }
@@ -232,7 +232,7 @@ mod tests {
     fn test_deque_with_capacity() {
         let deque: Deque<i32> = Deque::with_capacity(100);
         assert!(deque.is_empty());
-        
+
         let mut deque = deque;
         deque.push_back(42);
         assert_eq!(deque.len(), 1);
@@ -241,11 +241,11 @@ mod tests {
     #[test]
     fn test_deque_iter() {
         let mut deque: Deque<i32> = Deque::new();
-        
+
         deque.push_back(1);
         deque.push_back(2);
         deque.push_back(3);
-        
+
         let sum: i32 = deque.iter().sum();
         assert_eq!(sum, 6);
     }
@@ -253,6 +253,9 @@ mod tests {
     #[test]
     fn test_deque_error_display() {
         assert_eq!(DequeError::Empty.to_string(), "Deque is empty");
-        assert_eq!(DequeError::IndexOutOfBounds.to_string(), "Index out of bounds");
+        assert_eq!(
+            DequeError::IndexOutOfBounds.to_string(),
+            "Index out of bounds"
+        );
     }
 }

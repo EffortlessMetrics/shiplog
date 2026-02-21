@@ -73,7 +73,7 @@ where
     F: Fn(&RequestContext, &T) -> R + Send + Sync,
 {
     pub fn new(handler: F) -> Self {
-        Self { 
+        Self {
             handler,
             _phantom: PhantomData,
         }
@@ -96,7 +96,7 @@ impl<T, R> InterceptorChain<T, R> {
         }
     }
 
-    pub fn add<I>(mut self, interceptor: I) -> Self
+    pub fn with<I>(mut self, interceptor: I) -> Self
     where
         I: Interceptor<T, R> + 'static,
     {
@@ -181,6 +181,32 @@ impl fmt::Display for InterceptorConfig {
     }
 }
 
+/// Test interceptor implementation
+#[cfg(test)]
+struct TestInterceptor {
+    name: String,
+}
+
+#[cfg(test)]
+impl TestInterceptor {
+    fn new(name: &str) -> Self {
+        Self {
+            name: name.to_string(),
+        }
+    }
+}
+
+#[cfg(test)]
+impl Interceptor<String, String> for TestInterceptor {
+    fn intercept(&self, _context: &RequestContext, request: &String) -> Option<String> {
+        Some(format!("{}: {}", self.name, request))
+    }
+
+    fn on_response(&self, _context: &ResponseContext, _response: &String) {
+        // No-op for testing
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -198,9 +224,12 @@ mod tests {
         let ctx = RequestContext::new("POST", "/api/data")
             .with_header("Content-Type", "application/json")
             .with_header("Authorization", "Bearer token");
-        
+
         assert_eq!(ctx.headers.len(), 2);
-        assert_eq!(ctx.headers[0], ("Content-Type".to_string(), "application/json".to_string()));
+        assert_eq!(
+            ctx.headers[0],
+            ("Content-Type".to_string(), "application/json".to_string())
+        );
     }
 
     #[test]
@@ -222,7 +251,7 @@ mod tests {
             .name("test-interceptor")
             .enabled(false)
             .build();
-        
+
         assert_eq!(config.name, "test-interceptor");
         assert!(!config.enabled);
     }
@@ -247,8 +276,8 @@ mod tests {
     #[test]
     fn test_interceptor_chain() {
         let chain: InterceptorChain<String, String> = InterceptorChain::new()
-            .add(TestInterceptor::new("interceptor1"))
-            .add(TestInterceptor::new("interceptor2"));
+            .with(TestInterceptor::new("interceptor1"))
+            .with(TestInterceptor::new("interceptor2"));
 
         let ctx = RequestContext::new("GET", "/test");
         let result = chain.intercept(&ctx, &"data".to_string());
@@ -258,30 +287,9 @@ mod tests {
     #[test]
     fn test_interceptor_chain_empty() {
         let chain: InterceptorChain<String, String> = InterceptorChain::new();
-        
+
         let ctx = RequestContext::new("GET", "/test");
         let result = chain.intercept(&ctx, &"data".to_string());
         assert!(result.is_none());
-    }
-}
-
-/// Test interceptor implementation
-struct TestInterceptor {
-    name: String,
-}
-
-impl TestInterceptor {
-    fn new(name: &str) -> Self {
-        Self { name: name.to_string() }
-    }
-}
-
-impl Interceptor<String, String> for TestInterceptor {
-    fn intercept(&self, _context: &RequestContext, request: &String) -> Option<String> {
-        Some(format!("{}: {}", self.name, request))
-    }
-
-    fn on_response(&self, _context: &ResponseContext, _response: &String) {
-        // No-op for testing
     }
 }

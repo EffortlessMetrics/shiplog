@@ -77,13 +77,14 @@ impl TokenBucket {
     /// Try to consume tokens from the bucket.
     pub fn try_consume(&mut self, key: &str, tokens: u64) -> bool {
         let now = Utc::now();
-        
-        let state = self.buckets.entry(key.to_string()).or_insert_with(|| {
-            TokenBucketState {
+
+        let state = self
+            .buckets
+            .entry(key.to_string())
+            .or_insert_with(|| TokenBucketState {
                 tokens: self.config.capacity,
                 last_refill: now,
-            }
-        });
+            });
 
         // Refill tokens based on time elapsed
         let elapsed = now - state.last_refill;
@@ -196,7 +197,7 @@ mod tests {
         assert!(bucket.try_consume("user1", 1));
         assert!(bucket.try_consume("user1", 2));
         assert!(bucket.try_consume("user1", 2));
-        
+
         // Should fail when bucket is empty
         assert!(!bucket.try_consume("user1", 1));
     }

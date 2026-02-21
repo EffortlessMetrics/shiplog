@@ -59,7 +59,7 @@ impl<T> WheelSlot<T> {
     fn take_ready_tasks(&mut self) -> Vec<ScheduledTask<T>> {
         let mut ready = Vec::new();
         let now = Instant::now();
-        
+
         while let Some(task) = self.tasks.pop_front() {
             if now >= task.scheduled_time {
                 ready.push(task);
@@ -68,7 +68,7 @@ impl<T> WheelSlot<T> {
                 break;
             }
         }
-        
+
         ready
     }
 
@@ -114,7 +114,7 @@ impl<T> TimeWheel<T> {
         for _ in 0..wheel_size {
             slots.push(WheelSlot::new());
         }
-        
+
         Self {
             slots,
             current_tick: 0,
@@ -136,29 +136,29 @@ impl<T> TimeWheel<T> {
     pub fn schedule(&mut self, data: T, delay: Duration) -> u64 {
         let id = self.next_task_id;
         self.next_task_id += 1;
-        
+
         // Calculate which slot the task belongs to
         let ticks = (delay.as_millis() / self.tick_duration.as_millis()) as usize;
         let slot_index = (self.current_tick + ticks) % self.slots.len();
-        
+
         let task = ScheduledTask::new(id, data, delay);
         self.slots[slot_index].add_task(task);
         self.total_scheduled += 1;
-        
+
         id
     }
 
     /// Advance the time wheel and return ready tasks
     pub fn advance(&mut self) -> Vec<ScheduledTask<T>> {
         let mut ready = Vec::new();
-        
+
         // Get tasks from current slot using the slot's method
         let slot_ready = self.slots[self.current_tick].take_ready_tasks();
         ready.extend(slot_ready);
-        
+
         // Move to next tick
         self.current_tick = (self.current_tick + 1) % self.slots.len();
-        
+
         self.total_executed += ready.len() as u64;
         ready
     }
@@ -217,9 +217,7 @@ pub struct DelayQueue<T> {
 
 impl<T> DelayQueue<T> {
     pub fn new() -> Self {
-        Self {
-            queue: Vec::new(),
-        }
+        Self { queue: Vec::new() }
     }
 
     /// Push an item with a delay
@@ -234,9 +232,9 @@ impl<T> DelayQueue<T> {
         let now = Instant::now();
         let mut ready = Vec::new();
         let mut not_ready = Vec::new();
-        
+
         std::mem::swap(&mut self.queue, &mut not_ready);
-        
+
         for (deadline, item) in not_ready {
             if deadline <= now {
                 ready.push(item);
@@ -244,7 +242,7 @@ impl<T> DelayQueue<T> {
                 self.queue.push((deadline, item));
             }
         }
-        
+
         ready
     }
 
@@ -285,7 +283,7 @@ mod tests {
     #[test]
     fn test_scheduled_task() {
         let task = ScheduledTask::new(1, "test", Duration::from_secs(1));
-        
+
         assert_eq!(task.id, 1);
         assert!(!task.is_ready());
     }
@@ -296,13 +294,13 @@ mod tests {
             tick_duration: Duration::from_millis(10),
             wheel_size: 10,
         };
-        
+
         let mut wheel: TimeWheel<&str> = TimeWheel::new(&config);
-        
+
         // Schedule a task
         let id = wheel.schedule("task1", Duration::from_millis(50));
         assert_eq!(id, 0);
-        
+
         assert_eq!(wheel.pending_count(), 1);
         assert_eq!(wheel.total_scheduled(), 1);
     }
@@ -313,11 +311,11 @@ mod tests {
             tick_duration: Duration::from_millis(10),
             wheel_size: 100,
         };
-        
+
         let mut wheel: TimeWheel<i32> = TimeWheel::new(&config);
-        
+
         wheel.schedule(1, Duration::from_millis(50));
-        
+
         // Advance a few ticks without waiting long enough
         let ready = wheel.advance();
         assert!(ready.is_empty());
@@ -329,14 +327,14 @@ mod tests {
             tick_duration: Duration::from_millis(10),
             wheel_size: 10,
         };
-        
+
         let mut wheel: TimeWheel<i32> = TimeWheel::new(&config);
-        
+
         wheel.schedule(1, Duration::from_millis(5));
-        
+
         // Wait and advance
         thread::sleep(Duration::from_millis(10));
-        
+
         let ready = wheel.advance();
         assert!(!ready.is_empty());
         assert_eq!(ready[0].data, 1);
@@ -346,10 +344,10 @@ mod tests {
     fn test_time_wheel_cancel() {
         let config = TimeWheelConfig::default();
         let mut wheel: TimeWheel<i32> = TimeWheel::new(&config);
-        
+
         let id = wheel.schedule(1, Duration::from_secs(10));
         assert_eq!(wheel.pending_count(), 1);
-        
+
         let cancelled = wheel.cancel(id);
         assert!(cancelled.is_some());
         assert_eq!(wheel.pending_count(), 0);
@@ -358,27 +356,27 @@ mod tests {
     #[test]
     fn test_delay_queue_basic() {
         let mut queue: DelayQueue<i32> = DelayQueue::new();
-        
+
         queue.push(1, Duration::from_millis(100));
         queue.push(2, Duration::from_millis(50));
-        
+
         assert_eq!(queue.len(), 2);
     }
 
     #[test]
     fn test_delay_queue_pop_ready() {
         let mut queue: DelayQueue<i32> = DelayQueue::new();
-        
+
         queue.push(1, Duration::from_millis(100));
         queue.push(2, Duration::from_millis(10));
-        
+
         // Pop immediately - nothing ready
         let ready = queue.pop_ready();
         assert!(ready.is_empty());
-        
+
         // Wait and pop
         thread::sleep(Duration::from_millis(150));
-        
+
         let ready = queue.pop_ready();
         assert_eq!(ready.len(), 2);
     }
@@ -386,10 +384,10 @@ mod tests {
     #[test]
     fn test_delay_queue_sorted() {
         let mut queue: DelayQueue<i32> = DelayQueue::new();
-        
+
         queue.push(1, Duration::from_millis(100));
         queue.push(2, Duration::from_millis(50));
-        
+
         let next_time = queue.next_ready_time();
         assert!(next_time.is_some());
     }
@@ -398,9 +396,9 @@ mod tests {
     fn test_time_wheel_statistics() {
         let config = TimeWheelConfig::default();
         let mut wheel: TimeWheel<i32> = TimeWheel::new(&config);
-        
+
         wheel.schedule(1, Duration::from_millis(50));
-        
+
         assert_eq!(wheel.total_scheduled(), 1);
         assert_eq!(wheel.total_executed(), 0);
     }

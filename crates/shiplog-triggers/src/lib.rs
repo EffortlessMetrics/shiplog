@@ -20,7 +20,7 @@ pub enum TriggerResult {
 pub trait Trigger: Send + Sync {
     /// Evaluate the trigger at the given timestamp
     fn evaluate(&mut self, timestamp: i64) -> TriggerResult;
-    
+
     /// Reset the trigger state
     fn reset(&mut self);
 }
@@ -149,7 +149,10 @@ impl<T: Trigger, U: Trigger> AndTrigger<T, U> {
 
 impl<T: Trigger, U: Trigger> Trigger for AndTrigger<T, U> {
     fn evaluate(&mut self, timestamp: i64) -> TriggerResult {
-        match (self.first.evaluate(timestamp), self.second.evaluate(timestamp)) {
+        match (
+            self.first.evaluate(timestamp),
+            self.second.evaluate(timestamp),
+        ) {
             (TriggerResult::Fire, TriggerResult::Fire) => TriggerResult::Fire,
             (TriggerResult::Finish, _) | (_, TriggerResult::Finish) => TriggerResult::Finish,
             _ => TriggerResult::Continue,
@@ -176,7 +179,10 @@ impl<T: Trigger, U: Trigger> OrTrigger<T, U> {
 
 impl<T: Trigger, U: Trigger> Trigger for OrTrigger<T, U> {
     fn evaluate(&mut self, timestamp: i64) -> TriggerResult {
-        match (self.first.evaluate(timestamp), self.second.evaluate(timestamp)) {
+        match (
+            self.first.evaluate(timestamp),
+            self.second.evaluate(timestamp),
+        ) {
             (TriggerResult::Fire, _) | (_, TriggerResult::Fire) => TriggerResult::Fire,
             (TriggerResult::Finish, TriggerResult::Finish) => TriggerResult::Finish,
             _ => TriggerResult::Continue,
@@ -282,15 +288,15 @@ mod tests {
     #[test]
     fn test_count_trigger() {
         let mut trigger = CountTrigger::new(3);
-        
+
         assert_eq!(trigger.evaluate(0), TriggerResult::Continue);
-        
+
         assert!(!trigger.increment());
         assert_eq!(trigger.evaluate(0), TriggerResult::Continue);
-        
+
         assert!(!trigger.increment());
         assert_eq!(trigger.evaluate(0), TriggerResult::Continue);
-        
+
         assert!(trigger.increment());
         assert_eq!(trigger.evaluate(0), TriggerResult::Fire);
     }
@@ -298,11 +304,11 @@ mod tests {
     #[test]
     fn test_count_trigger_reset() {
         let mut trigger = CountTrigger::new(2);
-        
+
         trigger.increment();
         trigger.increment();
         assert_eq!(trigger.evaluate(0), TriggerResult::Fire);
-        
+
         trigger.reset();
         assert_eq!(trigger.evaluate(0), TriggerResult::Continue);
     }
@@ -310,15 +316,18 @@ mod tests {
     #[test]
     fn test_time_trigger() {
         let mut trigger = TimeTrigger::new(1000);
-        
+
         // Should not fire immediately
-        assert_eq!(trigger.evaluate(Utc::now().timestamp_millis()), TriggerResult::Continue);
+        assert_eq!(
+            trigger.evaluate(Utc::now().timestamp_millis()),
+            TriggerResult::Continue
+        );
     }
 
     #[test]
     fn test_watermark_trigger() {
         let mut trigger = WatermarkTrigger::new(1000);
-        
+
         assert_eq!(trigger.evaluate(500), TriggerResult::Continue);
         assert_eq!(trigger.evaluate(1000), TriggerResult::Fire);
         assert_eq!(trigger.evaluate(1500), TriggerResult::Finish);
@@ -327,10 +336,10 @@ mod tests {
     #[test]
     fn test_watermark_trigger_reset() {
         let mut trigger = WatermarkTrigger::new(1000);
-        
+
         trigger.evaluate(1500);
         assert_eq!(trigger.evaluate(1500), TriggerResult::Finish);
-        
+
         trigger.reset();
         assert_eq!(trigger.evaluate(500), TriggerResult::Continue);
         assert_eq!(trigger.evaluate(1000), TriggerResult::Fire);
@@ -339,7 +348,7 @@ mod tests {
     #[test]
     fn test_and_trigger() {
         let mut trigger = AndTrigger::new(CountTrigger::new(2), CountTrigger::new(3));
-        
+
         // Both need to fire
         assert_eq!(trigger.evaluate(0), TriggerResult::Continue);
     }
@@ -347,7 +356,7 @@ mod tests {
     #[test]
     fn test_or_trigger() {
         let mut trigger = OrTrigger::new(CountTrigger::new(2), CountTrigger::new(3));
-        
+
         // Either one firing triggers
         assert_eq!(trigger.evaluate(0), TriggerResult::Continue);
     }
@@ -355,7 +364,7 @@ mod tests {
     #[test]
     fn test_never_trigger() {
         let mut trigger = NeverTrigger::new();
-        
+
         assert_eq!(trigger.evaluate(0), TriggerResult::Continue);
         assert_eq!(trigger.evaluate(i64::MAX), TriggerResult::Continue);
     }
@@ -363,7 +372,7 @@ mod tests {
     #[test]
     fn test_always_trigger() {
         let mut trigger = AlwaysTrigger::new();
-        
+
         assert_eq!(trigger.evaluate(0), TriggerResult::Fire);
         assert_eq!(trigger.evaluate(i64::MAX), TriggerResult::Fire);
     }
@@ -371,12 +380,12 @@ mod tests {
     #[test]
     fn test_repeated_time_trigger() {
         let mut trigger = RepeatedTimeTrigger::new(100, 50);
-        
+
         // First evaluation should not fire (delay not passed)
         let now = Utc::now().timestamp_millis();
-        
+
         trigger.on_fire();
-        
+
         // After firing, should fire again at interval
         let result = trigger.evaluate(now + 200);
         assert_eq!(result, TriggerResult::Fire);

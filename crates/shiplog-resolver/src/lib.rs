@@ -2,9 +2,9 @@
 //!
 //! This crate provides utilities for dependency injection and resolution.
 
-use std::fmt;
 use std::any::Any;
 use std::collections::HashMap;
+use std::fmt;
 
 /// Trait for resolvable dependencies
 pub trait Resolvable: Send + Sync {
@@ -57,20 +57,30 @@ impl ServiceContainer {
 
     pub fn register<T: Resolvable + 'static>(&mut self, service: T) -> &mut Self {
         let id = service.get_id().to_string();
-        self.descriptors.insert(id.clone(), ServiceDescriptor {
-            id: id.clone(),
-            lifetime: ServiceLifetime::Singleton,
-        });
+        self.descriptors.insert(
+            id.clone(),
+            ServiceDescriptor {
+                id: id.clone(),
+                lifetime: ServiceLifetime::Singleton,
+            },
+        );
         self.services.insert(id, Box::new(service));
         self
     }
 
-    pub fn register_with_lifetime<T: Resolvable + 'static>(&mut self, service: T, lifetime: ServiceLifetime) -> &mut Self {
+    pub fn register_with_lifetime<T: Resolvable + 'static>(
+        &mut self,
+        service: T,
+        lifetime: ServiceLifetime,
+    ) -> &mut Self {
         let id = service.get_id().to_string();
-        self.descriptors.insert(id.clone(), ServiceDescriptor {
-            id: id.clone(),
-            lifetime,
-        });
+        self.descriptors.insert(
+            id.clone(),
+            ServiceDescriptor {
+                id: id.clone(),
+                lifetime,
+            },
+        );
         self.services.insert(id, Box::new(service));
         self
     }
@@ -183,7 +193,9 @@ impl Resolver {
     }
 
     pub fn resolve<T: Resolvable + 'static>(&self) -> Result<&T, ResolverError> {
-        self.container.resolve().ok_or(ResolverError::new("Service not found"))
+        self.container
+            .resolve()
+            .ok_or(ResolverError::new("Service not found"))
     }
 
     pub fn try_resolve<T: Resolvable + 'static>(&self) -> Option<&T> {
@@ -251,7 +263,7 @@ mod tests {
     fn test_service_container_register() {
         let mut container = ServiceContainer::new();
         container.register(SimpleService::new("service1", "value1"));
-        
+
         assert_eq!(container.service_count(), 1);
         assert!(container.has_service("service1"));
     }
@@ -263,7 +275,7 @@ mod tests {
             SimpleService::new("service1", "value1"),
             ServiceLifetime::Transient,
         );
-        
+
         let descriptor = container.get_descriptor("service1").unwrap();
         assert_eq!(descriptor.lifetime, ServiceLifetime::Transient);
     }
@@ -272,7 +284,7 @@ mod tests {
     fn test_service_container_resolve() {
         let mut container = ServiceContainer::new();
         container.register(SimpleService::new("service1", "test-value"));
-        
+
         let resolved = container.resolve::<SimpleService>();
         assert!(resolved.is_some());
         assert_eq!(resolved.unwrap().value(), "test-value");
@@ -291,7 +303,7 @@ mod tests {
             id: "test".to_string(),
             lifetime: ServiceLifetime::Singleton,
         };
-        
+
         assert_eq!(descriptor.id, "test");
         assert!(descriptor.lifetime.is_singleton());
     }
@@ -309,7 +321,7 @@ mod tests {
             .with_service(SimpleService::new("s1", "v1"))
             .with_service(SimpleService::new("s2", "v2"))
             .build();
-        
+
         assert_eq!(provider.service_count(), 2);
     }
 
@@ -317,10 +329,10 @@ mod tests {
     fn test_resolver_resolve() {
         let mut container = ServiceContainer::new();
         container.register(SimpleService::new("service", "value"));
-        
+
         let resolver = Resolver::new(container);
         let result: Result<&SimpleService, _> = resolver.resolve();
-        
+
         assert!(result.is_ok());
         assert_eq!(result.unwrap().value(), "value");
     }
@@ -330,7 +342,7 @@ mod tests {
         let container = ServiceContainer::new();
         let resolver = Resolver::new(container);
         let result: Result<&SimpleService, _> = resolver.resolve();
-        
+
         assert!(result.is_err());
     }
 
@@ -338,10 +350,10 @@ mod tests {
     fn test_resolver_try_resolve() {
         let mut container = ServiceContainer::new();
         container.register(SimpleService::new("service", "value"));
-        
+
         let resolver = Resolver::new(container);
         let result = resolver.try_resolve::<SimpleService>();
-        
+
         assert!(result.is_some());
     }
 

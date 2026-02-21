@@ -4,26 +4,21 @@
 //! allowing applications to gracefully shut down components in order.
 
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 use tokio::sync::broadcast;
 use tokio::time::timeout;
-use std::sync::atomic::{AtomicBool, Ordering};
 
 /// Shutdown reason
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ShutdownReason {
     /// Normal shutdown requested
+    #[default]
     Shutdown,
     /// Force shutdown (no graceful cleanup)
     Force,
     /// Timeout during graceful shutdown
     Timeout,
-}
-
-impl Default for ShutdownReason {
-    fn default() -> Self {
-        Self::Shutdown
-    }
 }
 
 /// Graceful shutdown coordinator
@@ -191,10 +186,10 @@ mod tests {
     fn test_create_shutdown_channel() {
         let (coordinator, mut receiver) = create_shutdown_channel();
         assert!(!coordinator.is_shutdown_initiated());
-        
+
         coordinator.shutdown();
         assert!(coordinator.is_shutdown_initiated());
-        
+
         // Receiver should get the signal
         let reason = receiver.try_recv();
         assert_eq!(reason, Some(ShutdownReason::Shutdown));
@@ -210,18 +205,16 @@ mod tests {
     #[tokio::test]
     async fn test_shutdown_receiver_wait() {
         let (coordinator, mut receiver) = create_shutdown_channel();
-        
+
         // Start a task that waits for shutdown
-        let handle = tokio::spawn(async move {
-            receiver.wait_for_shutdown().await
-        });
-        
+        let handle = tokio::spawn(async move { receiver.wait_for_shutdown().await });
+
         // Trigger shutdown after a small delay
         tokio::spawn(async move {
             tokio::time::sleep(Duration::from_millis(50)).await;
             coordinator.shutdown();
         });
-        
+
         let reason = handle.await.unwrap();
         assert_eq!(reason, ShutdownReason::Shutdown);
     }
@@ -229,12 +222,12 @@ mod tests {
     #[test]
     fn test_shutdown_guard_drop() {
         let coordinator = ShutdownCoordinator::new();
-        
+
         {
             let _guard = ShutdownGuard::new(coordinator.clone());
             // Guard drops here, triggering shutdown
         }
-        
+
         assert!(coordinator.is_shutdown_initiated());
     }
 

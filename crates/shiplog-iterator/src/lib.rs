@@ -203,7 +203,7 @@ mod tests {
             .batch_size(20)
             .buffer_size(200)
             .build();
-        
+
         assert_eq!(config.batch_size, 20);
         assert_eq!(config.buffer_size, 200);
     }
@@ -212,10 +212,10 @@ mod tests {
     fn test_iterator_metrics() {
         let mut metrics = IteratorMetrics::new();
         assert_eq!(metrics.items_yielded, 0);
-        
+
         metrics.record_yield();
         assert_eq!(metrics.items_yielded, 1);
-        
+
         metrics.record_skip();
         assert_eq!(metrics.items_skipped, 1);
     }
@@ -223,28 +223,32 @@ mod tests {
     #[test]
     fn test_metered_iterator() {
         let mut iter = vec![1, 2, 3].into_iter().metered();
-        
+
         assert_eq!(iter.next(), Some(1));
         assert_eq!(iter.next(), Some(2));
         assert_eq!(iter.next(), Some(3));
         assert_eq!(iter.next(), None);
-        
+
         assert_eq!(iter.metrics().items_yielded, 3);
     }
 
     #[test]
     fn test_skip_while() {
-        let iter = vec![1, 2, 3, 4, 5].into_iter().skip_while_item(|x: &i32| *x < 3);
+        let iter = vec![1, 2, 3, 4, 5]
+            .into_iter()
+            .skip_while_item(|x: &i32| *x < 3);
         let collected: Vec<_> = iter.collect();
-        
+
         assert_eq!(collected, vec![3, 4, 5]);
     }
 
     #[test]
     fn test_take_while() {
-        let iter = vec![1, 2, 3, 4, 5].into_iter().take_while_item(|x: &i32| *x < 3);
+        let iter = vec![1, 2, 3, 4, 5]
+            .into_iter()
+            .take_while_item(|x: &i32| *x < 3);
         let collected: Vec<_> = iter.collect();
-        
+
         assert_eq!(collected, vec![1, 2]);
     }
 }

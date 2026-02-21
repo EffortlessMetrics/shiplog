@@ -92,7 +92,11 @@ pub struct LabeledEnumerate<I> {
 
 impl<I: Iterator> LabeledEnumerate<I> {
     pub fn new(iter: I, labels: Vec<String>) -> Self {
-        Self { iter, index: 0, labels }
+        Self {
+            iter,
+            index: 0,
+            labels,
+        }
     }
 
     pub fn with_generator<G>(iter: I, label_generator: G) -> Self
@@ -101,7 +105,11 @@ impl<I: Iterator> LabeledEnumerate<I> {
     {
         // Pre-generate labels based on iterator size hint (worst case)
         let labels: Vec<String> = (0..1000).map(label_generator).collect();
-        Self { iter, index: 0, labels }
+        Self {
+            iter,
+            index: 0,
+            labels,
+        }
     }
 }
 
@@ -111,7 +119,10 @@ impl<I: Iterator> Iterator for LabeledEnumerate<I> {
     fn next(&mut self) -> Option<Self::Item> {
         match self.iter.next() {
             Some(item) => {
-                let label = self.labels.get(self.index).cloned()
+                let label = self
+                    .labels
+                    .get(self.index)
+                    .cloned()
                     .unwrap_or_else(|| format!("item_{}", self.index));
                 self.index += 1;
                 Some((label, item))
@@ -155,11 +166,8 @@ mod tests {
 
     #[test]
     fn test_enumeration_builder() {
-        let config = EnumerationBuilder::new()
-            .start_index(5)
-            .step(2)
-            .build();
-        
+        let config = EnumerationBuilder::new().start_index(5).step(2).build();
+
         assert_eq!(config.start_index, 5);
         assert_eq!(config.step, 2);
     }
@@ -168,7 +176,7 @@ mod tests {
     fn test_enumerate() {
         let items = vec!["a", "b", "c"];
         let enumerated: Vec<_> = items.into_iter().enumerate_items().collect();
-        
+
         assert_eq!(enumerated, vec![(0, "a"), (1, "b"), (2, "c")]);
     }
 
@@ -176,20 +184,27 @@ mod tests {
     fn test_enumerate_from() {
         let items = vec!["a", "b", "c"];
         let enumerated: Vec<_> = items.into_iter().enumerate_from(10).collect();
-        
+
         assert_eq!(enumerated, vec![(10, "a"), (11, "b"), (12, "c")]);
     }
 
     #[test]
     fn test_labeled_enumerate() {
         let items = vec!["a", "b", "c"];
-        let labels = vec!["first".to_string(), "second".to_string(), "third".to_string()];
+        let labels = vec![
+            "first".to_string(),
+            "second".to_string(),
+            "third".to_string(),
+        ];
         let enumerated: Vec<_> = items.into_iter().enumerate_labeled(labels).collect();
-        
-        assert_eq!(enumerated, vec![
-            ("first".to_string(), "a"),
-            ("second".to_string(), "b"),
-            ("third".to_string(), "c"),
-        ]);
+
+        assert_eq!(
+            enumerated,
+            vec![
+                ("first".to_string(), "a"),
+                ("second".to_string(), "b"),
+                ("third".to_string(), "c"),
+            ]
+        );
     }
 }

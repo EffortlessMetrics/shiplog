@@ -87,9 +87,9 @@ impl<T> From<Vec<T>> for ArrayStack<T> {
     }
 }
 
-impl<T> Into<Vec<T>> for ArrayStack<T> {
-    fn into(self) -> Vec<T> {
-        self.data
+impl<T> From<ArrayStack<T>> for Vec<T> {
+    fn from(val: ArrayStack<T>) -> Self {
+        val.data
     }
 }
 
@@ -247,7 +247,7 @@ mod tests {
         stack.push(1);
         stack.push(2);
         stack.push(3);
-        
+
         assert_eq!(stack.len(), 3);
         assert_eq!(stack.pop(), Some(3));
         assert_eq!(stack.pop(), Some(2));
@@ -260,10 +260,10 @@ mod tests {
         let mut stack = ArrayStack::new();
         stack.push(42);
         stack.push(99);
-        
+
         assert_eq!(stack.peek(), Some(&99));
         assert_eq!(stack.len(), 2); // Peek doesn't remove
-        
+
         *stack.peek_mut().unwrap() = 100;
         assert_eq!(stack.peek(), Some(&100));
     }
@@ -286,7 +286,7 @@ mod tests {
         stack.push(1);
         stack.push(2);
         stack.clear();
-        
+
         assert!(stack.is_empty());
         assert_eq!(stack.len(), 0);
     }
@@ -327,7 +327,7 @@ mod tests {
         stack.push(1);
         stack.push(2);
         stack.push(3);
-        
+
         assert_eq!(stack.len(), 3);
         assert_eq!(stack.pop(), Some(3));
         assert_eq!(stack.pop(), Some(2));
@@ -340,10 +340,10 @@ mod tests {
         let mut stack = LinkedListStack::new();
         stack.push(42);
         stack.push(99);
-        
+
         assert_eq!(stack.peek(), Some(&99));
         assert_eq!(stack.len(), 2);
-        
+
         if let Some(val) = stack.peek_mut() {
             *val = 100;
         }
@@ -368,7 +368,7 @@ mod tests {
         stack.push(1);
         stack.push(2);
         stack.clear();
-        
+
         assert!(stack.is_empty());
         assert_eq!(stack.len(), 0);
     }
@@ -386,7 +386,7 @@ mod tests {
         stack.push(1);
         stack.push(2);
         stack.push(3);
-        
+
         assert_eq!(stack.len(), 3);
         assert_eq!(stack.pop(), Some(3));
         assert_eq!(stack.pop(), Some(2));
@@ -398,7 +398,7 @@ mod tests {
         let mut stack = StdLinkedListStack::new();
         stack.push(42);
         stack.push(99);
-        
+
         assert_eq!(stack.peek(), Some(&99));
         assert_eq!(stack.len(), 2);
     }
@@ -409,7 +409,7 @@ mod tests {
         stack.push(1);
         stack.push(2);
         stack.clear();
-        
+
         assert!(stack.is_empty());
     }
 }

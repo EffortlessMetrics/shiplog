@@ -124,19 +124,10 @@ impl<T> Drop for MutexGuard<'_, T> {
 use std::ops::Deref;
 
 /// Configuration for guards
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct GuardConfig {
     pub panic_on_drop: bool,
     pub log_on_drop: bool,
-}
-
-impl Default for GuardConfig {
-    fn default() -> Self {
-        Self {
-            panic_on_drop: false,
-            log_on_drop: false,
-        }
-    }
 }
 
 /// Builder for guard configuration
@@ -196,7 +187,7 @@ mod tests {
         static DROPPED: AtomicBool = AtomicBool::new(false);
 
         {
-            let mut guard = Guard::new(|| {
+            let guard = Guard::new(|| {
                 DROPPED.store(true, Ordering::SeqCst);
             });
             guard.disarm();

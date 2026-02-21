@@ -52,19 +52,13 @@ where
     /// Insert a value into the cache with the default TTL.
     pub fn put(&mut self, key: K, value: V) {
         let expires_at = Utc::now() + self.default_ttl;
-        self.entries.insert(
-            key,
-            CacheEntry { value, expires_at },
-        );
+        self.entries.insert(key, CacheEntry { value, expires_at });
     }
 
     /// Insert a value with a custom TTL (in seconds).
     pub fn put_with_ttl(&mut self, key: K, value: V, ttl_secs: i64) {
         let expires_at = Utc::now() + Duration::seconds(ttl_secs);
-        self.entries.insert(
-            key,
-            CacheEntry { value, expires_at },
-        );
+        self.entries.insert(key, CacheEntry { value, expires_at });
     }
 
     /// Check if the cache contains a non-expired key.

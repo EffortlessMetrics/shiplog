@@ -148,7 +148,7 @@ mod tests {
     #[test]
     fn test_processor() {
         let processor = Processor::new("doubler", |x: i32| x * 2);
-        
+
         assert_eq!(processor.process(5), 10);
         assert_eq!(processor.name(), "doubler");
     }
@@ -156,28 +156,29 @@ mod tests {
     #[test]
     fn test_batch_processor() {
         let processor: BatchProcessor<i32> = BatchProcessor::new(10);
-        
+
         let items = vec![1, 2, 3];
         let result = processor.process_batch(&items, |&x| x * 2);
-        
+
         assert_eq!(result, vec![2, 4, 6]);
     }
 
     #[test]
     fn test_batch_processor_with_name() {
         let processor = BatchProcessor::<i32>::new(5).with_name("custom-processor");
-        
+
         assert_eq!(processor.name(), "custom-processor");
         assert_eq!(processor.batch_size(), 5);
     }
 
     #[test]
     fn test_stateful_processor() {
-        let mut processor = StatefulProcessor::new(0, |state: i32, item: i32| (state + item, item * 2));
-        
+        let mut processor =
+            StatefulProcessor::new(0, |state: i32, item: i32| (state + item, item * 2));
+
         assert_eq!(processor.process(5), 10);
         assert_eq!(processor.state(), &5);
-        
+
         assert_eq!(processor.process(3), 6);
         assert_eq!(processor.state(), &8);
     }
@@ -185,10 +186,10 @@ mod tests {
     #[test]
     fn test_stateful_processor_reset() {
         let mut processor = StatefulProcessor::new(0, |state: i32, item: i32| (state + item, item));
-        
+
         processor.process(5);
         assert_eq!(processor.state(), &5);
-        
+
         processor.reset(0);
         assert_eq!(processor.state(), &0);
     }
@@ -199,7 +200,7 @@ mod tests {
             .add_stage(|x| x + 1)
             .add_stage(|x| x * 2)
             .add_stage(|x| x - 3);
-        
+
         // (5 + 1) * 2 - 3 = 9
         assert_eq!(pipeline.execute(5), 9);
     }
@@ -207,7 +208,7 @@ mod tests {
     #[test]
     fn test_pipeline_empty() {
         let pipeline: Pipeline<i32> = Pipeline::new();
-        
+
         assert_eq!(pipeline.execute(5), 5);
         assert!(pipeline.is_empty());
     }
@@ -217,7 +218,7 @@ mod tests {
         let pipeline = Pipeline::<i32>::new()
             .with_name("test-pipeline")
             .add_stage(|x| x);
-        
+
         assert_eq!(pipeline.name(), "test-pipeline");
     }
 }

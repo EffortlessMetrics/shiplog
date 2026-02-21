@@ -106,7 +106,7 @@ impl<T> Clone for SharedState<T> {
 }
 
 /// Configuration for shared state.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct SharedStateConfig {
     /// Initial value for the state.
     pub initial_value: Option<String>,
@@ -114,16 +114,6 @@ pub struct SharedStateConfig {
     pub persistent: bool,
     /// Path for persistence (if enabled).
     pub persist_path: Option<String>,
-}
-
-impl Default for SharedStateConfig {
-    fn default() -> Self {
-        Self {
-            initial_value: None,
-            persistent: false,
-            persist_path: None,
-        }
-    }
 }
 
 /// A container for multiple shared states.
@@ -210,11 +200,11 @@ mod tests {
     #[tokio::test]
     async fn test_shared_state_read_write() {
         let state = SharedState::new(42);
-        
+
         // Read
         let guard = state.read().await;
         assert_eq!(*guard, 42);
-        
+
         // Write
         drop(guard);
         let mut guard = state.write().await;
@@ -232,11 +222,13 @@ mod tests {
     #[tokio::test]
     async fn test_shared_state_update() {
         let state = SharedState::new(42);
-        
-        state.update(|v| {
-            *v *= 2;
-        }).await;
-        
+
+        state
+            .update(|v| {
+                *v *= 2;
+            })
+            .await;
+
         let value = state.get().await;
         assert_eq!(value, 84);
     }
@@ -245,10 +237,10 @@ mod tests {
     async fn test_shared_state_clone() {
         let state = SharedState::new(42);
         let state_clone = state.clone();
-        
+
         assert!(!state.is_unique());
         assert!(!state_clone.is_unique());
-        
+
         let value = state_clone.get().await;
         assert_eq!(value, 42);
     }
@@ -256,14 +248,14 @@ mod tests {
     #[tokio::test]
     async fn test_shared_state_map() {
         let map = SharedStateMap::new();
-        
+
         map.insert("key1".to_string(), "value1".to_string()).await;
         map.insert("key2".to_string(), "value2".to_string()).await;
-        
+
         assert_eq!(map.len().await, 2);
         assert!(map.contains_key("key1").await);
         assert_eq!(map.get("key1").await, Some("value1".to_string()));
-        
+
         let removed = map.remove("key1").await;
         assert_eq!(removed, Some("value1".to_string()));
         assert!(!map.contains_key("key1").await);
@@ -272,10 +264,10 @@ mod tests {
     #[tokio::test]
     async fn test_shared_state_map_keys() {
         let map = SharedStateMap::new();
-        
+
         map.insert("a".to_string(), "1".to_string()).await;
         map.insert("b".to_string(), "2".to_string()).await;
-        
+
         let keys = map.keys().await;
         assert_eq!(keys.len(), 2);
         assert!(keys.contains(&"a".to_string()));

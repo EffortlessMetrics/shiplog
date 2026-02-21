@@ -2,8 +2,8 @@
 //!
 //! This crate provides synchronization primitives for coordinating multiple tasks.
 
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::sync::Notify;
 
 /// A countdown latch that blocks until the count reaches zero.
@@ -143,10 +143,10 @@ mod tests {
     fn test_count_down_latch_decrement() {
         let latch = CountDownLatch::new(3);
         assert_eq!(latch.count(), 3);
-        
+
         latch.count_down();
         assert_eq!(latch.count(), 2);
-        
+
         latch.count_down();
         latch.count_down();
         assert_eq!(latch.count(), 0);
@@ -156,7 +156,7 @@ mod tests {
     fn test_count_down_latch_try_wait() {
         let latch = CountDownLatch::new(1);
         assert!(!latch.try_wait());
-        
+
         latch.count_down();
         assert!(latch.try_wait());
     }
@@ -166,14 +166,14 @@ mod tests {
         let rt = Runtime::new().unwrap();
         rt.block_on(async {
             let latch = CountDownLatch::new(1);
-            
+
             let latch_clone = latch.clone();
             let handle = thread::spawn(move || {
                 latch_clone.count_down();
             });
-            
+
             latch.wait().await;
-            
+
             handle.join().unwrap();
             assert!(latch.try_wait());
         });
@@ -202,15 +202,13 @@ mod tests {
         rt.block_on(async {
             let barrier = Arc::new(Barrier::new(3));
             let mut handles = Vec::new();
-            
+
             for _ in 0..3 {
                 let barrier_clone = barrier.clone();
-                let handle = tokio::spawn(async move {
-                    barrier_clone.wait().await
-                });
+                let handle = tokio::spawn(async move { barrier_clone.wait().await });
                 handles.push(handle);
             }
-            
+
             let mut last_count = 0;
             for handle in handles {
                 let is_last = handle.await.unwrap();
@@ -218,7 +216,7 @@ mod tests {
                     last_count += 1;
                 }
             }
-            
+
             // Exactly one should be the last
             assert_eq!(last_count, 1);
         });

@@ -1,5 +1,5 @@
 //! Gauge utilities for shiplog.
-//! 
+//!
 //! This crate provides specialized gauge functionality for tracking
 //! point-in-time values like temperature, memory usage, queue depth, etc.
 
@@ -277,10 +277,10 @@ mod tests {
     #[test]
     fn gauge_basic() {
         let mut gauge = Gauge::new("temperature");
-        
+
         gauge.set(72.5);
         assert_eq!(gauge.value(), 72.5);
-        
+
         gauge.set(73.0);
         assert_eq!(gauge.value(), 73.0);
     }
@@ -288,11 +288,11 @@ mod tests {
     #[test]
     fn gauge_min_max() {
         let mut gauge = Gauge::new("temperature");
-        
+
         gauge.set(50.0);
         gauge.set(100.0);
         gauge.set(75.0);
-        
+
         assert_eq!(gauge.min(), 50.0);
         assert_eq!(gauge.max(), 100.0);
     }
@@ -300,11 +300,11 @@ mod tests {
     #[test]
     fn gauge_inc_dec() {
         let mut gauge = Gauge::new("value");
-        
+
         gauge.set(10.0);
         gauge.inc(5.0);
         assert_eq!(gauge.value(), 15.0);
-        
+
         gauge.dec(3.0);
         assert_eq!(gauge.value(), 12.0);
     }
@@ -312,23 +312,23 @@ mod tests {
     #[test]
     fn gauge_reset() {
         let mut gauge = Gauge::new("test");
-        
+
         gauge.set(100.0);
         gauge.reset();
-        
+
         assert_eq!(gauge.value(), 0.0);
     }
 
     #[test]
     fn clamped_gauge() {
         let mut gauge = ClampedGauge::new("percent", 0.0, 100.0);
-        
+
         gauge.set(50.0);
         assert_eq!(gauge.value(), 50.0);
-        
+
         gauge.set(150.0); // clamped
         assert_eq!(gauge.value(), 100.0);
-        
+
         gauge.set(-50.0); // clamped
         assert_eq!(gauge.value(), 0.0);
     }
@@ -336,11 +336,11 @@ mod tests {
     #[test]
     fn average_gauge() {
         let mut gauge = AverageGauge::new("readings");
-        
+
         gauge.record(10.0);
         gauge.record(20.0);
         gauge.record(30.0);
-        
+
         assert_eq!(gauge.average(), 20.0);
         assert_eq!(gauge.value(), 30.0);
         assert_eq!(gauge.count(), 3);
@@ -349,10 +349,10 @@ mod tests {
     #[test]
     fn gauge_registry() {
         let mut registry = GaugeRegistry::new();
-        
+
         registry.set("temperature", 72.0);
         registry.set("humidity", 65.0);
-        
+
         assert_eq!(registry.get("temperature").unwrap().value(), 72.0);
         assert_eq!(registry.get("humidity").unwrap().value(), 65.0);
     }
@@ -360,11 +360,11 @@ mod tests {
     #[test]
     fn gauge_registry_inc_dec() {
         let mut registry = GaugeRegistry::new();
-        
+
         registry.set("queue_depth", 10.0);
         registry.inc("queue_depth", 5.0);
         assert_eq!(registry.get("queue_depth").unwrap().value(), 15.0);
-        
+
         registry.dec("queue_depth", 3.0);
         assert_eq!(registry.get("queue_depth").unwrap().value(), 12.0);
     }
@@ -372,10 +372,10 @@ mod tests {
     #[test]
     fn gauge_registry_values() {
         let mut registry = GaugeRegistry::new();
-        
+
         registry.set("a", 1.0);
         registry.set("b", 2.0);
-        
+
         let values = registry.values();
         assert_eq!(values.get("a"), Some(&1.0));
         assert_eq!(values.get("b"), Some(&2.0));
@@ -384,12 +384,12 @@ mod tests {
     #[test]
     fn gauge_snapshot() {
         let mut gauge = Gauge::new("test");
-        
+
         gauge.set(50.0);
         gauge.set(100.0);
-        
+
         let snap = gauge.snapshot();
-        
+
         assert_eq!(snap.name, "test");
         assert_eq!(snap.value, 100.0);
         assert_eq!(snap.min, 50.0);

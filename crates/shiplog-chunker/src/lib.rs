@@ -69,19 +69,15 @@ impl<I: Iterator> Iterator for Chunk<I> {
 
     fn next(&mut self) -> Option<Self::Item> {
         let mut chunk = Vec::with_capacity(self.chunk_size);
-        
+
         for _ in 0..self.chunk_size {
             match self.iter.next() {
                 Some(item) => chunk.push(item),
                 None => break,
             }
         }
-        
-        if chunk.is_empty() {
-            None
-        } else {
-            Some(chunk)
-        }
+
+        if chunk.is_empty() { None } else { Some(chunk) }
     }
 }
 
@@ -128,7 +124,10 @@ impl<I: Iterator> Iterator for ChunkOverlap<I> {
         }
 
         // Take first chunk_size items
-        let chunk: Vec<_> = self.buffer.drain(..self.chunk_size.min(self.buffer.len())).collect();
+        let chunk: Vec<_> = self
+            .buffer
+            .drain(..self.chunk_size.min(self.buffer.len()))
+            .collect();
 
         // Check if we need more items for next iteration
         if self.buffer.len() < self.overlap {
@@ -143,7 +142,10 @@ impl<I: Iterator> Iterator for ChunkOverlap<I> {
 
         // Put overlap items at front
         if self.overlap > 0 && !self.buffer.is_empty() {
-            let overlap_items: Vec<_> = self.buffer.drain(..self.overlap.min(self.buffer.len())).collect();
+            let overlap_items: Vec<_> = self
+                .buffer
+                .drain(..self.overlap.min(self.buffer.len()))
+                .collect();
             let mut temp = overlap_items;
             temp.append(&mut self.buffer);
             self.buffer = temp;
@@ -187,11 +189,8 @@ mod tests {
 
     #[test]
     fn test_chunk_builder() {
-        let config = ChunkBuilder::new()
-            .chunk_size(50)
-            .overlap(10)
-            .build();
-        
+        let config = ChunkBuilder::new().chunk_size(50).overlap(10).build();
+
         assert_eq!(config.chunk_size, 50);
         assert_eq!(config.overlap, 10);
     }
@@ -200,7 +199,7 @@ mod tests {
     fn test_chunk() {
         let items = vec![1, 2, 3, 4, 5, 6, 7];
         let chunks: Vec<_> = items.into_iter().chunk(3).collect();
-        
+
         assert_eq!(chunks.len(), 3);
         assert_eq!(chunks[0], vec![1, 2, 3]);
         assert_eq!(chunks[1], vec![4, 5, 6]);
@@ -211,7 +210,7 @@ mod tests {
     fn test_chunk_exact_size() {
         let items = vec![1, 2, 3, 4];
         let chunks: Vec<_> = items.into_iter().chunk(2).collect();
-        
+
         assert_eq!(chunks.len(), 2);
         assert_eq!(chunks[0], vec![1, 2]);
         assert_eq!(chunks[1], vec![3, 4]);
@@ -223,7 +222,7 @@ mod tests {
         // Just test that it produces chunks like regular chunking
         let items = vec![1, 2, 3, 4, 5];
         let chunks: Vec<_> = items.into_iter().chunk_overlap(2, 1).collect();
-        
+
         // With chunk size 2 and overlap 1, we should get multiple chunks
         // The actual behavior depends on implementation details
         assert!(chunks.len() >= 2);
@@ -233,7 +232,7 @@ mod tests {
     fn test_empty_chunk() {
         let items: Vec<i32> = vec![];
         let chunks: Vec<_> = items.into_iter().chunk(3).collect();
-        
+
         assert!(chunks.is_empty());
     }
 }

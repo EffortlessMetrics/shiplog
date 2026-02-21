@@ -3,8 +3,8 @@
 //! This crate provides signal handling utilities for the shiplog ecosystem,
 //! allowing graceful handling of OS signals like SIGINT, SIGTERM, etc.
 
-use tokio::sync::mpsc;
 use anyhow::Result;
+use tokio::sync::mpsc;
 
 /// Signal types that can be handled
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -30,6 +30,7 @@ impl std::fmt::Display for Signal {
 /// A signal handler that listens for OS signals
 pub struct SignalHandler {
     interrupt_tx: Option<mpsc::Sender<()>>,
+    #[allow(dead_code)]
     terminate_tx: Option<mpsc::Sender<()>>,
 }
 
@@ -46,12 +47,12 @@ impl SignalHandler {
     pub fn with_channels() -> (Self, mpsc::Receiver<()>, mpsc::Receiver<()>) {
         let (interrupt_tx, interrupt_rx) = mpsc::channel(1);
         let (terminate_tx, terminate_rx) = mpsc::channel(1);
-        
+
         let handler = Self {
             interrupt_tx: Some(interrupt_tx),
             terminate_tx: Some(terminate_tx),
         };
-        
+
         (handler, interrupt_rx, terminate_rx)
     }
 
@@ -59,7 +60,7 @@ impl SignalHandler {
     #[cfg(unix)]
     pub async fn listen(&mut self) -> Result<Signal> {
         use tokio::signal;
-        
+
         let mut sigint = signal::unix::signal(signal::unix::SignalKind::interrupt())?;
         let mut sigterm = signal::unix::signal(signal::unix::SignalKind::terminate())?;
 
@@ -98,7 +99,7 @@ impl SignalHandler {
     #[cfg(unix)]
     pub async fn wait_for_signal() -> Result<Signal> {
         use tokio::signal;
-        
+
         let mut sigint = signal::unix::signal(signal::unix::SignalKind::interrupt())?;
         let mut sigterm = signal::unix::signal(signal::unix::SignalKind::terminate())?;
 
@@ -132,12 +133,12 @@ pub fn create_shutdown_channel() -> (mpsc::Sender<()>, mpsc::Receiver<()>) {
 /// Sets up a signal handler that sends to a channel when triggered
 pub async fn setup_signal_handler(tx: mpsc::Sender<()>) -> Result<()> {
     let tx_clone = tx.clone();
-    
+
     tokio::spawn(async move {
         let _ = SignalHandler::wait_for_signal().await;
         let _ = tx_clone.send(()).await;
     });
-    
+
     Ok(())
 }
 
@@ -181,7 +182,7 @@ mod tests {
         let s1 = Signal::Interrupt;
         let s2 = Signal::Interrupt;
         let s3 = Signal::Terminate;
-        
+
         assert_eq!(s1, s2);
         assert_ne!(s1, s3);
     }

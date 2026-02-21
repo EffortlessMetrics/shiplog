@@ -6,18 +6,14 @@ use std::collections::HashMap;
 /// Log level for filtering
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum LogLevel {
     Error,
     Warn,
+    #[default]
     Info,
     Debug,
     Trace,
-}
-
-impl Default for LogLevel {
-    fn default() -> Self {
-        LogLevel::Info
-    }
 }
 
 impl LogLevel {
@@ -30,7 +26,7 @@ impl LogLevel {
             LogLevel::Debug => 3,
             LogLevel::Trace => 4,
         };
-        
+
         let target_level = match level {
             LogLevel::Error => 0,
             LogLevel::Warn => 1,
@@ -38,7 +34,7 @@ impl LogLevel {
             LogLevel::Debug => 3,
             LogLevel::Trace => 4,
         };
-        
+
         self_level >= target_level
     }
 }
@@ -46,16 +42,12 @@ impl LogLevel {
 /// Log output format
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum LogFormat {
+    #[default]
     Plain,
     Json,
     Compact,
-}
-
-impl Default for LogFormat {
-    fn default() -> Self {
-        LogFormat::Plain
-    }
 }
 
 /// Logging configuration
@@ -118,10 +110,10 @@ impl LoggingConfig {
 
     /// Get the effective log level for a component
     pub fn effective_level(&self, component: Option<&str>) -> LogLevel {
-        if let Some(comp) = component {
-            if let Some(&level) = self.component_levels.get(comp) {
-                return level;
-            }
+        if let Some(comp) = component
+            && let Some(&level) = self.component_levels.get(comp)
+        {
+            return level;
         }
         self.level
     }
@@ -154,7 +146,11 @@ impl LogEntry {
     }
 
     /// Create a log entry with a component
-    pub fn with_component(level: LogLevel, component: impl Into<String>, message: impl Into<String>) -> Self {
+    pub fn with_component(
+        level: LogLevel,
+        component: impl Into<String>,
+        message: impl Into<String>,
+    ) -> Self {
         Self {
             timestamp: chrono::Utc::now().to_rfc3339(),
             level,
@@ -173,7 +169,9 @@ pub struct LogCollector {
 impl LogCollector {
     /// Create a new log collector
     pub fn new() -> Self {
-        Self { entries: Vec::new() }
+        Self {
+            entries: Vec::new(),
+        }
     }
 
     /// Add a log entry
@@ -188,10 +186,7 @@ impl LogCollector {
 
     /// Get entries matching a level
     pub fn filter_by_level(&self, level: LogLevel) -> Vec<&LogEntry> {
-        self.entries
-            .iter()
-            .filter(|e| e.level == level)
-            .collect()
+        self.entries.iter().filter(|e| e.level == level).collect()
     }
 
     /// Clear all entries
@@ -224,10 +219,10 @@ mod tests {
         let config = LoggingConfig::new()
             .with_level(LogLevel::Warn)
             .with_component_level("network", LogLevel::Debug);
-        
+
         // Default level is Warn
         assert!(!config.should_log(LogLevel::Info, None));
-        
+
         // Network component has Debug level
         assert!(config.should_log(LogLevel::Debug, Some("network")));
     }
@@ -237,7 +232,7 @@ mod tests {
         let entry = LogEntry::new(LogLevel::Info, "Test message");
         assert_eq!(entry.level, LogLevel::Info);
         assert_eq!(entry.message, "Test message");
-        assert!(entry.timestamp.len() > 0);
+        assert!(!entry.timestamp.is_empty());
     }
 
     #[test]
@@ -249,13 +244,13 @@ mod tests {
     #[test]
     fn log_collector() {
         let mut collector = LogCollector::new();
-        
+
         collector.push(LogEntry::new(LogLevel::Info, "Info message"));
         collector.push(LogEntry::new(LogLevel::Error, "Error message"));
         collector.push(LogEntry::new(LogLevel::Debug, "Debug message"));
-        
+
         assert_eq!(collector.entries().len(), 3);
-        
+
         let errors = collector.filter_by_level(LogLevel::Error);
         assert_eq!(errors.len(), 1);
     }

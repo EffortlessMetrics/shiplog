@@ -7,20 +7,15 @@ use chrono::{DateTime, Duration, Utc};
 use std::collections::HashMap;
 
 /// Circuit breaker state.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum CircuitState {
     /// Circuit is closed, requests pass through normally.
+    #[default]
     Closed,
     /// Circuit is open, requests are rejected.
     Open,
     /// Circuit is half-open, testing if service recovered.
     HalfOpen,
-}
-
-impl Default for CircuitState {
-    fn default() -> Self {
-        CircuitState::Closed
-    }
 }
 
 /// Circuit breaker configuration.
@@ -109,9 +104,9 @@ impl CircuitBreaker {
     /// Check if a circuit allows requests.
     pub fn is_available(&mut self, name: &str) -> bool {
         let timeout = self.config.timeout;
-        
+
         let state = self.get_state(name);
-        
+
         // Update state based on timeout
         if state.state == CircuitState::Open {
             let now = Utc::now();
@@ -121,7 +116,7 @@ impl CircuitBreaker {
                 state.last_state_change = now;
             }
         }
-        
+
         match state.state {
             CircuitState::Closed => true,
             CircuitState::Open => false,
@@ -132,9 +127,9 @@ impl CircuitBreaker {
     /// Record a successful request.
     pub fn record_success(&mut self, name: &str) {
         let success_threshold = self.config.success_threshold;
-        
+
         let state = self.get_state(name);
-        
+
         match state.state {
             CircuitState::Closed => {
                 state.failure_count = 0;
@@ -154,11 +149,11 @@ impl CircuitBreaker {
     /// Record a failed request.
     pub fn record_failure(&mut self, name: &str) {
         let failure_threshold = self.config.failure_threshold;
-        
+
         let state = self.get_state(name);
         state.failure_count += 1;
         state.last_failure = Some(Utc::now());
-        
+
         match state.state {
             CircuitState::Closed => {
                 if state.failure_count >= failure_threshold {
@@ -320,7 +315,7 @@ mod tests {
     fn test_circuit_config() {
         let strict = CircuitBreakerConfig::strict();
         assert_eq!(strict.failure_threshold, 3);
-        
+
         let lenient = CircuitBreakerConfig::lenient();
         assert_eq!(lenient.failure_threshold, 10);
     }

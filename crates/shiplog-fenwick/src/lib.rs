@@ -4,7 +4,7 @@
 //! prefix sum queries and point updates.
 
 /// A Fenwick Tree (Binary Indexed Tree) for prefix sum queries.
-/// 
+///
 /// Supports:
 /// - Point updates: O(log n)
 /// - Prefix sum queries: O(log n)
@@ -28,11 +28,11 @@ impl<T: Copy + Default + std::ops::Add<Output = T>> FenwickTree<T> {
     pub fn from_slice(slice: &[T]) -> Self {
         let size = slice.len();
         let mut tree = Self::new(size);
-        
+
         for (i, &val) in slice.iter().enumerate() {
             tree.data[i + 1] = val;
         }
-        
+
         // Build the tree
         for i in 1..=size {
             let j = i + (i & i.wrapping_neg());
@@ -40,7 +40,7 @@ impl<T: Copy + Default + std::ops::Add<Output = T>> FenwickTree<T> {
                 tree.data[j] = tree.data[j] + tree.data[i];
             }
         }
-        
+
         tree
     }
 
@@ -68,15 +68,15 @@ impl<T: Copy + Default + std::ops::Add<Output = T>> FenwickTree<T> {
         if i >= self.size {
             i = self.size - 1;
         }
-        
+
         i += 1; // Convert to 1-based indexing
         let mut result = T::default();
-        
+
         while i > 0 {
             result = result + self.data[i];
             i -= i & i.wrapping_neg();
         }
-        
+
         result
     }
 
@@ -91,7 +91,7 @@ impl<T: Copy + Default + std::ops::Add<Output = T>> FenwickTree<T> {
         if r >= self.size {
             return T::default();
         }
-        
+
         self.sum(r) - (if l > 0 { self.sum(l - 1) } else { T::default() })
     }
 
@@ -117,22 +117,24 @@ impl<T: Copy + Default + std::ops::Add<Output = T>> FenwickTree<T> {
     }
 }
 
-impl<T: Copy + Default + std::ops::Add<Output = T> + std::ops::Sub<Output = T> + PartialOrd> FenwickTree<T> {
+impl<T: Copy + Default + std::ops::Add<Output = T> + std::ops::Sub<Output = T> + PartialOrd>
+    FenwickTree<T>
+{
     /// Finds the smallest index `i` such that prefix sum >= target.
     /// Returns None if target is greater than the total sum.
     pub fn lower_bound(&self, mut target: T) -> Option<usize> {
         if target <= T::default() {
             return Some(0);
         }
-        
+
         let total = self.sum(self.size - 1);
         if target > total {
             return None;
         }
-        
+
         let mut idx = 0;
         let mut bit_mask = self.size.next_power_of_two();
-        
+
         while bit_mask > 0 {
             let next = idx + bit_mask;
             if next <= self.size && self.data[next] < target {
@@ -141,7 +143,7 @@ impl<T: Copy + Default + std::ops::Add<Output = T> + std::ops::Sub<Output = T> +
             }
             bit_mask >>= 1;
         }
-        
+
         Some(idx)
     }
 }
@@ -168,7 +170,7 @@ impl<T: Copy + Default + std::ops::Add<Output = T>> FenwickTree2D<T> {
     pub fn add(&mut self, mut row: usize, mut col: usize, delta: T) {
         row += 1;
         col += 1;
-        
+
         let mut i = row;
         while i <= self.rows {
             let mut j = col;
@@ -188,13 +190,13 @@ impl<T: Copy + Default + std::ops::Add<Output = T>> FenwickTree2D<T> {
         if col >= self.cols {
             col = self.cols - 1;
         }
-        
+
         row += 1;
         col += 1;
-        
+
         let mut result = T::default();
         let mut i = row;
-        
+
         while i > 0 {
             let mut j = col;
             while j > 0 {
@@ -203,7 +205,7 @@ impl<T: Copy + Default + std::ops::Add<Output = T>> FenwickTree2D<T> {
             }
             i -= i & i.wrapping_neg();
         }
-        
+
         result
     }
 
@@ -215,11 +217,23 @@ impl<T: Copy + Default + std::ops::Add<Output = T>> FenwickTree2D<T> {
         if r1 > r2 || c1 > c2 {
             return T::default();
         }
-        
+
         self.sum(r2, c2)
-            - (if r1 > 0 { self.sum(r1 - 1, c2) } else { T::default() })
-            - (if c1 > 0 { self.sum(r2, c1 - 1) } else { T::default() })
-            + (if r1 > 0 && c1 > 0 { self.sum(r1 - 1, c1 - 1) } else { T::default() })
+            - (if r1 > 0 {
+                self.sum(r1 - 1, c2)
+            } else {
+                T::default()
+            })
+            - (if c1 > 0 {
+                self.sum(r2, c1 - 1)
+            } else {
+                T::default()
+            })
+            + (if r1 > 0 && c1 > 0 {
+                self.sum(r1 - 1, c1 - 1)
+            } else {
+                T::default()
+            })
     }
 }
 
@@ -249,7 +263,7 @@ mod tests {
         tree.add(0, 1);
         tree.add(1, 2);
         tree.add(2, 3);
-        
+
         assert_eq!(tree.sum(0), 1);
         assert_eq!(tree.sum(1), 3);
         assert_eq!(tree.sum(2), 6);
@@ -265,7 +279,7 @@ mod tests {
         // we compute delta = 10 - current_sum(1) = 10 - 3 = 7
         // then add 7 to index 1, so the prefix sum becomes 1 + 9 = 10
         tree.set(1, 10);
-        
+
         assert_eq!(tree.sum(0), 1);
         assert_eq!(tree.sum(1), 10); // 1 + 9 after set
     }
@@ -273,25 +287,25 @@ mod tests {
     #[test]
     fn test_fenwick_range_sum() {
         let tree = FenwickTree::from_slice(&[1, 2, 3, 4, 5]);
-        
-        assert_eq!(tree.range_sum(0, 2), 6);   // 1 + 2 + 3
-        assert_eq!(tree.range_sum(1, 3), 9);   // 2 + 3 + 4
-        assert_eq!(tree.range_sum(2, 4), 12);  // 3 + 4 + 5
-        assert_eq!(tree.range_sum(0, 4), 15);  // 1 + 2 + 3 + 4 + 5
+
+        assert_eq!(tree.range_sum(0, 2), 6); // 1 + 2 + 3
+        assert_eq!(tree.range_sum(1, 3), 9); // 2 + 3 + 4
+        assert_eq!(tree.range_sum(2, 4), 12); // 3 + 4 + 5
+        assert_eq!(tree.range_sum(0, 4), 15); // 1 + 2 + 3 + 4 + 5
     }
 
     #[test]
     fn test_fenwick_range_sum_empty() {
         let tree = FenwickTree::from_slice(&[1, 2, 3]);
-        
-        assert_eq!(tree.range_sum(3, 5), 0);  // Out of bounds
+
+        assert_eq!(tree.range_sum(3, 5), 0); // Out of bounds
         assert_eq!(tree.range_sum(2, 1), 0); // Invalid range
     }
 
     #[test]
     fn test_fenwick_get() {
         let tree = FenwickTree::from_slice(&[1, 2, 3, 4, 5]);
-        
+
         assert_eq!(tree.get(0), 1);
         assert_eq!(tree.get(2), 3);
         assert_eq!(tree.get(4), 5);
@@ -302,11 +316,11 @@ mod tests {
     fn test_fenwick_lower_bound() {
         let tree = FenwickTree::from_slice(&[1, 2, 3, 4, 5]);
         // Prefix sums: [1, 3, 6, 10, 15]
-        
+
         assert_eq!(tree.lower_bound(1), Some(0)); // First prefix >= 1 is at index 0
         assert_eq!(tree.lower_bound(3), Some(1)); // First prefix >= 3 is at index 1 (sum=3)
         assert_eq!(tree.lower_bound(6), Some(2)); // First prefix >= 6 is at index 2 (sum=6)
-        assert_eq!(tree.lower_bound(16), None);   // Greater than total sum
+        assert_eq!(tree.lower_bound(16), None); // Greater than total sum
     }
 
     #[test]
@@ -328,7 +342,7 @@ mod tests {
         tree.add(0, 0, 1);
         tree.add(1, 1, 2);
         tree.add(2, 2, 3);
-        
+
         assert_eq!(tree.sum(0, 0), 1);
         assert_eq!(tree.sum(1, 1), 3); // 1 + 2
         assert_eq!(tree.sum(2, 2), 6); // 1 + 2 + 3
@@ -337,7 +351,7 @@ mod tests {
     #[test]
     fn test_fenwick2d_range_sum() {
         let mut tree = FenwickTree2D::new(3, 3);
-        
+
         // Matrix:
         // 1 2 3
         // 4 5 6
@@ -347,7 +361,7 @@ mod tests {
                 tree.add(i, j, (i * 3 + j + 1) as i32);
             }
         }
-        
+
         assert_eq!(tree.range_sum(0, 0, 0, 0), 1);
         assert_eq!(tree.range_sum(0, 0, 1, 1), 12); // 1+2+4+5
     }

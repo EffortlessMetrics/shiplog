@@ -76,14 +76,18 @@ impl TokenBucket {
     /// Returns true if the token was consumed, false if rate limited.
     pub fn try_consume(&mut self, key: &str) -> bool {
         let now = Utc::now();
-        let state = self.states.entry(key.to_string()).or_insert(RateLimitState {
-            tokens: self.config.max_tokens,
-            last_update: now,
-        });
+        let state = self
+            .states
+            .entry(key.to_string())
+            .or_insert(RateLimitState {
+                tokens: self.config.max_tokens,
+                last_update: now,
+            });
 
         // Calculate time elapsed and refill tokens
         let elapsed = (now - state.last_update).num_milliseconds() as f64 / 1000.0;
-        state.tokens = (state.tokens + elapsed * self.config.refill_rate).min(self.config.max_tokens);
+        state.tokens =
+            (state.tokens + elapsed * self.config.refill_rate).min(self.config.max_tokens);
         state.last_update = now;
 
         if state.tokens >= 1.0 {
@@ -146,7 +150,7 @@ impl SlidingWindow {
         let window_start = now - self.window_size;
 
         let key_requests = self.requests.entry(key.to_string()).or_default();
-        
+
         // Remove old requests outside the window
         key_requests.retain(|t| *t > window_start);
 
@@ -206,7 +210,7 @@ mod tests {
 
         // First request should succeed
         assert!(bucket.try_consume("user1"));
-        
+
         // Immediate second request should also succeed (we have 10 tokens)
         assert!(bucket.try_consume("user1"));
     }
@@ -237,7 +241,7 @@ mod tests {
         for _ in 0..5 {
             assert!(window.try_record("user1"));
         }
-        
+
         // Sixth request should be rate limited
         assert!(!window.try_record("user1"));
     }
@@ -245,10 +249,10 @@ mod tests {
     #[test]
     fn test_sliding_window_current_requests() {
         let mut window = SlidingWindow::new(10, Duration::seconds(60));
-        
+
         window.try_record("user1");
         window.try_record("user1");
-        
+
         assert_eq!(window.current_requests("user1"), 2);
     }
 
@@ -256,7 +260,7 @@ mod tests {
     fn test_rate_limit_configs() {
         let github = github_api_limit();
         assert_eq!(github.max_tokens, 5000.0);
-        
+
         let standard = standard_api_limit();
         assert_eq!(standard.max_tokens, 100.0);
     }

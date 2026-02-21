@@ -85,9 +85,7 @@ impl SemVer {
             if pre.is_empty() {
                 return Err(SemVerError::InvalidFormat);
             }
-            pre.split('.')
-                .map(|s| s.to_string())
-                .collect()
+            pre.split('.').map(|s| s.to_string()).collect()
         } else {
             Vec::new()
         };
@@ -97,9 +95,7 @@ impl SemVer {
             if build.is_empty() {
                 return Err(SemVerError::InvalidFormat);
             }
-            build.split('.')
-                .map(|s| s.to_string())
-                .collect()
+            build.split('.').map(|s| s.to_string()).collect()
         } else {
             Vec::new()
         };
@@ -166,23 +162,6 @@ impl SemVer {
         !self.pre.is_empty()
     }
 
-    /// Returns the version as a string.
-    pub fn to_string(&self) -> String {
-        let mut result = format!("{}.{}.{}", self.major, self.minor, self.patch);
-
-        if !self.pre.is_empty() {
-            result.push('-');
-            result.push_str(&self.pre.join("."));
-        }
-
-        if !self.build.is_empty() {
-            result.push('+');
-            result.push_str(&self.build.join("."));
-        }
-
-        result
-    }
-
     /// Checks if this version satisfies a range.
     pub fn satisfies(&self, range: &VersionRange) -> bool {
         range.matches(self)
@@ -191,7 +170,7 @@ impl SemVer {
 
 impl PartialOrd for SemVer {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.compare(other))
+        Some(self.cmp(other))
     }
 }
 
@@ -203,7 +182,14 @@ impl Ord for SemVer {
 
 impl std::fmt::Display for SemVer {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.to_string())
+        write!(f, "{}.{}.{}", self.major, self.minor, self.patch)?;
+        if !self.pre.is_empty() {
+            write!(f, "-{}", self.pre.join("."))?;
+        }
+        if !self.build.is_empty() {
+            write!(f, "+{}", self.build.join("."))?;
+        }
+        Ok(())
     }
 }
 
@@ -251,25 +237,28 @@ pub enum Comparator {
     GreaterEq(SemVer),
     Less(SemVer),
     LessEq(SemVer),
-    Range { min: Option<SemVer>, max: Option<SemVer> },
+    Range {
+        min: Option<SemVer>,
+        max: Option<SemVer>,
+    },
 }
 
 impl Comparator {
     pub fn parse(comp: &str) -> Result<Self, SemVerError> {
-        if comp.starts_with(">=") {
-            let version = SemVer::parse(&comp[2..])?;
+        if let Some(rest) = comp.strip_prefix(">=") {
+            let version = SemVer::parse(rest)?;
             Ok(Comparator::GreaterEq(version))
-        } else if comp.starts_with(">") {
-            let version = SemVer::parse(&comp[1..])?;
+        } else if let Some(rest) = comp.strip_prefix('>') {
+            let version = SemVer::parse(rest)?;
             Ok(Comparator::Greater(version))
-        } else if comp.starts_with("<=") {
-            let version = SemVer::parse(&comp[2..])?;
+        } else if let Some(rest) = comp.strip_prefix("<=") {
+            let version = SemVer::parse(rest)?;
             Ok(Comparator::LessEq(version))
-        } else if comp.starts_with("<") {
-            let version = SemVer::parse(&comp[1..])?;
+        } else if let Some(rest) = comp.strip_prefix('<') {
+            let version = SemVer::parse(rest)?;
             Ok(Comparator::Less(version))
-        } else if comp.starts_with("=") {
-            let version = SemVer::parse(&comp[1..])?;
+        } else if let Some(rest) = comp.strip_prefix('=') {
+            let version = SemVer::parse(rest)?;
             Ok(Comparator::Exact(version))
         } else {
             let version = SemVer::parse(comp)?;
@@ -285,8 +274,8 @@ impl Comparator {
             Comparator::Less(v) => version < v,
             Comparator::LessEq(v) => version <= v,
             Comparator::Range { min, max } => {
-                let above_min = min.as_ref().map_or(true, |m| version >= m);
-                let below_max = max.as_ref().map_or(true, |m| version < m);
+                let above_min = min.as_ref().is_none_or(|m| version >= m);
+                let below_max = max.as_ref().is_none_or(|m| version < m);
                 above_min && below_max
             }
         }

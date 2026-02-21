@@ -49,7 +49,7 @@ mod tests {
         let data = b"Hello, World!";
         let encoded = encode(data);
         assert_eq!(encoded, "SGVsbG8sIFdvcmxkIQ==");
-        
+
         let decoded = decode(&encoded).unwrap();
         assert_eq!(decoded, data);
     }

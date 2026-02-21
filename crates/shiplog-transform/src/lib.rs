@@ -80,13 +80,13 @@ impl TransformPipeline {
     pub fn new(rules: Vec<TransformRule>) -> Self {
         Self { rules }
     }
-    
+
     /// Transform a raw event through the pipeline
     pub fn transform(&self, raw: RawEvent) -> EnrichedEvent {
         let mut payload = raw.payload;
         let tags = Vec::new();
         let metadata = raw.metadata;
-        
+
         for rule in &self.rules {
             match rule.rule_type {
                 TransformRuleType::Rename => {
@@ -103,14 +103,12 @@ impl TransformPipeline {
                     }
                 }
                 TransformRuleType::MapValues => {
-                    if let Some(field) = &rule.source_field {
-                        if let Some(value) = payload.get(field).and_then(|v| v.as_str()) {
-                            if let Some(mapped) = rule.mappings.get(value) {
-                                if let Some(obj) = payload.as_object_mut() {
-                                    obj.insert(field.clone(), serde_json::Value::String(mapped.clone()));
-                                }
-                            }
-                        }
+                    if let Some(field) = &rule.source_field
+                        && let Some(value) = payload.get(field).and_then(|v| v.as_str())
+                        && let Some(mapped) = rule.mappings.get(value)
+                        && let Some(obj) = payload.as_object_mut()
+                    {
+                        obj.insert(field.clone(), serde_json::Value::String(mapped.clone()));
                     }
                 }
                 TransformRuleType::Custom => {
@@ -118,12 +116,12 @@ impl TransformPipeline {
                 }
             }
         }
-        
+
         // Parse timestamp
         let timestamp = chrono::DateTime::parse_from_rfc3339(&raw.timestamp)
             .map(|dt| dt.with_timezone(&chrono::Utc))
             .unwrap_or_else(|_| chrono::Utc::now());
-        
+
         EnrichedEvent {
             event_type: raw.event_type,
             payload,
@@ -160,18 +158,16 @@ mod tests {
 
     #[test]
     fn transform_pipeline_basic() {
-        let rules = vec![
-            TransformRule {
-                rule_type: TransformRuleType::AddField,
-                source_field: None,
-                target_field: Some("processed".to_string()),
-                mappings: HashMap::new(),
-                static_value: Some(serde_json::Value::Bool(true)),
-            },
-        ];
-        
+        let rules = vec![TransformRule {
+            rule_type: TransformRuleType::AddField,
+            source_field: None,
+            target_field: Some("processed".to_string()),
+            mappings: HashMap::new(),
+            static_value: Some(serde_json::Value::Bool(true)),
+        }];
+
         let pipeline = TransformPipeline::new(rules);
-        
+
         let raw = RawEvent {
             event_type: "test".to_string(),
             payload: serde_json::json!({"id": "123"}),
@@ -179,30 +175,36 @@ mod tests {
             timestamp: "2024-01-01T00:00:00Z".to_string(),
             metadata: HashMap::new(),
         };
-        
+
         let enriched = pipeline.transform(raw);
-        
+
         assert_eq!(enriched.event_type, "test");
-        assert!(enriched.payload.get("processed").and_then(|v| v.as_bool()).unwrap_or(false));
+        assert!(
+            enriched
+                .payload
+                .get("processed")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false)
+        );
     }
 
     #[test]
     fn transform_with_field_mapping() {
-        let rules = vec![
-            TransformRule {
-                rule_type: TransformRuleType::MapValues,
-                source_field: Some("status".to_string()),
-                target_field: None,
-                mappings: [
-                    ("open".to_string(), "opened".to_string()),
-                    ("closed".to_string(), "completed".to_string()),
-                ].into_iter().collect(),
-                static_value: None,
-            },
-        ];
-        
+        let rules = vec![TransformRule {
+            rule_type: TransformRuleType::MapValues,
+            source_field: Some("status".to_string()),
+            target_field: None,
+            mappings: [
+                ("open".to_string(), "opened".to_string()),
+                ("closed".to_string(), "completed".to_string()),
+            ]
+            .into_iter()
+            .collect(),
+            static_value: None,
+        }];
+
         let pipeline = TransformPipeline::new(rules);
-        
+
         let raw = RawEvent {
             event_type: "issue".to_string(),
             payload: serde_json::json!({"status": "open"}),
@@ -210,9 +212,9 @@ mod tests {
             timestamp: "2024-01-01T00:00:00Z".to_string(),
             metadata: HashMap::new(),
         };
-        
+
         let enriched = pipeline.transform(raw);
-        
+
         assert_eq!(
             enriched.payload.get("status").and_then(|v| v.as_str()),
             Some("opened")
@@ -229,11 +231,11 @@ mod tests {
             tags: Vec::new(),
             metadata: HashMap::new(),
         };
-        
+
         add_tag(&mut event, "important");
         add_tag(&mut event, "review");
         add_tag(&mut event, "important"); // Duplicate should be ignored
-        
+
         assert_eq!(event.tags.len(), 2);
         assert!(event.tags.contains(&"important".to_string()));
     }
@@ -248,12 +250,18 @@ mod tests {
             tags: Vec::new(),
             metadata: HashMap::new(),
         };
-        
+
         add_metadata(&mut event, "priority", serde_json::json!("high"));
         add_metadata(&mut event, "count", serde_json::json!(42));
-        
-        assert_eq!(event.metadata.get("priority").and_then(|v| v.as_str()), Some("high"));
-        assert_eq!(event.metadata.get("count").and_then(|v| v.as_i64()), Some(42));
+
+        assert_eq!(
+            event.metadata.get("priority").and_then(|v| v.as_str()),
+            Some("high")
+        );
+        assert_eq!(
+            event.metadata.get("count").and_then(|v| v.as_i64()),
+            Some(42)
+        );
     }
 
     #[test]
@@ -266,26 +274,24 @@ mod tests {
             tags: Vec::new(),
             metadata: HashMap::new(),
         };
-        
+
         enrich_with_workstream(&mut event, "my-workstream");
-        
+
         assert_eq!(event.workstream_id, Some("my-workstream".to_string()));
     }
 
     #[test]
     fn transform_remove_field() {
-        let rules = vec![
-            TransformRule {
-                rule_type: TransformRuleType::RemoveField,
-                source_field: Some("temp_field".to_string()),
-                target_field: None,
-                mappings: HashMap::new(),
-                static_value: None,
-            },
-        ];
-        
+        let rules = vec![TransformRule {
+            rule_type: TransformRuleType::RemoveField,
+            source_field: Some("temp_field".to_string()),
+            target_field: None,
+            mappings: HashMap::new(),
+            static_value: None,
+        }];
+
         let pipeline = TransformPipeline::new(rules);
-        
+
         let raw = RawEvent {
             event_type: "test".to_string(),
             payload: serde_json::json!({"temp_field": "remove me", "keep_field": "keep"}),
@@ -293,9 +299,9 @@ mod tests {
             timestamp: "2024-01-01T00:00:00Z".to_string(),
             metadata: HashMap::new(),
         };
-        
+
         let enriched = pipeline.transform(raw);
-        
+
         assert!(enriched.payload.get("temp_field").is_none());
         assert!(enriched.payload.get("keep_field").is_some());
     }

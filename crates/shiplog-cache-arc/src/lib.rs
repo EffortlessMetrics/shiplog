@@ -117,10 +117,10 @@ where
         if self.cache.len() >= self.max_size {
             // Simple eviction: remove the first item
             // For a more sophisticated LRU, see shiplog-cache-lru
-            if let Ok(mut guard) = self.cache.inner.write() {
-                if let Some(first_key) = guard.keys().next().cloned() {
-                    guard.remove(&first_key);
-                }
+            if let Ok(mut guard) = self.cache.inner.write()
+                && let Some(first_key) = guard.keys().next().cloned()
+            {
+                guard.remove(&first_key);
             }
         }
         self.cache.put(key, value)

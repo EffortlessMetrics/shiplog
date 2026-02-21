@@ -54,12 +54,12 @@ impl<T> TimeSlidingWindow<T> {
     pub fn push(&mut self, value: T) {
         // Remove expired items
         self.prune_expired();
-        
+
         // Remove oldest if at capacity
         if self.window.len() >= self.max_size {
             self.window.pop_front();
         }
-        
+
         self.window.push_back(Timestamped::new(value));
     }
 
@@ -142,12 +142,11 @@ impl<T> ConfigurableSlidingWindow<T> {
 
     /// Add an item based on the configured strategy
     pub fn push(&mut self, item: T) -> Option<T> {
-        let evicted = match self.strategy {
+        match self.strategy {
             WindowStrategy::TailDrop => self.push_tail_drop(item),
             WindowStrategy::TimeBased => self.push_time_based(item),
             WindowStrategy::Hybrid => self.push_hybrid(item),
-        };
-        evicted
+        }
     }
 
     fn push_tail_drop(&mut self, item: T) -> Option<T> {
@@ -162,7 +161,7 @@ impl<T> ConfigurableSlidingWindow<T> {
 
     fn push_time_based(&mut self, item: T) -> Option<T> {
         let now = Instant::now();
-        
+
         // Remove expired items
         while let Some(ts) = self.window.front() {
             if now.duration_since(ts.timestamp) > self.max_age {
@@ -171,14 +170,14 @@ impl<T> ConfigurableSlidingWindow<T> {
                 break;
             }
         }
-        
+
         self.window.push_back(Timestamped::new(item));
         None
     }
 
     fn push_hybrid(&mut self, item: T) -> Option<T> {
         let now = Instant::now();
-        
+
         // Remove expired items first
         while let Some(ts) = self.window.front() {
             if now.duration_since(ts.timestamp) > self.max_age {
@@ -187,14 +186,14 @@ impl<T> ConfigurableSlidingWindow<T> {
                 break;
             }
         }
-        
+
         // Then handle size-based eviction
         let evicted = if self.window.len() >= self.max_size {
             self.window.pop_front().map(|ts| ts.value)
         } else {
             None
         };
-        
+
         self.window.push_back(Timestamped::new(item));
         evicted
     }
@@ -240,12 +239,12 @@ impl<T> WindowWithStats<T> {
 
     pub fn push(&mut self, item: T) {
         self.stats.total_pushes += 1;
-        
+
         if self.window.len() >= self.max_size {
             self.window.pop_front();
             self.stats.total_evictions += 1;
         }
-        
+
         self.window.push_back(item);
     }
 
@@ -279,13 +278,13 @@ mod tests {
     #[test]
     fn test_time_sliding_window_basic() {
         let mut window: TimeSlidingWindow<i32> = TimeSlidingWindow::new(3, Duration::from_secs(10));
-        
+
         window.push(1);
         window.push(2);
         window.push(3);
-        
+
         assert_eq!(window.len(), 3);
-        
+
         let valid = window.get_valid();
         assert_eq!(valid, vec![&1, &2, &3]);
     }
@@ -293,73 +292,71 @@ mod tests {
     #[test]
     fn test_time_sliding_window_eviction() {
         let mut window: TimeSlidingWindow<i32> = TimeSlidingWindow::new(2, Duration::from_secs(10));
-        
+
         window.push(1);
         window.push(2);
         window.push(3); // Should evict 1
-        
+
         assert_eq!(window.len(), 2);
-        
+
         let valid = window.get_valid();
         assert_eq!(valid, vec![&2, &3]);
     }
 
     #[test]
     fn test_time_sliding_window_expiration() {
-        let mut window: TimeSlidingWindow<i32> = TimeSlidingWindow::new(5, Duration::from_millis(50));
-        
+        let mut window: TimeSlidingWindow<i32> =
+            TimeSlidingWindow::new(5, Duration::from_millis(50));
+
         window.push(1);
         window.push(2);
-        
+
         thread::sleep(Duration::from_millis(60));
-        
+
         assert_eq!(window.len(), 2); // Still has items
         assert!(window.get_valid().is_empty()); // But all expired
     }
 
     #[test]
     fn test_tail_drop_strategy() {
-        let mut window: ConfigurableSlidingWindow<i32> = 
-            ConfigurableSlidingWindow::new(2)
-                .with_strategy(WindowStrategy::TailDrop);
-        
+        let mut window: ConfigurableSlidingWindow<i32> =
+            ConfigurableSlidingWindow::new(2).with_strategy(WindowStrategy::TailDrop);
+
         window.push(1);
         window.push(2);
         window.push(3); // Should evict 1
-        
+
         let items = window.get();
         assert_eq!(items, vec![&2, &3]);
     }
 
     #[test]
     fn test_time_based_strategy() {
-        let mut window: ConfigurableSlidingWindow<i32> = 
-            ConfigurableSlidingWindow::new(5)
-                .with_strategy(WindowStrategy::TimeBased)
-                .with_max_age(Duration::from_millis(50));
-        
+        let mut window: ConfigurableSlidingWindow<i32> = ConfigurableSlidingWindow::new(5)
+            .with_strategy(WindowStrategy::TimeBased)
+            .with_max_age(Duration::from_millis(50));
+
         window.push(1);
         window.push(2);
-        
+
         thread::sleep(Duration::from_millis(60));
-        
+
         window.push(3);
-        
+
         let items = window.get();
         assert_eq!(items.len(), 1); // Only item 3 is valid
     }
 
     #[test]
     fn test_hybrid_strategy() {
-        let mut window: ConfigurableSlidingWindow<i32> = 
-            ConfigurableSlidingWindow::new(2)
-                .with_strategy(WindowStrategy::Hybrid)
-                .with_max_age(Duration::from_secs(10));
-        
+        let mut window: ConfigurableSlidingWindow<i32> = ConfigurableSlidingWindow::new(2)
+            .with_strategy(WindowStrategy::Hybrid)
+            .with_max_age(Duration::from_secs(10));
+
         window.push(1);
         window.push(2);
         window.push(3); // Size eviction
-        
+
         let items = window.get();
         assert_eq!(items, vec![&2, &3]);
     }
@@ -367,26 +364,25 @@ mod tests {
     #[test]
     fn test_window_with_stats() {
         let mut window: WindowWithStats<i32> = WindowWithStats::new(3);
-        
+
         window.push(1);
         window.push(2);
         window.push(3);
         window.push(4); // Should trigger eviction
-        
+
         assert_eq!(window.stats.total_pushes, 4);
         assert_eq!(window.stats.total_evictions, 1);
-        
+
         let _ = window.get(); // Trigger lookup
         assert_eq!(window.stats.total_lookups, 1);
     }
 
     #[test]
     fn test_configurable_window_builder() {
-        let window: ConfigurableSlidingWindow<i32> = 
-            ConfigurableSlidingWindow::new(100)
-                .with_strategy(WindowStrategy::Hybrid)
-                .with_max_age(Duration::from_secs(30));
-        
+        let window: ConfigurableSlidingWindow<i32> = ConfigurableSlidingWindow::new(100)
+            .with_strategy(WindowStrategy::Hybrid)
+            .with_max_age(Duration::from_secs(30));
+
         assert_eq!(window.len(), 0);
         assert!(window.is_empty());
     }

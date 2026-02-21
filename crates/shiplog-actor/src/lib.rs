@@ -2,8 +2,8 @@
 //!
 //! This crate provides basic actor model utilities for asynchronous message handling.
 
-use tokio::sync::mpsc;
 use std::fmt;
+use tokio::sync::mpsc;
 
 /// Configuration for actor behavior
 #[derive(Debug, Clone)]
@@ -112,11 +112,15 @@ impl<T> ActorRef<T> {
 /// Create a bounded actor channel
 pub fn create_bounded_actor_channel<T>(buffer_size: usize) -> (ActorHandle<T>, ActorRef<T>) {
     let (sender, receiver) = mpsc::channel(buffer_size);
-    (ActorHandle::from_bounded(sender), ActorRef::from_bounded(receiver))
+    (
+        ActorHandle::from_bounded(sender),
+        ActorRef::from_bounded(receiver),
+    )
 }
 
 /// Create an unbounded actor channel
-pub fn create_unbounded_actor_channel<T>() -> (mpsc::UnboundedSender<T>, mpsc::UnboundedReceiver<T>) {
+pub fn create_unbounded_actor_channel<T>() -> (mpsc::UnboundedSender<T>, mpsc::UnboundedReceiver<T>)
+{
     mpsc::unbounded_channel()
 }
 
@@ -180,7 +184,7 @@ mod tests {
             .buffer_size(200)
             .mail_box_type(MailBoxType::Unbounded)
             .build();
-        
+
         assert_eq!(config.name, "test-actor");
         assert_eq!(config.buffer_size, 200);
         assert_eq!(config.mail_box_type, MailBoxType::Unbounded);
@@ -198,7 +202,7 @@ mod tests {
         let mut state = ActorState::new(10);
         assert_eq!(state.state, 10);
         assert_eq!(state.message_count, 0);
-        
+
         state.increment();
         assert_eq!(state.message_count, 1);
     }
@@ -206,10 +210,10 @@ mod tests {
     #[tokio::test]
     async fn test_actor_channel() {
         let (handle, mut actor_ref) = create_bounded_actor_channel::<i32>(10);
-        
+
         handle.send(1).await.unwrap();
         handle.send(2).await.unwrap();
-        
+
         assert_eq!(actor_ref.recv().await, Some(1));
         assert_eq!(actor_ref.recv().await, Some(2));
     }

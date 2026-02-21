@@ -147,7 +147,7 @@ mod tests {
             .max_concurrent(5)
             .spawn_timeout(3000)
             .build();
-        
+
         assert_eq!(config.buffer_size, 200);
         assert_eq!(config.max_concurrent, 5);
         assert_eq!(config.spawn_timeout_ms, 3000);
@@ -159,7 +159,7 @@ mod tests {
         assert!(result.is_ok());
         assert!(!result.is_timeout());
         assert_eq!(result.value, Some(42));
-        
+
         let timeout_result = AsyncResult::<i32>::timeout(5000);
         assert!(!timeout_result.is_ok());
         assert!(timeout_result.is_timeout());
