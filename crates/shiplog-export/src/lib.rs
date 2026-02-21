@@ -5,6 +5,12 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
+pub use shiplog_output_layout::{
+    DIR_PROFILES, FILE_BUNDLE_MANIFEST_JSON, FILE_COVERAGE_MANIFEST_JSON, FILE_LEDGER_EVENTS_JSONL,
+    FILE_PACKET_MD, PROFILE_INTERNAL, PROFILE_MANAGER, PROFILE_PUBLIC, RunArtifactPaths,
+    zip_path_for_profile,
+};
+
 /// Supported export formats.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ExportFormat {
