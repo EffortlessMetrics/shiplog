@@ -28,18 +28,26 @@ impl Ingestor for JsonIngestor {
     }
 }
 
-fn read_events(path: &PathBuf) -> Result<Vec<EventEnvelope>> {
-    let text = std::fs::read_to_string(path).with_context(|| format!("read {path:?}"))?;
+/// Parse JSONL text into a vector of [`EventEnvelope`]s.
+///
+/// Each non-empty line is parsed as a JSON-encoded `EventEnvelope`.
+/// `source` is included in error context messages.
+pub fn parse_events_jsonl(text: &str, source: &str) -> Result<Vec<EventEnvelope>> {
     let mut out = Vec::new();
     for (i, line) in text.lines().enumerate() {
         if line.trim().is_empty() {
             continue;
         }
         let ev: EventEnvelope = serde_json::from_str(line)
-            .with_context(|| format!("parse event json line {} in {:?}", i + 1, path))?;
+            .with_context(|| format!("parse event json line {} in {source}", i + 1))?;
         out.push(ev);
     }
     Ok(out)
+}
+
+fn read_events(path: &PathBuf) -> Result<Vec<EventEnvelope>> {
+    let text = std::fs::read_to_string(path).with_context(|| format!("read {path:?}"))?;
+    parse_events_jsonl(&text, &format!("{path:?}"))
 }
 
 fn read_coverage(path: &PathBuf) -> Result<CoverageManifest> {

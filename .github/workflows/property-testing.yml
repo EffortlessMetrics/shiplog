@@ -8,6 +8,9 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  PROPTEST_CASES: "256"
+  PROPTEST_MAX_LOCAL_REJECTS: "10000"
+  PROPTEST_MAX_GLOBAL_REJECTS: "100000"
 
 jobs:
   property-test:
