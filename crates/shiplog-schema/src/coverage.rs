@@ -49,3 +49,48 @@ pub struct CoverageManifest {
     pub warnings: Vec<String>,
     pub completeness: Completeness,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn window() -> TimeWindow {
+        TimeWindow {
+            since: NaiveDate::from_ymd_opt(2025, 1, 10).unwrap(),
+            until: NaiveDate::from_ymd_opt(2025, 1, 20).unwrap(),
+        }
+    }
+
+    #[test]
+    fn contains_inclusive_start_boundary() {
+        let w = window();
+        assert!(w.contains(w.since));
+    }
+
+    #[test]
+    fn contains_exclusive_end_boundary() {
+        let w = window();
+        assert!(!w.contains(w.until));
+    }
+
+    #[test]
+    fn contains_day_before_until() {
+        let w = window();
+        let day_before = w.until.pred_opt().unwrap();
+        assert!(w.contains(day_before));
+    }
+
+    #[test]
+    fn contains_before_window() {
+        let w = window();
+        let before = w.since.pred_opt().unwrap();
+        assert!(!w.contains(before));
+    }
+
+    #[test]
+    fn contains_after_window() {
+        let w = window();
+        let after = w.until.succ_opt().unwrap();
+        assert!(!w.contains(after));
+    }
+}

@@ -1,0 +1,20 @@
+[package]
+name = "shiplog-cache-2q"
+version = "0.2.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "2Q (Two-Queue) cache implementation for shiplog."
+readme = "README.md"
+documentation = "https://docs.rs/shiplog-cache-2q"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["cache", "2q", "shiplog"]
+categories = ["caching"]
+
+[dependencies]
+shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
+
+[dev-dependencies]
+proptest.workspace = true

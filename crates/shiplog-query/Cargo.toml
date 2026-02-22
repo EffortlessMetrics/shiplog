@@ -1,0 +1,25 @@
+[package]
+name = "shiplog-query"
+version = "0.2.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Query language and filter syntax for searching shiplog events."
+readme = "README.md"
+documentation = "https://docs.rs/shiplog-query"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["query", "search", "filter", "events"]
+categories = ["data-structures", "development-tools"]
+
+[dependencies]
+serde.workspace = true
+shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
+shiplog-ids = { path = "../shiplog-ids", version = "0.2.1" }
+shiplog-filter = { path = "../shiplog-filter", version = "0.2.1" }
+thiserror = "2.0"
+chrono.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true

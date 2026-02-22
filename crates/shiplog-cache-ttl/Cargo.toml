@@ -1,0 +1,21 @@
+[package]
+name = "shiplog-cache-ttl"
+version = "0.2.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "TTL (Time-To-Live) based cache implementation for shiplog."
+readme = "README.md"
+documentation = "https://docs.rs/shiplog-cache-ttl"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["cache", "ttl", "expiration", "shiplog"]
+categories = ["caching"]
+
+[dependencies]
+shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
+chrono.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true

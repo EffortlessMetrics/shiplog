@@ -218,7 +218,6 @@ impl Redactor for DeterministicRedactor {
         let p = match profile {
             "internal" => RedactionProfile::Internal,
             "manager" => RedactionProfile::Manager,
-            "public" => RedactionProfile::Public,
             _ => RedactionProfile::Public,
         };
 
@@ -250,7 +249,6 @@ impl Redactor for DeterministicRedactor {
         let p = match profile {
             "internal" => RedactionProfile::Internal,
             "manager" => RedactionProfile::Manager,
-            "public" => RedactionProfile::Public,
             _ => RedactionProfile::Public,
         };
 
@@ -936,6 +934,52 @@ mod tests {
         assert!(result.is_err());
         let msg = format!("{}", result.unwrap_err());
         assert!(msg.contains("unsupported alias cache version"));
+    }
+
+    #[test]
+    fn redaction_profile_as_str_returns_expected_values() {
+        assert_eq!(RedactionProfile::Internal.as_str(), "internal");
+        assert_eq!(RedactionProfile::Manager.as_str(), "manager");
+        assert_eq!(RedactionProfile::Public.as_str(), "public");
+    }
+
+    #[test]
+    fn cache_path_joins_out_dir_with_filename() {
+        let path = DeterministicRedactor::cache_path(Path::new("/some/out"));
+        assert!(
+            path.ends_with("redaction.aliases.json"),
+            "expected path to end with cache filename, got: {path:?}"
+        );
+    }
+
+    #[test]
+    fn internal_profile_preserves_workstreams() {
+        use shiplog_ids::WorkstreamId;
+        use shiplog_schema::workstream::WorkstreamStats;
+
+        let r = DeterministicRedactor::new(b"test-key");
+
+        let ws = Workstream {
+            id: WorkstreamId::from_parts(["ws", "keep"]),
+            title: "My Workstream Title".into(),
+            summary: Some("Detailed summary here".into()),
+            tags: vec!["tag-a".into(), "repo".into()],
+            stats: WorkstreamStats::zero(),
+            events: vec![],
+            receipts: vec![],
+        };
+
+        let ws_file = WorkstreamsFile {
+            workstreams: vec![ws],
+            version: 1,
+            generated_at: Utc::now(),
+        };
+
+        let out = r.redact_workstreams(&ws_file, "internal").unwrap();
+        let ws_out = &out.workstreams[0];
+        assert_eq!(ws_out.title, "My Workstream Title");
+        assert_eq!(ws_out.summary.as_deref(), Some("Detailed summary here"));
+        assert_eq!(ws_out.tags, vec!["tag-a".to_string(), "repo".to_string()]);
     }
 
     #[test]

@@ -1,0 +1,27 @@
+[package]
+name = "shiplog-backup"
+version = "0.2.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Backup and restore functionality for shiplog data."
+readme = "README.md"
+documentation = "https://docs.rs/shiplog-backup"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["backup", "restore", "archive"]
+categories = ["development-tools"]
+
+[dependencies]
+serde.workspace = true
+anyhow.workspace = true
+chrono.workspace = true
+zip.workspace = true
+walkdir = "2.5"
+sha2.workspace = true
+hex.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

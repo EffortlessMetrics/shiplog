@@ -6,6 +6,8 @@
 
 use anyhow::{Context, Result};
 use shiplog_bundle::{write_bundle_manifest, write_zip};
+pub use shiplog_merge::ConflictResolution;
+use shiplog_output_layout::{DIR_PROFILES, FILE_PACKET_MD, RunArtifactPaths, zip_path_for_profile};
 use shiplog_ports::{IngestOutput, Redactor, Renderer, WorkstreamClusterer};
 use shiplog_render_json::{write_coverage_manifest, write_events_jsonl};
 use shiplog_schema::bundle::BundleProfile;
@@ -70,14 +72,15 @@ impl<'a> Engine<'a> {
 
         let events = ingest.events;
         let coverage = ingest.coverage;
+        let paths = RunArtifactPaths::new(out_dir);
 
         // Use WorkstreamManager to load or generate workstreams
         let (workstreams, ws_source) = self.load_workstreams(out_dir, &events)?;
 
         // Write canonical outputs
-        let ledger_path = out_dir.join("ledger.events.jsonl");
-        let coverage_path = out_dir.join("coverage.manifest.json");
-        let packet_path = out_dir.join("packet.md");
+        let ledger_path = paths.ledger_events();
+        let coverage_path = paths.coverage_manifest();
+        let packet_path = paths.packet_md();
 
         write_events_jsonl(&ledger_path, &events)?;
         write_coverage_manifest(&coverage_path, &coverage)?;
@@ -123,7 +126,7 @@ impl<'a> Engine<'a> {
         let run_id = &coverage.run_id;
         let _bundle = write_bundle_manifest(out_dir, run_id, bundle_profile)?;
         let zip_path = if zip {
-            let z = zip_path_for_profile(out_dir, bundle_profile);
+            let z = zip_path_for_profile(out_dir, bundle_profile.as_str());
             write_zip(out_dir, &z, bundle_profile)?;
             Some(z)
         } else {
@@ -137,7 +140,7 @@ impl<'a> Engine<'a> {
                 workstreams_yaml: ws_path,
                 ledger_events_jsonl: ledger_path,
                 coverage_manifest_json: coverage_path,
-                bundle_manifest_json: out_dir.join("bundle.manifest.json"),
+                bundle_manifest_json: paths.bundle_manifest(),
                 zip_path,
             },
             ws_source,
@@ -185,6 +188,7 @@ impl<'a> Engine<'a> {
 
         let events = ingest.events;
         let coverage = ingest.coverage;
+        let paths = RunArtifactPaths::new(out_dir);
 
         // Use provided workstreams or generate new ones
         let (ws, ws_source) = if let Some(ws) = workstreams {
@@ -197,9 +201,9 @@ impl<'a> Engine<'a> {
         };
 
         // Write canonical outputs
-        let ledger_path = out_dir.join("ledger.events.jsonl");
-        let coverage_path = out_dir.join("coverage.manifest.json");
-        let packet_path = out_dir.join("packet.md");
+        let ledger_path = paths.ledger_events();
+        let coverage_path = paths.coverage_manifest();
+        let packet_path = paths.packet_md();
 
         write_events_jsonl(&ledger_path, &events)?;
         write_coverage_manifest(&coverage_path, &coverage)?;
@@ -239,7 +243,7 @@ impl<'a> Engine<'a> {
         let run_id = &coverage.run_id;
         let _bundle = write_bundle_manifest(out_dir, run_id, bundle_profile)?;
         let zip_path = if zip {
-            let z = zip_path_for_profile(out_dir, bundle_profile);
+            let z = zip_path_for_profile(out_dir, bundle_profile.as_str());
             write_zip(out_dir, &z, bundle_profile)?;
             Some(z)
         } else {
@@ -253,7 +257,7 @@ impl<'a> Engine<'a> {
                 workstreams_yaml: ws_path,
                 ledger_events_jsonl: ledger_path,
                 coverage_manifest_json: coverage_path,
-                bundle_manifest_json: out_dir.join("bundle.manifest.json"),
+                bundle_manifest_json: paths.bundle_manifest(),
                 zip_path,
             },
             ws_source,
@@ -276,6 +280,7 @@ impl<'a> Engine<'a> {
 
         let events = ingest.events;
         let coverage = ingest.coverage;
+        let paths = RunArtifactPaths::new(out_dir);
 
         // Load existing workstreams — error if none exist
         let workstreams = if WorkstreamManager::has_curated(out_dir) {
@@ -301,9 +306,9 @@ impl<'a> Engine<'a> {
         };
 
         // Write canonical outputs
-        let ledger_path = out_dir.join("ledger.events.jsonl");
-        let coverage_path = out_dir.join("coverage.manifest.json");
-        let packet_path = out_dir.join("packet.md");
+        let ledger_path = paths.ledger_events();
+        let coverage_path = paths.coverage_manifest();
+        let packet_path = paths.packet_md();
 
         write_events_jsonl(&ledger_path, &events)?;
         write_coverage_manifest(&coverage_path, &coverage)?;
@@ -347,7 +352,7 @@ impl<'a> Engine<'a> {
         let run_id = &coverage.run_id;
         let _bundle = write_bundle_manifest(out_dir, run_id, bundle_profile)?;
         let zip_path = if zip {
-            let z = zip_path_for_profile(out_dir, bundle_profile);
+            let z = zip_path_for_profile(out_dir, bundle_profile.as_str());
             write_zip(out_dir, &z, bundle_profile)?;
             Some(z)
         } else {
@@ -360,7 +365,7 @@ impl<'a> Engine<'a> {
             workstreams_yaml: ws_path,
             ledger_events_jsonl: ledger_path,
             coverage_manifest_json: coverage_path,
-            bundle_manifest_json: out_dir.join("bundle.manifest.json"),
+            bundle_manifest_json: paths.bundle_manifest(),
             zip_path,
         })
     }
@@ -376,7 +381,7 @@ impl<'a> Engine<'a> {
         workstreams: &WorkstreamsFile,
         coverage: &CoverageManifest,
     ) -> Result<()> {
-        let prof_dir = out_dir.join("profiles").join(profile);
+        let prof_dir = out_dir.join(DIR_PROFILES).join(profile);
         std::fs::create_dir_all(&prof_dir)?;
 
         let red_events = self.redactor.redact_events(events, profile)?;
@@ -389,20 +394,31 @@ impl<'a> Engine<'a> {
             &red_ws,
             coverage,
         )?;
-        std::fs::write(prof_dir.join("packet.md"), md)?;
+        std::fs::write(prof_dir.join(FILE_PACKET_MD), md)?;
         Ok(())
     }
-}
 
-/// Compute the zip file path based on bundle profile.
-/// `Internal` -> `<run_dir>.zip`, others -> `<run_dir>.<profile>.zip`.
-fn zip_path_for_profile(out_dir: &Path, profile: &BundleProfile) -> PathBuf {
-    match profile {
-        BundleProfile::Internal => out_dir.with_extension("zip"),
-        _ => {
-            let stem = out_dir.file_name().unwrap_or_default().to_string_lossy();
-            let name = format!("{}.{}.zip", stem, profile.as_str());
-            out_dir.with_file_name(name)
+    /// Merge events from multiple sources with deduplication and conflict resolution.
+    ///
+    /// This function:
+    /// - Deduplicates events by ID
+    /// - Resolves conflicts for events that appear in multiple sources
+    /// - Merges coverage manifests from all sources
+    /// - Sorts events by timestamp
+    pub fn merge(
+        &self,
+        ingest_outputs: Vec<IngestOutput>,
+        resolution: ConflictResolution,
+    ) -> Result<IngestOutput> {
+        #[cfg(feature = "merge-pipeline")]
+        {
+            let merged = shiplog_merge::merge_ingest_outputs(&ingest_outputs, resolution)?;
+            Ok(merged.ingest_output)
+        }
+
+        #[cfg(not(feature = "merge-pipeline"))]
+        {
+            shiplog_merge::merge_ingest_outputs_legacy(&ingest_outputs, resolution)
         }
     }
 }
@@ -412,6 +428,7 @@ mod tests {
     use super::*;
     use chrono::{NaiveDate, TimeZone, Utc};
     use shiplog_ids::{EventId, RunId};
+    use shiplog_output_layout::{PROFILE_MANAGER, PROFILE_PUBLIC};
     use shiplog_ports::IngestOutput;
     use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
     use shiplog_schema::event::*;
@@ -482,7 +499,7 @@ mod tests {
 
     fn test_engine() -> Engine<'static> {
         let renderer: &'static dyn shiplog_ports::Renderer =
-            Box::leak(Box::new(shiplog_render_md::MarkdownRenderer));
+            Box::leak(Box::new(shiplog_render_md::MarkdownRenderer::default()));
         let clusterer: &'static dyn shiplog_ports::WorkstreamClusterer =
             Box::leak(Box::new(shiplog_workstreams::RepoClusterer));
         let redactor: &'static dyn shiplog_ports::Redactor = Box::leak(Box::new(
@@ -524,11 +541,19 @@ mod tests {
             "bundle.manifest.json missing"
         );
         assert!(
-            out_dir.join("profiles/manager/packet.md").exists(),
+            out_dir
+                .join(DIR_PROFILES)
+                .join(PROFILE_MANAGER)
+                .join(FILE_PACKET_MD)
+                .exists(),
             "manager profile missing"
         );
         assert!(
-            out_dir.join("profiles/public/packet.md").exists(),
+            out_dir
+                .join(DIR_PROFILES)
+                .join(PROFILE_PUBLIC)
+                .join(FILE_PACKET_MD)
+                .exists(),
             "public profile missing"
         );
     }
@@ -564,13 +589,13 @@ mod tests {
 
     #[test]
     fn zip_path_internal_uses_plain_extension() {
-        let p = zip_path_for_profile(Path::new("/tmp/run_123"), &BundleProfile::Internal);
+        let p = zip_path_for_profile(Path::new("/tmp/run_123"), "internal");
         assert_eq!(p, Path::new("/tmp/run_123.zip"));
     }
 
     #[test]
     fn zip_path_manager_includes_profile_name() {
-        let p = zip_path_for_profile(Path::new("/tmp/run_123"), &BundleProfile::Manager);
+        let p = zip_path_for_profile(Path::new("/tmp/run_123"), "manager");
         assert_eq!(p, Path::new("/tmp/run_123.manager.zip"));
     }
 }

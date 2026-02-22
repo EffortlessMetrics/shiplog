@@ -1,0 +1,22 @@
+[package]
+name = "shiplog-queue"
+version = "0.2.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Message queue abstractions for shiplog async task processing."
+readme = "README.md"
+documentation = "https://docs.rs/shiplog-queue"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["queue", "messaging", "async", "buffer", "channel"]
+categories = ["asynchronous", "development-tools"]
+
+[dependencies]
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true

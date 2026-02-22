@@ -17,6 +17,7 @@ categories = ["parser-implementations", "development-tools"]
 anyhow.workspace = true
 serde_json.workspace = true
 shiplog-ports = { path = "../shiplog-ports", version = "0.2.1" }
+shiplog-output-layout = { path = "../shiplog-output-layout", version = "0.2.1" }
 shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
 
 [dev-dependencies]

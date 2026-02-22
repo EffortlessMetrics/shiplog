@@ -1,0 +1,19 @@
+[package]
+name = "shiplog-priorityqueue"
+version = "0.2.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Priority queue implementation for shiplog."
+readme = "README.md"
+documentation = "https://docs.rs/shiplog-priorityqueue"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["priority-queue", "heap", "data-structure", "scheduling"]
+categories = ["data-structures", "development-tools"]
+
+[dependencies]
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true

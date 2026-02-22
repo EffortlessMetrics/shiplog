@@ -1,0 +1,20 @@
+[package]
+name = "shiplog-time"
+version = "0.2.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Time utilities and helpers for shiplog."
+readme = "README.md"
+documentation = "https://docs.rs/shiplog-time"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["time", "date", "datetime", "utilities"]
+categories = ["caching", "development-tools"]
+
+[dependencies]
+anyhow.workspace = true
+chrono.workspace = true
+serde.workspace = true
+serde_json.workspace = true

@@ -1,0 +1,21 @@
+[package]
+name = "shiplog-validate"
+version = "0.2.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Validation logic for shiplog events and packets."
+readme = "README.md"
+documentation = "https://docs.rs/shiplog-validate"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["validation", "events", "packets"]
+categories = ["data-structures", "development-tools"]
+
+[dependencies]
+serde.workspace = true
+anyhow.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true

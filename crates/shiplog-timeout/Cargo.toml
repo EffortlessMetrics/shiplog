@@ -1,0 +1,13 @@
+[package]
+name = "shiplog-timeout"
+version = "0.2.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Timeout utilities for shiplog."
+readme = "README.md"
+
+[dependencies]
+tokio = { version = "1.49.0", features = ["rt", "macros", "time", "sync"] }
+anyhow.workspace = true

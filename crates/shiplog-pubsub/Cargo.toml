@@ -1,0 +1,22 @@
+[package]
+name = "shiplog-pubsub"
+version = "0.2.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Pub/sub messaging utilities for shiplog event distribution."
+readme = "README.md"
+documentation = "https://docs.rs/shiplog-pubsub"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["pubsub", "messaging", "events", "publish", "subscribe"]
+categories = ["asynchronous", "development-tools"]
+
+[dependencies]
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true

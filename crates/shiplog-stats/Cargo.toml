@@ -1,0 +1,18 @@
+[package]
+name = "shiplog-stats"
+version = "0.2.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Statistics and analytics on events/workstreams."
+readme = "README.md"
+
+[dependencies]
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+chrono.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

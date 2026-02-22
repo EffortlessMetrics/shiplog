@@ -14,8 +14,9 @@ keywords = ["cli", "github", "self-review", "workstreams", "redaction"]
 categories = ["command-line-utilities", "development-tools"]
 
 [features]
-default = []
+default = ["llm"]
 llm = ["dep:shiplog-cluster-llm"]
+team = ["dep:shiplog-team"]
 
 [dependencies]
 anyhow.workspace = true
@@ -23,6 +24,7 @@ clap.workspace = true
 chrono.workspace = true
 shiplog-engine = { path = "../../crates/shiplog-engine", version = "0.2.1" }
 shiplog-ingest-github = { path = "../../crates/shiplog-ingest-github", version = "0.2.1" }
+shiplog-ingest-git = { path = "../../crates/shiplog-ingest-git", version = "0.2.1" }
 shiplog-ingest-json = { path = "../../crates/shiplog-ingest-json", version = "0.2.1" }
 shiplog-ingest-manual = { path = "../../crates/shiplog-ingest-manual", version = "0.2.1" }
 shiplog-render-md = { path = "../../crates/shiplog-render-md", version = "0.2.1" }
@@ -31,5 +33,6 @@ shiplog-redact = { path = "../../crates/shiplog-redact", version = "0.2.1" }
 shiplog-ports = { path = "../../crates/shiplog-ports", version = "0.2.1" }
 shiplog-schema = { path = "../../crates/shiplog-schema", version = "0.2.1" }
 shiplog-cluster-llm = { path = "../../crates/shiplog-cluster-llm", version = "0.2.1", optional = true }
+shiplog-team = { path = "../../crates/shiplog-team", version = "0.2.1", optional = true }
 
 

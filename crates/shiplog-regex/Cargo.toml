@@ -1,0 +1,13 @@
+[package]
+name = "shiplog-regex"
+version = "0.2.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Regex utilities for shiplog."
+readme = "README.md"
+
+[dependencies]
+regex = "1.11"
+anyhow.workspace = true

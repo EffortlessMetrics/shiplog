@@ -1,0 +1,13 @@
+[package]
+name = "shiplog-actor"
+version = "0.2.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Actor model utilities for shiplog."
+readme = "README.md"
+
+[dependencies]
+tokio = { version = "1.49.0", features = ["rt", "macros", "sync"] }
+anyhow.workspace = true

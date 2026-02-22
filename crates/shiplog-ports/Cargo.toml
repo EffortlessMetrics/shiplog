@@ -17,4 +17,8 @@ categories = ["development-tools", "rust-patterns"]
 anyhow.workspace = true
 shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
 
-
+[dev-dependencies]
+chrono.workspace = true
+tokio.workspace = true
+shiplog-ids = { path = "../shiplog-ids", version = "0.2.1" }
+shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }

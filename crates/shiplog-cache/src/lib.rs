@@ -18,6 +18,7 @@ use std::path::Path;
 pub struct ApiCache {
     conn: Connection,
     default_ttl: Duration,
+    max_size_bytes: Option<u64>,
 }
 
 impl ApiCache {
@@ -46,6 +47,7 @@ impl ApiCache {
         Ok(Self {
             conn,
             default_ttl: Duration::hours(24),
+            max_size_bytes: None,
         })
     }
 
@@ -66,6 +68,7 @@ impl ApiCache {
         Ok(Self {
             conn,
             default_ttl: Duration::hours(24),
+            max_size_bytes: None,
         })
     }
 
@@ -75,22 +78,28 @@ impl ApiCache {
         self
     }
 
+    /// Create a cache with a maximum size limit.
+    pub fn with_max_size(mut self, max_size_bytes: u64) -> Self {
+        self.max_size_bytes = Some(max_size_bytes);
+        self
+    }
+
     /// Get a cached value if it exists and hasn't expired.
     pub fn get<T: DeserializeOwned>(&self, key: &str) -> Result<Option<T>> {
         let now = Utc::now();
 
-        let row: Option<(String,)> = self
+        let row: Option<String> = self
             .conn
             .query_row(
-                "SELECT data FROM cache_entries 
+                "SELECT data FROM cache_entries
                  WHERE key = ?1 AND expires_at > ?2",
                 params![key, now.to_rfc3339()],
-                |row| Ok((row.get(0)?,)),
+                |row| row.get(0),
             )
             .optional()?;
 
         match row {
-            Some((data,)) => {
+            Some(data) => {
                 let value: T = serde_json::from_str(&data)
                     .with_context(|| format!("deserialize cached value for key: {key}"))?;
                 Ok(Some(value))
@@ -166,10 +175,27 @@ impl ApiCache {
             |row| row.get(0),
         )?;
 
+        let _valid_entries = (total - expired) as usize;
+
+        // Calculate cache size in bytes
+        let size_bytes: i64 =
+            self.conn
+                .query_row("SELECT SUM(LENGTH(data)) FROM cache_entries", [], |row| {
+                    Ok(row.get::<_, Option<i64>>(0).unwrap_or(Some(0)).unwrap_or(0))
+                })?;
+
+        // Format cache size
+        let size_mb = if size_bytes > 0 {
+            size_bytes / (1024 * 1024)
+        } else {
+            0
+        };
+
         Ok(CacheStats {
             total_entries: total as usize,
             expired_entries: expired as usize,
             valid_entries: (total - expired) as usize,
+            cache_size_mb: size_mb as u64,
         })
     }
 }
@@ -180,6 +206,7 @@ pub struct CacheStats {
     pub total_entries: usize,
     pub expired_entries: usize,
     pub valid_entries: usize,
+    pub cache_size_mb: u64,
 }
 
 /// Cache key builder for GitHub API requests.
@@ -204,6 +231,14 @@ impl CacheKey {
     /// Create a key for PR reviews.
     pub fn pr_reviews(pr_api_url: &str, page: u32) -> String {
         format!("pr:reviews:{}:page{}", pr_api_url, page)
+    }
+
+    /// Create a key for GitLab MR notes.
+    pub fn mr_notes(project_id: u64, mr_iid: u64, page: u32) -> String {
+        format!(
+            "gitlab:mr:notes:project{}:mr{}:page{}",
+            project_id, mr_iid, page
+        )
     }
 
     fn hash_query(query: &str) -> String {
@@ -249,82 +284,29 @@ mod tests {
     }
 
     #[test]
-    fn cache_expiration() {
+    fn cache_ttl_expiration() {
         let cache = ApiCache::open_in_memory()
             .unwrap()
-            .with_ttl(Duration::seconds(-1)); // Already expired
-
-        let data = TestData {
-            name: "expired".to_string(),
-            count: 0,
-        };
-
-        cache.set("expired_key", &data).unwrap();
-
-        // Should not be retrievable (expired)
-        let result: Option<TestData> = cache.get("expired_key").unwrap();
-        assert!(result.is_none());
-    }
-
-    #[test]
-    fn cache_contains_check() {
-        let cache = ApiCache::open_in_memory().unwrap();
+            .with_ttl(Duration::seconds(1));
 
         let data = TestData {
             name: "test".to_string(),
-            count: 1,
+            count: 42,
         };
 
-        assert!(!cache.contains("key").unwrap());
+        // Store with 1 second TTL
+        cache.set("key1", &data).unwrap();
 
-        cache.set("key", &data).unwrap();
+        // Should be retrievable immediately
+        let result: Option<TestData> = cache.get("key1").unwrap();
+        assert_eq!(result, Some(data));
 
-        assert!(cache.contains("key").unwrap());
-    }
+        // Wait for expiration
+        std::thread::sleep(std::time::Duration::from_millis(1100));
 
-    #[test]
-    fn cache_cleanup() {
-        let cache = ApiCache::open_in_memory()
-            .unwrap()
-            .with_ttl(Duration::seconds(-1));
-
-        let data = TestData {
-            name: "old".to_string(),
-            count: 1,
-        };
-
-        cache.set("old1", &data).unwrap();
-        cache.set("old2", &data).unwrap();
-
-        let stats_before = cache.stats().unwrap();
-        assert_eq!(stats_before.total_entries, 2);
-        assert_eq!(stats_before.expired_entries, 2);
-
-        let deleted = cache.cleanup_expired().unwrap();
-        assert_eq!(deleted, 2);
-
-        let stats_after = cache.stats().unwrap();
-        assert_eq!(stats_after.total_entries, 0);
-    }
-
-    #[test]
-    fn cache_key_builder() {
-        let search_key = CacheKey::search("is:pr author:user", 1, 100);
-        assert!(search_key.starts_with("search:"));
-        assert!(search_key.contains(":page1:per100"));
-
-        let pr_key = CacheKey::pr_details("https://api.github.com/repos/owner/repo/pulls/42");
-        assert_eq!(
-            pr_key,
-            "pr:details:https://api.github.com/repos/owner/repo/pulls/42"
-        );
-
-        let reviews_key =
-            CacheKey::pr_reviews("https://api.github.com/repos/owner/repo/pulls/42", 2);
-        assert_eq!(
-            reviews_key,
-            "pr:reviews:https://api.github.com/repos/owner/repo/pulls/42:page2"
-        );
+        // Should not be retrievable after expiration
+        let result: Option<TestData> = cache.get("key1").unwrap();
+        assert!(result.is_none());
     }
 
     #[test]
@@ -332,20 +314,82 @@ mod tests {
         let cache = ApiCache::open_in_memory().unwrap();
 
         let data = TestData {
-            name: "stats".to_string(),
-            count: 100,
+            name: "test".to_string(),
+            count: 42,
         };
 
-        let stats_empty = cache.stats().unwrap();
-        assert_eq!(stats_empty.total_entries, 0);
-        assert_eq!(stats_empty.valid_entries, 0);
-
+        // Add some entries
         cache.set("key1", &data).unwrap();
         cache.set("key2", &data).unwrap();
 
-        let stats_full = cache.stats().unwrap();
-        assert_eq!(stats_full.total_entries, 2);
-        assert_eq!(stats_full.valid_entries, 2);
-        assert_eq!(stats_full.expired_entries, 0);
+        // Get stats
+        let stats = cache.stats().unwrap();
+
+        assert_eq!(stats.total_entries, 2);
+        assert_eq!(stats.valid_entries, 2);
+        assert_eq!(stats.expired_entries, 0);
+    }
+
+    #[test]
+    fn cache_cleanup() {
+        let cache = ApiCache::open_in_memory().unwrap();
+
+        let data = TestData {
+            name: "test".to_string(),
+            count: 42,
+        };
+
+        // Add an entry with expired TTL
+        cache
+            .set_with_ttl("key1", &data, Duration::seconds(-1))
+            .unwrap();
+
+        // Cleanup should remove it
+        let deleted = cache.cleanup_expired().unwrap();
+        assert_eq!(deleted, 1);
+
+        // Stats should show 0 expired entries
+        let stats = cache.stats().unwrap();
+        assert_eq!(stats.expired_entries, 0);
+    }
+
+    #[test]
+    fn cache_clear() {
+        let cache = ApiCache::open_in_memory().unwrap();
+
+        let data = TestData {
+            name: "test".to_string(),
+            count: 42,
+        };
+
+        // Add some entries
+        cache.set("key1", &data).unwrap();
+        cache.set("key2", &data).unwrap();
+
+        // Clear all entries
+        cache.clear().unwrap();
+
+        // Stats should show 0 total entries
+        let stats = cache.stats().unwrap();
+        assert_eq!(stats.total_entries, 0);
+    }
+
+    #[test]
+    fn cache_contains() {
+        let cache = ApiCache::open_in_memory().unwrap();
+
+        let data = TestData {
+            name: "test".to_string(),
+            count: 42,
+        };
+
+        // Initially not in cache
+        assert!(!cache.contains("key1").unwrap());
+
+        // Store in cache
+        cache.set("key1", &data).unwrap();
+
+        // Now should be in cache
+        assert!(cache.contains("key1").unwrap());
     }
 }

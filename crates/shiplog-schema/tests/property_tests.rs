@@ -69,7 +69,7 @@ proptest! {
 proptest! {
     // Test that SourceSystem enum preserves variant information
     #[test]
-    fn prop_source_system_roundtrip(source in shiplog_testkit::proptest::strategy_source_system()) {
+    fn prop_source_system_roundtrip(source in shiplog_testkit::proptest::base_strategy_source_system()) {
         let json = serde_json::to_string(&source).unwrap();
         let deserialized: SourceSystem = serde_json::from_str(&json).unwrap();
         prop_assert_eq!(source, deserialized);
