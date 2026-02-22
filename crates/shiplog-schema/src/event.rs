@@ -359,6 +359,16 @@ mod tests {
             assert_eq!(display, serialized, "Display vs serde for {:?}", variant);
         }
     }
+
+    #[test]
+    fn source_system_rejects_wrong_type_with_expecting_message() {
+        let result = serde_json::from_str::<SourceSystem>("42");
+        let err = result.unwrap_err().to_string();
+        assert!(
+            err.contains("a source system string or object"),
+            "expected 'expecting' message in error, got: {err}"
+        );
+    }
 }
 
 /// File format for manual_events.yaml
