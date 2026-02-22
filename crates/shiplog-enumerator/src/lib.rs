@@ -56,15 +56,32 @@ impl Default for EnumerationBuilder {
 pub struct Enumerate<I> {
     iter: I,
     index: usize,
+    step: usize,
 }
 
 impl<I> Enumerate<I> {
     pub fn new(iter: I) -> Self {
-        Self { iter, index: 0 }
+        Self {
+            iter,
+            index: 0,
+            step: 1,
+        }
     }
 
     pub fn with_start(iter: I, start: usize) -> Self {
-        Self { iter, index: start }
+        Self {
+            iter,
+            index: start,
+            step: 1,
+        }
+    }
+
+    pub fn with_config(iter: I, config: &EnumerationConfig) -> Self {
+        Self {
+            iter,
+            index: config.start_index,
+            step: config.step,
+        }
     }
 }
 
@@ -75,7 +92,7 @@ impl<I: Iterator> Iterator for Enumerate<I> {
         match self.iter.next() {
             Some(item) => {
                 let idx = self.index;
-                self.index += 1;
+                self.index += self.step;
                 Some((idx, item))
             }
             None => None,
@@ -136,6 +153,7 @@ impl<I: Iterator> Iterator for LabeledEnumerate<I> {
 pub trait EnumerateExt: Iterator + Sized {
     fn enumerate_items(self) -> Enumerate<Self>;
     fn enumerate_from(self, start: usize) -> Enumerate<Self>;
+    fn enumerate_with_config(self, config: &EnumerationConfig) -> Enumerate<Self>;
     fn enumerate_labeled(self, labels: Vec<String>) -> LabeledEnumerate<Self>;
 }
 
@@ -146,6 +164,10 @@ impl<I: Iterator + Sized> EnumerateExt for I {
 
     fn enumerate_from(self, start: usize) -> Enumerate<Self> {
         Enumerate::with_start(self, start)
+    }
+
+    fn enumerate_with_config(self, config: &EnumerationConfig) -> Enumerate<Self> {
+        Enumerate::with_config(self, config)
     }
 
     fn enumerate_labeled(self, labels: Vec<String>) -> LabeledEnumerate<Self> {
@@ -186,6 +208,24 @@ mod tests {
         let enumerated: Vec<_> = items.into_iter().enumerate_from(10).collect();
 
         assert_eq!(enumerated, vec![(10, "a"), (11, "b"), (12, "c")]);
+    }
+
+    #[test]
+    fn test_enumerate_with_step() {
+        let config = EnumerationBuilder::new().start_index(0).step(2).build();
+        let items = vec!["a", "b", "c"];
+        let enumerated: Vec<_> = items.into_iter().enumerate_with_config(&config).collect();
+
+        assert_eq!(enumerated, vec![(0, "a"), (2, "b"), (4, "c")]);
+    }
+
+    #[test]
+    fn test_enumerate_with_start_and_step() {
+        let config = EnumerationBuilder::new().start_index(10).step(5).build();
+        let items = vec!["a", "b", "c"];
+        let enumerated: Vec<_> = items.into_iter().enumerate_with_config(&config).collect();
+
+        assert_eq!(enumerated, vec![(10, "a"), (15, "b"), (20, "c")]);
     }
 
     #[test]

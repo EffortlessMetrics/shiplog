@@ -26,7 +26,6 @@ impl Default for CollectorConfig {
 pub struct Collector<T> {
     items: VecDeque<T>,
     batch_size: usize,
-    count: usize,
     name: String,
 }
 
@@ -35,7 +34,6 @@ impl<T> Collector<T> {
         Self {
             items: VecDeque::new(),
             batch_size,
-            count: 0,
             name: "collector".to_string(),
         }
     }
@@ -44,14 +42,12 @@ impl<T> Collector<T> {
         Self {
             items: VecDeque::new(),
             batch_size: config.batch_size,
-            count: 0,
             name: config.name.clone(),
         }
     }
 
     pub fn push(&mut self, item: T) {
         self.items.push_back(item);
-        self.count += 1;
     }
 
     pub fn push_batch(&mut self, batch: Vec<T>) {
@@ -65,7 +61,7 @@ impl<T> Collector<T> {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.count == 0
+        self.items.is_empty()
     }
 
     pub fn is_batch_ready(&self) -> bool {
@@ -89,7 +85,6 @@ impl<T> Collector<T> {
         while let Some(item) = self.items.pop_front() {
             items.push(item);
         }
-        self.count = 0;
         items
     }
 
@@ -238,5 +233,19 @@ mod tests {
         let items = c.into_inner();
 
         assert_eq!(items, vec![1, 2]);
+    }
+
+    #[test]
+    fn test_collector_is_empty_after_drain_batch() {
+        let mut collector: Collector<i32> = Collector::new(3);
+
+        collector.push(1);
+        collector.push(2);
+        collector.push(3);
+
+        let _ = collector.drain_batch();
+
+        assert!(collector.is_empty());
+        assert_eq!(collector.len(), 0);
     }
 }

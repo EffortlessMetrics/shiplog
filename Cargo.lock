@@ -3236,14 +3236,13 @@ version = "0.2.1"
 dependencies = [
  "anyhow",
  "chrono",
- "serde",
  "serde_json",
  "shiplog-ids",
  "shiplog-merge",
  "shiplog-ports",
  "shiplog-schema",
  "shiplog-team-core",
- "shiplog-template",
+ "shiplog-team-render",
  "tempfile",
 ]
 
@@ -3255,6 +3254,20 @@ dependencies = [
  "chrono",
  "serde",
  "serde_yaml_ng",
+]
+
+[[package]]
+name = "shiplog-team-render"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "serde",
+ "shiplog-ids",
+ "shiplog-schema",
+ "shiplog-team-core",
+ "shiplog-template",
+ "tempfile",
 ]
 
 [[package]]

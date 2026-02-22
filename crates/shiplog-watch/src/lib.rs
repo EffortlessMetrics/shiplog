@@ -73,20 +73,64 @@ impl FileWatcher {
         })
     }
 
-    /// Try to receive a file change event (non-blocking)
+    /// Try to receive a file change event (non-blocking).
+    ///
+    /// Skips noise events (e.g. metadata/access on Linux) that `convert_event`
+    /// maps to `None`.
     pub fn try_recv(&self) -> Option<FileChange> {
-        self.receiver
-            .try_recv()
-            .ok()
-            .and_then(|result| result.ok().and_then(convert_event))
+        loop {
+            match self.receiver.try_recv() {
+                Ok(result) => {
+                    if let Some(change) = result.ok().and_then(convert_event) {
+                        return Some(change);
+                    }
+                    // Noise event — try again without blocking
+                }
+                Err(_) => return None,
+            }
+        }
     }
 
-    /// Receive a file change event (blocking)
+    /// Receive a file change event (blocking).
+    ///
+    /// Skips noise events (e.g. metadata/access on Linux) that `convert_event`
+    /// maps to `None`.
     pub fn recv(&self) -> Option<FileChange> {
-        self.receiver
-            .recv()
-            .ok()
-            .and_then(|result| result.ok().and_then(convert_event))
+        loop {
+            match self.receiver.recv() {
+                Ok(result) => {
+                    if let Some(change) = result.ok().and_then(convert_event) {
+                        return Some(change);
+                    }
+                    // Noise event — keep waiting
+                }
+                Err(_) => return None,
+            }
+        }
+    }
+
+    /// Receive a file change event with a timeout.
+    ///
+    /// Skips noise events (e.g. metadata/access on Linux) that `convert_event`
+    /// maps to `None`, retrying until a real event arrives or the timeout
+    /// expires.
+    pub fn recv_timeout(&self, timeout: Duration) -> Option<FileChange> {
+        let deadline = std::time::Instant::now() + timeout;
+        loop {
+            let remaining = deadline.saturating_duration_since(std::time::Instant::now());
+            if remaining.is_zero() {
+                return None;
+            }
+            match self.receiver.recv_timeout(remaining) {
+                Ok(result) => {
+                    if let Some(change) = result.ok().and_then(convert_event) {
+                        return Some(change);
+                    }
+                    // Noise event — retry with remaining time
+                }
+                Err(_) => return None,
+            }
+        }
     }
 }
 
@@ -149,7 +193,7 @@ mod tests {
         fs::write(&file_path, "test content").unwrap();
 
         // Try to receive the event
-        let event = watcher.recv();
+        let event = watcher.recv_timeout(Duration::from_secs(2));
         assert!(event.is_some());
 
         let event = event.unwrap();
@@ -179,7 +223,7 @@ mod tests {
         fs::write(&file_path, "modified").unwrap();
 
         // Try to receive the event
-        let event = watcher.recv();
+        let event = watcher.recv_timeout(Duration::from_secs(2));
         assert!(event.is_some());
 
         let event = event.unwrap();
@@ -209,7 +253,7 @@ mod tests {
         fs::remove_file(&file_path).unwrap();
 
         // Try to receive the event
-        let event = watcher.recv();
+        let event = watcher.recv_timeout(Duration::from_secs(2));
         assert!(event.is_some());
 
         let event = event.unwrap();
