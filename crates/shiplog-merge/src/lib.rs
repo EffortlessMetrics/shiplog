@@ -98,7 +98,11 @@ pub fn merge_events(
     }
 
     let mut result: Vec<EventEnvelope> = events_by_id.into_values().collect();
-    result.sort_by(|a, b| a.occurred_at.cmp(&b.occurred_at));
+    result.sort_by(|a, b| {
+        a.occurred_at
+            .cmp(&b.occurred_at)
+            .then_with(|| a.id.0.cmp(&b.id.0))
+    });
     result
 }
 
@@ -235,7 +239,11 @@ pub fn merge_ingest_outputs_legacy(
         }
     }
 
-    merged_events.sort_by_key(|e| e.occurred_at);
+    merged_events.sort_by(|a, b| {
+        a.occurred_at
+            .cmp(&b.occurred_at)
+            .then_with(|| a.id.0.cmp(&b.id.0))
+    });
     all_sources.sort();
     all_sources.dedup();
 

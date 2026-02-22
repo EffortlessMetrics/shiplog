@@ -358,31 +358,42 @@ fn build_clusterer(
     llm_api_key: Option<String>,
 ) -> Box<dyn shiplog_ports::WorkstreamClusterer> {
     if llm_cluster {
-        eprintln!(
-            "WARN: --llm-cluster sends event summaries (PR titles, repo names) to {llm_api_endpoint}"
-        );
-        let api_key = llm_api_key
-            .or_else(|| std::env::var("SHIPLOG_LLM_API_KEY").ok())
-            .unwrap_or_else(|| {
-                eprintln!("ERROR: --llm-cluster requires --llm-api-key or SHIPLOG_LLM_API_KEY");
-                std::process::exit(1);
-            });
+        #[cfg(feature = "llm")]
+        {
+            eprintln!(
+                "WARN: --llm-cluster sends event summaries (PR titles, repo names) to {llm_api_endpoint}"
+            );
+            let api_key = llm_api_key
+                .or_else(|| std::env::var("SHIPLOG_LLM_API_KEY").ok())
+                .unwrap_or_else(|| {
+                    eprintln!("ERROR: --llm-cluster requires --llm-api-key or SHIPLOG_LLM_API_KEY");
+                    std::process::exit(1);
+                });
 
-        let backend = shiplog_cluster_llm::OpenAiCompatibleBackend {
-            endpoint: llm_api_endpoint.to_string(),
-            api_key,
-            model: llm_model.to_string(),
-            temperature: 0.2,
-            timeout_secs: 60,
-        };
-        let config = shiplog_cluster_llm::LlmConfig {
-            api_endpoint: llm_api_endpoint.to_string(),
-            api_key: String::new(),
-            model: llm_model.to_string(),
-            ..Default::default()
-        };
-        let llm = shiplog_cluster_llm::LlmClusterer::new(Box::new(backend), config);
-        Box::new(shiplog_cluster_llm::LlmWithFallback::new(llm))
+            let backend = shiplog_cluster_llm::OpenAiCompatibleBackend {
+                endpoint: llm_api_endpoint.to_string(),
+                api_key,
+                model: llm_model.to_string(),
+                temperature: 0.2,
+                timeout_secs: 60,
+            };
+            let config = shiplog_cluster_llm::LlmConfig {
+                api_endpoint: llm_api_endpoint.to_string(),
+                api_key: String::new(),
+                model: llm_model.to_string(),
+                ..Default::default()
+            };
+            let llm = shiplog_cluster_llm::LlmClusterer::new(Box::new(backend), config);
+            Box::new(shiplog_cluster_llm::LlmWithFallback::new(llm))
+        }
+        #[cfg(not(feature = "llm"))]
+        {
+            let _ = (llm_api_endpoint, llm_model, llm_api_key);
+            eprintln!(
+                "ERROR: --llm-cluster requires the 'llm' feature. Rebuild with: cargo build -p shiplog --features llm"
+            );
+            std::process::exit(1);
+        }
     } else {
         Box::new(RepoClusterer)
     }

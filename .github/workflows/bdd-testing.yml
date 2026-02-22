@@ -332,6 +332,8 @@ jobs:
         run: cargo test -p shiplog-team
       - name: Test shiplog-team-aggregate
         run: cargo test -p shiplog-team-aggregate
+      - name: Test shiplog-team-render
+        run: cargo test -p shiplog-team-render
 
       - name: Test shiplog-cron
         run: cargo test -p shiplog-cron
@@ -789,6 +791,7 @@ jobs:
           echo "  - ports_tests.rs (integration tests)" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog-team (unit tests)" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog-team-aggregate (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-team-render (unit tests)" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog-cron (unit tests)" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog-tui (unit tests)" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog-web (unit tests)" >> $GITHUB_STEP_SUMMARY

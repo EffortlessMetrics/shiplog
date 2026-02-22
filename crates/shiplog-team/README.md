@@ -5,6 +5,8 @@ Team aggregation mode for generating team-level shipping summaries from multiple
 `shiplog-team` is currently the stable public façade. The runtime aggregation
 implementation has been extracted to [`shiplog-team-aggregate`](../shiplog-team-aggregate)
 to keep a clearer domain boundary and make API surfaces easier to extend.
+Packet rendering contracts are extracted in
+[`shiplog-team-render`](../shiplog-team-render).
 
 ## Overview
 

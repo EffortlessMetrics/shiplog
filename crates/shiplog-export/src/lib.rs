@@ -112,6 +112,17 @@ impl Exporter for JsonExporter {
     }
 }
 
+/// JSONL (newline-delimited JSON) exporter implementation.
+pub struct JsonlExporter;
+
+impl Exporter for JsonlExporter {
+    fn export(&self, data: &ExportData, _options: &ExportOptions) -> anyhow::Result<String> {
+        let lines: Result<Vec<String>, _> = data.events.iter().map(serde_json::to_string).collect();
+        let lines = lines.map_err(|e| anyhow::anyhow!("JSONL export failed: {}", e))?;
+        Ok(lines.join("\n"))
+    }
+}
+
 /// CSV exporter implementation.
 pub struct CsvExporter;
 
@@ -135,7 +146,8 @@ impl Exporter for CsvExporter {
 /// Export helper function.
 pub fn export_data(data: &ExportData, options: &ExportOptions) -> anyhow::Result<String> {
     let exporter: Box<dyn Exporter> = match options.format {
-        ExportFormat::Json | ExportFormat::Jsonl => Box::new(JsonExporter {}),
+        ExportFormat::Json => Box::new(JsonExporter {}),
+        ExportFormat::Jsonl => Box::new(JsonlExporter {}),
         ExportFormat::Csv => Box::new(CsvExporter {}),
         ExportFormat::Markdown => Box::new(JsonExporter {}), // Fallback to JSON
     };
@@ -220,5 +232,52 @@ mod tests {
         let result = exporter.export(&data, &options);
         assert!(result.is_ok());
         assert!(result.unwrap().contains("\"\"critical\"\""));
+    }
+
+    #[test]
+    fn export_data_jsonl() {
+        let mut data = ExportData::new("Test Export".to_string());
+        data.add_event(ExportEvent {
+            id: "evt-001".to_string(),
+            source: "github".to_string(),
+            title: "Fix bug".to_string(),
+            timestamp: "2024-01-15T10:00:00Z".to_string(),
+        });
+        data.add_event(ExportEvent {
+            id: "evt-002".to_string(),
+            source: "manual".to_string(),
+            title: "Add feature".to_string(),
+            timestamp: "2024-01-16T10:00:00Z".to_string(),
+        });
+
+        let options = ExportOptions {
+            format: ExportFormat::Jsonl,
+            pretty: false,
+            include_metadata: false,
+        };
+        let result = export_data(&data, &options);
+        assert!(result.is_ok());
+        let output = result.unwrap();
+        let lines: Vec<&str> = output.lines().collect();
+        assert_eq!(lines.len(), 2);
+        assert!(lines[0].contains("evt-001"));
+        assert!(lines[1].contains("evt-002"));
+        // Each line should be valid JSON
+        for line in &lines {
+            serde_json::from_str::<ExportEvent>(line).unwrap();
+        }
+    }
+
+    #[test]
+    fn export_data_jsonl_empty() {
+        let data = ExportData::new("Empty".to_string());
+        let options = ExportOptions {
+            format: ExportFormat::Jsonl,
+            pretty: false,
+            include_metadata: false,
+        };
+        let result = export_data(&data, &options);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "");
     }
 }

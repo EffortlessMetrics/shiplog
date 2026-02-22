@@ -37,6 +37,7 @@ members = [
   "crates/shiplog-team",
   "crates/shiplog-team-core",
   "crates/shiplog-team-aggregate",
+  "crates/shiplog-team-render",
   "crates/shiplog-cron",
   "crates/shiplog-tui",
   "crates/shiplog-web",

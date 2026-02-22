@@ -14,7 +14,6 @@ pub fn parent_pid() -> Option<u32> {
     // Note: This is not available on all platforms
     #[cfg(unix)]
     {
-        use std::os::unix::process::ParentProcessExt;
         process::Command::new("sh")
             .arg("-c")
             .arg("echo $PPID")
@@ -59,7 +58,6 @@ pub fn process_name() -> String {
 pub fn uid() -> Option<u32> {
     #[cfg(unix)]
     {
-        use std::os::unix::process::CommandExt;
         Some(
             process::Command::new("id")
                 .arg("-u")
@@ -80,7 +78,6 @@ pub fn uid() -> Option<u32> {
 pub fn username() -> Option<String> {
     #[cfg(unix)]
     {
-        use std::os::unix::process::CommandExt;
         process::Command::new("whoami")
             .output()
             .ok()
@@ -98,7 +95,6 @@ pub fn hostname() -> Option<String> {
     std::env::var("HOSTNAME").ok().or({
         #[cfg(unix)]
         {
-            use std::os::unix::process::CommandExt;
             process::Command::new("hostname")
                 .output()
                 .ok()
