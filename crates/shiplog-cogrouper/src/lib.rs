@@ -191,11 +191,12 @@ mod tests {
         let stream1 = vec![(1, "a"), (2, "b"), (3, "c")];
         let stream2 = vec![(2, "x"), (3, "y"), (4, "z")];
 
-        let common = CoGrouper::new()
+        let mut common = CoGrouper::new()
             .add_stream(stream1)
             .add_stream(stream2)
             .common_keys();
 
+        common.sort();
         assert_eq!(common, vec![2, 3]);
     }
 
