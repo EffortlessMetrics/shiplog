@@ -9,10 +9,11 @@ use serde::{Deserialize, Serialize};
 ///
 /// The tool produces multiple projections from the same ledger.
 /// Think of them as lenses, not forks.
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum RedactionProfile {
     Internal,
     Manager,
+    #[default]
     Public,
 }
 
@@ -32,12 +33,6 @@ impl RedactionProfile {
             "manager" => RedactionProfile::Manager,
             _ => RedactionProfile::Public,
         }
-    }
-}
-
-impl Default for RedactionProfile {
-    fn default() -> Self {
-        RedactionProfile::Public
     }
 }
 
