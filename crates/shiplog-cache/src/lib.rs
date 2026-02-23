@@ -4,10 +4,11 @@
 //! repeated runs. Cache entries are keyed by URL and include TTL support.
 
 use anyhow::{Context, Result};
-use chrono::{Duration, Utc};
+use chrono::Duration;
 use rusqlite::{Connection, OptionalExtension, params};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
+use shiplog_cache_expiry::{CacheExpiryWindow, now_rfc3339};
 use std::path::Path;
 
 /// Cache for GitHub API responses.
@@ -86,14 +87,14 @@ impl ApiCache {
 
     /// Get a cached value if it exists and hasn't expired.
     pub fn get<T: DeserializeOwned>(&self, key: &str) -> Result<Option<T>> {
-        let now = Utc::now();
+        let now = now_rfc3339();
 
         let row: Option<String> = self
             .conn
             .query_row(
                 "SELECT data FROM cache_entries
                  WHERE key = ?1 AND expires_at > ?2",
-                params![key, now.to_rfc3339()],
+                params![key, now],
                 |row| row.get(0),
             )
             .optional()?;
@@ -115,15 +116,19 @@ impl ApiCache {
 
     /// Store a value with a custom TTL.
     pub fn set_with_ttl<T: Serialize>(&self, key: &str, value: &T, ttl: Duration) -> Result<()> {
-        let now = Utc::now();
-        let expires = now + ttl;
+        let window = CacheExpiryWindow::from_now(ttl);
         let data = serde_json::to_string(value)
             .with_context(|| format!("serialize value for key: {key}"))?;
 
         self.conn.execute(
             "INSERT OR REPLACE INTO cache_entries (key, data, cached_at, expires_at)
              VALUES (?1, ?2, ?3, ?4)",
-            params![key, data, now.to_rfc3339(), expires.to_rfc3339()],
+            params![
+                key,
+                data,
+                window.cached_at_rfc3339(),
+                window.expires_at_rfc3339()
+            ],
         )?;
 
         Ok(())
@@ -131,12 +136,12 @@ impl ApiCache {
 
     /// Check if a key exists and hasn't expired.
     pub fn contains(&self, key: &str) -> Result<bool> {
-        let now = Utc::now();
+        let now = now_rfc3339();
 
         let count: i64 = self.conn.query_row(
             "SELECT COUNT(*) FROM cache_entries 
                  WHERE key = ?1 AND expires_at > ?2",
-            params![key, now.to_rfc3339()],
+            params![key, now],
             |row| row.get(0),
         )?;
 
@@ -145,11 +150,11 @@ impl ApiCache {
 
     /// Remove expired entries from the cache.
     pub fn cleanup_expired(&self) -> Result<usize> {
-        let now = Utc::now();
+        let now = now_rfc3339();
 
         let deleted = self.conn.execute(
             "DELETE FROM cache_entries WHERE expires_at <= ?1",
-            params![now.to_rfc3339()],
+            params![now],
         )?;
 
         Ok(deleted)
@@ -163,7 +168,7 @@ impl ApiCache {
 
     /// Get cache statistics.
     pub fn stats(&self) -> Result<CacheStats> {
-        let now = Utc::now();
+        let now = now_rfc3339();
 
         let total: i64 = self
             .conn
@@ -171,7 +176,7 @@ impl ApiCache {
 
         let expired: i64 = self.conn.query_row(
             "SELECT COUNT(*) FROM cache_entries WHERE expires_at <= ?1",
-            params![now.to_rfc3339()],
+            params![now],
             |row| row.get(0),
         )?;
 

@@ -20,6 +20,8 @@ shiplog-redaction-policy = { path = "../crates/shiplog-redaction-policy" }
 shiplog-redaction-projector = { path = "../crates/shiplog-redaction-projector" }
 shiplog-cache-key = { path = "../crates/shiplog-cache-key" }
 shiplog-cache-stats = { path = "../crates/shiplog-cache-stats" }
+shiplog-cache-expiry = { path = "../crates/shiplog-cache-expiry" }
+chrono = "0.4.44"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
 serde_yaml = { package = "serde_yaml_ng", version = "0.10.0" }
@@ -126,6 +128,13 @@ bench = false
 [[bin]]
 name = "cache_stats"
 path = "fuzz_targets/cache_stats.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "cache_expiry"
+path = "fuzz_targets/cache_expiry.rs"
 test = false
 doc = false
 bench = false

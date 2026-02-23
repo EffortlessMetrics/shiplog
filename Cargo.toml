@@ -24,6 +24,7 @@ members = [
   "crates/shiplog-cache",
   "crates/shiplog-cache-key",
   "crates/shiplog-cache-stats",
+  "crates/shiplog-cache-expiry",
   "crates/shiplog-template",
   "crates/shiplog-testkit",
   "crates/shiplog-cluster-llm",

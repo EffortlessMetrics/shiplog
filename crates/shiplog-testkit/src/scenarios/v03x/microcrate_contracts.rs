@@ -7,7 +7,8 @@
     feature = "microcrate_validate",
     feature = "microcrate_storage",
     feature = "microcrate_notify",
-    feature = "microcrate_cache_stats"
+    feature = "microcrate_cache_stats",
+    feature = "microcrate_cache_expiry"
 ))]
 use crate::bdd::assertions::assert_true;
 #[cfg(feature = "microcrate_export")]
@@ -37,6 +38,12 @@ use shiplog_cache_key::CacheKey;
 #[cfg(feature = "microcrate_cache_stats")]
 use shiplog_cache_stats::CacheStats;
 
+#[cfg(feature = "microcrate_cache_expiry")]
+use chrono::{DateTime, Duration, Utc};
+
+#[cfg(feature = "microcrate_cache_expiry")]
+use shiplog_cache_expiry::{CacheExpiryWindow, is_expired, is_valid, parse_rfc3339_utc};
+
 #[cfg(feature = "microcrate_storage")]
 use shiplog_storage::{InMemoryStorage, Storage, StorageKey};
 
@@ -50,7 +57,8 @@ use shiplog_validate::{EventValidator, Packet, PacketValidator};
     feature = "microcrate_validate",
     feature = "microcrate_storage",
     feature = "microcrate_notify",
-    feature = "microcrate_cache_stats"
+    feature = "microcrate_cache_stats",
+    feature = "microcrate_cache_expiry"
 ))]
 use crate::bdd::Scenario;
 
@@ -443,6 +451,63 @@ pub fn microcrate_cache_stats_contract() -> Scenario {
                 let expired = ctx.number("normal_expired").unwrap_or(0);
                 let valid = ctx.number("normal_valid").unwrap_or(0);
                 assert_true(valid + expired == total, "valid + expired == total")
+            },
+        )
+}
+
+#[cfg(feature = "microcrate_cache_expiry")]
+/// Scenario: cache-expiry crate keeps timestamp-window contracts stable.
+pub fn microcrate_cache_expiry_contract() -> Scenario {
+    Scenario::new("Cache-expiry crate keeps canonical timestamp window contracts stable")
+        .when(
+            "a cache window is derived from a fixed base timestamp and ttl",
+            |ctx| {
+                let base =
+                    DateTime::<Utc>::from_timestamp(1_700_000_000, 0).expect("valid timestamp");
+                let window = CacheExpiryWindow::from_base(base, Duration::seconds(90));
+                let at_expiry = base + Duration::seconds(90);
+                let before_expiry = base + Duration::seconds(89);
+
+                ctx.strings
+                    .insert("cached_at".to_string(), window.cached_at_rfc3339());
+                ctx.strings
+                    .insert("expires_at".to_string(), window.expires_at_rfc3339());
+                ctx.flags.insert(
+                    "valid_before_expiry".to_string(),
+                    is_valid(window.expires_at, before_expiry),
+                );
+                ctx.flags.insert(
+                    "expired_at_boundary".to_string(),
+                    is_expired(window.expires_at, at_expiry),
+                );
+                Ok(())
+            },
+        )
+        .then(
+            "ttl delta and boundary predicates should stay canonical",
+            |ctx| {
+                let cached_at_raw =
+                    crate::bdd::assertions::assert_present(ctx.string("cached_at"), "cached_at")?;
+                let expires_at_raw =
+                    crate::bdd::assertions::assert_present(ctx.string("expires_at"), "expires_at")?;
+
+                let cached_at = parse_rfc3339_utc(cached_at_raw)
+                    .map_err(|err| format!("cached_at should parse as RFC3339: {err}"))?;
+                let expires_at = parse_rfc3339_utc(expires_at_raw)
+                    .map_err(|err| format!("expires_at should parse as RFC3339: {err}"))?;
+
+                assert_true(
+                    expires_at - cached_at == Duration::seconds(90),
+                    "ttl delta remains exact",
+                )?;
+                assert_true(
+                    ctx.flag("valid_before_expiry").unwrap_or(false),
+                    "entry valid before expiry",
+                )?;
+                assert_true(
+                    ctx.flag("expired_at_boundary").unwrap_or(false),
+                    "entry expired at boundary",
+                )
             },
         )
 }

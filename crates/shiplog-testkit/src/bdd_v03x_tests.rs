@@ -281,6 +281,15 @@ mod v03x_tests {
             .expect("Scenario should lock cache-stats microcrate contract");
     }
 
+    #[cfg(feature = "microcrate_cache_expiry")]
+    #[test]
+    fn microcrate_contracts_scenario_cache_expiry() {
+        let scenario = microcrate_cache_expiry_contract();
+        scenario
+            .run()
+            .expect("Scenario should lock cache-expiry microcrate contract");
+    }
+
     // ===========================================================================
     // Feature 8: Configurable Packet Templates (Scenarios 8.1 - 8.10)
     // ===========================================================================
