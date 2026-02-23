@@ -2000,6 +2000,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "shiplog-alias"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "hex",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+]
+
+[[package]]
 name = "shiplog-archive"
 version = "0.2.1"
 dependencies = [
