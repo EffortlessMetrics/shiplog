@@ -2959,14 +2959,28 @@ dependencies = [
  "anyhow",
  "chrono",
  "proptest",
- "serde",
  "serde_json",
  "shiplog-alias",
  "shiplog-ids",
  "shiplog-ports",
+ "shiplog-redaction-policy",
  "shiplog-schema",
  "shiplog-testkit",
  "tempfile",
+]
+
+[[package]]
+name = "shiplog-redaction-policy"
+version = "0.2.1"
+dependencies = [
+ "chrono",
+ "proptest",
+ "serde",
+ "serde_json",
+ "shiplog-alias",
+ "shiplog-ids",
+ "shiplog-schema",
+ "shiplog-testkit",
 ]
 
 [[package]]

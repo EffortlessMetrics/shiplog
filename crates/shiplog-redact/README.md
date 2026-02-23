@@ -14,3 +14,4 @@ Deterministic structural redaction for shiplog events and workstreams.
 
 Alias mappings can be persisted to `redaction.aliases.json` for stable aliases across reruns.
 Deterministic alias/cache primitives are provided by the `shiplog-alias` microcrate.
+Profile policy rules are provided by the `shiplog-redaction-policy` microcrate.
