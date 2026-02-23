@@ -209,48 +209,7 @@ pub struct CacheStats {
     pub cache_size_mb: u64,
 }
 
-/// Cache key builder for GitHub API requests.
-pub struct CacheKey;
-
-impl CacheKey {
-    /// Create a key for a search query.
-    pub fn search(query: &str, page: u32, per_page: u32) -> String {
-        format!(
-            "search:{}:page{}:per{}",
-            Self::hash_query(query),
-            page,
-            per_page
-        )
-    }
-
-    /// Create a key for PR details.
-    pub fn pr_details(pr_api_url: &str) -> String {
-        format!("pr:details:{}", pr_api_url)
-    }
-
-    /// Create a key for PR reviews.
-    pub fn pr_reviews(pr_api_url: &str, page: u32) -> String {
-        format!("pr:reviews:{}:page{}", pr_api_url, page)
-    }
-
-    /// Create a key for GitLab MR notes.
-    pub fn mr_notes(project_id: u64, mr_iid: u64, page: u32) -> String {
-        format!(
-            "gitlab:mr:notes:project{}:mr{}:page{}",
-            project_id, mr_iid, page
-        )
-    }
-
-    fn hash_query(query: &str) -> String {
-        // Use a simple hash for the query to keep keys reasonably sized
-        use std::collections::hash_map::DefaultHasher;
-        use std::hash::{Hash, Hasher};
-
-        let mut hasher = DefaultHasher::new();
-        query.hash(&mut hasher);
-        format!("{:x}", hasher.finish())
-    }
-}
+pub use shiplog_cache_key::CacheKey;
 
 #[cfg(test)]
 mod tests {
@@ -391,5 +350,22 @@ mod tests {
 
         // Now should be in cache
         assert!(cache.contains("key1").unwrap());
+    }
+
+    #[test]
+    fn cache_key_reexport_matches_contract() {
+        let details = CacheKey::pr_details("https://api.github.com/repos/o/r/pulls/1");
+        let reviews = CacheKey::pr_reviews("https://api.github.com/repos/o/r/pulls/1", 2);
+        let notes = CacheKey::mr_notes(12, 34, 1);
+
+        assert_eq!(
+            details,
+            "pr:details:https://api.github.com/repos/o/r/pulls/1"
+        );
+        assert_eq!(
+            reviews,
+            "pr:reviews:https://api.github.com/repos/o/r/pulls/1:page2"
+        );
+        assert_eq!(notes, "gitlab:mr:notes:project12:mr34:page1");
     }
 }

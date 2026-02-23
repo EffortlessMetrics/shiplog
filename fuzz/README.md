@@ -45,6 +45,7 @@ cargo fuzz run parse_jsonl -- -dict=fuzz/dictionaries/json.dict
 | `parse_manual_events` | Manual events YAML (manual_events.yaml) | HIGH |
 | `redaction_profile` | Redaction profile parsing and canonicalization | MEDIUM |
 | `redact_policy` | Profile-based redaction policy projection | MEDIUM |
+| `cache_key` | Cache-key generation contracts and namespacing | LOW |
 
 ## Dictionaries
 
@@ -91,7 +92,7 @@ A convenience script to run all fuzzers for a short duration:
 #!/bin/bash
 # fuzz-all.sh
 
-targets=("parse_jsonl" "parse_workstreams" "parse_github_api" "parse_config" "parse_manual_events" "redaction_profile" "redact_policy")
+targets=("parse_jsonl" "parse_workstreams" "parse_github_api" "parse_config" "parse_manual_events" "redaction_profile" "redact_policy" "cache_key")
 
 for target in "${targets[@]}"; do
     echo "Fuzzing $target..."

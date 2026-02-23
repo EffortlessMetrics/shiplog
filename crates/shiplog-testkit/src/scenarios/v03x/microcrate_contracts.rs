@@ -2,6 +2,8 @@
 
 #[cfg(any(
     feature = "microcrate_export",
+    feature = "microcrate_output_layout",
+    feature = "microcrate_cache_key",
     feature = "microcrate_validate",
     feature = "microcrate_storage",
     feature = "microcrate_notify"
@@ -28,6 +30,9 @@ use std::path::Path;
 #[cfg(feature = "microcrate_notify")]
 use shiplog_notify::{Notification, NotificationService};
 
+#[cfg(feature = "microcrate_cache_key")]
+use shiplog_cache_key::CacheKey;
+
 #[cfg(feature = "microcrate_storage")]
 use shiplog_storage::{InMemoryStorage, Storage, StorageKey};
 
@@ -36,6 +41,8 @@ use shiplog_validate::{EventValidator, Packet, PacketValidator};
 
 #[cfg(any(
     feature = "microcrate_export",
+    feature = "microcrate_output_layout",
+    feature = "microcrate_cache_key",
     feature = "microcrate_validate",
     feature = "microcrate_storage",
     feature = "microcrate_notify"
@@ -306,6 +313,62 @@ pub fn microcrate_output_layout_contract() -> Scenario {
             )?;
             Ok(())
         })
+}
+
+#[cfg(feature = "microcrate_cache_key")]
+/// Scenario: cache-key crate keeps canonical key contracts stable.
+pub fn microcrate_cache_key_contract() -> Scenario {
+    Scenario::new("Cache-key crate keeps canonical key formats stable")
+        .given("canonical GitHub and GitLab request identifiers", |ctx| {
+            ctx.strings
+                .insert("query".to_string(), "is:pr author:octocat".to_string());
+            ctx.strings.insert(
+                "pr_url".to_string(),
+                "https://api.github.com/repos/octo/repo/pulls/42".to_string(),
+            );
+            ctx.numbers.insert("project_id".to_string(), 123);
+            ctx.numbers.insert("mr_iid".to_string(), 77);
+        })
+        .when(
+            "cache keys are generated for all supported request types",
+            |ctx| {
+                let query = ctx.string("query").unwrap_or("");
+                let pr_url = ctx.string("pr_url").unwrap_or("");
+                let project_id = ctx.number("project_id").unwrap_or(0);
+                let mr_iid = ctx.number("mr_iid").unwrap_or(0);
+
+                let search = CacheKey::search(query, 2, 100);
+                let details = CacheKey::pr_details(pr_url);
+                let reviews = CacheKey::pr_reviews(pr_url, 2);
+                let notes = CacheKey::mr_notes(project_id, mr_iid, 2);
+
+                ctx.strings.insert("search".to_string(), search);
+                ctx.strings.insert("details".to_string(), details);
+                ctx.strings.insert("reviews".to_string(), reviews);
+                ctx.strings.insert("notes".to_string(), notes);
+                Ok(())
+            },
+        )
+        .then(
+            "every key should keep its canonical namespace and paging suffix",
+            |ctx| {
+                let search =
+                    crate::bdd::assertions::assert_present(ctx.string("search"), "search")?;
+                let details =
+                    crate::bdd::assertions::assert_present(ctx.string("details"), "details")?;
+                let reviews =
+                    crate::bdd::assertions::assert_present(ctx.string("reviews"), "reviews")?;
+                let notes = crate::bdd::assertions::assert_present(ctx.string("notes"), "notes")?;
+
+                assert_true(search.starts_with("search:"), "search namespace")?;
+                assert_true(search.ends_with(":page2:per100"), "search paging suffix")?;
+                assert_true(details.starts_with("pr:details:"), "details namespace")?;
+                assert_true(reviews.starts_with("pr:reviews:"), "reviews namespace")?;
+                assert_true(notes.starts_with("gitlab:mr:notes:"), "notes namespace")?;
+                assert_true(details != reviews, "details and reviews are distinct")?;
+                assert_true(search != notes, "search and notes are distinct")
+            },
+        )
 }
 
 #[cfg(feature = "microcrate_validate")]

@@ -2142,6 +2142,7 @@ dependencies = [
  "rusqlite",
  "serde",
  "serde_json",
+ "shiplog-cache-key",
  "shiplog-schema",
  "shiplog-testkit",
  "tempfile",
@@ -2161,6 +2162,14 @@ version = "0.2.1"
 dependencies = [
  "proptest",
  "shiplog-schema",
+]
+
+[[package]]
+name = "shiplog-cache-key"
+version = "0.2.1"
+dependencies = [
+ "proptest",
+ "shiplog-testkit",
 ]
 
 [[package]]
@@ -2563,6 +2572,7 @@ dependencies = [
  "serde",
  "serde_json",
  "shiplog-cache",
+ "shiplog-cache-key",
  "shiplog-coverage",
  "shiplog-ids",
  "shiplog-ports",
@@ -2581,6 +2591,7 @@ dependencies = [
  "serde",
  "serde_json",
  "shiplog-cache",
+ "shiplog-cache-key",
  "shiplog-coverage",
  "shiplog-ids",
  "shiplog-ports",
@@ -3339,6 +3350,7 @@ dependencies = [
  "proptest",
  "serde",
  "serde_json",
+ "shiplog-cache-key",
  "shiplog-export",
  "shiplog-ids",
  "shiplog-merge",
