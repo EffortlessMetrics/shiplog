@@ -82,11 +82,12 @@ members = [
   "crates/shiplog-rate",
   "crates/shiplog-circuit",
   "crates/shiplog-time",
-  # New utility crates (tracker, dedupe, uuid, hash)
+  # New utility crates (tracker, dedupe, uuid, hash, alias)
   "crates/shiplog-tracker",
   "crates/shiplog-dedupe",
   "crates/shiplog-uuid",
   "crates/shiplog-hash",
+  "crates/shiplog-alias",
   # New utility crates (serde, iter, error, fmt)
   "crates/shiplog-serde",
   "crates/shiplog-iter",

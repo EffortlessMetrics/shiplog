@@ -3,14 +3,15 @@
 //! Supports `internal`, `manager`, and `public` projections with stable alias
 //! generation backed by keyed hashing and optional alias cache persistence.
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
+use shiplog_alias::DeterministicAliasStore;
 use shiplog_ports::Redactor;
 use shiplog_schema::event::{EventEnvelope, EventPayload, RepoRef, RepoVisibility};
 use shiplog_schema::workstream::{Workstream, WorkstreamsFile};
-use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
+
+pub use shiplog_alias::CACHE_FILENAME;
 
 /// Rendering profiles.
 ///
@@ -33,15 +34,6 @@ impl RedactionProfile {
     }
 }
 
-#[derive(Serialize, Deserialize)]
-struct AliasCache {
-    version: u32,
-    entries: BTreeMap<String, String>,
-}
-
-/// Filename for the redaction alias cache written into each run directory.
-pub const CACHE_FILENAME: &str = "redaction.aliases.json";
-
 /// Deterministic redactor.
 ///
 /// This intentionally does not try to be clever.
@@ -49,83 +41,33 @@ pub const CACHE_FILENAME: &str = "redaction.aliases.json";
 /// - It doesn't detect secrets.
 /// - It does *structural* redaction so you can safely share packets.
 pub struct DeterministicRedactor {
-    key: Vec<u8>,
-    /// Optional map to preserve stable aliases across runs.
-    /// (For MVP we keep it in-memory; later this becomes a file.)
-    cache: std::sync::Mutex<BTreeMap<String, String>>,
+    aliases: DeterministicAliasStore,
 }
 
 impl DeterministicRedactor {
     pub fn new(key: impl AsRef<[u8]>) -> Self {
         Self {
-            key: key.as_ref().to_vec(),
-            cache: std::sync::Mutex::new(BTreeMap::new()),
+            aliases: DeterministicAliasStore::new(key),
         }
     }
 
     /// Path to the alias cache file in a given output directory.
     pub fn cache_path(out_dir: &Path) -> PathBuf {
-        out_dir.join(CACHE_FILENAME)
+        DeterministicAliasStore::cache_path(out_dir)
     }
 
     /// Load cached aliases from disk. No-op if file is missing.
     pub fn load_cache(&self, path: &Path) -> Result<()> {
-        if !path.exists() {
-            return Ok(());
-        }
-        let text = std::fs::read_to_string(path)
-            .with_context(|| format!("read alias cache from {path:?}"))?;
-        let cache: AliasCache =
-            serde_json::from_str(&text).with_context(|| format!("parse alias cache {path:?}"))?;
-        if cache.version != 1 {
-            anyhow::bail!("unsupported alias cache version: {}", cache.version);
-        }
-        if let Ok(mut c) = self.cache.lock() {
-            for (k, v) in cache.entries {
-                c.entry(k).or_insert(v);
-            }
-        }
-        Ok(())
+        self.aliases.load_cache(path)
     }
 
     /// Save current aliases to disk.
     pub fn save_cache(&self, path: &Path) -> Result<()> {
-        let entries = self
-            .cache
-            .lock()
-            .map_err(|e| anyhow::anyhow!("lock cache: {e}"))?
-            .clone();
-        let cache = AliasCache {
-            version: 1,
-            entries,
-        };
-        let json = serde_json::to_string_pretty(&cache)?;
-        std::fs::write(path, json).with_context(|| format!("write alias cache to {path:?}"))?;
-        Ok(())
+        self.aliases.save_cache(path)
     }
 
     fn alias(&self, kind: &str, value: &str) -> String {
-        let cache_key = format!("{kind}:{value}");
-        #[allow(clippy::collapsible_if)]
-        if let Ok(cache) = self.cache.lock() {
-            if let Some(v) = cache.get(&cache_key) {
-                return v.clone();
-            }
-        }
-
-        let mut h = Sha256::new();
-        h.update(&self.key);
-        h.update(b"\n");
-        h.update(kind.as_bytes());
-        h.update(b"\n");
-        h.update(value.as_bytes());
-        let out = hex::encode(h.finalize());
-        let alias = format!("{kind}-{}", &out[..12]);
-
-        if let Ok(mut cache) = self.cache.lock() {
-            cache.insert(cache_key, alias.clone());
-        }
-        alias
+        self.aliases.alias(kind, value)
     }
 
     fn redact_repo_public(&self, repo: &RepoRef) -> RepoRef {

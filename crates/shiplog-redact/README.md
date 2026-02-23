@@ -13,3 +13,4 @@ Deterministic structural redaction for shiplog events and workstreams.
 - `DeterministicRedactor`: keyed alias generation and profile projection.
 
 Alias mappings can be persisted to `redaction.aliases.json` for stable aliases across reruns.
+Deterministic alias/cache primitives are provided by the `shiplog-alias` microcrate.
