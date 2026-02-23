@@ -16,3 +16,4 @@ Alias mappings can be persisted to `redaction.aliases.json` for stable aliases a
 Deterministic alias/cache primitives are provided by the `shiplog-alias` microcrate.
 Profile semantics are provided by the `shiplog-redaction-profile` microcrate.
 Policy transformation rules are provided by the `shiplog-redaction-policy` microcrate.
+Profile-string projection dispatch is provided by the `shiplog-redaction-projector` microcrate.

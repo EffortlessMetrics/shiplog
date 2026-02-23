@@ -9,6 +9,7 @@ members = [
   "crates/shiplog-redact",
   "crates/shiplog-redaction-profile",
   "crates/shiplog-redaction-policy",
+  "crates/shiplog-redaction-projector",
   "crates/shiplog-render-md",
   "crates/shiplog-render-json",
   "crates/shiplog-bundle",

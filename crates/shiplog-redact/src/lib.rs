@@ -6,13 +6,13 @@
 use anyhow::Result;
 use shiplog_alias::DeterministicAliasStore;
 use shiplog_ports::Redactor;
-use shiplog_redaction_policy::{redact_events_with_aliases, redact_workstreams_with_aliases};
+use shiplog_redaction_projector::{project_events_with_aliases, project_workstreams_with_aliases};
 use shiplog_schema::event::EventEnvelope;
 use shiplog_schema::workstream::WorkstreamsFile;
 use std::path::{Path, PathBuf};
 
 pub use shiplog_alias::CACHE_FILENAME;
-pub use shiplog_redaction_profile::RedactionProfile;
+pub use shiplog_redaction_projector::RedactionProfile;
 
 /// Deterministic redactor.
 ///
@@ -53,9 +53,8 @@ impl DeterministicRedactor {
 
 impl Redactor for DeterministicRedactor {
     fn redact_events(&self, events: &[EventEnvelope], profile: &str) -> Result<Vec<EventEnvelope>> {
-        let parsed_profile = RedactionProfile::from_profile_str(profile);
         let aliases = |kind: &str, value: &str| self.alias(kind, value);
-        Ok(redact_events_with_aliases(events, parsed_profile, &aliases))
+        Ok(project_events_with_aliases(events, profile, &aliases))
     }
 
     fn redact_workstreams(
@@ -63,11 +62,10 @@ impl Redactor for DeterministicRedactor {
         workstreams: &WorkstreamsFile,
         profile: &str,
     ) -> Result<WorkstreamsFile> {
-        let parsed_profile = RedactionProfile::from_profile_str(profile);
         let aliases = |kind: &str, value: &str| self.alias(kind, value);
-        Ok(redact_workstreams_with_aliases(
+        Ok(project_workstreams_with_aliases(
             workstreams,
-            parsed_profile,
+            profile,
             &aliases,
         ))
     }

@@ -17,6 +17,7 @@ shiplog-schema = { path = "../crates/shiplog-schema" }
 shiplog-ids = { path = "../crates/shiplog-ids" }
 shiplog-redaction-profile = { path = "../crates/shiplog-redaction-profile" }
 shiplog-redaction-policy = { path = "../crates/shiplog-redaction-policy" }
+shiplog-redaction-projector = { path = "../crates/shiplog-redaction-projector" }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
 serde_yaml = { package = "serde_yaml_ng", version = "0.10.0" }
@@ -102,6 +103,13 @@ bench = false
 [[bin]]
 name = "redaction_profile"
 path = "fuzz_targets/redaction_profile.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "redaction_projector"
+path = "fuzz_targets/redaction_projector.rs"
 test = false
 doc = false
 bench = false

@@ -2964,7 +2964,7 @@ dependencies = [
  "shiplog-ids",
  "shiplog-ports",
  "shiplog-redaction-policy",
- "shiplog-redaction-profile",
+ "shiplog-redaction-projector",
  "shiplog-schema",
  "shiplog-testkit",
  "tempfile",
@@ -2991,6 +2991,20 @@ dependencies = [
  "proptest",
  "serde",
  "serde_json",
+ "shiplog-testkit",
+]
+
+[[package]]
+name = "shiplog-redaction-projector"
+version = "0.2.1"
+dependencies = [
+ "chrono",
+ "proptest",
+ "serde_json",
+ "shiplog-alias",
+ "shiplog-ids",
+ "shiplog-redaction-policy",
+ "shiplog-schema",
  "shiplog-testkit",
 ]
 
