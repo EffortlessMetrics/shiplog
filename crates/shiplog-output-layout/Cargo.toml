@@ -1,0 +1,15 @@
+[package]
+name = "shiplog-output-layout"
+version = "0.2.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Canonical artifact layout and path contracts for shiplog."
+readme = "README.md"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "artifacts", "paths", "contracts", "interop"]
+categories = ["development-tools", "filesystem"]
+
+[dependencies]

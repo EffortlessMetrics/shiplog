@@ -7,6 +7,7 @@ use anyhow::{Context, Result};
 use chrono::NaiveDate;
 use clap::{Parser, Subcommand};
 use shiplog_engine::{Engine, WorkstreamSource};
+use shiplog_ingest_git::LocalGitIngestor;
 use shiplog_ingest_github::GithubIngestor;
 use shiplog_ingest_json::JsonIngestor;
 use shiplog_ingest_manual::ManualIngestor;
@@ -14,6 +15,8 @@ use shiplog_ports::Ingestor;
 use shiplog_redact::DeterministicRedactor;
 use shiplog_render_md::MarkdownRenderer;
 use shiplog_schema::bundle::BundleProfile;
+#[cfg(feature = "team")]
+use shiplog_team::{TeamAggregator, resolve_team_config, write_team_outputs};
 use shiplog_workstreams::RepoClusterer;
 use std::path::{Path, PathBuf};
 
@@ -192,6 +195,41 @@ enum Command {
         #[arg(long)]
         llm_api_key: Option<String>,
     },
+
+    /// Aggregate multiple member ledgers into a team-level packet.
+    #[cfg(feature = "team")]
+    TeamAggregate {
+        /// Directory containing team member run folders.
+        #[arg(long, default_value = "./out")]
+        members_root: PathBuf,
+        /// Output directory for the generated team packet.
+        #[arg(long, default_value = "./out/team")]
+        out: PathBuf,
+        /// Comma-separated list of member IDs.
+        #[arg(long)]
+        members: Option<String>,
+        /// Path to team configuration file.
+        #[arg(long)]
+        config: Option<PathBuf>,
+        /// Optional inclusive start date.
+        #[arg(long)]
+        since: Option<NaiveDate>,
+        /// Optional exclusive end date.
+        #[arg(long)]
+        until: Option<NaiveDate>,
+        /// Optional comma-separated output sections.
+        #[arg(long)]
+        sections: Option<String>,
+        /// Optional custom team template file.
+        #[arg(long)]
+        template: Option<PathBuf>,
+        /// Require a specific schema version from member ledgers.
+        #[arg(long)]
+        required_schema_version: Option<String>,
+        /// Alias mapping in `member=Display Name` format.
+        #[arg(long)]
+        alias: Vec<String>,
+    },
 }
 
 #[derive(Subcommand, Debug, Clone)]
@@ -262,6 +300,25 @@ enum Source {
         #[arg(long)]
         until: NaiveDate,
     },
+
+    /// Ingest from local git repository.
+    Git {
+        /// Path to git repository.
+        #[arg(long)]
+        repo: PathBuf,
+        /// Start date (inclusive), YYYY-MM-DD
+        #[arg(long)]
+        since: NaiveDate,
+        /// End date (exclusive), YYYY-MM-DD
+        #[arg(long)]
+        until: NaiveDate,
+        /// Filter commits by author email.
+        #[arg(long)]
+        author: Option<String>,
+        /// Include merge commits.
+        #[arg(long)]
+        include_merges: bool,
+    },
 }
 
 fn get_redact_key(redact_key: Option<String>) -> String {
@@ -277,12 +334,12 @@ fn create_engine(
     redact_key: &str,
     clusterer: Box<dyn shiplog_ports::WorkstreamClusterer>,
 ) -> (Engine<'static>, &'static DeterministicRedactor) {
-    let renderer = MarkdownRenderer;
+    let renderer = Box::new(MarkdownRenderer::default());
     let redactor = DeterministicRedactor::new(redact_key.as_bytes());
 
     // We need to leak these to give them 'static lifetime
     // This is acceptable for a CLI tool that runs once
-    let renderer: &'static dyn shiplog_ports::Renderer = Box::leak(Box::new(renderer));
+    let renderer: &'static dyn shiplog_ports::Renderer = Box::leak(renderer);
     let clusterer: &'static dyn shiplog_ports::WorkstreamClusterer = Box::leak(clusterer);
     let redactor_box = Box::new(redactor);
     let redactor_ref: &'static DeterministicRedactor = Box::leak(redactor_box);
@@ -331,10 +388,10 @@ fn build_clusterer(
         }
         #[cfg(not(feature = "llm"))]
         {
-            // Suppress unused-variable warnings in no-llm builds
             let _ = (llm_api_endpoint, llm_model, llm_api_key);
-            eprintln!("ERROR: --llm-cluster requires the `llm` feature.");
-            eprintln!("       Rebuild with: cargo build -p shiplog --features llm");
+            eprintln!(
+                "ERROR: --llm-cluster requires the 'llm' feature. Rebuild with: cargo build -p shiplog --features llm"
+            );
             std::process::exit(1);
         }
     } else {
@@ -549,6 +606,59 @@ fn main() -> Result<()> {
                     println!("Collected and wrote:");
                     print_outputs(&outputs, ws_source);
                 }
+
+                Source::Git {
+                    repo,
+                    since,
+                    until,
+                    author,
+                    include_merges,
+                } => {
+                    let mut ing = LocalGitIngestor::new(&repo, since, until);
+                    if let Some(a) = author {
+                        ing = ing.with_author(a);
+                    }
+                    if include_merges {
+                        ing = ing.with_merges(true);
+                    }
+                    let ingest = ing.ingest()?;
+                    let run_id = ingest.coverage.run_id.to_string();
+                    let run_dir = out.join(&run_id);
+                    let window_label = format!("{}..{}", since, until);
+
+                    // Check if user has curated workstreams and warn
+                    if !regen && shiplog_workstreams::WorkstreamManager::has_curated(&run_dir) {
+                        eprintln!("Note: Using existing workstreams.yaml (user-curated).");
+                        eprintln!("      Use --regen to regenerate suggestions.");
+                    }
+
+                    // If --regen, delete existing suggested workstreams so the engine regenerates them
+                    if regen {
+                        let suggested =
+                            shiplog_workstreams::WorkstreamManager::suggested_path(&run_dir);
+                        if suggested.exists() {
+                            std::fs::remove_file(&suggested)
+                                .with_context(|| format!("remove {:?} for --regen", suggested))?;
+                        }
+                    }
+
+                    let cache_path = DeterministicRedactor::cache_path(&run_dir);
+                    let _ = redactor.load_cache(&cache_path);
+
+                    let (outputs, ws_source) = engine.run(
+                        ingest,
+                        "local",
+                        &window_label,
+                        &run_dir,
+                        zip,
+                        &bundle_profile,
+                    )?;
+
+                    redactor.save_cache(&cache_path)?;
+
+                    println!("Collected and wrote:");
+                    print_outputs(&outputs, ws_source);
+                }
             }
         }
 
@@ -625,6 +735,10 @@ fn main() -> Result<()> {
             let _ = redactor.load_cache(&cache_path);
 
             match source {
+                Source::Git { .. } => {
+                    eprintln!("ERROR: Git source not yet implemented");
+                    std::process::exit(1);
+                }
                 Source::Github {
                     user,
                     since,
@@ -758,6 +872,48 @@ fn main() -> Result<()> {
             }
         }
 
+        #[cfg(feature = "team")]
+        Command::TeamAggregate {
+            members_root,
+            out,
+            members,
+            config,
+            since,
+            until,
+            sections,
+            template,
+            required_schema_version,
+            alias,
+        } => {
+            let cfg = resolve_team_config(
+                config,
+                members,
+                since,
+                until,
+                sections,
+                template,
+                required_schema_version,
+                alias,
+            )?;
+
+            let aggregator = TeamAggregator::new(cfg);
+            let result = aggregator.aggregate(&members_root)?;
+            let packet = aggregator.render_packet_markdown(&result)?;
+
+            let output_paths = write_team_outputs(&out, &packet, &result)?;
+
+            println!("Team packet generated:");
+            println!("- {}", output_paths.packet.display());
+            println!("- {}", output_paths.events.display());
+            println!("- {}", output_paths.coverage.display());
+            if !result.warnings.is_empty() {
+                println!("Team aggregation warnings:");
+                for warning in result.warnings {
+                    println!("  - {warning}");
+                }
+            }
+        }
+
         Command::Import {
             dir,
             out,
@@ -853,6 +1009,10 @@ fn main() -> Result<()> {
             let (engine, redactor) = create_engine(&key, clusterer);
 
             match source {
+                Source::Git { .. } => {
+                    eprintln!("ERROR: Git source not yet implemented");
+                    std::process::exit(1);
+                }
                 Source::Github {
                     user,
                     since,

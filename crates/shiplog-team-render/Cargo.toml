@@ -1,0 +1,25 @@
+[package]
+name = "shiplog-team-render"
+version = "0.2.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Team packet rendering contracts and markdown/template rendering for team aggregation."
+readme = "README.md"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["team", "render", "aggregation", "packet", "template"]
+categories = ["development-tools"]
+
+[dependencies]
+anyhow.workspace = true
+serde.workspace = true
+shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
+shiplog-team-core = { path = "../shiplog-team-core", version = "0.2.1" }
+shiplog-template = { path = "../shiplog-template", version = "0.3.0" }
+
+[dev-dependencies]
+chrono.workspace = true
+shiplog-ids = { path = "../shiplog-ids", version = "0.2.1" }
+tempfile.workspace = true

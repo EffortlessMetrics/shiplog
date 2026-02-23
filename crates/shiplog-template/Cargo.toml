@@ -1,0 +1,23 @@
+[package]
+name = "shiplog-template"
+version = "0.3.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Jinja2-like template system for packet rendering."
+readme = "README.md"
+documentation = "https://docs.rs/shiplog-template"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["template", "jinja2", "rendering", "markdown", "packet"]
+categories = ["template-engine", "text-processing"]
+
+[dependencies]
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
+
+[dev-dependencies]
+tempfile.workspace = true

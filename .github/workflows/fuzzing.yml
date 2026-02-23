@@ -24,12 +24,29 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@nightly
+        uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: nightly-2026-02-18
           components: llvm-tools-preview
 
+      - name: Cache cargo binaries
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin
+          key: ${{ runner.os }}-cargo-bin-nightly-2026-02-18
+          restore-keys: |
+            ${{ runner.os }}-cargo-bin-
+
+      - name: Cache Rust build artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: fuzz
+
       - name: Install cargo-fuzz
-        run: cargo install cargo-fuzz --locked
+        run: |
+          if ! command -v cargo-fuzz >/dev/null 2>&1; then
+            cargo install cargo-fuzz --locked
+          fi
 
       - name: Run quick fuzzing for parse_jsonl
         run: |
@@ -56,6 +73,26 @@ jobs:
           cd fuzz
           cargo fuzz run parse_manual_events -- -max_total_time=30 -dict=dictionaries/yaml.dict
 
+      - name: Run quick fuzzing for parse_gitlab_api
+        run: |
+          cd fuzz
+          cargo fuzz run parse_gitlab_api -- -max_total_time=30 -dict=dictionaries/json.dict
+
+      - name: Run quick fuzzing for parse_jira_linear_api
+        run: |
+          cd fuzz
+          cargo fuzz run parse_jira_linear_api -- -max_total_time=30 -dict=dictionaries/json.dict
+
+      - name: Run quick fuzzing for parse_template
+        run: |
+          cd fuzz
+          cargo fuzz run parse_template -- -max_total_time=30 -dict=dictionaries/yaml.dict
+
+      - name: Run quick fuzzing for parse_plugin_manifest
+        run: |
+          cd fuzz
+          cargo fuzz run parse_plugin_manifest -- -max_total_time=30 -dict=dictionaries/json.dict
+
       - name: Upload fuzzing artifacts
         if: failure()
         uses: actions/upload-artifact@v4
@@ -66,62 +103,82 @@ jobs:
           retention-days: 30
 
   extended-fuzz:
-    name: Extended Fuzz (Nightly)
+    name: Extended Fuzz (${{ matrix.target }})
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 90
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: parse_jsonl
+            dict: json.dict
+          - target: parse_workstreams
+            dict: yaml.dict
+          - target: parse_github_api
+            dict: json.dict
+          - target: parse_config
+            dict: yaml.dict
+          - target: parse_manual_events
+            dict: yaml.dict
+          - target: parse_gitlab_api
+            dict: json.dict
+          - target: parse_jira_linear_api
+            dict: json.dict
+          - target: parse_template
+            dict: yaml.dict
+          - target: parse_plugin_manifest
+            dict: json.dict
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@nightly
+        uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: nightly-2026-02-18
           components: llvm-tools-preview
 
+      - name: Cache cargo binaries
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin
+          key: ${{ runner.os }}-cargo-bin-nightly-2026-02-18
+          restore-keys: |
+            ${{ runner.os }}-cargo-bin-
+
+      - name: Cache Rust build artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: fuzz
+
       - name: Install cargo-fuzz
-        run: cargo install cargo-fuzz --locked
+        run: |
+          if ! command -v cargo-fuzz >/dev/null 2>&1; then
+            cargo install cargo-fuzz --locked
+          fi
 
-      - name: Run extended fuzzing for parse_jsonl
+      - name: Run extended fuzzing for ${{ matrix.target }}
         run: |
           cd fuzz
-          cargo fuzz run parse_jsonl -- -max_total_time=3600 -dict=dictionaries/json.dict
-
-      - name: Run extended fuzzing for parse_workstreams
-        run: |
-          cd fuzz
-          cargo fuzz run parse_workstreams -- -max_total_time=3600 -dict=dictionaries/yaml.dict
-
-      - name: Run extended fuzzing for parse_github_api
-        run: |
-          cd fuzz
-          cargo fuzz run parse_github_api -- -max_total_time=3600 -dict=dictionaries/json.dict
-
-      - name: Run extended fuzzing for parse_config
-        run: |
-          cd fuzz
-          cargo fuzz run parse_config -- -max_total_time=3600 -dict=dictionaries/yaml.dict
-
-      - name: Run extended fuzzing for parse_manual_events
-        run: |
-          cd fuzz
-          cargo fuzz run parse_manual_events -- -max_total_time=3600 -dict=dictionaries/yaml.dict
+          cargo fuzz run ${{ matrix.target }} -- -max_total_time=3600 -dict=dictionaries/${{ matrix.dict }}
 
       - name: Upload fuzzing corpus
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: fuzzing-corpus
+          name: fuzzing-corpus-${{ matrix.target }}
           path: |
-            fuzz/corpus/**
+            fuzz/corpus/${{ matrix.target }}/**
           retention-days: 30
 
       - name: Upload fuzzing artifacts
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: fuzzing-crash-artifacts
+          name: fuzzing-crash-artifacts-${{ matrix.target }}
           path: |
-            fuzz/artifacts/**
+            fuzz/artifacts/${{ matrix.target }}/**
           retention-days: 30

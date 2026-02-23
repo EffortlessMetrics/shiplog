@@ -1,0 +1,11 @@
+[package]
+name = "shiplog-parse"
+version = "0.2.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Parsing utilities for shiplog."
+readme = "README.md"
+
+[dependencies]

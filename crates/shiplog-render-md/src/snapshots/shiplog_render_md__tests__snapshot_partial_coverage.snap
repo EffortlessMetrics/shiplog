@@ -1,34 +1,25 @@
 ---
 source: crates/shiplog-render-md/src/lib.rs
-assertion_line: 502
-expression: md
+expression: result
 ---
-# Self review packet: octo
+# Summary
 
-**Window:** 2025-01-01..2025-02-01
+**Window:** 2024
 
-## Coverage
+**Workstreams:** 1
 
-- **Completeness:** Partial
-- **Date window:** 2025-01-01 to 2025-02-01
-- **Mode:** merged
-- **Sources:** github
-- **Events ingested:** 1 PRs, 0 reviews, 0 manual
-- **Query slices:** 1
-  - ⚠️ 1 slices had incomplete results
-  - **Slicing applied (API caps):**
-    - is:pr author:octo merged:2025-01-01..2025-01-31: fetched 1000/1200 (83%)
-- **Warnings:**
-  - ⚠️ Reviews are collected via search + per-PR review fetch; treat as best-effort coverage.
+**Events:** 1 PRs, 0 reviews, 0 manual
 
-## Summary
+**Coverage:** Partial
 
-- Workstreams: 1
-- Total events: 1
+**Sources:** github
+
+**Warnings:**
+  - ⚠️ API rate limit hit
 
 ## Workstreams
 
-### o/r
+### Feature
 
 **Claim scaffolds**
 
@@ -37,17 +28,30 @@ expression: md
 - Why it mattered: _fill_
 - Result: _fill_
 
-**Receipts**
-
-- [o/r#10](https://github.com/o/r/pull/10) — Fix bug
-
 _PRs: 1, Reviews: 0, Manual: 0_
+
+## Receipts
+
+### Workstream: Feature
+
+- - [PR] Add feature (1970-01-01) — [owner/repo](https://github.com/owner/repo/pull/1)
+
+## Coverage
+
+- **Date window:** 2024-01-01 to 2024-12-31
+- **Mode:** test
+- **Sources:** github
+- **Completeness:** Partial
+- **Query slices:** 1
+  - ⚠️ 1 slices had incomplete results
+  - **Slicing applied (API caps):**
+    - test: fetched 50/100 (50%)
 
 ## Appendix: All Receipts
 
-### o/r
+### Feature
 
-- [o/r#10](https://github.com/o/r/pull/10) — Fix bug
+- - [PR] Add feature (1970-01-01) — [owner/repo](https://github.com/owner/repo/pull/1)
 
 ---
 

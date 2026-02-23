@@ -1,0 +1,23 @@
+[package]
+name = "shiplog-hooks"
+version = "0.2.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Pre/post processing hooks for shiplog pipeline."
+readme = "README.md"
+documentation = "https://docs.rs/shiplog-hooks"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["hooks", "pipeline", "events"]
+categories = ["development-tools"]
+
+[dependencies]
+serde.workspace = true
+anyhow.workspace = true
+serde_json.workspace = true
+chrono.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true

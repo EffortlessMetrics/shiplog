@@ -1,0 +1,22 @@
+[package]
+name = "shiplog-hash"
+version = "0.2.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Hashing utilities for shiplog."
+readme = "README.md"
+documentation = "https://docs.rs/shiplog-hash"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["hash", "hashing", "sha256", "checksum"]
+categories = ["data-structures", "development-tools"]
+
+[dependencies]
+serde.workspace = true
+sha2.workspace = true
+hex.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true

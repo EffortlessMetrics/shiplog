@@ -1,0 +1,22 @@
+[package]
+name = "shiplog-notify"
+version = "0.2.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Notification system for shiplog alerts."
+readme = "README.md"
+documentation = "https://docs.rs/shiplog-notify"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["notification", "alerts", "events"]
+categories = ["data-structures", "development-tools"]
+
+[dependencies]
+serde.workspace = true
+anyhow.workspace = true
+chrono.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true

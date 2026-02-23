@@ -27,8 +27,8 @@ pub fn strategy_naive_date() -> impl Strategy<Value = NaiveDate> {
 
 /// Strategy for generating valid DateTime<Utc> values
 pub fn strategy_datetime_utc() -> impl Strategy<Value = chrono::DateTime<Utc>> {
-    strategy_naive_date().prop_map(|date| {
-        Utc.with_ymd_and_hms(date.year(), date.month(), date.day(), 0, 0, 0)
+    (strategy_naive_date(), 0u32..24, 0u32..60, 0u32..60).prop_map(|(date, h, m, s)| {
+        Utc.with_ymd_and_hms(date.year(), date.month(), date.day(), h, m, s)
             .unwrap()
     })
 }
@@ -283,57 +283,60 @@ pub fn strategy_event_envelope() -> impl Strategy<Value = EventEnvelope> {
         proptest::collection::vec(strategy_link(), 0..5),
         proptest::collection::vec("[a-z]{1,20}", 0..5),
         any::<u64>(),
+        strategy_datetime_utc(),
     )
-        .prop_map(|(payload, actor, repo, source, links, tags, nonce)| {
-            let (kind, id) = match &payload {
-                EventPayload::PullRequest(pr) => (
-                    EventKind::PullRequest,
-                    EventId::from_parts([
-                        "github",
-                        "pr",
-                        &repo.full_name,
-                        &pr.number.to_string(),
-                        &nonce.to_string(),
-                    ]),
-                ),
-                EventPayload::Review(r) => (
-                    EventKind::Review,
-                    EventId::from_parts([
-                        "github",
-                        "review",
-                        &repo.full_name,
-                        &r.pull_number.to_string(),
-                        &nonce.to_string(),
-                    ]),
-                ),
-                EventPayload::Manual(manual) => (
-                    EventKind::Manual,
-                    EventId::from_parts([
-                        "manual",
-                        &repo.full_name,
-                        &manual.title,
-                        &nonce.to_string(),
-                    ]),
-                ),
-            };
+        .prop_map(
+            |(payload, actor, repo, source, links, tags, nonce, occurred_at)| {
+                let (kind, id) = match &payload {
+                    EventPayload::PullRequest(pr) => (
+                        EventKind::PullRequest,
+                        EventId::from_parts([
+                            "github",
+                            "pr",
+                            &repo.full_name,
+                            &pr.number.to_string(),
+                            &nonce.to_string(),
+                        ]),
+                    ),
+                    EventPayload::Review(r) => (
+                        EventKind::Review,
+                        EventId::from_parts([
+                            "github",
+                            "review",
+                            &repo.full_name,
+                            &r.pull_number.to_string(),
+                            &nonce.to_string(),
+                        ]),
+                    ),
+                    EventPayload::Manual(manual) => (
+                        EventKind::Manual,
+                        EventId::from_parts([
+                            "manual",
+                            &repo.full_name,
+                            &manual.title,
+                            &nonce.to_string(),
+                        ]),
+                    ),
+                };
 
-            EventEnvelope {
-                id,
-                kind,
-                occurred_at: Utc::now(),
-                actor,
-                repo,
-                payload,
-                tags,
-                links,
-                source,
-            }
-        })
+                EventEnvelope {
+                    id,
+                    kind,
+                    occurred_at,
+                    actor,
+                    repo,
+                    payload,
+                    tags,
+                    links,
+                    source,
+                }
+            },
+        )
 }
 
 /// Strategy for generating a vector of EventEnvelope values
 pub fn strategy_event_vec(max_size: usize) -> impl Strategy<Value = Vec<EventEnvelope>> {
-    proptest::collection::vec(strategy_event_envelope(), 0..max_size)
+    proptest::collection::vec(strategy_event_envelope(), 0..=max_size)
 }
 
 // ============================================================================
@@ -348,11 +351,16 @@ pub fn strategy_coverage_slice() -> impl Strategy<Value = CoverageSlice> {
         0u64..5000u64,
         0u64..5000u64,
         proptest::collection::vec("[a-zA-Z0-9_ ,.:-]{5,120}", 0..5),
+        any::<bool>(),
     )
-        .prop_map(|(window, query, a, b, notes)| {
+        .prop_map(|(window, query, a, b, notes, has_incomplete)| {
             let total_count = a.max(b);
             let fetched = a.min(b);
-            let incomplete_results = Some(fetched < total_count);
+            let incomplete_results = if has_incomplete {
+                Some(fetched < total_count)
+            } else {
+                None
+            };
 
             CoverageSlice {
                 window,
@@ -373,18 +381,21 @@ pub fn strategy_coverage_manifest() -> impl Strategy<Value = CoverageManifest> {
         proptest::collection::vec(strategy_coverage_slice(), 0..10),
         proptest::collection::vec("[a-zA-Z0-9_ ,.:-]{5,100}", 0..5),
         strategy_completeness(),
+        strategy_datetime_utc(),
     )
         .prop_map(
-            |(user, (since, until), slices, warnings, completeness)| CoverageManifest {
-                run_id: RunId::now("test"),
-                generated_at: Utc::now(),
-                user,
-                window: TimeWindow { since, until },
-                mode: "merged".to_string(),
-                sources: vec!["github".to_string()],
-                slices,
-                warnings,
-                completeness,
+            |(user, (since, until), slices, warnings, completeness, generated_at)| {
+                CoverageManifest {
+                    run_id: RunId::now("test"),
+                    generated_at,
+                    user,
+                    window: TimeWindow { since, until },
+                    mode: "merged".to_string(),
+                    sources: vec!["github".to_string()],
+                    slices,
+                    warnings,
+                    completeness,
+                }
             },
         )
 }
@@ -445,11 +456,12 @@ pub fn strategy_workstreams_file() -> impl Strategy<Value = WorkstreamsFile> {
     (
         proptest::collection::vec(strategy_workstream(), 0..10),
         1u32..10u32,
+        strategy_datetime_utc(),
     )
-        .prop_map(|(workstreams, version)| WorkstreamsFile {
+        .prop_map(|(workstreams, version, generated_at)| WorkstreamsFile {
             workstreams,
             version,
-            generated_at: Utc::now(),
+            generated_at,
         })
 }
 
@@ -478,7 +490,7 @@ pub fn strategy_cache_key() -> impl Strategy<Value = String> {
 
 /// Strategy for generating API URLs
 pub fn strategy_api_url() -> impl Strategy<Value = String> {
-    "https://api.[a-z0-9.-]{5,20}.com/[a-z0-9_/-]{5,100}"
+    "https://api\\.[a-z0-9-]{5,20}\\.com/[a-z0-9_/-]{5,100}"
 }
 
 /// Strategy for generating TTL durations (in seconds)

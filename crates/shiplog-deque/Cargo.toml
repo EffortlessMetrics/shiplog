@@ -1,0 +1,19 @@
+[package]
+name = "shiplog-deque"
+version = "0.2.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Double-ended queue implementation for shiplog."
+readme = "README.md"
+documentation = "https://docs.rs/shiplog-deque"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["deque", "queue", "double-ended", "data-structure"]
+categories = ["data-structures", "development-tools"]
+
+[dependencies]
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true

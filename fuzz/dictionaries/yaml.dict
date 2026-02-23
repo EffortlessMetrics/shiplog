@@ -21,7 +21,6 @@
 # YAML null values
 "null"
 "~"
-""
 
 # YAML booleans
 "true"

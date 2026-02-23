@@ -1,0 +1,19 @@
+[package]
+name = "shiplog-heap"
+version = "0.2.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Binary heap utilities for shiplog."
+readme = "README.md"
+documentation = "https://docs.rs/shiplog-heap"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["heap", "binary-heap", "priority-queue", "data-structure"]
+categories = ["data-structures", "development-tools"]
+
+[dependencies]
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true

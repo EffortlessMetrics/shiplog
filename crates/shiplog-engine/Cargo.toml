@@ -13,6 +13,9 @@ homepage.workspace = true
 keywords = ["orchestration", "pipeline", "workflow", "rendering", "ingestion"]
 categories = ["development-tools", "command-line-utilities"]
 
+[features]
+merge-pipeline = []
+
 [dependencies]
 anyhow.workspace = true
 chrono.workspace = true
@@ -22,9 +25,11 @@ shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
 shiplog-ports = { path = "../shiplog-ports", version = "0.2.1" }
 shiplog-workstreams = { path = "../shiplog-workstreams", version = "0.2.1" }
 shiplog-redact = { path = "../shiplog-redact", version = "0.2.1" }
+shiplog-output-layout = { path = "../shiplog-output-layout", version = "0.2.1" }
 shiplog-render-md = { path = "../shiplog-render-md", version = "0.2.1" }
 shiplog-render-json = { path = "../shiplog-render-json", version = "0.2.1" }
 shiplog-bundle = { path = "../shiplog-bundle", version = "0.2.1" }
+shiplog-merge = { path = "../shiplog-merge", version = "0.2.1" }
 
 [dev-dependencies]
 tempfile.workspace = true

@@ -49,3 +49,48 @@ impl Workstream {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use shiplog_ids::WorkstreamId;
+
+    fn empty_workstream() -> Workstream {
+        Workstream {
+            id: WorkstreamId::from_parts(["ws", "test"]),
+            title: "test".into(),
+            summary: None,
+            tags: vec![],
+            stats: WorkstreamStats::zero(),
+            events: vec![],
+            receipts: vec![],
+        }
+    }
+
+    #[test]
+    fn bump_stats_pull_request() {
+        let mut ws = empty_workstream();
+        ws.bump_stats(&EventKind::PullRequest);
+        assert_eq!(ws.stats.pull_requests, 1);
+        assert_eq!(ws.stats.reviews, 0);
+        assert_eq!(ws.stats.manual_events, 0);
+    }
+
+    #[test]
+    fn bump_stats_review() {
+        let mut ws = empty_workstream();
+        ws.bump_stats(&EventKind::Review);
+        assert_eq!(ws.stats.pull_requests, 0);
+        assert_eq!(ws.stats.reviews, 1);
+        assert_eq!(ws.stats.manual_events, 0);
+    }
+
+    #[test]
+    fn bump_stats_manual() {
+        let mut ws = empty_workstream();
+        ws.bump_stats(&EventKind::Manual);
+        assert_eq!(ws.stats.pull_requests, 0);
+        assert_eq!(ws.stats.reviews, 0);
+        assert_eq!(ws.stats.manual_events, 1);
+    }
+}

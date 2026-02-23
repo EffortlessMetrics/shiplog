@@ -1,0 +1,12 @@
+[package]
+name = "shiplog-cogrouper"
+version = "0.2.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Co-grouping for stream operations in shiplog."
+readme = "README.md"
+
+[dependencies]
+anyhow.workspace = true

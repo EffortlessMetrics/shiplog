@@ -1,0 +1,20 @@
+[package]
+name = "shiplog-tracker"
+version = "0.2.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Issue tracking utilities for shiplog."
+readme = "README.md"
+documentation = "https://docs.rs/shiplog-tracker"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["tracker", "issue", "task", "ticket"]
+categories = ["data-structures", "development-tools"]
+
+[dependencies]
+serde.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true

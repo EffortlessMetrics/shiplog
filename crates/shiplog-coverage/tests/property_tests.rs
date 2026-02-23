@@ -2,10 +2,11 @@
 //!
 //! This module contains property-based tests for coverage window and slice invariants.
 
+use chrono::NaiveDate;
 use proptest::prelude::*;
 use shiplog_coverage::{day_windows, month_windows, week_windows, window_len_days};
 use shiplog_schema::coverage::TimeWindow;
-use shiplog_testkit::proptest::*;
+use shiplog_testkit::proptest::strategy_naive_date;
 
 // ============================================================================
 // Time Window Generation Tests
@@ -18,7 +19,7 @@ proptest! {
         since in strategy_naive_date(),
         days in 1u64..365u64
     ) {
-        let until = since.checked_add_days(chrono::Days::new(days)).unwrap();
+        let until: NaiveDate = since.checked_add_days(chrono::Days::new(days)).unwrap();
         let windows = day_windows(since, until);
 
         prop_assert!(!windows.is_empty());
@@ -40,7 +41,7 @@ proptest! {
         since in strategy_naive_date(),
         days in 7u64..365u64
     ) {
-        let until = since.checked_add_days(chrono::Days::new(days)).unwrap();
+        let until: NaiveDate = since.checked_add_days(chrono::Days::new(days)).unwrap();
         let windows = week_windows(since, until);
 
         if windows.is_empty() {
@@ -62,7 +63,7 @@ proptest! {
         since in strategy_naive_date(),
         days in 28u64..730u64
     ) {
-        let until = since.checked_add_days(chrono::Days::new(days)).unwrap();
+        let until: NaiveDate = since.checked_add_days(chrono::Days::new(days)).unwrap();
         let windows = month_windows(since, until);
 
         if windows.is_empty() {
@@ -84,7 +85,7 @@ proptest! {
         since in strategy_naive_date(),
         days in 1u64..365u64
     ) {
-        let until = since.checked_add_days(chrono::Days::new(days)).unwrap();
+        let until: NaiveDate = since.checked_add_days(chrono::Days::new(days)).unwrap();
         let window = TimeWindow { since, until };
 
         prop_assert!(window.contains(since));

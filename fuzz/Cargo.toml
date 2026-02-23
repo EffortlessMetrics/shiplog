@@ -57,3 +57,35 @@ path = "fuzz_targets/parse_manual_events.rs"
 test = false
 doc = false
 bench = false
+
+# ============================================================================
+# ROADMAP Feature Fuzzing Targets
+# ============================================================================
+
+[[bin]]
+name = "parse_gitlab_api"
+path = "fuzz_targets/parse_gitlab_api.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "parse_jira_linear_api"
+path = "fuzz_targets/parse_jira_linear_api.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "parse_template"
+path = "fuzz_targets/parse_template.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "parse_plugin_manifest"
+path = "fuzz_targets/parse_plugin_manifest.rs"
+test = false
+doc = false
+bench = false

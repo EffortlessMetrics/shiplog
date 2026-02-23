@@ -1,0 +1,16 @@
+[package]
+name = "shiplog-tui"
+version = "0.2.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Interactive terminal UI for curating workstreams."
+readme = "README.md"
+
+[dependencies]
+anyhow.workspace = true
+serde.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

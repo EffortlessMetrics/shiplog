@@ -99,4 +99,22 @@ mod tests {
         let manifest: BundleManifest = serde_json::from_str(json).unwrap();
         assert_eq!(manifest.profile, BundleProfile::Internal);
     }
+
+    #[test]
+    fn bundle_profile_as_str_returns_expected_values() {
+        assert_eq!(BundleProfile::Internal.as_str(), "internal");
+        assert_eq!(BundleProfile::Manager.as_str(), "manager");
+        assert_eq!(BundleProfile::Public.as_str(), "public");
+    }
+
+    #[test]
+    fn bundle_profile_display_matches_as_str() {
+        for profile in [
+            BundleProfile::Internal,
+            BundleProfile::Manager,
+            BundleProfile::Public,
+        ] {
+            assert_eq!(profile.to_string(), profile.as_str());
+        }
+    }
 }

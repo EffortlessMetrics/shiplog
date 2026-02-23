@@ -1,0 +1,27 @@
+[package]
+name = "shiplog-team-aggregate"
+version = "0.2.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Team aggregation engine for combining member ledgers and rendering team packets."
+readme = "README.md"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["team", "aggregation", "shipping", "report", "events"]
+categories = ["development-tools"]
+
+[dependencies]
+anyhow.workspace = true
+chrono.workspace = true
+serde_json.workspace = true
+shiplog-ids = { path = "../shiplog-ids", version = "0.2.1" }
+shiplog-merge = { path = "../shiplog-merge", version = "0.2.1" }
+shiplog-ports = { path = "../shiplog-ports", version = "0.2.1" }
+shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
+shiplog-team-core = { path = "../shiplog-team-core", version = "0.2.1" }
+shiplog-team-render = { path = "../shiplog-team-render", version = "0.2.1" }
+
+[dev-dependencies]
+tempfile.workspace = true

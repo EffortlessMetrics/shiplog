@@ -1,0 +1,20 @@
+[package]
+name = "shiplog-random"
+version = "0.2.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Random number generation utilities for shiplog."
+readme = "README.md"
+documentation = "https://docs.rs/shiplog-random"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["random", "rng", "rand"]
+categories = ["data-structures", "development-tools"]
+
+[dependencies]
+rand = "0.9"
+
+[dev-dependencies]
+proptest.workspace = true

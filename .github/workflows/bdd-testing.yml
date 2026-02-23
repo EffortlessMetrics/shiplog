@@ -1,0 +1,948 @@
+name: BDD Testing
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  bdd-test:
+    name: BDD & Property Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.92"
+          components: rustfmt, clippy
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo build
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Run v0.3.x BDD Tests
+        run: cargo test -p shiplog-testkit bdd_v03x_tests -- --test-threads=4
+
+      - name: Run Later BDD Tests
+        run: cargo test -p shiplog-testkit bdd_later_tests -- --test-threads=4
+
+      - name: Run Later Team BDD Tests (team feature flag)
+        run: cargo test -p shiplog-testkit --features team team_aggregation -- --test-threads=4
+
+      - name: Run v0.3.x Merge Pipeline BDD Contracts (merge_pipeline feature flag)
+        run: cargo test -p shiplog-testkit --features merge_pipeline multi_source_merging_scenario_7_10_pipeline_contract -- --test-threads=4
+
+      - name: Run v0.3.x Microcrate contract BDD tests
+        run: cargo test -p shiplog-testkit --features microcrate_contracts microcrate_contracts -- --test-threads=4
+
+      - name: Run Roadmap Property Tests
+        run: cargo test -p shiplog-testkit roadmap_property -- --test-threads=4
+
+      - name: Generate test summary
+        if: always()
+        run: |
+          echo "# BDD & Property Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "BDD and property-based tests completed!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Test Categories" >> $GITHUB_STEP_SUMMARY
+          echo "- v0.3.x BDD scenarios (51 scenarios)" >> $GITHUB_STEP_SUMMARY
+          echo "- Later BDD scenarios (34 scenarios, base feature set)" >> $GITHUB_STEP_SUMMARY
+          echo "- Later BDD team scenarios (9 scenarios) with --features team" >> $GITHUB_STEP_SUMMARY
+          echo "- v0.3.x merge pipeline contract scenario (1 scenario) with --features merge_pipeline" >> $GITHUB_STEP_SUMMARY
+          echo "- v0.3.x microcrate contract scenarios (5 scenarios) with --features microcrate_contracts" >> $GITHUB_STEP_SUMMARY
+          echo "- Roadmap property tests" >> $GITHUB_STEP_SUMMARY
+
+  ingest-tests:
+    name: Ingest Crate Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.92"
+          components: rustfmt, clippy
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo build
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Test shiplog-ingest-gitlab
+        run: cargo test -p shiplog-ingest-gitlab
+
+      - name: Test shiplog-ingest-jira
+        run: cargo test -p shiplog-ingest-jira
+
+      - name: Test shiplog-ingest-linear
+        run: cargo test -p shiplog-ingest-linear
+
+      - name: Test shiplog-ingest-github
+        run: cargo test -p shiplog-ingest-github
+
+      - name: Test shiplog-ingest-git
+        run: cargo test -p shiplog-ingest-git
+
+      - name: Test shiplog-ingest-manual
+        run: cargo test -p shiplog-ingest-manual
+
+      - name: Test shiplog-ingest-json
+        run: cargo test -p shiplog-ingest-json
+
+      - name: Generate ingest test summary
+        if: always()
+        run: |
+          echo "# Ingest Crate Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "All ingest crate tests completed!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Tested Crates" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-ingest-gitlab" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-ingest-jira" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-ingest-linear" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-ingest-github" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-ingest-git" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-ingest-manual" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-ingest-json" >> $GITHUB_STEP_SUMMARY
+
+  render-tests:
+    name: Render Crate Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.92"
+          components: rustfmt, clippy
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo build
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Test shiplog-render-md
+        run: cargo test -p shiplog-render-md
+
+      - name: Test shiplog-render-json
+        run: cargo test -p shiplog-render-json
+
+      - name: Test shiplog-render-json property tests
+        run: cargo test -p shiplog-render-json --test property_tests
+
+      - name: Generate render test summary
+        if: always()
+        run: |
+          echo "# Render Crate Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "All render crate tests completed!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Tested Crates" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-render-md (snapshot tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-render-json (JSONL/JSON round-trip tests)" >> $GITHUB_STEP_SUMMARY
+          echo "  - property_tests.rs (JSONL/property tests)" >> $GITHUB_STEP_SUMMARY
+
+  core-crate-tests:
+    name: Core Crate Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.92"
+          components: rustfmt, clippy
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo build
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Test shiplog-schema
+        run: cargo test -p shiplog-schema
+
+      - name: Test shiplog-coverage
+        run: cargo test -p shiplog-coverage
+
+      - name: Test shiplog-cache
+        run: cargo test -p shiplog-cache
+
+      - name: Test shiplog-cluster-llm
+        run: cargo test -p shiplog-cluster-llm
+
+      - name: Generate core crate test summary
+        if: always()
+        run: |
+          echo "# Core Crate Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "All core crate tests completed!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Tested Crates" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-schema (property tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-coverage (property tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-cache (property tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-cluster-llm (unit tests)" >> $GITHUB_STEP_SUMMARY
+
+  remaining-crate-tests:
+    name: Remaining Crate Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.92"
+          components: rustfmt, clippy
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo build
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Test shiplog-engine
+        run: cargo test -p shiplog-engine
+
+      - name: Test shiplog-bundle
+        run: cargo test -p shiplog-bundle
+
+      - name: Test shiplog-template
+        run: cargo test -p shiplog-template
+
+      - name: Test shiplog-workstreams
+        run: cargo test -p shiplog-workstreams
+
+      - name: Test shiplog-ids
+        run: cargo test -p shiplog-ids
+
+      - name: Test shiplog-redact
+        run: cargo test -p shiplog-redact
+
+      - name: Test shiplog-ports
+        run: cargo test -p shiplog-ports
+
+      - name: Test shiplog-ports integration tests
+        run: cargo test -p shiplog-ports --test ports_tests
+
+      # New microcrates
+      - name: Test shiplog-validate
+        run: cargo test -p shiplog-validate
+
+      - name: Test shiplog-export
+        run: cargo test -p shiplog-export
+
+      - name: Test shiplog-storage
+        run: cargo test -p shiplog-storage
+
+      - name: Test shiplog-notify
+        run: cargo test -p shiplog-notify
+
+      # New Later feature crates
+      - name: Test shiplog-team
+        run: cargo test -p shiplog-team
+      - name: Test shiplog-team-aggregate
+        run: cargo test -p shiplog-team-aggregate
+      - name: Test shiplog-team-render
+        run: cargo test -p shiplog-team-render
+
+      - name: Test shiplog-cron
+        run: cargo test -p shiplog-cron
+
+      - name: Test shiplog-tui
+        run: cargo test -p shiplog-tui
+
+      - name: Test shiplog-web
+        run: cargo test -p shiplog-web
+
+      - name: Test shiplog-plugin
+        run: cargo test -p shiplog-plugin
+
+      # Filter/merge/diff/query crates
+      - name: Test shiplog-filter
+        run: cargo test -p shiplog-filter
+
+      - name: Test shiplog-merge
+        run: cargo test -p shiplog-merge
+
+      - name: Test shiplog-diff
+        run: cargo test -p shiplog-diff
+
+      - name: Test shiplog-query
+        run: cargo test -p shiplog-query
+
+      # New utility crates
+      - name: Test shiplog-stats
+        run: cargo test -p shiplog-stats
+
+      - name: Test shiplog-sync
+        run: cargo test -p shiplog-sync
+
+      - name: Test shiplog-archive
+        run: cargo test -p shiplog-archive
+
+      - name: Test shiplog-report
+        run: cargo test -p shiplog-report
+
+      # New config/watch/transform/migrate crates
+      - name: Test shiplog-config
+        run: cargo test -p shiplog-config
+
+      - name: Test shiplog-watch
+        run: cargo test -p shiplog-watch
+
+      - name: Test shiplog-transform
+        run: cargo test -p shiplog-transform
+
+      - name: Test shiplog-migrate
+        run: cargo test -p shiplog-migrate
+
+      # New pipeline extension crates
+      - name: Test shiplog-scheduler
+        run: cargo test -p shiplog-scheduler
+
+      - name: Test shiplog-hooks
+        run: cargo test -p shiplog-hooks
+
+      - name: Test shiplog-backup
+        run: cargo test -p shiplog-backup
+
+      # New utility crates (auth, crypto, logging, metrics)
+      - name: Test shiplog-auth
+        run: cargo test -p shiplog-auth
+
+      - name: Test shiplog-crypto
+        run: cargo test -p shiplog-crypto
+
+      - name: Test shiplog-logging
+        run: cargo test -p shiplog-logging
+
+      - name: Test shiplog-metrics
+        run: cargo test -p shiplog-metrics
+
+      - name: Test shiplog-meter
+        run: cargo test -p shiplog-meter
+
+      - name: Test shiplog-counter
+        run: cargo test -p shiplog-counter
+
+      - name: Test shiplog-gauge
+        run: cargo test -p shiplog-gauge
+
+      # New messaging crates (pubsub, queue, eventbus, workflow)
+      - name: Test shiplog-pubsub
+        run: cargo test -p shiplog-pubsub
+
+      - name: Test shiplog-queue
+        run: cargo test -p shiplog-queue
+
+      - name: Test shiplog-deque
+        run: cargo test -p shiplog-deque
+
+      - name: Test shiplog-heap
+        run: cargo test -p shiplog-heap
+
+      - name: Test shiplog-priorityqueue
+        run: cargo test -p shiplog-priorityqueue
+
+      - name: Test shiplog-eventbus
+        run: cargo test -p shiplog-eventbus
+
+      - name: Test shiplog-workflow
+        run: cargo test -p shiplog-workflow
+
+      # New utility crates (watcher, batcher, compressor, retry)
+      - name: Test shiplog-watcher
+        run: cargo test -p shiplog-watcher
+
+      - name: Test shiplog-batcher
+        run: cargo test -p shiplog-batcher
+
+      - name: Test shiplog-compressor
+        run: cargo test -p shiplog-compressor
+
+      - name: Test shiplog-retry
+        run: cargo test -p shiplog-retry
+
+      # New utility crates (ttl, rate, circuit, time)
+      - name: Test shiplog-ttl
+        run: cargo test -p shiplog-ttl
+
+      - name: Test shiplog-rate
+        run: cargo test -p shiplog-rate
+
+      - name: Test shiplog-circuit
+        run: cargo test -p shiplog-circuit
+
+      - name: Test shiplog-time
+        run: cargo test -p shiplog-time
+
+      # New utility crates (tracker, dedupe, uuid, hash)
+      - name: Test shiplog-tracker
+        run: cargo test -p shiplog-tracker
+
+      - name: Test shiplog-dedupe
+        run: cargo test -p shiplog-dedupe
+
+      - name: Test shiplog-uuid
+        run: cargo test -p shiplog-uuid
+
+      - name: Test shiplog-hash
+        run: cargo test -p shiplog-hash
+
+      # New utility crates (serde, iter, error, fmt)
+      - name: Test shiplog-serde
+        run: cargo test -p shiplog-serde
+
+      - name: Test shiplog-iter
+        run: cargo test -p shiplog-iter
+
+      - name: Test shiplog-error
+        run: cargo test -p shiplog-error
+
+      - name: Test shiplog-fmt
+        run: cargo test -p shiplog-fmt
+
+      # New utility crates (path, url, base64, hex)
+      - name: Test shiplog-path
+        run: cargo test -p shiplog-path
+
+      - name: Test shiplog-url
+        run: cargo test -p shiplog-url
+
+      - name: Test shiplog-base64
+        run: cargo test -p shiplog-base64
+
+      - name: Test shiplog-hex
+        run: cargo test -p shiplog-hex
+
+      # New utility crates (async, channel, timeout, pool)
+      - name: Test shiplog-async
+        run: cargo test -p shiplog-async
+
+      - name: Test shiplog-channel
+        run: cargo test -p shiplog-channel
+
+      - name: Test shiplog-timeout
+        run: cargo test -p shiplog-timeout
+
+      - name: Test shiplog-pool
+        run: cargo test -p shiplog-pool
+
+      # New utility crates (guard, scope, spawn)
+      - name: Test shiplog-guard
+        run: cargo test -p shiplog-guard
+
+      - name: Test shiplog-scope
+        run: cargo test -p shiplog-scope
+
+      - name: Test shiplog-spawn
+        run: cargo test -p shiplog-spawn
+
+      # New synchronization crates (latch, once, shared, atomic)
+      - name: Test shiplog-latch
+        run: cargo test -p shiplog-latch
+
+      - name: Test shiplog-once
+        run: cargo test -p shiplog-once
+
+      - name: Test shiplog-shared
+        run: cargo test -p shiplog-shared
+
+      - name: Test shiplog-atomic
+        run: cargo test -p shiplog-atomic
+
+      # New utility crates (signal, shutdown, health)
+      - name: Test shiplog-signal
+        run: cargo test -p shiplog-signal
+
+      - name: Test shiplog-shutdown
+        run: cargo test -p shiplog-shutdown
+
+      - name: Test shiplog-health
+        run: cargo test -p shiplog-health
+
+      # New utility crates (version, semver, env, proc)
+      - name: Test shiplog-version
+        run: cargo test -p shiplog-version
+
+      - name: Test shiplog-semver
+        run: cargo test -p shiplog-semver
+
+      - name: Test shiplog-env
+        run: cargo test -p shiplog-env
+
+      - name: Test shiplog-proc
+        run: cargo test -p shiplog-proc
+
+      # New utility crates (str, chars, regex)
+      - name: Test shiplog-str
+        run: cargo test -p shiplog-str
+
+      - name: Test shiplog-chars
+        run: cargo test -p shiplog-chars
+
+      - name: Test shiplog-regex
+        run: cargo test -p shiplog-regex
+
+      # New utility crates (parse, normalize, sanitize)
+      - name: Test shiplog-parse
+        run: cargo test -p shiplog-parse
+
+      - name: Test shiplog-normalize
+        run: cargo test -p shiplog-normalize
+
+      # New validator/normalizer crates
+      - name: Test shiplog-validator
+        run: cargo test -p shiplog-validator
+
+      - name: Test shiplog-normalizer
+        run: cargo test -p shiplog-normalizer
+
+      - name: Test shiplog-sanitize
+        run: cargo test -p shiplog-sanitize
+
+      # New utility crates (actor, stream, buffer, window)
+      - name: Test shiplog-actor
+        run: cargo test -p shiplog-actor
+
+      - name: Test shiplog-stream
+        run: cargo test -p shiplog-stream
+
+      - name: Test shiplog-buffer
+        run: cargo test -p shiplog-buffer
+
+      - name: Test shiplog-window
+        run: cargo test -p shiplog-window
+
+      - name: Test shiplog-slidingwindow
+        run: cargo test -p shiplog-slidingwindow
+
+      - name: Test shiplog-timewheel
+        run: cargo test -p shiplog-timewheel
+
+      - name: Test shiplog-delayqueue
+        run: cargo test -p shiplog-delayqueue
+
+      # New iterator/enumerator/chunker crates
+      - name: Test shiplog-iterator
+        run: cargo test -p shiplog-iterator
+
+      - name: Test shiplog-enumerator
+        run: cargo test -p shiplog-enumerator
+
+      - name: Test shiplog-chunker
+        run: cargo test -p shiplog-chunker
+
+      # New cache crates (lru, segment)
+      - name: Test shiplog-lru
+        run: cargo test -p shiplog-lru
+
+      - name: Test shiplog-segment
+        run: cargo test -p shiplog-segment
+
+      # New cache crates (cache-lru, cache-arc, cache-ttl, cache-2q)
+      - name: Test shiplog-cache-lru
+        run: cargo test -p shiplog-cache-lru
+
+      - name: Test shiplog-cache-arc
+        run: cargo test -p shiplog-cache-arc
+
+      - name: Test shiplog-cache-ttl
+        run: cargo test -p shiplog-cache-ttl
+
+      - name: Test shiplog-cache-2q
+        run: cargo test -p shiplog-cache-2q
+
+      # New data structure crates (trie, bloom, skiplist, ring, graph, matrix)
+      - name: Test shiplog-trie
+        run: cargo test -p shiplog-trie
+
+      - name: Test shiplog-bloom
+        run: cargo test -p shiplog-bloom
+
+      - name: Test shiplog-skiplist
+        run: cargo test -p shiplog-skiplist
+
+      - name: Test shiplog-tree
+        run: cargo test -p shiplog-tree
+
+      - name: Test shiplog-bst
+        run: cargo test -p shiplog-bst
+
+      - name: Test shiplog-btree
+        run: cargo test -p shiplog-btree
+
+      - name: Test shiplog-ring
+        run: cargo test -p shiplog-ring
+
+      - name: Test shiplog-graph
+        run: cargo test -p shiplog-graph
+
+      - name: Test shiplog-matrix
+        run: cargo test -p shiplog-matrix
+
+      # New random crates (random, prng)
+      - name: Test shiplog-random
+        run: cargo test -p shiplog-random
+
+      - name: Test shiplog-prng
+        run: cargo test -p shiplog-prng
+
+      # New data processing crates (accumulator, collector, aggregator, processor)
+      - name: Test shiplog-accumulator
+        run: cargo test -p shiplog-accumulator
+
+      - name: Test shiplog-collector
+        run: cargo test -p shiplog-collector
+
+      - name: Test shiplog-aggregator
+        run: cargo test -p shiplog-aggregator
+
+      - name: Test shiplog-processor
+        run: cargo test -p shiplog-processor
+
+      # New utility crates (emitter, reducer, sink, writer)
+      - name: Test shiplog-emitter
+        run: cargo test -p shiplog-emitter
+
+      - name: Test shiplog-reducer
+        run: cargo test -p shiplog-reducer
+
+      - name: Test shiplog-sink
+        run: cargo test -p shiplog-sink
+
+      - name: Test shiplog-writer
+        run: cargo test -p shiplog-writer
+
+      # New pattern crates (interceptor, middleware, adapter, resolver)
+      - name: Test shiplog-interceptor
+        run: cargo test -p shiplog-interceptor
+
+      - name: Test shiplog-middleware
+        run: cargo test -p shiplog-middleware
+
+      - name: Test shiplog-adapter
+        run: cargo test -p shiplog-adapter
+
+      - name: Test shiplog-resolver
+        run: cargo test -p shiplog-resolver
+
+      # New rate limiting crates (throttler, circuitbreaker, bucket, leakybucket)
+      - name: Test shiplog-throttler
+        run: cargo test -p shiplog-throttler
+
+      - name: Test shiplog-circuitbreaker
+        run: cargo test -p shiplog-circuitbreaker
+
+      - name: Test shiplog-bucket
+        run: cargo test -p shiplog-bucket
+
+      - name: Test shiplog-leakybucket
+        run: cargo test -p shiplog-leakybucket
+
+      # New data structure crates (stack, fenwick)
+      - name: Test shiplog-stack
+        run: cargo test -p shiplog-stack
+
+      - name: Test shiplog-fenwick
+        run: cargo test -p shiplog-fenwick
+
+      # New statistics crates (histogram, percentile, quantile, summary)
+      - name: Test shiplog-histogram
+        run: cargo test -p shiplog-histogram
+
+      - name: Test shiplog-percentile
+        run: cargo test -p shiplog-percentile
+
+      - name: Test shiplog-quantile
+        run: cargo test -p shiplog-quantile
+
+      - name: Test shiplog-summary
+        run: cargo test -p shiplog-summary
+
+      # New stream processing crates (watermark, windowing, triggers)
+      - name: Test shiplog-watermark
+        run: cargo test -p shiplog-watermark
+
+      - name: Test shiplog-windowing
+        run: cargo test -p shiplog-windowing
+
+      - name: Test shiplog-triggers
+        run: cargo test -p shiplog-triggers
+
+      # New stream join/split/union/cogroup crates
+      - name: Test shiplog-joiner
+        run: cargo test -p shiplog-joiner
+
+      - name: Test shiplog-cogrouper
+        run: cargo test -p shiplog-cogrouper
+
+      - name: Test shiplog-union
+        run: cargo test -p shiplog-union
+
+      - name: Test shiplog-split
+        run: cargo test -p shiplog-split
+
+      - name: Generate remaining crate test summary
+        if: always()
+        run: |
+          echo "# Remaining Crate Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "All remaining crate tests completed!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Tested Crates" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-engine (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-bundle (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-template (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-workstreams (property tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-ids (property tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-redact (property tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-ports (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "  - ports_tests.rs (integration tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-team (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-team-aggregate (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-team-render (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-cron (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-tui (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-web (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-plugin (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-filter (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-merge (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-diff (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-query (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-stats (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-sync (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-archive (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-report (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-config (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-watch (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-transform (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-migrate (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-scheduler (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-hooks (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-backup (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-auth (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-crypto (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-logging (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-metrics (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-meter (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-counter (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-gauge (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-ttl (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-rate (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-circuit (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-time (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-tracker (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-dedupe (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-uuid (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-hash (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-serde (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-iter (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-error (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-fmt (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-path (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-url (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-base64 (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-hex (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-async (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-channel (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-timeout (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-pool (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-guard (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-scope (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-spawn (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-latch (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-once (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-shared (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-atomic (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-signal (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-shutdown (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-health (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-version (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-semver (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-env (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-proc (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-str (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-chars (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-regex (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-parse (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-normalize (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-sanitize (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-actor (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-stream (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-buffer (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-window (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-slidingwindow (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-timewheel (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-delayqueue (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-iterator (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-enumerator (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-chunker (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-lru (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-segment (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-cache-lru (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-cache-arc (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-cache-ttl (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-cache-2q (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-trie (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-bloom (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-skiplist (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-tree (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-bst (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-btree (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-ring (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-graph (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-matrix (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-random (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-prng (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-accumulator (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-collector (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-aggregator (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-processor (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-emitter (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-reducer (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-sink (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-writer (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-interceptor (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-middleware (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-adapter (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-resolver (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-watermark (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-windowing (unit tests)" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-triggers (unit tests)" >> $GITHUB_STEP_SUMMARY
+
+  app-tests:
+    name: App Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.92"
+          components: rustfmt, clippy
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo build
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Test shiplog app
+        run: cargo test -p shiplog
+
+      - name: Generate app test summary
+        if: always()
+        run: |
+          echo "# App Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "App tests completed!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Tested Apps" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog (unit tests for cache directory resolution)" >> $GITHUB_STEP_SUMMARY

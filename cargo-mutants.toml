@@ -214,3 +214,66 @@ timeout = "120s"
 [apps.shiplog.mutants]
 replace_bool = true
 replace_match = true
+
+# ============================================================================
+# ROADMAP Feature Crates (Tier 2: High Priority)
+# Target Mutation Score: ≥ 80%
+# ============================================================================
+
+[crates.shiplog-ingest-gitlab]
+# GitLab API ingestor (ROADMAP v0.3.x)
+minimum_score = 80
+timeout = "120s"
+
+[crates.shiplog-ingest-gitlab.mutants]
+replace_bool = true
+replace_match = true
+replace_pattern = true
+
+[crates.shiplog-ingest-jira]
+# Jira API ingestor (ROADMAP v0.3.x)
+minimum_score = 80
+timeout = "120s"
+
+[crates.shiplog-ingest-jira.mutants]
+replace_bool = true
+replace_match = true
+replace_pattern = true
+
+[crates.shiplog-ingest-linear]
+# Linear API ingestor (ROADMAP v0.3.x)
+minimum_score = 80
+timeout = "120s"
+
+[crates.shiplog-ingest-linear.mutants]
+replace_bool = true
+replace_match = true
+replace_pattern = true
+
+[crates.shiplog-template]
+# Template rendering (ROADMAP v0.3.x)
+minimum_score = 80
+timeout = "120s"
+
+[crates.shiplog-template.mutants]
+replace_bool = true
+replace_match = true
+replace_pattern = true
+
+[crates.shiplog-plugin]
+# Plugin system (ROADMAP Later)
+minimum_score = 70
+timeout = "120s"
+
+[crates.shiplog-plugin.mutants]
+replace_bool = true
+replace_match = true
+replace_pattern = true
+
+# ============================================================================
+# Test filtering strategies
+# ============================================================================
+
+[tests]
+# Run specific test suites for mutation testing
+test_filter = "mutants"

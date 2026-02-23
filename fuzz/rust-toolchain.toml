@@ -2,5 +2,5 @@
 # Keeping the repo root on stable is fine; fuzz/ opts into nightly.
 
 [toolchain]
-channel = "nightly"
+channel = "nightly-2026-02-18"
 components = ["llvm-tools-preview"]

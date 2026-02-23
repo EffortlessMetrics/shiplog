@@ -1,0 +1,22 @@
+[package]
+name = "shiplog-validator"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Comprehensive validation utilities for shiplog data."
+readme = "README.md"
+documentation = "https://docs.rs/shiplog-validator"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["validation", "data", "schema"]
+categories = ["data-structures", "development-tools"]
+
+[dependencies]
+serde.workspace = true
+anyhow.workspace = true
+regex.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
