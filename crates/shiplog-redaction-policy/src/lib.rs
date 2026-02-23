@@ -5,30 +5,10 @@
 //! - alias resolver abstraction used by `public` profile
 
 pub use shiplog_redaction_profile::RedactionProfile;
-use shiplog_schema::event::{EventEnvelope, EventPayload, RepoRef, RepoVisibility};
+pub use shiplog_redaction_repo::AliasResolver;
+use shiplog_redaction_repo::redact_repo_public;
+use shiplog_schema::event::{EventEnvelope, EventPayload};
 use shiplog_schema::workstream::{Workstream, WorkstreamsFile};
-
-/// Alias resolver used by public redaction.
-pub trait AliasResolver {
-    fn alias(&self, kind: &str, value: &str) -> String;
-}
-
-impl<F> AliasResolver for F
-where
-    F: Fn(&str, &str) -> String,
-{
-    fn alias(&self, kind: &str, value: &str) -> String {
-        (self)(kind, value)
-    }
-}
-
-fn redact_repo_public<A: AliasResolver + ?Sized>(repo: &RepoRef, aliases: &A) -> RepoRef {
-    RepoRef {
-        full_name: aliases.alias("repo", &repo.full_name),
-        html_url: None,
-        visibility: RepoVisibility::Unknown,
-    }
-}
 
 /// Redact a single event for the selected profile.
 pub fn redact_event_with_aliases<A: AliasResolver + ?Sized>(

@@ -3009,6 +3009,7 @@ dependencies = [
  "shiplog-alias",
  "shiplog-ids",
  "shiplog-redaction-profile",
+ "shiplog-redaction-repo",
  "shiplog-schema",
  "shiplog-testkit",
 ]
@@ -3033,6 +3034,16 @@ dependencies = [
  "shiplog-alias",
  "shiplog-ids",
  "shiplog-redaction-policy",
+ "shiplog-schema",
+ "shiplog-testkit",
+]
+
+[[package]]
+name = "shiplog-redaction-repo"
+version = "0.2.1"
+dependencies = [
+ "proptest",
+ "shiplog-alias",
  "shiplog-schema",
  "shiplog-testkit",
 ]
@@ -3378,6 +3389,7 @@ dependencies = [
  "shiplog-output-layout",
  "shiplog-ports",
  "shiplog-redact",
+ "shiplog-redaction-repo",
  "shiplog-render-md",
  "shiplog-schema",
  "shiplog-storage",

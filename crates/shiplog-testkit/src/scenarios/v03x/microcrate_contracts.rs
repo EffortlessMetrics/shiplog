@@ -8,7 +8,8 @@
     feature = "microcrate_storage",
     feature = "microcrate_notify",
     feature = "microcrate_cache_stats",
-    feature = "microcrate_cache_expiry"
+    feature = "microcrate_cache_expiry",
+    feature = "microcrate_redaction_repo"
 ))]
 use crate::bdd::assertions::assert_true;
 #[cfg(feature = "microcrate_export")]
@@ -44,6 +45,9 @@ use chrono::{DateTime, Duration, Utc};
 #[cfg(feature = "microcrate_cache_expiry")]
 use shiplog_cache_expiry::{CacheExpiryWindow, is_expired, is_valid, parse_rfc3339_utc};
 
+#[cfg(feature = "microcrate_redaction_repo")]
+use shiplog_redaction_repo::redact_repo_public;
+
 #[cfg(feature = "microcrate_storage")]
 use shiplog_storage::{InMemoryStorage, Storage, StorageKey};
 
@@ -58,7 +62,8 @@ use shiplog_validate::{EventValidator, Packet, PacketValidator};
     feature = "microcrate_storage",
     feature = "microcrate_notify",
     feature = "microcrate_cache_stats",
-    feature = "microcrate_cache_expiry"
+    feature = "microcrate_cache_expiry",
+    feature = "microcrate_redaction_repo"
 ))]
 use crate::bdd::Scenario;
 
@@ -507,6 +512,68 @@ pub fn microcrate_cache_expiry_contract() -> Scenario {
                 assert_true(
                     ctx.flag("expired_at_boundary").unwrap_or(false),
                     "entry expired at boundary",
+                )
+            },
+        )
+}
+
+#[cfg(feature = "microcrate_redaction_repo")]
+/// Scenario: redaction-repo crate keeps public repo redaction contract stable.
+pub fn microcrate_redaction_repo_contract() -> Scenario {
+    Scenario::new("Redaction-repo crate keeps canonical public repo redaction contract stable")
+        .given(
+            "a private repository reference and canonical alias inputs",
+            |ctx| {
+                ctx.strings
+                    .insert("repo_name".to_string(), "acme/top-secret".to_string());
+                ctx.strings.insert(
+                    "repo_url".to_string(),
+                    "https://github.com/acme/top-secret".to_string(),
+                );
+            },
+        )
+        .when(
+            "public repo redaction is applied through the microcrate API",
+            |ctx| {
+                let repo_name = ctx.string("repo_name").unwrap_or("");
+                let repo_url = ctx.string("repo_url").unwrap_or("");
+                let alias = |kind: &str, value: &str| format!("{kind}:{}", value.replace('/', "_"));
+                let repo = shiplog_schema::event::RepoRef {
+                    full_name: repo_name.to_string(),
+                    html_url: Some(repo_url.to_string()),
+                    visibility: shiplog_schema::event::RepoVisibility::Private,
+                };
+                let redacted = redact_repo_public(&repo, &alias);
+
+                ctx.strings
+                    .insert("aliased_name".to_string(), redacted.full_name);
+                ctx.flags
+                    .insert("url_removed".to_string(), redacted.html_url.is_none());
+                ctx.flags.insert(
+                    "visibility_unknown".to_string(),
+                    matches!(
+                        redacted.visibility,
+                        shiplog_schema::event::RepoVisibility::Unknown
+                    ),
+                );
+                Ok(())
+            },
+        )
+        .then(
+            "repo name should be aliased and url/visibility should be sanitized",
+            |ctx| {
+                let aliased_name = crate::bdd::assertions::assert_present(
+                    ctx.string("aliased_name").map(String::from),
+                    "aliased_name",
+                )?;
+                assert_true(
+                    aliased_name == "repo:acme_top-secret",
+                    "canonical repo alias",
+                )?;
+                assert_true(ctx.flag("url_removed").unwrap_or(false), "url removed")?;
+                assert_true(
+                    ctx.flag("visibility_unknown").unwrap_or(false),
+                    "visibility unknown",
                 )
             },
         )

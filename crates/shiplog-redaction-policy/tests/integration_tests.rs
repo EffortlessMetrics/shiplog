@@ -7,6 +7,7 @@ use shiplog_redaction_policy::{
     RedactionProfile, redact_events_with_aliases, redact_workstreams_with_aliases,
 };
 use shiplog_redaction_profile::RedactionProfile as ProfileCrateProfile;
+use shiplog_redaction_repo::redact_repo_public;
 use shiplog_schema::event::*;
 use shiplog_schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
 
@@ -103,4 +104,20 @@ fn policy_reexports_profile_type_from_profile_crate() {
         RedactionProfile::from_profile_str("unexpected"),
         ProfileCrateProfile::Public
     );
+}
+
+#[test]
+fn policy_public_repo_projection_matches_redaction_repo_contract() {
+    let alias_store = DeterministicAliasStore::new(b"integration-key");
+    let alias = |kind: &str, value: &str| alias_store.alias(kind, value);
+    let event = pr_event("acme/private-repo", 9, "secret");
+
+    let policy_event = redact_events_with_aliases(
+        std::slice::from_ref(&event),
+        RedactionProfile::Public,
+        &alias,
+    );
+    let expected_repo = redact_repo_public(&event.repo, &alias);
+
+    assert_eq!(policy_event[0].repo, expected_repo);
 }

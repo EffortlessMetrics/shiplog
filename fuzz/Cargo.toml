@@ -16,6 +16,7 @@ shiplog-workstreams = { path = "../crates/shiplog-workstreams" }
 shiplog-schema = { path = "../crates/shiplog-schema" }
 shiplog-ids = { path = "../crates/shiplog-ids" }
 shiplog-redaction-profile = { path = "../crates/shiplog-redaction-profile" }
+shiplog-redaction-repo = { path = "../crates/shiplog-redaction-repo" }
 shiplog-redaction-policy = { path = "../crates/shiplog-redaction-policy" }
 shiplog-redaction-projector = { path = "../crates/shiplog-redaction-projector" }
 shiplog-cache-key = { path = "../crates/shiplog-cache-key" }
@@ -107,6 +108,13 @@ bench = false
 [[bin]]
 name = "redaction_profile"
 path = "fuzz_targets/redaction_profile.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "redaction_repo"
+path = "fuzz_targets/redaction_repo.rs"
 test = false
 doc = false
 bench = false

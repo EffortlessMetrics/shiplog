@@ -22,7 +22,8 @@ pub mod llm_clustering;
     feature = "microcrate_notify",
     feature = "microcrate_cache_key",
     feature = "microcrate_cache_stats",
-    feature = "microcrate_cache_expiry"
+    feature = "microcrate_cache_expiry",
+    feature = "microcrate_redaction_repo"
 ))]
 pub mod microcrate_contracts;
 pub mod multi_source_merging;
@@ -40,7 +41,8 @@ pub use llm_clustering::*;
     feature = "microcrate_notify",
     feature = "microcrate_cache_key",
     feature = "microcrate_cache_stats",
-    feature = "microcrate_cache_expiry"
+    feature = "microcrate_cache_expiry",
+    feature = "microcrate_redaction_repo"
 ))]
 pub use microcrate_contracts::*;
 pub use multi_source_merging::*;

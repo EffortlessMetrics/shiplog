@@ -25,6 +25,7 @@ microcrate_notify = ["shiplog-notify"]
 microcrate_cache_key = ["shiplog-cache-key"]
 microcrate_cache_stats = ["shiplog-cache-stats"]
 microcrate_cache_expiry = ["shiplog-cache-expiry"]
+microcrate_redaction_repo = ["shiplog-redaction-repo"]
 microcrate_contracts = [
     "microcrate_export",
     "microcrate_output_layout",
@@ -34,6 +35,7 @@ microcrate_contracts = [
     "microcrate_cache_key",
     "microcrate_cache_stats",
     "microcrate_cache_expiry",
+    "microcrate_redaction_repo",
 ]
 
 [dependencies]
@@ -55,6 +57,7 @@ shiplog-notify = { path = "../shiplog-notify", version = "0.2.1", optional = tru
 shiplog-cache-key = { path = "../shiplog-cache-key", version = "0.2.1", optional = true }
 shiplog-cache-stats = { path = "../shiplog-cache-stats", version = "0.2.1", optional = true }
 shiplog-cache-expiry = { path = "../shiplog-cache-expiry", version = "0.2.1", optional = true }
+shiplog-redaction-repo = { path = "../shiplog-redaction-repo", version = "0.2.1", optional = true }
 proptest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
