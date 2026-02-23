@@ -2143,6 +2143,7 @@ dependencies = [
  "serde",
  "serde_json",
  "shiplog-cache-key",
+ "shiplog-cache-stats",
  "shiplog-schema",
  "shiplog-testkit",
  "tempfile",
@@ -2178,6 +2179,14 @@ version = "0.2.1"
 dependencies = [
  "proptest",
  "shiplog-schema",
+]
+
+[[package]]
+name = "shiplog-cache-stats"
+version = "0.2.1"
+dependencies = [
+ "proptest",
+ "shiplog-testkit",
 ]
 
 [[package]]
@@ -3351,6 +3360,7 @@ dependencies = [
  "serde",
  "serde_json",
  "shiplog-cache-key",
+ "shiplog-cache-stats",
  "shiplog-export",
  "shiplog-ids",
  "shiplog-merge",

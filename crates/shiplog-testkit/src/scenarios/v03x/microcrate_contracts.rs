@@ -6,7 +6,8 @@
     feature = "microcrate_cache_key",
     feature = "microcrate_validate",
     feature = "microcrate_storage",
-    feature = "microcrate_notify"
+    feature = "microcrate_notify",
+    feature = "microcrate_cache_stats"
 ))]
 use crate::bdd::assertions::assert_true;
 #[cfg(feature = "microcrate_export")]
@@ -33,6 +34,9 @@ use shiplog_notify::{Notification, NotificationService};
 #[cfg(feature = "microcrate_cache_key")]
 use shiplog_cache_key::CacheKey;
 
+#[cfg(feature = "microcrate_cache_stats")]
+use shiplog_cache_stats::CacheStats;
+
 #[cfg(feature = "microcrate_storage")]
 use shiplog_storage::{InMemoryStorage, Storage, StorageKey};
 
@@ -45,7 +49,8 @@ use shiplog_validate::{EventValidator, Packet, PacketValidator};
     feature = "microcrate_cache_key",
     feature = "microcrate_validate",
     feature = "microcrate_storage",
-    feature = "microcrate_notify"
+    feature = "microcrate_notify",
+    feature = "microcrate_cache_stats"
 ))]
 use crate::bdd::Scenario;
 
@@ -367,6 +372,77 @@ pub fn microcrate_cache_key_contract() -> Scenario {
                 assert_true(notes.starts_with("gitlab:mr:notes:"), "notes namespace")?;
                 assert_true(details != reviews, "details and reviews are distinct")?;
                 assert_true(search != notes, "search and notes are distinct")
+            },
+        )
+}
+
+#[cfg(feature = "microcrate_cache_stats")]
+/// Scenario: cache-stats crate keeps normalization contracts stable.
+pub fn microcrate_cache_stats_contract() -> Scenario {
+    Scenario::new("Cache-stats crate keeps normalization contracts stable")
+        .when(
+            "raw cache row counts are normalized through the microcrate API",
+            |ctx| {
+                let normal = CacheStats::from_raw_counts(12, 3, 4 * 1024 * 1024 + 88);
+                let clamped = CacheStats::from_raw_counts(-4, 99, -10);
+
+                ctx.numbers
+                    .insert("normal_total".to_string(), normal.total_entries as u64);
+                ctx.numbers
+                    .insert("normal_expired".to_string(), normal.expired_entries as u64);
+                ctx.numbers
+                    .insert("normal_valid".to_string(), normal.valid_entries as u64);
+                ctx.numbers
+                    .insert("normal_mb".to_string(), normal.cache_size_mb);
+
+                ctx.numbers
+                    .insert("clamped_total".to_string(), clamped.total_entries as u64);
+                ctx.numbers.insert(
+                    "clamped_expired".to_string(),
+                    clamped.expired_entries as u64,
+                );
+                ctx.numbers
+                    .insert("clamped_valid".to_string(), clamped.valid_entries as u64);
+                ctx.numbers
+                    .insert("clamped_mb".to_string(), clamped.cache_size_mb);
+                Ok(())
+            },
+        )
+        .then(
+            "normalized values should satisfy the canonical contract",
+            |ctx| {
+                assert_true(
+                    ctx.number("normal_total").unwrap_or(0) == 12,
+                    "normal total",
+                )?;
+                assert_true(
+                    ctx.number("normal_expired").unwrap_or(0) == 3,
+                    "normal expired",
+                )?;
+                assert_true(ctx.number("normal_valid").unwrap_or(0) == 9, "normal valid")?;
+                assert_true(ctx.number("normal_mb").unwrap_or(0) == 4, "normal size mb")?;
+
+                assert_true(
+                    ctx.number("clamped_total").unwrap_or(1) == 0,
+                    "clamped total",
+                )?;
+                assert_true(
+                    ctx.number("clamped_expired").unwrap_or(1) == 0,
+                    "clamped expired",
+                )?;
+                assert_true(
+                    ctx.number("clamped_valid").unwrap_or(1) == 0,
+                    "clamped valid",
+                )?;
+                assert_true(
+                    ctx.number("clamped_mb").unwrap_or(1) == 0,
+                    "clamped size mb",
+                )?;
+
+                let total = ctx.number("normal_total").unwrap_or(0);
+                let expired = ctx.number("normal_expired").unwrap_or(0);
+                let valid = ctx.number("normal_valid").unwrap_or(0);
+                assert_true(valid + expired == total, "valid + expired == total")
             },
         )
 }

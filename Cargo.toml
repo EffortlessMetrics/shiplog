@@ -23,6 +23,7 @@ members = [
   "crates/shiplog-ingest-linear",
   "crates/shiplog-cache",
   "crates/shiplog-cache-key",
+  "crates/shiplog-cache-stats",
   "crates/shiplog-template",
   "crates/shiplog-testkit",
   "crates/shiplog-cluster-llm",

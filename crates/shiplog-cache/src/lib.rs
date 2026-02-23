@@ -175,8 +175,6 @@ impl ApiCache {
             |row| row.get(0),
         )?;
 
-        let _valid_entries = (total - expired) as usize;
-
         // Calculate cache size in bytes
         let size_bytes: i64 =
             self.conn
@@ -184,32 +182,12 @@ impl ApiCache {
                     Ok(row.get::<_, Option<i64>>(0).unwrap_or(Some(0)).unwrap_or(0))
                 })?;
 
-        // Format cache size
-        let size_mb = if size_bytes > 0 {
-            size_bytes / (1024 * 1024)
-        } else {
-            0
-        };
-
-        Ok(CacheStats {
-            total_entries: total as usize,
-            expired_entries: expired as usize,
-            valid_entries: (total - expired) as usize,
-            cache_size_mb: size_mb as u64,
-        })
+        Ok(CacheStats::from_raw_counts(total, expired, size_bytes))
     }
 }
 
-/// Cache statistics.
-#[derive(Debug, Clone, Copy)]
-pub struct CacheStats {
-    pub total_entries: usize,
-    pub expired_entries: usize,
-    pub valid_entries: usize,
-    pub cache_size_mb: u64,
-}
-
 pub use shiplog_cache_key::CacheKey;
+pub use shiplog_cache_stats::CacheStats;
 
 #[cfg(test)]
 mod tests {
@@ -367,5 +345,14 @@ mod tests {
             "pr:reviews:https://api.github.com/repos/o/r/pulls/1:page2"
         );
         assert_eq!(notes, "gitlab:mr:notes:project12:mr34:page1");
+    }
+
+    #[test]
+    fn cache_stats_reexport_matches_contract() {
+        let stats = CacheStats::from_raw_counts(5, 2, 2 * 1024 * 1024 + 77);
+        assert_eq!(stats.total_entries, 5);
+        assert_eq!(stats.expired_entries, 2);
+        assert_eq!(stats.valid_entries, 3);
+        assert_eq!(stats.cache_size_mb, 2);
     }
 }
