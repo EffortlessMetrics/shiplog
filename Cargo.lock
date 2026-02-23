@@ -2964,6 +2964,7 @@ dependencies = [
  "shiplog-ids",
  "shiplog-ports",
  "shiplog-redaction-policy",
+ "shiplog-redaction-profile",
  "shiplog-schema",
  "shiplog-testkit",
  "tempfile",
@@ -2975,11 +2976,21 @@ version = "0.2.1"
 dependencies = [
  "chrono",
  "proptest",
- "serde",
  "serde_json",
  "shiplog-alias",
  "shiplog-ids",
+ "shiplog-redaction-profile",
  "shiplog-schema",
+ "shiplog-testkit",
+]
+
+[[package]]
+name = "shiplog-redaction-profile"
+version = "0.2.1"
+dependencies = [
+ "proptest",
+ "serde",
+ "serde_json",
  "shiplog-testkit",
 ]
 

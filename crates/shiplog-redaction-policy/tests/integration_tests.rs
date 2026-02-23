@@ -6,6 +6,7 @@ use shiplog_ids::{EventId, WorkstreamId};
 use shiplog_redaction_policy::{
     RedactionProfile, redact_events_with_aliases, redact_workstreams_with_aliases,
 };
+use shiplog_redaction_profile::RedactionProfile as ProfileCrateProfile;
 use shiplog_schema::event::*;
 use shiplog_schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
 
@@ -92,4 +93,14 @@ fn workstream_public_projection_shares_alias_contract_with_alias_store() {
     assert_eq!(redacted.workstreams[0].title, expected_alias);
     assert!(redacted.workstreams[0].summary.is_none());
     assert!(!redacted.workstreams[0].tags.contains(&"repo".to_string()));
+}
+
+#[test]
+fn policy_reexports_profile_type_from_profile_crate() {
+    let profile: RedactionProfile = ProfileCrateProfile::Manager;
+    assert_eq!(profile.as_str(), "manager");
+    assert_eq!(
+        RedactionProfile::from_profile_str("unexpected"),
+        ProfileCrateProfile::Public
+    );
 }

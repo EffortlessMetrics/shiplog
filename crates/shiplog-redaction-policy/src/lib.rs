@@ -1,43 +1,12 @@
 //! Profile-based structural redaction policy for shiplog.
 //!
 //! This crate holds only redaction policy rules:
-//! - profile parsing (`internal`, `manager`, `public`)
-//! - field-level transforms for events and workstreams
+//! - profile-driven field transforms for events and workstreams
 //! - alias resolver abstraction used by `public` profile
 
-use serde::{Deserialize, Serialize};
+pub use shiplog_redaction_profile::RedactionProfile;
 use shiplog_schema::event::{EventEnvelope, EventPayload, RepoRef, RepoVisibility};
 use shiplog_schema::workstream::{Workstream, WorkstreamsFile};
-
-/// Rendering profiles.
-///
-/// The tool produces multiple projections from the same ledger.
-/// Think of them as lenses, not forks.
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
-pub enum RedactionProfile {
-    Internal,
-    Manager,
-    Public,
-}
-
-impl RedactionProfile {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            RedactionProfile::Internal => "internal",
-            RedactionProfile::Manager => "manager",
-            RedactionProfile::Public => "public",
-        }
-    }
-
-    /// Parse profile string, defaulting unknown values to `Public`.
-    pub fn from_profile_str(profile: &str) -> Self {
-        match profile {
-            "internal" => RedactionProfile::Internal,
-            "manager" => RedactionProfile::Manager,
-            _ => RedactionProfile::Public,
-        }
-    }
-}
 
 /// Alias resolver used by public redaction.
 pub trait AliasResolver {

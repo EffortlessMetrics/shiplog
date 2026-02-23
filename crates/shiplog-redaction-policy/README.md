@@ -3,6 +3,8 @@
 Profile-based structural redaction rules for shiplog events and workstreams.
 
 This crate isolates policy from alias/cache persistence and adapter wiring.
+Profile parsing/canonicalization lives in `shiplog-redaction-profile` and is
+re-exported here for compatibility.
 
 ## API
 

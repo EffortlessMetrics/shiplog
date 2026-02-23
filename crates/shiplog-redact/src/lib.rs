@@ -12,7 +12,7 @@ use shiplog_schema::workstream::WorkstreamsFile;
 use std::path::{Path, PathBuf};
 
 pub use shiplog_alias::CACHE_FILENAME;
-pub use shiplog_redaction_policy::RedactionProfile;
+pub use shiplog_redaction_profile::RedactionProfile;
 
 /// Deterministic redactor.
 ///
