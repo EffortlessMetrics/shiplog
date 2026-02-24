@@ -20,6 +20,10 @@ pub fn month_windows(since: NaiveDate, until: NaiveDate) -> Vec<TimeWindow> {
     while cursor < until {
         let next = next_month_start(cursor);
         let end = if next < until { next } else { until };
+        assert!(
+            end > cursor,
+            "month_windows must make forward progress (until is exclusive)"
+        );
         out.push(TimeWindow {
             since: cursor,
             until: end,
