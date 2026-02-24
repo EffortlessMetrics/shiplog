@@ -13,7 +13,6 @@ clippy_output.txt
 
 # Fuzz artifacts (cargo-fuzz)
 fuzz/target/
-fuzz/Cargo.lock
 fuzz/corpus/
 fuzz/artifacts/
 fuzz/coverage/
