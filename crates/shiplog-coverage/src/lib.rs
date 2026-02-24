@@ -19,7 +19,7 @@ pub fn month_windows(since: NaiveDate, until: NaiveDate) -> Vec<TimeWindow> {
 
     while cursor < until {
         let next = next_month_start(cursor);
-        let end = if next < until { next } else { until };
+        let end = std::cmp::min(next, until);
         assert!(
             end > cursor,
             "month_windows must make forward progress (until is exclusive)"
@@ -45,7 +45,11 @@ pub fn week_windows(since: NaiveDate, until: NaiveDate) -> Vec<TimeWindow> {
 
     while cursor < until {
         let next = next_week_start(cursor, Weekday::Mon);
-        let end = if next < until { next } else { until };
+        let end = std::cmp::min(next, until);
+        assert!(
+            end > cursor,
+            "week_windows must make forward progress (until is exclusive)"
+        );
         out.push(TimeWindow {
             since: cursor,
             until: end,
@@ -65,10 +69,14 @@ pub fn day_windows(since: NaiveDate, until: NaiveDate) -> Vec<TimeWindow> {
     let mut out = Vec::new();
     let mut cursor = since;
     while cursor < until {
-        let end = cursor.succ_opt().unwrap_or(until);
+        let end = std::cmp::min(cursor.succ_opt().unwrap_or(until), until);
+        assert!(
+            end > cursor,
+            "day_windows must make forward progress (until is exclusive)"
+        );
         out.push(TimeWindow {
             since: cursor,
-            until: if end < until { end } else { until },
+            until: end,
         });
         cursor = end;
     }
