@@ -30,6 +30,7 @@ shiplog-render-md = { path = "../shiplog-render-md", version = "0.2.1" }
 shiplog-render-json = { path = "../shiplog-render-json", version = "0.2.1" }
 shiplog-bundle = { path = "../shiplog-bundle", version = "0.2.1" }
 shiplog-merge = { path = "../shiplog-merge", version = "0.2.1" }
+shiplog-workstream-cluster = { path = "../shiplog-workstream-cluster", version = "0.2.1" }
 
 [dev-dependencies]
 tempfile.workspace = true

@@ -425,6 +425,7 @@ impl<'a> Engine<'a> {
 
 #[cfg(test)]
 mod tests {
+    use shiplog_workstream_cluster::RepoClusterer;
     use super::*;
     use chrono::{NaiveDate, TimeZone, Utc};
     use shiplog_ids::{EventId, RunId};
@@ -501,7 +502,7 @@ mod tests {
         let renderer: &'static dyn shiplog_ports::Renderer =
             Box::leak(Box::new(shiplog_render_md::MarkdownRenderer::default()));
         let clusterer: &'static dyn shiplog_ports::WorkstreamClusterer =
-            Box::leak(Box::new(shiplog_workstreams::RepoClusterer));
+            Box::leak(Box::new(RepoClusterer));
         let redactor: &'static dyn shiplog_ports::Redactor = Box::leak(Box::new(
             shiplog_redact::DeterministicRedactor::new(b"test-key"),
         ));

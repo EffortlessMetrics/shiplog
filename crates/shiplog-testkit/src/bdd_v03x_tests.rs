@@ -317,6 +317,24 @@ mod v03x_tests {
             .expect("Scenario should lock date-windows microcrate contract");
     }
 
+    #[cfg(feature = "microcrate_workstream_cluster")]
+    #[test]
+    fn microcrate_contracts_scenario_workstream_cluster() {
+        let scenario = microcrate_workstream_cluster_contract();
+        scenario.run().expect(
+            "Scenario should lock repo-based workstream cluster microcrate contract",
+        );
+    }
+
+    #[cfg(feature = "microcrate_workstream_receipt_policy")]
+    #[test]
+    fn microcrate_contracts_scenario_workstream_receipt_policy() {
+        let scenario = microcrate_workstream_receipt_policy_contract();
+        scenario.run().expect(
+            "Scenario should lock workstream receipt policy microcrate contract",
+        );
+    }
+
     #[cfg(feature = "microcrate_redaction_repo")]
     #[test]
     fn microcrate_contracts_scenario_redaction_repo() {

@@ -15,7 +15,7 @@ use anyhow::Result;
 use shiplog_ports::WorkstreamClusterer;
 use shiplog_schema::event::EventEnvelope;
 use shiplog_schema::workstream::WorkstreamsFile;
-use shiplog_workstreams::RepoClusterer;
+use shiplog_workstream_cluster::RepoClusterer;
 
 /// LLM-assisted workstream clusterer.
 pub struct LlmClusterer {

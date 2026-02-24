@@ -1,29 +1,26 @@
 [package]
-name = "shiplog-render-md"
+name = "shiplog-workstream-cluster"
 version = "0.2.1"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 authors.workspace = true
-description = "Markdown self-review packet renderer for canonical shiplog data."
+description = "Repository-based workstream clustering strategy for shiplog."
 readme = "README.md"
-documentation = "https://docs.rs/shiplog-render-md"
+documentation = "https://docs.rs/shiplog-workstream-cluster"
 repository.workspace = true
 homepage.workspace = true
-keywords = ["markdown", "renderer", "reporting", "self-review", "packet"]
-categories = ["text-processing", "development-tools"]
+keywords = ["clustering", "workstreams", "events", "ports", "strategy"]
+categories = ["development-tools", "algorithms"]
 
 [dependencies]
 anyhow.workspace = true
 chrono.workspace = true
-itertools.workspace = true
+shiplog-ids = { path = "../shiplog-ids", version = "0.2.1" }
 shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
 shiplog-ports = { path = "../shiplog-ports", version = "0.2.1" }
-shiplog-receipt = { path = "../shiplog-receipt", version = "0.2.1" }
 shiplog-workstream-receipt-policy = { path = "../shiplog-workstream-receipt-policy", version = "0.2.1" }
 
 [dev-dependencies]
-insta.workspace = true
-shiplog-ids = { path = "../shiplog-ids", version = "0.2.1" }
-
-
+proptest.workspace = true
+shiplog-testkit = { path = "../shiplog-testkit", version = "0.2.1" }

@@ -1,0 +1,20 @@
+[package]
+name = "shiplog-workstream-receipt-policy"
+version = "0.2.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Shared policy for workstream receipt selection and rendering caps."
+readme = "README.md"
+documentation = "https://docs.rs/shiplog-workstream-receipt-policy"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "workstreams", "receipt", "policy", "contracts"]
+categories = ["development-tools", "config"]
+
+[dependencies]
+shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
+
+[dev-dependencies]
+proptest.workspace = true

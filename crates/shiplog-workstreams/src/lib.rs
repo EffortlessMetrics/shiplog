@@ -5,12 +5,9 @@
 //! user-curated `workstreams.yaml` that is never overwritten.
 
 use anyhow::{Context, Result};
-use chrono::Utc;
-use shiplog_ids::WorkstreamId;
 use shiplog_ports::WorkstreamClusterer;
-use shiplog_schema::event::{EventEnvelope, EventKind};
-use shiplog_schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
-use std::collections::BTreeMap;
+use shiplog_schema::event::EventEnvelope;
+use shiplog_schema::workstream::WorkstreamsFile;
 use std::path::Path;
 
 /// Default clustering strategy:
@@ -18,65 +15,7 @@ use std::path::Path;
 ///
 /// It's intentionally boring. It gives the user a stable starting point.
 /// A later LLM-assisted clusterer can sit behind the same port.
-pub struct RepoClusterer;
-
-impl WorkstreamClusterer for RepoClusterer {
-    fn cluster(&self, events: &[EventEnvelope]) -> Result<WorkstreamsFile> {
-        let mut by_repo: BTreeMap<String, Vec<&EventEnvelope>> = BTreeMap::new();
-        for ev in events {
-            by_repo
-                .entry(ev.repo.full_name.clone())
-                .or_default()
-                .push(ev);
-        }
-
-        let mut workstreams = Vec::new();
-        for (repo, evs) in by_repo {
-            let id = WorkstreamId::from_parts(["repo", &repo]);
-            let mut ws = Workstream {
-                id,
-                title: repo.clone(),
-                summary: None,
-                tags: vec!["repo".to_string()],
-                stats: WorkstreamStats::zero(),
-                events: vec![],
-                receipts: vec![],
-            };
-
-            for ev in evs {
-                ws.events.push(ev.id.clone());
-                ws.bump_stats(&ev.kind);
-
-                // simple receipt heuristic: keep PRs, manual events, plus reviews on top repos.
-                match ev.kind {
-                    EventKind::PullRequest => ws.receipts.push(ev.id.clone()),
-                    EventKind::Review => {
-                        if ws.receipts.len() < 5 {
-                            ws.receipts.push(ev.id.clone())
-                        }
-                    }
-                    EventKind::Manual => {
-                        // Manual events are high-value receipts
-                        if ws.receipts.len() < 7 {
-                            ws.receipts.push(ev.id.clone())
-                        }
-                    }
-                }
-            }
-
-            // avoid enormous receipt lists in the packet.
-            ws.receipts.truncate(10);
-
-            workstreams.push(ws);
-        }
-
-        Ok(WorkstreamsFile {
-            version: 1,
-            generated_at: Utc::now(),
-            workstreams,
-        })
-    }
-}
+pub use shiplog_workstream_cluster::RepoClusterer;
 
 /// Load an existing workstreams.yaml if present, otherwise generate.
 ///
@@ -205,9 +144,12 @@ impl WorkstreamManager {
 
 #[cfg(test)]
 mod tests {
+    use chrono::Utc;
+    use shiplog_ids::WorkstreamId;
     use super::*;
     use shiplog_ids::EventId;
     use shiplog_schema::event::*;
+    use shiplog_schema::workstream::{Workstream, WorkstreamStats};
 
     fn make_test_event(repo_name: &str, event_id: &str) -> EventEnvelope {
         EventEnvelope {

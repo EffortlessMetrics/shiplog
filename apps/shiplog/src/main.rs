@@ -17,7 +17,7 @@ use shiplog_render_md::MarkdownRenderer;
 use shiplog_schema::bundle::BundleProfile;
 #[cfg(feature = "team")]
 use shiplog_team::{TeamAggregator, resolve_team_config, write_team_outputs};
-use shiplog_workstreams::RepoClusterer;
+use shiplog_workstream_cluster::RepoClusterer;
 use std::path::{Path, PathBuf};
 
 #[derive(Parser, Debug)]

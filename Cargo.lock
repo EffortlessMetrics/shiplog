@@ -1973,6 +1973,7 @@ dependencies = [
  "shiplog-render-md",
  "shiplog-schema",
  "shiplog-team",
+ "shiplog-workstream-cluster",
  "shiplog-workstreams",
 ]
 
@@ -2271,7 +2272,7 @@ dependencies = [
  "shiplog-ids",
  "shiplog-ports",
  "shiplog-schema",
- "shiplog-workstreams",
+ "shiplog-workstream-cluster",
 ]
 
 [[package]]
@@ -2449,6 +2450,7 @@ dependencies = [
  "shiplog-render-json",
  "shiplog-render-md",
  "shiplog-schema",
+ "shiplog-workstream-cluster",
  "shiplog-workstreams",
  "tempfile",
 ]
@@ -3154,6 +3156,7 @@ dependencies = [
  "shiplog-ports",
  "shiplog-receipt",
  "shiplog-schema",
+ "shiplog-workstream-receipt-policy",
 ]
 
 [[package]]
@@ -3466,6 +3469,8 @@ dependencies = [
  "shiplog-team-aggregate",
  "shiplog-team-core",
  "shiplog-validate",
+ "shiplog-workstream-cluster",
+ "shiplog-workstream-receipt-policy",
  "shiplog-workstreams",
  "tempfile",
 ]
@@ -3675,6 +3680,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "shiplog-workstream-cluster"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "proptest",
+ "shiplog-ids",
+ "shiplog-ports",
+ "shiplog-schema",
+ "shiplog-testkit",
+ "shiplog-workstream-receipt-policy",
+]
+
+[[package]]
+name = "shiplog-workstream-receipt-policy"
+version = "0.2.1"
+dependencies = [
+ "proptest",
+ "shiplog-schema",
+]
+
+[[package]]
 name = "shiplog-workstreams"
 version = "0.2.1"
 dependencies = [
@@ -3687,6 +3714,7 @@ dependencies = [
  "shiplog-ports",
  "shiplog-schema",
  "shiplog-testkit",
+ "shiplog-workstream-cluster",
  "tempfile",
 ]
 

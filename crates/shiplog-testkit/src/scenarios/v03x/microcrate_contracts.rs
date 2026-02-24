@@ -1,6 +1,10 @@
 //! BDD scenarios that lock in microcrate public contracts for external reuse.
 
-#[cfg(feature = "microcrate_date_windows")]
+#[cfg(any(
+    feature = "microcrate_date_windows",
+    feature = "microcrate_workstream_cluster",
+    feature = "microcrate_workstream_receipt_policy"
+))]
 use crate::bdd::assertions::assert_present;
 #[cfg(any(
     feature = "microcrate_cluster_llm_prompt",
@@ -13,10 +17,15 @@ use crate::bdd::assertions::assert_present;
     feature = "microcrate_notify",
     feature = "microcrate_cache_stats",
     feature = "microcrate_cache_expiry",
+    feature = "microcrate_workstream_cluster",
+    feature = "microcrate_workstream_receipt_policy",
     feature = "microcrate_redaction_repo",
     feature = "microcrate_date_windows"
 ))]
 use crate::bdd::assertions::assert_true;
+
+#[cfg(feature = "microcrate_workstream_receipt_policy")]
+use shiplog_schema::event::EventKind;
 #[cfg(feature = "microcrate_cluster_llm_prompt")]
 use shiplog_cluster_llm_prompt::{chunk_events, format_event_list, summarize_event, system_prompt};
 #[cfg(feature = "microcrate_export")]
@@ -67,10 +76,23 @@ use shiplog_storage::{InMemoryStorage, Storage, StorageKey};
 #[cfg(feature = "microcrate_validate")]
 use shiplog_validate::{EventValidator, Packet, PacketValidator};
 
+#[cfg(feature = "microcrate_workstream_cluster")]
+use shiplog_ports::WorkstreamClusterer;
+
 #[cfg(feature = "microcrate_cluster_llm_parse")]
 use shiplog_ids::EventId;
 #[cfg(feature = "microcrate_cluster_llm_parse")]
 use shiplog_cluster_llm_parse::parse_llm_response;
+
+#[cfg(feature = "microcrate_workstream_cluster")]
+use shiplog_workstream_cluster::RepoClusterer;
+
+#[cfg(feature = "microcrate_workstream_receipt_policy")]
+use shiplog_workstream_receipt_policy::{
+    should_include_cluster_receipt, should_render_receipt_at,
+    WORKSTREAM_RECEIPT_LIMIT_MANUAL, WORKSTREAM_RECEIPT_LIMIT_REVIEW,
+    WORKSTREAM_RECEIPT_LIMIT_TOTAL, WORKSTREAM_RECEIPT_RENDER_LIMIT,
+};
 
 #[cfg(any(
     feature = "microcrate_cluster_llm_prompt",
@@ -83,6 +105,8 @@ use shiplog_cluster_llm_parse::parse_llm_response;
     feature = "microcrate_cache_stats",
     feature = "microcrate_cache_expiry",
     feature = "microcrate_redaction_repo",
+    feature = "microcrate_workstream_cluster",
+    feature = "microcrate_workstream_receipt_policy",
     feature = "microcrate_cluster_llm_parse",
     feature = "microcrate_date_windows"
 ))]
@@ -872,6 +896,163 @@ fn week_internal_boundaries_are_monday(windows: &[shiplog_schema::coverage::Time
         .iter()
         .take(windows.len() - 1)
         .all(|window| window.until.weekday() == chrono::Weekday::Mon)
+}
+
+#[cfg(feature = "microcrate_workstream_cluster")]
+/// Scenario: repo clusterer groups events by repository and preserves complete assignment.
+pub fn microcrate_workstream_cluster_contract() -> Scenario {
+    Scenario::new("Workstream cluster crate keeps repo-based assignment deterministic")
+        .when("the repo clusterer receives multi-repo, multi-event input", |ctx| {
+            let events = vec![
+                crate::pr_event("acme/backend", 1, "Add auth"),
+                crate::pr_event("acme/backend", 2, "Fix auth"),
+                crate::pr_event("acme/frontend", 3, "Launch landing page"),
+            ];
+
+            let clustered = RepoClusterer
+                .cluster(&events)
+                .map_err(|err| format!("clusterer should succeed: {err}"))?;
+
+            let all_assigned = clustered
+                .workstreams
+                .iter()
+                .flat_map(|ws| ws.events.iter())
+                .map(|id: &shiplog_ids::EventId| id.to_string())
+                .collect::<std::collections::HashSet<_>>();
+
+            let backend_ws = clustered
+                .workstreams
+                .iter()
+                .find(|ws| ws.events.contains(&events[0].id))
+                .ok_or_else(|| "backend events should be assigned".to_string())?;
+
+            let same_backend_bucket = backend_ws.events.contains(&events[1].id);
+            let different_backend_frontend_bucket = clustered
+                .workstreams
+                .iter()
+                .find(|ws| ws.events.contains(&events[2].id))
+                .is_some_and(|frontend_ws| !frontend_ws.events.contains(&events[0].id));
+
+            ctx.numbers
+                .insert("workstream_count".to_string(), clustered.workstreams.len() as u64);
+            ctx.numbers
+                .insert("assigned_event_count".to_string(), all_assigned.len() as u64);
+            ctx.flags
+                .insert("backend_stays_single_ws".to_string(), same_backend_bucket);
+            ctx.flags.insert(
+                "frontend_in_distinct_ws".to_string(),
+                different_backend_frontend_bucket,
+            );
+
+            Ok(())
+        })
+        .then(
+            "events should be assigned deterministically into repo buckets",
+            |ctx| {
+                let workstream_count = assert_present(ctx.number("workstream_count"), "workstream_count")?;
+                let assigned_event_count =
+                    assert_present(ctx.number("assigned_event_count"), "assigned_event_count")?;
+                assert_true(workstream_count == 2, "expected two workstreams")?;
+                assert_true(assigned_event_count == 3, "expected three assigned events")?;
+                assert_true(
+                    ctx.flag("backend_stays_single_ws").unwrap_or(false),
+                    "same repo kept in same workstream",
+                )?;
+                assert_true(
+                    ctx.flag("frontend_in_distinct_ws").unwrap_or(false),
+                    "different repos should not be merged",
+                )
+            },
+        )
+}
+
+#[cfg(feature = "microcrate_workstream_receipt_policy")]
+/// Scenario: receipt policy limits are stable and aligned with downstream rendering assumptions.
+pub fn microcrate_workstream_receipt_policy_contract() -> Scenario {
+    Scenario::new("Workstream receipt policy keeps limits stable")
+        .when(
+            "receipt caps are evaluated at each policy boundary",
+            |ctx| {
+                ctx.numbers.insert(
+                    "review_cap".to_string(),
+                    WORKSTREAM_RECEIPT_LIMIT_REVIEW as u64,
+                );
+                ctx.numbers.insert(
+                    "manual_cap".to_string(),
+                    WORKSTREAM_RECEIPT_LIMIT_MANUAL as u64,
+                );
+                ctx.numbers.insert(
+                    "cluster_total_cap".to_string(),
+                    WORKSTREAM_RECEIPT_LIMIT_TOTAL as u64,
+                );
+                ctx.numbers.insert(
+                    "render_cap".to_string(),
+                    WORKSTREAM_RECEIPT_RENDER_LIMIT as u64,
+                );
+
+                ctx.flags.insert(
+                    "review_cap_exclusive".to_string(),
+                    !should_include_cluster_receipt(
+                        &EventKind::Review,
+                        WORKSTREAM_RECEIPT_LIMIT_REVIEW,
+                    ),
+                );
+                ctx.flags.insert(
+                    "manual_cap_exclusive".to_string(),
+                    !should_include_cluster_receipt(
+                        &EventKind::Manual,
+                        WORKSTREAM_RECEIPT_LIMIT_MANUAL,
+                    ),
+                );
+                ctx.flags.insert(
+                    "render_cap_exclusive".to_string(),
+                    !should_render_receipt_at(WORKSTREAM_RECEIPT_RENDER_LIMIT),
+                );
+
+                Ok(())
+            },
+        )
+        .then("all policy boundaries should hold and be internally consistent", |ctx| {
+            let review_cap = assert_present(ctx.number("review_cap"), "review_cap")?;
+            let manual_cap = assert_present(ctx.number("manual_cap"), "manual_cap")?;
+            let cluster_total_cap =
+                assert_present(ctx.number("cluster_total_cap"), "cluster_total_cap")?;
+            let render_cap = assert_present(ctx.number("render_cap"), "render_cap")?;
+
+            assert_true(
+                review_cap == WORKSTREAM_RECEIPT_LIMIT_REVIEW as u64,
+                "review cap contract",
+            )?;
+            assert_true(
+                manual_cap == WORKSTREAM_RECEIPT_LIMIT_MANUAL as u64,
+                "manual cap contract",
+            )?;
+            assert_true(
+                cluster_total_cap == WORKSTREAM_RECEIPT_LIMIT_TOTAL as u64,
+                "cluster total cap contract",
+            )?;
+            assert_true(
+                render_cap == WORKSTREAM_RECEIPT_RENDER_LIMIT as u64,
+                "render cap contract",
+            )?;
+            assert_true(
+                ctx.flag("review_cap_exclusive")
+                    .unwrap_or(false),
+                "review cap is exclusive",
+            )?;
+            assert_true(
+                ctx.flag("manual_cap_exclusive")
+                    .unwrap_or(false),
+                "manual cap is exclusive",
+            )?;
+            assert_true(
+                ctx.flag("render_cap_exclusive")
+                    .unwrap_or(false),
+                "render cap is exclusive",
+            )?;
+
+            Ok(())
+        })
 }
 
 #[cfg(feature = "microcrate_redaction_repo")]

@@ -9,10 +9,8 @@ use shiplog_ports::Renderer;
 use shiplog_schema::coverage::CoverageManifest;
 use shiplog_schema::event::{EventEnvelope, EventKind, EventPayload};
 use shiplog_schema::workstream::WorkstreamsFile;
+use shiplog_workstream_receipt_policy::WORKSTREAM_RECEIPT_RENDER_LIMIT;
 use std::collections::HashMap;
-
-/// Maximum receipts to show per workstream in main packet
-const MAX_RECEIPTS_PER_WORKSTREAM: usize = 5;
 
 /// Section ordering configuration
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -198,10 +196,10 @@ fn render_receipts(out: &mut String, events: &[EventEnvelope], workstreams: &Wor
 
         // Split receipts into main (top N) and appendix (remainder)
         let (main_receipts, appendix_receipts): (Vec<_>, Vec<_>) =
-            if ws.receipts.len() <= MAX_RECEIPTS_PER_WORKSTREAM {
+            if ws.receipts.len() <= WORKSTREAM_RECEIPT_RENDER_LIMIT {
                 (ws.receipts.clone(), Vec::new())
             } else {
-                let (main, appendix) = ws.receipts.split_at(MAX_RECEIPTS_PER_WORKSTREAM);
+                let (main, appendix) = ws.receipts.split_at(WORKSTREAM_RECEIPT_RENDER_LIMIT);
                 (main.to_vec(), appendix.to_vec())
             };
 

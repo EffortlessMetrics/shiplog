@@ -14,12 +14,15 @@ shiplog-ingest-github = { path = "../crates/shiplog-ingest-github" }
 shiplog-ingest-manual = { path = "../crates/shiplog-ingest-manual" }
 shiplog-workstreams = { path = "../crates/shiplog-workstreams" }
 shiplog-schema = { path = "../crates/shiplog-schema" }
+shiplog-workstream-receipt-policy = { path = "../crates/shiplog-workstream-receipt-policy", version = "0.2.1" }
 shiplog-ids = { path = "../crates/shiplog-ids" }
 shiplog-redaction-profile = { path = "../crates/shiplog-redaction-profile" }
 shiplog-redaction-repo = { path = "../crates/shiplog-redaction-repo" }
 shiplog-redaction-policy = { path = "../crates/shiplog-redaction-policy" }
 shiplog-redaction-projector = { path = "../crates/shiplog-redaction-projector" }
 shiplog-cache-key = { path = "../crates/shiplog-cache-key" }
+shiplog-workstream-cluster = { path = "../crates/shiplog-workstream-cluster", version = "0.2.1" }
+shiplog-ports = { path = "../crates/shiplog-ports", version = "0.2.1" }
 shiplog-cache-stats = { path = "../crates/shiplog-cache-stats" }
 shiplog-cache-expiry = { path = "../crates/shiplog-cache-expiry" }
 shiplog-cache-sqlite = { path = "../crates/shiplog-cache-sqlite" }
@@ -166,6 +169,13 @@ doc = false
 bench = false
 
 [[bin]]
+name = "workstream_cluster"
+path = "fuzz_targets/workstream_cluster.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
 name = "cluster_llm_prompt"
 path = "fuzz_targets/cluster_llm_prompt.rs"
 test = false
@@ -175,6 +185,13 @@ bench = false
 [[bin]]
 name = "cluster_llm_parse"
 path = "fuzz_targets/cluster_llm_parse.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "workstream_receipt_policy"
+path = "fuzz_targets/workstream_receipt_policy.rs"
 test = false
 doc = false
 bench = false

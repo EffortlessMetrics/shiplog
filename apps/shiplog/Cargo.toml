@@ -29,6 +29,7 @@ shiplog-ingest-json = { path = "../../crates/shiplog-ingest-json", version = "0.
 shiplog-ingest-manual = { path = "../../crates/shiplog-ingest-manual", version = "0.2.1" }
 shiplog-render-md = { path = "../../crates/shiplog-render-md", version = "0.2.1" }
 shiplog-workstreams = { path = "../../crates/shiplog-workstreams", version = "0.2.1" }
+shiplog-workstream-cluster = { path = "../../crates/shiplog-workstream-cluster", version = "0.2.1" }
 shiplog-redact = { path = "../../crates/shiplog-redact", version = "0.2.1" }
 shiplog-ports = { path = "../../crates/shiplog-ports", version = "0.2.1" }
 shiplog-schema = { path = "../../crates/shiplog-schema", version = "0.2.1" }

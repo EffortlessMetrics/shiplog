@@ -25,6 +25,8 @@ pub mod llm_clustering;
     feature = "microcrate_cache_key",
     feature = "microcrate_cache_stats",
     feature = "microcrate_cache_expiry",
+    feature = "microcrate_workstream_cluster",
+    feature = "microcrate_workstream_receipt_policy",
     feature = "microcrate_redaction_repo",
     feature = "microcrate_date_windows"
 ))]
@@ -47,6 +49,8 @@ pub use llm_clustering::*;
     feature = "microcrate_cache_key",
     feature = "microcrate_cache_stats",
     feature = "microcrate_cache_expiry",
+    feature = "microcrate_workstream_cluster",
+    feature = "microcrate_workstream_receipt_policy",
     feature = "microcrate_redaction_repo",
     feature = "microcrate_date_windows"
 ))]
