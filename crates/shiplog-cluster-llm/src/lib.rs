@@ -8,8 +8,8 @@ mod config;
 
 pub use client::{FailingLlmBackend, LlmBackend, MockLlmBackend, OpenAiCompatibleBackend};
 pub use config::LlmConfig;
-use shiplog_cluster_llm_prompt::{chunk_events, format_event_list, summarize_event, system_prompt};
 use shiplog_cluster_llm_parse::parse_llm_response;
+use shiplog_cluster_llm_prompt::{chunk_events, format_event_list, summarize_event, system_prompt};
 
 use anyhow::Result;
 use shiplog_ports::WorkstreamClusterer;
@@ -260,5 +260,4 @@ mod tests {
         let events = vec![make_test_event("org/repo", 1, "Test")];
         assert!(clusterer.cluster(&events).is_err());
     }
-
 }

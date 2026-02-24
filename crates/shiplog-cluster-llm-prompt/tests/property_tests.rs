@@ -52,13 +52,14 @@ proptest! {
         let rendered = format_event_list(&events);
         if events.is_empty() {
             prop_assert_eq!(rendered, "");
-            return;
+            return Ok(());
         }
 
         let lines: Vec<&str> = rendered.split('\n').collect();
         prop_assert_eq!(lines.len(), events.len());
         for (idx, event) in events.iter().enumerate() {
-            prop_assert!(lines[idx].starts_with(&format!("[{idx}] ")));
+            let prefix = format!("[{idx}] ");
+            prop_assert!(lines[idx].starts_with(&prefix));
             prop_assert!(rendered.contains(&summarize_event(event)));
         }
     }

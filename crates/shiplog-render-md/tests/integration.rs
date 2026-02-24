@@ -1,5 +1,6 @@
 use chrono::{NaiveDate, Utc};
 use shiplog_ids::{EventId, RunId, WorkstreamId};
+use shiplog_ports::Renderer;
 use shiplog_render_md::MarkdownRenderer;
 use shiplog_schema::{
     coverage::{CoverageManifest, TimeWindow},
@@ -70,7 +71,10 @@ fn markdown_renderer_shows_only_render_limit_in_receipt_summary() {
         .map(|i| pull_request_event(&i.to_string()))
         .collect::<Vec<_>>();
     let hidden_receipt_count = events.len() - WORKSTREAM_RECEIPT_RENDER_LIMIT;
-    let event_ids = events.iter().map(|event| event.id.clone()).collect::<Vec<_>>();
+    let event_ids = events
+        .iter()
+        .map(|event| event.id.clone())
+        .collect::<Vec<_>>();
 
     let ws = Workstream {
         id: WorkstreamId::from_parts(["repo", "policy"]),
@@ -92,14 +96,15 @@ fn markdown_renderer_shows_only_render_limit_in_receipt_summary() {
         workstreams: vec![ws],
     };
 
-    let markdown = MarkdownRenderer::new().render_packet_markdown(
-        "agent",
-        "2026-02-24",
-        &events,
-        &workstreams,
-        &coverage_manifest(),
-    )
-    .unwrap();
+    let markdown = MarkdownRenderer::new()
+        .render_packet_markdown(
+            "agent",
+            "2026-02-24",
+            &events,
+            &workstreams,
+            &coverage_manifest(),
+        )
+        .unwrap();
 
     assert!(markdown.contains(&format!(
         "- *... and {} more in [Appendix](#appendix-receipts)*",

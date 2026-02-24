@@ -58,7 +58,7 @@ proptest! {
         let workstreams = clustered_workstreams(&events);
         let mut repo_to_ws = std::collections::HashMap::new();
 
-        for (_idx, event) in events.iter().enumerate() {
+        for event in events.iter() {
             let ws = workstreams
                 .iter()
                 .position(|ws| ws.events.iter().any(|id| id == &event.id))

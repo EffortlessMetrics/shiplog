@@ -116,10 +116,10 @@ impl WorkstreamManager {
 }
 
 fn read_workstreams(path: &Path) -> Result<WorkstreamsFile> {
-    let text = std::fs::read_to_string(path)
-        .with_context(|| format!("read workstreams from {path:?}"))?;
-    let workstreams: WorkstreamsFile = serde_yaml::from_str(&text)
-        .with_context(|| format!("parse workstreams yaml {path:?}"))?;
+    let text =
+        std::fs::read_to_string(path).with_context(|| format!("read workstreams from {path:?}"))?;
+    let workstreams: WorkstreamsFile =
+        serde_yaml::from_str(&text).with_context(|| format!("parse workstreams yaml {path:?}"))?;
     Ok(workstreams)
 }
 
@@ -218,7 +218,8 @@ mod tests {
         write_workstreams(&curated, &make_workstreams("curated", "repo/c")).unwrap();
         write_workstreams(&suggested, &make_workstreams("suggested", "repo/s")).unwrap();
 
-        let loaded = WorkstreamManager::load_effective(temp_dir.path(), &FakeClusterer, &[]).unwrap();
+        let loaded =
+            WorkstreamManager::load_effective(temp_dir.path(), &FakeClusterer, &[]).unwrap();
         assert_eq!(loaded.workstreams[0].title, "curated");
         assert_eq!(curated, WorkstreamManager::curated_path(temp_dir.path()));
     }
@@ -229,16 +230,20 @@ mod tests {
         let suggested = temp_dir.path().join(SUGGESTED_FILENAME);
         write_workstreams(&suggested, &make_workstreams("suggested", "repo/s")).unwrap();
 
-        let loaded = WorkstreamManager::load_effective(temp_dir.path(), &FakeClusterer, &[]).unwrap();
+        let loaded =
+            WorkstreamManager::load_effective(temp_dir.path(), &FakeClusterer, &[]).unwrap();
         assert_eq!(loaded.workstreams[0].title, "suggested");
     }
 
     #[test]
     fn load_effective_generates_when_missing() {
         let temp_dir = tempdir().unwrap();
-        let loaded =
-            WorkstreamManager::load_effective(temp_dir.path(), &FakeClusterer, &[make_event("repo/a", "1", 1)])
-                .unwrap();
+        let loaded = WorkstreamManager::load_effective(
+            temp_dir.path(),
+            &FakeClusterer,
+            &[make_event("repo/a", "1", 1)],
+        )
+        .unwrap();
         assert_eq!(loaded.workstreams[0].title, "fallback");
         assert!(WorkstreamManager::suggested_path(temp_dir.path()).exists());
     }
@@ -251,7 +256,9 @@ mod tests {
         write_workstreams(&suggested, &make_workstreams("suggested", "repo/s")).unwrap();
         write_workstreams(&curated, &make_workstreams("curated", "repo/c")).unwrap();
 
-        let loaded = WorkstreamManager::try_load(temp_dir.path()).unwrap().unwrap();
+        let loaded = WorkstreamManager::try_load(temp_dir.path())
+            .unwrap()
+            .unwrap();
         assert_eq!(loaded.workstreams[0].title, "curated");
     }
 
@@ -260,7 +267,11 @@ mod tests {
         let temp_dir = tempdir().unwrap();
         assert!(!WorkstreamManager::has_curated(temp_dir.path()));
 
-        write_workstreams(&WorkstreamManager::curated_path(temp_dir.path()), &make_workstreams("curated", "repo")).unwrap();
+        write_workstreams(
+            &WorkstreamManager::curated_path(temp_dir.path()),
+            &make_workstreams("curated", "repo"),
+        )
+        .unwrap();
         assert!(WorkstreamManager::has_curated(temp_dir.path()));
     }
 }

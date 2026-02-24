@@ -1,7 +1,8 @@
 //! Integration test proving manual ingest delegates to the extracted microcrate contract.
 
 use chrono::NaiveDate;
-use shiplog_ingest_manual::{create_empty_file, create_entry, ManualIngestor, write_manual_events};
+use shiplog_ingest_manual::{ManualIngestor, create_empty_file, create_entry, write_manual_events};
+use shiplog_ports::Ingestor;
 use tempfile::tempdir;
 
 #[test]

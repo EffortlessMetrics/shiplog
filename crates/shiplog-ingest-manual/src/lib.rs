@@ -5,7 +5,6 @@
 
 use anyhow::Result;
 use chrono::Utc;
-use shiplog_manual_events;
 use shiplog_ports::{IngestOutput, Ingestor};
 use shiplog_schema::coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow};
 use shiplog_schema::event::{ManualDate, ManualEventEntry, ManualEventType, ManualEventsFile};
@@ -71,11 +70,8 @@ impl Ingestor for ManualIngestor {
         }
 
         let file = read_manual_events(&self.events_path)?;
-        let (events, warnings) = shiplog_manual_events::events_in_window(
-            &file.events,
-            &self.user,
-            &self.window,
-        );
+        let (events, warnings) =
+            shiplog_manual_events::events_in_window(&file.events, &self.user, &self.window);
 
         let coverage = CoverageManifest {
             run_id: shiplog_ids::RunId::now("manual"),

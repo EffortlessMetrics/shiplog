@@ -9,7 +9,7 @@ use chrono::{NaiveDate, Utc};
 use shiplog_ids::EventId;
 use shiplog_schema::coverage::TimeWindow;
 use shiplog_schema::event::{
-    Actor, EventEnvelope, EventKind, EventPayload, Link, ManualDate, ManualEvent, ManualEventEntry,
+    Actor, EventEnvelope, EventKind, EventPayload, ManualDate, ManualEvent, ManualEventEntry,
     ManualEventsFile, RepoRef, RepoVisibility, SourceRef, SourceSystem,
 };
 use std::path::Path;
@@ -132,7 +132,10 @@ pub fn events_in_window(
         }
 
         if start_date < window.since || end_date >= window.until {
-            warnings.push(format!("Event '{}' partially outside date window", entry.id));
+            warnings.push(format!(
+                "Event '{}' partially outside date window",
+                entry.id
+            ));
         }
 
         events.push(entry_to_event(entry, user));
@@ -145,8 +148,8 @@ pub fn events_in_window(
 mod tests {
     use super::*;
     use chrono::NaiveDate;
-    use shiplog_schema::event::{Link, ManualEventType};
     use proptest::prelude::*;
+    use shiplog_schema::event::{Link, ManualEventType};
 
     fn make_entry(id: &str, date: ManualDate) -> ManualEventEntry {
         create_entry(id, ManualEventType::Note, date, format!("Event {id}"))
@@ -160,7 +163,10 @@ mod tests {
         let file = ManualEventsFile {
             version: 1,
             generated_at: Utc::now(),
-            events: vec![make_entry("test-1", ManualDate::Single(NaiveDate::from_ymd_opt(2025, 3, 15).unwrap())],
+            events: vec![make_entry(
+                "test-1",
+                ManualDate::Single(NaiveDate::from_ymd_opt(2025, 3, 15).unwrap()),
+            )],
         };
 
         write_manual_events(&path, &file).unwrap();
@@ -178,13 +184,20 @@ mod tests {
         };
 
         let entries = vec![
-            make_entry("inside", ManualDate::Single(NaiveDate::from_ymd_opt(2025, 1, 15).unwrap())),
-            make_entry("outside", ManualDate::Single(NaiveDate::from_ymd_opt(2025, 2, 15).unwrap())),
+            make_entry(
+                "inside",
+                ManualDate::Single(NaiveDate::from_ymd_opt(2025, 1, 15).unwrap()),
+            ),
+            make_entry(
+                "outside",
+                ManualDate::Single(NaiveDate::from_ymd_opt(2025, 2, 15).unwrap()),
+            ),
         ];
 
         let (events, warnings) = events_in_window(&entries, "user", &window);
         assert_eq!(events.len(), 1);
-        assert_eq!(events[0].id.to_string(), "manual|inside");
+        let expected_id = EventId::from_parts(["manual", "inside"]);
+        assert_eq!(events[0].id, expected_id);
         assert!(warnings.is_empty());
     }
 
@@ -213,7 +226,8 @@ mod tests {
     }
 
     fn arb_date() -> impl Strategy<Value = NaiveDate> {
-        (-20_000i32..20_000).prop_map(|offset| NaiveDate::from_num_days_from_ce(offset))
+        (-20_000i32..20_000)
+            .prop_map(|offset| NaiveDate::from_num_days_from_ce_opt(offset).unwrap())
     }
 
     fn arb_manual_date() -> impl Strategy<Value = ManualDate> {

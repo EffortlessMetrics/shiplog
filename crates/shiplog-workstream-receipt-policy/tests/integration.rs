@@ -1,12 +1,9 @@
 // Integration-style checks for the workstream receipt policy crate.
 
 use shiplog_workstream_receipt_policy::{
+    WORKSTREAM_RECEIPT_LIMIT_MANUAL, WORKSTREAM_RECEIPT_LIMIT_REVIEW,
+    WORKSTREAM_RECEIPT_LIMIT_TOTAL, WORKSTREAM_RECEIPT_RENDER_LIMIT, should_render_receipt_at,
     truncate_cluster_receipts,
-    should_render_receipt_at,
-    WORKSTREAM_RECEIPT_LIMIT_REVIEW,
-    WORKSTREAM_RECEIPT_LIMIT_MANUAL,
-    WORKSTREAM_RECEIPT_LIMIT_TOTAL,
-    WORKSTREAM_RECEIPT_RENDER_LIMIT,
 };
 
 #[test]

@@ -10,7 +10,7 @@ fn alpha_token() -> impl Strategy<Value = String> {
     prop::collection::vec(0u8..=25u8, 1..10).prop_map(|chars| {
         chars
             .into_iter()
-            .map(|b| ((b + b'a') as char))
+            .map(|b| (b + b'a') as char)
             .collect::<String>()
     })
 }
@@ -19,7 +19,7 @@ fn event_ids() -> impl Strategy<Value = Vec<EventId>> {
     prop::collection::vec(alpha_token(), 0..5).prop_map(|tokens| {
         tokens
             .into_iter()
-            .map(|token| EventId::from_parts(["id", token]))
+            .map(|token| EventId::from_parts(["id", &token]))
             .collect()
     })
 }

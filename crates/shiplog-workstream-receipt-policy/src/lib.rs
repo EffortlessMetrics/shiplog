@@ -71,7 +71,10 @@ mod tests {
 
     #[test]
     fn pull_requests_are_unbounded_for_cluster_receipts() {
-        assert!(should_include_cluster_receipt(&EventKind::PullRequest, usize::MAX - 1));
+        assert!(should_include_cluster_receipt(
+            &EventKind::PullRequest,
+            usize::MAX - 1
+        ));
     }
 
     #[test]

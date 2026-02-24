@@ -29,20 +29,19 @@ struct LlmWorkstream {
 /// - Up to 10 receipt IDs are preserved per workstream.
 /// - Any unclaimed input events are grouped under `Uncategorized`.
 pub fn parse_llm_response(json_str: &str, events: &[EventEnvelope]) -> Result<WorkstreamsFile> {
-    let resp: LlmResponse = serde_json::from_str(json_str).context("parse LLM clustering response")?;
+    let resp: LlmResponse =
+        serde_json::from_str(json_str).context("parse LLM clustering response")?;
 
     let mut claimed: BTreeSet<usize> = BTreeSet::new();
     let mut workstreams = Vec::new();
 
     for (ws_idx, llm_ws) in resp.workstreams.into_iter().enumerate() {
-        let valid_indices: Vec<usize> = llm_ws
-            .event_indices
-            .into_iter()
-            .filter(|&i| i < events.len() && !claimed.contains(&i))
-            .collect();
-
-        for &i in &valid_indices {
-            claimed.insert(i);
+        let mut valid_indices: Vec<usize> = Vec::new();
+        for i in llm_ws.event_indices {
+            if i < events.len() && !claimed.contains(&i) {
+                claimed.insert(i);
+                valid_indices.push(i);
+            }
         }
 
         if valid_indices.is_empty() {

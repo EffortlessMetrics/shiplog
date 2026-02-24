@@ -21,6 +21,7 @@ shiplog-workstream-cluster = { path = "../shiplog-workstream-cluster", version =
 shiplog-workstream-layout = { path = "../shiplog-workstream-layout", version = "0.2.1" }
 
 [dev-dependencies]
+chrono.workspace = true
 tempfile = "3"
 proptest.workspace = true
 shiplog-testkit = { path = "../shiplog-testkit", version = "0.2.1" }

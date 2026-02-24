@@ -132,59 +132,62 @@ mod workflow_tests {
 
     #[test]
     fn curated_workstreams_have_priority_over_suggested() {
-        let scenario = Scenario::new("Curated workstreams take precedence over suggested artifacts")
-            .given("a run directory with both curated and suggested files", |ctx| {
-                let nanos = chrono::Utc::now()
-                    .timestamp_nanos_opt()
-                    .unwrap_or(0);
-                let run_dir =
-                    std::env::temp_dir().join(format!("shiplog-bdd-workstream-layout-{nanos}"));
-                std::fs::create_dir_all(&run_dir).map_err(|e| e.to_string())?;
+        let scenario =
+            Scenario::new("Curated workstreams take precedence over suggested artifacts")
+                .given(
+                    "a run directory with both curated and suggested files",
+                    |ctx| {
+                        let nanos = chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0);
+                        let run_dir = std::env::temp_dir()
+                            .join(format!("shiplog-bdd-workstream-layout-{nanos}"));
+                        std::fs::create_dir_all(&run_dir).unwrap();
 
-                let curated = sample_workstreams_file("Curated from BDD", "user-authored");
-                let suggested = sample_workstreams_file("Suggested from BDD", "machine");
-                shiplog_workstream_layout::write_workstreams(
-                    &run_dir.join("workstreams.yaml"),
-                    &curated,
+                        let curated = sample_workstreams_file("Curated from BDD", "user-authored");
+                        let suggested = sample_workstreams_file("Suggested from BDD", "machine");
+                        shiplog_workstream_layout::write_workstreams(
+                            &run_dir.join("workstreams.yaml"),
+                            &curated,
+                        )
+                        .unwrap();
+                        shiplog_workstream_layout::write_workstreams(
+                            &run_dir.join("workstreams.suggested.yaml"),
+                            &suggested,
+                        )
+                        .unwrap();
+
+                        ctx.strings
+                            .insert("run_dir".to_string(), run_dir.to_string_lossy().to_string());
+                        ctx.strings.insert(
+                            "expected_title".to_string(),
+                            curated.workstreams[0].title.clone(),
+                        );
+                    },
                 )
-                .map_err(|e| e.to_string())?;
-                shiplog_workstream_layout::write_workstreams(
-                    &run_dir.join("workstreams.suggested.yaml"),
-                    &suggested,
+                .when(
+                    "the workstream layout is loaded without clustering",
+                    |ctx| {
+                        let run_dir = assert_present(ctx.string("run_dir"), "run_dir")?;
+                        let selected = shiplog_workstream_layout::WorkstreamManager::try_load(
+                            std::path::Path::new(run_dir),
+                        )
+                        .map_err(|e| e.to_string())?
+                        .ok_or_else(|| "no workstreams found in run dir".to_string())?;
+                        ctx.strings.insert(
+                            "loaded_title".to_string(),
+                            selected.workstreams[0].title.clone(),
+                        );
+                        Ok(())
+                    },
                 )
-                .map_err(|e| e.to_string())?;
+                .then("the curated file should win", |ctx| {
+                    let expected = assert_present(ctx.string("expected_title"), "expected_title")?;
+                    let loaded = assert_present(ctx.string("loaded_title"), "loaded_title")?;
+                    assert_true(loaded == expected, "curated title is loaded first")
+                });
 
-                ctx.strings
-                    .insert("run_dir".to_string(), run_dir.to_string_lossy().to_string());
-                ctx.strings.insert(
-                    "expected_title".to_string(),
-                    curated.workstreams[0].title.clone(),
-                );
-                Ok(())
-            })
-            .when(
-                "the workstream layout is loaded without clustering",
-                |ctx| {
-                    let run_dir = assert_present(ctx.string("run_dir"), "run_dir")?;
-                    let selected = shiplog_workstream_layout::WorkstreamManager::try_load(
-                        std::path::Path::new(run_dir),
-                    )
-                    .map_err(|e| e.to_string())?
-                    .ok_or_else(|| "no workstreams found in run dir".to_string())?;
-                    ctx.strings.insert(
-                        "loaded_title".to_string(),
-                        selected.workstreams[0].title.clone(),
-                    );
-                    Ok(())
-                },
-            )
-            .then("the curated file should win", |ctx| {
-                let expected = assert_present(ctx.string("expected_title"), "expected_title")?;
-                let loaded = assert_present(ctx.string("loaded_title"), "loaded_title")?;
-                assert_true(loaded == expected, "curated title is loaded first")
-            });
-
-        scenario.run().expect("curated workstreams should be preferred");
+        scenario
+            .run()
+            .expect("curated workstreams should be preferred");
     }
 
     #[test]

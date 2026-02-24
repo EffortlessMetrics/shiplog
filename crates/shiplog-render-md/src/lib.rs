@@ -4,10 +4,10 @@
 //! editable self-review packet with receipts and appendix sections.
 
 use anyhow::Result;
-use shiplog_receipt::format_receipt_markdown;
 use shiplog_ports::Renderer;
+use shiplog_receipt::format_receipt_markdown;
 use shiplog_schema::coverage::CoverageManifest;
-use shiplog_schema::event::{EventEnvelope, EventKind, EventPayload};
+use shiplog_schema::event::{EventEnvelope, EventKind};
 use shiplog_schema::workstream::WorkstreamsFile;
 use shiplog_workstream_receipt_policy::WORKSTREAM_RECEIPT_RENDER_LIMIT;
 use std::collections::HashMap;

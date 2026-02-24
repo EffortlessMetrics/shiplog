@@ -72,7 +72,10 @@ fn chunking_preserves_index_order_with_many_events() {
         .collect();
 
     let chunks = chunk_events(&events, 80); // force multiple chunks
-    let flattened: Vec<usize> = chunks.iter().flat_map(|chunk| chunk.iter().copied()).collect();
+    let flattened: Vec<usize> = chunks
+        .iter()
+        .flat_map(|chunk| chunk.iter().copied())
+        .collect();
     let expected: Vec<usize> = (0..events.len()).collect();
 
     assert_eq!(flattened.len(), events.len());

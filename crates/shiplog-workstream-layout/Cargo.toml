@@ -21,6 +21,7 @@ shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
 [dev-dependencies]
 proptest.workspace = true
 chrono.workspace = true
+shiplog-ids = { path = "../shiplog-ids", version = "0.2.1" }
 shiplog-workstream-cluster = { path = "../shiplog-workstream-cluster", version = "0.2.1" }
 tempfile.workspace = true
 serde_yaml.workspace = true

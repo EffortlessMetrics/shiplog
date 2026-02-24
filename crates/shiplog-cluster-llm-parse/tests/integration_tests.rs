@@ -92,7 +92,9 @@ fn parse_integration_with_mixed_event_types() {
 
 #[test]
 fn parse_integration_rejects_invalid_indices_and_caps_uncategorized_receipts() {
-    let events: Vec<EventEnvelope> = (0..15).map(|idx| make_event("acme", idx + 1, "pr")).collect();
+    let events: Vec<EventEnvelope> = (0..15)
+        .map(|idx| make_event("acme", idx + 1, "pr"))
+        .collect();
 
     let payload = serde_json::json!({
         "workstreams": [{

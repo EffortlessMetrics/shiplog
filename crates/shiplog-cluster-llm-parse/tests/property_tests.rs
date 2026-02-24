@@ -55,7 +55,7 @@ proptest! {
             0..8,
         ),
     ) {
-        let events: Vec<EventEnvelope> = (0..event_count).map(make_event).collect();
+        let events: Vec<EventEnvelope> = (0..event_count).map(|i| make_event(i as u64)).collect();
         let workstreams: Vec<_> = workstream_specs
             .into_iter()
             .enumerate()
@@ -92,7 +92,7 @@ proptest! {
         event_count in 1usize..50,
         invalid_run in 0usize..5,
     ) {
-        let events: Vec<EventEnvelope> = (0..event_count).map(make_event).collect();
+        let events: Vec<EventEnvelope> = (0..event_count).map(|i| make_event(i as u64)).collect();
         let invalid_indices: Vec<usize> = (0..invalid_run)
             .map(|i| event_count + i)
             .collect();
@@ -111,9 +111,9 @@ proptest! {
         let parsed = parse_llm_response(&payload, &events).unwrap();
         let first = &parsed.workstreams[0];
         prop_assert_eq!(parsed.workstreams.len(), 1);
-        prop_assert_eq!(first.title, "Uncategorized");
+        prop_assert_eq!(&first.title, "Uncategorized");
         prop_assert_eq!(first.events.len(), event_count);
         prop_assert_eq!(first.receipts.len(), std::cmp::min(event_count, 10));
-        prop_assert_eq!(first.tags, vec!["uncategorized".to_string()]);
+        prop_assert_eq!(&first.tags, &vec!["uncategorized".to_string()]);
     }
 }

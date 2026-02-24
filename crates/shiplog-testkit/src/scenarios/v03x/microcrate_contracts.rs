@@ -29,8 +29,6 @@ use crate::bdd::assertions::assert_true;
 #[cfg(feature = "microcrate_manual_events")]
 use shiplog_schema::event::{ManualDate, ManualEventType};
 
-#[cfg(feature = "microcrate_workstream_receipt_policy")]
-use shiplog_schema::event::EventKind;
 #[cfg(feature = "microcrate_cluster_llm_prompt")]
 use shiplog_cluster_llm_prompt::{chunk_events, format_event_list, summarize_event, system_prompt};
 #[cfg(feature = "microcrate_export")]
@@ -48,6 +46,8 @@ use shiplog_output_layout::{
     FILE_PACKET_MD, FILE_REDACTION_ALIASES_JSON, PROFILE_INTERNAL, PROFILE_MANAGER, PROFILE_PUBLIC,
     RunArtifactPaths, zip_path_for_profile,
 };
+#[cfg(feature = "microcrate_workstream_receipt_policy")]
+use shiplog_schema::event::EventKind;
 #[cfg(feature = "microcrate_export")]
 use std::path::Path;
 
@@ -85,21 +85,23 @@ use shiplog_validate::{EventValidator, Packet, PacketValidator};
 use shiplog_ports::WorkstreamClusterer;
 
 #[cfg(feature = "microcrate_cluster_llm_parse")]
-use shiplog_ids::EventId;
-#[cfg(feature = "microcrate_cluster_llm_parse")]
 use shiplog_cluster_llm_parse::parse_llm_response;
+#[cfg(feature = "microcrate_cluster_llm_parse")]
+use shiplog_ids::EventId;
 
 #[cfg(feature = "microcrate_workstream_cluster")]
 use shiplog_workstream_cluster::RepoClusterer;
 
 #[cfg(feature = "microcrate_manual_events")]
-use shiplog_manual_events::{create_empty_file, create_entry, events_in_window, read_manual_events, write_manual_events};
+use shiplog_manual_events::{
+    create_empty_file, create_entry, events_in_window, read_manual_events, write_manual_events,
+};
 
 #[cfg(feature = "microcrate_workstream_receipt_policy")]
 use shiplog_workstream_receipt_policy::{
-    should_include_cluster_receipt, should_render_receipt_at,
     WORKSTREAM_RECEIPT_LIMIT_MANUAL, WORKSTREAM_RECEIPT_LIMIT_REVIEW,
     WORKSTREAM_RECEIPT_LIMIT_TOTAL, WORKSTREAM_RECEIPT_RENDER_LIMIT,
+    should_include_cluster_receipt, should_render_receipt_at,
 };
 
 #[cfg(any(
@@ -406,14 +408,18 @@ pub fn microcrate_cluster_llm_prompt_contract() -> Scenario {
 
                 ctx.strings
                     .insert("cluster_prompt_event_list".to_string(), event_list);
-                ctx.numbers
-                    .insert("cluster_prompt_chunk_count".to_string(), chunks.len() as u64);
+                ctx.numbers.insert(
+                    "cluster_prompt_chunk_count".to_string(),
+                    chunks.len() as u64,
+                );
                 ctx.strings.insert(
                     "cluster_prompt_system_with_limit".to_string(),
                     system_prompt(Some(3)),
                 );
-                ctx.strings
-                    .insert("cluster_prompt_system_without_limit".to_string(), system_prompt(None));
+                ctx.strings.insert(
+                    "cluster_prompt_system_without_limit".to_string(),
+                    system_prompt(None),
+                );
                 ctx.flags.insert(
                     "cluster_prompt_all_indices_present".to_string(),
                     all_indices == (0..events.len()).collect::<Vec<_>>(),
@@ -425,51 +431,48 @@ pub fn microcrate_cluster_llm_prompt_contract() -> Scenario {
                 Ok(())
             },
         )
-        .then(
-            "prompt output should remain stable and indexed",
-            |ctx| {
-                let list = crate::bdd::assertions::assert_present(
-                    ctx.string("cluster_prompt_event_list"),
-                    "cluster_prompt_event_list",
-                )?;
-                assert_true(list.contains("[0]"), "index 0 present")?;
-                assert_true(list.contains("[1]"), "index 1 present")?;
-                assert_true(list.contains("[2]"), "index 2 present")?;
-                assert_true(
-                    ctx.flag("cluster_prompt_all_indices_present")
-                        .unwrap_or(false),
-                    "all indices covered",
-                )?;
-                assert_true(
-                    ctx.number("cluster_prompt_chunk_count").unwrap_or(0) >= 1,
-                    "non-empty chunking",
-                )?;
+        .then("prompt output should remain stable and indexed", |ctx| {
+            let list = crate::bdd::assertions::assert_present(
+                ctx.string("cluster_prompt_event_list"),
+                "cluster_prompt_event_list",
+            )?;
+            assert_true(list.contains("[0]"), "index 0 present")?;
+            assert_true(list.contains("[1]"), "index 1 present")?;
+            assert_true(list.contains("[2]"), "index 2 present")?;
+            assert_true(
+                ctx.flag("cluster_prompt_all_indices_present")
+                    .unwrap_or(false),
+                "all indices covered",
+            )?;
+            assert_true(
+                ctx.number("cluster_prompt_chunk_count").unwrap_or(0) >= 1,
+                "non-empty chunking",
+            )?;
 
-                let prompt_with_limit = crate::bdd::assertions::assert_present(
-                    ctx.string("cluster_prompt_system_with_limit"),
-                    "cluster_prompt_system_with_limit",
-                )?;
-                let prompt_without_limit = crate::bdd::assertions::assert_present(
-                    ctx.string("cluster_prompt_system_without_limit"),
-                    "cluster_prompt_system_without_limit",
-                )?;
+            let prompt_with_limit = crate::bdd::assertions::assert_present(
+                ctx.string("cluster_prompt_system_with_limit"),
+                "cluster_prompt_system_with_limit",
+            )?;
+            let prompt_without_limit = crate::bdd::assertions::assert_present(
+                ctx.string("cluster_prompt_system_without_limit"),
+                "cluster_prompt_system_without_limit",
+            )?;
 
-                assert_true(
-                    prompt_with_limit.contains("at most 3"),
-                    "limit appears in with-limit prompt",
-                )?;
-                assert_true(
-                    !prompt_without_limit.contains("at most"),
-                    "without limit omits workstream cap",
-                )?;
-                assert_true(
-                    ctx.flag("cluster_prompt_summary_has_pr").unwrap_or(false),
-                    "summary includes PR number",
-                )?;
+            assert_true(
+                prompt_with_limit.contains("at most 3"),
+                "limit appears in with-limit prompt",
+            )?;
+            assert_true(
+                !prompt_without_limit.contains("at most"),
+                "without limit omits workstream cap",
+            )?;
+            assert_true(
+                ctx.flag("cluster_prompt_summary_has_pr").unwrap_or(false),
+                "summary includes PR number",
+            )?;
 
-                Ok(())
-            },
-        )
+            Ok(())
+        })
 }
 
 #[cfg(feature = "microcrate_cluster_llm_parse")]
@@ -911,54 +914,62 @@ fn week_internal_boundaries_are_monday(windows: &[shiplog_schema::coverage::Time
 /// Scenario: repo clusterer groups events by repository and preserves complete assignment.
 pub fn microcrate_workstream_cluster_contract() -> Scenario {
     Scenario::new("Workstream cluster crate keeps repo-based assignment deterministic")
-        .when("the repo clusterer receives multi-repo, multi-event input", |ctx| {
-            let events = vec![
-                crate::pr_event("acme/backend", 1, "Add auth"),
-                crate::pr_event("acme/backend", 2, "Fix auth"),
-                crate::pr_event("acme/frontend", 3, "Launch landing page"),
-            ];
+        .when(
+            "the repo clusterer receives multi-repo, multi-event input",
+            |ctx| {
+                let events = vec![
+                    crate::pr_event("acme/backend", 1, "Add auth"),
+                    crate::pr_event("acme/backend", 2, "Fix auth"),
+                    crate::pr_event("acme/frontend", 3, "Launch landing page"),
+                ];
 
-            let clustered = RepoClusterer
-                .cluster(&events)
-                .map_err(|err| format!("clusterer should succeed: {err}"))?;
+                let clustered = RepoClusterer
+                    .cluster(&events)
+                    .map_err(|err| format!("clusterer should succeed: {err}"))?;
 
-            let all_assigned = clustered
-                .workstreams
-                .iter()
-                .flat_map(|ws| ws.events.iter())
-                .map(|id: &shiplog_ids::EventId| id.to_string())
-                .collect::<std::collections::HashSet<_>>();
+                let all_assigned = clustered
+                    .workstreams
+                    .iter()
+                    .flat_map(|ws| ws.events.iter())
+                    .map(|id: &shiplog_ids::EventId| id.to_string())
+                    .collect::<std::collections::HashSet<_>>();
 
-            let backend_ws = clustered
-                .workstreams
-                .iter()
-                .find(|ws| ws.events.contains(&events[0].id))
-                .ok_or_else(|| "backend events should be assigned".to_string())?;
+                let backend_ws = clustered
+                    .workstreams
+                    .iter()
+                    .find(|ws| ws.events.contains(&events[0].id))
+                    .ok_or_else(|| "backend events should be assigned".to_string())?;
 
-            let same_backend_bucket = backend_ws.events.contains(&events[1].id);
-            let different_backend_frontend_bucket = clustered
-                .workstreams
-                .iter()
-                .find(|ws| ws.events.contains(&events[2].id))
-                .is_some_and(|frontend_ws| !frontend_ws.events.contains(&events[0].id));
+                let same_backend_bucket = backend_ws.events.contains(&events[1].id);
+                let different_backend_frontend_bucket = clustered
+                    .workstreams
+                    .iter()
+                    .find(|ws| ws.events.contains(&events[2].id))
+                    .is_some_and(|frontend_ws| !frontend_ws.events.contains(&events[0].id));
 
-            ctx.numbers
-                .insert("workstream_count".to_string(), clustered.workstreams.len() as u64);
-            ctx.numbers
-                .insert("assigned_event_count".to_string(), all_assigned.len() as u64);
-            ctx.flags
-                .insert("backend_stays_single_ws".to_string(), same_backend_bucket);
-            ctx.flags.insert(
-                "frontend_in_distinct_ws".to_string(),
-                different_backend_frontend_bucket,
-            );
+                ctx.numbers.insert(
+                    "workstream_count".to_string(),
+                    clustered.workstreams.len() as u64,
+                );
+                ctx.numbers.insert(
+                    "assigned_event_count".to_string(),
+                    all_assigned.len() as u64,
+                );
+                ctx.flags
+                    .insert("backend_stays_single_ws".to_string(), same_backend_bucket);
+                ctx.flags.insert(
+                    "frontend_in_distinct_ws".to_string(),
+                    different_backend_frontend_bucket,
+                );
 
-            Ok(())
-        })
+                Ok(())
+            },
+        )
         .then(
             "events should be assigned deterministically into repo buckets",
             |ctx| {
-                let workstream_count = assert_present(ctx.number("workstream_count"), "workstream_count")?;
+                let workstream_count =
+                    assert_present(ctx.number("workstream_count"), "workstream_count")?;
                 let assigned_event_count =
                     assert_present(ctx.number("assigned_event_count"), "assigned_event_count")?;
                 assert_true(workstream_count == 2, "expected two workstreams")?;
@@ -1021,47 +1032,47 @@ pub fn microcrate_workstream_receipt_policy_contract() -> Scenario {
                 Ok(())
             },
         )
-        .then("all policy boundaries should hold and be internally consistent", |ctx| {
-            let review_cap = assert_present(ctx.number("review_cap"), "review_cap")?;
-            let manual_cap = assert_present(ctx.number("manual_cap"), "manual_cap")?;
-            let cluster_total_cap =
-                assert_present(ctx.number("cluster_total_cap"), "cluster_total_cap")?;
-            let render_cap = assert_present(ctx.number("render_cap"), "render_cap")?;
+        .then(
+            "all policy boundaries should hold and be internally consistent",
+            |ctx| {
+                let review_cap = assert_present(ctx.number("review_cap"), "review_cap")?;
+                let manual_cap = assert_present(ctx.number("manual_cap"), "manual_cap")?;
+                let cluster_total_cap =
+                    assert_present(ctx.number("cluster_total_cap"), "cluster_total_cap")?;
+                let render_cap = assert_present(ctx.number("render_cap"), "render_cap")?;
 
-            assert_true(
-                review_cap == WORKSTREAM_RECEIPT_LIMIT_REVIEW as u64,
-                "review cap contract",
-            )?;
-            assert_true(
-                manual_cap == WORKSTREAM_RECEIPT_LIMIT_MANUAL as u64,
-                "manual cap contract",
-            )?;
-            assert_true(
-                cluster_total_cap == WORKSTREAM_RECEIPT_LIMIT_TOTAL as u64,
-                "cluster total cap contract",
-            )?;
-            assert_true(
-                render_cap == WORKSTREAM_RECEIPT_RENDER_LIMIT as u64,
-                "render cap contract",
-            )?;
-            assert_true(
-                ctx.flag("review_cap_exclusive")
-                    .unwrap_or(false),
-                "review cap is exclusive",
-            )?;
-            assert_true(
-                ctx.flag("manual_cap_exclusive")
-                    .unwrap_or(false),
-                "manual cap is exclusive",
-            )?;
-            assert_true(
-                ctx.flag("render_cap_exclusive")
-                    .unwrap_or(false),
-                "render cap is exclusive",
-            )?;
+                assert_true(
+                    review_cap == WORKSTREAM_RECEIPT_LIMIT_REVIEW as u64,
+                    "review cap contract",
+                )?;
+                assert_true(
+                    manual_cap == WORKSTREAM_RECEIPT_LIMIT_MANUAL as u64,
+                    "manual cap contract",
+                )?;
+                assert_true(
+                    cluster_total_cap == WORKSTREAM_RECEIPT_LIMIT_TOTAL as u64,
+                    "cluster total cap contract",
+                )?;
+                assert_true(
+                    render_cap == WORKSTREAM_RECEIPT_RENDER_LIMIT as u64,
+                    "render cap contract",
+                )?;
+                assert_true(
+                    ctx.flag("review_cap_exclusive").unwrap_or(false),
+                    "review cap is exclusive",
+                )?;
+                assert_true(
+                    ctx.flag("manual_cap_exclusive").unwrap_or(false),
+                    "manual cap is exclusive",
+                )?;
+                assert_true(
+                    ctx.flag("render_cap_exclusive").unwrap_or(false),
+                    "render cap is exclusive",
+                )?;
 
-            Ok(())
-        })
+                Ok(())
+            },
+        )
 }
 
 #[cfg(feature = "microcrate_redaction_repo")]
@@ -1301,8 +1312,8 @@ pub fn microcrate_manual_events_contract() -> Scenario {
                 let path = temp.path().join("shiplog-manual-events-contract.yaml");
                 write_manual_events(&path, &file)
                     .map_err(|err| format!("write_manual_events should succeed: {err}"))?;
-                let parsed =
-                    read_manual_events(&path).map_err(|err| format!("read manual events should succeed: {err}"))?;
+                let parsed = read_manual_events(&path)
+                    .map_err(|err| format!("read manual events should succeed: {err}"))?;
                 let window = shiplog_schema::coverage::TimeWindow {
                     since: chrono::NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
                     until: chrono::NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),
@@ -1311,10 +1322,8 @@ pub fn microcrate_manual_events_contract() -> Scenario {
 
                 ctx.numbers
                     .insert("manual_events_kept".to_string(), events.len() as u64);
-                ctx.numbers.insert(
-                    "manual_events_warnings".to_string(),
-                    warnings.len() as u64,
-                );
+                ctx.numbers
+                    .insert("manual_events_warnings".to_string(), warnings.len() as u64);
                 ctx.flags.insert(
                     "contains_inside_event".to_string(),
                     events
@@ -1335,7 +1344,9 @@ pub fn microcrate_manual_events_contract() -> Scenario {
                 );
                 ctx.flags.insert(
                     "has_partial_warning".to_string(),
-                    warnings.iter().any(|warning| warning.contains("partially outside")),
+                    warnings
+                        .iter()
+                        .any(|warning| warning.contains("partially outside")),
                 );
 
                 Ok(())

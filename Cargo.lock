@@ -3715,6 +3715,7 @@ dependencies = [
  "chrono",
  "proptest",
  "serde_yaml_ng",
+ "shiplog-ids",
  "shiplog-ports",
  "shiplog-schema",
  "shiplog-workstream-cluster",
@@ -3733,6 +3734,7 @@ dependencies = [
 name = "shiplog-workstreams"
 version = "0.2.1"
 dependencies = [
+ "chrono",
  "proptest",
  "shiplog-ids",
  "shiplog-ports",

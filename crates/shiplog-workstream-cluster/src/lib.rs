@@ -8,11 +8,10 @@ use anyhow::Result;
 use chrono::Utc;
 use shiplog_ids::WorkstreamId;
 use shiplog_ports::WorkstreamClusterer;
-use shiplog_schema::event::{EventEnvelope, EventKind};
+use shiplog_schema::event::EventEnvelope;
 use shiplog_schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
 use shiplog_workstream_receipt_policy::{
-    should_include_cluster_receipt, truncate_cluster_receipts, WORKSTREAM_RECEIPT_LIMIT_MANUAL,
-    WORKSTREAM_RECEIPT_LIMIT_REVIEW,
+    should_include_cluster_receipt, truncate_cluster_receipts,
 };
 use std::collections::BTreeMap;
 
@@ -73,7 +72,8 @@ mod tests {
     use shiplog_ids::EventId;
     use shiplog_schema::event::*;
     use shiplog_workstream_receipt_policy::{
-        WORKSTREAM_RECEIPT_LIMIT_REVIEW, WORKSTREAM_RECEIPT_LIMIT_TOTAL,
+        WORKSTREAM_RECEIPT_LIMIT_MANUAL, WORKSTREAM_RECEIPT_LIMIT_REVIEW,
+        WORKSTREAM_RECEIPT_LIMIT_TOTAL,
     };
 
     fn make_event(repo_name: &str, event_id: &str, number: u64, kind: EventKind) -> EventEnvelope {
@@ -148,7 +148,10 @@ mod tests {
             .collect::<Vec<_>>();
         let ws = RepoClusterer.cluster(&events).unwrap();
         assert_eq!(ws.workstreams.len(), 1);
-        assert_eq!(ws.workstreams[0].receipts.len(), WORKSTREAM_RECEIPT_LIMIT_REVIEW);
+        assert_eq!(
+            ws.workstreams[0].receipts.len(),
+            WORKSTREAM_RECEIPT_LIMIT_REVIEW
+        );
     }
 
     #[test]
@@ -158,7 +161,10 @@ mod tests {
             .collect::<Vec<_>>();
         let ws = RepoClusterer.cluster(&events).unwrap();
         assert_eq!(ws.workstreams.len(), 1);
-        assert_eq!(ws.workstreams[0].receipts.len(), WORKSTREAM_RECEIPT_LIMIT_MANUAL.min(WORKSTREAM_RECEIPT_LIMIT_TOTAL));
+        assert_eq!(
+            ws.workstreams[0].receipts.len(),
+            WORKSTREAM_RECEIPT_LIMIT_MANUAL.min(WORKSTREAM_RECEIPT_LIMIT_TOTAL)
+        );
     }
 
     #[test]
@@ -170,6 +176,9 @@ mod tests {
 
         let a = RepoClusterer.cluster(&events).unwrap();
         let b = RepoClusterer.cluster(&events).unwrap();
-        assert_eq!(a.workstreams[0].id.to_string(), b.workstreams[0].id.to_string());
+        assert_eq!(
+            a.workstreams[0].id.to_string(),
+            b.workstreams[0].id.to_string()
+        );
     }
 }

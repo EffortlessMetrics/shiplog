@@ -5,6 +5,5 @@
 
 pub use shiplog_workstream_cluster::RepoClusterer;
 pub use shiplog_workstream_layout::{
-    load_or_cluster, write_workstreams, CURATED_FILENAME, SUGGESTED_FILENAME, WorkstreamManager,
+    CURATED_FILENAME, SUGGESTED_FILENAME, WorkstreamManager, load_or_cluster, write_workstreams,
 };
-

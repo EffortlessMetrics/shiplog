@@ -4,7 +4,8 @@ use shiplog_ports::WorkstreamClusterer;
 use shiplog_schema::event::*;
 use shiplog_workstream_cluster::RepoClusterer;
 use shiplog_workstream_receipt_policy::{
-    WORKSTREAM_RECEIPT_LIMIT_MANUAL, WORKSTREAM_RECEIPT_LIMIT_REVIEW, WORKSTREAM_RECEIPT_LIMIT_TOTAL,
+    WORKSTREAM_RECEIPT_LIMIT_MANUAL, WORKSTREAM_RECEIPT_LIMIT_REVIEW,
+    WORKSTREAM_RECEIPT_LIMIT_TOTAL,
 };
 
 fn event(repo: &str, id: &str, number: u64, kind: EventKind) -> EventEnvelope {
@@ -75,23 +76,42 @@ fn repo_clusterer_assigns_by_repository_and_is_trait_object_safe() {
 
     assert_eq!(output.version, 1);
     assert_eq!(output.workstreams.len(), 2);
-    assert!(output.workstreams.iter().all(|ws| ws.tags.contains(&"repo".to_string())));
+    assert!(
+        output
+            .workstreams
+            .iter()
+            .all(|ws| ws.tags.contains(&"repo".to_string()))
+    );
 }
 
 #[test]
 fn repo_clusterer_obeys_receipt_policy_caps() {
     let events = (0..12)
         .map(|i| event("repo/review-policy", &format!("r{i}"), i, EventKind::Review))
+        .chain((0..12).map(|i| event("repo/manual-policy", &format!("m{i}"), i, EventKind::Manual)))
         .chain((0..12).map(|i| {
-            event("repo/manual-policy", &format!("m{i}"), i, EventKind::Manual)
+            event(
+                "repo/pr-policy",
+                &format!("p{i}"),
+                i,
+                EventKind::PullRequest,
+            )
         }))
-        .chain((0..12).map(|i| event("repo/pr-policy", &format!("p{i}"), i, EventKind::PullRequest)))
         .collect::<Vec<_>>();
 
     let workstreams = RepoClusterer.cluster(&events).unwrap().workstreams;
-    let review_ws = workstreams.iter().find(|ws| ws.title == "repo/review-policy").unwrap();
-    let manual_ws = workstreams.iter().find(|ws| ws.title == "repo/manual-policy").unwrap();
-    let pr_ws = workstreams.iter().find(|ws| ws.title == "repo/pr-policy").unwrap();
+    let review_ws = workstreams
+        .iter()
+        .find(|ws| ws.title == "repo/review-policy")
+        .unwrap();
+    let manual_ws = workstreams
+        .iter()
+        .find(|ws| ws.title == "repo/manual-policy")
+        .unwrap();
+    let pr_ws = workstreams
+        .iter()
+        .find(|ws| ws.title == "repo/pr-policy")
+        .unwrap();
 
     assert_eq!(review_ws.receipts.len(), WORKSTREAM_RECEIPT_LIMIT_REVIEW);
     assert_eq!(manual_ws.receipts.len(), WORKSTREAM_RECEIPT_LIMIT_MANUAL);

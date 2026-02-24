@@ -425,7 +425,6 @@ impl<'a> Engine<'a> {
 
 #[cfg(test)]
 mod tests {
-    use shiplog_workstream_cluster::RepoClusterer;
     use super::*;
     use chrono::{NaiveDate, TimeZone, Utc};
     use shiplog_ids::{EventId, RunId};
@@ -433,6 +432,7 @@ mod tests {
     use shiplog_ports::IngestOutput;
     use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
     use shiplog_schema::event::*;
+    use shiplog_workstream_cluster::RepoClusterer;
 
     fn pr_event(repo: &str, number: u64, title: &str) -> EventEnvelope {
         EventEnvelope {

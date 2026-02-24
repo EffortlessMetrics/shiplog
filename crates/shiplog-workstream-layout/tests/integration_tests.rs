@@ -5,17 +5,16 @@ use shiplog_ids::EventId;
 use shiplog_schema::event::EventEnvelope;
 use shiplog_schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
 use shiplog_workstream_cluster::RepoClusterer;
-use shiplog_workstream_layout::{SUGGESTED_FILENAME, CURATED_FILENAME, WorkstreamManager, write_workstreams};
+use shiplog_workstream_layout::{
+    CURATED_FILENAME, SUGGESTED_FILENAME, WorkstreamManager, write_workstreams,
+};
 use tempfile::tempdir;
 
 fn make_event(repo_name: &str, id: &str) -> EventEnvelope {
     EventEnvelope {
         id: EventId::from_parts(["github", id]),
         kind: shiplog_schema::event::EventKind::PullRequest,
-        occurred_at: Utc
-            .with_ymd_and_hms(2025, 1, 1, 0, 0, 0)
-            .single()
-            .unwrap(),
+        occurred_at: Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).single().unwrap(),
         actor: shiplog_schema::event::Actor {
             login: "tester".into(),
             id: None,
@@ -25,18 +24,20 @@ fn make_event(repo_name: &str, id: &str) -> EventEnvelope {
             html_url: Some(format!("https://example.com/{repo_name}")),
             visibility: shiplog_schema::event::RepoVisibility::Unknown,
         },
-        payload: shiplog_schema::event::EventPayload::PullRequest(shiplog_schema::event::PullRequestEvent {
-            number: 1,
-            title: "Test PR".into(),
-            state: shiplog_schema::event::PullRequestState::Merged,
-            created_at: Utc::now(),
-            merged_at: Some(Utc::now()),
-            additions: Some(10),
-            deletions: Some(2),
-            changed_files: Some(1),
-            touched_paths_hint: vec![],
-            window: None,
-        }),
+        payload: shiplog_schema::event::EventPayload::PullRequest(
+            shiplog_schema::event::PullRequestEvent {
+                number: 1,
+                title: "Test PR".into(),
+                state: shiplog_schema::event::PullRequestState::Merged,
+                created_at: Utc::now(),
+                merged_at: Some(Utc::now()),
+                additions: Some(10),
+                deletions: Some(2),
+                changed_files: Some(1),
+                touched_paths_hint: vec![],
+                window: None,
+            },
+        ),
         tags: vec![],
         links: vec![],
         source: shiplog_schema::event::SourceRef {
@@ -72,7 +73,9 @@ fn integration_prefers_curated_workstreams() {
     write_workstreams(&curated, &make_file("curated")).unwrap();
     write_workstreams(&suggested, &make_file("suggested")).unwrap();
 
-    let loaded = WorkstreamManager::try_load(temp_dir.path()).unwrap().unwrap();
+    let loaded = WorkstreamManager::try_load(temp_dir.path())
+        .unwrap()
+        .unwrap();
     assert_eq!(loaded.workstreams[0].title, "curated");
 }
 
@@ -83,7 +86,9 @@ fn integration_falls_back_to_suggested_when_curated_missing() {
     let suggested = temp_dir.path().join(SUGGESTED_FILENAME);
     write_workstreams(&suggested, &make_file("suggested")).unwrap();
 
-    let loaded = WorkstreamManager::try_load(temp_dir.path()).unwrap().unwrap();
+    let loaded = WorkstreamManager::try_load(temp_dir.path())
+        .unwrap()
+        .unwrap();
     assert_eq!(loaded.workstreams[0].title, "suggested");
 }
 
@@ -92,7 +97,8 @@ fn integration_generates_when_no_files_exist() {
     let temp_dir = tempdir().unwrap();
     let events = [make_event("acme/app", "1"), make_event("acme/app", "2")];
 
-    let loaded = WorkstreamManager::load_effective(temp_dir.path(), &RepoClusterer, &events).unwrap();
+    let loaded =
+        WorkstreamManager::load_effective(temp_dir.path(), &RepoClusterer, &events).unwrap();
     assert_eq!(loaded.workstreams.len(), 1);
     assert_eq!(loaded.workstreams[0].title, "acme/app");
     assert_eq!(

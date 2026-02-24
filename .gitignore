@@ -28,6 +28,9 @@ tarpaulin-report.*
 mutants.out/
 mutants.out.*
 
+# Proptest regressions
+*.proptest-regressions
+
 # Insta snapshot review
 *.snap.new
 

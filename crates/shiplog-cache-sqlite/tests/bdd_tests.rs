@@ -25,10 +25,13 @@ fn when_cache_stores_and_loads_value(ctx: &mut ScenarioContext) -> Result<(), St
     let contains = cache.contains(key).map_err(|err| err.to_string())?;
     let stats = cache.stats().map_err(|err| err.to_string())?;
 
-    ctx.data
-        .insert("cache_reloaded".to_string(), reloaded.unwrap_or_default().into_bytes());
+    ctx.data.insert(
+        "cache_reloaded".to_string(),
+        reloaded.unwrap_or_default().into_bytes(),
+    );
     ctx.flags.insert("contains".to_string(), contains);
-    ctx.numbers.insert("total_entries".to_string(), stats.total_entries as u64);
+    ctx.numbers
+        .insert("total_entries".to_string(), stats.total_entries as u64);
     ctx.numbers
         .insert("valid_entries".to_string(), stats.valid_entries as u64);
     ctx.numbers
@@ -39,10 +42,9 @@ fn when_cache_stores_and_loads_value(ctx: &mut ScenarioContext) -> Result<(), St
 fn then_cache_contract_remains_stable(ctx: &ScenarioContext) -> Result<(), String> {
     let expected = assert_present(ctx.string("cache_value"), "cache_value")?;
     let reloaded = assert_present(
-        ctx.data.get("cache_reloaded").map(|bytes| {
-            let text = String::from_utf8_lossy(bytes).into_owned();
-            text
-        }),
+        ctx.data
+            .get("cache_reloaded")
+            .map(|bytes| String::from_utf8_lossy(bytes).into_owned()),
         "cache_reloaded",
     )?;
 
@@ -69,10 +71,17 @@ fn then_cache_contract_remains_stable(ctx: &ScenarioContext) -> Result<(), Strin
 
 #[test]
 fn bdd_cache_sqlite_contract_is_stable() {
-    let scenario = Scenario::new("SQLite cache storage keeps persistence and lookup contracts stable")
-        .given("a cache key and value", given_cache_inputs)
-        .when("the cache stores and loads the value", when_cache_stores_and_loads_value)
-        .then("the contract properties remain stable", then_cache_contract_remains_stable);
+    let scenario =
+        Scenario::new("SQLite cache storage keeps persistence and lookup contracts stable")
+            .given("a cache key and value", given_cache_inputs)
+            .when(
+                "the cache stores and loads the value",
+                when_cache_stores_and_loads_value,
+            )
+            .then(
+                "the contract properties remain stable",
+                then_cache_contract_remains_stable,
+            );
 
     scenario.run().expect("BDD scenario should pass");
 }

@@ -5,10 +5,10 @@
 
 use anyhow::{Context, Result};
 use chrono::Duration;
-use rusqlite::{params, Connection, OptionalExtension};
-use serde::de::DeserializeOwned;
+use rusqlite::{Connection, OptionalExtension, params};
 use serde::Serialize;
-use shiplog_cache_expiry::{now_rfc3339, CacheExpiryWindow};
+use serde::de::DeserializeOwned;
+use shiplog_cache_expiry::{CacheExpiryWindow, now_rfc3339};
 use std::path::Path;
 
 pub use shiplog_cache_key::CacheKey;
@@ -38,7 +38,10 @@ impl ApiCache {
             [],
         )?;
 
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_expires ON cache_entries(expires_at)", [])?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_expires ON cache_entries(expires_at)",
+            [],
+        )?;
 
         Ok(Self {
             conn,
@@ -131,13 +134,11 @@ impl ApiCache {
     pub fn contains(&self, key: &str) -> Result<bool> {
         let now = now_rfc3339();
 
-        let count: i64 = self
-            .conn
-            .query_row(
-                "SELECT COUNT(*) FROM cache_entries WHERE key = ?1 AND expires_at > ?2",
-                params![key, now],
-                |row| row.get(0),
-            )?;
+        let count: i64 = self.conn.query_row(
+            "SELECT COUNT(*) FROM cache_entries WHERE key = ?1 AND expires_at > ?2",
+            params![key, now],
+            |row| row.get(0),
+        )?;
 
         Ok(count > 0)
     }
@@ -146,9 +147,10 @@ impl ApiCache {
     pub fn cleanup_expired(&self) -> Result<usize> {
         let now = now_rfc3339();
 
-        let deleted = self
-            .conn
-            .execute("DELETE FROM cache_entries WHERE expires_at <= ?1", params![now])?;
+        let deleted = self.conn.execute(
+            "DELETE FROM cache_entries WHERE expires_at <= ?1",
+            params![now],
+        )?;
 
         Ok(deleted)
     }
@@ -173,11 +175,11 @@ impl ApiCache {
             |row| row.get(0),
         )?;
 
-        let size_bytes: i64 = self
-            .conn
-            .query_row("SELECT SUM(LENGTH(data)) FROM cache_entries", [], |row| {
-                Ok(row.get::<_, Option<i64>>(0).unwrap_or(Some(0)).unwrap_or(0))
-            })?;
+        let size_bytes: i64 =
+            self.conn
+                .query_row("SELECT SUM(LENGTH(data)) FROM cache_entries", [], |row| {
+                    Ok(row.get::<_, Option<i64>>(0).unwrap_or(Some(0)).unwrap_or(0))
+                })?;
 
         Ok(CacheStats::from_raw_counts(total, expired, size_bytes))
     }
@@ -260,7 +262,9 @@ mod tests {
             count: 42,
         };
 
-        cache.set_with_ttl("key1", &data, Duration::seconds(-1)).unwrap();
+        cache
+            .set_with_ttl("key1", &data, Duration::seconds(-1))
+            .unwrap();
 
         let deleted = cache.cleanup_expired().unwrap();
         assert_eq!(deleted, 1);
@@ -308,7 +312,10 @@ mod tests {
         let reviews = CacheKey::pr_reviews("https://api.github.com/repos/o/r/pulls/1", 2);
         let notes = CacheKey::mr_notes(12, 34, 1);
 
-        assert_eq!(details, "pr:details:https://api.github.com/repos/o/r/pulls/1");
+        assert_eq!(
+            details,
+            "pr:details:https://api.github.com/repos/o/r/pulls/1"
+        );
         assert_eq!(
             reviews,
             "pr:reviews:https://api.github.com/repos/o/r/pulls/1:page2"
