@@ -1,5 +1,7 @@
 //! BDD scenarios that lock in microcrate public contracts for external reuse.
 
+#[cfg(feature = "microcrate_date_windows")]
+use crate::bdd::assertions::assert_present;
 #[cfg(any(
     feature = "microcrate_export",
     feature = "microcrate_output_layout",
@@ -9,7 +11,8 @@
     feature = "microcrate_notify",
     feature = "microcrate_cache_stats",
     feature = "microcrate_cache_expiry",
-    feature = "microcrate_redaction_repo"
+    feature = "microcrate_redaction_repo",
+    feature = "microcrate_date_windows"
 ))]
 use crate::bdd::assertions::assert_true;
 #[cfg(feature = "microcrate_export")]
@@ -48,6 +51,12 @@ use shiplog_cache_expiry::{CacheExpiryWindow, is_expired, is_valid, parse_rfc333
 #[cfg(feature = "microcrate_redaction_repo")]
 use shiplog_redaction_repo::redact_repo_public;
 
+#[cfg(feature = "microcrate_date_windows")]
+use chrono::{Datelike, NaiveDate};
+
+#[cfg(feature = "microcrate_date_windows")]
+use shiplog_date_windows::{day_windows, month_windows, week_windows, window_len_days};
+
 #[cfg(feature = "microcrate_storage")]
 use shiplog_storage::{InMemoryStorage, Storage, StorageKey};
 
@@ -63,7 +72,8 @@ use shiplog_validate::{EventValidator, Packet, PacketValidator};
     feature = "microcrate_notify",
     feature = "microcrate_cache_stats",
     feature = "microcrate_cache_expiry",
-    feature = "microcrate_redaction_repo"
+    feature = "microcrate_redaction_repo",
+    feature = "microcrate_date_windows"
 ))]
 use crate::bdd::Scenario;
 
@@ -515,6 +525,161 @@ pub fn microcrate_cache_expiry_contract() -> Scenario {
                 )
             },
         )
+}
+
+#[cfg(feature = "microcrate_date_windows")]
+/// Scenario: date-windows crate keeps partitioning contracts stable.
+pub fn microcrate_date_windows_contract() -> Scenario {
+    Scenario::new("Date-windows crate keeps partitioning contracts stable")
+        .given("a canonical date range", |ctx| {
+            ctx.strings
+                .insert("since".to_string(), "2025-01-15".to_string());
+            ctx.strings
+                .insert("until".to_string(), "2025-04-02".to_string());
+        })
+        .when("day, week, and month windows are derived", |ctx| {
+            let since_raw = assert_present(ctx.string("since"), "since")?;
+            let until_raw = assert_present(ctx.string("until"), "until")?;
+
+            let since = NaiveDate::parse_from_str(since_raw, "%Y-%m-%d")
+                .map_err(|err| format!("since should parse as date: {err}"))?;
+            let until = NaiveDate::parse_from_str(until_raw, "%Y-%m-%d")
+                .map_err(|err| format!("until should parse as date: {err}"))?;
+
+            let month = month_windows(since, until);
+            let week = week_windows(since, until);
+            let day = day_windows(since, until);
+
+            let requested_days = if until > since {
+                (until - since).num_days()
+            } else {
+                0
+            };
+            let month_days = month.iter().map(window_len_days).sum::<i64>();
+            let week_days = week.iter().map(window_len_days).sum::<i64>();
+            let day_days = day.iter().map(window_len_days).sum::<i64>();
+
+            ctx.numbers
+                .insert("requested_days".to_string(), requested_days as u64);
+            ctx.numbers
+                .insert("month_window_count".to_string(), month.len() as u64);
+            ctx.numbers
+                .insert("week_window_count".to_string(), week.len() as u64);
+            ctx.numbers
+                .insert("day_window_count".to_string(), day.len() as u64);
+            ctx.numbers
+                .insert("month_window_days".to_string(), month_days as u64);
+            ctx.numbers
+                .insert("week_window_days".to_string(), week_days as u64);
+            ctx.numbers
+                .insert("day_window_days".to_string(), day_days as u64);
+
+            ctx.flags.insert(
+                "month_partition".to_string(),
+                check_partition_contract(&month, since, until),
+            );
+            ctx.flags.insert(
+                "week_partition".to_string(),
+                check_partition_contract(&week, since, until),
+            );
+            ctx.flags.insert(
+                "day_partition".to_string(),
+                check_partition_contract(&day, since, until),
+            );
+            ctx.flags.insert(
+                "week_internal_monday".to_string(),
+                week_internal_boundaries_are_monday(&week),
+            );
+            ctx.flags.insert(
+                "day_units".to_string(),
+                day.iter().all(|window| window_len_days(window) == 1),
+            );
+            Ok(())
+        })
+        .then(
+            "window partitioning should remain contiguous, complete, and unit-accurate",
+            |ctx| {
+                let requested_days = ctx.number("requested_days").unwrap_or(0);
+                assert_true(
+                    ctx.flag("month_partition").unwrap_or(false),
+                    "month windows partition",
+                )?;
+                assert_true(
+                    ctx.flag("week_partition").unwrap_or(false),
+                    "week windows partition",
+                )?;
+                assert_true(
+                    ctx.flag("day_partition").unwrap_or(false),
+                    "day windows partition",
+                )?;
+                assert_true(
+                    ctx.flag("week_internal_monday").unwrap_or(false),
+                    "week internal boundaries align to monday",
+                )?;
+                assert_true(
+                    ctx.flag("day_units").unwrap_or(false),
+                    "day windows are unit days",
+                )?;
+                assert_true(
+                    ctx.number("month_window_days").unwrap_or(0) == requested_days,
+                    "month windows cover requested range",
+                )?;
+                assert_true(
+                    ctx.number("week_window_days").unwrap_or(0) == requested_days,
+                    "week windows cover requested range",
+                )?;
+                assert_true(
+                    ctx.number("day_window_days").unwrap_or(0) == requested_days,
+                    "day windows cover requested range",
+                )?;
+                assert_true(
+                    ctx.number("month_window_count").unwrap_or(0)
+                        + ctx.number("week_window_count").unwrap_or(0)
+                        + ctx.number("day_window_count").unwrap_or(0)
+                        > 0,
+                    "all granularities produce windows when range is non-empty",
+                )?;
+                Ok(())
+            },
+        )
+}
+
+#[cfg(feature = "microcrate_date_windows")]
+fn check_partition_contract(
+    windows: &[shiplog_schema::coverage::TimeWindow],
+    since: NaiveDate,
+    until: NaiveDate,
+) -> bool {
+    if windows.is_empty() {
+        return until <= since;
+    }
+
+    if windows.first().unwrap().since != since {
+        return false;
+    }
+    if windows.last().unwrap().until != until {
+        return false;
+    }
+
+    for pair in windows.windows(2) {
+        if pair[0].until != pair[1].since || pair[0].since >= pair[0].until {
+            return false;
+        }
+    }
+
+    windows.last().unwrap().since < windows.last().unwrap().until
+}
+
+#[cfg(feature = "microcrate_date_windows")]
+fn week_internal_boundaries_are_monday(windows: &[shiplog_schema::coverage::TimeWindow]) -> bool {
+    if windows.is_empty() || windows.len() == 1 {
+        return true;
+    }
+
+    windows
+        .iter()
+        .take(windows.len() - 1)
+        .all(|window| window.until.weekday() == chrono::Weekday::Mon)
 }
 
 #[cfg(feature = "microcrate_redaction_repo")]

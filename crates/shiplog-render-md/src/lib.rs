@@ -810,6 +810,206 @@ mod tests {
         assert!(result.contains("**Workstreams:** 2"));
     }
 
+    fn create_test_review(id: &str, state: &str, with_link: bool) -> EventEnvelope {
+        let links = if with_link {
+            vec![Link {
+                label: "pr".into(),
+                url: "https://github.com/owner/repo/pull/42".to_string(),
+            }]
+        } else {
+            vec![]
+        };
+        EventEnvelope {
+            id: EventId::from_parts(["review", id]),
+            kind: EventKind::Review,
+            occurred_at: Utc.timestamp_opt(0, 0).unwrap(),
+            actor: Actor {
+                login: "reviewer".into(),
+                id: None,
+            },
+            repo: RepoRef {
+                full_name: "owner/repo".into(),
+                html_url: None,
+                visibility: RepoVisibility::Public,
+            },
+            payload: EventPayload::Review(ReviewEvent {
+                pull_number: 42,
+                pull_title: "Some PR".into(),
+                submitted_at: Utc.timestamp_opt(0, 0).unwrap(),
+                state: state.into(),
+                window: None,
+            }),
+            tags: vec![],
+            links,
+            source: SourceRef {
+                system: SourceSystem::Github,
+                url: None,
+                opaque_id: Some(id.into()),
+            },
+        }
+    }
+
+    fn make_coverage(slices: Vec<CoverageSlice>, warnings: Vec<String>) -> CoverageManifest {
+        CoverageManifest {
+            run_id: RunId::now("test"),
+            generated_at: Utc::now(),
+            user: "test".into(),
+            window: TimeWindow {
+                since: NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
+                until: NaiveDate::from_ymd_opt(2024, 12, 31).unwrap(),
+            },
+            mode: "test".into(),
+            sources: vec!["github".into()],
+            slices,
+            warnings,
+            completeness: Completeness::Complete,
+        }
+    }
+
+    #[test]
+    fn coverage_complete_slices_no_incomplete_message() {
+        // All slices complete → output does NOT contain "incomplete results"
+        // Kills >0 → >=0 mutation on partial_count check
+        let coverage = make_coverage(
+            vec![CoverageSlice {
+                window: TimeWindow {
+                    since: NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
+                    until: NaiveDate::from_ymd_opt(2024, 12, 31).unwrap(),
+                },
+                query: "test".into(),
+                total_count: 10,
+                fetched: 10,
+                incomplete_results: Some(false),
+                notes: vec![],
+            }],
+            vec![],
+        );
+        let mut out = String::new();
+        render_coverage(&mut out, &coverage);
+        assert!(!out.contains("incomplete results"));
+    }
+
+    #[test]
+    fn coverage_with_total_equal_fetched_no_slicing_message() {
+        // total_count == fetched → should NOT show "Slicing applied"
+        // Kills > → >= mutation on `total_count > fetched`
+        let coverage = make_coverage(
+            vec![CoverageSlice {
+                window: TimeWindow {
+                    since: NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
+                    until: NaiveDate::from_ymd_opt(2024, 12, 31).unwrap(),
+                },
+                query: "test".into(),
+                total_count: 50,
+                fetched: 50,
+                incomplete_results: Some(false),
+                notes: vec![],
+            }],
+            vec![],
+        );
+        let mut out = String::new();
+        render_coverage(&mut out, &coverage);
+        assert!(!out.contains("Slicing applied"));
+    }
+
+    #[test]
+    fn coverage_with_capped_slices_shows_slicing_applied() {
+        // total_count > fetched → should show "Slicing applied"
+        let coverage = make_coverage(
+            vec![CoverageSlice {
+                window: TimeWindow {
+                    since: NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
+                    until: NaiveDate::from_ymd_opt(2024, 12, 31).unwrap(),
+                },
+                query: "test".into(),
+                total_count: 100,
+                fetched: 50,
+                incomplete_results: Some(false),
+                notes: vec![],
+            }],
+            vec![],
+        );
+        let mut out = String::new();
+        render_coverage(&mut out, &coverage);
+        assert!(out.contains("Slicing applied"));
+        assert!(out.contains("fetched 50/100"));
+    }
+
+    #[test]
+    fn coverage_with_4_plus_capped_slices_shows_and_more() {
+        // 4+ capped slices → shows first 3 then "... and N more"
+        // Kills >3 → >=3 mutation
+        let slices: Vec<CoverageSlice> = (0..5)
+            .map(|i| CoverageSlice {
+                window: TimeWindow {
+                    since: NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
+                    until: NaiveDate::from_ymd_opt(2024, 12, 31).unwrap(),
+                },
+                query: format!("query-{i}"),
+                total_count: 100,
+                fetched: 50,
+                incomplete_results: Some(false),
+                notes: vec![],
+            })
+            .collect();
+        let coverage = make_coverage(slices, vec![]);
+        let mut out = String::new();
+        render_coverage(&mut out, &coverage);
+        assert!(out.contains("... and 2 more"));
+    }
+
+    #[test]
+    fn coverage_with_exactly_3_capped_slices_no_and_more() {
+        // Exactly 3 capped slices → no "... and N more"
+        // Kills >3 → >=3 (with 3 slices, > 3 is false, so no "and more")
+        let slices: Vec<CoverageSlice> = (0..3)
+            .map(|i| CoverageSlice {
+                window: TimeWindow {
+                    since: NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
+                    until: NaiveDate::from_ymd_opt(2024, 12, 31).unwrap(),
+                },
+                query: format!("query-{i}"),
+                total_count: 100,
+                fetched: 50,
+                incomplete_results: Some(false),
+                notes: vec![],
+            })
+            .collect();
+        let coverage = make_coverage(slices, vec![]);
+        let mut out = String::new();
+        render_coverage(&mut out, &coverage);
+        assert!(out.contains("Slicing applied"));
+        assert!(!out.contains("... and"));
+    }
+
+    #[test]
+    fn review_event_shows_review_tag_and_state() {
+        // Kills Review match arm deletion in format_receipt_clean
+        let ev = create_test_review("r1", "approved", false);
+        let formatted = format_receipt_clean(&ev);
+        assert!(formatted.contains("[Review]"));
+        assert!(formatted.contains("approved"));
+    }
+
+    #[test]
+    fn review_with_pr_link_shows_markdown_link() {
+        // Kills == → != mutation on `l.label == "pr"` check
+        let ev = create_test_review("r2", "changes_requested", true);
+        let formatted = format_receipt_clean(&ev);
+        assert!(formatted.contains("[Review]"));
+        assert!(formatted.contains("[owner/repo]"));
+        assert!(formatted.contains("(https://github.com/owner/repo/pull/42)"));
+    }
+
+    #[test]
+    fn review_without_pr_link_shows_plain_repo() {
+        // No "pr" link → repo name is shown without markdown link syntax
+        let ev = create_test_review("r3", "approved", false);
+        let formatted = format_receipt_clean(&ev);
+        assert!(formatted.contains("owner/repo"));
+        assert!(!formatted.contains("]("));
+    }
+
     #[test]
     fn test_snapshot_events_with_all_manual_types() {
         let renderer = MarkdownRenderer::new();

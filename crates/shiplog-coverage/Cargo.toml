@@ -14,12 +14,11 @@ keywords = ["coverage", "date-range", "time-window", "slicing", "ingestion"]
 categories = ["date-and-time", "development-tools"]
 
 [dependencies]
-chrono.workspace = true
-shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
+shiplog-date-windows = { path = "../shiplog-date-windows", version = "0.2.1" }
 
 [dev-dependencies]
 anyhow.workspace = true
+chrono.workspace = true
 proptest.workspace = true
+shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
 shiplog-testkit = { path = "../shiplog-testkit", version = "0.2.1" }
-
-

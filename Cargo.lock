@@ -1300,6 +1300,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "mutants"
+version = "0.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "add0ac067452ff1aca8c5002111bd6b1c895baee6e45fcbc44e0193aea17be56"
+
+[[package]]
 name = "notify"
 version = "8.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2250,6 +2256,7 @@ version = "0.2.1"
 dependencies = [
  "anyhow",
  "chrono",
+ "mutants",
  "reqwest",
  "serde",
  "serde_json",
@@ -2314,6 +2321,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "proptest",
+ "shiplog-date-windows",
  "shiplog-schema",
  "shiplog-testkit",
 ]
@@ -2338,6 +2346,16 @@ dependencies = [
  "serde_json",
  "sha2",
  "tempfile",
+]
+
+[[package]]
+name = "shiplog-date-windows"
+version = "0.2.1"
+dependencies = [
+ "chrono",
+ "proptest",
+ "shiplog-schema",
+ "shiplog-testkit",
 ]
 
 [[package]]
@@ -2573,6 +2591,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "git2",
+ "mutants",
  "shiplog-cache",
  "shiplog-ids",
  "shiplog-ports",
@@ -2586,6 +2605,7 @@ version = "0.2.1"
 dependencies = [
  "anyhow",
  "chrono",
+ "mutants",
  "reqwest",
  "serde",
  "serde_json",
@@ -2605,6 +2625,7 @@ version = "0.3.0"
 dependencies = [
  "anyhow",
  "chrono",
+ "mutants",
  "reqwest",
  "serde",
  "serde_json",
@@ -2624,6 +2645,7 @@ version = "0.3.0"
 dependencies = [
  "anyhow",
  "chrono",
+ "mutants",
  "reqwest",
  "serde",
  "serde_json",
@@ -2657,6 +2679,7 @@ version = "0.3.0"
 dependencies = [
  "anyhow",
  "chrono",
+ "mutants",
  "reqwest",
  "serde",
  "serde_json",
@@ -3382,6 +3405,7 @@ dependencies = [
  "shiplog-cache-expiry",
  "shiplog-cache-key",
  "shiplog-cache-stats",
+ "shiplog-date-windows",
  "shiplog-export",
  "shiplog-ids",
  "shiplog-merge",

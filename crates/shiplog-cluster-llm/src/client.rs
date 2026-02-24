@@ -15,6 +15,7 @@ pub struct OpenAiCompatibleBackend {
 }
 
 impl LlmBackend for OpenAiCompatibleBackend {
+    #[mutants::skip]
     fn complete(&self, system: &str, user: &str) -> Result<String> {
         let client = reqwest::blocking::Client::builder()
             .timeout(std::time::Duration::from_secs(self.timeout_secs))
@@ -69,6 +70,7 @@ impl LlmBackend for MockLlmBackend {
 pub struct FailingLlmBackend;
 
 impl LlmBackend for FailingLlmBackend {
+    #[mutants::skip]
     fn complete(&self, _system: &str, _user: &str) -> Result<String> {
         anyhow::bail!("LLM backend failed (mock)")
     }

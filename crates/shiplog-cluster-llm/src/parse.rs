@@ -121,3 +121,280 @@ pub fn parse_llm_response(json_str: &str, events: &[EventEnvelope]) -> Result<Wo
         workstreams,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::Utc;
+    use shiplog_ids::EventId;
+    use shiplog_schema::event::*;
+
+    fn make_pr_event(num: u64) -> EventEnvelope {
+        EventEnvelope {
+            id: EventId::from_parts(["test", "pr", &num.to_string()]),
+            kind: EventKind::PullRequest,
+            occurred_at: Utc::now(),
+            actor: Actor {
+                login: "user".into(),
+                id: None,
+            },
+            repo: RepoRef {
+                full_name: "org/repo".into(),
+                html_url: None,
+                visibility: RepoVisibility::Unknown,
+            },
+            payload: EventPayload::PullRequest(PullRequestEvent {
+                number: num,
+                title: format!("PR {num}"),
+                state: PullRequestState::Merged,
+                created_at: Utc::now(),
+                merged_at: Some(Utc::now()),
+                additions: Some(10),
+                deletions: Some(5),
+                changed_files: Some(3),
+                touched_paths_hint: vec![],
+                window: None,
+            }),
+            tags: vec![],
+            links: vec![],
+            source: SourceRef {
+                system: SourceSystem::Github,
+                url: None,
+                opaque_id: None,
+            },
+        }
+    }
+
+    fn make_review_event(num: u64) -> EventEnvelope {
+        EventEnvelope {
+            id: EventId::from_parts(["test", "review", &num.to_string()]),
+            kind: EventKind::Review,
+            occurred_at: Utc::now(),
+            actor: Actor {
+                login: "reviewer".into(),
+                id: None,
+            },
+            repo: RepoRef {
+                full_name: "org/repo".into(),
+                html_url: None,
+                visibility: RepoVisibility::Unknown,
+            },
+            payload: EventPayload::Review(ReviewEvent {
+                pull_number: num,
+                pull_title: format!("PR {num}"),
+                submitted_at: Utc::now(),
+                state: "approved".into(),
+                window: None,
+            }),
+            tags: vec![],
+            links: vec![],
+            source: SourceRef {
+                system: SourceSystem::Github,
+                url: None,
+                opaque_id: None,
+            },
+        }
+    }
+
+    fn make_manual_event(num: u64) -> EventEnvelope {
+        EventEnvelope {
+            id: EventId::from_parts(["test", "manual", &num.to_string()]),
+            kind: EventKind::Manual,
+            occurred_at: Utc::now(),
+            actor: Actor {
+                login: "user".into(),
+                id: None,
+            },
+            repo: RepoRef {
+                full_name: "org/repo".into(),
+                html_url: None,
+                visibility: RepoVisibility::Unknown,
+            },
+            payload: EventPayload::Manual(ManualEvent {
+                event_type: ManualEventType::Note,
+                title: format!("Manual {num}"),
+                description: None,
+                started_at: None,
+                ended_at: None,
+                impact: None,
+            }),
+            tags: vec![],
+            links: vec![],
+            source: SourceRef {
+                system: SourceSystem::Manual,
+                url: None,
+                opaque_id: None,
+            },
+        }
+    }
+
+    #[test]
+    fn mixed_event_types_stats_counted_exactly() {
+        // One PR, one review, one manual → each stat field should be exactly 1.
+        // Kills += → *= and += → -= mutants.
+        let events = vec![make_pr_event(1), make_review_event(2), make_manual_event(3)];
+
+        let json = serde_json::json!({
+            "workstreams": [{
+                "title": "Mixed",
+                "summary": "All types",
+                "tags": [],
+                "event_indices": [0, 1, 2],
+                "receipt_indices": [0]
+            }]
+        });
+
+        let result = parse_llm_response(&json.to_string(), &events).unwrap();
+        assert_eq!(result.workstreams.len(), 1);
+        let ws = &result.workstreams[0];
+        assert_eq!(ws.stats.pull_requests, 1, "PR count must be exactly 1");
+        assert_eq!(ws.stats.reviews, 1, "review count must be exactly 1");
+        assert_eq!(ws.stats.manual_events, 1, "manual count must be exactly 1");
+    }
+
+    #[test]
+    fn index_at_events_len_is_skipped() {
+        // Index == events.len() must be rejected (kills < → <= boundary mutant).
+        let events = vec![make_pr_event(1)]; // len = 1, valid indices = {0}
+
+        let json = serde_json::json!({
+            "workstreams": [{
+                "title": "Boundary",
+                "summary": "test",
+                "tags": [],
+                "event_indices": [1],
+                "receipt_indices": []
+            }]
+        });
+
+        let result = parse_llm_response(&json.to_string(), &events).unwrap();
+        // Index 1 == events.len() should be filtered out, leaving the workstream
+        // empty (skipped), and the single event becomes an orphan.
+        assert_eq!(result.workstreams.len(), 1);
+        assert_eq!(result.workstreams[0].title, "Uncategorized");
+        assert_eq!(result.workstreams[0].events.len(), 1);
+    }
+
+    #[test]
+    fn orphan_receipts_capped_at_10() {
+        // 15 orphan events → orphan workstream receipts must be exactly 10.
+        // Kills the `< 10` boundary mutant.
+        let events: Vec<EventEnvelope> = (0..15).map(make_pr_event).collect();
+
+        // LLM claims no events → all 15 are orphans
+        let json = serde_json::json!({
+            "workstreams": []
+        });
+
+        let result = parse_llm_response(&json.to_string(), &events).unwrap();
+        assert_eq!(result.workstreams.len(), 1);
+        let orphan_ws = &result.workstreams[0];
+        assert_eq!(orphan_ws.title, "Uncategorized");
+        assert_eq!(
+            orphan_ws.events.len(),
+            15,
+            "all 15 events should be in orphan"
+        );
+        assert_eq!(orphan_ws.receipts.len(), 10, "orphan receipts capped at 10");
+    }
+
+    #[test]
+    fn orphan_stats_count_mixed_types() {
+        // Orphan workstream stats should also count each type correctly.
+        let events = vec![make_pr_event(1), make_review_event(2), make_manual_event(3)];
+
+        let json = serde_json::json!({
+            "workstreams": []
+        });
+
+        let result = parse_llm_response(&json.to_string(), &events).unwrap();
+        assert_eq!(result.workstreams.len(), 1);
+        let ws = &result.workstreams[0];
+        assert_eq!(ws.stats.pull_requests, 1);
+        assert_eq!(ws.stats.reviews, 1);
+        assert_eq!(ws.stats.manual_events, 1);
+    }
+
+    #[test]
+    fn duplicate_index_claimed_only_once() {
+        // If two workstreams claim the same index, only the first gets it.
+        let events = vec![make_pr_event(1), make_pr_event(2)];
+
+        let json = serde_json::json!({
+            "workstreams": [
+                {
+                    "title": "First",
+                    "event_indices": [0, 1],
+                    "receipt_indices": []
+                },
+                {
+                    "title": "Second",
+                    "event_indices": [0, 1],
+                    "receipt_indices": []
+                }
+            ]
+        });
+
+        let result = parse_llm_response(&json.to_string(), &events).unwrap();
+        // Second workstream should be empty (both indices already claimed) → skipped
+        assert_eq!(result.workstreams.len(), 1);
+        assert_eq!(result.workstreams[0].title, "First");
+        assert_eq!(result.workstreams[0].events.len(), 2);
+    }
+
+    #[test]
+    fn empty_events_no_workstreams() {
+        let json = serde_json::json!({
+            "workstreams": [{
+                "title": "Empty",
+                "event_indices": [0],
+                "receipt_indices": []
+            }]
+        });
+
+        let result = parse_llm_response(&json.to_string(), &[]).unwrap();
+        // No events at all → no workstreams (index 0 is out of bounds for empty slice)
+        assert_eq!(result.workstreams.len(), 0);
+    }
+
+    #[test]
+    fn receipt_indices_filtered_to_valid_events() {
+        // receipt_indices must be a subset of valid_indices
+        let events = vec![make_pr_event(1), make_pr_event(2)];
+
+        let json = serde_json::json!({
+            "workstreams": [{
+                "title": "Receipts",
+                "event_indices": [0],
+                "receipt_indices": [0, 1]
+            }]
+        });
+
+        let result = parse_llm_response(&json.to_string(), &events).unwrap();
+        // receipt index 1 is not in valid_indices [0], so only receipt for index 0
+        let ws = &result.workstreams[0];
+        assert_eq!(ws.receipts.len(), 1);
+        // Event 1 becomes orphan
+        assert_eq!(result.workstreams.len(), 2);
+        assert_eq!(result.workstreams[1].title, "Uncategorized");
+    }
+
+    #[test]
+    fn receipt_indices_capped_at_10_for_claimed_workstream() {
+        // Workstream with >10 receipt_indices should be capped via .take(10)
+        let events: Vec<EventEnvelope> = (0..15).map(make_pr_event).collect();
+        let indices: Vec<usize> = (0..15).collect();
+
+        let json = serde_json::json!({
+            "workstreams": [{
+                "title": "Many receipts",
+                "event_indices": indices,
+                "receipt_indices": indices
+            }]
+        });
+
+        let result = parse_llm_response(&json.to_string(), &events).unwrap();
+        assert_eq!(result.workstreams.len(), 1);
+        assert_eq!(result.workstreams[0].receipts.len(), 10);
+    }
+}

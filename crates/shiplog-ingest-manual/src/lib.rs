@@ -314,6 +314,227 @@ mod tests {
     }
 
     #[test]
+    fn event_with_end_date_equal_to_window_since_is_included() {
+        // end_date == window.since → NOT skipped (since `end_date < since` is false)
+        // This kills the `<` → `<=` mutation at line 88.
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("manual_events.yaml");
+        let file = ManualEventsFile {
+            version: 1,
+            generated_at: Utc::now(),
+            events: vec![ManualEventEntry {
+                id: "boundary".to_string(),
+                event_type: ManualEventType::Note,
+                date: ManualDate::Single(NaiveDate::from_ymd_opt(2025, 3, 1).unwrap()),
+                title: "Boundary Event".to_string(),
+                description: None,
+                workstream: None,
+                tags: vec![],
+                receipts: vec![],
+                impact: None,
+            }],
+        };
+        write_manual_events(&path, &file).unwrap();
+
+        // Window since = 2025-03-01 (same as event date), until = 2025-04-01
+        let ing = ManualIngestor::new(
+            &path,
+            "testuser".to_string(),
+            NaiveDate::from_ymd_opt(2025, 3, 1).unwrap(),
+            NaiveDate::from_ymd_opt(2025, 4, 1).unwrap(),
+        );
+        let output = ing.ingest().unwrap();
+        // Event's end_date (2025-03-01) == window.since (2025-03-01)
+        // Condition: end_date < since → false, so it is NOT excluded.
+        assert_eq!(output.events.len(), 1);
+    }
+
+    #[test]
+    fn event_ending_before_window_is_excluded() {
+        // end_date < window.since → entirely before window, excluded
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("manual_events.yaml");
+        let file = ManualEventsFile {
+            version: 1,
+            generated_at: Utc::now(),
+            events: vec![ManualEventEntry {
+                id: "before".to_string(),
+                event_type: ManualEventType::Note,
+                date: ManualDate::Single(NaiveDate::from_ymd_opt(2025, 2, 28).unwrap()),
+                title: "Before Window".to_string(),
+                description: None,
+                workstream: None,
+                tags: vec![],
+                receipts: vec![],
+                impact: None,
+            }],
+        };
+        write_manual_events(&path, &file).unwrap();
+
+        let ing = ManualIngestor::new(
+            &path,
+            "testuser".to_string(),
+            NaiveDate::from_ymd_opt(2025, 3, 1).unwrap(),
+            NaiveDate::from_ymd_opt(2025, 4, 1).unwrap(),
+        );
+        let output = ing.ingest().unwrap();
+        assert_eq!(output.events.len(), 0);
+    }
+
+    #[test]
+    fn event_starting_at_window_until_is_excluded() {
+        // start_date >= window.until → entirely after window, excluded
+        // Kills `>=` → `>` mutation at line 88
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("manual_events.yaml");
+        let file = ManualEventsFile {
+            version: 1,
+            generated_at: Utc::now(),
+            events: vec![ManualEventEntry {
+                id: "at-until".to_string(),
+                event_type: ManualEventType::Note,
+                date: ManualDate::Single(NaiveDate::from_ymd_opt(2025, 4, 1).unwrap()),
+                title: "At Until Boundary".to_string(),
+                description: None,
+                workstream: None,
+                tags: vec![],
+                receipts: vec![],
+                impact: None,
+            }],
+        };
+        write_manual_events(&path, &file).unwrap();
+
+        let ing = ManualIngestor::new(
+            &path,
+            "testuser".to_string(),
+            NaiveDate::from_ymd_opt(2025, 3, 1).unwrap(),
+            NaiveDate::from_ymd_opt(2025, 4, 1).unwrap(),
+        );
+        let output = ing.ingest().unwrap();
+        assert_eq!(output.events.len(), 0);
+    }
+
+    #[test]
+    fn event_spanning_before_window_start_triggers_warning() {
+        // Range starts before window, ends inside → included but warns "partially outside"
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("manual_events.yaml");
+        let file = ManualEventsFile {
+            version: 1,
+            generated_at: Utc::now(),
+            events: vec![ManualEventEntry {
+                id: "span-before".to_string(),
+                event_type: ManualEventType::Note,
+                date: ManualDate::Range {
+                    start: NaiveDate::from_ymd_opt(2025, 2, 15).unwrap(),
+                    end: NaiveDate::from_ymd_opt(2025, 3, 15).unwrap(),
+                },
+                title: "Spans Before".to_string(),
+                description: None,
+                workstream: None,
+                tags: vec![],
+                receipts: vec![],
+                impact: None,
+            }],
+        };
+        write_manual_events(&path, &file).unwrap();
+
+        let ing = ManualIngestor::new(
+            &path,
+            "testuser".to_string(),
+            NaiveDate::from_ymd_opt(2025, 3, 1).unwrap(),
+            NaiveDate::from_ymd_opt(2025, 4, 1).unwrap(),
+        );
+        let output = ing.ingest().unwrap();
+        assert_eq!(output.events.len(), 1);
+        assert!(
+            output
+                .coverage
+                .warnings
+                .iter()
+                .any(|w| w.contains("partially outside"))
+        );
+    }
+
+    #[test]
+    fn event_spanning_after_window_end_triggers_warning() {
+        // Range starts inside window, ends at or after until → included but warns "partially outside"
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("manual_events.yaml");
+        let file = ManualEventsFile {
+            version: 1,
+            generated_at: Utc::now(),
+            events: vec![ManualEventEntry {
+                id: "span-after".to_string(),
+                event_type: ManualEventType::Note,
+                date: ManualDate::Range {
+                    start: NaiveDate::from_ymd_opt(2025, 3, 15).unwrap(),
+                    end: NaiveDate::from_ymd_opt(2025, 4, 15).unwrap(),
+                },
+                title: "Spans After".to_string(),
+                description: None,
+                workstream: None,
+                tags: vec![],
+                receipts: vec![],
+                impact: None,
+            }],
+        };
+        write_manual_events(&path, &file).unwrap();
+
+        let ing = ManualIngestor::new(
+            &path,
+            "testuser".to_string(),
+            NaiveDate::from_ymd_opt(2025, 3, 1).unwrap(),
+            NaiveDate::from_ymd_opt(2025, 4, 1).unwrap(),
+        );
+        let output = ing.ingest().unwrap();
+        assert_eq!(output.events.len(), 1);
+        assert!(
+            output
+                .coverage
+                .warnings
+                .iter()
+                .any(|w| w.contains("partially outside"))
+        );
+    }
+
+    #[test]
+    fn event_entirely_outside_window_excluded() {
+        // Both start and end well outside the window → excluded, 0 events
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("manual_events.yaml");
+        let file = ManualEventsFile {
+            version: 1,
+            generated_at: Utc::now(),
+            events: vec![ManualEventEntry {
+                id: "outside".to_string(),
+                event_type: ManualEventType::Note,
+                date: ManualDate::Range {
+                    start: NaiveDate::from_ymd_opt(2025, 5, 1).unwrap(),
+                    end: NaiveDate::from_ymd_opt(2025, 6, 1).unwrap(),
+                },
+                title: "Entirely Outside".to_string(),
+                description: None,
+                workstream: None,
+                tags: vec![],
+                receipts: vec![],
+                impact: None,
+            }],
+        };
+        write_manual_events(&path, &file).unwrap();
+
+        let ing = ManualIngestor::new(
+            &path,
+            "testuser".to_string(),
+            NaiveDate::from_ymd_opt(2025, 3, 1).unwrap(),
+            NaiveDate::from_ymd_opt(2025, 4, 1).unwrap(),
+        );
+        let output = ing.ingest().unwrap();
+        assert_eq!(output.events.len(), 0);
+        assert!(output.coverage.warnings.is_empty());
+    }
+
+    #[test]
     fn handles_missing_file() {
         let temp = tempfile::tempdir().unwrap();
         let path = temp.path().join("nonexistent.yaml");

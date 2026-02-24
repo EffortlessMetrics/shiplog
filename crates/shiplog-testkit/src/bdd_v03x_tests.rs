@@ -290,6 +290,15 @@ mod v03x_tests {
             .expect("Scenario should lock cache-expiry microcrate contract");
     }
 
+    #[cfg(feature = "microcrate_date_windows")]
+    #[test]
+    fn microcrate_contracts_scenario_date_windows() {
+        let scenario = microcrate_date_windows_contract();
+        scenario
+            .run()
+            .expect("Scenario should lock date-windows microcrate contract");
+    }
+
     #[cfg(feature = "microcrate_redaction_repo")]
     #[test]
     fn microcrate_contracts_scenario_redaction_repo() {

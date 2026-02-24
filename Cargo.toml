@@ -5,6 +5,7 @@ members = [
   "crates/shiplog-schema",
   "crates/shiplog-ports",
   "crates/shiplog-coverage",
+  "crates/shiplog-date-windows",
   "crates/shiplog-workstreams",
   "crates/shiplog-redact",
   "crates/shiplog-redaction-profile",
@@ -242,6 +243,7 @@ regex = "1.12.3"
 zip = "8.1.0"
 tokio = { version = "1.49.0", features = ["rt", "macros"] }
 tempfile = "3.25.0"
+mutants = "0.0.4"
 
 [profile.release]
 codegen-units = 1

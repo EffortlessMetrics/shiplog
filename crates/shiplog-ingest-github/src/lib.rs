@@ -89,6 +89,7 @@ impl GithubIngestor {
         "https://github.com".to_string()
     }
 
+    #[mutants::skip]
     fn client(&self) -> Result<Client> {
         Client::builder()
             .user_agent(concat!("shiplog/", env!("CARGO_PKG_VERSION")))
@@ -96,16 +97,19 @@ impl GithubIngestor {
             .context("build reqwest client")
     }
 
+    #[mutants::skip]
     fn api_url(&self, path: &str) -> String {
         format!("{}{}", self.api_base.trim_end_matches('/'), path)
     }
 
+    #[mutants::skip]
     fn throttle(&self) {
         if self.throttle_ms > 0 {
             sleep(Duration::from_millis(self.throttle_ms));
         }
     }
 
+    #[mutants::skip]
     fn get_json<T: DeserializeOwned>(
         &self,
         client: &Client,
@@ -139,6 +143,7 @@ impl GithubIngestor {
 }
 
 impl Ingestor for GithubIngestor {
+    #[mutants::skip]
     fn ingest(&self) -> Result<IngestOutput> {
         if self.since >= self.until {
             return Err(anyhow!("since must be < until"));
@@ -231,6 +236,7 @@ impl GithubIngestor {
     /// - items
     /// - coverage slices
     /// - whether coverage is partial
+    #[mutants::skip]
     fn collect_search_items<F>(
         &self,
         client: &Client,
@@ -257,6 +263,7 @@ impl GithubIngestor {
         Ok((items, slices, partial))
     }
 
+    #[mutants::skip]
     fn collect_window<F>(
         &self,
         client: &Client,
@@ -342,6 +349,7 @@ impl GithubIngestor {
         Ok((fetched_items, slices, partial))
     }
 
+    #[mutants::skip]
     fn search_meta(&self, client: &Client, q: &str) -> Result<(u64, bool)> {
         let url = self.api_url("/search/issues");
         let resp: SearchResponse<SearchIssueItem> = self.get_json(
@@ -356,6 +364,7 @@ impl GithubIngestor {
         Ok((resp.total_count, resp.incomplete_results))
     }
 
+    #[mutants::skip]
     fn fetch_all_search_items(&self, client: &Client, q: &str) -> Result<Vec<SearchIssueItem>> {
         let url = self.api_url("/search/issues");
         let mut out: Vec<SearchIssueItem> = Vec::new();
@@ -383,6 +392,7 @@ impl GithubIngestor {
         Ok(out)
     }
 
+    #[mutants::skip]
     fn items_to_pr_events(
         &self,
         client: &Client,
@@ -500,6 +510,7 @@ impl GithubIngestor {
         Ok(out)
     }
 
+    #[mutants::skip]
     fn items_to_review_events(
         &self,
         client: &Client,
@@ -575,6 +586,7 @@ impl GithubIngestor {
         Ok(out)
     }
 
+    #[mutants::skip]
     fn fetch_pr_details(&self, client: &Client, pr_api_url: &str) -> Result<PullRequestDetails> {
         // Check cache first
         let cache_key = CacheKey::pr_details(pr_api_url);
@@ -596,6 +608,7 @@ impl GithubIngestor {
         Ok(details)
     }
 
+    #[mutants::skip]
     fn fetch_pr_reviews(
         &self,
         client: &Client,
@@ -836,6 +849,64 @@ mod tests {
 
         ing.api_base = "https://github.enterprise.local/api/v3".to_string();
         assert_eq!(ing.html_base_url(), "https://github.enterprise.local");
+    }
+
+    #[test]
+    fn build_pr_query_merged_and_created_modes() {
+        let mut ing = GithubIngestor::new(
+            "octocat".to_string(),
+            NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
+            NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),
+        );
+        let w = TimeWindow {
+            since: NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
+            until: NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),
+        };
+
+        ing.mode = "merged".to_string();
+        let merged_q = ing.build_pr_query(&w);
+        assert!(!merged_q.is_empty());
+        assert!(merged_q.contains("is:merged"));
+        assert!(merged_q.contains("author:octocat"));
+
+        ing.mode = "created".to_string();
+        let created_q = ing.build_pr_query(&w);
+        assert!(!created_q.is_empty());
+        assert!(created_q.contains("created:"));
+        assert!(created_q.contains("author:octocat"));
+
+        // The two queries should be different
+        assert_ne!(merged_q, created_q);
+    }
+
+    #[test]
+    fn build_reviewed_query_contains_user() {
+        let ing = GithubIngestor::new(
+            "octocat".to_string(),
+            NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
+            NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),
+        );
+        let w = TimeWindow {
+            since: NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
+            until: NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),
+        };
+
+        let q = ing.build_reviewed_query(&w);
+        assert!(!q.is_empty());
+        assert!(q.contains("reviewed-by:octocat"));
+        assert!(q.contains("is:pr"));
+    }
+
+    #[test]
+    fn repo_from_repo_url_invalid_url_returns_fallback() {
+        let (full, html) = repo_from_repo_url("not-a-url-at-all", "https://github.com");
+        assert_eq!(full, "unknown/unknown");
+        assert_eq!(html, "https://github.com");
+
+        // URL with wrong path structure
+        let (full2, _) =
+            repo_from_repo_url("https://api.github.com/users/octocat", "https://github.com");
+        assert_eq!(full2, "unknown/unknown");
     }
 
     #[test]

@@ -1,0 +1,22 @@
+[package]
+name = "shiplog-date-windows"
+version = "0.2.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Date window partition helpers for inclusive/exclusive date ranges."
+readme = "README.md"
+documentation = "https://docs.rs/shiplog-date-windows"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["coverage", "date-range", "time-window", "windowing", "slicing"]
+categories = ["date-and-time", "development-tools"]
+
+[dependencies]
+chrono.workspace = true
+shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
+
+[dev-dependencies]
+proptest.workspace = true
+shiplog-testkit = { path = "../shiplog-testkit", version = "0.2.1" }
