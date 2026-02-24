@@ -22,6 +22,7 @@ microcrate_output_layout = ["shiplog-output-layout"]
 microcrate_validate = ["shiplog-validate"]
 microcrate_storage = ["shiplog-storage"]
 microcrate_notify = ["shiplog-notify"]
+microcrate_cluster_llm_prompt = ["shiplog-cluster-llm-prompt"]
 microcrate_cache_key = ["shiplog-cache-key"]
 microcrate_cache_stats = ["shiplog-cache-stats"]
 microcrate_cache_expiry = ["shiplog-cache-expiry"]
@@ -33,6 +34,7 @@ microcrate_contracts = [
     "microcrate_validate",
     "microcrate_storage",
     "microcrate_notify",
+    "microcrate_cluster_llm_prompt",
     "microcrate_cache_key",
     "microcrate_cache_stats",
     "microcrate_cache_expiry",
@@ -56,6 +58,7 @@ shiplog-output-layout = { path = "../shiplog-output-layout", version = "0.2.1", 
 shiplog-validate = { path = "../shiplog-validate", version = "0.2.1", optional = true }
 shiplog-storage = { path = "../shiplog-storage", version = "0.2.1", optional = true }
 shiplog-notify = { path = "../shiplog-notify", version = "0.2.1", optional = true }
+shiplog-cluster-llm-prompt = { path = "../shiplog-cluster-llm-prompt", version = "0.2.1", optional = true }
 shiplog-cache-key = { path = "../shiplog-cache-key", version = "0.2.1", optional = true }
 shiplog-cache-stats = { path = "../shiplog-cache-stats", version = "0.2.1", optional = true }
 shiplog-cache-expiry = { path = "../shiplog-cache-expiry", version = "0.2.1", optional = true }

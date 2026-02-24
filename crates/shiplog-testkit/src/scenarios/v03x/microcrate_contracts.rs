@@ -3,6 +3,7 @@
 #[cfg(feature = "microcrate_date_windows")]
 use crate::bdd::assertions::assert_present;
 #[cfg(any(
+    feature = "microcrate_cluster_llm_prompt",
     feature = "microcrate_export",
     feature = "microcrate_output_layout",
     feature = "microcrate_cache_key",
@@ -15,6 +16,8 @@ use crate::bdd::assertions::assert_present;
     feature = "microcrate_date_windows"
 ))]
 use crate::bdd::assertions::assert_true;
+#[cfg(feature = "microcrate_cluster_llm_prompt")]
+use shiplog_cluster_llm_prompt::{chunk_events, format_event_list, summarize_event, system_prompt};
 #[cfg(feature = "microcrate_export")]
 use shiplog_export::{
     ExportData, ExportEvent, ExportFormat, ExportOptions,
@@ -64,6 +67,7 @@ use shiplog_storage::{InMemoryStorage, Storage, StorageKey};
 use shiplog_validate::{EventValidator, Packet, PacketValidator};
 
 #[cfg(any(
+    feature = "microcrate_cluster_llm_prompt",
     feature = "microcrate_export",
     feature = "microcrate_output_layout",
     feature = "microcrate_cache_key",
@@ -341,6 +345,91 @@ pub fn microcrate_output_layout_contract() -> Scenario {
             )?;
             Ok(())
         })
+}
+
+#[cfg(feature = "microcrate_cluster_llm_prompt")]
+/// Scenario: prompt formatting contract stays stable.
+pub fn microcrate_cluster_llm_prompt_contract() -> Scenario {
+    Scenario::new("Cluster-llm-prompt crate keeps prompt contracts stable")
+        .when(
+            "prompt helpers are run against deterministic event data",
+            |ctx| {
+                let events = vec![
+                    crate::pr_event("org/repo", 1, "Add authentication"),
+                    crate::pr_event("org/repo", 2, "Fix authentication"),
+                    crate::pr_event("org/docs", 3, "Publish release notes"),
+                ];
+
+                let event_list = format_event_list(&events);
+                let chunks = chunk_events(&events, 200);
+                let all_indices: Vec<usize> = chunks.iter().flatten().copied().collect();
+
+                ctx.strings
+                    .insert("cluster_prompt_event_list".to_string(), event_list);
+                ctx.numbers
+                    .insert("cluster_prompt_chunk_count".to_string(), chunks.len() as u64);
+                ctx.strings.insert(
+                    "cluster_prompt_system_with_limit".to_string(),
+                    system_prompt(Some(3)),
+                );
+                ctx.strings
+                    .insert("cluster_prompt_system_without_limit".to_string(), system_prompt(None));
+                ctx.flags.insert(
+                    "cluster_prompt_all_indices_present".to_string(),
+                    all_indices == (0..events.len()).collect::<Vec<_>>(),
+                );
+                ctx.flags.insert(
+                    "cluster_prompt_summary_has_pr".to_string(),
+                    summarize_event(&events[0]).contains("PR#1"),
+                );
+                Ok(())
+            },
+        )
+        .then(
+            "prompt output should remain stable and indexed",
+            |ctx| {
+                let list = crate::bdd::assertions::assert_present(
+                    ctx.string("cluster_prompt_event_list"),
+                    "cluster_prompt_event_list",
+                )?;
+                assert_true(list.contains("[0]"), "index 0 present")?;
+                assert_true(list.contains("[1]"), "index 1 present")?;
+                assert_true(list.contains("[2]"), "index 2 present")?;
+                assert_true(
+                    ctx.flag("cluster_prompt_all_indices_present")
+                        .unwrap_or(false),
+                    "all indices covered",
+                )?;
+                assert_true(
+                    ctx.number("cluster_prompt_chunk_count").unwrap_or(0) >= 1,
+                    "non-empty chunking",
+                )?;
+
+                let prompt_with_limit = crate::bdd::assertions::assert_present(
+                    ctx.string("cluster_prompt_system_with_limit"),
+                    "cluster_prompt_system_with_limit",
+                )?;
+                let prompt_without_limit = crate::bdd::assertions::assert_present(
+                    ctx.string("cluster_prompt_system_without_limit"),
+                    "cluster_prompt_system_without_limit",
+                )?;
+
+                assert_true(
+                    prompt_with_limit.contains("at most 3"),
+                    "limit appears in with-limit prompt",
+                )?;
+                assert_true(
+                    !prompt_without_limit.contains("at most"),
+                    "without limit omits workstream cap",
+                )?;
+                assert_true(
+                    ctx.flag("cluster_prompt_summary_has_pr").unwrap_or(false),
+                    "summary includes PR number",
+                )?;
+
+                Ok(())
+            },
+        )
 }
 
 #[cfg(feature = "microcrate_cache_key")]

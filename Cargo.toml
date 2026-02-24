@@ -30,6 +30,7 @@ members = [
   "crates/shiplog-template",
   "crates/shiplog-testkit",
   "crates/shiplog-cluster-llm",
+  "crates/shiplog-cluster-llm-prompt",
   # New microcrates
   "crates/shiplog-validate",
   "crates/shiplog-export",

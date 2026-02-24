@@ -1,0 +1,20 @@
+[package]
+name = "shiplog-cluster-llm-prompt"
+version = "0.2.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Prompt formatting helpers for LLM workstream clustering."
+repository.workspace = true
+homepage.workspace = true
+keywords = ["llm", "clustering", "workstreams", "prompt", "text-processing"]
+categories = ["text-processing", "development-tools"]
+
+[dependencies]
+chrono.workspace = true
+shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
+
+[dev-dependencies]
+proptest.workspace = true
+shiplog-ids = { path = "../shiplog-ids", version = "0.2.1" }

@@ -2260,10 +2260,21 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+ "shiplog-cluster-llm-prompt",
  "shiplog-ids",
  "shiplog-ports",
  "shiplog-schema",
  "shiplog-workstreams",
+]
+
+[[package]]
+name = "shiplog-cluster-llm-prompt"
+version = "0.2.1"
+dependencies = [
+ "chrono",
+ "proptest",
+ "shiplog-ids",
+ "shiplog-schema",
 ]
 
 [[package]]
@@ -3405,6 +3416,7 @@ dependencies = [
  "shiplog-cache-expiry",
  "shiplog-cache-key",
  "shiplog-cache-stats",
+ "shiplog-cluster-llm-prompt",
  "shiplog-date-windows",
  "shiplog-export",
  "shiplog-ids",

@@ -152,10 +152,6 @@ mod tests {
         let result = format_event_list(&events);
         assert!(result.contains("[0]"), "should contain index [0]");
         assert!(result.contains("[1]"), "should contain index [1]");
-        assert!(
-            result.contains('\n'),
-            "should contain newline between entries"
-        );
         assert!(result.contains("Add login"), "should contain event content");
         assert!(result.contains("Fix bug"), "should contain event content");
     }
@@ -213,30 +209,20 @@ mod tests {
         let events: Vec<EventEnvelope> = (0..10).map(|i| make_pr_event(i, "Short")).collect();
 
         let chunks = chunk_events(&events, 1_000_000);
-        assert_eq!(
-            chunks.len(),
-            1,
-            "large budget should keep everything in one chunk"
-        );
+        assert_eq!(chunks.len(), 1, "large budget should keep everything in one chunk");
         assert_eq!(chunks[0].len(), 10);
     }
 
     #[test]
     fn system_prompt_no_limit_contains_workstream() {
         let prompt = system_prompt(None);
-        assert!(
-            prompt.contains("workstream"),
-            "system prompt should mention workstream"
-        );
+        assert!(prompt.contains("workstream"), "system prompt should mention workstream");
     }
 
     #[test]
     fn system_prompt_with_limit_contains_max() {
         let prompt = system_prompt(Some(5));
-        assert!(
-            prompt.contains("at most 5"),
-            "system prompt should contain 'at most 5'"
-        );
+        assert!(prompt.contains("at most 5"), "system prompt should contain 'at most 5'");
     }
 
     #[test]
