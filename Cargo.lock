@@ -2142,18 +2142,7 @@ dependencies = [
 name = "shiplog-cache"
 version = "0.2.1"
 dependencies = [
- "anyhow",
- "chrono",
- "proptest",
- "rusqlite",
- "serde",
- "serde_json",
- "shiplog-cache-expiry",
- "shiplog-cache-key",
- "shiplog-cache-stats",
- "shiplog-schema",
- "shiplog-testkit",
- "tempfile",
+ "shiplog-cache-sqlite",
 ]
 
 [[package]]
@@ -2194,6 +2183,23 @@ version = "0.2.1"
 dependencies = [
  "proptest",
  "shiplog-schema",
+]
+
+[[package]]
+name = "shiplog-cache-sqlite"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "proptest",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "shiplog-cache-expiry",
+ "shiplog-cache-key",
+ "shiplog-cache-stats",
+ "shiplog-testkit",
+ "tempfile",
 ]
 
 [[package]]
@@ -2260,11 +2266,25 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+ "shiplog-cluster-llm-parse",
  "shiplog-cluster-llm-prompt",
  "shiplog-ids",
  "shiplog-ports",
  "shiplog-schema",
  "shiplog-workstreams",
+]
+
+[[package]]
+name = "shiplog-cluster-llm-parse"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "proptest",
+ "serde",
+ "serde_json",
+ "shiplog-ids",
+ "shiplog-schema",
 ]
 
 [[package]]
@@ -3016,6 +3036,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "shiplog-receipt"
+version = "0.2.1"
+dependencies = [
+ "chrono",
+ "proptest",
+ "shiplog-ids",
+ "shiplog-schema",
+ "shiplog-testkit",
+]
+
+[[package]]
 name = "shiplog-redact"
 version = "0.2.1"
 dependencies = [
@@ -3121,6 +3152,7 @@ dependencies = [
  "itertools",
  "shiplog-ids",
  "shiplog-ports",
+ "shiplog-receipt",
  "shiplog-schema",
 ]
 
@@ -3416,6 +3448,7 @@ dependencies = [
  "shiplog-cache-expiry",
  "shiplog-cache-key",
  "shiplog-cache-stats",
+ "shiplog-cluster-llm-parse",
  "shiplog-cluster-llm-prompt",
  "shiplog-date-windows",
  "shiplog-export",

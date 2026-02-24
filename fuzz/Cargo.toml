@@ -22,8 +22,10 @@ shiplog-redaction-projector = { path = "../crates/shiplog-redaction-projector" }
 shiplog-cache-key = { path = "../crates/shiplog-cache-key" }
 shiplog-cache-stats = { path = "../crates/shiplog-cache-stats" }
 shiplog-cache-expiry = { path = "../crates/shiplog-cache-expiry" }
+shiplog-cache-sqlite = { path = "../crates/shiplog-cache-sqlite" }
 shiplog-date-windows = { path = "../crates/shiplog-date-windows" }
 shiplog-cluster-llm-prompt = { path = "../crates/shiplog-cluster-llm-prompt", version = "0.2.1" }
+shiplog-cluster-llm-parse = { path = "../crates/shiplog-cluster-llm-parse", version = "0.2.1" }
 chrono = "0.4.44"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
@@ -150,6 +152,13 @@ doc = false
 bench = false
 
 [[bin]]
+name = "cache_sqlite"
+path = "fuzz_targets/cache_sqlite.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
 name = "date_windows"
 path = "fuzz_targets/date_windows.rs"
 test = false
@@ -159,6 +168,13 @@ bench = false
 [[bin]]
 name = "cluster_llm_prompt"
 path = "fuzz_targets/cluster_llm_prompt.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "cluster_llm_parse"
+path = "fuzz_targets/cluster_llm_parse.rs"
 test = false
 doc = false
 bench = false

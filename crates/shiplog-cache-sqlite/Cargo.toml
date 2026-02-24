@@ -1,0 +1,30 @@
+[package]
+name = "shiplog-cache-sqlite"
+version = "0.2.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "SQLite-backed cache implementation for shiplog API response caching."
+readme = "README.md"
+documentation = "https://docs.rs/shiplog-cache-sqlite"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["cache", "sqlite", "ttl", "api", "storage"]
+categories = ["caching", "development-tools"]
+
+[dependencies]
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+chrono.workspace = true
+rusqlite = { version = "0.38.0", features = ["bundled", "chrono", "serde_json"] }
+shiplog-cache-expiry = { path = "../shiplog-cache-expiry", version = "0.2.1" }
+shiplog-cache-key = { path = "../shiplog-cache-key", version = "0.2.1" }
+shiplog-cache-stats = { path = "../shiplog-cache-stats", version = "0.2.1" }
+
+[dev-dependencies]
+tempfile.workspace = true
+proptest.workspace = true
+shiplog-testkit = { path = "../shiplog-testkit", version = "0.2.1" }
+serde_json.workspace = true

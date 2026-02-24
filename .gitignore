@@ -12,6 +12,8 @@ clippy_output.txt
 *.db
 
 # Fuzz artifacts (cargo-fuzz)
+fuzz/target/
+fuzz/Cargo.lock
 fuzz/corpus/
 fuzz/artifacts/
 fuzz/coverage/

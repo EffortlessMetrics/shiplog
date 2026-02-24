@@ -5,11 +5,11 @@
 
 mod client;
 mod config;
-mod parse;
 
 pub use client::{FailingLlmBackend, LlmBackend, MockLlmBackend, OpenAiCompatibleBackend};
 pub use config::LlmConfig;
 use shiplog_cluster_llm_prompt::{chunk_events, format_event_list, summarize_event, system_prompt};
+use shiplog_cluster_llm_parse::parse_llm_response;
 
 use anyhow::Result;
 use shiplog_ports::WorkstreamClusterer;
@@ -56,7 +56,7 @@ impl WorkstreamClusterer for LlmClusterer {
             let user_msg =
                 format!("Cluster these development events into workstreams:\n\n{event_list}");
             let response = self.backend.complete(&system, &user_msg)?;
-            parse::parse_llm_response(&response, events)
+            parse_llm_response(&response, events)
         } else {
             // Multi-chunk: cluster each chunk, merge results
             let mut all_workstreams = Vec::new();
@@ -66,7 +66,7 @@ impl WorkstreamClusterer for LlmClusterer {
                 // Map local indices back to global
                 let chunk_events: Vec<EventEnvelope> =
                     chunk_indices.iter().map(|&i| events[i].clone()).collect();
-                let mut ws_file = parse::parse_llm_response(&response, &chunk_events)?;
+                let mut ws_file = parse_llm_response(&response, &chunk_events)?;
                 all_workstreams.append(&mut ws_file.workstreams);
             }
 

@@ -1,9 +1,9 @@
-//! Integration tests for shiplog-cache <-> shiplog-cache-expiry wiring.
+//! Integration tests for shiplog-cache-sqlite <-> cache-expiry wiring.
 
 use chrono::Duration;
 use rusqlite::Connection;
-use shiplog_cache::ApiCache;
 use shiplog_cache_expiry::{is_expired, is_valid, parse_rfc3339_utc};
+use shiplog_cache_sqlite::ApiCache;
 
 #[test]
 fn stored_timestamps_follow_expiry_window_contract() {

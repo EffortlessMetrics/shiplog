@@ -4,6 +4,7 @@
 use crate::bdd::assertions::assert_present;
 #[cfg(any(
     feature = "microcrate_cluster_llm_prompt",
+    feature = "microcrate_cluster_llm_parse",
     feature = "microcrate_export",
     feature = "microcrate_output_layout",
     feature = "microcrate_cache_key",
@@ -66,6 +67,11 @@ use shiplog_storage::{InMemoryStorage, Storage, StorageKey};
 #[cfg(feature = "microcrate_validate")]
 use shiplog_validate::{EventValidator, Packet, PacketValidator};
 
+#[cfg(feature = "microcrate_cluster_llm_parse")]
+use shiplog_ids::EventId;
+#[cfg(feature = "microcrate_cluster_llm_parse")]
+use shiplog_cluster_llm_parse::parse_llm_response;
+
 #[cfg(any(
     feature = "microcrate_cluster_llm_prompt",
     feature = "microcrate_export",
@@ -77,6 +83,7 @@ use shiplog_validate::{EventValidator, Packet, PacketValidator};
     feature = "microcrate_cache_stats",
     feature = "microcrate_cache_expiry",
     feature = "microcrate_redaction_repo",
+    feature = "microcrate_cluster_llm_parse",
     feature = "microcrate_date_windows"
 ))]
 use crate::bdd::Scenario;
@@ -428,6 +435,102 @@ pub fn microcrate_cluster_llm_prompt_contract() -> Scenario {
                 )?;
 
                 Ok(())
+            },
+        )
+}
+
+#[cfg(feature = "microcrate_cluster_llm_parse")]
+/// Scenario: parse contract keeps assignment boundaries and orphan handling stable.
+pub fn microcrate_cluster_llm_parse_contract() -> Scenario {
+    Scenario::new("Cluster-llm-parse crate keeps parsing contracts stable")
+        .when(
+            "an LLM response mixes valid, duplicate, and invalid indices",
+            |ctx| {
+                let events = vec![
+                    crate::pr_event("org/repo", 1, "Add auth"),
+                    crate::pr_event("org/repo", 2, "Fix auth"),
+                    crate::pr_event("org/repo", 3, "Add docs"),
+                ];
+
+                let response = serde_json::json!({
+                    "workstreams": [
+                        {
+                            "title": "Security",
+                            "summary": "Auth and security work",
+                            "tags": ["security", "auth"],
+                            "event_indices": [0, 1, 1],
+                            "receipt_indices": [0, 2]
+                        },
+                        {
+                            "title": "Unused",
+                            "summary": "Should not claim anything",
+                            "tags": [],
+                            "event_indices": [99],
+                            "receipt_indices": [0]
+                        }
+                    ]
+                })
+                .to_string();
+
+                let parsed = parse_llm_response(&response, &events).map_err(|err| err.to_string())?;
+
+                let security = parsed
+                    .workstreams
+                    .iter()
+                    .find(|ws| ws.title == "Security")
+                    .ok_or_else(|| "Security workstream should exist".to_string())?;
+                let orphan = parsed
+                    .workstreams
+                    .iter()
+                    .find(|ws| ws.id.to_string().ends_with("uncategorized"))
+                    .ok_or_else(|| "Uncategorized workstream should exist".to_string())?;
+
+                ctx.numbers
+                    .insert("security_event_count".to_string(), security.events.len() as u64);
+                ctx.numbers
+                    .insert("orphan_event_count".to_string(), orphan.events.len() as u64);
+                ctx.numbers
+                    .insert("security_receipt_count".to_string(), security.receipts.len() as u64);
+                ctx.flags.insert(
+                    "security_contains_event_1".to_string(),
+                    security
+                        .events
+                        .iter()
+                        .any(|id| id == &EventId::from_parts(["github", "pr", "org/repo", "2"])),
+                );
+                ctx.flags.insert(
+                    "event_3_uses_orphan".to_string(),
+                    orphan
+                        .events
+                        .iter()
+                        .any(|id| id == &EventId::from_parts(["github", "pr", "org/repo", "3"])),
+                );
+                Ok(())
+            },
+        )
+        .then(
+            "parsing should dedupe claims, preserve order, and send unassigned events to uncategorized",
+            |ctx| {
+                assert_true(
+                    ctx.number("security_event_count").unwrap_or(0) == 2,
+                    "security workstream should include two unique events",
+                )?;
+                assert_true(
+                    ctx.number("orphan_event_count").unwrap_or(0) == 1,
+                    "one event should be orphaned",
+                )?;
+                assert_true(
+                    ctx.number("security_receipt_count").unwrap_or(0) <= 10,
+                    "receipts should be capped",
+                )?;
+                assert_true(
+                    ctx.flag("security_contains_event_1").unwrap_or(false),
+                    "security workstream contains event 2",
+                )?;
+                assert_true(
+                    ctx.flag("event_3_uses_orphan").unwrap_or(false),
+                    "unmatched event is orphaned",
+                )
             },
         )
 }

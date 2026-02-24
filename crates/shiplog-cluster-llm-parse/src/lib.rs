@@ -1,31 +1,35 @@
 use anyhow::{Context, Result};
 use chrono::Utc;
+use serde::Deserialize;
 use shiplog_ids::WorkstreamId;
 use shiplog_schema::event::{EventEnvelope, EventKind};
 use shiplog_schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
 use std::collections::BTreeSet;
 
-#[derive(serde::Deserialize)]
-pub(crate) struct LlmResponse {
-    pub workstreams: Vec<LlmWorkstream>,
+#[derive(Deserialize)]
+struct LlmResponse {
+    workstreams: Vec<LlmWorkstream>,
 }
 
-#[derive(serde::Deserialize)]
-pub(crate) struct LlmWorkstream {
-    pub title: String,
-    pub summary: Option<String>,
+#[derive(Deserialize)]
+struct LlmWorkstream {
+    title: String,
+    summary: Option<String>,
     #[serde(default)]
-    pub tags: Vec<String>,
-    pub event_indices: Vec<usize>,
+    tags: Vec<String>,
+    event_indices: Vec<usize>,
     #[serde(default)]
-    pub receipt_indices: Vec<usize>,
+    receipt_indices: Vec<usize>,
 }
 
-/// Parse LLM JSON response into a WorkstreamsFile.
-/// Invalid indices are skipped. Orphan events get an "Uncategorized" workstream.
+/// Parse the LLM response payload into a `WorkstreamsFile`.
+///
+/// - Invalid indices are ignored.
+/// - Duplicate claims across workstreams follow first-wins semantics.
+/// - Up to 10 receipt IDs are preserved per workstream.
+/// - Any unclaimed input events are grouped under `Uncategorized`.
 pub fn parse_llm_response(json_str: &str, events: &[EventEnvelope]) -> Result<WorkstreamsFile> {
-    let resp: LlmResponse =
-        serde_json::from_str(json_str).context("parse LLM clustering response")?;
+    let resp: LlmResponse = serde_json::from_str(json_str).context("parse LLM clustering response")?;
 
     let mut claimed: BTreeSet<usize> = BTreeSet::new();
     let mut workstreams = Vec::new();
@@ -82,7 +86,6 @@ pub fn parse_llm_response(json_str: &str, events: &[EventEnvelope]) -> Result<Wo
         });
     }
 
-    // Collect orphans into an "Uncategorized" workstream
     let orphans: Vec<usize> = (0..events.len()).filter(|i| !claimed.contains(i)).collect();
 
     if !orphans.is_empty() {
@@ -230,8 +233,6 @@ mod tests {
 
     #[test]
     fn mixed_event_types_stats_counted_exactly() {
-        // One PR, one review, one manual → each stat field should be exactly 1.
-        // Kills += → *= and += → -= mutants.
         let events = vec![make_pr_event(1), make_review_event(2), make_manual_event(3)];
 
         let json = serde_json::json!({
@@ -254,8 +255,7 @@ mod tests {
 
     #[test]
     fn index_at_events_len_is_skipped() {
-        // Index == events.len() must be rejected (kills < → <= boundary mutant).
-        let events = vec![make_pr_event(1)]; // len = 1, valid indices = {0}
+        let events = vec![make_pr_event(1)];
 
         let json = serde_json::json!({
             "workstreams": [{
@@ -268,8 +268,6 @@ mod tests {
         });
 
         let result = parse_llm_response(&json.to_string(), &events).unwrap();
-        // Index 1 == events.len() should be filtered out, leaving the workstream
-        // empty (skipped), and the single event becomes an orphan.
         assert_eq!(result.workstreams.len(), 1);
         assert_eq!(result.workstreams[0].title, "Uncategorized");
         assert_eq!(result.workstreams[0].events.len(), 1);
@@ -277,11 +275,8 @@ mod tests {
 
     #[test]
     fn orphan_receipts_capped_at_10() {
-        // 15 orphan events → orphan workstream receipts must be exactly 10.
-        // Kills the `< 10` boundary mutant.
         let events: Vec<EventEnvelope> = (0..15).map(make_pr_event).collect();
 
-        // LLM claims no events → all 15 are orphans
         let json = serde_json::json!({
             "workstreams": []
         });
@@ -290,17 +285,12 @@ mod tests {
         assert_eq!(result.workstreams.len(), 1);
         let orphan_ws = &result.workstreams[0];
         assert_eq!(orphan_ws.title, "Uncategorized");
-        assert_eq!(
-            orphan_ws.events.len(),
-            15,
-            "all 15 events should be in orphan"
-        );
+        assert_eq!(orphan_ws.events.len(), 15);
         assert_eq!(orphan_ws.receipts.len(), 10, "orphan receipts capped at 10");
     }
 
     #[test]
     fn orphan_stats_count_mixed_types() {
-        // Orphan workstream stats should also count each type correctly.
         let events = vec![make_pr_event(1), make_review_event(2), make_manual_event(3)];
 
         let json = serde_json::json!({
@@ -317,7 +307,6 @@ mod tests {
 
     #[test]
     fn duplicate_index_claimed_only_once() {
-        // If two workstreams claim the same index, only the first gets it.
         let events = vec![make_pr_event(1), make_pr_event(2)];
 
         let json = serde_json::json!({
@@ -336,7 +325,6 @@ mod tests {
         });
 
         let result = parse_llm_response(&json.to_string(), &events).unwrap();
-        // Second workstream should be empty (both indices already claimed) → skipped
         assert_eq!(result.workstreams.len(), 1);
         assert_eq!(result.workstreams[0].title, "First");
         assert_eq!(result.workstreams[0].events.len(), 2);
@@ -353,13 +341,11 @@ mod tests {
         });
 
         let result = parse_llm_response(&json.to_string(), &[]).unwrap();
-        // No events at all → no workstreams (index 0 is out of bounds for empty slice)
         assert_eq!(result.workstreams.len(), 0);
     }
 
     #[test]
     fn receipt_indices_filtered_to_valid_events() {
-        // receipt_indices must be a subset of valid_indices
         let events = vec![make_pr_event(1), make_pr_event(2)];
 
         let json = serde_json::json!({
@@ -371,17 +357,14 @@ mod tests {
         });
 
         let result = parse_llm_response(&json.to_string(), &events).unwrap();
-        // receipt index 1 is not in valid_indices [0], so only receipt for index 0
         let ws = &result.workstreams[0];
         assert_eq!(ws.receipts.len(), 1);
-        // Event 1 becomes orphan
         assert_eq!(result.workstreams.len(), 2);
         assert_eq!(result.workstreams[1].title, "Uncategorized");
     }
 
     #[test]
     fn receipt_indices_capped_at_10_for_claimed_workstream() {
-        // Workstream with >10 receipt_indices should be capped via .take(10)
         let events: Vec<EventEnvelope> = (0..15).map(make_pr_event).collect();
         let indices: Vec<usize> = (0..15).collect();
 

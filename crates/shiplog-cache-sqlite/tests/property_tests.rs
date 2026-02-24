@@ -1,19 +1,11 @@
-//! Property tests for shiplog-cache
-//!
-//! This module contains property-based tests for cache invariants
-//! (persistence, TTL, and key/value correctness).
+//! Property tests for shiplog-cache-sqlite.
 
 use chrono::Duration;
 use proptest::prelude::*;
-use shiplog_cache::ApiCache;
+use shiplog_cache_sqlite::ApiCache;
 use shiplog_testkit::proptest::*;
 
-// ============================================================================
-// Cache Basic Operations Tests
-// ============================================================================
-
 proptest! {
-    // get-set round-trip equals original value.
     #[test]
     fn prop_get_set_roundtrip(
         key in strategy_cache_key(),
@@ -28,7 +20,6 @@ proptest! {
         prop_assert_eq!(Some(json_value), retrieved);
     }
 
-    // set overwrites previous value for same key.
     #[test]
     fn prop_set_overwrites(
         key in strategy_cache_key(),
@@ -47,7 +38,6 @@ proptest! {
         prop_assert_eq!(Some(json_value2), retrieved);
     }
 
-    // contains() matches get().is_some().
     #[test]
     fn prop_contains_consistency(
         key in strategy_cache_key(),
@@ -65,12 +55,7 @@ proptest! {
     }
 }
 
-// ============================================================================
-// TTL Expiration Tests
-// ============================================================================
-
 proptest! {
-    // Entries with an already-expired TTL are not retrievable.
     #[test]
     fn prop_expired_entries_not_returned(
         key in strategy_cache_key(),
@@ -85,7 +70,6 @@ proptest! {
         prop_assert_eq!(None, retrieved);
     }
 
-    // set_with_ttl respects custom TTL values.
     #[test]
     fn prop_custom_ttl_applied(
         key in strategy_cache_key(),
@@ -101,12 +85,7 @@ proptest! {
     }
 }
 
-// ============================================================================
-// Cache Cleanup and Clear Tests
-// ============================================================================
-
 proptest! {
-    // cleanup_expired removes expired entries.
     #[test]
     fn prop_cleanup_removes_expired(
         keys in proptest::collection::vec(strategy_cache_key(), 1..20)
@@ -126,7 +105,6 @@ proptest! {
         }
     }
 
-    // clear empties all entries.
     #[test]
     fn prop_clear_empties_cache(
         keys in proptest::collection::vec(strategy_cache_key(), 1..20)
@@ -147,12 +125,7 @@ proptest! {
     }
 }
 
-// ============================================================================
-// Cache Persistence Tests
-// ============================================================================
-
 proptest! {
-    // Data survives close and reopen for file-backed caches.
     #[test]
     fn prop_persistence_across_opens(
         key in strategy_cache_key(),

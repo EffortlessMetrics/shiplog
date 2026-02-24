@@ -245,6 +245,15 @@ mod v03x_tests {
             .expect("Scenario should lock cluster-llm-prompt microcrate contract");
     }
 
+    #[cfg(feature = "microcrate_cluster_llm_parse")]
+    #[test]
+    fn microcrate_contracts_scenario_cluster_llm_parse() {
+        let scenario = microcrate_cluster_llm_parse_contract();
+        scenario
+            .run()
+            .expect("Scenario should lock cluster-llm-parse microcrate contract");
+    }
+
     #[cfg(feature = "microcrate_validate")]
     #[test]
     fn microcrate_contracts_scenario_validate() {
