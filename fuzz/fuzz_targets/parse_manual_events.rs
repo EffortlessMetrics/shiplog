@@ -7,6 +7,7 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
+use shiplog_manual_events::events_in_window;
 use shiplog_schema::event::ManualEventsFile;
 
 fuzz_target!(|data: &[u8]| {
@@ -16,7 +17,12 @@ fuzz_target!(|data: &[u8]| {
         Err(_) => return, // Skip non-UTF-8 input
     };
 
-    // Try to parse as ManualEventsFile
-    let _: Result<ManualEventsFile, _> = serde_yaml::from_str(input);
-    // We don't care if it fails - we just want to ensure it doesn't panic
+    let Ok(file) = serde_yaml::from_str::<ManualEventsFile>(input) else {
+        return;
+    };
+    let window = shiplog_schema::coverage::TimeWindow {
+        since: chrono::NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
+        until: chrono::NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),
+    };
+    let _ = events_in_window(&file.events, "fuzzer", &window);
 });

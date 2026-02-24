@@ -2,11 +2,13 @@
 
 #[cfg(any(
     feature = "microcrate_date_windows",
+    feature = "microcrate_manual_events",
     feature = "microcrate_workstream_cluster",
     feature = "microcrate_workstream_receipt_policy"
 ))]
 use crate::bdd::assertions::assert_present;
 #[cfg(any(
+    feature = "microcrate_manual_events",
     feature = "microcrate_cluster_llm_prompt",
     feature = "microcrate_cluster_llm_parse",
     feature = "microcrate_export",
@@ -23,6 +25,9 @@ use crate::bdd::assertions::assert_present;
     feature = "microcrate_date_windows"
 ))]
 use crate::bdd::assertions::assert_true;
+
+#[cfg(feature = "microcrate_manual_events")]
+use shiplog_schema::event::{ManualDate, ManualEventType};
 
 #[cfg(feature = "microcrate_workstream_receipt_policy")]
 use shiplog_schema::event::EventKind;
@@ -87,6 +92,9 @@ use shiplog_cluster_llm_parse::parse_llm_response;
 #[cfg(feature = "microcrate_workstream_cluster")]
 use shiplog_workstream_cluster::RepoClusterer;
 
+#[cfg(feature = "microcrate_manual_events")]
+use shiplog_manual_events::{create_empty_file, create_entry, events_in_window, read_manual_events, write_manual_events};
+
 #[cfg(feature = "microcrate_workstream_receipt_policy")]
 use shiplog_workstream_receipt_policy::{
     should_include_cluster_receipt, should_render_receipt_at,
@@ -98,6 +106,7 @@ use shiplog_workstream_receipt_policy::{
     feature = "microcrate_cluster_llm_prompt",
     feature = "microcrate_export",
     feature = "microcrate_output_layout",
+    feature = "microcrate_manual_events",
     feature = "microcrate_cache_key",
     feature = "microcrate_validate",
     feature = "microcrate_storage",
@@ -1254,6 +1263,112 @@ pub fn microcrate_storage_contract() -> Scenario {
                     ctx.flag("missing_after_delete").unwrap_or(false),
                     "key removed",
                 )
+            },
+        )
+}
+
+#[cfg(feature = "microcrate_manual_events")]
+/// Scenario: manual-events microcrate keeps parsing and window filtering stable.
+pub fn microcrate_manual_events_contract() -> Scenario {
+    Scenario::new("Manual-events microcrate keeps parsing and window filtering stable")
+        .when(
+            "a file contains inside, partial, and outside manual events",
+            |ctx| {
+                let mut file = create_empty_file();
+                file.events.push(create_entry(
+                    "inside",
+                    ManualEventType::Note,
+                    ManualDate::Single(chrono::NaiveDate::from_ymd_opt(2025, 1, 20).unwrap()),
+                    "Inside window",
+                ));
+                file.events.push(create_entry(
+                    "partial",
+                    ManualEventType::Incident,
+                    ManualDate::Range {
+                        start: chrono::NaiveDate::from_ymd_opt(2024, 12, 30).unwrap(),
+                        end: chrono::NaiveDate::from_ymd_opt(2025, 1, 2).unwrap(),
+                    },
+                    "Partially inside window",
+                ));
+                file.events.push(create_entry(
+                    "outside",
+                    ManualEventType::Note,
+                    ManualDate::Single(chrono::NaiveDate::from_ymd_opt(2025, 3, 1).unwrap()),
+                    "Outside window",
+                ));
+
+                let temp = tempfile::tempdir().map_err(|err| format!("create temp dir: {err}"))?;
+                let path = temp.path().join("shiplog-manual-events-contract.yaml");
+                write_manual_events(&path, &file)
+                    .map_err(|err| format!("write_manual_events should succeed: {err}"))?;
+                let parsed =
+                    read_manual_events(&path).map_err(|err| format!("read manual events should succeed: {err}"))?;
+                let window = shiplog_schema::coverage::TimeWindow {
+                    since: chrono::NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
+                    until: chrono::NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),
+                };
+                let (events, warnings) = events_in_window(&parsed.events, "contract-user", &window);
+
+                ctx.numbers
+                    .insert("manual_events_kept".to_string(), events.len() as u64);
+                ctx.numbers.insert(
+                    "manual_events_warnings".to_string(),
+                    warnings.len() as u64,
+                );
+                ctx.flags.insert(
+                    "contains_inside_event".to_string(),
+                    events
+                        .iter()
+                        .any(|event| event.source.opaque_id.as_deref() == Some("inside")),
+                );
+                ctx.flags.insert(
+                    "contains_partial_event".to_string(),
+                    events
+                        .iter()
+                        .any(|event| event.source.opaque_id.as_deref() == Some("partial")),
+                );
+                ctx.flags.insert(
+                    "contains_outside_event".to_string(),
+                    events
+                        .iter()
+                        .any(|event| event.source.opaque_id.as_deref() == Some("outside")),
+                );
+                ctx.flags.insert(
+                    "has_partial_warning".to_string(),
+                    warnings.iter().any(|warning| warning.contains("partially outside")),
+                );
+
+                Ok(())
+            },
+        )
+        .then(
+            "inside and partial windows stay while outside entries are removed",
+            |ctx| {
+                assert_true(
+                    ctx.number("manual_events_kept").unwrap_or(0) == 2,
+                    "in-window events kept",
+                )?;
+                assert_true(
+                    ctx.number("manual_events_warnings").unwrap_or(0) == 1,
+                    "partial-overlap warning count",
+                )?;
+                assert_true(
+                    ctx.flag("contains_inside_event").unwrap_or(false),
+                    "inside event should be kept",
+                )?;
+                assert_true(
+                    ctx.flag("contains_partial_event").unwrap_or(false),
+                    "partial event should be kept",
+                )?;
+                assert_true(
+                    !ctx.flag("contains_outside_event").unwrap_or(false),
+                    "outside event should be removed",
+                )?;
+                assert_true(
+                    ctx.flag("has_partial_warning").unwrap_or(false),
+                    "partial overlap should warn",
+                )?;
+                Ok(())
             },
         )
 }

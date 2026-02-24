@@ -2731,9 +2731,8 @@ version = "0.2.1"
 dependencies = [
  "anyhow",
  "chrono",
- "serde",
- "serde_yaml_ng",
  "shiplog-ids",
+ "shiplog-manual-events",
  "shiplog-ports",
  "shiplog-schema",
  "tempfile",
@@ -2803,6 +2802,19 @@ dependencies = [
  "anyhow",
  "proptest",
  "serde",
+]
+
+[[package]]
+name = "shiplog-manual-events"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "proptest",
+ "serde_yaml_ng",
+ "shiplog-ids",
+ "shiplog-schema",
+ "tempfile",
 ]
 
 [[package]]
@@ -3456,6 +3468,7 @@ dependencies = [
  "shiplog-date-windows",
  "shiplog-export",
  "shiplog-ids",
+ "shiplog-manual-events",
  "shiplog-merge",
  "shiplog-notify",
  "shiplog-output-layout",

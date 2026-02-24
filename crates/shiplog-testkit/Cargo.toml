@@ -19,6 +19,7 @@ merge_pipeline = []
 team = ["shiplog-team", "shiplog-team-core", "shiplog-team-aggregate"]
 microcrate_export = ["shiplog-export"]
 microcrate_output_layout = ["shiplog-output-layout"]
+microcrate_manual_events = ["shiplog-manual-events"]
 microcrate_validate = ["shiplog-validate"]
 microcrate_storage = ["shiplog-storage"]
 microcrate_notify = ["shiplog-notify"]
@@ -34,6 +35,7 @@ microcrate_date_windows = ["shiplog-date-windows"]
 microcrate_contracts = [
     "microcrate_export",
     "microcrate_output_layout",
+    "microcrate_manual_events",
     "microcrate_validate",
     "microcrate_storage",
     "microcrate_notify",
@@ -73,6 +75,7 @@ shiplog-redaction-repo = { path = "../shiplog-redaction-repo", version = "0.2.1"
 shiplog-workstream-cluster = { path = "../shiplog-workstream-cluster", version = "0.2.1", optional = true }
 shiplog-workstream-receipt-policy = { path = "../shiplog-workstream-receipt-policy", version = "0.2.1", optional = true }
 shiplog-date-windows = { path = "../shiplog-date-windows", version = "0.2.1", optional = true }
+shiplog-manual-events = { path = "../shiplog-manual-events", version = "0.2.1", optional = true }
 proptest.workspace = true
 serde.workspace = true
 serde_json.workspace = true

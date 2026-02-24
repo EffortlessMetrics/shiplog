@@ -236,6 +236,15 @@ mod v03x_tests {
             .expect("Scenario should lock output layout microcrate contract");
     }
 
+    #[cfg(feature = "microcrate_manual_events")]
+    #[test]
+    fn microcrate_contracts_scenario_manual_events() {
+        let scenario = microcrate_manual_events_contract();
+        scenario
+            .run()
+            .expect("Scenario should lock manual-events microcrate contract");
+    }
+
     #[cfg(feature = "microcrate_cluster_llm_prompt")]
     #[test]
     fn microcrate_contracts_scenario_cluster_llm_prompt() {

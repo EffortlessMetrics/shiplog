@@ -17,6 +17,7 @@ pub mod llm_clustering;
 #[cfg(any(
     feature = "microcrate_export",
     feature = "microcrate_output_layout",
+    feature = "microcrate_manual_events",
     feature = "microcrate_cluster_llm_prompt",
     feature = "microcrate_validate",
     feature = "microcrate_cluster_llm_parse",
@@ -41,6 +42,7 @@ pub use llm_clustering::*;
 #[cfg(any(
     feature = "microcrate_export",
     feature = "microcrate_output_layout",
+    feature = "microcrate_manual_events",
     feature = "microcrate_cluster_llm_prompt",
     feature = "microcrate_validate",
     feature = "microcrate_cluster_llm_parse",

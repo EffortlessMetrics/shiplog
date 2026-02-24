@@ -42,7 +42,7 @@ cargo fuzz run parse_jsonl -- -dict=fuzz/dictionaries/json.dict
 | `parse_workstreams` | YAML workstream edits (workstreams.yaml) | HIGH |
 | `parse_github_api` | GitHub API responses | MEDIUM |
 | `parse_config` | Configuration files (shiplog.yaml) | MEDIUM |
-| `parse_manual_events` | Manual events YAML (manual_events.yaml) | HIGH |
+| `parse_manual_events` | Manual events YAML (manual_events.yaml) + manual-events window filter | HIGH |
 | `redaction_profile` | Redaction profile parsing and canonicalization | MEDIUM |
 | `redact_policy` | Profile-based redaction policy projection | MEDIUM |
 | `redaction_repo` | Public repo aliasing and visibility/url sanitization contract | LOW |

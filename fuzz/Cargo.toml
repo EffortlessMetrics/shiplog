@@ -12,6 +12,7 @@ libfuzzer-sys = "0.4"
 shiplog-ingest-json = { path = "../crates/shiplog-ingest-json" }
 shiplog-ingest-github = { path = "../crates/shiplog-ingest-github" }
 shiplog-ingest-manual = { path = "../crates/shiplog-ingest-manual" }
+shiplog-manual-events = { path = "../crates/shiplog-manual-events", version = "0.2.1" }
 shiplog-workstreams = { path = "../crates/shiplog-workstreams" }
 shiplog-schema = { path = "../crates/shiplog-schema" }
 shiplog-workstream-receipt-policy = { path = "../crates/shiplog-workstream-receipt-policy", version = "0.2.1" }

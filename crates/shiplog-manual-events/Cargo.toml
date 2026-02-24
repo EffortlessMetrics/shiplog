@@ -1,0 +1,25 @@
+[package]
+name = "shiplog-manual-events"
+version = "0.2.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Manual event file and entry helpers for shiplog."
+readme = "README.md"
+documentation = "https://docs.rs/shiplog-manual-events"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["manual", "events", "yaml", "ingestion", "window"]
+categories = ["development-tools", "date-and-time"]
+
+[dependencies]
+anyhow.workspace = true
+chrono.workspace = true
+serde_yaml.workspace = true
+shiplog-ids = { path = "../shiplog-ids", version = "0.2.1" }
+shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
+
+[dev-dependencies]
+tempfile.workspace = true
+proptest.workspace = true
