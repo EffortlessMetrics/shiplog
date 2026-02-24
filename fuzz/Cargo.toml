@@ -18,6 +18,7 @@ shiplog-schema = { path = "../crates/shiplog-schema" }
 shiplog-workstream-receipt-policy = { path = "../crates/shiplog-workstream-receipt-policy", version = "0.2.1" }
 shiplog-ids = { path = "../crates/shiplog-ids" }
 shiplog-redaction-profile = { path = "../crates/shiplog-redaction-profile" }
+shiplog-workstream-layout = { path = "../crates/shiplog-workstream-layout" }
 shiplog-redaction-repo = { path = "../crates/shiplog-redaction-repo" }
 shiplog-redaction-policy = { path = "../crates/shiplog-redaction-policy" }
 shiplog-redaction-projector = { path = "../crates/shiplog-redaction-projector" }
@@ -193,6 +194,13 @@ bench = false
 [[bin]]
 name = "workstream_receipt_policy"
 path = "fuzz_targets/workstream_receipt_policy.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "workstream_layout"
+path = "fuzz_targets/workstream_layout.rs"
 test = false
 doc = false
 bench = false

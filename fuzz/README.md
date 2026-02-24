@@ -40,6 +40,7 @@ cargo fuzz run parse_jsonl -- -dict=fuzz/dictionaries/json.dict
 |--------|-------------|----------|
 | `parse_jsonl` | JSONL ingestion (ledger.events.jsonl) | HIGH |
 | `parse_workstreams` | YAML workstream edits (workstreams.yaml) | HIGH |
+| `workstream_layout` | Workstream artifact file precedence and YAML roundtrip parsing | LOW |
 | `parse_github_api` | GitHub API responses | MEDIUM |
 | `parse_config` | Configuration files (shiplog.yaml) | MEDIUM |
 | `parse_manual_events` | Manual events YAML (manual_events.yaml) + manual-events window filter | HIGH |
@@ -99,7 +100,7 @@ A convenience script to run all fuzzers for a short duration:
 #!/bin/bash
 # fuzz-all.sh
 
-targets=("parse_jsonl" "parse_workstreams" "parse_github_api" "parse_config" "parse_manual_events" "redaction_profile" "redact_policy" "redaction_repo" "cache_key" "cache_stats" "cache_expiry" "cache_sqlite" "date_windows" "workstream_cluster" "workstream_receipt_policy")
+targets=("parse_jsonl" "parse_workstreams" "parse_github_api" "parse_config" "parse_manual_events" "redaction_profile" "redact_policy" "redaction_repo" "cache_key" "cache_stats" "cache_expiry" "cache_sqlite" "date_windows" "workstream_cluster" "workstream_layout" "workstream_receipt_policy")
 
 for target in "${targets[@]}"; do
     echo "Fuzzing $target..."

@@ -2451,7 +2451,7 @@ dependencies = [
  "shiplog-render-md",
  "shiplog-schema",
  "shiplog-workstream-cluster",
- "shiplog-workstreams",
+ "shiplog-workstream-layout",
  "tempfile",
 ]
 
@@ -3483,6 +3483,7 @@ dependencies = [
  "shiplog-team-core",
  "shiplog-validate",
  "shiplog-workstream-cluster",
+ "shiplog-workstream-layout",
  "shiplog-workstream-receipt-policy",
  "shiplog-workstreams",
  "tempfile",
@@ -3707,6 +3708,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "shiplog-workstream-layout"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "proptest",
+ "serde_yaml_ng",
+ "shiplog-ports",
+ "shiplog-schema",
+ "shiplog-workstream-cluster",
+ "tempfile",
+]
+
+[[package]]
 name = "shiplog-workstream-receipt-policy"
 version = "0.2.1"
 dependencies = [
@@ -3718,16 +3733,13 @@ dependencies = [
 name = "shiplog-workstreams"
 version = "0.2.1"
 dependencies = [
- "anyhow",
- "chrono",
  "proptest",
- "serde",
- "serde_yaml_ng",
  "shiplog-ids",
  "shiplog-ports",
  "shiplog-schema",
  "shiplog-testkit",
  "shiplog-workstream-cluster",
+ "shiplog-workstream-layout",
  "tempfile",
 ]
 

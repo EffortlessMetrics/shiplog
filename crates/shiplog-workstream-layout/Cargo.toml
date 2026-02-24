@@ -1,0 +1,26 @@
+[package]
+name = "shiplog-workstream-layout"
+version = "0.2.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Curated/suggested workstream artifact contracts and loading helpers."
+readme = "README.md"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "workstreams", "workstream", "artifacts", "file-layout"]
+categories = ["development-tools", "filesystem"]
+
+[dependencies]
+anyhow.workspace = true
+serde_yaml.workspace = true
+shiplog-ports = { path = "../shiplog-ports", version = "0.2.1" }
+shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
+
+[dev-dependencies]
+proptest.workspace = true
+chrono.workspace = true
+shiplog-workstream-cluster = { path = "../shiplog-workstream-cluster", version = "0.2.1" }
+tempfile.workspace = true
+serde_yaml.workspace = true

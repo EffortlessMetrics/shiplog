@@ -8,6 +8,7 @@ members = [
     "crates/shiplog-date-windows",
     "crates/shiplog-workstream-cluster",
     "crates/shiplog-workstream-receipt-policy",
+    "crates/shiplog-workstream-layout",
     "crates/shiplog-workstreams",
   "crates/shiplog-redact",
   "crates/shiplog-redaction-profile",

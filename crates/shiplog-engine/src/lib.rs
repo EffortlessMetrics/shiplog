@@ -14,7 +14,7 @@ use shiplog_schema::bundle::BundleProfile;
 use shiplog_schema::coverage::CoverageManifest;
 use shiplog_schema::event::EventEnvelope;
 use shiplog_schema::workstream::WorkstreamsFile;
-use shiplog_workstreams::WorkstreamManager;
+use shiplog_workstream_layout::WorkstreamManager;
 use std::path::{Path, PathBuf};
 
 pub struct Engine<'a> {
@@ -194,7 +194,7 @@ impl<'a> Engine<'a> {
         let (ws, ws_source) = if let Some(ws) = workstreams {
             // Write imported workstreams as curated
             let curated_path = WorkstreamManager::curated_path(out_dir);
-            shiplog_workstreams::write_workstreams(&curated_path, &ws)?;
+            shiplog_workstream_layout::write_workstreams(&curated_path, &ws)?;
             (ws, WorkstreamSource::Curated)
         } else {
             self.load_workstreams(out_dir, &events)?
