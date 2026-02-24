@@ -1,0 +1,20 @@
+[package]
+name = "shiplog-cache-expiry"
+version = "0.2.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Canonical cache expiry window and timestamp helpers for shiplog caches."
+readme = "README.md"
+documentation = "https://docs.rs/shiplog-cache-expiry"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["cache", "ttl", "expiry", "timestamp", "shiplog"]
+categories = ["caching", "date-and-time"]
+
+[dependencies]
+chrono.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true

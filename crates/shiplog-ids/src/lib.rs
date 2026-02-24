@@ -138,4 +138,37 @@ mod tests {
         let id = EventId::from_parts(["display", "test"]);
         assert_eq!(format!("{id}"), id.0);
     }
+
+    #[test]
+    fn single_part_matches_known_sha256() {
+        // SHA-256("abc") — no leading newline
+        let id = EventId::from_parts(["abc"]);
+        assert_eq!(
+            id.0,
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        );
+    }
+
+    #[test]
+    fn multi_part_uses_newline_separator_not_prefix() {
+        // SHA-256("a\nb") — newline between parts, not before first
+        let id = EventId::from_parts(["a", "b"]);
+        let expected = {
+            let mut h = sha2::Sha256::new();
+            h.update(b"a\nb");
+            hex::encode(h.finalize())
+        };
+        assert_eq!(id.0, expected);
+
+        // Verify it does NOT equal SHA-256("\na\nb") which the mutant would produce
+        let wrong = {
+            let mut h = sha2::Sha256::new();
+            h.update(b"\na\nb");
+            hex::encode(h.finalize())
+        };
+        assert_ne!(
+            id.0, wrong,
+            "hash_hex must not prepend a newline before the first part"
+        );
+    }
 }

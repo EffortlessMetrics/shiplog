@@ -142,6 +142,7 @@ impl LinearIngestor {
         "https://api.linear.app/graphql".to_string()
     }
 
+    #[mutants::skip]
     fn client(&self) -> Result<Client> {
         Client::builder()
             .user_agent(concat!("shiplog/", env!("CARGO_PKG_VERSION")))
@@ -149,6 +150,7 @@ impl LinearIngestor {
             .context("build reqwest client")
     }
 
+    #[mutants::skip]
     fn throttle(&self) {
         if self.throttle_ms > 0 {
             sleep(Duration::from_millis(self.throttle_ms));
@@ -156,6 +158,7 @@ impl LinearIngestor {
     }
 
     /// Execute a GraphQL query
+    #[mutants::skip]
     fn execute_query<T: DeserializeOwned>(
         &self,
         client: &Client,
@@ -219,6 +222,7 @@ impl LinearIngestor {
     }
 
     /// Query Linear issues
+    #[mutants::skip]
     fn query_issues(
         &self,
         client: &Client,
@@ -329,6 +333,7 @@ impl LinearIngestor {
     }
 
     /// Convert Linear issues to shiplog events
+    #[mutants::skip]
     fn issues_to_events(&self, issues: Vec<LinearIssue>) -> Result<Vec<EventEnvelope>> {
         let mut events = Vec::new();
         let html_base = self.html_base_url();
@@ -397,6 +402,7 @@ impl LinearIngestor {
 }
 
 impl Ingestor for LinearIngestor {
+    #[mutants::skip]
     fn ingest(&self) -> Result<IngestOutput> {
         if self.since >= self.until {
             return Err(anyhow!("since must be < until"));

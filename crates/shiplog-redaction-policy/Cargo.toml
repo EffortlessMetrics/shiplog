@@ -1,0 +1,27 @@
+[package]
+name = "shiplog-redaction-policy"
+version = "0.2.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Profile-based structural redaction policy contracts for shiplog events and workstreams."
+readme = "README.md"
+documentation = "https://docs.rs/shiplog-redaction-policy"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["redaction", "privacy", "policy", "projection", "deterministic"]
+categories = ["development-tools", "text-processing"]
+
+[dependencies]
+shiplog-redaction-profile = { path = "../shiplog-redaction-profile", version = "0.2.1" }
+shiplog-redaction-repo = { path = "../shiplog-redaction-repo", version = "0.2.1" }
+shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
+
+[dev-dependencies]
+chrono.workspace = true
+proptest.workspace = true
+serde_json.workspace = true
+shiplog-alias = { path = "../shiplog-alias", version = "0.2.1" }
+shiplog-ids = { path = "../shiplog-ids", version = "0.2.1" }
+shiplog-testkit = { path = "../shiplog-testkit", version = "0.2.1" }

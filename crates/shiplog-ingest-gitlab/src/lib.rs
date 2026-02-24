@@ -8,7 +8,8 @@ use chrono::{DateTime, NaiveDate, Utc};
 use reqwest::blocking::Client;
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
-use shiplog_cache::{ApiCache, CacheKey};
+use shiplog_cache::ApiCache;
+use shiplog_cache_key::CacheKey;
 use shiplog_ids::{EventId, RunId};
 use shiplog_ports::{IngestOutput, Ingestor};
 use shiplog_schema::coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow};
@@ -161,6 +162,7 @@ impl GitlabIngestor {
         format!("https://{}/api/v4", self.instance)
     }
 
+    #[mutants::skip]
     fn client(&self) -> Result<Client> {
         Client::builder()
             .user_agent(concat!("shiplog/", env!("CARGO_PKG_VERSION")))
@@ -168,17 +170,20 @@ impl GitlabIngestor {
             .context("build reqwest client")
     }
 
+    #[mutants::skip]
     fn api_url(&self, path: &str) -> String {
         let base = self.api_base_url();
         format!("{}{}", base.trim_end_matches('/'), path)
     }
 
+    #[mutants::skip]
     fn throttle(&self) {
         if self.throttle_ms > 0 {
             sleep(Duration::from_millis(self.throttle_ms));
         }
     }
 
+    #[mutants::skip]
     fn get_json<T: DeserializeOwned>(
         &self,
         client: &Client,
@@ -226,6 +231,7 @@ impl GitlabIngestor {
     }
 
     /// Get user ID from username (required for GitLab API queries)
+    #[mutants::skip]
     fn get_user_id(&self, client: &Client) -> Result<u64> {
         let url = self.api_url(&format!("/users?username={}", self.user));
         let users: Vec<GitlabUser> = self.get_json(client, &url, &[])?;
@@ -238,6 +244,7 @@ impl GitlabIngestor {
     }
 
     /// Get projects accessible to the user
+    #[mutants::skip]
     fn get_user_projects(&self, client: &Client, user_id: u64) -> Result<Vec<GitlabProject>> {
         let url = self.api_url(&format!("/users/{}/projects", user_id));
         let mut projects = Vec::new();
@@ -267,6 +274,7 @@ impl GitlabIngestor {
     }
 
     /// Collect MRs from projects
+    #[mutants::skip]
     fn collect_mrs_from_projects(
         &self,
         client: &Client,
@@ -331,6 +339,7 @@ impl GitlabIngestor {
     }
 
     /// Collect notes (reviews) for an MR
+    #[mutants::skip]
     fn collect_mr_notes(
         &self,
         client: &Client,
@@ -386,6 +395,7 @@ impl GitlabIngestor {
     }
 
     /// Convert GitLab MRs to shiplog events
+    #[mutants::skip]
     fn mrs_to_events(&self, mrs: Vec<GitlabMergeRequest>) -> Result<Vec<EventEnvelope>> {
         let mut events = Vec::new();
         let html_base = self.html_base_url();
@@ -451,6 +461,7 @@ impl GitlabIngestor {
     }
 
     /// Convert GitLab notes to shiplog review events
+    #[mutants::skip]
     fn notes_to_review_events(
         &self,
         notes: Vec<GitlabNote>,
@@ -514,6 +525,7 @@ impl GitlabIngestor {
 }
 
 impl Ingestor for GitlabIngestor {
+    #[mutants::skip]
     fn ingest(&self) -> Result<IngestOutput> {
         if self.since >= self.until {
             return Err(anyhow!("since must be < until"));

@@ -1,0 +1,20 @@
+[package]
+name = "shiplog-cache-key"
+version = "0.2.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Canonical cache-key builders for shiplog API caches."
+readme = "README.md"
+documentation = "https://docs.rs/shiplog-cache-key"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["cache", "key", "github", "gitlab", "api"]
+categories = ["caching", "development-tools"]
+
+[dependencies]
+
+[dev-dependencies]
+proptest.workspace = true
+shiplog-testkit = { path = "../shiplog-testkit", version = "0.2.1" }

@@ -263,6 +263,51 @@ mod v03x_tests {
             .expect("Scenario should lock notify microcrate contract");
     }
 
+    #[cfg(feature = "microcrate_cache_key")]
+    #[test]
+    fn microcrate_contracts_scenario_cache_key() {
+        let scenario = microcrate_cache_key_contract();
+        scenario
+            .run()
+            .expect("Scenario should lock cache-key microcrate contract");
+    }
+
+    #[cfg(feature = "microcrate_cache_stats")]
+    #[test]
+    fn microcrate_contracts_scenario_cache_stats() {
+        let scenario = microcrate_cache_stats_contract();
+        scenario
+            .run()
+            .expect("Scenario should lock cache-stats microcrate contract");
+    }
+
+    #[cfg(feature = "microcrate_cache_expiry")]
+    #[test]
+    fn microcrate_contracts_scenario_cache_expiry() {
+        let scenario = microcrate_cache_expiry_contract();
+        scenario
+            .run()
+            .expect("Scenario should lock cache-expiry microcrate contract");
+    }
+
+    #[cfg(feature = "microcrate_date_windows")]
+    #[test]
+    fn microcrate_contracts_scenario_date_windows() {
+        let scenario = microcrate_date_windows_contract();
+        scenario
+            .run()
+            .expect("Scenario should lock date-windows microcrate contract");
+    }
+
+    #[cfg(feature = "microcrate_redaction_repo")]
+    #[test]
+    fn microcrate_contracts_scenario_redaction_repo() {
+        let scenario = microcrate_redaction_repo_contract();
+        scenario
+            .run()
+            .expect("Scenario should lock redaction-repo microcrate contract");
+    }
+
     // ===========================================================================
     // Feature 8: Configurable Packet Templates (Scenarios 8.1 - 8.10)
     // ===========================================================================

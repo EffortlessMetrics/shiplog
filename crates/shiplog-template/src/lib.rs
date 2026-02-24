@@ -432,4 +432,163 @@ mod tests {
         let val: TemplateValue = HashMap::new().into();
         assert!(!val.is_truthy());
     }
+
+    // --- from_json_value tests ---
+
+    #[test]
+    fn from_json_value_string() {
+        let v = TemplateValue::from_json_value(serde_json::Value::String("hello".into()));
+        assert_eq!(v, Some(TemplateValue::String("hello".into())));
+    }
+
+    #[test]
+    fn from_json_value_number_integer() {
+        let v = TemplateValue::from_json_value(serde_json::json!(42));
+        assert_eq!(v, Some(TemplateValue::Number(42)));
+    }
+
+    #[test]
+    fn from_json_value_number_float() {
+        let v = TemplateValue::from_json_value(serde_json::json!(2.72));
+        assert_eq!(v, Some(TemplateValue::Float(2.72)));
+    }
+
+    #[test]
+    fn from_json_value_bool() {
+        assert_eq!(
+            TemplateValue::from_json_value(serde_json::json!(true)),
+            Some(TemplateValue::Boolean(true))
+        );
+        assert_eq!(
+            TemplateValue::from_json_value(serde_json::json!(false)),
+            Some(TemplateValue::Boolean(false))
+        );
+    }
+
+    #[test]
+    fn from_json_value_array() {
+        let v = TemplateValue::from_json_value(serde_json::json!(["a", 1]));
+        assert_eq!(
+            v,
+            Some(TemplateValue::List(vec![
+                TemplateValue::String("a".into()),
+                TemplateValue::Number(1),
+            ]))
+        );
+    }
+
+    #[test]
+    fn from_json_value_object() {
+        let v = TemplateValue::from_json_value(serde_json::json!({"key": "val"}));
+        let mut expected = HashMap::new();
+        expected.insert("key".to_string(), TemplateValue::String("val".into()));
+        assert_eq!(v, Some(TemplateValue::Object(expected)));
+    }
+
+    #[test]
+    fn from_json_value_null() {
+        let v = TemplateValue::from_json_value(serde_json::Value::Null);
+        assert_eq!(v, Some(TemplateValue::Null));
+    }
+
+    // --- parse_tag tests ---
+
+    #[test]
+    fn parse_tag_unclosed_tag_returns_error() {
+        let engine = TemplateEngine::new();
+        let result = engine.parse_tag(" if x ");
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("Unclosed tag"), "error was: {err_msg}");
+    }
+
+    // --- evaluate_tag tests ---
+
+    #[test]
+    fn evaluate_tag_unknown_returns_error() {
+        let engine = TemplateEngine::new();
+        let result = engine.evaluate_tag("block content");
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("Unknown tag"), "error was: {err_msg}");
+    }
+
+    #[test]
+    fn evaluate_tag_if_returns_empty() {
+        let engine = TemplateEngine::new();
+        assert_eq!(engine.evaluate_tag("if show_details").unwrap(), "");
+    }
+
+    #[test]
+    fn evaluate_tag_endif_returns_empty() {
+        let engine = TemplateEngine::new();
+        assert_eq!(engine.evaluate_tag("endif").unwrap(), "");
+    }
+
+    #[test]
+    fn evaluate_tag_for_returns_empty() {
+        let engine = TemplateEngine::new();
+        assert_eq!(engine.evaluate_tag("for item in items").unwrap(), "");
+    }
+
+    #[test]
+    fn evaluate_tag_endfor_returns_empty() {
+        let engine = TemplateEngine::new();
+        assert_eq!(engine.evaluate_tag("endfor").unwrap(), "");
+    }
+
+    // --- get_field tests ---
+
+    #[test]
+    fn get_field_on_object_returns_value() {
+        let mut obj = HashMap::new();
+        obj.insert("name".to_string(), TemplateValue::String("Alice".into()));
+        let val = TemplateValue::Object(obj);
+        assert_eq!(
+            val.get_field("name"),
+            Some(&TemplateValue::String("Alice".into()))
+        );
+    }
+
+    #[test]
+    fn get_field_on_object_missing_key_returns_none() {
+        let obj = HashMap::new();
+        let val = TemplateValue::Object(obj);
+        assert_eq!(val.get_field("missing"), None);
+    }
+
+    #[test]
+    fn get_field_on_non_object_returns_none() {
+        let val = TemplateValue::Number(42);
+        assert_eq!(val.get_field("anything"), None);
+
+        let val = TemplateValue::String("hello".into());
+        assert_eq!(val.get_field("anything"), None);
+
+        let val = TemplateValue::Null;
+        assert_eq!(val.get_field("anything"), None);
+    }
+
+    // --- is_truthy on Float ---
+
+    #[test]
+    fn is_truthy_float_nonzero() {
+        let val = TemplateValue::Float(1.5);
+        assert!(val.is_truthy());
+
+        let val = TemplateValue::Float(-0.1);
+        assert!(val.is_truthy());
+    }
+
+    #[test]
+    fn is_truthy_float_zero() {
+        let val = TemplateValue::Float(0.0);
+        assert!(!val.is_truthy());
+    }
+
+    #[test]
+    fn is_truthy_null() {
+        let val = TemplateValue::Null;
+        assert!(!val.is_truthy());
+    }
 }

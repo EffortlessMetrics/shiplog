@@ -1,0 +1,20 @@
+[package]
+name = "shiplog-cache-stats"
+version = "0.2.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Canonical cache-stat normalization contracts for shiplog caches."
+readme = "README.md"
+documentation = "https://docs.rs/shiplog-cache-stats"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["cache", "stats", "contracts", "ttl", "sqlite"]
+categories = ["caching", "development-tools"]
+
+[dependencies]
+
+[dev-dependencies]
+proptest.workspace = true
+shiplog-testkit = { path = "../shiplog-testkit", version = "0.2.1" }

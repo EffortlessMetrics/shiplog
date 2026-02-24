@@ -72,7 +72,7 @@ jobs:
           echo "- Later BDD scenarios (34 scenarios, base feature set)" >> $GITHUB_STEP_SUMMARY
           echo "- Later BDD team scenarios (9 scenarios) with --features team" >> $GITHUB_STEP_SUMMARY
           echo "- v0.3.x merge pipeline contract scenario (1 scenario) with --features merge_pipeline" >> $GITHUB_STEP_SUMMARY
-          echo "- v0.3.x microcrate contract scenarios (5 scenarios) with --features microcrate_contracts" >> $GITHUB_STEP_SUMMARY
+          echo "- v0.3.x microcrate contract scenarios (8 scenarios) with --features microcrate_contracts" >> $GITHUB_STEP_SUMMARY
           echo "- Roadmap property tests" >> $GITHUB_STEP_SUMMARY
 
   ingest-tests:

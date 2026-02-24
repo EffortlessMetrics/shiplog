@@ -1,0 +1,22 @@
+[package]
+name = "shiplog-redaction-profile"
+version = "0.2.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Redaction profile parsing and canonicalization for shiplog projections."
+readme = "README.md"
+documentation = "https://docs.rs/shiplog-redaction-profile"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["redaction", "privacy", "profile", "projection", "parsing"]
+categories = ["development-tools", "text-processing"]
+
+[dependencies]
+serde.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+serde_json.workspace = true
+shiplog-testkit = { path = "../shiplog-testkit", version = "0.2.1" }

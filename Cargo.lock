@@ -89,9 +89,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.101"
+version = "1.0.102"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f0e0fee31ef5ed1ba1316088939cea399010ed7731dba877ed44aeb407a75ea"
+checksum = "7f202df86484c868dbad7eaa557ef785d5c66295e41b460ef922eca0723b842c"
 
 [[package]]
 name = "atomic-waker"
@@ -222,9 +222,9 @@ checksum = "613afe47fcd5fac7ccf1db93babcb082c5994d996f20b8b159f2ad1658eb5724"
 
 [[package]]
 name = "chrono"
-version = "0.4.43"
+version = "0.4.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fac4744fb15ae8337dc853fee7fb3f4e48c0fbaa23d0afe49c447b4fab126118"
+checksum = "c673075a2e0e5f4a1dde27ce9dee1ea4558c7ffe648f576438a20ca1d2acc4b0"
 dependencies = [
  "iana-time-zone",
  "js-sys",
@@ -246,9 +246,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.5.58"
+version = "4.5.60"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "63be97961acde393029492ce0be7a1af7e323e6bae9511ebfac33751be5e6806"
+checksum = "2797f34da339ce31042b27d23607e051786132987f595b02ba4f6a6dffb7030a"
 dependencies = [
  "clap_builder",
  "clap_derive",
@@ -256,9 +256,9 @@ dependencies = [
 
 [[package]]
 name = "clap_builder"
-version = "4.5.58"
+version = "4.5.60"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7f13174bda5dfd69d7e947827e5af4b0f2f94a4a3ee92912fba07a66150f21e2"
+checksum = "24a241312cea5059b13574bb9b3861cabf758b879c15190b37b6d6fd63ab6876"
 dependencies = [
  "anstream",
  "anstyle",
@@ -1300,6 +1300,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "mutants"
+version = "0.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "add0ac067452ff1aca8c5002111bd6b1c895baee6e45fcbc44e0193aea17be56"
+
+[[package]]
 name = "notify"
 version = "8.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2142,6 +2148,9 @@ dependencies = [
  "rusqlite",
  "serde",
  "serde_json",
+ "shiplog-cache-expiry",
+ "shiplog-cache-key",
+ "shiplog-cache-stats",
  "shiplog-schema",
  "shiplog-testkit",
  "tempfile",
@@ -2164,11 +2173,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "shiplog-cache-expiry"
+version = "0.2.1"
+dependencies = [
+ "chrono",
+ "proptest",
+]
+
+[[package]]
+name = "shiplog-cache-key"
+version = "0.2.1"
+dependencies = [
+ "proptest",
+ "shiplog-testkit",
+]
+
+[[package]]
 name = "shiplog-cache-lru"
 version = "0.2.1"
 dependencies = [
  "proptest",
  "shiplog-schema",
+]
+
+[[package]]
+name = "shiplog-cache-stats"
+version = "0.2.1"
+dependencies = [
+ "proptest",
+ "shiplog-testkit",
 ]
 
 [[package]]
@@ -2223,6 +2256,7 @@ version = "0.2.1"
 dependencies = [
  "anyhow",
  "chrono",
+ "mutants",
  "reqwest",
  "serde",
  "serde_json",
@@ -2287,6 +2321,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "proptest",
+ "shiplog-date-windows",
  "shiplog-schema",
  "shiplog-testkit",
 ]
@@ -2311,6 +2346,16 @@ dependencies = [
  "serde_json",
  "sha2",
  "tempfile",
+]
+
+[[package]]
+name = "shiplog-date-windows"
+version = "0.2.1"
+dependencies = [
+ "chrono",
+ "proptest",
+ "shiplog-schema",
+ "shiplog-testkit",
 ]
 
 [[package]]
@@ -2546,6 +2591,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "git2",
+ "mutants",
  "shiplog-cache",
  "shiplog-ids",
  "shiplog-ports",
@@ -2559,10 +2605,12 @@ version = "0.2.1"
 dependencies = [
  "anyhow",
  "chrono",
+ "mutants",
  "reqwest",
  "serde",
  "serde_json",
  "shiplog-cache",
+ "shiplog-cache-key",
  "shiplog-coverage",
  "shiplog-ids",
  "shiplog-ports",
@@ -2577,10 +2625,12 @@ version = "0.3.0"
 dependencies = [
  "anyhow",
  "chrono",
+ "mutants",
  "reqwest",
  "serde",
  "serde_json",
  "shiplog-cache",
+ "shiplog-cache-key",
  "shiplog-coverage",
  "shiplog-ids",
  "shiplog-ports",
@@ -2595,6 +2645,7 @@ version = "0.3.0"
 dependencies = [
  "anyhow",
  "chrono",
+ "mutants",
  "reqwest",
  "serde",
  "serde_json",
@@ -2628,6 +2679,7 @@ version = "0.3.0"
 dependencies = [
  "anyhow",
  "chrono",
+ "mutants",
  "reqwest",
  "serde",
  "serde_json",
@@ -2959,14 +3011,64 @@ dependencies = [
  "anyhow",
  "chrono",
  "proptest",
- "serde",
  "serde_json",
  "shiplog-alias",
  "shiplog-ids",
  "shiplog-ports",
+ "shiplog-redaction-policy",
+ "shiplog-redaction-projector",
  "shiplog-schema",
  "shiplog-testkit",
  "tempfile",
+]
+
+[[package]]
+name = "shiplog-redaction-policy"
+version = "0.2.1"
+dependencies = [
+ "chrono",
+ "proptest",
+ "serde_json",
+ "shiplog-alias",
+ "shiplog-ids",
+ "shiplog-redaction-profile",
+ "shiplog-redaction-repo",
+ "shiplog-schema",
+ "shiplog-testkit",
+]
+
+[[package]]
+name = "shiplog-redaction-profile"
+version = "0.2.1"
+dependencies = [
+ "proptest",
+ "serde",
+ "serde_json",
+ "shiplog-testkit",
+]
+
+[[package]]
+name = "shiplog-redaction-projector"
+version = "0.2.1"
+dependencies = [
+ "chrono",
+ "proptest",
+ "serde_json",
+ "shiplog-alias",
+ "shiplog-ids",
+ "shiplog-redaction-policy",
+ "shiplog-schema",
+ "shiplog-testkit",
+]
+
+[[package]]
+name = "shiplog-redaction-repo"
+version = "0.2.1"
+dependencies = [
+ "proptest",
+ "shiplog-alias",
+ "shiplog-schema",
+ "shiplog-testkit",
 ]
 
 [[package]]
@@ -3300,6 +3402,10 @@ dependencies = [
  "proptest",
  "serde",
  "serde_json",
+ "shiplog-cache-expiry",
+ "shiplog-cache-key",
+ "shiplog-cache-stats",
+ "shiplog-date-windows",
  "shiplog-export",
  "shiplog-ids",
  "shiplog-merge",
@@ -3307,6 +3413,7 @@ dependencies = [
  "shiplog-output-layout",
  "shiplog-ports",
  "shiplog-redact",
+ "shiplog-redaction-repo",
  "shiplog-render-md",
  "shiplog-schema",
  "shiplog-storage",
@@ -4676,9 +4783,9 @@ dependencies = [
 
 [[package]]
 name = "zip"
-version = "8.0.0"
+version = "8.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "79b32dd4ad3aca14ae109f8cce0495ac1c57f6f4f00ad459a40e582f89440d97"
+checksum = "6e499faf5c6b97a0d086f4a8733de6d47aee2252b8127962439d8d4311a73f72"
 dependencies = [
  "aes",
  "bzip2",

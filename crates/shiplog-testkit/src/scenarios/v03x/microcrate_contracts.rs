@@ -1,10 +1,18 @@
 //! BDD scenarios that lock in microcrate public contracts for external reuse.
 
+#[cfg(feature = "microcrate_date_windows")]
+use crate::bdd::assertions::assert_present;
 #[cfg(any(
     feature = "microcrate_export",
+    feature = "microcrate_output_layout",
+    feature = "microcrate_cache_key",
     feature = "microcrate_validate",
     feature = "microcrate_storage",
-    feature = "microcrate_notify"
+    feature = "microcrate_notify",
+    feature = "microcrate_cache_stats",
+    feature = "microcrate_cache_expiry",
+    feature = "microcrate_redaction_repo",
+    feature = "microcrate_date_windows"
 ))]
 use crate::bdd::assertions::assert_true;
 #[cfg(feature = "microcrate_export")]
@@ -28,6 +36,27 @@ use std::path::Path;
 #[cfg(feature = "microcrate_notify")]
 use shiplog_notify::{Notification, NotificationService};
 
+#[cfg(feature = "microcrate_cache_key")]
+use shiplog_cache_key::CacheKey;
+
+#[cfg(feature = "microcrate_cache_stats")]
+use shiplog_cache_stats::CacheStats;
+
+#[cfg(feature = "microcrate_cache_expiry")]
+use chrono::{DateTime, Duration, Utc};
+
+#[cfg(feature = "microcrate_cache_expiry")]
+use shiplog_cache_expiry::{CacheExpiryWindow, is_expired, is_valid, parse_rfc3339_utc};
+
+#[cfg(feature = "microcrate_redaction_repo")]
+use shiplog_redaction_repo::redact_repo_public;
+
+#[cfg(feature = "microcrate_date_windows")]
+use chrono::{Datelike, NaiveDate};
+
+#[cfg(feature = "microcrate_date_windows")]
+use shiplog_date_windows::{day_windows, month_windows, week_windows, window_len_days};
+
 #[cfg(feature = "microcrate_storage")]
 use shiplog_storage::{InMemoryStorage, Storage, StorageKey};
 
@@ -36,9 +65,15 @@ use shiplog_validate::{EventValidator, Packet, PacketValidator};
 
 #[cfg(any(
     feature = "microcrate_export",
+    feature = "microcrate_output_layout",
+    feature = "microcrate_cache_key",
     feature = "microcrate_validate",
     feature = "microcrate_storage",
-    feature = "microcrate_notify"
+    feature = "microcrate_notify",
+    feature = "microcrate_cache_stats",
+    feature = "microcrate_cache_expiry",
+    feature = "microcrate_redaction_repo",
+    feature = "microcrate_date_windows"
 ))]
 use crate::bdd::Scenario;
 
@@ -306,6 +341,407 @@ pub fn microcrate_output_layout_contract() -> Scenario {
             )?;
             Ok(())
         })
+}
+
+#[cfg(feature = "microcrate_cache_key")]
+/// Scenario: cache-key crate keeps canonical key contracts stable.
+pub fn microcrate_cache_key_contract() -> Scenario {
+    Scenario::new("Cache-key crate keeps canonical key formats stable")
+        .given("canonical GitHub and GitLab request identifiers", |ctx| {
+            ctx.strings
+                .insert("query".to_string(), "is:pr author:octocat".to_string());
+            ctx.strings.insert(
+                "pr_url".to_string(),
+                "https://api.github.com/repos/octo/repo/pulls/42".to_string(),
+            );
+            ctx.numbers.insert("project_id".to_string(), 123);
+            ctx.numbers.insert("mr_iid".to_string(), 77);
+        })
+        .when(
+            "cache keys are generated for all supported request types",
+            |ctx| {
+                let query = ctx.string("query").unwrap_or("");
+                let pr_url = ctx.string("pr_url").unwrap_or("");
+                let project_id = ctx.number("project_id").unwrap_or(0);
+                let mr_iid = ctx.number("mr_iid").unwrap_or(0);
+
+                let search = CacheKey::search(query, 2, 100);
+                let details = CacheKey::pr_details(pr_url);
+                let reviews = CacheKey::pr_reviews(pr_url, 2);
+                let notes = CacheKey::mr_notes(project_id, mr_iid, 2);
+
+                ctx.strings.insert("search".to_string(), search);
+                ctx.strings.insert("details".to_string(), details);
+                ctx.strings.insert("reviews".to_string(), reviews);
+                ctx.strings.insert("notes".to_string(), notes);
+                Ok(())
+            },
+        )
+        .then(
+            "every key should keep its canonical namespace and paging suffix",
+            |ctx| {
+                let search =
+                    crate::bdd::assertions::assert_present(ctx.string("search"), "search")?;
+                let details =
+                    crate::bdd::assertions::assert_present(ctx.string("details"), "details")?;
+                let reviews =
+                    crate::bdd::assertions::assert_present(ctx.string("reviews"), "reviews")?;
+                let notes = crate::bdd::assertions::assert_present(ctx.string("notes"), "notes")?;
+
+                assert_true(search.starts_with("search:"), "search namespace")?;
+                assert_true(search.ends_with(":page2:per100"), "search paging suffix")?;
+                assert_true(details.starts_with("pr:details:"), "details namespace")?;
+                assert_true(reviews.starts_with("pr:reviews:"), "reviews namespace")?;
+                assert_true(notes.starts_with("gitlab:mr:notes:"), "notes namespace")?;
+                assert_true(details != reviews, "details and reviews are distinct")?;
+                assert_true(search != notes, "search and notes are distinct")
+            },
+        )
+}
+
+#[cfg(feature = "microcrate_cache_stats")]
+/// Scenario: cache-stats crate keeps normalization contracts stable.
+pub fn microcrate_cache_stats_contract() -> Scenario {
+    Scenario::new("Cache-stats crate keeps normalization contracts stable")
+        .when(
+            "raw cache row counts are normalized through the microcrate API",
+            |ctx| {
+                let normal = CacheStats::from_raw_counts(12, 3, 4 * 1024 * 1024 + 88);
+                let clamped = CacheStats::from_raw_counts(-4, 99, -10);
+
+                ctx.numbers
+                    .insert("normal_total".to_string(), normal.total_entries as u64);
+                ctx.numbers
+                    .insert("normal_expired".to_string(), normal.expired_entries as u64);
+                ctx.numbers
+                    .insert("normal_valid".to_string(), normal.valid_entries as u64);
+                ctx.numbers
+                    .insert("normal_mb".to_string(), normal.cache_size_mb);
+
+                ctx.numbers
+                    .insert("clamped_total".to_string(), clamped.total_entries as u64);
+                ctx.numbers.insert(
+                    "clamped_expired".to_string(),
+                    clamped.expired_entries as u64,
+                );
+                ctx.numbers
+                    .insert("clamped_valid".to_string(), clamped.valid_entries as u64);
+                ctx.numbers
+                    .insert("clamped_mb".to_string(), clamped.cache_size_mb);
+                Ok(())
+            },
+        )
+        .then(
+            "normalized values should satisfy the canonical contract",
+            |ctx| {
+                assert_true(
+                    ctx.number("normal_total").unwrap_or(0) == 12,
+                    "normal total",
+                )?;
+                assert_true(
+                    ctx.number("normal_expired").unwrap_or(0) == 3,
+                    "normal expired",
+                )?;
+                assert_true(ctx.number("normal_valid").unwrap_or(0) == 9, "normal valid")?;
+                assert_true(ctx.number("normal_mb").unwrap_or(0) == 4, "normal size mb")?;
+
+                assert_true(
+                    ctx.number("clamped_total").unwrap_or(1) == 0,
+                    "clamped total",
+                )?;
+                assert_true(
+                    ctx.number("clamped_expired").unwrap_or(1) == 0,
+                    "clamped expired",
+                )?;
+                assert_true(
+                    ctx.number("clamped_valid").unwrap_or(1) == 0,
+                    "clamped valid",
+                )?;
+                assert_true(
+                    ctx.number("clamped_mb").unwrap_or(1) == 0,
+                    "clamped size mb",
+                )?;
+
+                let total = ctx.number("normal_total").unwrap_or(0);
+                let expired = ctx.number("normal_expired").unwrap_or(0);
+                let valid = ctx.number("normal_valid").unwrap_or(0);
+                assert_true(valid + expired == total, "valid + expired == total")
+            },
+        )
+}
+
+#[cfg(feature = "microcrate_cache_expiry")]
+/// Scenario: cache-expiry crate keeps timestamp-window contracts stable.
+pub fn microcrate_cache_expiry_contract() -> Scenario {
+    Scenario::new("Cache-expiry crate keeps canonical timestamp window contracts stable")
+        .when(
+            "a cache window is derived from a fixed base timestamp and ttl",
+            |ctx| {
+                let base =
+                    DateTime::<Utc>::from_timestamp(1_700_000_000, 0).expect("valid timestamp");
+                let window = CacheExpiryWindow::from_base(base, Duration::seconds(90));
+                let at_expiry = base + Duration::seconds(90);
+                let before_expiry = base + Duration::seconds(89);
+
+                ctx.strings
+                    .insert("cached_at".to_string(), window.cached_at_rfc3339());
+                ctx.strings
+                    .insert("expires_at".to_string(), window.expires_at_rfc3339());
+                ctx.flags.insert(
+                    "valid_before_expiry".to_string(),
+                    is_valid(window.expires_at, before_expiry),
+                );
+                ctx.flags.insert(
+                    "expired_at_boundary".to_string(),
+                    is_expired(window.expires_at, at_expiry),
+                );
+                Ok(())
+            },
+        )
+        .then(
+            "ttl delta and boundary predicates should stay canonical",
+            |ctx| {
+                let cached_at_raw =
+                    crate::bdd::assertions::assert_present(ctx.string("cached_at"), "cached_at")?;
+                let expires_at_raw =
+                    crate::bdd::assertions::assert_present(ctx.string("expires_at"), "expires_at")?;
+
+                let cached_at = parse_rfc3339_utc(cached_at_raw)
+                    .map_err(|err| format!("cached_at should parse as RFC3339: {err}"))?;
+                let expires_at = parse_rfc3339_utc(expires_at_raw)
+                    .map_err(|err| format!("expires_at should parse as RFC3339: {err}"))?;
+
+                assert_true(
+                    expires_at - cached_at == Duration::seconds(90),
+                    "ttl delta remains exact",
+                )?;
+                assert_true(
+                    ctx.flag("valid_before_expiry").unwrap_or(false),
+                    "entry valid before expiry",
+                )?;
+                assert_true(
+                    ctx.flag("expired_at_boundary").unwrap_or(false),
+                    "entry expired at boundary",
+                )
+            },
+        )
+}
+
+#[cfg(feature = "microcrate_date_windows")]
+/// Scenario: date-windows crate keeps partitioning contracts stable.
+pub fn microcrate_date_windows_contract() -> Scenario {
+    Scenario::new("Date-windows crate keeps partitioning contracts stable")
+        .given("a canonical date range", |ctx| {
+            ctx.strings
+                .insert("since".to_string(), "2025-01-15".to_string());
+            ctx.strings
+                .insert("until".to_string(), "2025-04-02".to_string());
+        })
+        .when("day, week, and month windows are derived", |ctx| {
+            let since_raw = assert_present(ctx.string("since"), "since")?;
+            let until_raw = assert_present(ctx.string("until"), "until")?;
+
+            let since = NaiveDate::parse_from_str(since_raw, "%Y-%m-%d")
+                .map_err(|err| format!("since should parse as date: {err}"))?;
+            let until = NaiveDate::parse_from_str(until_raw, "%Y-%m-%d")
+                .map_err(|err| format!("until should parse as date: {err}"))?;
+
+            let month = month_windows(since, until);
+            let week = week_windows(since, until);
+            let day = day_windows(since, until);
+
+            let requested_days = if until > since {
+                (until - since).num_days()
+            } else {
+                0
+            };
+            let month_days = month.iter().map(window_len_days).sum::<i64>();
+            let week_days = week.iter().map(window_len_days).sum::<i64>();
+            let day_days = day.iter().map(window_len_days).sum::<i64>();
+
+            ctx.numbers
+                .insert("requested_days".to_string(), requested_days as u64);
+            ctx.numbers
+                .insert("month_window_count".to_string(), month.len() as u64);
+            ctx.numbers
+                .insert("week_window_count".to_string(), week.len() as u64);
+            ctx.numbers
+                .insert("day_window_count".to_string(), day.len() as u64);
+            ctx.numbers
+                .insert("month_window_days".to_string(), month_days as u64);
+            ctx.numbers
+                .insert("week_window_days".to_string(), week_days as u64);
+            ctx.numbers
+                .insert("day_window_days".to_string(), day_days as u64);
+
+            ctx.flags.insert(
+                "month_partition".to_string(),
+                check_partition_contract(&month, since, until),
+            );
+            ctx.flags.insert(
+                "week_partition".to_string(),
+                check_partition_contract(&week, since, until),
+            );
+            ctx.flags.insert(
+                "day_partition".to_string(),
+                check_partition_contract(&day, since, until),
+            );
+            ctx.flags.insert(
+                "week_internal_monday".to_string(),
+                week_internal_boundaries_are_monday(&week),
+            );
+            ctx.flags.insert(
+                "day_units".to_string(),
+                day.iter().all(|window| window_len_days(window) == 1),
+            );
+            Ok(())
+        })
+        .then(
+            "window partitioning should remain contiguous, complete, and unit-accurate",
+            |ctx| {
+                let requested_days = ctx.number("requested_days").unwrap_or(0);
+                assert_true(
+                    ctx.flag("month_partition").unwrap_or(false),
+                    "month windows partition",
+                )?;
+                assert_true(
+                    ctx.flag("week_partition").unwrap_or(false),
+                    "week windows partition",
+                )?;
+                assert_true(
+                    ctx.flag("day_partition").unwrap_or(false),
+                    "day windows partition",
+                )?;
+                assert_true(
+                    ctx.flag("week_internal_monday").unwrap_or(false),
+                    "week internal boundaries align to monday",
+                )?;
+                assert_true(
+                    ctx.flag("day_units").unwrap_or(false),
+                    "day windows are unit days",
+                )?;
+                assert_true(
+                    ctx.number("month_window_days").unwrap_or(0) == requested_days,
+                    "month windows cover requested range",
+                )?;
+                assert_true(
+                    ctx.number("week_window_days").unwrap_or(0) == requested_days,
+                    "week windows cover requested range",
+                )?;
+                assert_true(
+                    ctx.number("day_window_days").unwrap_or(0) == requested_days,
+                    "day windows cover requested range",
+                )?;
+                assert_true(
+                    ctx.number("month_window_count").unwrap_or(0)
+                        + ctx.number("week_window_count").unwrap_or(0)
+                        + ctx.number("day_window_count").unwrap_or(0)
+                        > 0,
+                    "all granularities produce windows when range is non-empty",
+                )?;
+                Ok(())
+            },
+        )
+}
+
+#[cfg(feature = "microcrate_date_windows")]
+fn check_partition_contract(
+    windows: &[shiplog_schema::coverage::TimeWindow],
+    since: NaiveDate,
+    until: NaiveDate,
+) -> bool {
+    if windows.is_empty() {
+        return until <= since;
+    }
+
+    if windows.first().unwrap().since != since {
+        return false;
+    }
+    if windows.last().unwrap().until != until {
+        return false;
+    }
+
+    for pair in windows.windows(2) {
+        if pair[0].until != pair[1].since || pair[0].since >= pair[0].until {
+            return false;
+        }
+    }
+
+    windows.last().unwrap().since < windows.last().unwrap().until
+}
+
+#[cfg(feature = "microcrate_date_windows")]
+fn week_internal_boundaries_are_monday(windows: &[shiplog_schema::coverage::TimeWindow]) -> bool {
+    if windows.is_empty() || windows.len() == 1 {
+        return true;
+    }
+
+    windows
+        .iter()
+        .take(windows.len() - 1)
+        .all(|window| window.until.weekday() == chrono::Weekday::Mon)
+}
+
+#[cfg(feature = "microcrate_redaction_repo")]
+/// Scenario: redaction-repo crate keeps public repo redaction contract stable.
+pub fn microcrate_redaction_repo_contract() -> Scenario {
+    Scenario::new("Redaction-repo crate keeps canonical public repo redaction contract stable")
+        .given(
+            "a private repository reference and canonical alias inputs",
+            |ctx| {
+                ctx.strings
+                    .insert("repo_name".to_string(), "acme/top-secret".to_string());
+                ctx.strings.insert(
+                    "repo_url".to_string(),
+                    "https://github.com/acme/top-secret".to_string(),
+                );
+            },
+        )
+        .when(
+            "public repo redaction is applied through the microcrate API",
+            |ctx| {
+                let repo_name = ctx.string("repo_name").unwrap_or("");
+                let repo_url = ctx.string("repo_url").unwrap_or("");
+                let alias = |kind: &str, value: &str| format!("{kind}:{}", value.replace('/', "_"));
+                let repo = shiplog_schema::event::RepoRef {
+                    full_name: repo_name.to_string(),
+                    html_url: Some(repo_url.to_string()),
+                    visibility: shiplog_schema::event::RepoVisibility::Private,
+                };
+                let redacted = redact_repo_public(&repo, &alias);
+
+                ctx.strings
+                    .insert("aliased_name".to_string(), redacted.full_name);
+                ctx.flags
+                    .insert("url_removed".to_string(), redacted.html_url.is_none());
+                ctx.flags.insert(
+                    "visibility_unknown".to_string(),
+                    matches!(
+                        redacted.visibility,
+                        shiplog_schema::event::RepoVisibility::Unknown
+                    ),
+                );
+                Ok(())
+            },
+        )
+        .then(
+            "repo name should be aliased and url/visibility should be sanitized",
+            |ctx| {
+                let aliased_name = crate::bdd::assertions::assert_present(
+                    ctx.string("aliased_name").map(String::from),
+                    "aliased_name",
+                )?;
+                assert_true(
+                    aliased_name == "repo:acme_top-secret",
+                    "canonical repo alias",
+                )?;
+                assert_true(ctx.flag("url_removed").unwrap_or(false), "url removed")?;
+                assert_true(
+                    ctx.flag("visibility_unknown").unwrap_or(false),
+                    "visibility unknown",
+                )
+            },
+        )
 }
 
 #[cfg(feature = "microcrate_validate")]

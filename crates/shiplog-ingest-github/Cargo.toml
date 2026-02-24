@@ -16,6 +16,7 @@ categories = ["web-programming::http-client", "development-tools"]
 [dependencies]
 anyhow.workspace = true
 chrono.workspace = true
+mutants.workspace = true
 reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -25,6 +26,7 @@ shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
 shiplog-ports = { path = "../shiplog-ports", version = "0.2.1" }
 shiplog-coverage = { path = "../shiplog-coverage", version = "0.2.1" }
 shiplog-cache = { path = "../shiplog-cache", version = "0.2.1" }
+shiplog-cache-key = { path = "../shiplog-cache-key", version = "0.2.1" }
 
 [dev-dependencies]
 tempfile.workspace = true

@@ -52,9 +52,25 @@ jobs:
           set +e
           fail=0
           echo "Testing Tier 1: Critical Core crates..."
+          run_mutants_keepalive () {
+            local crate="$1"
+            local timeout="$2"
+
+            echo "Running cargo mutants for ${crate} (timeout=${timeout}s)..."
+            cargo mutants -p "${crate}" --timeout "${timeout}" --copy-target=false &
+            local pid=$!
+
+            # GitHub Actions kills steps that produce no output for ~10 minutes.
+            while kill -0 "${pid}" 2>/dev/null; do
+              echo "...still running: cargo mutants -p ${crate}"
+              sleep 60
+            done
+
+            wait "${pid}"
+          }
           cargo mutants -p shiplog-schema --timeout 180 --copy-target=false || fail=1
           cargo mutants -p shiplog-redact --timeout 180 --copy-target=false || fail=1
-          cargo mutants -p shiplog-coverage --timeout 300 --copy-target=false || fail=1
+          run_mutants_keepalive shiplog-coverage 600 || fail=1
           cargo mutants -p shiplog-ids --timeout 120 --copy-target=false || fail=1
           exit $fail
 

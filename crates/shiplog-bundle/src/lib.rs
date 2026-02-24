@@ -335,6 +335,30 @@ mod tests {
     }
 
     #[test]
+    fn sha256_file_known_digest() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("hello.txt");
+        std::fs::write(&path, "hello world").unwrap();
+        let digest = sha256_file(&path).unwrap();
+        assert_eq!(
+            digest,
+            "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9"
+        );
+    }
+
+    #[test]
+    fn sha256_file_empty_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("empty.txt");
+        std::fs::write(&path, "").unwrap();
+        let digest = sha256_file(&path).unwrap();
+        assert_eq!(
+            digest,
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        );
+    }
+
+    #[test]
     fn zip_respects_profile() {
         let dir = tempfile::tempdir().unwrap();
         make_test_dir(dir.path());

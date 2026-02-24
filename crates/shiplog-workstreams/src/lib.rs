@@ -400,6 +400,145 @@ mod tests {
         assert_eq!(loaded.workstreams[0].title, "Curated");
     }
 
+    /// Helper to create a Review-kind event for a given repo.
+    fn make_review_event(repo_name: &str, event_id: &str) -> EventEnvelope {
+        EventEnvelope {
+            id: EventId::from_parts(["review", event_id]),
+            kind: EventKind::Review,
+            occurred_at: Utc::now(),
+            actor: Actor {
+                login: "reviewer".into(),
+                id: None,
+            },
+            repo: RepoRef {
+                full_name: repo_name.into(),
+                html_url: None,
+                visibility: RepoVisibility::Unknown,
+            },
+            payload: EventPayload::Review(ReviewEvent {
+                pull_number: 1,
+                pull_title: "Reviewed PR".into(),
+                submitted_at: Utc::now(),
+                state: "approved".into(),
+                window: None,
+            }),
+            tags: vec![],
+            links: vec![],
+            source: SourceRef {
+                system: SourceSystem::Unknown,
+                url: None,
+                opaque_id: None,
+            },
+        }
+    }
+
+    /// Helper to create a Manual-kind event for a given repo.
+    fn make_manual_event(repo_name: &str, event_id: &str) -> EventEnvelope {
+        EventEnvelope {
+            id: EventId::from_parts(["manual", event_id]),
+            kind: EventKind::Manual,
+            occurred_at: Utc::now(),
+            actor: Actor {
+                login: "user".into(),
+                id: None,
+            },
+            repo: RepoRef {
+                full_name: repo_name.into(),
+                html_url: None,
+                visibility: RepoVisibility::Unknown,
+            },
+            payload: EventPayload::Manual(ManualEvent {
+                event_type: ManualEventType::Note,
+                title: "Manual work".into(),
+                description: None,
+                started_at: None,
+                ended_at: None,
+                impact: None,
+            }),
+            tags: vec![],
+            links: vec![],
+            source: SourceRef {
+                system: SourceSystem::Manual,
+                url: None,
+                opaque_id: None,
+            },
+        }
+    }
+
+    #[test]
+    fn review_receipts_capped_at_5() {
+        // 10 Review events in one repo. The `< 5` guard means only 5 get added as receipts.
+        let events: Vec<EventEnvelope> = (0..10)
+            .map(|i| make_review_event("o/reviews", &format!("r{i}")))
+            .collect();
+        let ws = RepoClusterer.cluster(&events).unwrap();
+        assert_eq!(ws.workstreams.len(), 1);
+        assert_eq!(ws.workstreams[0].receipts.len(), 5);
+    }
+
+    #[test]
+    fn manual_receipts_capped_at_7() {
+        // 10 Manual events in one repo. The `< 7` guard means only 7 get added as receipts.
+        let events: Vec<EventEnvelope> = (0..10)
+            .map(|i| make_manual_event("o/manuals", &format!("m{i}")))
+            .collect();
+        let ws = RepoClusterer.cluster(&events).unwrap();
+        assert_eq!(ws.workstreams.len(), 1);
+        assert_eq!(ws.workstreams[0].receipts.len(), 7);
+    }
+
+    #[test]
+    fn pr_receipts_always_added() {
+        // PR events always get added as receipts (no cap besides the final truncate(10)).
+        let events: Vec<EventEnvelope> = (0..10)
+            .map(|i| make_test_event("o/prs", &format!("p{i}")))
+            .collect();
+        let ws = RepoClusterer.cluster(&events).unwrap();
+        assert_eq!(ws.workstreams.len(), 1);
+        // All 10 PRs added, then truncated to 10 → exactly 10
+        assert_eq!(ws.workstreams[0].receipts.len(), 10);
+    }
+
+    #[test]
+    fn write_suggested_creates_file() {
+        let temp = tempfile::tempdir().unwrap();
+        let out_dir = temp.path();
+        let ws = WorkstreamsFile {
+            version: 1,
+            generated_at: Utc::now(),
+            workstreams: vec![],
+        };
+        WorkstreamManager::write_suggested(out_dir, &ws).unwrap();
+        assert!(out_dir.join("workstreams.suggested.yaml").exists());
+    }
+
+    #[test]
+    fn has_curated_returns_false_when_missing() {
+        let temp = tempfile::tempdir().unwrap();
+        assert!(!WorkstreamManager::has_curated(temp.path()));
+    }
+
+    #[test]
+    fn has_curated_returns_true_when_present() {
+        let temp = tempfile::tempdir().unwrap();
+        std::fs::write(temp.path().join("workstreams.yaml"), "version: 1\n").unwrap();
+        assert!(WorkstreamManager::has_curated(temp.path()));
+    }
+
+    #[test]
+    fn curated_path_has_correct_filename() {
+        let temp = tempfile::tempdir().unwrap();
+        let p = WorkstreamManager::curated_path(temp.path());
+        assert_eq!(p.file_name().unwrap(), "workstreams.yaml");
+    }
+
+    #[test]
+    fn suggested_path_has_correct_filename() {
+        let temp = tempfile::tempdir().unwrap();
+        let p = WorkstreamManager::suggested_path(temp.path());
+        assert_eq!(p.file_name().unwrap(), "workstreams.suggested.yaml");
+    }
+
     #[test]
     fn workstream_manager_generates_when_missing() {
         let temp = tempfile::tempdir().unwrap();

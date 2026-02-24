@@ -1,0 +1,26 @@
+[package]
+name = "shiplog-redaction-projector"
+version = "0.2.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Profile-string projection dispatcher for shiplog redaction policy."
+readme = "README.md"
+documentation = "https://docs.rs/shiplog-redaction-projector"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["redaction", "profile", "projection", "policy", "dispatch"]
+categories = ["development-tools", "text-processing"]
+
+[dependencies]
+shiplog-redaction-policy = { path = "../shiplog-redaction-policy", version = "0.2.1" }
+shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
+
+[dev-dependencies]
+chrono.workspace = true
+proptest.workspace = true
+serde_json.workspace = true
+shiplog-alias = { path = "../shiplog-alias", version = "0.2.1" }
+shiplog-ids = { path = "../shiplog-ids", version = "0.2.1" }
+shiplog-testkit = { path = "../shiplog-testkit", version = "0.2.1" }

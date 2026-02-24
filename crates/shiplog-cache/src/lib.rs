@@ -4,10 +4,11 @@
 //! repeated runs. Cache entries are keyed by URL and include TTL support.
 
 use anyhow::{Context, Result};
-use chrono::{Duration, Utc};
+use chrono::Duration;
 use rusqlite::{Connection, OptionalExtension, params};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
+use shiplog_cache_expiry::{CacheExpiryWindow, now_rfc3339};
 use std::path::Path;
 
 /// Cache for GitHub API responses.
@@ -86,14 +87,14 @@ impl ApiCache {
 
     /// Get a cached value if it exists and hasn't expired.
     pub fn get<T: DeserializeOwned>(&self, key: &str) -> Result<Option<T>> {
-        let now = Utc::now();
+        let now = now_rfc3339();
 
         let row: Option<String> = self
             .conn
             .query_row(
                 "SELECT data FROM cache_entries
                  WHERE key = ?1 AND expires_at > ?2",
-                params![key, now.to_rfc3339()],
+                params![key, now],
                 |row| row.get(0),
             )
             .optional()?;
@@ -115,15 +116,19 @@ impl ApiCache {
 
     /// Store a value with a custom TTL.
     pub fn set_with_ttl<T: Serialize>(&self, key: &str, value: &T, ttl: Duration) -> Result<()> {
-        let now = Utc::now();
-        let expires = now + ttl;
+        let window = CacheExpiryWindow::from_now(ttl);
         let data = serde_json::to_string(value)
             .with_context(|| format!("serialize value for key: {key}"))?;
 
         self.conn.execute(
             "INSERT OR REPLACE INTO cache_entries (key, data, cached_at, expires_at)
              VALUES (?1, ?2, ?3, ?4)",
-            params![key, data, now.to_rfc3339(), expires.to_rfc3339()],
+            params![
+                key,
+                data,
+                window.cached_at_rfc3339(),
+                window.expires_at_rfc3339()
+            ],
         )?;
 
         Ok(())
@@ -131,12 +136,12 @@ impl ApiCache {
 
     /// Check if a key exists and hasn't expired.
     pub fn contains(&self, key: &str) -> Result<bool> {
-        let now = Utc::now();
+        let now = now_rfc3339();
 
         let count: i64 = self.conn.query_row(
             "SELECT COUNT(*) FROM cache_entries 
                  WHERE key = ?1 AND expires_at > ?2",
-            params![key, now.to_rfc3339()],
+            params![key, now],
             |row| row.get(0),
         )?;
 
@@ -145,11 +150,11 @@ impl ApiCache {
 
     /// Remove expired entries from the cache.
     pub fn cleanup_expired(&self) -> Result<usize> {
-        let now = Utc::now();
+        let now = now_rfc3339();
 
         let deleted = self.conn.execute(
             "DELETE FROM cache_entries WHERE expires_at <= ?1",
-            params![now.to_rfc3339()],
+            params![now],
         )?;
 
         Ok(deleted)
@@ -163,7 +168,7 @@ impl ApiCache {
 
     /// Get cache statistics.
     pub fn stats(&self) -> Result<CacheStats> {
-        let now = Utc::now();
+        let now = now_rfc3339();
 
         let total: i64 = self
             .conn
@@ -171,11 +176,9 @@ impl ApiCache {
 
         let expired: i64 = self.conn.query_row(
             "SELECT COUNT(*) FROM cache_entries WHERE expires_at <= ?1",
-            params![now.to_rfc3339()],
+            params![now],
             |row| row.get(0),
         )?;
-
-        let _valid_entries = (total - expired) as usize;
 
         // Calculate cache size in bytes
         let size_bytes: i64 =
@@ -184,73 +187,12 @@ impl ApiCache {
                     Ok(row.get::<_, Option<i64>>(0).unwrap_or(Some(0)).unwrap_or(0))
                 })?;
 
-        // Format cache size
-        let size_mb = if size_bytes > 0 {
-            size_bytes / (1024 * 1024)
-        } else {
-            0
-        };
-
-        Ok(CacheStats {
-            total_entries: total as usize,
-            expired_entries: expired as usize,
-            valid_entries: (total - expired) as usize,
-            cache_size_mb: size_mb as u64,
-        })
+        Ok(CacheStats::from_raw_counts(total, expired, size_bytes))
     }
 }
 
-/// Cache statistics.
-#[derive(Debug, Clone, Copy)]
-pub struct CacheStats {
-    pub total_entries: usize,
-    pub expired_entries: usize,
-    pub valid_entries: usize,
-    pub cache_size_mb: u64,
-}
-
-/// Cache key builder for GitHub API requests.
-pub struct CacheKey;
-
-impl CacheKey {
-    /// Create a key for a search query.
-    pub fn search(query: &str, page: u32, per_page: u32) -> String {
-        format!(
-            "search:{}:page{}:per{}",
-            Self::hash_query(query),
-            page,
-            per_page
-        )
-    }
-
-    /// Create a key for PR details.
-    pub fn pr_details(pr_api_url: &str) -> String {
-        format!("pr:details:{}", pr_api_url)
-    }
-
-    /// Create a key for PR reviews.
-    pub fn pr_reviews(pr_api_url: &str, page: u32) -> String {
-        format!("pr:reviews:{}:page{}", pr_api_url, page)
-    }
-
-    /// Create a key for GitLab MR notes.
-    pub fn mr_notes(project_id: u64, mr_iid: u64, page: u32) -> String {
-        format!(
-            "gitlab:mr:notes:project{}:mr{}:page{}",
-            project_id, mr_iid, page
-        )
-    }
-
-    fn hash_query(query: &str) -> String {
-        // Use a simple hash for the query to keep keys reasonably sized
-        use std::collections::hash_map::DefaultHasher;
-        use std::hash::{Hash, Hasher};
-
-        let mut hasher = DefaultHasher::new();
-        query.hash(&mut hasher);
-        format!("{:x}", hasher.finish())
-    }
-}
+pub use shiplog_cache_key::CacheKey;
+pub use shiplog_cache_stats::CacheStats;
 
 #[cfg(test)]
 mod tests {
@@ -391,5 +333,31 @@ mod tests {
 
         // Now should be in cache
         assert!(cache.contains("key1").unwrap());
+    }
+
+    #[test]
+    fn cache_key_reexport_matches_contract() {
+        let details = CacheKey::pr_details("https://api.github.com/repos/o/r/pulls/1");
+        let reviews = CacheKey::pr_reviews("https://api.github.com/repos/o/r/pulls/1", 2);
+        let notes = CacheKey::mr_notes(12, 34, 1);
+
+        assert_eq!(
+            details,
+            "pr:details:https://api.github.com/repos/o/r/pulls/1"
+        );
+        assert_eq!(
+            reviews,
+            "pr:reviews:https://api.github.com/repos/o/r/pulls/1:page2"
+        );
+        assert_eq!(notes, "gitlab:mr:notes:project12:mr34:page1");
+    }
+
+    #[test]
+    fn cache_stats_reexport_matches_contract() {
+        let stats = CacheStats::from_raw_counts(5, 2, 2 * 1024 * 1024 + 77);
+        assert_eq!(stats.total_entries, 5);
+        assert_eq!(stats.expired_entries, 2);
+        assert_eq!(stats.valid_entries, 3);
+        assert_eq!(stats.cache_size_mb, 2);
     }
 }

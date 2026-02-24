@@ -4,35 +4,15 @@
 //! generation backed by keyed hashing and optional alias cache persistence.
 
 use anyhow::Result;
-use serde::{Deserialize, Serialize};
 use shiplog_alias::DeterministicAliasStore;
 use shiplog_ports::Redactor;
-use shiplog_schema::event::{EventEnvelope, EventPayload, RepoRef, RepoVisibility};
-use shiplog_schema::workstream::{Workstream, WorkstreamsFile};
+use shiplog_redaction_projector::{project_events_with_aliases, project_workstreams_with_aliases};
+use shiplog_schema::event::EventEnvelope;
+use shiplog_schema::workstream::WorkstreamsFile;
 use std::path::{Path, PathBuf};
 
 pub use shiplog_alias::CACHE_FILENAME;
-
-/// Rendering profiles.
-///
-/// The tool produces multiple projections from the same ledger.
-/// Think of them as lenses, not forks.
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
-pub enum RedactionProfile {
-    Internal,
-    Manager,
-    Public,
-}
-
-impl RedactionProfile {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            RedactionProfile::Internal => "internal",
-            RedactionProfile::Manager => "manager",
-            RedactionProfile::Public => "public",
-        }
-    }
-}
+pub use shiplog_redaction_projector::RedactionProfile;
 
 /// Deterministic redactor.
 ///
@@ -69,118 +49,12 @@ impl DeterministicRedactor {
     fn alias(&self, kind: &str, value: &str) -> String {
         self.aliases.alias(kind, value)
     }
-
-    fn redact_repo_public(&self, repo: &RepoRef) -> RepoRef {
-        RepoRef {
-            full_name: self.alias("repo", &repo.full_name),
-            html_url: None,
-            visibility: RepoVisibility::Unknown,
-        }
-    }
-
-    fn redact_event_public(&self, mut ev: EventEnvelope) -> EventEnvelope {
-        ev.repo = self.redact_repo_public(&ev.repo);
-
-        // Titles leak. Strip.
-        match &mut ev.payload {
-            EventPayload::PullRequest(pr) => {
-                pr.title = "[redacted]".to_string();
-                pr.touched_paths_hint.clear();
-            }
-            EventPayload::Review(r) => {
-                r.pull_title = "[redacted]".to_string();
-            }
-            EventPayload::Manual(m) => {
-                // Manual events: redact title and description
-                m.title = "[redacted]".to_string();
-                m.description = None;
-                m.impact = None;
-            }
-        }
-
-        // Links leak. Strip.
-        ev.links.clear();
-
-        // Source url leaks.
-        ev.source.url = None;
-
-        ev
-    }
-
-    fn redact_workstream_public(&self, mut ws: Workstream) -> Workstream {
-        ws.title = self.alias("ws", &ws.title);
-        ws.summary = None;
-        ws.tags.retain(|t| t != "repo");
-        ws
-    }
-
-    /// Redact an event for manager view.
-    ///
-    /// Manager view is a middle ground:
-    /// - Keep titles and repo names (managers need context)
-    /// - Remove sensitive details (touched_paths, descriptions)
-    /// - Remove links (might contain external references)
-    /// - Keep source URLs (internal org use)
-    fn redact_event_manager(&self, mut ev: EventEnvelope) -> EventEnvelope {
-        match &mut ev.payload {
-            EventPayload::PullRequest(pr) => {
-                // Remove path hints (sensitive) but keep title
-                pr.touched_paths_hint.clear();
-            }
-            EventPayload::Review(_) => {
-                // Reviews are fine as-is
-            }
-            EventPayload::Manual(m) => {
-                // Keep title but remove detailed descriptions
-                m.description = None;
-                m.impact = None;
-            }
-        }
-
-        // Remove links (might contain external references)
-        ev.links.clear();
-
-        // Keep source URL for internal debugging
-
-        ev
-    }
-
-    /// Redact a workstream for manager view.
-    ///
-    /// Keep titles readable but remove summaries (might contain sensitive details).
-    fn redact_workstream_manager(&self, mut ws: Workstream) -> Workstream {
-        ws.summary = None;
-        // Keep all tags for context
-        ws
-    }
 }
 
 impl Redactor for DeterministicRedactor {
     fn redact_events(&self, events: &[EventEnvelope], profile: &str) -> Result<Vec<EventEnvelope>> {
-        let p = match profile {
-            "internal" => RedactionProfile::Internal,
-            "manager" => RedactionProfile::Manager,
-            _ => RedactionProfile::Public,
-        };
-
-        let out = match p {
-            RedactionProfile::Internal => events.to_vec(),
-            RedactionProfile::Manager => {
-                // Manager view: keep titles/repo names but remove sensitive details
-                events
-                    .iter()
-                    .cloned()
-                    .map(|e| self.redact_event_manager(e))
-                    .collect()
-            }
-            RedactionProfile::Public => events
-                .iter()
-                .cloned()
-                .map(|e| self.redact_event_public(e))
-                .collect(),
-        };
-
-        Ok(out)
+        let aliases = |kind: &str, value: &str| self.alias(kind, value);
+        Ok(project_events_with_aliases(events, profile, &aliases))
     }
 
     fn redact_workstreams(
@@ -188,35 +62,12 @@ impl Redactor for DeterministicRedactor {
         workstreams: &WorkstreamsFile,
         profile: &str,
     ) -> Result<WorkstreamsFile> {
-        let p = match profile {
-            "internal" => RedactionProfile::Internal,
-            "manager" => RedactionProfile::Manager,
-            _ => RedactionProfile::Public,
-        };
-
-        let out = match p {
-            RedactionProfile::Internal => workstreams.clone(),
-            RedactionProfile::Manager => WorkstreamsFile {
-                workstreams: workstreams
-                    .workstreams
-                    .iter()
-                    .cloned()
-                    .map(|ws| self.redact_workstream_manager(ws))
-                    .collect(),
-                ..workstreams.clone()
-            },
-            RedactionProfile::Public => WorkstreamsFile {
-                workstreams: workstreams
-                    .workstreams
-                    .iter()
-                    .cloned()
-                    .map(|ws| self.redact_workstream_public(ws))
-                    .collect(),
-                ..workstreams.clone()
-            },
-        };
-
-        Ok(out)
+        let aliases = |kind: &str, value: &str| self.alias(kind, value);
+        Ok(project_workstreams_with_aliases(
+            workstreams,
+            profile,
+            &aliases,
+        ))
     }
 }
 
@@ -227,6 +78,7 @@ mod tests {
     use proptest::prelude::*;
     use shiplog_ids::EventId;
     use shiplog_schema::event::*;
+    use shiplog_schema::workstream::Workstream;
 
     proptest! {
         #[test]

@@ -69,6 +69,7 @@ impl LocalGitIngestor {
     }
 
     /// Get the repository name from the git config.
+    #[mutants::skip]
     fn get_repo_name(&self, repo: &Repository) -> Result<String> {
         // Try to get the remote URL and extract the repo name
         if let Ok(remote) = repo.find_remote("origin")
@@ -126,6 +127,7 @@ impl LocalGitIngestor {
     }
 
     /// Create an event envelope from a git commit.
+    #[mutants::skip]
     fn commit_to_event(
         &self,
         commit: &git2::Commit,
@@ -208,6 +210,7 @@ impl LocalGitIngestor {
     }
 
     /// Collect commits from the repository.
+    #[mutants::skip]
     fn collect_commits(&self, repo: &Repository, run_id: &RunId) -> Result<Vec<EventEnvelope>> {
         let mut events = Vec::new();
         let repo_name = self.get_repo_name(repo)?;

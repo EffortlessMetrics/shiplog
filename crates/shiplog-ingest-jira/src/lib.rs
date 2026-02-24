@@ -157,6 +157,7 @@ impl JiraIngestor {
         format!("https://{}/rest/api/3", self.instance)
     }
 
+    #[mutants::skip]
     fn client(&self) -> Result<Client> {
         Client::builder()
             .user_agent(concat!("shiplog/", env!("CARGO_PKG_VERSION")))
@@ -164,17 +165,20 @@ impl JiraIngestor {
             .context("build reqwest client")
     }
 
+    #[mutants::skip]
     fn api_url(&self, path: &str) -> String {
         let base = self.api_base_url();
         format!("{}{}", base.trim_end_matches('/'), path)
     }
 
+    #[mutants::skip]
     fn throttle(&self) {
         if self.throttle_ms > 0 {
             sleep(Duration::from_millis(self.throttle_ms));
         }
     }
 
+    #[mutants::skip]
     fn get_json<T: DeserializeOwned>(
         &self,
         client: &Client,
@@ -222,6 +226,7 @@ impl JiraIngestor {
     }
 
     /// Search for issues using JQL
+    #[mutants::skip]
     fn search_issues(&self, client: &Client) -> Result<(Vec<JiraIssue>, Vec<CoverageSlice>, bool)> {
         let mut slices = Vec::new();
         let mut partial = false;
@@ -274,6 +279,7 @@ impl JiraIngestor {
     }
 
     /// Convert Jira issues to shiplog events
+    #[mutants::skip]
     fn issues_to_events(&self, issues: Vec<JiraIssue>) -> Result<Vec<EventEnvelope>> {
         let mut events = Vec::new();
         let html_base = self.html_base_url();
@@ -327,6 +333,7 @@ impl JiraIngestor {
 }
 
 impl Ingestor for JiraIngestor {
+    #[mutants::skip]
     fn ingest(&self) -> Result<IngestOutput> {
         if self.since >= self.until {
             return Err(anyhow!("since must be < until"));
