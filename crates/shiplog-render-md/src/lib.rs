@@ -214,7 +214,7 @@ fn render_receipts(out: &mut String, events: &[EventEnvelope], workstreams: &Wor
         } else {
             for id in &main_receipts {
                 if let Some(ev) = by_id.get(&id.0) {
-                    out.push_str(&format!("- {}\n", format_receipt_markdown(ev)));
+                    out.push_str(&format!("{}\n", format_receipt_markdown(ev)));
                 }
             }
             if !appendix_receipts.is_empty() {
@@ -313,7 +313,7 @@ fn render_appendix(out: &mut String, events: &[EventEnvelope], workstreams: &Wor
         // Show all events for this workstream, not just receipts
         for event_id in &ws.events {
             if let Some(ev) = by_id.get(&event_id.0) {
-                out.push_str(&format!("- {}\n", format_receipt_markdown(ev)));
+                out.push_str(&format!("{}\n", format_receipt_markdown(ev)));
             }
         }
         out.push('\n');
