@@ -251,10 +251,7 @@ fn import_missing_dir_fails() {
         .output()
         .expect("failed to run shiplog import");
 
-    assert!(
-        !out.status.success(),
-        "import from missing dir should fail"
-    );
+    assert!(!out.status.success(), "import from missing dir should fail");
 }
 
 // ── error cases ─────────────────────────────────────────────────────────────

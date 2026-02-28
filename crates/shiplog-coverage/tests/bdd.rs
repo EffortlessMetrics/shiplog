@@ -4,12 +4,10 @@
 
 use chrono::NaiveDate;
 use shiplog_coverage::{day_windows, month_windows, window_len_days};
-use shiplog_schema::coverage::{
-    Completeness, CoverageSlice, TimeWindow,
-};
+use shiplog_schema::coverage::{Completeness, CoverageSlice, TimeWindow};
+use shiplog_testkit::bdd::Scenario;
 use shiplog_testkit::bdd::assertions::*;
 use shiplog_testkit::bdd::builders::CoverageBuilder;
-use shiplog_testkit::bdd::Scenario;
 
 // ============================================================================
 // Scenario: Complete coverage shows 100% completeness
@@ -46,7 +44,8 @@ fn complete_coverage_with_all_receipts() {
 
             let all_complete = slices.iter().all(|s| s.fetched == s.total_count);
             ctx.flags.insert("all_complete".into(), all_complete);
-            ctx.numbers.insert("slice_count".into(), slices.len() as u64);
+            ctx.numbers
+                .insert("slice_count".into(), slices.len() as u64);
             Ok(())
         })
         .then("completeness should be Complete", |ctx| {
@@ -74,8 +73,10 @@ fn complete_manifest_has_no_warnings() {
                 .completeness(Completeness::Complete)
                 .build();
 
-            ctx.flags.insert("has_warnings".into(), !manifest.warnings.is_empty());
-            ctx.numbers.insert("warning_count".into(), manifest.warnings.len() as u64);
+            ctx.flags
+                .insert("has_warnings".into(), !manifest.warnings.is_empty());
+            ctx.numbers
+                .insert("warning_count".into(), manifest.warnings.len() as u64);
             Ok(())
         })
         .then("there should be zero warnings", |ctx| {
@@ -97,10 +98,13 @@ fn missing_receipts_flagged_as_partial() {
             ctx.strings.insert("since".into(), "2025-01-01".into());
             ctx.strings.insert("until".into(), "2025-02-01".into());
         })
-        .given("the query returned 50 total but only 30 were fetched", |ctx| {
-            ctx.numbers.insert("total_count".into(), 50);
-            ctx.numbers.insert("fetched".into(), 30);
-        })
+        .given(
+            "the query returned 50 total but only 30 were fetched",
+            |ctx| {
+                ctx.numbers.insert("total_count".into(), 50);
+                ctx.numbers.insert("fetched".into(), 30);
+            },
+        )
         .when("the coverage slice is evaluated", |ctx| {
             let total = ctx.number("total_count").unwrap_or(0);
             let fetched = ctx.number("fetched").unwrap_or(0);
@@ -147,10 +151,14 @@ fn warnings_capture_specific_missing_items() {
 
             ctx.numbers
                 .insert("warning_count".into(), manifest.warnings.len() as u64);
-            ctx.flags
-                .insert("has_pr_42".into(), manifest.warnings.iter().any(|w| w.contains("PR #42")));
-            ctx.flags
-                .insert("has_pr_99".into(), manifest.warnings.iter().any(|w| w.contains("PR #99")));
+            ctx.flags.insert(
+                "has_pr_42".into(),
+                manifest.warnings.iter().any(|w| w.contains("PR #42")),
+            );
+            ctx.flags.insert(
+                "has_pr_99".into(),
+                manifest.warnings.iter().any(|w| w.contains("PR #99")),
+            );
             Ok(())
         })
         .then("two warnings should be present", |ctx| {
@@ -158,16 +166,10 @@ fn warnings_capture_specific_missing_items() {
             assert_eq(count, 2, "warning count")
         })
         .then("PR #42 warning should be included", |ctx| {
-            assert_true(
-                ctx.flag("has_pr_42").unwrap_or(false),
-                "PR #42 in warnings",
-            )
+            assert_true(ctx.flag("has_pr_42").unwrap_or(false), "PR #42 in warnings")
         })
         .then("PR #99 warning should be included", |ctx| {
-            assert_true(
-                ctx.flag("has_pr_99").unwrap_or(false),
-                "PR #99 in warnings",
-            )
+            assert_true(ctx.flag("has_pr_99").unwrap_or(false), "PR #99 in warnings")
         })
         .run()
         .expect("warnings scenario should pass");
@@ -194,7 +196,8 @@ fn slice_notes_document_why_incomplete() {
                 notes: vec![note],
             };
 
-            ctx.numbers.insert("note_count".into(), slice.notes.len() as u64);
+            ctx.numbers
+                .insert("note_count".into(), slice.notes.len() as u64);
             ctx.flags.insert(
                 "note_explains_limit".into(),
                 slice.notes.iter().any(|n| n.contains("limit")),
@@ -231,7 +234,8 @@ fn date_filtering_with_day_windows() {
             let until = NaiveDate::from_ymd_opt(2025, 3, 17).unwrap();
             let windows = day_windows(since, until);
 
-            ctx.numbers.insert("window_count".into(), windows.len() as u64);
+            ctx.numbers
+                .insert("window_count".into(), windows.len() as u64);
             ctx.flags.insert(
                 "all_one_day".into(),
                 windows.iter().all(|w| window_len_days(w) == 1),
@@ -274,7 +278,8 @@ fn date_filtering_with_month_windows_mid_month() {
             let until = NaiveDate::from_ymd_opt(2025, 3, 15).unwrap();
             let windows = month_windows(since, until);
 
-            ctx.numbers.insert("window_count".into(), windows.len() as u64);
+            ctx.numbers
+                .insert("window_count".into(), windows.len() as u64);
             ctx.flags.insert(
                 "starts_at_since".into(),
                 windows.first().is_some_and(|w| w.since == since),
@@ -296,10 +301,7 @@ fn date_filtering_with_month_windows_mid_month() {
             )
         })
         .then("last window should end at until date", |ctx| {
-            assert_true(
-                ctx.flag("ends_at_until").unwrap_or(false),
-                "ends at until",
-            )
+            assert_true(ctx.flag("ends_at_until").unwrap_or(false), "ends at until")
         })
         .run()
         .expect("month windows mid-month scenario should pass");
@@ -380,7 +382,8 @@ fn coverage_manifest_roundtrip_preserves_sources() {
                 "has_github_source".into(),
                 manifest.sources.contains(&"github".to_string()),
             );
-            ctx.strings.insert("mode_actual".into(), manifest.mode.clone());
+            ctx.strings
+                .insert("mode_actual".into(), manifest.mode.clone());
             Ok(())
         })
         .then("github should be listed as a source", |ctx| {

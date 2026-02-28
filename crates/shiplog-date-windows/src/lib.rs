@@ -302,10 +302,7 @@ mod tests {
     #[test]
     fn window_len_days_zero_for_same_dates() {
         let d = NaiveDate::from_ymd_opt(2025, 1, 1).unwrap();
-        let w = TimeWindow {
-            since: d,
-            until: d,
-        };
+        let w = TimeWindow { since: d, until: d };
         assert_eq!(window_len_days(&w), 0);
     }
 

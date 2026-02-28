@@ -14,9 +14,12 @@ fn given_realistic_events(ctx: &mut ScenarioContext) {
     let jsonl_path = dir.path().join("events.jsonl");
     write_events_jsonl(&jsonl_path, &events).unwrap();
 
-    ctx.strings
-        .insert("jsonl_text".into(), std::fs::read_to_string(&jsonl_path).unwrap());
-    ctx.numbers.insert("event_count".into(), events.len() as u64);
+    ctx.strings.insert(
+        "jsonl_text".into(),
+        std::fs::read_to_string(&jsonl_path).unwrap(),
+    );
+    ctx.numbers
+        .insert("event_count".into(), events.len() as u64);
     ctx.paths.insert("tmp_dir".into(), dir.keep());
 }
 
@@ -42,9 +45,15 @@ fn then_all_lines_are_valid_json(ctx: &ScenarioContext) -> Result<(), String> {
 #[test]
 fn bdd_json_output_is_valid_json() {
     Scenario::new("JSON output is valid JSON")
-        .given("a realistic set of PR events written to JSONL", given_realistic_events)
+        .given(
+            "a realistic set of PR events written to JSONL",
+            given_realistic_events,
+        )
         .when("each line is parsed as JSON", when_each_line_is_parsed)
-        .then("all lines are valid EventEnvelopes", then_all_lines_are_valid_json)
+        .then(
+            "all lines are valid EventEnvelopes",
+            then_all_lines_are_valid_json,
+        )
         .run()
         .expect("JSONL output should contain valid JSON on every line");
 }
@@ -60,10 +69,13 @@ fn given_numbered_events(ctx: &mut ScenarioContext) {
     write_events_jsonl(&jsonl_path, &events).unwrap();
 
     let ids: Vec<String> = events.iter().map(|e| e.id.to_string()).collect();
-    ctx.strings
-        .insert("jsonl_text".into(), std::fs::read_to_string(&jsonl_path).unwrap());
+    ctx.strings.insert(
+        "jsonl_text".into(),
+        std::fs::read_to_string(&jsonl_path).unwrap(),
+    );
     ctx.strings.insert("expected_ids".into(), ids.join(","));
-    ctx.numbers.insert("event_count".into(), events.len() as u64);
+    ctx.numbers
+        .insert("event_count".into(), events.len() as u64);
     ctx.paths.insert("tmp_dir".into(), dir.keep());
 }
 
@@ -71,8 +83,8 @@ fn when_output_is_read(ctx: &mut ScenarioContext) -> Result<(), String> {
     let text = ctx.string("jsonl_text").ok_or("missing jsonl_text")?;
     let mut found_ids = Vec::new();
     for (i, line) in text.lines().enumerate() {
-        let ev: EventEnvelope = serde_json::from_str(line)
-            .map_err(|e| format!("line {i} parse error: {e}"))?;
+        let ev: EventEnvelope =
+            serde_json::from_str(line).map_err(|e| format!("line {i} parse error: {e}"))?;
         found_ids.push(ev.id.to_string());
     }
     ctx.strings.insert("found_ids".into(), found_ids.join(","));
@@ -105,8 +117,14 @@ fn bdd_all_events_appear_in_output() {
     Scenario::new("All events appear in output")
         .given("10 numbered PR events", given_numbered_events)
         .when("the JSONL output is read back", when_output_is_read)
-        .then("every event ID is present in order", then_all_event_ids_are_present)
-        .then("the line count matches the event count", then_line_count_matches)
+        .then(
+            "every event ID is present in order",
+            then_all_event_ids_are_present,
+        )
+        .then(
+            "the line count matches the event count",
+            then_line_count_matches,
+        )
         .run()
         .expect("all events should appear in the JSONL output");
 }
@@ -129,7 +147,10 @@ fn given_coverage_manifest(ctx: &mut ScenarioContext) {
 }
 
 fn when_manifest_is_parsed(ctx: &mut ScenarioContext) -> Result<(), String> {
-    let text = ctx.string("manifest_text").ok_or("missing manifest_text")?.to_owned();
+    let text = ctx
+        .string("manifest_text")
+        .ok_or("missing manifest_text")?
+        .to_owned();
     let manifest: CoverageManifest =
         serde_json::from_str(&text).map_err(|e| format!("manifest parse error: {e}"))?;
     ctx.strings
@@ -149,7 +170,9 @@ fn then_user_field_matches(ctx: &ScenarioContext) -> Result<(), String> {
     let expected = ctx.string("expected_user").ok_or("missing expected_user")?;
     let actual = ctx.string("parsed_user").ok_or("missing parsed_user")?;
     if expected != actual {
-        return Err(format!("user mismatch: expected '{expected}', got '{actual}'"));
+        return Err(format!(
+            "user mismatch: expected '{expected}', got '{actual}'"
+        ));
     }
     Ok(())
 }
@@ -158,7 +181,9 @@ fn then_mode_field_matches(ctx: &ScenarioContext) -> Result<(), String> {
     let expected = ctx.string("expected_mode").ok_or("missing expected_mode")?;
     let actual = ctx.string("parsed_mode").ok_or("missing parsed_mode")?;
     if expected != actual {
-        return Err(format!("mode mismatch: expected '{expected}', got '{actual}'"));
+        return Err(format!(
+            "mode mismatch: expected '{expected}', got '{actual}'"
+        ));
     }
     Ok(())
 }
@@ -182,7 +207,10 @@ fn then_completeness_is_set(ctx: &ScenarioContext) -> Result<(), String> {
 #[test]
 fn bdd_manifest_fields_are_populated() {
     Scenario::new("Manifest fields are populated")
-        .given("a complete coverage manifest for user bob", given_coverage_manifest)
+        .given(
+            "a complete coverage manifest for user bob",
+            given_coverage_manifest,
+        )
         .when("the manifest JSON is parsed", when_manifest_is_parsed)
         .then("the user field matches", then_user_field_matches)
         .then("the mode field matches", then_mode_field_matches)

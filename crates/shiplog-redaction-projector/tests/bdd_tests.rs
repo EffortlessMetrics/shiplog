@@ -241,11 +241,7 @@ fn then_internal_profile_preserves_all_fields(ctx: &ScenarioContext) -> Result<(
         "Top secret launch plan",
         "internal events keeps pr title",
     )?;
-    assert_contains(
-        events_json,
-        "acme/top-secret",
-        "internal events keeps repo",
-    )?;
+    assert_contains(events_json, "acme/top-secret", "internal events keeps repo")?;
     assert_contains(
         events_json,
         "Sensitive root cause details",

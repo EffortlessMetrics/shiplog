@@ -129,7 +129,10 @@ fn keys_with_special_characters() {
     for (i, key) in specials.iter().enumerate() {
         let got: Option<serde_json::Value> = cache.get(key).unwrap();
         assert_eq!(got, Some(serde_json::json!(i)), "mismatch for key: {key:?}");
-        assert!(cache.contains(key).unwrap(), "contains failed for key: {key:?}");
+        assert!(
+            cache.contains(key).unwrap(),
+            "contains failed for key: {key:?}"
+        );
     }
 }
 
@@ -244,7 +247,10 @@ fn stats_after_overwrite_does_not_double_count() {
     cache.set("k", &serde_json::json!(3)).unwrap();
 
     let stats = cache.stats().unwrap();
-    assert_eq!(stats.total_entries, 1, "INSERT OR REPLACE should not duplicate");
+    assert_eq!(
+        stats.total_entries, 1,
+        "INSERT OR REPLACE should not duplicate"
+    );
     assert_eq!(stats.valid_entries, 1);
 }
 
@@ -283,7 +289,11 @@ fn stats_mixed_expired_and_valid() {
 
     for i in 0..50 {
         cache
-            .set_with_ttl(&format!("exp{i}"), &serde_json::json!(i), Duration::seconds(-1))
+            .set_with_ttl(
+                &format!("exp{i}"),
+                &serde_json::json!(i),
+                Duration::seconds(-1),
+            )
             .unwrap();
     }
     for i in 0..30 {
@@ -439,9 +449,7 @@ fn with_max_size_does_not_break_operations() {
 
 #[test]
 fn chained_builders_compose() {
-    let cache = mem_cache()
-        .with_ttl(Duration::hours(1))
-        .with_max_size(4096);
+    let cache = mem_cache().with_ttl(Duration::hours(1)).with_max_size(4096);
 
     cache.set("k", &serde_json::json!("ok")).unwrap();
     assert!(cache.contains("k").unwrap());

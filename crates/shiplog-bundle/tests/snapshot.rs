@@ -76,8 +76,7 @@ fn snapshot_checksum_format() {
     fs::write(dir.path().join(FILE_PACKET_MD), "hello world").unwrap();
 
     let run_id = RunId("checksum-test".into());
-    let manifest =
-        write_bundle_manifest(dir.path(), &run_id, &BundleProfile::Internal).unwrap();
+    let manifest = write_bundle_manifest(dir.path(), &run_id, &BundleProfile::Internal).unwrap();
 
     // Snapshot just the file checksum entries (deterministic content)
     let checksums: Vec<String> = manifest

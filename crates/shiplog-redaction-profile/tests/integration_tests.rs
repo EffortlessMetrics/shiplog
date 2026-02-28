@@ -39,7 +39,11 @@ fn all_variants_have_distinct_as_str() {
     ];
     let strs: Vec<&str> = variants.iter().map(|v| v.as_str()).collect();
     let unique: std::collections::HashSet<&str> = strs.iter().copied().collect();
-    assert_eq!(strs.len(), unique.len(), "all as_str() values must be unique");
+    assert_eq!(
+        strs.len(),
+        unique.len(),
+        "all as_str() values must be unique"
+    );
 }
 
 #[test]
@@ -54,7 +58,10 @@ fn clone_and_copy_produce_equal_values() {
 #[test]
 fn debug_format_is_meaningful() {
     let debug = format!("{:?}", RedactionProfile::Internal);
-    assert!(debug.contains("Internal"), "debug format should contain variant name");
+    assert!(
+        debug.contains("Internal"),
+        "debug format should contain variant name"
+    );
 }
 
 #[test]

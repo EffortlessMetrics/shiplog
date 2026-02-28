@@ -121,7 +121,11 @@ fn bdd_public_repo_redaction_also_redacts_public_repos() {
                     "html_url removed for public repos too",
                 )?;
                 let vis = assert_present(ctx.string("result_visibility"), "visibility")?;
-                assert_eq(vis, "Unknown", "visibility is unknown even for public repos")
+                assert_eq(
+                    vis,
+                    "Unknown",
+                    "visibility is unknown even for public repos",
+                )
             },
         );
 

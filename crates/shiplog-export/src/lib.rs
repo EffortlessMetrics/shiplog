@@ -346,8 +346,14 @@ mod tests {
 
         let pretty = export_data(&data, &pretty_opts).unwrap();
         let compact = export_data(&data, &compact_opts).unwrap();
-        assert!(pretty.contains('\n'), "pretty output should contain newlines");
-        assert!(!compact.contains('\n'), "compact output should not contain newlines");
+        assert!(
+            pretty.contains('\n'),
+            "pretty output should contain newlines"
+        );
+        assert!(
+            !compact.contains('\n'),
+            "compact output should not contain newlines"
+        );
         // Both should parse to the same value
         let p: serde_json::Value = serde_json::from_str(&pretty).unwrap();
         let c: serde_json::Value = serde_json::from_str(&compact).unwrap();

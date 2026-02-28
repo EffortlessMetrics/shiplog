@@ -1057,11 +1057,14 @@ mod tests {
         assert_eq!(ev.tags, vec!["backend", "feature"]);
 
         // Check source
-        assert_eq!(
-            ev.source.system,
-            SourceSystem::Other("gitlab".to_string())
+        assert_eq!(ev.source.system, SourceSystem::Other("gitlab".to_string()));
+        assert!(
+            ev.source
+                .url
+                .as_ref()
+                .unwrap()
+                .contains("merge_requests/42")
         );
-        assert!(ev.source.url.as_ref().unwrap().contains("merge_requests/42"));
         assert_eq!(ev.source.opaque_id.as_deref(), Some("101"));
 
         // Check links
@@ -1247,8 +1250,7 @@ mod tests {
 
     #[test]
     fn build_url_with_no_params() {
-        let url =
-            build_url_with_params("https://gitlab.com/api/v4/projects", &[]).unwrap();
+        let url = build_url_with_params("https://gitlab.com/api/v4/projects", &[]).unwrap();
         assert_eq!(url.as_str(), "https://gitlab.com/api/v4/projects");
     }
 

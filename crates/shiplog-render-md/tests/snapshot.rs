@@ -8,7 +8,7 @@ use shiplog_schema::{
     workstream::{Workstream, WorkstreamStats, WorkstreamsFile},
 };
 use shiplog_testkit::{
-    fixtures::{test_coverage, WorkstreamFixture},
+    fixtures::{WorkstreamFixture, test_coverage},
     pr_event,
 };
 
@@ -40,7 +40,11 @@ fn snapshot_empty_events() {
 #[test]
 fn snapshot_special_characters_in_titles() {
     let events = vec![
-        pr_event("owner/repo", 1, "Fix <script>alert('xss')</script> injection"),
+        pr_event(
+            "owner/repo",
+            1,
+            "Fix <script>alert('xss')</script> injection",
+        ),
         pr_event("owner/repo", 2, "Handle `backtick` & \"quotes\" in titles"),
         pr_event("owner/repo", 3, "Support émojis 🎉 and ünïcödé"),
         pr_event("owner/repo", 4, "Pipes | and [brackets] and (parens)"),
@@ -113,8 +117,7 @@ fn snapshot_receipt_truncation() {
         .map(|i| pr_event("owner/repo", i + 1, &format!("PR #{}", i + 1)))
         .collect();
 
-    let mut ws_builder = WorkstreamFixture::new("Big Workstream")
-        .with_summary("Lots of receipts");
+    let mut ws_builder = WorkstreamFixture::new("Big Workstream").with_summary("Lots of receipts");
     for ev in &events {
         ws_builder = ws_builder.with_event(ev).with_receipt(ev);
     }

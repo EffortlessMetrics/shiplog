@@ -224,7 +224,13 @@ mod tests {
         }
     }
 
-    fn make_event_with(id: &str, source: SourceSystem, kind: EventKind, actor: &str, repo: &str) -> EventEnvelope {
+    fn make_event_with(
+        id: &str,
+        source: SourceSystem,
+        kind: EventKind,
+        actor: &str,
+        repo: &str,
+    ) -> EventEnvelope {
         let mut e = make_event();
         e.id = EventId::from_parts([id]);
         e.source.system = source;
@@ -427,7 +433,10 @@ mod tests {
         let mut event = make_event();
         event.source.system = SourceSystem::JsonImport;
         let events = vec![event];
-        assert_eq!(query_events("source:json_import", &events).unwrap().len(), 1);
+        assert_eq!(
+            query_events("source:json_import", &events).unwrap().len(),
+            1
+        );
         assert_eq!(query_events("source:jsonimport", &events).unwrap().len(), 1);
     }
 
@@ -472,15 +481,38 @@ mod tests {
     #[test]
     fn query_on_mixed_events() {
         let events = vec![
-            make_event_with("a", SourceSystem::Manual, EventKind::Manual, "alice", "org/repo1"),
-            make_event_with("b", SourceSystem::Github, EventKind::PullRequest, "bob", "org/repo2"),
-            make_event_with("c", SourceSystem::Github, EventKind::Review, "alice", "org/repo1"),
+            make_event_with(
+                "a",
+                SourceSystem::Manual,
+                EventKind::Manual,
+                "alice",
+                "org/repo1",
+            ),
+            make_event_with(
+                "b",
+                SourceSystem::Github,
+                EventKind::PullRequest,
+                "bob",
+                "org/repo2",
+            ),
+            make_event_with(
+                "c",
+                SourceSystem::Github,
+                EventKind::Review,
+                "alice",
+                "org/repo1",
+            ),
         ];
 
         assert_eq!(query_events("source:github", &events).unwrap().len(), 2);
         assert_eq!(query_events("actor:alice", &events).unwrap().len(), 2);
         assert_eq!(query_events("repo:org/repo1", &events).unwrap().len(), 2);
-        assert_eq!(query_events("source:github actor:bob", &events).unwrap().len(), 1);
+        assert_eq!(
+            query_events("source:github actor:bob", &events)
+                .unwrap()
+                .len(),
+            1
+        );
     }
 
     #[test]

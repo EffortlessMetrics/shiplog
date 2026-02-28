@@ -185,7 +185,12 @@ mod tests {
         }
     }
 
-    fn make_event_at(id: &str, date: DateTime<Utc>, source: SourceSystem, kind: EventKind) -> EventEnvelope {
+    fn make_event_at(
+        id: &str,
+        date: DateTime<Utc>,
+        source: SourceSystem,
+        kind: EventKind,
+    ) -> EventEnvelope {
         let mut e = test_event();
         e.id = EventId::from_parts([id]);
         e.occurred_at = date;
@@ -337,14 +342,10 @@ mod tests {
     #[test]
     fn filter_multiple_tags_any_match() {
         let event = test_event();
-        let filter = EventFilter::new()
-            .with_tag("bugfix")
-            .with_tag("feature");
+        let filter = EventFilter::new().with_tag("bugfix").with_tag("feature");
         assert!(filter.matches(&event));
 
-        let filter = EventFilter::new()
-            .with_tag("bugfix")
-            .with_tag("security");
+        let filter = EventFilter::new().with_tag("bugfix").with_tag("security");
         assert!(!filter.matches(&event));
     }
 
@@ -352,14 +353,22 @@ mod tests {
     fn filter_date_boundary_since_inclusive() {
         let event = test_event(); // 2025-01-15T10:00:00Z
         let exact = Utc.with_ymd_and_hms(2025, 1, 15, 10, 0, 0).unwrap();
-        assert!(EventFilter::new().with_date_range(Some(exact), None).matches(&event));
+        assert!(
+            EventFilter::new()
+                .with_date_range(Some(exact), None)
+                .matches(&event)
+        );
     }
 
     #[test]
     fn filter_date_boundary_until_inclusive() {
         let event = test_event(); // 2025-01-15T10:00:00Z
         let exact = Utc.with_ymd_and_hms(2025, 1, 15, 10, 0, 0).unwrap();
-        assert!(EventFilter::new().with_date_range(None, Some(exact)).matches(&event));
+        assert!(
+            EventFilter::new()
+                .with_date_range(None, Some(exact))
+                .matches(&event)
+        );
     }
 
     #[test]
@@ -476,7 +485,11 @@ mod tests {
     fn filter_repo_exact_match_only() {
         let event = test_event(); // owner/test
         assert!(!EventFilter::new().with_repo("owner").matches(&event));
-        assert!(!EventFilter::new().with_repo("owner/test/extra").matches(&event));
+        assert!(
+            !EventFilter::new()
+                .with_repo("owner/test/extra")
+                .matches(&event)
+        );
         assert!(EventFilter::new().with_repo("owner/test").matches(&event));
     }
 
@@ -520,9 +533,8 @@ mod tests {
         use proptest::prelude::*;
 
         fn arb_date() -> impl Strategy<Value = DateTime<Utc>> {
-            (2020i32..2030, 1u32..13, 1u32..29, 0u32..24, 0u32..60).prop_map(
-                |(y, m, d, h, min)| Utc.with_ymd_and_hms(y, m, d, h, min, 0).unwrap(),
-            )
+            (2020i32..2030, 1u32..13, 1u32..29, 0u32..24, 0u32..60)
+                .prop_map(|(y, m, d, h, min)| Utc.with_ymd_and_hms(y, m, d, h, min, 0).unwrap())
         }
 
         proptest! {

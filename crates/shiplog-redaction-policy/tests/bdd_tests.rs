@@ -243,10 +243,7 @@ fn bdd_internal_projection_is_identity() {
             "internal redaction profile is applied",
             when_internal_profile_is_applied,
         )
-        .then(
-            "events are unchanged",
-            then_internal_projection_is_identity,
-        );
+        .then("events are unchanged", then_internal_projection_is_identity);
 
     scenario.run().expect("BDD scenario should pass");
 }

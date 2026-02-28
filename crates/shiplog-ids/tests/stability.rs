@@ -99,7 +99,8 @@ fn ids_are_lowercase_hex_64_chars() {
         let s = id.to_string();
         assert_eq!(s.len(), 64, "ID must be 64 hex chars: {s}");
         assert!(
-            s.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit()),
+            s.chars()
+                .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit()),
             "ID must be lowercase hex: {s}",
         );
     }

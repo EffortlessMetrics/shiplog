@@ -6,9 +6,7 @@
 use anyhow::Result;
 use chrono::NaiveDate;
 use shiplog_coverage::{day_windows, month_windows, week_windows, window_len_days};
-use shiplog_schema::coverage::{
-    Completeness, CoverageSlice, TimeWindow,
-};
+use shiplog_schema::coverage::{Completeness, CoverageSlice, TimeWindow};
 use shiplog_testkit::bdd::builders::CoverageBuilder;
 
 // ============================================================================
@@ -51,9 +49,7 @@ fn manifest_with_unknown_completeness() -> Result<()> {
 fn manifest_preserves_custom_date_range() -> Result<()> {
     let since = NaiveDate::from_ymd_opt(2024, 6, 1).unwrap();
     let until = NaiveDate::from_ymd_opt(2024, 9, 1).unwrap();
-    let manifest = CoverageBuilder::new("dave")
-        .dates(since, until)
-        .build();
+    let manifest = CoverageBuilder::new("dave").dates(since, until).build();
 
     assert_eq!(manifest.window.since, since);
     assert_eq!(manifest.window.until, until);
@@ -138,8 +134,12 @@ fn manifest_warnings_track_missing_receipts() -> Result<()> {
         .completeness(Completeness::Partial)
         .build();
 
-    manifest.warnings.push("Missing PR #42 from acme/app".to_string());
-    manifest.warnings.push("Missing PR #99 from acme/lib".to_string());
+    manifest
+        .warnings
+        .push("Missing PR #42 from acme/app".to_string());
+    manifest
+        .warnings
+        .push("Missing PR #99 from acme/lib".to_string());
 
     assert_eq!(manifest.warnings.len(), 2);
     assert!(manifest.warnings[0].contains("PR #42"));
@@ -205,9 +205,18 @@ fn day_windows_across_month_boundary() -> Result<()> {
 
     assert_eq!(windows.len(), 3);
     // Jan 30, Jan 31, Feb 1
-    assert_eq!(windows[0].since, NaiveDate::from_ymd_opt(2025, 1, 30).unwrap());
-    assert_eq!(windows[1].since, NaiveDate::from_ymd_opt(2025, 1, 31).unwrap());
-    assert_eq!(windows[2].since, NaiveDate::from_ymd_opt(2025, 2, 1).unwrap());
+    assert_eq!(
+        windows[0].since,
+        NaiveDate::from_ymd_opt(2025, 1, 30).unwrap()
+    );
+    assert_eq!(
+        windows[1].since,
+        NaiveDate::from_ymd_opt(2025, 1, 31).unwrap()
+    );
+    assert_eq!(
+        windows[2].since,
+        NaiveDate::from_ymd_opt(2025, 2, 1).unwrap()
+    );
     Ok(())
 }
 
@@ -231,12 +240,30 @@ fn month_windows_full_quarter() -> Result<()> {
     let windows = month_windows(since, until);
 
     assert_eq!(windows.len(), 3);
-    assert_eq!(windows[0].since, NaiveDate::from_ymd_opt(2025, 1, 1).unwrap());
-    assert_eq!(windows[0].until, NaiveDate::from_ymd_opt(2025, 2, 1).unwrap());
-    assert_eq!(windows[1].since, NaiveDate::from_ymd_opt(2025, 2, 1).unwrap());
-    assert_eq!(windows[1].until, NaiveDate::from_ymd_opt(2025, 3, 1).unwrap());
-    assert_eq!(windows[2].since, NaiveDate::from_ymd_opt(2025, 3, 1).unwrap());
-    assert_eq!(windows[2].until, NaiveDate::from_ymd_opt(2025, 4, 1).unwrap());
+    assert_eq!(
+        windows[0].since,
+        NaiveDate::from_ymd_opt(2025, 1, 1).unwrap()
+    );
+    assert_eq!(
+        windows[0].until,
+        NaiveDate::from_ymd_opt(2025, 2, 1).unwrap()
+    );
+    assert_eq!(
+        windows[1].since,
+        NaiveDate::from_ymd_opt(2025, 2, 1).unwrap()
+    );
+    assert_eq!(
+        windows[1].until,
+        NaiveDate::from_ymd_opt(2025, 3, 1).unwrap()
+    );
+    assert_eq!(
+        windows[2].since,
+        NaiveDate::from_ymd_opt(2025, 3, 1).unwrap()
+    );
+    assert_eq!(
+        windows[2].until,
+        NaiveDate::from_ymd_opt(2025, 4, 1).unwrap()
+    );
     Ok(())
 }
 
@@ -247,9 +274,18 @@ fn month_windows_across_year_boundary() -> Result<()> {
     let windows = month_windows(since, until);
 
     assert_eq!(windows.len(), 3);
-    assert_eq!(windows[0].until, NaiveDate::from_ymd_opt(2024, 12, 1).unwrap());
-    assert_eq!(windows[1].until, NaiveDate::from_ymd_opt(2025, 1, 1).unwrap());
-    assert_eq!(windows[2].until, NaiveDate::from_ymd_opt(2025, 2, 1).unwrap());
+    assert_eq!(
+        windows[0].until,
+        NaiveDate::from_ymd_opt(2024, 12, 1).unwrap()
+    );
+    assert_eq!(
+        windows[1].until,
+        NaiveDate::from_ymd_opt(2025, 1, 1).unwrap()
+    );
+    assert_eq!(
+        windows[2].until,
+        NaiveDate::from_ymd_opt(2025, 2, 1).unwrap()
+    );
     Ok(())
 }
 

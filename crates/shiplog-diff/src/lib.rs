@@ -367,7 +367,12 @@ mod tests {
 
         let diff = diff_events(&[old_event], &[new_event]);
         assert_eq!(diff.modified.len(), 1);
-        assert!(diff.modified[0].changes.iter().any(|c| c.field_name == "actor.login"));
+        assert!(
+            diff.modified[0]
+                .changes
+                .iter()
+                .any(|c| c.field_name == "actor.login")
+        );
     }
 
     #[test]
@@ -379,7 +384,12 @@ mod tests {
         }
         let diff = diff_events(&[old_event], &[new_event]);
         assert_eq!(diff.modified.len(), 1);
-        assert!(diff.modified[0].changes.iter().any(|c| c.field_name == "payload.description"));
+        assert!(
+            diff.modified[0]
+                .changes
+                .iter()
+                .any(|c| c.field_name == "payload.description")
+        );
     }
 
     #[test]
@@ -444,7 +454,10 @@ mod tests {
         let old_event = make_event("1", "old");
         let mut new_event = make_event("1", "new");
         new_event.id = old_event.id.clone();
-        let diff = diff_events(std::slice::from_ref(&old_event), std::slice::from_ref(&new_event));
+        let diff = diff_events(
+            std::slice::from_ref(&old_event),
+            std::slice::from_ref(&new_event),
+        );
         assert_eq!(diff.modified.len(), 1);
         assert_eq!(diff.modified[0].old_event, old_event);
         assert_eq!(diff.modified[0].new_event, new_event);
@@ -476,7 +489,11 @@ mod tests {
         new_event.tags = vec!["new-tag".to_string()];
         new_event.actor.login = "newactor".to_string();
         let diff = diff_events(&[old_event], &[new_event]);
-        let field_names: Vec<&str> = diff.modified[0].changes.iter().map(|c| c.field_name.as_str()).collect();
+        let field_names: Vec<&str> = diff.modified[0]
+            .changes
+            .iter()
+            .map(|c| c.field_name.as_str())
+            .collect();
         insta::assert_debug_snapshot!(field_names);
     }
 

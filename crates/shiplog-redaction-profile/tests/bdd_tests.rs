@@ -20,8 +20,7 @@ fn given_internal_profile_input(ctx: &mut ScenarioContext) {
 }
 
 fn given_empty_profile_input(ctx: &mut ScenarioContext) {
-    ctx.strings
-        .insert("raw_profile".to_string(), String::new());
+    ctx.strings.insert("raw_profile".to_string(), String::new());
 }
 
 fn when_profile_is_parsed(ctx: &mut ScenarioContext) -> Result<(), String> {
@@ -37,8 +36,10 @@ fn when_profile_is_serialized_and_deserialized(ctx: &mut ScenarioContext) -> Res
     let parsed = RedactionProfile::from_profile_str(raw);
     let json = serde_json::to_string(&parsed).map_err(|e| e.to_string())?;
     let decoded: RedactionProfile = serde_json::from_str(&json).map_err(|e| e.to_string())?;
-    ctx.strings
-        .insert("canonical_profile".to_string(), decoded.as_str().to_string());
+    ctx.strings.insert(
+        "canonical_profile".to_string(),
+        decoded.as_str().to_string(),
+    );
     ctx.strings.insert("json_output".to_string(), json);
     Ok(())
 }

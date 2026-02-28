@@ -340,8 +340,7 @@ mod tests {
         WorkstreamManager::write_suggested(temp_dir.path(), &ws1).unwrap();
         WorkstreamManager::write_suggested(temp_dir.path(), &ws2).unwrap();
 
-        let loaded =
-            read_workstreams(&WorkstreamManager::suggested_path(temp_dir.path())).unwrap();
+        let loaded = read_workstreams(&WorkstreamManager::suggested_path(temp_dir.path())).unwrap();
         assert_eq!(loaded.workstreams[0].title, "second");
     }
 }

@@ -48,10 +48,8 @@ fn make_ingest(events: Vec<EventEnvelope>) -> IngestOutput {
 }
 
 fn real_engine() -> Engine<'static> {
-    let renderer: &'static dyn Renderer =
-        Box::leak(Box::new(MarkdownRenderer::default()));
-    let clusterer: &'static dyn WorkstreamClusterer =
-        Box::leak(Box::new(RepoClusterer));
+    let renderer: &'static dyn Renderer = Box::leak(Box::new(MarkdownRenderer::default()));
+    let clusterer: &'static dyn WorkstreamClusterer = Box::leak(Box::new(RepoClusterer));
     let redactor: &'static dyn Redactor =
         Box::leak(Box::new(DeterministicRedactor::new(b"test-key")));
     Engine::new(renderer, clusterer, redactor)
@@ -82,7 +80,11 @@ impl WorkstreamClusterer for FailingClusterer {
 
 struct FailingRedactor;
 impl Redactor for FailingRedactor {
-    fn redact_events(&self, _events: &[EventEnvelope], _profile: &str) -> Result<Vec<EventEnvelope>> {
+    fn redact_events(
+        &self,
+        _events: &[EventEnvelope],
+        _profile: &str,
+    ) -> Result<Vec<EventEnvelope>> {
         anyhow::bail!("redactor exploded")
     }
     fn redact_workstreams(&self, _ws: &WorkstreamsFile, _profile: &str) -> Result<WorkstreamsFile> {
@@ -92,7 +94,11 @@ impl Redactor for FailingRedactor {
 
 struct NoopRedactor;
 impl Redactor for NoopRedactor {
-    fn redact_events(&self, events: &[EventEnvelope], _profile: &str) -> Result<Vec<EventEnvelope>> {
+    fn redact_events(
+        &self,
+        events: &[EventEnvelope],
+        _profile: &str,
+    ) -> Result<Vec<EventEnvelope>> {
         Ok(events.to_vec())
     }
     fn redact_workstreams(&self, ws: &WorkstreamsFile, _profile: &str) -> Result<WorkstreamsFile> {
@@ -105,7 +111,9 @@ struct CountingRenderer {
 }
 impl CountingRenderer {
     fn new() -> Self {
-        Self { counter: std::sync::atomic::AtomicUsize::new(0) }
+        Self {
+            counter: std::sync::atomic::AtomicUsize::new(0),
+        }
     }
     fn count(&self) -> usize {
         self.counter.load(std::sync::atomic::Ordering::Relaxed)
@@ -120,7 +128,8 @@ impl Renderer for CountingRenderer {
         _workstreams: &WorkstreamsFile,
         _coverage: &CoverageManifest,
     ) -> Result<String> {
-        self.counter.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        self.counter
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         Ok("# mock packet".into())
     }
 }
@@ -138,7 +147,14 @@ fn run_with_empty_events_produces_valid_output() {
     let ingest = make_ingest(vec![]);
 
     let (outputs, _) = engine
-        .run(ingest, "nobody", "2025-01-01..2025-02-01", &out, false, &BundleProfile::Internal)
+        .run(
+            ingest,
+            "nobody",
+            "2025-01-01..2025-02-01",
+            &out,
+            false,
+            &BundleProfile::Internal,
+        )
         .unwrap();
 
     assert!(outputs.packet_md.exists());
@@ -154,12 +170,17 @@ fn run_generates_workstream_suggested_when_none_exists() {
     let out = dir.path().join("gen_ws");
 
     let engine = real_engine();
-    let ingest = make_ingest(vec![
-        pr_event("acme/foo", 1, "feat: add login"),
-    ]);
+    let ingest = make_ingest(vec![pr_event("acme/foo", 1, "feat: add login")]);
 
     let (_, ws_source) = engine
-        .run(ingest, "tester", "2025-01-01..2025-02-01", &out, false, &BundleProfile::Internal)
+        .run(
+            ingest,
+            "tester",
+            "2025-01-01..2025-02-01",
+            &out,
+            false,
+            &BundleProfile::Internal,
+        )
         .unwrap();
 
     assert!(matches!(ws_source, WorkstreamSource::Generated));
@@ -181,22 +202,30 @@ fn run_uses_curated_workstreams_when_present() {
             title: "Curated Feature".into(),
             summary: Some("User-edited workstream".into()),
             tags: vec![],
-            stats: WorkstreamStats { pull_requests: 1, reviews: 0, manual_events: 0 },
+            stats: WorkstreamStats {
+                pull_requests: 1,
+                reviews: 0,
+                manual_events: 0,
+            },
             events: vec![],
             receipts: vec![],
         }],
     };
-    shiplog_workstream_layout::write_workstreams(
-        &WorkstreamManager::curated_path(&out),
-        &ws,
-    )
-    .unwrap();
+    shiplog_workstream_layout::write_workstreams(&WorkstreamManager::curated_path(&out), &ws)
+        .unwrap();
 
     let engine = real_engine();
     let ingest = make_ingest(vec![pr_event("acme/foo", 1, "some pr")]);
 
     let (_, ws_source) = engine
-        .run(ingest, "tester", "2025-01-01..2025-02-01", &out, false, &BundleProfile::Internal)
+        .run(
+            ingest,
+            "tester",
+            "2025-01-01..2025-02-01",
+            &out,
+            false,
+            &BundleProfile::Internal,
+        )
         .unwrap();
 
     assert!(matches!(ws_source, WorkstreamSource::Curated));
@@ -221,17 +250,21 @@ fn run_uses_suggested_workstreams_when_only_suggested_exists() {
             receipts: vec![],
         }],
     };
-    shiplog_workstream_layout::write_workstreams(
-        &WorkstreamManager::suggested_path(&out),
-        &ws,
-    )
-    .unwrap();
+    shiplog_workstream_layout::write_workstreams(&WorkstreamManager::suggested_path(&out), &ws)
+        .unwrap();
 
     let engine = real_engine();
     let ingest = make_ingest(vec![pr_event("acme/foo", 1, "some pr")]);
 
     let (_, ws_source) = engine
-        .run(ingest, "tester", "2025-01-01..2025-02-01", &out, false, &BundleProfile::Internal)
+        .run(
+            ingest,
+            "tester",
+            "2025-01-01..2025-02-01",
+            &out,
+            false,
+            &BundleProfile::Internal,
+        )
         .unwrap();
 
     assert!(matches!(ws_source, WorkstreamSource::Suggested));
@@ -249,11 +282,24 @@ fn run_creates_manager_and_public_profile_packets() {
     ]);
 
     engine
-        .run(ingest, "tester", "2025-01-01..2025-02-01", &out, false, &BundleProfile::Internal)
+        .run(
+            ingest,
+            "tester",
+            "2025-01-01..2025-02-01",
+            &out,
+            false,
+            &BundleProfile::Internal,
+        )
         .unwrap();
 
-    let manager_md = out.join(DIR_PROFILES).join(PROFILE_MANAGER).join(FILE_PACKET_MD);
-    let public_md = out.join(DIR_PROFILES).join(PROFILE_PUBLIC).join(FILE_PACKET_MD);
+    let manager_md = out
+        .join(DIR_PROFILES)
+        .join(PROFILE_MANAGER)
+        .join(FILE_PACKET_MD);
+    let public_md = out
+        .join(DIR_PROFILES)
+        .join(PROFILE_PUBLIC)
+        .join(FILE_PACKET_MD);
     assert!(manager_md.exists(), "manager profile packet missing");
     assert!(public_md.exists(), "public profile packet missing");
 
@@ -273,7 +319,14 @@ fn run_with_zip_true_creates_archive_file() {
     let ingest = make_ingest(vec![pr_event("acme/foo", 1, "feature")]);
 
     let (outputs, _) = engine
-        .run(ingest, "tester", "2025-01-01..2025-02-01", &out, true, &BundleProfile::Internal)
+        .run(
+            ingest,
+            "tester",
+            "2025-01-01..2025-02-01",
+            &out,
+            true,
+            &BundleProfile::Internal,
+        )
         .unwrap();
 
     assert!(outputs.zip_path.is_some());
@@ -289,7 +342,14 @@ fn run_with_zip_false_produces_no_archive() {
     let ingest = make_ingest(vec![pr_event("acme/foo", 1, "feature")]);
 
     let (outputs, _) = engine
-        .run(ingest, "tester", "2025-01-01..2025-02-01", &out, false, &BundleProfile::Internal)
+        .run(
+            ingest,
+            "tester",
+            "2025-01-01..2025-02-01",
+            &out,
+            false,
+            &BundleProfile::Internal,
+        )
         .unwrap();
 
     assert!(outputs.zip_path.is_none());
@@ -309,13 +369,26 @@ fn run_with_multiple_repos_clusters_separately() {
     ]);
 
     let (outputs, _) = engine
-        .run(ingest, "tester", "2025-01-01..2025-02-01", &out, false, &BundleProfile::Internal)
+        .run(
+            ingest,
+            "tester",
+            "2025-01-01..2025-02-01",
+            &out,
+            false,
+            &BundleProfile::Internal,
+        )
         .unwrap();
 
     // Packet should reference both repos
     let content = std::fs::read_to_string(&outputs.packet_md).unwrap();
-    assert!(content.contains("acme/frontend"), "missing frontend repo in packet");
-    assert!(content.contains("acme/backend"), "missing backend repo in packet");
+    assert!(
+        content.contains("acme/frontend"),
+        "missing frontend repo in packet"
+    );
+    assert!(
+        content.contains("acme/backend"),
+        "missing backend repo in packet"
+    );
 }
 
 #[test]
@@ -332,7 +405,14 @@ fn run_ledger_contains_all_events() {
     let ingest = make_ingest(events);
 
     let (outputs, _) = engine
-        .run(ingest, "tester", "2025-01-01..2025-02-01", &out, false, &BundleProfile::Internal)
+        .run(
+            ingest,
+            "tester",
+            "2025-01-01..2025-02-01",
+            &out,
+            false,
+            &BundleProfile::Internal,
+        )
         .unwrap();
 
     let ledger = std::fs::read_to_string(&outputs.ledger_events_jsonl).unwrap();
@@ -351,18 +431,28 @@ fn run_calls_renderer_three_times() {
 
     let renderer = Box::leak(Box::new(CountingRenderer::new()));
     let clusterer: &'static dyn WorkstreamClusterer = Box::leak(Box::new(RepoClusterer));
-    let redactor: &'static dyn Redactor =
-        Box::leak(Box::new(NoopRedactor));
+    let redactor: &'static dyn Redactor = Box::leak(Box::new(NoopRedactor));
 
     let engine = Engine::new(renderer as &dyn Renderer, clusterer, redactor);
     let ingest = make_ingest(vec![pr_event("acme/foo", 1, "test")]);
 
     engine
-        .run(ingest, "tester", "2025-01-01..2025-02-01", &out, false, &BundleProfile::Internal)
+        .run(
+            ingest,
+            "tester",
+            "2025-01-01..2025-02-01",
+            &out,
+            false,
+            &BundleProfile::Internal,
+        )
         .unwrap();
 
     // Once for internal packet, once for manager profile, once for public profile
-    assert_eq!(renderer.count(), 3, "renderer should be called 3 times (internal + manager + public)");
+    assert_eq!(
+        renderer.count(),
+        3,
+        "renderer should be called 3 times (internal + manager + public)"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -376,14 +466,19 @@ fn run_propagates_renderer_error() {
 
     let renderer: &'static dyn Renderer = Box::leak(Box::new(FailingRenderer));
     let clusterer: &'static dyn WorkstreamClusterer = Box::leak(Box::new(RepoClusterer));
-    let redactor: &'static dyn Redactor =
-        Box::leak(Box::new(DeterministicRedactor::new(b"key")));
+    let redactor: &'static dyn Redactor = Box::leak(Box::new(DeterministicRedactor::new(b"key")));
 
     let engine = Engine::new(renderer, clusterer, redactor);
     let ingest = make_ingest(vec![pr_event("acme/foo", 1, "test")]);
 
-    let result = engine
-        .run(ingest, "tester", "2025-01-01..2025-02-01", &out, false, &BundleProfile::Internal);
+    let result = engine.run(
+        ingest,
+        "tester",
+        "2025-01-01..2025-02-01",
+        &out,
+        false,
+        &BundleProfile::Internal,
+    );
 
     let err = match result {
         Err(e) => e,
@@ -401,17 +496,21 @@ fn run_propagates_clusterer_error_when_no_workstreams_file() {
     let dir = tempfile::tempdir().unwrap();
     let out = dir.path().join("fail_cluster");
 
-    let renderer: &'static dyn Renderer =
-        Box::leak(Box::new(MarkdownRenderer::default()));
+    let renderer: &'static dyn Renderer = Box::leak(Box::new(MarkdownRenderer::default()));
     let clusterer: &'static dyn WorkstreamClusterer = Box::leak(Box::new(FailingClusterer));
-    let redactor: &'static dyn Redactor =
-        Box::leak(Box::new(DeterministicRedactor::new(b"key")));
+    let redactor: &'static dyn Redactor = Box::leak(Box::new(DeterministicRedactor::new(b"key")));
 
     let engine = Engine::new(renderer, clusterer, redactor);
     let ingest = make_ingest(vec![pr_event("acme/foo", 1, "test")]);
 
-    let result = engine
-        .run(ingest, "tester", "2025-01-01..2025-02-01", &out, false, &BundleProfile::Internal);
+    let result = engine.run(
+        ingest,
+        "tester",
+        "2025-01-01..2025-02-01",
+        &out,
+        false,
+        &BundleProfile::Internal,
+    );
 
     let err = match result {
         Err(e) => e,
@@ -429,16 +528,21 @@ fn run_propagates_redactor_error() {
     let dir = tempfile::tempdir().unwrap();
     let out = dir.path().join("fail_redact");
 
-    let renderer: &'static dyn Renderer =
-        Box::leak(Box::new(MarkdownRenderer::default()));
+    let renderer: &'static dyn Renderer = Box::leak(Box::new(MarkdownRenderer::default()));
     let clusterer: &'static dyn WorkstreamClusterer = Box::leak(Box::new(RepoClusterer));
     let redactor: &'static dyn Redactor = Box::leak(Box::new(FailingRedactor));
 
     let engine = Engine::new(renderer, clusterer, redactor);
     let ingest = make_ingest(vec![pr_event("acme/foo", 1, "test")]);
 
-    let result = engine
-        .run(ingest, "tester", "2025-01-01..2025-02-01", &out, false, &BundleProfile::Internal);
+    let result = engine.run(
+        ingest,
+        "tester",
+        "2025-01-01..2025-02-01",
+        &out,
+        false,
+        &BundleProfile::Internal,
+    );
 
     let err = match result {
         Err(e) => e,
@@ -471,7 +575,11 @@ fn import_with_provided_workstreams_writes_curated() {
             title: "Imported Work".into(),
             summary: Some("From external source".into()),
             tags: vec![],
-            stats: WorkstreamStats { pull_requests: 1, reviews: 0, manual_events: 0 },
+            stats: WorkstreamStats {
+                pull_requests: 1,
+                reviews: 0,
+                manual_events: 0,
+            },
             events: vec![],
             receipts: vec![],
         }],
@@ -589,22 +697,29 @@ fn refresh_with_curated_workstreams_preserves_curation() {
             receipts: vec![],
         }],
     };
-    shiplog_workstream_layout::write_workstreams(
-        &WorkstreamManager::curated_path(&out),
-        &ws,
-    )
-    .unwrap();
+    shiplog_workstream_layout::write_workstreams(&WorkstreamManager::curated_path(&out), &ws)
+        .unwrap();
 
     let engine = real_engine();
     let ingest = make_ingest(vec![pr_event("acme/foo", 1, "refreshed")]);
 
     let outputs = engine
-        .refresh(ingest, "tester", "2025-01-01..2025-02-01", &out, false, &BundleProfile::Internal)
+        .refresh(
+            ingest,
+            "tester",
+            "2025-01-01..2025-02-01",
+            &out,
+            false,
+            &BundleProfile::Internal,
+        )
         .unwrap();
 
     assert!(outputs.packet_md.exists());
     // Curated workstreams file should still be the curated one
-    assert_eq!(outputs.workstreams_yaml, WorkstreamManager::curated_path(&out));
+    assert_eq!(
+        outputs.workstreams_yaml,
+        WorkstreamManager::curated_path(&out)
+    );
 }
 
 #[test]
@@ -626,21 +741,28 @@ fn refresh_with_suggested_workstreams_uses_suggested() {
             receipts: vec![],
         }],
     };
-    shiplog_workstream_layout::write_workstreams(
-        &WorkstreamManager::suggested_path(&out),
-        &ws,
-    )
-    .unwrap();
+    shiplog_workstream_layout::write_workstreams(&WorkstreamManager::suggested_path(&out), &ws)
+        .unwrap();
 
     let engine = real_engine();
     let ingest = make_ingest(vec![pr_event("acme/foo", 1, "refreshed")]);
 
     let outputs = engine
-        .refresh(ingest, "tester", "2025-01-01..2025-02-01", &out, false, &BundleProfile::Internal)
+        .refresh(
+            ingest,
+            "tester",
+            "2025-01-01..2025-02-01",
+            &out,
+            false,
+            &BundleProfile::Internal,
+        )
         .unwrap();
 
     assert!(outputs.packet_md.exists());
-    assert_eq!(outputs.workstreams_yaml, WorkstreamManager::suggested_path(&out));
+    assert_eq!(
+        outputs.workstreams_yaml,
+        WorkstreamManager::suggested_path(&out)
+    );
 }
 
 #[test]
@@ -651,8 +773,14 @@ fn refresh_fails_when_no_workstreams_exist() {
     let engine = real_engine();
     let ingest = make_ingest(vec![pr_event("acme/foo", 1, "orphan")]);
 
-    let result = engine
-        .refresh(ingest, "tester", "2025-01-01..2025-02-01", &out, false, &BundleProfile::Internal);
+    let result = engine.refresh(
+        ingest,
+        "tester",
+        "2025-01-01..2025-02-01",
+        &out,
+        false,
+        &BundleProfile::Internal,
+    );
 
     let err = match result {
         Err(e) => e,
@@ -676,17 +804,21 @@ fn refresh_with_empty_events_succeeds() {
         generated_at: Utc::now(),
         workstreams: vec![],
     };
-    shiplog_workstream_layout::write_workstreams(
-        &WorkstreamManager::curated_path(&out),
-        &ws,
-    )
-    .unwrap();
+    shiplog_workstream_layout::write_workstreams(&WorkstreamManager::curated_path(&out), &ws)
+        .unwrap();
 
     let engine = real_engine();
     let ingest = make_ingest(vec![]);
 
     let outputs = engine
-        .refresh(ingest, "tester", "2025-01-01..2025-02-01", &out, false, &BundleProfile::Internal)
+        .refresh(
+            ingest,
+            "tester",
+            "2025-01-01..2025-02-01",
+            &out,
+            false,
+            &BundleProfile::Internal,
+        )
         .unwrap();
 
     assert!(outputs.packet_md.exists());
@@ -703,17 +835,21 @@ fn refresh_with_zip_creates_archive() {
         generated_at: Utc::now(),
         workstreams: vec![],
     };
-    shiplog_workstream_layout::write_workstreams(
-        &WorkstreamManager::curated_path(&out),
-        &ws,
-    )
-    .unwrap();
+    shiplog_workstream_layout::write_workstreams(&WorkstreamManager::curated_path(&out), &ws)
+        .unwrap();
 
     let engine = real_engine();
     let ingest = make_ingest(vec![pr_event("acme/foo", 1, "zip refresh")]);
 
     let outputs = engine
-        .refresh(ingest, "tester", "2025-01-01..2025-02-01", &out, true, &BundleProfile::Internal)
+        .refresh(
+            ingest,
+            "tester",
+            "2025-01-01..2025-02-01",
+            &out,
+            true,
+            &BundleProfile::Internal,
+        )
         .unwrap();
 
     assert!(outputs.zip_path.is_some());
@@ -740,7 +876,10 @@ fn merge_deduplicates_identical_events() {
     };
 
     let merged = engine
-        .merge(vec![ingest1, ingest2], shiplog_engine::ConflictResolution::PreferFirst)
+        .merge(
+            vec![ingest1, ingest2],
+            shiplog_engine::ConflictResolution::PreferFirst,
+        )
         .unwrap();
 
     assert_eq!(merged.events.len(), 1, "duplicates should be removed");
@@ -760,7 +899,10 @@ fn merge_combines_distinct_events() {
     };
 
     let merged = engine
-        .merge(vec![ingest1, ingest2], shiplog_engine::ConflictResolution::PreferFirst)
+        .merge(
+            vec![ingest1, ingest2],
+            shiplog_engine::ConflictResolution::PreferFirst,
+        )
         .unwrap();
 
     assert_eq!(merged.events.len(), 2);
@@ -841,10 +983,24 @@ fn run_is_idempotent_on_same_dir() {
     let ingest2 = make_ingest(vec![pr_event("acme/foo", 1, "first run")]);
 
     engine
-        .run(ingest1, "tester", "2025-01-01..2025-02-01", &out, false, &BundleProfile::Internal)
+        .run(
+            ingest1,
+            "tester",
+            "2025-01-01..2025-02-01",
+            &out,
+            false,
+            &BundleProfile::Internal,
+        )
         .unwrap();
     let (outputs, _) = engine
-        .run(ingest2, "tester", "2025-01-01..2025-02-01", &out, false, &BundleProfile::Internal)
+        .run(
+            ingest2,
+            "tester",
+            "2025-01-01..2025-02-01",
+            &out,
+            false,
+            &BundleProfile::Internal,
+        )
         .unwrap();
 
     assert!(outputs.packet_md.exists());
@@ -863,7 +1019,14 @@ fn coverage_manifest_is_valid_json() {
     let ingest = make_ingest(vec![pr_event("acme/foo", 1, "feat")]);
 
     let (outputs, _) = engine
-        .run(ingest, "tester", "2025-01-01..2025-02-01", &out, false, &BundleProfile::Internal)
+        .run(
+            ingest,
+            "tester",
+            "2025-01-01..2025-02-01",
+            &out,
+            false,
+            &BundleProfile::Internal,
+        )
         .unwrap();
 
     let json_str = std::fs::read_to_string(&outputs.coverage_manifest_json).unwrap();

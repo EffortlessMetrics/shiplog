@@ -1079,8 +1079,7 @@ mod tests {
 
     #[test]
     fn build_url_with_params_empty_params() {
-        let url =
-            build_url_with_params("https://api.github.com/search/issues", &[]).unwrap();
+        let url = build_url_with_params("https://api.github.com/search/issues", &[]).unwrap();
         assert_eq!(url.as_str(), "https://api.github.com/search/issues");
     }
 
@@ -1088,7 +1087,10 @@ mod tests {
     fn build_url_with_params_special_characters() {
         let url = build_url_with_params(
             "https://api.github.com/search/issues",
-            &[("q", "author:user+name with spaces&special=chars".to_string())],
+            &[(
+                "q",
+                "author:user+name with spaces&special=chars".to_string(),
+            )],
         )
         .unwrap();
         // Should not contain raw spaces
@@ -1178,7 +1180,10 @@ mod tests {
             until: NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),
         };
         let q = ing.build_pr_query(&w);
-        assert!(q.contains("is:merged"), "unknown mode should fall through to merged");
+        assert!(
+            q.contains("is:merged"),
+            "unknown mode should fall through to merged"
+        );
     }
 
     // -- build_reviewed_query format --
@@ -1191,7 +1196,10 @@ mod tests {
             until: NaiveDate::from_ymd_opt(2025, 7, 1).unwrap(),
         };
         let q = ing.build_reviewed_query(&w);
-        assert!(q.contains("updated:"), "review query should use updated: qualifier");
+        assert!(
+            q.contains("updated:"),
+            "review query should use updated: qualifier"
+        );
         assert!(q.contains("reviewed-by:reviewer"));
     }
 
@@ -1377,7 +1385,11 @@ mod tests {
         ];
 
         let events = ing.items_to_pr_events(&client, items).unwrap();
-        assert_eq!(events.len(), 2, "items without pull_request should be skipped");
+        assert_eq!(
+            events.len(),
+            2,
+            "items without pull_request should be skipped"
+        );
     }
 
     #[test]
@@ -1481,7 +1493,10 @@ mod tests {
 
         let events1 = ing.items_to_pr_events(&client, items1).unwrap();
         let events2 = ing.items_to_pr_events(&client, items2).unwrap();
-        assert_eq!(events1[0].id, events2[0].id, "same inputs should produce same event ID");
+        assert_eq!(
+            events1[0].id, events2[0].id,
+            "same inputs should produce same event ID"
+        );
     }
 
     #[test]
@@ -1566,9 +1581,8 @@ mod tests {
     // ── property tests ──────────────────────────────────────────────────
 
     fn arb_naive_date() -> impl Strategy<Value = NaiveDate> {
-        (2000i32..2030, 1u32..13, 1u32..29).prop_map(|(y, m, d)| {
-            NaiveDate::from_ymd_opt(y, m, d).unwrap()
-        })
+        (2000i32..2030, 1u32..13, 1u32..29)
+            .prop_map(|(y, m, d)| NaiveDate::from_ymd_opt(y, m, d).unwrap())
     }
 
     fn arb_time_window() -> impl Strategy<Value = TimeWindow> {

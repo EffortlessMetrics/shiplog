@@ -50,7 +50,9 @@ fn sample_pr_event(repo: &str, title: &str, number: u64) -> EventEnvelope {
         }],
         source: SourceRef {
             system: SourceSystem::Github,
-            url: Some(format!("https://api.github.com/repos/{repo}/pulls/{number}")),
+            url: Some(format!(
+                "https://api.github.com/repos/{repo}/pulls/{number}"
+            )),
             opaque_id: None,
         },
     }
@@ -82,16 +84,13 @@ fn scenario_internal_profile_preserves_all_data() {
         .given("an event with sensitive fields", |ctx| {
             let ev = sample_pr_event("acme/secret-repo", "Confidential Feature", 1);
             let json = serde_json::to_string(&[&ev]).unwrap();
-            ctx.data
-                .insert("events".into(), json.into_bytes());
-            ctx.strings
-                .insert("key".into(), "test-key".into());
+            ctx.data.insert("events".into(), json.into_bytes());
+            ctx.strings.insert("key".into(), "test-key".into());
         })
         .when("the event is redacted with the internal profile", |ctx| {
             let key = ctx.string("key").unwrap();
             let redactor = DeterministicRedactor::new(key.as_bytes());
-            let events: Vec<EventEnvelope> =
-                serde_json::from_slice(&ctx.data["events"]).unwrap();
+            let events: Vec<EventEnvelope> = serde_json::from_slice(&ctx.data["events"]).unwrap();
             let redacted = redactor
                 .redact_events(&events, "internal")
                 .map_err(|e| e.to_string())?;
@@ -135,8 +134,7 @@ fn scenario_manager_profile_redacts_details_but_keeps_context() {
         .when("the event is redacted with the manager profile", |ctx| {
             let key = ctx.string("key").unwrap();
             let redactor = DeterministicRedactor::new(key.as_bytes());
-            let events: Vec<EventEnvelope> =
-                serde_json::from_slice(&ctx.data["events"]).unwrap();
+            let events: Vec<EventEnvelope> = serde_json::from_slice(&ctx.data["events"]).unwrap();
             let redacted = redactor
                 .redact_events(&events, "manager")
                 .map_err(|e| e.to_string())?;
@@ -194,8 +192,7 @@ fn scenario_public_profile_strips_titles_and_links() {
         .when("the event is redacted with the public profile", |ctx| {
             let key = ctx.string("key").unwrap();
             let redactor = DeterministicRedactor::new(key.as_bytes());
-            let events: Vec<EventEnvelope> =
-                serde_json::from_slice(&ctx.data["events"]).unwrap();
+            let events: Vec<EventEnvelope> = serde_json::from_slice(&ctx.data["events"]).unwrap();
             let redacted = redactor
                 .redact_events(&events, "public")
                 .map_err(|e| e.to_string())?;
@@ -211,10 +208,7 @@ fn scenario_public_profile_strips_titles_and_links() {
             match &events[0].payload {
                 EventPayload::PullRequest(pr) => {
                     if pr.title != "[redacted]" {
-                        return Err(format!(
-                            "expected title '[redacted]', got '{}'",
-                            pr.title
-                        ));
+                        return Err(format!("expected title '[redacted]', got '{}'", pr.title));
                     }
                 }
                 _ => return Err("expected PR payload".into()),
@@ -274,27 +268,30 @@ fn scenario_deterministic_redaction_same_key_same_output() {
             let json = serde_json::to_string(&[&ev]).unwrap();
             ctx.data.insert("events".into(), json.into_bytes());
         })
-        .when("both redact the same event with the public profile", |ctx| {
-            let key = ctx.string("key").unwrap();
-            let events: Vec<EventEnvelope> =
-                serde_json::from_slice(&ctx.data["events"]).unwrap();
+        .when(
+            "both redact the same event with the public profile",
+            |ctx| {
+                let key = ctx.string("key").unwrap();
+                let events: Vec<EventEnvelope> =
+                    serde_json::from_slice(&ctx.data["events"]).unwrap();
 
-            let r1 = DeterministicRedactor::new(key.as_bytes());
-            let r2 = DeterministicRedactor::new(key.as_bytes());
+                let r1 = DeterministicRedactor::new(key.as_bytes());
+                let r2 = DeterministicRedactor::new(key.as_bytes());
 
-            let out1 = r1
-                .redact_events(&events, "public")
-                .map_err(|e| e.to_string())?;
-            let out2 = r2
-                .redact_events(&events, "public")
-                .map_err(|e| e.to_string())?;
+                let out1 = r1
+                    .redact_events(&events, "public")
+                    .map_err(|e| e.to_string())?;
+                let out2 = r2
+                    .redact_events(&events, "public")
+                    .map_err(|e| e.to_string())?;
 
-            let json1 = serde_json::to_string(&out1).map_err(|e| e.to_string())?;
-            let json2 = serde_json::to_string(&out2).map_err(|e| e.to_string())?;
-            ctx.data.insert("json1".into(), json1.into_bytes());
-            ctx.data.insert("json2".into(), json2.into_bytes());
-            Ok(())
-        })
+                let json1 = serde_json::to_string(&out1).map_err(|e| e.to_string())?;
+                let json2 = serde_json::to_string(&out2).map_err(|e| e.to_string())?;
+                ctx.data.insert("json1".into(), json1.into_bytes());
+                ctx.data.insert("json2".into(), json2.into_bytes());
+                Ok(())
+            },
+        )
         .then("both outputs are byte-identical", |ctx| {
             if ctx.data["json1"] != ctx.data["json2"] {
                 return Err("redaction output should be identical for same key".into());
@@ -364,43 +361,51 @@ fn scenario_different_keys_produce_different_aliases() {
 #[test]
 fn scenario_alias_cache_round_trip_consistency() {
     Scenario::new("Alias caching returns consistent results across save/load")
-        .given("a redactor that has generated aliases and saved its cache", |ctx| {
-            let dir = tempfile::tempdir().unwrap();
-            let cache_path = dir.path().join("redaction.aliases.json");
+        .given(
+            "a redactor that has generated aliases and saved its cache",
+            |ctx| {
+                let dir = tempfile::tempdir().unwrap();
+                let cache_path = dir.path().join("redaction.aliases.json");
 
-            let redactor = DeterministicRedactor::new(b"cache-key");
-            let events = vec![sample_pr_event("cached/repo", "Cached PR", 1)];
-            let redacted = redactor.redact_events(&events, "public").unwrap();
-            redactor.save_cache(&cache_path).unwrap();
+                let redactor = DeterministicRedactor::new(b"cache-key");
+                let events = vec![sample_pr_event("cached/repo", "Cached PR", 1)];
+                let redacted = redactor.redact_events(&events, "public").unwrap();
+                redactor.save_cache(&cache_path).unwrap();
 
-            let json = serde_json::to_string(&redacted).unwrap();
-            ctx.data.insert("first_output".into(), json.into_bytes());
-            ctx.strings
-                .insert("cache_path".into(), cache_path.to_string_lossy().into_owned());
-            // Keep tempdir alive by leaking into data (path string is enough)
-            let events_json = serde_json::to_string(&events).unwrap();
-            ctx.data.insert("events".into(), events_json.into_bytes());
-            // Store dir handle bytes to keep it alive
-            let dir_path = dir.keep();
-            ctx.strings
-                .insert("tmp_dir".into(), dir_path.to_string_lossy().into_owned());
-        })
-        .when("a new redactor loads the cache and re-redacts the same events", |ctx| {
-            let cache_path_str = ctx.string("cache_path").unwrap().to_string();
-            let cache_path = std::path::Path::new(&cache_path_str);
-            let events: Vec<EventEnvelope> =
-                serde_json::from_slice(&ctx.data["events"]).unwrap();
+                let json = serde_json::to_string(&redacted).unwrap();
+                ctx.data.insert("first_output".into(), json.into_bytes());
+                ctx.strings.insert(
+                    "cache_path".into(),
+                    cache_path.to_string_lossy().into_owned(),
+                );
+                // Keep tempdir alive by leaking into data (path string is enough)
+                let events_json = serde_json::to_string(&events).unwrap();
+                ctx.data.insert("events".into(), events_json.into_bytes());
+                // Store dir handle bytes to keep it alive
+                let dir_path = dir.keep();
+                ctx.strings
+                    .insert("tmp_dir".into(), dir_path.to_string_lossy().into_owned());
+            },
+        )
+        .when(
+            "a new redactor loads the cache and re-redacts the same events",
+            |ctx| {
+                let cache_path_str = ctx.string("cache_path").unwrap().to_string();
+                let cache_path = std::path::Path::new(&cache_path_str);
+                let events: Vec<EventEnvelope> =
+                    serde_json::from_slice(&ctx.data["events"]).unwrap();
 
-            let redactor = DeterministicRedactor::new(b"cache-key");
-            redactor.load_cache(cache_path).map_err(|e| e.to_string())?;
-            let redacted = redactor
-                .redact_events(&events, "public")
-                .map_err(|e| e.to_string())?;
+                let redactor = DeterministicRedactor::new(b"cache-key");
+                redactor.load_cache(cache_path).map_err(|e| e.to_string())?;
+                let redacted = redactor
+                    .redact_events(&events, "public")
+                    .map_err(|e| e.to_string())?;
 
-            let json = serde_json::to_string(&redacted).map_err(|e| e.to_string())?;
-            ctx.data.insert("second_output".into(), json.into_bytes());
-            Ok(())
-        })
+                let json = serde_json::to_string(&redacted).map_err(|e| e.to_string())?;
+                ctx.data.insert("second_output".into(), json.into_bytes());
+                Ok(())
+            },
+        )
         .then("both outputs are identical", |ctx| {
             if ctx.data["first_output"] != ctx.data["second_output"] {
                 return Err("alias cache should produce identical redaction output".into());
@@ -426,20 +431,23 @@ fn scenario_public_profile_redacts_workstreams() {
             ctx.data.insert("workstreams".into(), json.into_bytes());
             ctx.strings.insert("key".into(), "ws-key".into());
         })
-        .when("the workstreams are redacted with the public profile", |ctx| {
-            let key = ctx.string("key").unwrap();
-            let ws: WorkstreamsFile =
-                serde_json::from_slice(&ctx.data["workstreams"]).unwrap();
-            let redactor = DeterministicRedactor::new(key.as_bytes());
-            let redacted = redactor
-                .redact_workstreams(&ws, "public")
-                .map_err(|e| e.to_string())?;
-            let json = serde_json::to_string(&redacted).map_err(|e| e.to_string())?;
-            ctx.data.insert("redacted_ws_json".into(), json.into_bytes());
-            let serialized = serde_json::to_vec(&redacted).map_err(|e| e.to_string())?;
-            ctx.data.insert("redacted_ws".into(), serialized);
-            Ok(())
-        })
+        .when(
+            "the workstreams are redacted with the public profile",
+            |ctx| {
+                let key = ctx.string("key").unwrap();
+                let ws: WorkstreamsFile = serde_json::from_slice(&ctx.data["workstreams"]).unwrap();
+                let redactor = DeterministicRedactor::new(key.as_bytes());
+                let redacted = redactor
+                    .redact_workstreams(&ws, "public")
+                    .map_err(|e| e.to_string())?;
+                let json = serde_json::to_string(&redacted).map_err(|e| e.to_string())?;
+                ctx.data
+                    .insert("redacted_ws_json".into(), json.into_bytes());
+                let serialized = serde_json::to_vec(&redacted).map_err(|e| e.to_string())?;
+                ctx.data.insert("redacted_ws".into(), serialized);
+                Ok(())
+            },
+        )
         .then("the original title is replaced with an alias", |ctx| {
             let json = std::str::from_utf8(&ctx.data["redacted_ws_json"]).unwrap();
             if json.contains("Secret Auth Overhaul") {
@@ -448,24 +456,21 @@ fn scenario_public_profile_redacts_workstreams() {
             Ok(())
         })
         .then("the summary is removed", |ctx| {
-            let ws: WorkstreamsFile =
-                serde_json::from_slice(&ctx.data["redacted_ws"]).unwrap();
+            let ws: WorkstreamsFile = serde_json::from_slice(&ctx.data["redacted_ws"]).unwrap();
             if ws.workstreams[0].summary.is_some() {
                 return Err("public profile should strip workstream summary".into());
             }
             Ok(())
         })
         .then("the 'repo' tag is filtered out", |ctx| {
-            let ws: WorkstreamsFile =
-                serde_json::from_slice(&ctx.data["redacted_ws"]).unwrap();
+            let ws: WorkstreamsFile = serde_json::from_slice(&ctx.data["redacted_ws"]).unwrap();
             if ws.workstreams[0].tags.contains(&"repo".into()) {
                 return Err("public profile should filter out 'repo' tag".into());
             }
             Ok(())
         })
         .then("other tags are preserved", |ctx| {
-            let ws: WorkstreamsFile =
-                serde_json::from_slice(&ctx.data["redacted_ws"]).unwrap();
+            let ws: WorkstreamsFile = serde_json::from_slice(&ctx.data["redacted_ws"]).unwrap();
             let tags = &ws.workstreams[0].tags;
             if !tags.contains(&"security".into()) || !tags.contains(&"backend".into()) {
                 return Err("non-repo tags should be preserved".into());

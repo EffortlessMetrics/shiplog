@@ -233,7 +233,10 @@ fn empty_events_produces_empty_workstreams() {
 
 #[test]
 fn duplicate_indices_use_first_wins_semantics() {
-    let events = vec![make_pr("org/x", 1, "Contested"), make_pr("org/x", 2, "Also")];
+    let events = vec![
+        make_pr("org/x", 1, "Contested"),
+        make_pr("org/x", 2, "Also"),
+    ];
 
     let resp = serde_json::json!({
         "workstreams": [
@@ -374,10 +377,7 @@ fn fallback_not_triggered_when_llm_succeeds() {
     );
     let clusterer = LlmWithFallback::new(llm);
 
-    let events = vec![
-        make_pr("org/alpha", 1, "A"),
-        make_pr("org/beta", 2, "B"),
-    ];
+    let events = vec![make_pr("org/alpha", 1, "A"), make_pr("org/beta", 2, "B")];
 
     let ws = clusterer.cluster(&events).unwrap();
     assert_eq!(ws.workstreams.len(), 1);
@@ -468,8 +468,16 @@ fn multi_chunk_merges_workstreams() {
     );
 
     let events = vec![
-        make_pr("org/a", 1, "First event with a pretty long title to blow the budget"),
-        make_pr("org/b", 2, "Second event with a pretty long title to blow the budget"),
+        make_pr(
+            "org/a",
+            1,
+            "First event with a pretty long title to blow the budget",
+        ),
+        make_pr(
+            "org/b",
+            2,
+            "Second event with a pretty long title to blow the budget",
+        ),
     ];
 
     let ws = clusterer.cluster(&events).unwrap();

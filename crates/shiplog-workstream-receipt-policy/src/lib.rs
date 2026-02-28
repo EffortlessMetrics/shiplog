@@ -162,7 +162,10 @@ mod tests {
     #[test]
     fn once_excluded_always_excluded_for_reviews() {
         let boundary = WORKSTREAM_RECEIPT_LIMIT_REVIEW;
-        assert!(!should_include_cluster_receipt(&EventKind::Review, boundary));
+        assert!(!should_include_cluster_receipt(
+            &EventKind::Review,
+            boundary
+        ));
         assert!(!should_include_cluster_receipt(
             &EventKind::Review,
             boundary + 1
@@ -176,7 +179,10 @@ mod tests {
     #[test]
     fn once_excluded_always_excluded_for_manual() {
         let boundary = WORKSTREAM_RECEIPT_LIMIT_MANUAL;
-        assert!(!should_include_cluster_receipt(&EventKind::Manual, boundary));
+        assert!(!should_include_cluster_receipt(
+            &EventKind::Manual,
+            boundary
+        ));
         assert!(!should_include_cluster_receipt(
             &EventKind::Manual,
             boundary + 1

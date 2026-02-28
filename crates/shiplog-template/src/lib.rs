@@ -655,7 +655,12 @@ mod tests {
         let ctx = TemplateContext::new();
         let result = engine.render("Hello {{ name", &ctx);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Unclosed variable"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Unclosed variable")
+        );
     }
 
     #[test]

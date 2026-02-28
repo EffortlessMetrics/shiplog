@@ -7,7 +7,10 @@ use shiplog_schema::event::*;
 use shiplog_workstream_cluster::RepoClusterer;
 
 fn fixed_event(repo: &str, id: &str, number: u64, kind: EventKind) -> EventEnvelope {
-    let ts = Utc.with_ymd_and_hms(2025, 6, 15, 12, 0, 0).single().unwrap();
+    let ts = Utc
+        .with_ymd_and_hms(2025, 6, 15, 12, 0, 0)
+        .single()
+        .unwrap();
     EventEnvelope {
         id: EventId::from_parts(["snap", id]),
         kind: kind.clone(),

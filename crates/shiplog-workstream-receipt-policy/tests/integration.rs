@@ -3,9 +3,8 @@
 use shiplog_schema::event::EventKind;
 use shiplog_workstream_receipt_policy::{
     WORKSTREAM_RECEIPT_LIMIT_MANUAL, WORKSTREAM_RECEIPT_LIMIT_REVIEW,
-    WORKSTREAM_RECEIPT_LIMIT_TOTAL, WORKSTREAM_RECEIPT_RENDER_LIMIT,
-    max_cluster_receipts_for_kind, should_include_cluster_receipt, should_render_receipt_at,
-    truncate_cluster_receipts,
+    WORKSTREAM_RECEIPT_LIMIT_TOTAL, WORKSTREAM_RECEIPT_RENDER_LIMIT, max_cluster_receipts_for_kind,
+    should_include_cluster_receipt, should_render_receipt_at, truncate_cluster_receipts,
 };
 
 #[test]
@@ -76,7 +75,10 @@ fn policy_simulated_mixed_stream_respects_caps() {
     }
 
     // First 5 reviews accepted, 6th rejected (total count=5, 5 < 5 = false)
-    let review_count = accepted.iter().filter(|k| ***k == EventKind::Review).count();
+    let review_count = accepted
+        .iter()
+        .filter(|k| ***k == EventKind::Review)
+        .count();
     assert_eq!(review_count, WORKSTREAM_RECEIPT_LIMIT_REVIEW);
 }
 
@@ -87,7 +89,9 @@ fn policy_render_window_starts_at_zero() {
 
 #[test]
 fn policy_render_exactly_at_boundary() {
-    assert!(should_render_receipt_at(WORKSTREAM_RECEIPT_RENDER_LIMIT - 1));
+    assert!(should_render_receipt_at(
+        WORKSTREAM_RECEIPT_RENDER_LIMIT - 1
+    ));
     assert!(!should_render_receipt_at(WORKSTREAM_RECEIPT_RENDER_LIMIT));
 }
 

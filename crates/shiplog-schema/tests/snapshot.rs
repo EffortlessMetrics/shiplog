@@ -6,9 +6,7 @@
 use chrono::{NaiveDate, TimeZone, Utc};
 use shiplog_ids::EventId;
 use shiplog_schema::bundle::{BundleManifest, BundleProfile, FileChecksum};
-use shiplog_schema::coverage::{
-    Completeness, CoverageManifest, CoverageSlice, TimeWindow,
-};
+use shiplog_schema::coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow};
 use shiplog_schema::event::*;
 use shiplog_schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
 

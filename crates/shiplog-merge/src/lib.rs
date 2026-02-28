@@ -466,7 +466,11 @@ mod tests {
         }
     }
 
-    fn make_event_with_tags(id: &str, occurred_at: chrono::DateTime<chrono::Utc>, tags: Vec<String>) -> EventEnvelope {
+    fn make_event_with_tags(
+        id: &str,
+        occurred_at: chrono::DateTime<chrono::Utc>,
+        tags: Vec<String>,
+    ) -> EventEnvelope {
         let mut e = make_event(id, occurred_at);
         e.tags = tags;
         e
@@ -679,11 +683,7 @@ mod tests {
     #[test]
     fn merge_preserves_order_same_timestamp() {
         let t = Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap();
-        let events = vec![
-            make_event("z", t),
-            make_event("a", t),
-            make_event("m", t),
-        ];
+        let events = vec![make_event("z", t), make_event("a", t), make_event("m", t)];
         let result = merge_events(vec![events], &MergeStrategy::default());
         assert_eq!(result.len(), 3);
         // With same timestamp, sorted by id hash
@@ -723,7 +723,10 @@ mod tests {
     #[test]
     fn merge_ingest_outputs_single_source() {
         let ingest = IngestOutput {
-            events: vec![make_event("a", Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap())],
+            events: vec![make_event(
+                "a",
+                Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap(),
+            )],
             coverage: coverage(1, Completeness::Complete, "github", ""),
         };
         let merged = merge_ingest_outputs(&[ingest], ConflictResolution::PreferFirst).unwrap();
@@ -734,15 +737,25 @@ mod tests {
     #[test]
     fn merge_ingest_outputs_all_complete() {
         let ingest_a = IngestOutput {
-            events: vec![make_event("a", Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap())],
+            events: vec![make_event(
+                "a",
+                Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap(),
+            )],
             coverage: coverage(1, Completeness::Complete, "github", ""),
         };
         let ingest_b = IngestOutput {
-            events: vec![make_event("b", Utc.with_ymd_and_hms(2025, 1, 2, 0, 0, 0).unwrap())],
+            events: vec![make_event(
+                "b",
+                Utc.with_ymd_and_hms(2025, 1, 2, 0, 0, 0).unwrap(),
+            )],
             coverage: coverage(1, Completeness::Complete, "local_git", ""),
         };
-        let merged = merge_ingest_outputs(&[ingest_a, ingest_b], ConflictResolution::PreferFirst).unwrap();
-        assert_eq!(merged.ingest_output.coverage.completeness, Completeness::Complete);
+        let merged =
+            merge_ingest_outputs(&[ingest_a, ingest_b], ConflictResolution::PreferFirst).unwrap();
+        assert_eq!(
+            merged.ingest_output.coverage.completeness,
+            Completeness::Complete
+        );
     }
 
     #[test]
@@ -759,10 +772,9 @@ mod tests {
             events: vec![make_event("a", t)],
             coverage: coverage(1, Completeness::Complete, "github", ""),
         };
-        let merged = merge_ingest_outputs_legacy(
-            &[ingest.clone(), ingest],
-            ConflictResolution::PreferFirst,
-        ).unwrap();
+        let merged =
+            merge_ingest_outputs_legacy(&[ingest.clone(), ingest], ConflictResolution::PreferFirst)
+                .unwrap();
         assert_eq!(merged.events.len(), 1);
     }
 
@@ -790,7 +802,9 @@ mod tests {
             events: vec![make_event("shared", t2), make_event("b", t2)],
             coverage: coverage(2, Completeness::Complete, "local_git", "warn-b"),
         };
-        let merged = merge_ingest_outputs(&[ingest_a, ingest_b], ConflictResolution::PreferMostRecent).unwrap();
+        let merged =
+            merge_ingest_outputs(&[ingest_a, ingest_b], ConflictResolution::PreferMostRecent)
+                .unwrap();
         insta::assert_debug_snapshot!(merged.report);
     }
 

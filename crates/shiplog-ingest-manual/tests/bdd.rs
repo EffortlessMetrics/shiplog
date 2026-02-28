@@ -45,10 +45,8 @@ fn given_yaml_with_valid_events(ctx: &mut ScenarioContext) {
         "_tempdir_handle".to_string(),
         (raw as usize).to_le_bytes().to_vec(),
     );
-    ctx.paths
-        .insert("events_path".to_string(), path);
-    ctx.strings
-        .insert("user".to_string(), "alice".to_string());
+    ctx.paths.insert("events_path".to_string(), path);
+    ctx.strings.insert("user".to_string(), "alice".to_string());
     ctx.strings
         .insert("since".to_string(), "2025-01-01".to_string());
     ctx.strings
@@ -58,16 +56,12 @@ fn given_yaml_with_valid_events(ctx: &mut ScenarioContext) {
 fn when_ingestor_runs(ctx: &mut ScenarioContext) -> Result<(), String> {
     let path = assert_present(ctx.path("events_path"), "events_path")?;
     let user = assert_present(ctx.string("user"), "user")?;
-    let since = NaiveDate::parse_from_str(
-        assert_present(ctx.string("since"), "since")?,
-        "%Y-%m-%d",
-    )
-    .map_err(|e| e.to_string())?;
-    let until = NaiveDate::parse_from_str(
-        assert_present(ctx.string("until"), "until")?,
-        "%Y-%m-%d",
-    )
-    .map_err(|e| e.to_string())?;
+    let since =
+        NaiveDate::parse_from_str(assert_present(ctx.string("since"), "since")?, "%Y-%m-%d")
+            .map_err(|e| e.to_string())?;
+    let until =
+        NaiveDate::parse_from_str(assert_present(ctx.string("until"), "until")?, "%Y-%m-%d")
+            .map_err(|e| e.to_string())?;
 
     let ing = ManualIngestor::new(path, user.to_string(), since, until);
     let output = ing.ingest().map_err(|e| e.to_string())?;
@@ -86,8 +80,7 @@ fn when_ingestor_runs(ctx: &mut ScenarioContext) -> Result<(), String> {
     if let Some(ev) = output.events.first()
         && let Some(id) = &ev.source.opaque_id
     {
-        ctx.strings
-            .insert("first_event_id".to_string(), id.clone());
+        ctx.strings.insert("first_event_id".to_string(), id.clone());
     }
     Ok(())
 }
@@ -155,8 +148,7 @@ fn given_yaml_with_mixed_dates(ctx: &mut ScenarioContext) {
         (raw as usize).to_le_bytes().to_vec(),
     );
     ctx.paths.insert("events_path".to_string(), path);
-    ctx.strings
-        .insert("user".to_string(), "bob".to_string());
+    ctx.strings.insert("user".to_string(), "bob".to_string());
     ctx.strings
         .insert("since".to_string(), "2025-01-01".to_string());
     ctx.strings
@@ -201,8 +193,7 @@ fn given_an_invalid_yaml_file(ctx: &mut ScenarioContext) {
         (raw as usize).to_le_bytes().to_vec(),
     );
     ctx.paths.insert("events_path".to_string(), path);
-    ctx.strings
-        .insert("user".to_string(), "carol".to_string());
+    ctx.strings.insert("user".to_string(), "carol".to_string());
     ctx.strings
         .insert("since".to_string(), "2025-01-01".to_string());
     ctx.strings
@@ -212,23 +203,18 @@ fn given_an_invalid_yaml_file(ctx: &mut ScenarioContext) {
 fn when_ingestor_runs_and_captures_error(ctx: &mut ScenarioContext) -> Result<(), String> {
     let path = assert_present(ctx.path("events_path"), "events_path")?;
     let user = assert_present(ctx.string("user"), "user")?;
-    let since = NaiveDate::parse_from_str(
-        assert_present(ctx.string("since"), "since")?,
-        "%Y-%m-%d",
-    )
-    .map_err(|e| e.to_string())?;
-    let until = NaiveDate::parse_from_str(
-        assert_present(ctx.string("until"), "until")?,
-        "%Y-%m-%d",
-    )
-    .map_err(|e| e.to_string())?;
+    let since =
+        NaiveDate::parse_from_str(assert_present(ctx.string("since"), "since")?, "%Y-%m-%d")
+            .map_err(|e| e.to_string())?;
+    let until =
+        NaiveDate::parse_from_str(assert_present(ctx.string("until"), "until")?, "%Y-%m-%d")
+            .map_err(|e| e.to_string())?;
 
     let ing = ManualIngestor::new(path, user.to_string(), since, until);
     match ing.ingest() {
         Ok(_) => {
             ctx.flags.insert("errored".to_string(), false);
-            ctx.strings
-                .insert("error_msg".to_string(), String::new());
+            ctx.strings.insert("error_msg".to_string(), String::new());
         }
         Err(e) => {
             ctx.flags.insert("errored".to_string(), true);
@@ -289,8 +275,7 @@ fn given_yaml_with_no_events(ctx: &mut ScenarioContext) {
         (raw as usize).to_le_bytes().to_vec(),
     );
     ctx.paths.insert("events_path".to_string(), path);
-    ctx.strings
-        .insert("user".to_string(), "dave".to_string());
+    ctx.strings.insert("user".to_string(), "dave".to_string());
     ctx.strings
         .insert("since".to_string(), "2025-01-01".to_string());
     ctx.strings
