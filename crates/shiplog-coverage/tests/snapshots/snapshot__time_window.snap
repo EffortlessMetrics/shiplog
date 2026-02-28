@@ -1,0 +1,9 @@
+---
+source: crates/shiplog-coverage/tests/snapshot.rs
+assertion_line: 19
+expression: window
+---
+{
+  "since": "2025-01-01",
+  "until": "2025-02-01"
+}

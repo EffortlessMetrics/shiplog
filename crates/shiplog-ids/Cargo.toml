@@ -19,5 +19,6 @@ sha2.workspace = true
 hex.workspace = true
 
 [dev-dependencies]
+insta.workspace = true
 proptest.workspace = true
 

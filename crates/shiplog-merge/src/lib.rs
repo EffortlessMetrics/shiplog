@@ -466,6 +466,12 @@ mod tests {
         }
     }
 
+    fn make_event_with_tags(id: &str, occurred_at: chrono::DateTime<chrono::Utc>, tags: Vec<String>) -> EventEnvelope {
+        let mut e = make_event(id, occurred_at);
+        e.tags = tags;
+        e
+    }
+
     fn coverage(
         w: usize,
         completeness: Completeness,
@@ -624,5 +630,238 @@ mod tests {
             err.to_string().contains("No ingest outputs to merge"),
             "{err}"
         );
+    }
+
+    // --- Edge-case tests ---
+
+    #[test]
+    fn merge_multiple_sources_no_overlap() {
+        let t1 = Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap();
+        let t2 = Utc.with_ymd_and_hms(2025, 1, 2, 0, 0, 0).unwrap();
+        let t3 = Utc.with_ymd_and_hms(2025, 1, 3, 0, 0, 0).unwrap();
+        let result = merge_events(
+            vec![
+                vec![make_event("a", t1)],
+                vec![make_event("b", t2)],
+                vec![make_event("c", t3)],
+            ],
+            &MergeStrategy::default(),
+        );
+        assert_eq!(result.len(), 3);
+        assert!(result[0].occurred_at <= result[1].occurred_at);
+        assert!(result[1].occurred_at <= result[2].occurred_at);
+    }
+
+    #[test]
+    fn merge_all_duplicates() {
+        let t = Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap();
+        let e = make_event("same", t);
+        let result = merge_events(
+            vec![vec![e.clone()], vec![e.clone()], vec![e.clone()]],
+            &MergeStrategy::KeepFirst,
+        );
+        assert_eq!(result.len(), 1);
+    }
+
+    #[test]
+    fn merge_keeps_most_complete_strategy() {
+        let t = Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap();
+        let sparse = make_event("x", t);
+        let rich = make_event_with_tags("x", t, vec!["tag1".into(), "tag2".into()]);
+        let result = merge_events(
+            vec![vec![sparse], vec![rich.clone()]],
+            &MergeStrategy::KeepMostComplete,
+        );
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].tags, rich.tags);
+    }
+
+    #[test]
+    fn merge_preserves_order_same_timestamp() {
+        let t = Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap();
+        let events = vec![
+            make_event("z", t),
+            make_event("a", t),
+            make_event("m", t),
+        ];
+        let result = merge_events(vec![events], &MergeStrategy::default());
+        assert_eq!(result.len(), 3);
+        // With same timestamp, sorted by id hash
+        for w in result.windows(2) {
+            assert!(w[0].occurred_at <= w[1].occurred_at);
+            if w[0].occurred_at == w[1].occurred_at {
+                assert!(w[0].id.0 <= w[1].id.0);
+            }
+        }
+    }
+
+    #[test]
+    fn merge_single_event_per_source() {
+        let t1 = Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap();
+        let t2 = Utc.with_ymd_and_hms(2025, 1, 2, 0, 0, 0).unwrap();
+        let result = merge_events(
+            vec![vec![make_event("a", t1)], vec![make_event("b", t2)]],
+            &MergeStrategy::default(),
+        );
+        assert_eq!(result.len(), 2);
+    }
+
+    #[test]
+    fn merge_two_empty_lists() {
+        let result = merge_two(&[], &[], &MergeStrategy::default());
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn merge_two_one_empty() {
+        let t = Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap();
+        let events = vec![make_event("a", t)];
+        let result = merge_two(&events, &[], &MergeStrategy::default());
+        assert_eq!(result.len(), 1);
+    }
+
+    #[test]
+    fn merge_ingest_outputs_single_source() {
+        let ingest = IngestOutput {
+            events: vec![make_event("a", Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap())],
+            coverage: coverage(1, Completeness::Complete, "github", ""),
+        };
+        let merged = merge_ingest_outputs(&[ingest], ConflictResolution::PreferFirst).unwrap();
+        assert_eq!(merged.ingest_output.events.len(), 1);
+        assert_eq!(merged.report.conflict_count, 0);
+    }
+
+    #[test]
+    fn merge_ingest_outputs_all_complete() {
+        let ingest_a = IngestOutput {
+            events: vec![make_event("a", Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap())],
+            coverage: coverage(1, Completeness::Complete, "github", ""),
+        };
+        let ingest_b = IngestOutput {
+            events: vec![make_event("b", Utc.with_ymd_and_hms(2025, 1, 2, 0, 0, 0).unwrap())],
+            coverage: coverage(1, Completeness::Complete, "local_git", ""),
+        };
+        let merged = merge_ingest_outputs(&[ingest_a, ingest_b], ConflictResolution::PreferFirst).unwrap();
+        assert_eq!(merged.ingest_output.coverage.completeness, Completeness::Complete);
+    }
+
+    #[test]
+    fn merge_legacy_rejects_empty_input() {
+        let err = merge_ingest_outputs_legacy(&[], ConflictResolution::PreferFirst)
+            .expect_err("expected error");
+        assert!(err.to_string().contains("No ingest outputs to merge"));
+    }
+
+    #[test]
+    fn merge_legacy_deduplicates() {
+        let t = Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap();
+        let ingest = IngestOutput {
+            events: vec![make_event("a", t)],
+            coverage: coverage(1, Completeness::Complete, "github", ""),
+        };
+        let merged = merge_ingest_outputs_legacy(
+            &[ingest.clone(), ingest],
+            ConflictResolution::PreferFirst,
+        ).unwrap();
+        assert_eq!(merged.events.len(), 1);
+    }
+
+    #[test]
+    fn conflict_resolution_to_merge_strategy_mapping() {
+        let s: MergeStrategy = ConflictResolution::PreferFirst.into();
+        assert!(matches!(s, MergeStrategy::KeepFirst));
+        let s: MergeStrategy = ConflictResolution::PreferMostRecent.into();
+        assert!(matches!(s, MergeStrategy::KeepLast));
+        let s: MergeStrategy = ConflictResolution::PreferMostComplete.into();
+        assert!(matches!(s, MergeStrategy::KeepMostComplete));
+    }
+
+    // --- Snapshot tests ---
+
+    #[test]
+    fn snapshot_merge_report() {
+        let t1 = Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap();
+        let t2 = Utc.with_ymd_and_hms(2025, 1, 2, 0, 0, 0).unwrap();
+        let ingest_a = IngestOutput {
+            events: vec![make_event("a", t1), make_event("shared", t1)],
+            coverage: coverage(2, Completeness::Complete, "github", "warn-a"),
+        };
+        let ingest_b = IngestOutput {
+            events: vec![make_event("shared", t2), make_event("b", t2)],
+            coverage: coverage(2, Completeness::Complete, "local_git", "warn-b"),
+        };
+        let merged = merge_ingest_outputs(&[ingest_a, ingest_b], ConflictResolution::PreferMostRecent).unwrap();
+        insta::assert_debug_snapshot!(merged.report);
+    }
+
+    #[test]
+    fn snapshot_merged_event_ids() {
+        let t1 = Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap();
+        let t2 = Utc.with_ymd_and_hms(2025, 1, 2, 0, 0, 0).unwrap();
+        let t3 = Utc.with_ymd_and_hms(2025, 1, 3, 0, 0, 0).unwrap();
+        let result = merge_events(
+            vec![
+                vec![make_event("alpha", t1), make_event("beta", t2)],
+                vec![make_event("beta", t2), make_event("gamma", t3)],
+            ],
+            &MergeStrategy::KeepFirst,
+        );
+        let ids: Vec<&str> = result.iter().map(|e| e.id.0.as_str()).collect();
+        insta::assert_debug_snapshot!(ids);
+    }
+
+    // --- Property tests ---
+
+    mod prop {
+        use super::*;
+        use proptest::prelude::*;
+        use std::collections::HashSet;
+
+        proptest! {
+            #[test]
+            fn merge_output_length_le_input(n1 in 0usize..5, n2 in 0usize..5) {
+                let t = Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap();
+                let src1: Vec<_> = (0..n1).map(|i| make_event(&format!("a{i}"), t)).collect();
+                let src2: Vec<_> = (0..n2).map(|i| make_event(&format!("b{i}"), t)).collect();
+                let result = merge_events(vec![src1, src2], &MergeStrategy::KeepFirst);
+                prop_assert!(result.len() <= n1 + n2);
+            }
+
+            #[test]
+            fn merge_output_always_sorted(n in 1usize..8) {
+                let events: Vec<_> = (0..n).map(|i| {
+                    let day = (i % 28) as u32 + 1;
+                    make_event(&format!("e{i}"), Utc.with_ymd_and_hms(2025, 1, day, 0, 0, 0).unwrap())
+                }).collect();
+                let result = merge_events(vec![events], &MergeStrategy::default());
+                for w in result.windows(2) {
+                    prop_assert!(w[0].occurred_at <= w[1].occurred_at);
+                }
+            }
+
+            #[test]
+            fn merge_is_idempotent(n in 1usize..5) {
+                let t = Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap();
+                let events: Vec<_> = (0..n).map(|i| make_event(&format!("e{i}"), t)).collect();
+                let first = merge_events(vec![events.clone()], &MergeStrategy::KeepFirst);
+                let second = merge_events(vec![first.clone()], &MergeStrategy::KeepFirst);
+                prop_assert_eq!(first.len(), second.len());
+                for (a, b) in first.iter().zip(second.iter()) {
+                    prop_assert_eq!(&a.id, &b.id);
+                }
+            }
+
+            #[test]
+            fn all_unique_ids_preserved(n1 in 0usize..4, n2 in 0usize..4) {
+                let t = Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap();
+                let src1: Vec<_> = (0..n1).map(|i| make_event(&format!("s1_{i}"), t)).collect();
+                let src2: Vec<_> = (0..n2).map(|i| make_event(&format!("s2_{i}"), t)).collect();
+                let mut all_ids: HashSet<_> = src1.iter().map(|e| e.id.clone()).collect();
+                all_ids.extend(src2.iter().map(|e| e.id.clone()));
+                let result = merge_events(vec![src1, src2], &MergeStrategy::KeepFirst);
+                let result_ids: HashSet<_> = result.iter().map(|e| e.id.clone()).collect();
+                prop_assert_eq!(all_ids, result_ids);
+            }
+        }
     }
 }

@@ -1,0 +1,29 @@
+---
+source: crates/shiplog-query/src/lib.rs
+expression: q
+---
+Query {
+    clauses: [
+        Source(
+            "github",
+        ),
+        Kind(
+            "pr",
+        ),
+        Actor(
+            "octocat",
+        ),
+        Tag(
+            "feature",
+        ),
+        Repo(
+            "org/repo",
+        ),
+        Since(
+            "2025-01-01",
+        ),
+        Until(
+            "2025-06-30",
+        ),
+    ],
+}

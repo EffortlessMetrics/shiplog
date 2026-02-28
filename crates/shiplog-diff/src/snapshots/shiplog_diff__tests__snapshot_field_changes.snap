@@ -1,0 +1,10 @@
+---
+source: crates/shiplog-diff/src/lib.rs
+assertion_line: 480
+expression: field_names
+---
+[
+    "actor.login",
+    "tags",
+    "payload.title",
+]

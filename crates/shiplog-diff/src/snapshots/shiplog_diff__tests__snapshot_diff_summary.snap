@@ -1,0 +1,11 @@
+---
+source: crates/shiplog-diff/src/lib.rs
+assertion_line: 469
+expression: summary
+---
+DiffSummary {
+    added_count: 1,
+    removed_count: 1,
+    modified_count: 1,
+    unchanged_count: 1,
+}

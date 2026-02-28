@@ -1,0 +1,19 @@
+---
+source: crates/shiplog-coverage/tests/snapshot.rs
+assertion_line: 56
+expression: slice
+---
+{
+  "window": {
+    "since": "2025-01-01",
+    "until": "2025-02-01"
+  },
+  "query": "github prs merged:2025-01-01..2025-02-01",
+  "total_count": 50,
+  "fetched": 30,
+  "incomplete_results": true,
+  "notes": [
+    "GitHub search API limit reached",
+    "Consider using smaller date windows"
+  ]
+}

@@ -1,0 +1,5 @@
+---
+source: crates/shiplog-ids/tests/snapshot.rs
+expression: id.to_string()
+---
+230f2fc7bf1e17891f570f7510df181323271f007da45553a620659e6473f489

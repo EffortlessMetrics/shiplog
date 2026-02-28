@@ -1,0 +1,71 @@
+---
+source: crates/shiplog-render-md/tests/snapshot.rs
+assertion_line: 134
+expression: result
+---
+# Summary
+
+**Window:** 2025-Q1
+
+**Workstreams:** 1
+
+**Events:** 8 PRs, 0 reviews, 0 manual
+
+**Coverage:** Complete
+
+**Sources:** github
+
+## Workstreams
+
+### Big Workstream
+
+Lots of receipts
+
+**Claim scaffolds**
+
+- Problem: _fill_
+- What I shipped: _fill_
+- Why it mattered: _fill_
+- Result: _fill_
+
+_PRs: 8, Reviews: 0, Manual: 0_
+
+## Receipts
+
+### Workstream: Big Workstream
+
+- [PR] PR #1 (1970-01-01) — [owner/repo](https://github.com/owner/repo/pull/1)
+- [PR] PR #2 (1970-01-01) — [owner/repo](https://github.com/owner/repo/pull/2)
+- [PR] PR #3 (1970-01-01) — [owner/repo](https://github.com/owner/repo/pull/3)
+- [PR] PR #4 (1970-01-01) — [owner/repo](https://github.com/owner/repo/pull/4)
+- [PR] PR #5 (1970-01-01) — [owner/repo](https://github.com/owner/repo/pull/5)
+- *... and 3 more in [Appendix](#appendix-receipts)*
+
+## Coverage
+
+- **Date window:** 2025-01-01 to 2025-04-01
+- **Mode:** merged
+- **Sources:** github
+- **Completeness:** Complete
+
+## Appendix: All Receipts
+
+### Big Workstream
+
+- [PR] PR #1 (1970-01-01) — [owner/repo](https://github.com/owner/repo/pull/1)
+- [PR] PR #2 (1970-01-01) — [owner/repo](https://github.com/owner/repo/pull/2)
+- [PR] PR #3 (1970-01-01) — [owner/repo](https://github.com/owner/repo/pull/3)
+- [PR] PR #4 (1970-01-01) — [owner/repo](https://github.com/owner/repo/pull/4)
+- [PR] PR #5 (1970-01-01) — [owner/repo](https://github.com/owner/repo/pull/5)
+- [PR] PR #6 (1970-01-01) — [owner/repo](https://github.com/owner/repo/pull/6)
+- [PR] PR #7 (1970-01-01) — [owner/repo](https://github.com/owner/repo/pull/7)
+- [PR] PR #8 (1970-01-01) — [owner/repo](https://github.com/owner/repo/pull/8)
+
+---
+
+## File Artifacts
+
+- `ledger.events.jsonl` (canonical events)
+- `coverage.manifest.json` (completeness + slicing)
+- `workstreams.yaml` (editable clustering)
+- `manual_events.yaml` (non-GitHub work)

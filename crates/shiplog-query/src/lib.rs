@@ -224,6 +224,16 @@ mod tests {
         }
     }
 
+    fn make_event_with(id: &str, source: SourceSystem, kind: EventKind, actor: &str, repo: &str) -> EventEnvelope {
+        let mut e = make_event();
+        e.id = EventId::from_parts([id]);
+        e.source.system = source;
+        e.kind = kind;
+        e.actor.login = actor.to_string();
+        e.repo.full_name = repo.to_string();
+        e
+    }
+
     #[test]
     fn parse_empty_query() {
         let query = Query::parse("").unwrap();
@@ -338,5 +348,226 @@ mod tests {
 
         let result = query_events("source:github kind:manual", &events).unwrap();
         assert!(result.is_empty());
+    }
+
+    // --- Edge-case tests ---
+
+    #[test]
+    fn query_empty_returns_all() {
+        let events = vec![make_event(), make_event()];
+        let result = query_events("", &events).unwrap();
+        assert_eq!(result.len(), 2);
+    }
+
+    #[test]
+    fn query_whitespace_only_returns_all() {
+        let events = vec![make_event()];
+        let result = query_events("   ", &events).unwrap();
+        assert_eq!(result.len(), 1);
+    }
+
+    #[test]
+    fn query_invalid_kind_value() {
+        let events = vec![make_event()];
+        let err = query_events("kind:unknown_kind", &events).unwrap_err();
+        assert!(matches!(err, QueryError::InvalidValue(_)));
+    }
+
+    #[test]
+    fn query_invalid_date_format() {
+        let events = vec![make_event()];
+        let err = query_events("since:not-a-date", &events).unwrap_err();
+        assert!(matches!(err, QueryError::InvalidValue(_)));
+    }
+
+    #[test]
+    fn query_invalid_date_parts() {
+        let events = vec![make_event()];
+        let err = query_events("since:2025-13-01", &events).unwrap_err();
+        assert!(matches!(err, QueryError::InvalidValue(_)));
+    }
+
+    #[test]
+    fn query_unknown_field() {
+        let err = Query::parse("foobar:value").unwrap_err();
+        assert!(matches!(err, QueryError::UnknownOperator(_)));
+    }
+
+    #[test]
+    fn query_since_and_until_combined() {
+        let events = vec![make_event()]; // Jan 15
+        // Note: with_date_range overwrites both fields; the last clause wins,
+        // so "since:2025-01-01 until:2025-01-31" effectively becomes until:2025-01-31.
+        let result = query_events("since:2025-01-01 until:2025-01-31", &events).unwrap();
+        assert_eq!(result.len(), 1);
+
+        // "until:2025-01-01" alone excludes the Jan 15 event
+        let result = query_events("until:2025-01-01", &events).unwrap();
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn query_partial_actor_match() {
+        let events = vec![make_event()]; // actor: "testuser"
+        let result = query_events("actor:test", &events).unwrap();
+        assert_eq!(result.len(), 1);
+        let result = query_events("actor:user", &events).unwrap();
+        assert_eq!(result.len(), 1);
+    }
+
+    #[test]
+    fn query_source_aliases() {
+        let events = vec![make_event()]; // source: Manual
+        // "manual" should match
+        assert_eq!(query_events("source:manual", &events).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn query_source_json_import_aliases() {
+        let mut event = make_event();
+        event.source.system = SourceSystem::JsonImport;
+        let events = vec![event];
+        assert_eq!(query_events("source:json_import", &events).unwrap().len(), 1);
+        assert_eq!(query_events("source:jsonimport", &events).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn query_source_local_git_aliases() {
+        let mut event = make_event();
+        event.source.system = SourceSystem::LocalGit;
+        let events = vec![event];
+        assert_eq!(query_events("source:local_git", &events).unwrap().len(), 1);
+        assert_eq!(query_events("source:localgit", &events).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn query_kind_aliases() {
+        let events = vec![make_event()]; // kind: Manual
+        assert_eq!(query_events("kind:manual", &events).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn query_kind_pr_alias() {
+        let mut event = make_event();
+        event.kind = EventKind::PullRequest;
+        let events = vec![event];
+        assert_eq!(query_events("kind:pr", &events).unwrap().len(), 1);
+        assert_eq!(query_events("kind:pullrequest", &events).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn query_other_source_system() {
+        let mut event = make_event();
+        event.source.system = SourceSystem::Other("gitlab".to_string());
+        let events = vec![event];
+        assert_eq!(query_events("source:gitlab", &events).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn query_empty_events_returns_empty() {
+        let result = query_events("source:github", &[]).unwrap();
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn query_on_mixed_events() {
+        let events = vec![
+            make_event_with("a", SourceSystem::Manual, EventKind::Manual, "alice", "org/repo1"),
+            make_event_with("b", SourceSystem::Github, EventKind::PullRequest, "bob", "org/repo2"),
+            make_event_with("c", SourceSystem::Github, EventKind::Review, "alice", "org/repo1"),
+        ];
+
+        assert_eq!(query_events("source:github", &events).unwrap().len(), 2);
+        assert_eq!(query_events("actor:alice", &events).unwrap().len(), 2);
+        assert_eq!(query_events("repo:org/repo1", &events).unwrap().len(), 2);
+        assert_eq!(query_events("source:github actor:bob", &events).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn query_to_filter_roundtrip() {
+        let q = Query::parse("source:manual actor:test").unwrap();
+        let filter = q.to_filter().unwrap();
+        let events = vec![make_event()];
+        let direct = q.execute(&events).unwrap();
+        let via_filter = shiplog_filter::filter_events(&events, &filter);
+        assert_eq!(direct.len(), via_filter.len());
+    }
+
+    // --- Snapshot tests ---
+
+    #[test]
+    fn snapshot_query_parse_error_syntax() {
+        let err = Query::parse("nofield").unwrap_err();
+        insta::assert_snapshot!(err.to_string());
+    }
+
+    #[test]
+    fn snapshot_query_parse_error_unknown_operator() {
+        let err = Query::parse("badfield:value").unwrap_err();
+        insta::assert_snapshot!(err.to_string());
+    }
+
+    #[test]
+    fn snapshot_query_invalid_kind_error() {
+        let err = query_events("kind:doesnotexist", &[]).unwrap_err();
+        insta::assert_snapshot!(err.to_string());
+    }
+
+    #[test]
+    fn snapshot_query_invalid_date_error() {
+        let err = query_events("since:bad", &[]).unwrap_err();
+        insta::assert_snapshot!(err.to_string());
+    }
+
+    #[test]
+    fn snapshot_parsed_query_debug() {
+        let q = Query::parse("source:github kind:pr actor:octocat tag:feature repo:org/repo since:2025-01-01 until:2025-06-30").unwrap();
+        insta::assert_debug_snapshot!(q);
+    }
+
+    // --- Property tests ---
+
+    mod prop {
+        use super::*;
+        use proptest::prelude::*;
+
+        proptest! {
+            #[test]
+            fn empty_query_matches_all(n in 0usize..6) {
+                let events: Vec<_> = (0..n).map(|_| make_event()).collect();
+                let result = query_events("", &events).unwrap();
+                prop_assert_eq!(result.len(), n);
+            }
+
+            #[test]
+            fn query_result_is_subset(
+                use_source in proptest::bool::ANY,
+                use_actor in proptest::bool::ANY,
+            ) {
+                let events = vec![
+                    make_event_with("a", SourceSystem::Manual, EventKind::Manual, "alice", "org/r1"),
+                    make_event_with("b", SourceSystem::Github, EventKind::PullRequest, "bob", "org/r2"),
+                ];
+                let mut parts = Vec::new();
+                if use_source { parts.push("source:manual"); }
+                if use_actor { parts.push("actor:alice"); }
+                let query_str = parts.join(" ");
+                let result = query_events(&query_str, &events).unwrap();
+                prop_assert!(result.len() <= events.len());
+                for r in &result {
+                    prop_assert!(events.iter().any(|e| e.id == r.id));
+                }
+            }
+
+            #[test]
+            fn parse_then_execute_consistent(
+                kind in prop_oneof![Just("pr"), Just("review"), Just("manual")],
+            ) {
+                let q = Query::parse(&format!("kind:{kind}")).unwrap();
+                let filter = q.to_filter().unwrap();
+                // Just verify it doesn't error
+                prop_assert!(filter.event_kinds.is_some());
+            }
+        }
     }
 }

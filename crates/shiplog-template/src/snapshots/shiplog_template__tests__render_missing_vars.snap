@@ -1,0 +1,6 @@
+---
+source: crates/shiplog-template/src/lib.rs
+assertion_line: 768
+expression: result
+---
+Name: Bob, Title: , Org:

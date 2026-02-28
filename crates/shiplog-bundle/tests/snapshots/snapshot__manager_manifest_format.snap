@@ -1,0 +1,22 @@
+---
+source: crates/shiplog-bundle/tests/snapshot.rs
+assertion_line: 57
+expression: redacted
+---
+{
+  "files": [
+    {
+      "bytes": 2,
+      "path": "coverage.manifest.json",
+      "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+    },
+    {
+      "bytes": 9,
+      "path": "profiles/manager/packet.md",
+      "sha256": "127f0313e4de1460fec4bb5c2915bf720220705c37fac381154c6f1cfc2f967d"
+    }
+  ],
+  "generated_at": "[TIMESTAMP]",
+  "profile": "Manager",
+  "run_id": "[RUN_ID]"
+}

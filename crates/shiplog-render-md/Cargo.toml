@@ -24,6 +24,8 @@ shiplog-workstream-receipt-policy = { path = "../shiplog-workstream-receipt-poli
 
 [dev-dependencies]
 insta.workspace = true
+proptest.workspace = true
 shiplog-ids = { path = "../shiplog-ids", version = "0.2.1" }
+shiplog-testkit = { path = "../shiplog-testkit", version = "0.2.1" }
 
 

@@ -1,0 +1,37 @@
+---
+source: crates/shiplog-bundle/tests/snapshot.rs
+assertion_line: 44
+expression: redacted
+---
+{
+  "files": [
+    {
+      "bytes": 2,
+      "path": "coverage.manifest.json",
+      "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+    },
+    {
+      "bytes": 0,
+      "path": "ledger.events.jsonl",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 8,
+      "path": "packet.md",
+      "sha256": "3c93bb8b8dec7dd99ee8ee681e1262be4f7d475762e78332a70d84180aaaec3c"
+    },
+    {
+      "bytes": 9,
+      "path": "profiles/manager/packet.md",
+      "sha256": "127f0313e4de1460fec4bb5c2915bf720220705c37fac381154c6f1cfc2f967d"
+    },
+    {
+      "bytes": 8,
+      "path": "profiles/public/packet.md",
+      "sha256": "9b21409a20173c590b4322034662be353309b917d1c136bd2e540182878962e6"
+    }
+  ],
+  "generated_at": "[TIMESTAMP]",
+  "profile": "Internal",
+  "run_id": "[RUN_ID]"
+}

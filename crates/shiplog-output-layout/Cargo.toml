@@ -13,3 +13,6 @@ keywords = ["shiplog", "artifacts", "paths", "contracts", "interop"]
 categories = ["development-tools", "filesystem"]
 
 [dependencies]
+
+[dev-dependencies]
+proptest = "1.10.0"

@@ -1,0 +1,22 @@
+---
+source: crates/shiplog-coverage/tests/snapshot.rs
+assertion_line: 76
+expression: summary
+---
+[
+  {
+    "days": 31,
+    "since": "2025-01-01",
+    "until": "2025-02-01"
+  },
+  {
+    "days": 28,
+    "since": "2025-02-01",
+    "until": "2025-03-01"
+  },
+  {
+    "days": 31,
+    "since": "2025-03-01",
+    "until": "2025-04-01"
+  }
+]

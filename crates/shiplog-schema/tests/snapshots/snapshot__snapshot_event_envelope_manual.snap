@@ -1,0 +1,44 @@
+---
+source: crates/shiplog-schema/tests/snapshot.rs
+expression: event
+---
+{
+  "id": "65cc12acd89c4127942eca4e8a9a53bebe78201a197d638ae5ab6101f81eed97",
+  "kind": "Manual",
+  "occurred_at": "2025-06-01T12:00:00Z",
+  "actor": {
+    "login": "oncall-eng",
+    "id": null
+  },
+  "repo": {
+    "full_name": "acme/widgets",
+    "html_url": null,
+    "visibility": "Unknown"
+  },
+  "payload": {
+    "type": "Manual",
+    "data": {
+      "event_type": "Incident",
+      "title": "P1 incident response",
+      "description": "Responded to production outage",
+      "started_at": "2025-03-15",
+      "ended_at": "2025-03-16",
+      "impact": "Reduced MTTR by 50%"
+    }
+  },
+  "tags": [
+    "incident",
+    "oncall"
+  ],
+  "links": [
+    {
+      "label": "postmortem",
+      "url": "https://wiki.internal/incident-42"
+    }
+  ],
+  "source": {
+    "system": "manual",
+    "url": null,
+    "opaque_id": null
+  }
+}

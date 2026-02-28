@@ -1,0 +1,40 @@
+---
+source: crates/shiplog-render-md/tests/snapshot.rs
+assertion_line: 35
+expression: result
+---
+# Summary
+
+**Window:** 2025-Q1
+
+**Workstreams:** 0
+
+**Events:** 0 PRs, 0 reviews, 0 manual
+
+**Coverage:** Complete
+
+**Sources:** github
+
+## Workstreams
+
+_No workstreams found_
+
+## Receipts
+
+_No workstreams, no receipts_
+
+## Coverage
+
+- **Date window:** 2025-01-01 to 2025-04-01
+- **Mode:** merged
+- **Sources:** github
+- **Completeness:** Complete
+
+## Appendix: All Receipts
+
+## File Artifacts
+
+- `ledger.events.jsonl` (canonical events)
+- `coverage.manifest.json` (completeness + slicing)
+- `workstreams.yaml` (editable clustering)
+- `manual_events.yaml` (non-GitHub work)

@@ -22,6 +22,9 @@ shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
 shiplog-ports = { path = "../shiplog-ports", version = "0.2.1" }
 
 [dev-dependencies]
+chrono.workspace = true
+proptest.workspace = true
+shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
+shiplog-ports = { path = "../shiplog-ports", version = "0.2.1" }
+shiplog-testkit = { path = "../shiplog-testkit", version = "0.2.1" }
 tempfile = "3"
-
-

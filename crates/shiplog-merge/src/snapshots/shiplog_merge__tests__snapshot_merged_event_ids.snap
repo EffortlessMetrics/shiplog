@@ -1,0 +1,10 @@
+---
+source: crates/shiplog-merge/src/lib.rs
+assertion_line: 810
+expression: ids
+---
+[
+    "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8",
+    "f44e64e75f3948e9f73f8dfa94721c4ce8cbb4f265c4790c702b2d41cfbf2753",
+    "be9d587defa1f0c09ef49eb17e206983a5f8f8289e4281860bd0ee5a19592c67",
+]

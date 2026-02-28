@@ -1,0 +1,11 @@
+---
+source: crates/shiplog-diff/src/lib.rs
+assertion_line: 486
+expression: diff
+---
+EventDiff {
+    added: [],
+    removed: [],
+    modified: [],
+    unchanged: [],
+}

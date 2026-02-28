@@ -1,0 +1,13 @@
+---
+source: crates/shiplog-merge/src/lib.rs
+assertion_line: 794
+expression: merged.report
+---
+MergeReport {
+    source_count: 2,
+    input_event_count: 4,
+    output_event_count: 3,
+    conflict_count: 1,
+    skipped_events: 0,
+    warning_count: 3,
+}

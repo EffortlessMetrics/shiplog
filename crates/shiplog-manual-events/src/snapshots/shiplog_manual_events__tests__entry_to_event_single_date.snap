@@ -1,0 +1,30 @@
+---
+source: crates/shiplog-manual-events/src/lib.rs
+assertion_line: 551
+expression: ev
+---
+id: b9a2d86847ec03510f5c719f9de3a940ab6f368934ec9ebb9ab1a0eae1ce10e8
+kind: Manual
+occurred_at: "[timestamp]"
+actor:
+  login: testuser
+  id: ~
+repo:
+  full_name: manual/general
+  html_url: ~
+  visibility: Unknown
+payload:
+  type: Manual
+  data:
+    event_type: Note
+    title: Snapshot Test Event
+    description: ~
+    started_at: 2025-06-15
+    ended_at: 2025-06-15
+    impact: ~
+tags: []
+links: []
+source:
+  system: manual
+  url: ~
+  opaque_id: snap-single

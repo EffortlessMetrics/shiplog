@@ -591,4 +591,227 @@ mod tests {
         let val = TemplateValue::Null;
         assert!(!val.is_truthy());
     }
+
+    // --- Edge case tests ---
+
+    #[test]
+    fn render_empty_template() {
+        let engine = TemplateEngine::new();
+        let ctx = TemplateContext::new();
+        assert_eq!(engine.render("", &ctx).unwrap(), "");
+    }
+
+    #[test]
+    fn render_no_variables_passes_through() {
+        let engine = TemplateEngine::new();
+        let ctx = TemplateContext::new();
+        let template = "Just plain text with no variables.";
+        assert_eq!(engine.render(template, &ctx).unwrap(), template);
+    }
+
+    #[test]
+    fn render_consecutive_variables() {
+        let engine = TemplateEngine::new();
+        let mut ctx = TemplateContext::new();
+        ctx.set("a", "X");
+        ctx.set("b", "Y");
+        assert_eq!(engine.render("{{ a }}{{ b }}", &ctx).unwrap(), "XY");
+    }
+
+    #[test]
+    fn render_variable_with_special_chars_in_value() {
+        let engine = TemplateEngine::new();
+        let mut ctx = TemplateContext::new();
+        ctx.set("code", "<script>alert('xss')</script>");
+        let result = engine.render("Output: {{ code }}", &ctx).unwrap();
+        assert_eq!(result, "Output: <script>alert('xss')</script>");
+    }
+
+    #[test]
+    fn render_variable_with_unicode_value() {
+        let engine = TemplateEngine::new();
+        let mut ctx = TemplateContext::new();
+        ctx.set("greeting", "こんにちは 🌍");
+        assert_eq!(
+            engine.render("Say: {{ greeting }}", &ctx).unwrap(),
+            "Say: こんにちは 🌍"
+        );
+    }
+
+    #[test]
+    fn render_variable_with_newlines_in_value() {
+        let engine = TemplateEngine::new();
+        let mut ctx = TemplateContext::new();
+        ctx.set("body", "line1\nline2\nline3");
+        assert_eq!(
+            engine.render("{{ body }}", &ctx).unwrap(),
+            "line1\nline2\nline3"
+        );
+    }
+
+    #[test]
+    fn render_unclosed_variable_returns_error() {
+        let engine = TemplateEngine::new();
+        let ctx = TemplateContext::new();
+        let result = engine.render("Hello {{ name", &ctx);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("Unclosed variable"));
+    }
+
+    #[test]
+    fn render_multiple_variables_in_template() {
+        let engine = TemplateEngine::new();
+        let mut ctx = TemplateContext::new();
+        ctx.set("first", "John");
+        ctx.set("last", "Doe");
+        ctx.set("age", 30);
+        let result = engine
+            .render("{{ first }} {{ last }}, age {{ age }}", &ctx)
+            .unwrap();
+        assert_eq!(result, "John Doe, age 30");
+    }
+
+    #[test]
+    fn render_variable_overwrite() {
+        let mut ctx = TemplateContext::new();
+        ctx.set("x", "first");
+        ctx.set("x", "second");
+        assert_eq!(ctx.get_string("x"), Some("second".to_string()));
+    }
+
+    #[test]
+    fn context_missing_variable_is_not_truthy() {
+        let ctx = TemplateContext::new();
+        assert!(!ctx.is_truthy("nonexistent"));
+    }
+
+    #[test]
+    fn template_value_null_display_is_empty() {
+        assert_eq!(TemplateValue::Null.to_string(), "");
+    }
+
+    #[test]
+    fn template_value_list_display() {
+        let val = TemplateValue::List(vec![TemplateValue::Number(1)]);
+        assert_eq!(val.to_string(), "[list]");
+    }
+
+    #[test]
+    fn template_value_object_display() {
+        let mut obj = HashMap::new();
+        obj.insert("k".to_string(), TemplateValue::Number(1));
+        let val = TemplateValue::Object(obj);
+        assert_eq!(val.to_string(), "[object]");
+    }
+
+    #[test]
+    fn template_value_negative_number_is_truthy() {
+        let val = TemplateValue::Number(-1);
+        assert!(val.is_truthy());
+    }
+
+    #[test]
+    fn from_json_value_nested_object() {
+        let v = TemplateValue::from_json_value(serde_json::json!({
+            "outer": {"inner": 42}
+        }));
+        if let Some(TemplateValue::Object(obj)) = v {
+            if let Some(TemplateValue::Object(inner)) = obj.get("outer") {
+                assert_eq!(inner.get("inner"), Some(&TemplateValue::Number(42)));
+            } else {
+                panic!("expected inner object");
+            }
+        } else {
+            panic!("expected outer object");
+        }
+    }
+
+    #[test]
+    fn from_json_value_empty_array() {
+        let v = TemplateValue::from_json_value(serde_json::json!([]));
+        assert_eq!(v, Some(TemplateValue::List(vec![])));
+    }
+
+    #[test]
+    fn from_json_value_empty_object() {
+        let v = TemplateValue::from_json_value(serde_json::json!({}));
+        assert_eq!(v, Some(TemplateValue::Object(HashMap::new())));
+    }
+
+    #[test]
+    fn from_json_value_negative_integer() {
+        let v = TemplateValue::from_json_value(serde_json::json!(-99));
+        assert_eq!(v, Some(TemplateValue::Number(-99)));
+    }
+
+    // --- Snapshot tests ---
+
+    #[test]
+    fn snapshot_render_packet_header() {
+        let engine = TemplateEngine::new();
+        let mut ctx = TemplateContext::new();
+        ctx.set("title", "Q1 2025 Shipping Packet");
+        ctx.set("author", "alice");
+        ctx.set("date_range", "2025-01-01 to 2025-03-31");
+        let template = "# {{ title }}\n\n**Author:** {{ author }}\n**Period:** {{ date_range }}";
+        let result = engine.render(template, &ctx).unwrap();
+        insta::assert_snapshot!("render_packet_header", result);
+    }
+
+    #[test]
+    fn snapshot_render_missing_vars() {
+        let engine = TemplateEngine::new();
+        let mut ctx = TemplateContext::new();
+        ctx.set("name", "Bob");
+        let template = "Name: {{ name }}, Title: {{ title }}, Org: {{ org }}";
+        let result = engine.render(template, &ctx).unwrap();
+        insta::assert_snapshot!("render_missing_vars", result);
+    }
+
+    // --- Property tests ---
+
+    use proptest::prelude::*;
+
+    proptest! {
+        #[test]
+        fn prop_render_plaintext_passthrough(text in "[^{}]{0,200}") {
+            let engine = TemplateEngine::new();
+            let ctx = TemplateContext::new();
+            let result = engine.render(&text, &ctx).unwrap();
+            prop_assert_eq!(result, text);
+        }
+
+        #[test]
+        fn prop_set_get_roundtrip(key in "[a-zA-Z_][a-zA-Z0-9_]{0,30}", value in ".*") {
+            let mut ctx = TemplateContext::new();
+            ctx.set(&key, value.clone());
+            let retrieved = ctx.get_string(&key);
+            prop_assert_eq!(retrieved, Some(value));
+        }
+
+        #[test]
+        fn prop_render_variable_substitution(
+            key in "[a-zA-Z_][a-zA-Z0-9_]{1,20}",
+            value in "[^{}]{0,100}"
+        ) {
+            let engine = TemplateEngine::new();
+            let mut ctx = TemplateContext::new();
+            ctx.set(&key, value.clone());
+            let template = format!("prefix-{{{{ {} }}}}-suffix", key);
+            let result = engine.render(&template, &ctx).unwrap();
+            prop_assert_eq!(result, format!("prefix-{}-suffix", value));
+        }
+
+        #[test]
+        fn prop_truthy_nonempty_string(s in ".{1,100}") {
+            let val = TemplateValue::String(s);
+            prop_assert!(val.is_truthy());
+        }
+
+        #[test]
+        fn prop_truthy_nonzero_number(n in (-1000i64..1000i64).prop_filter("nonzero", |n| *n != 0)) {
+            let val = TemplateValue::Number(n);
+            prop_assert!(val.is_truthy());
+        }
+    }
 }

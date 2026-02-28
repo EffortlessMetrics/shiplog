@@ -27,3 +27,5 @@ shiplog-workstream-cluster = { path = "../shiplog-workstream-cluster", version =
 shiplog-cluster-llm-prompt = { path = "../shiplog-cluster-llm-prompt", version = "0.2.1" }
 shiplog-cluster-llm-parse = { path = "../shiplog-cluster-llm-parse", version = "0.2.1" }
 
+[dev-dependencies]
+proptest.workspace = true

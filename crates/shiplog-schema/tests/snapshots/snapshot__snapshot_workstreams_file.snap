@@ -1,0 +1,29 @@
+---
+source: crates/shiplog-schema/tests/snapshot.rs
+expression: ws
+---
+{
+  "version": 1,
+  "generated_at": "2025-06-01T12:00:00Z",
+  "workstreams": [
+    {
+      "id": "0544bb5a3630bdac7e9da0276c87a8f1b89cd5d011903d1791cb77a3c521b037",
+      "title": "Authentication",
+      "summary": "OAuth2 integration",
+      "tags": [
+        "security"
+      ],
+      "stats": {
+        "pull_requests": 3,
+        "reviews": 1,
+        "manual_events": 0
+      },
+      "events": [
+        "5fe344ad0cf9acbffb4bc45a718ad98b4138abd47bb97882294b7a6d74e78db5"
+      ],
+      "receipts": [
+        "5fe344ad0cf9acbffb4bc45a718ad98b4138abd47bb97882294b7a6d74e78db5"
+      ]
+    }
+  ]
+}

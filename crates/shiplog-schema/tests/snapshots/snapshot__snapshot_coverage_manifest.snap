@@ -1,0 +1,32 @@
+---
+source: crates/shiplog-schema/tests/snapshot.rs
+expression: manifest
+---
+{
+  "run_id": "test_run_123",
+  "generated_at": "2025-06-01T12:00:00Z",
+  "user": "octocat",
+  "window": {
+    "since": "2025-01-01",
+    "until": "2025-04-01"
+  },
+  "mode": "merged",
+  "sources": [
+    "github"
+  ],
+  "slices": [
+    {
+      "window": {
+        "since": "2025-01-01",
+        "until": "2025-04-01"
+      },
+      "query": "author:octocat is:merged",
+      "total_count": 42,
+      "fetched": 42,
+      "incomplete_results": false,
+      "notes": []
+    }
+  ],
+  "warnings": [],
+  "completeness": "Complete"
+}
