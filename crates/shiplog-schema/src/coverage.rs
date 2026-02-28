@@ -10,6 +10,23 @@ pub struct TimeWindow {
 }
 
 impl TimeWindow {
+    /// Returns `true` if `d` falls within the half-open range `[since, until)`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use shiplog_schema::coverage::TimeWindow;
+    /// use chrono::NaiveDate;
+    ///
+    /// let w = TimeWindow {
+    ///     since: NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
+    ///     until: NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),
+    /// };
+    ///
+    /// assert!(w.contains(NaiveDate::from_ymd_opt(2025, 1, 15).unwrap()));
+    /// assert!(w.contains(w.since));     // inclusive start
+    /// assert!(!w.contains(w.until));    // exclusive end
+    /// ```
     pub fn contains(&self, d: NaiveDate) -> bool {
         d >= self.since && d < self.until
     }

@@ -4,6 +4,21 @@ use chrono::{Datelike, NaiveDate, Weekday};
 use shiplog_schema::coverage::TimeWindow;
 
 /// Split a half-open date range into month-start anchored windows.
+///
+/// # Examples
+///
+/// ```
+/// use shiplog_date_windows::month_windows;
+/// use chrono::NaiveDate;
+///
+/// let since = NaiveDate::from_ymd_opt(2025, 1, 15).unwrap();
+/// let until = NaiveDate::from_ymd_opt(2025, 3, 2).unwrap();
+/// let windows = month_windows(since, until);
+///
+/// assert_eq!(windows.len(), 3);
+/// assert_eq!(windows[0].since, since);
+/// assert_eq!(windows[1].since, NaiveDate::from_ymd_opt(2025, 2, 1).unwrap());
+/// ```
 pub fn month_windows(since: NaiveDate, until: NaiveDate) -> Vec<TimeWindow> {
     if since >= until {
         return vec![];
@@ -30,6 +45,20 @@ pub fn month_windows(since: NaiveDate, until: NaiveDate) -> Vec<TimeWindow> {
 }
 
 /// Split a half-open date range into Monday-started week windows.
+///
+/// # Examples
+///
+/// ```
+/// use shiplog_date_windows::week_windows;
+/// use chrono::NaiveDate;
+///
+/// let since = NaiveDate::from_ymd_opt(2025, 1, 1).unwrap();
+/// let until = NaiveDate::from_ymd_opt(2025, 1, 15).unwrap();
+/// let windows = week_windows(since, until);
+///
+/// assert!(!windows.is_empty());
+/// // Internal boundaries fall on Mondays
+/// ```
 pub fn week_windows(since: NaiveDate, until: NaiveDate) -> Vec<TimeWindow> {
     if since >= until {
         return vec![];
@@ -56,6 +85,19 @@ pub fn week_windows(since: NaiveDate, until: NaiveDate) -> Vec<TimeWindow> {
 }
 
 /// Split a half-open date range into day windows.
+///
+/// # Examples
+///
+/// ```
+/// use shiplog_date_windows::day_windows;
+/// use chrono::NaiveDate;
+///
+/// let since = NaiveDate::from_ymd_opt(2025, 1, 1).unwrap();
+/// let until = NaiveDate::from_ymd_opt(2025, 1, 4).unwrap();
+/// let days = day_windows(since, until);
+///
+/// assert_eq!(days.len(), 3); // Jan 1, 2, 3
+/// ```
 pub fn day_windows(since: NaiveDate, until: NaiveDate) -> Vec<TimeWindow> {
     if since >= until {
         return vec![];
@@ -79,6 +121,20 @@ pub fn day_windows(since: NaiveDate, until: NaiveDate) -> Vec<TimeWindow> {
 }
 
 /// Number of days covered by a window.
+///
+/// # Examples
+///
+/// ```
+/// use shiplog_date_windows::window_len_days;
+/// use shiplog_schema::coverage::TimeWindow;
+/// use chrono::NaiveDate;
+///
+/// let w = TimeWindow {
+///     since: NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
+///     until: NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),
+/// };
+/// assert_eq!(window_len_days(&w), 31);
+/// ```
 #[must_use]
 pub fn window_len_days(w: &TimeWindow) -> i64 {
     (w.until - w.since).num_days()

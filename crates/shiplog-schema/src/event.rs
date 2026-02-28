@@ -7,6 +7,21 @@ use std::fmt;
 /// Where a record came from.
 ///
 /// This is part of the trust story: a packet is only as good as its provenance.
+///
+/// # Examples
+///
+/// ```
+/// use shiplog_schema::event::SourceSystem;
+///
+/// let gh = SourceSystem::Github;
+/// assert_eq!(gh.as_str(), "github");
+///
+/// // Round-trips through serde:
+/// let json = serde_json::to_string(&gh).unwrap();
+/// assert_eq!(json, r#""github""#);
+/// let back: SourceSystem = serde_json::from_str(&json).unwrap();
+/// assert_eq!(back, gh);
+/// ```
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum SourceSystem {
@@ -21,6 +36,16 @@ pub enum SourceSystem {
 
 impl SourceSystem {
     /// Canonical lowercase string for this variant.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use shiplog_schema::event::SourceSystem;
+    ///
+    /// assert_eq!(SourceSystem::Github.as_str(), "github");
+    /// assert_eq!(SourceSystem::JsonImport.as_str(), "json_import");
+    /// assert_eq!(SourceSystem::Other("jira".into()).as_str(), "jira");
+    /// ```
     pub fn as_str(&self) -> &str {
         match self {
             Self::Github => "github",
@@ -34,6 +59,19 @@ impl SourceSystem {
 
     /// Parse from a string, case-insensitively matching known variants.
     /// Unrecognised strings become `Other(s)`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use shiplog_schema::event::SourceSystem;
+    ///
+    /// assert_eq!(SourceSystem::from_str_lossy("GitHub"), SourceSystem::Github);
+    /// assert_eq!(SourceSystem::from_str_lossy("manual"), SourceSystem::Manual);
+    /// assert_eq!(
+    ///     SourceSystem::from_str_lossy("jira"),
+    ///     SourceSystem::Other("jira".into()),
+    /// );
+    /// ```
     pub fn from_str_lossy(s: &str) -> Self {
         match s.to_ascii_lowercase().as_str() {
             "github" => Self::Github,

@@ -20,11 +20,35 @@ pub use shiplog_redaction_projector::RedactionProfile;
 /// - It doesn't do NLP.
 /// - It doesn't detect secrets.
 /// - It does *structural* redaction so you can safely share packets.
+///
+/// # Examples
+///
+/// ```
+/// use shiplog_redact::DeterministicRedactor;
+///
+/// let redactor = DeterministicRedactor::new(b"my-secret-key");
+/// // The redactor is now ready to redact events and workstreams
+/// // via the `Redactor` trait from `shiplog_ports`.
+/// ```
 pub struct DeterministicRedactor {
     aliases: DeterministicAliasStore,
 }
 
 impl DeterministicRedactor {
+    /// Create a new redactor with the given HMAC key.
+    ///
+    /// The same key always produces the same aliases, making redaction
+    /// deterministic across runs.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use shiplog_redact::DeterministicRedactor;
+    ///
+    /// let r1 = DeterministicRedactor::new(b"key-a");
+    /// let r2 = DeterministicRedactor::new(b"key-a");
+    /// // Both produce identical aliases for the same inputs.
+    /// ```
     pub fn new(key: impl AsRef<[u8]>) -> Self {
         Self {
             aliases: DeterministicAliasStore::new(key),
