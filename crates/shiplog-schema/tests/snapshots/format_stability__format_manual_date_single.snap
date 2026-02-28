@@ -1,0 +1,5 @@
+---
+source: crates/shiplog-schema/tests/format_stability.rs
+expression: d
+---
+"2025-06-01"

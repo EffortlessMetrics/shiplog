@@ -1,0 +1,37 @@
+---
+source: crates/shiplog-workstreams/tests/snapshot.rs
+expression: ws
+---
+version: 1
+generated_at: "2025-06-01T12:00:00Z"
+workstreams:
+  - id: c342740613232e073739eb582b858afc00bc2959d2e541055dbdf88dbe51e73a
+    title: Widgets Core
+    summary: Core widget library improvements
+    tags:
+      - core
+      - library
+    stats:
+      pull_requests: 8
+      reviews: 12
+      manual_events: 2
+    events:
+      - e47c0cfd3629a43cd73571600ff6c72c615352f288d8028453c29b2c75b3eee3
+      - d3afb17f89262ba54ac70f49b6038e0fad66d25efc64a21eab89dd5a6ae0dad3
+      - f21be31e2f3bed2b75c2c8310c38d12d985184f2b4fc322ab29a9949576af7cd
+    receipts:
+      - e47c0cfd3629a43cd73571600ff6c72c615352f288d8028453c29b2c75b3eee3
+  - id: 896e6a9b256874fc24eadd9cd40a7bfa4c6cbc8b72c10c3724dacbc4559743b6
+    title: Infrastructure
+    summary: CI/CD and deployment pipelines
+    tags:
+      - infra
+      - devops
+    stats:
+      pull_requests: 3
+      reviews: 1
+      manual_events: 0
+    events:
+      - 2c6f2a89eb5ea579e928260cc1046c57718de93af4955220643281e0880aa130
+    receipts:
+      - 2c6f2a89eb5ea579e928260cc1046c57718de93af4955220643281e0880aa130

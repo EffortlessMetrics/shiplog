@@ -1,0 +1,41 @@
+---
+source: crates/shiplog-coverage/tests/format_stability.rs
+expression: manifest
+---
+{
+  "run_id": "",
+  "generated_at": "2025-06-01T12:00:00Z",
+  "user": "user with spaces & <special>",
+  "window": {
+    "since": "2000-01-01",
+    "until": "2099-12-31"
+  },
+  "mode": "",
+  "sources": [
+    "",
+    "github",
+    "日本語ソース"
+  ],
+  "slices": [
+    {
+      "window": {
+        "since": "2000-01-01",
+        "until": "2099-12-31"
+      },
+      "query": "query with \"quotes\" & <brackets>",
+      "total_count": 18446744073709551615,
+      "fetched": 0,
+      "incomplete_results": null,
+      "notes": [
+        "",
+        "Special chars: <>&\"'"
+      ]
+    }
+  ],
+  "warnings": [
+    "",
+    "Warning with émojis 🚀",
+    "Multi\nline\nwarning"
+  ],
+  "completeness": "Partial"
+}

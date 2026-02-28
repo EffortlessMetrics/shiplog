@@ -241,3 +241,117 @@ async fn state_map_clone_shares_data() {
     map.insert("key".into(), "value".into()).await;
     assert_eq!(clone.get("key").await, Some("value".into()));
 }
+
+// ── SharedState: write guard dereference ──────────────────────────────
+
+#[tokio::test]
+async fn shared_state_write_guard_deref_mut() {
+    let state = SharedState::new(vec![1, 2, 3]);
+    {
+        let mut guard = state.write().await;
+        guard.push(4);
+    }
+    let val = state.get().await;
+    assert_eq!(val, vec![1, 2, 3, 4]);
+}
+
+// ── SharedState: read guard dereference ───────────────────────────────
+
+#[tokio::test]
+async fn shared_state_read_guard_deref() {
+    let state = SharedState::new(String::from("hello"));
+    let guard = state.read().await;
+    assert_eq!(guard.len(), 5);
+    assert_eq!(&*guard, "hello");
+}
+
+// ── SharedStateMap: overwrite existing key ────────────────────────────
+
+#[tokio::test]
+async fn state_map_overwrite_existing_key() {
+    let map = SharedStateMap::new();
+    map.insert("key".into(), "v1".into()).await;
+    map.insert("key".into(), "v2".into()).await;
+    assert_eq!(map.get("key").await, Some("v2".into()));
+    assert_eq!(map.len().await, 1);
+}
+
+// ── SharedStateMap: len after removes ─────────────────────────────────
+
+#[tokio::test]
+async fn state_map_len_decreases_after_remove() {
+    let map = SharedStateMap::new();
+    map.insert("a".into(), "1".into()).await;
+    map.insert("b".into(), "2".into()).await;
+    map.insert("c".into(), "3".into()).await;
+    assert_eq!(map.len().await, 3);
+    map.remove("b").await;
+    assert_eq!(map.len().await, 2);
+    assert!(!map.contains_key("b").await);
+}
+
+// ── SharedStateConfig: custom values ──────────────────────────────────
+
+#[test]
+fn shared_state_config_custom_values() {
+    let cfg = SharedStateConfig {
+        initial_value: Some("init".to_string()),
+        persistent: true,
+        persist_path: Some("/tmp/state.json".to_string()),
+    };
+    assert_eq!(cfg.initial_value, Some("init".to_string()));
+    assert!(cfg.persistent);
+    assert_eq!(cfg.persist_path, Some("/tmp/state.json".to_string()));
+}
+
+// ── SharedStateConfig: serde roundtrip ────────────────────────────────
+
+#[test]
+fn shared_state_config_serde_roundtrip() {
+    let cfg = SharedStateConfig {
+        initial_value: Some("test".to_string()),
+        persistent: true,
+        persist_path: Some("/path".to_string()),
+    };
+    let json = serde_json::to_string(&cfg).unwrap();
+    let deser: SharedStateConfig = serde_json::from_str(&json).unwrap();
+    assert_eq!(deser.initial_value, cfg.initial_value);
+    assert_eq!(deser.persistent, cfg.persistent);
+    assert_eq!(deser.persist_path, cfg.persist_path);
+}
+
+// ── SharedState: concurrent writers with update ───────────────────────
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn shared_state_concurrent_vec_pushes() {
+    let state = SharedState::new(Vec::<u32>::new());
+    let barrier = Arc::new(Barrier::new(5));
+
+    let mut handles = Vec::new();
+    for i in 0..5u32 {
+        let s = state.clone();
+        let b = barrier.clone();
+        handles.push(tokio::spawn(async move {
+            b.wait().await;
+            for j in 0..10u32 {
+                s.update(|v| v.push(i * 10 + j)).await;
+            }
+        }));
+    }
+
+    for h in handles {
+        h.await.unwrap();
+    }
+
+    let vec = state.get().await;
+    assert_eq!(vec.len(), 50);
+}
+
+// ── SharedStateMap: default is empty ──────────────────────────────────
+
+#[tokio::test]
+async fn state_map_default_is_empty() {
+    let map = SharedStateMap::default();
+    assert!(map.is_empty().await);
+    assert_eq!(map.len().await, 0);
+}

@@ -1,0 +1,10 @@
+---
+source: crates/shiplog-bundle/tests/format_stability.rs
+expression: manifest
+---
+{
+  "run_id": "empty",
+  "generated_at": "2025-06-01T12:00:00Z",
+  "profile": "Internal",
+  "files": []
+}

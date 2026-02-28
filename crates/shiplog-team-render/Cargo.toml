@@ -25,4 +25,5 @@ insta.workspace = true
 proptest.workspace = true
 serde_json.workspace = true
 shiplog-ids = { path = "../shiplog-ids", version = "0.2.1" }
+shiplog-testkit = { path = "../shiplog-testkit" }
 tempfile.workspace = true

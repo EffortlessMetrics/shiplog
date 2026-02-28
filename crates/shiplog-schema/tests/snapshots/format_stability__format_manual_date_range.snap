@@ -1,0 +1,8 @@
+---
+source: crates/shiplog-schema/tests/format_stability.rs
+expression: d
+---
+{
+  "start": "2025-01-01",
+  "end": "2025-12-31"
+}

@@ -1,0 +1,40 @@
+---
+source: crates/shiplog-schema/tests/format_stability.rs
+expression: event
+---
+{
+  "id": "1f6fa6f69d185e6086d04e7330361bf9001a3b8d0ce511171055dc34eb90c1c5",
+  "kind": "PullRequest",
+  "occurred_at": "2025-06-01T12:00:00Z",
+  "actor": {
+    "login": "a",
+    "id": null
+  },
+  "repo": {
+    "full_name": "x/y",
+    "html_url": null,
+    "visibility": "Unknown"
+  },
+  "payload": {
+    "type": "PullRequest",
+    "data": {
+      "number": 1,
+      "title": "t",
+      "state": "Open",
+      "created_at": "2025-06-01T12:00:00Z",
+      "merged_at": null,
+      "additions": null,
+      "deletions": null,
+      "changed_files": null,
+      "touched_paths_hint": [],
+      "window": null
+    }
+  },
+  "tags": [],
+  "links": [],
+  "source": {
+    "system": "unknown",
+    "url": null,
+    "opaque_id": null
+  }
+}

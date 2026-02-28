@@ -1,0 +1,21 @@
+---
+source: crates/shiplog-bundle/tests/format_stability.rs
+expression: manifest
+---
+{
+  "run_id": "",
+  "generated_at": "2025-06-01T12:00:00Z",
+  "profile": "Internal",
+  "files": [
+    {
+      "path": "",
+      "sha256": "",
+      "bytes": 0
+    },
+    {
+      "path": "deeply/nested/path/to/file with spaces.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 18446744073709551615
+    }
+  ]
+}

@@ -113,3 +113,180 @@ fn parse_integration_rejects_invalid_indices_and_caps_uncategorized_receipts() {
     assert_eq!(parsed.workstreams[0].events.len(), 15);
     assert_eq!(parsed.workstreams[0].receipts.len(), 10);
 }
+
+#[test]
+fn parse_empty_events_and_empty_workstreams() {
+    let payload = serde_json::json!({ "workstreams": [] }).to_string();
+    let parsed = parse_llm_response(&payload, &[]).unwrap();
+    assert!(parsed.workstreams.is_empty());
+}
+
+#[test]
+fn parse_malformed_json_returns_error() {
+    let events = vec![make_event("acme", 1, "pr")];
+    let result = parse_llm_response("not valid json", &events);
+    assert!(result.is_err());
+}
+
+#[test]
+fn parse_empty_string_returns_error() {
+    let result = parse_llm_response("", &[]);
+    assert!(result.is_err());
+}
+
+#[test]
+fn parse_single_workstream_claims_all_no_uncategorized() {
+    let events = vec![
+        make_event("acme", 1, "pr"),
+        make_event("acme", 2, "pr"),
+        make_event("acme", 3, "pr"),
+    ];
+    let payload = serde_json::json!({
+        "workstreams": [{
+            "title": "All Work",
+            "summary": "Everything",
+            "tags": ["all"],
+            "event_indices": [0, 1, 2],
+            "receipt_indices": [0, 1]
+        }]
+    })
+    .to_string();
+
+    let parsed = parse_llm_response(&payload, &events).unwrap();
+    assert_eq!(parsed.workstreams.len(), 1);
+    assert_eq!(parsed.workstreams[0].title, "All Work");
+    assert_eq!(parsed.workstreams[0].events.len(), 3);
+}
+
+#[test]
+fn parse_first_wins_for_duplicate_indices_across_workstreams() {
+    let events = vec![make_event("acme", 1, "pr"), make_event("acme", 2, "pr")];
+    let payload = serde_json::json!({
+        "workstreams": [
+            {
+                "title": "First",
+                "summary": "first",
+                "tags": [],
+                "event_indices": [0, 1],
+                "receipt_indices": []
+            },
+            {
+                "title": "Second",
+                "summary": "second",
+                "tags": [],
+                "event_indices": [0, 1],
+                "receipt_indices": []
+            }
+        ]
+    })
+    .to_string();
+
+    let parsed = parse_llm_response(&payload, &events).unwrap();
+    assert_eq!(parsed.workstreams.len(), 1);
+    assert_eq!(parsed.workstreams[0].title, "First");
+    assert_eq!(parsed.workstreams[0].events.len(), 2);
+}
+
+#[test]
+fn parse_preserves_tags_and_summary() {
+    let events = vec![make_event("acme", 1, "pr")];
+    let payload = serde_json::json!({
+        "workstreams": [{
+            "title": "Auth Work",
+            "summary": "Authentication improvements",
+            "tags": ["auth", "security", "backend"],
+            "event_indices": [0],
+            "receipt_indices": [0]
+        }]
+    })
+    .to_string();
+
+    let parsed = parse_llm_response(&payload, &events).unwrap();
+    let ws = &parsed.workstreams[0];
+    assert_eq!(ws.summary.as_deref(), Some("Authentication improvements"));
+    assert_eq!(ws.tags, vec!["auth", "security", "backend"]);
+}
+
+#[test]
+fn parse_all_orphan_events_capped_receipts() {
+    let events: Vec<EventEnvelope> = (0..20).map(|i| make_event("acme", i + 1, "pr")).collect();
+    let payload = serde_json::json!({ "workstreams": [] }).to_string();
+
+    let parsed = parse_llm_response(&payload, &events).unwrap();
+    assert_eq!(parsed.workstreams.len(), 1);
+    assert_eq!(parsed.workstreams[0].title, "Uncategorized");
+    assert_eq!(parsed.workstreams[0].events.len(), 20);
+    assert_eq!(parsed.workstreams[0].receipts.len(), 10);
+}
+
+#[test]
+fn parse_json_with_extra_fields_is_accepted() {
+    let events = vec![make_event("acme", 1, "pr")];
+    let payload = serde_json::json!({
+        "workstreams": [{
+            "title": "Work",
+            "summary": "stuff",
+            "tags": [],
+            "event_indices": [0],
+            "receipt_indices": [],
+            "extra_field": "should be ignored"
+        }],
+        "metadata": "also ignored"
+    })
+    .to_string();
+
+    let parsed = parse_llm_response(&payload, &events).unwrap();
+    assert_eq!(parsed.workstreams.len(), 1);
+}
+
+#[test]
+fn parse_review_and_manual_stats_counted() {
+    let events = vec![
+        make_event("acme", 1, "review"),
+        make_event("acme", 2, "review"),
+        make_event("acme", 3, "manual"),
+    ];
+    let payload = serde_json::json!({
+        "workstreams": [{
+            "title": "Mixed",
+            "summary": "mixed",
+            "tags": [],
+            "event_indices": [0, 1, 2],
+            "receipt_indices": [0]
+        }]
+    })
+    .to_string();
+
+    let parsed = parse_llm_response(&payload, &events).unwrap();
+    let ws = &parsed.workstreams[0];
+    assert_eq!(ws.stats.reviews, 2);
+    assert_eq!(ws.stats.manual_events, 1);
+    assert_eq!(ws.stats.pull_requests, 0);
+}
+
+#[test]
+fn parse_partial_claim_creates_uncategorized_for_rest() {
+    let events = vec![
+        make_event("acme", 1, "pr"),
+        make_event("acme", 2, "pr"),
+        make_event("acme", 3, "pr"),
+        make_event("acme", 4, "pr"),
+    ];
+    let payload = serde_json::json!({
+        "workstreams": [{
+            "title": "Partial",
+            "summary": "only some",
+            "tags": ["partial"],
+            "event_indices": [0, 2],
+            "receipt_indices": [0]
+        }]
+    })
+    .to_string();
+
+    let parsed = parse_llm_response(&payload, &events).unwrap();
+    assert_eq!(parsed.workstreams.len(), 2);
+    assert_eq!(parsed.workstreams[0].title, "Partial");
+    assert_eq!(parsed.workstreams[0].events.len(), 2);
+    assert_eq!(parsed.workstreams[1].title, "Uncategorized");
+    assert_eq!(parsed.workstreams[1].events.len(), 2);
+}

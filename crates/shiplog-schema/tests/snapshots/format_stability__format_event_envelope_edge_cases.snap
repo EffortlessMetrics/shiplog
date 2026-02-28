@@ -1,0 +1,54 @@
+---
+source: crates/shiplog-schema/tests/format_stability.rs
+expression: event
+---
+{
+  "id": "a1cb100f57e971cacf269e7c26e4630a25a8e9d4bdd35e32df1a80b66b896254",
+  "kind": "PullRequest",
+  "occurred_at": "2025-06-01T12:00:00Z",
+  "actor": {
+    "login": "user with spaces & <special>",
+    "id": 18446744073709551615
+  },
+  "repo": {
+    "full_name": "",
+    "html_url": "",
+    "visibility": "Public"
+  },
+  "payload": {
+    "type": "PullRequest",
+    "data": {
+      "number": 18446744073709551615,
+      "title": "título with émojis 🚀 & \"quotes\" <tags>",
+      "state": "Merged",
+      "created_at": "2025-06-01T12:00:00Z",
+      "merged_at": "2025-06-01T12:00:00Z",
+      "additions": 18446744073709551615,
+      "deletions": 0,
+      "changed_files": 18446744073709551615,
+      "touched_paths_hint": [
+        "",
+        "path/with spaces/file.rs"
+      ],
+      "window": {
+        "since": "2025-01-01",
+        "until": "2025-04-01"
+      }
+    }
+  },
+  "tags": [
+    "",
+    "tag with spaces"
+  ],
+  "links": [
+    {
+      "label": "",
+      "url": "not-a-url"
+    }
+  ],
+  "source": {
+    "system": "custom/system",
+    "url": "",
+    "opaque_id": ""
+  }
+}

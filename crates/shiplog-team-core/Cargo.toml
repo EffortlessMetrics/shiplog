@@ -22,4 +22,5 @@ serde_yaml.workspace = true
 insta.workspace = true
 proptest.workspace = true
 serde_json.workspace = true
+shiplog-testkit = { path = "../shiplog-testkit" }
 tempfile.workspace = true

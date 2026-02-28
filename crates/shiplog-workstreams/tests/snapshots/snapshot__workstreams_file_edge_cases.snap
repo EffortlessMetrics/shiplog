@@ -1,0 +1,29 @@
+---
+source: crates/shiplog-workstreams/tests/snapshot.rs
+expression: ws
+---
+{
+  "version": 4294967295,
+  "generated_at": "2025-06-01T12:00:00Z",
+  "workstreams": [
+    {
+      "id": "a1cb100f57e971cacf269e7c26e4630a25a8e9d4bdd35e32df1a80b66b896254",
+      "title": "Title with \"quotes\" & <angle brackets> 🚀",
+      "summary": "",
+      "tags": [
+        "",
+        "tag with spaces",
+        "日本語タグ"
+      ],
+      "stats": {
+        "pull_requests": 18446744073709551615,
+        "reviews": 0,
+        "manual_events": 18446744073709551615
+      },
+      "events": [
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "receipts": []
+    }
+  ]
+}

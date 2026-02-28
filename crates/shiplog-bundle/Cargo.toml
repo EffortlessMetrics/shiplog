@@ -27,7 +27,7 @@ shiplog-ids = { path = "../shiplog-ids", version = "0.2.1" }
 [dev-dependencies]
 tempfile.workspace = true
 proptest.workspace = true
-insta.workspace = true
+insta = { workspace = true, features = ["json"] }
 serde_json.workspace = true
 sha2.workspace = true
 hex.workspace = true

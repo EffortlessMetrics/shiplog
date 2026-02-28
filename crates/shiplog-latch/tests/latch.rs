@@ -180,3 +180,117 @@ async fn latch_used_as_start_gate() {
     r.sort();
     assert_eq!(*r, vec![0, 1, 2, 3, 4]);
 }
+
+// ── CountDownLatch: extra countdowns don't panic ──────────────────────
+
+#[test]
+fn latch_extra_countdown_does_not_panic() {
+    let latch = CountDownLatch::new(1);
+    latch.count_down();
+    assert!(latch.try_wait());
+    // Extra countdown wraps atomically but must not panic
+    latch.count_down();
+}
+
+// ── CountDownLatch: multiple waiters all wake ─────────────────────────
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn latch_multiple_waiters_all_notified() {
+    let latch = CountDownLatch::new(1);
+    let woke = Arc::new(AtomicUsize::new(0));
+
+    let mut handles = Vec::new();
+    for _ in 0..5 {
+        let l = latch.clone();
+        let w = Arc::clone(&woke);
+        handles.push(tokio::spawn(async move {
+            l.wait().await;
+            w.fetch_add(1, Ordering::SeqCst);
+        }));
+    }
+
+    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    latch.count_down();
+
+    for h in handles {
+        h.await.unwrap();
+    }
+
+    assert_eq!(woke.load(Ordering::SeqCst), 5);
+}
+
+// ── CountDownLatch: try_wait is non-blocking ──────────────────────────
+
+#[test]
+fn latch_try_wait_returns_immediately_when_not_ready() {
+    let latch = CountDownLatch::new(100);
+    assert!(!latch.try_wait());
+    assert_eq!(latch.count(), 100);
+}
+
+// ── Barrier: waiters reset after release ──────────────────────────────
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn barrier_resets_waiters_after_release() {
+    let barrier = Barrier::new(2);
+    let b = barrier.clone();
+
+    let h = tokio::spawn(async move { b.wait().await });
+
+    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    barrier.wait().await;
+
+    h.await.unwrap();
+    assert_eq!(barrier.waiters(), 0);
+}
+
+// ── CountDownLatch: large concurrent countdown ────────────────────────
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 8)]
+async fn latch_large_concurrent_countdown() {
+    let n = 100;
+    let latch = CountDownLatch::new(n);
+    let counter = Arc::new(AtomicUsize::new(0));
+
+    let mut handles = Vec::new();
+    for _ in 0..n {
+        let l = latch.clone();
+        let c = Arc::clone(&counter);
+        handles.push(tokio::spawn(async move {
+            c.fetch_add(1, Ordering::SeqCst);
+            l.count_down();
+        }));
+    }
+
+    tokio::time::timeout(std::time::Duration::from_secs(5), latch.wait())
+        .await
+        .expect("latch should complete");
+
+    for h in handles {
+        h.await.unwrap();
+    }
+
+    assert_eq!(counter.load(Ordering::SeqCst), n);
+}
+
+// ── CountDownLatch: count returns zero after full countdown ───────────
+
+#[test]
+fn latch_count_reaches_zero() {
+    let latch = CountDownLatch::new(3);
+    latch.count_down();
+    latch.count_down();
+    latch.count_down();
+    assert_eq!(latch.count(), 0);
+    assert!(latch.try_wait());
+}
+
+// ── Barrier: clone preserves waiters count ────────────────────────────
+
+#[test]
+fn barrier_clone_shares_waiters() {
+    let barrier = Barrier::new(5);
+    let clone = barrier.clone();
+    assert_eq!(clone.waiters(), 0);
+    assert_eq!(clone.parties(), 5);
+}

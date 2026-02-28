@@ -1,0 +1,49 @@
+---
+source: crates/shiplog-coverage/tests/format_stability.rs
+expression: manifest
+---
+{
+  "run_id": "stability_test_run",
+  "generated_at": "2025-06-01T12:00:00Z",
+  "user": "octocat",
+  "window": {
+    "since": "2025-01-01",
+    "until": "2025-07-01"
+  },
+  "mode": "merged",
+  "sources": [
+    "github",
+    "manual"
+  ],
+  "slices": [
+    {
+      "window": {
+        "since": "2025-01-01",
+        "until": "2025-02-01"
+      },
+      "query": "author:octocat is:merged merged:2025-01-01..2025-02-01",
+      "total_count": 15,
+      "fetched": 15,
+      "incomplete_results": false,
+      "notes": []
+    },
+    {
+      "window": {
+        "since": "2025-02-01",
+        "until": "2025-03-01"
+      },
+      "query": "author:octocat is:merged merged:2025-02-01..2025-03-01",
+      "total_count": 100,
+      "fetched": 30,
+      "incomplete_results": true,
+      "notes": [
+        "GitHub search API limit reached",
+        "Results may be incomplete"
+      ]
+    }
+  ],
+  "warnings": [
+    "Incomplete results for February slice"
+  ],
+  "completeness": "Partial"
+}
