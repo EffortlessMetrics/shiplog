@@ -1,5 +1,7 @@
 //! BDD scenarios that lock in microcrate public contracts for external reuse.
 
+#[cfg(feature = "microcrate_date_windows")]
+use crate::bdd::assertions::assert_present;
 #[cfg(any(
     feature = "microcrate_date_windows",
     feature = "microcrate_manual_events",
