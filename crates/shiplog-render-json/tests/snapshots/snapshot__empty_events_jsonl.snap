@@ -1,0 +1,6 @@
+---
+source: crates/shiplog-render-json/tests/snapshot.rs
+assertion_line: 48
+expression: text
+---
+

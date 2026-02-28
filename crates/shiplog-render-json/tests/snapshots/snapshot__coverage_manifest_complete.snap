@@ -1,0 +1,21 @@
+---
+source: crates/shiplog-render-json/tests/snapshot.rs
+assertion_line: 95
+expression: text
+---
+{
+  "run_id": "snapshot_run_2025",
+  "generated_at": "2024-01-01T00:00:00Z",
+  "user": "testuser",
+  "window": {
+    "since": "2025-01-01",
+    "until": "2025-04-01"
+  },
+  "mode": "merged",
+  "sources": [
+    "github"
+  ],
+  "slices": [],
+  "warnings": [],
+  "completeness": "Complete"
+}
