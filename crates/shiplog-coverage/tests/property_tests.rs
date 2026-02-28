@@ -150,3 +150,130 @@ proptest! {
         prop_assert_eq!(slice.incomplete_results, Some(slice.fetched < slice.total_count));
     }
 }
+
+// ============================================================================
+// Coverage Percentage Invariant Tests
+// ============================================================================
+
+proptest! {
+    // Coverage ratio (fetched / total_count) is always in [0.0, 1.0] for valid slices.
+    #[test]
+    fn prop_coverage_ratio_bounded(
+        fetched in 0u64..10000u64,
+        extra in 0u64..10000u64
+    ) {
+        let total_count = fetched + extra;
+        if total_count > 0 {
+            let ratio = fetched as f64 / total_count as f64;
+            let pct = ratio * 100.0;
+            prop_assert!((0.0..=100.0).contains(&pct),
+                "Coverage percentage {} out of [0, 100] range (fetched={}, total={})",
+                pct, fetched, total_count);
+        }
+    }
+
+    // Adding more fetched items never decreases coverage ratio.
+    #[test]
+    fn prop_more_fetched_never_decreases_coverage(
+        base_fetched in 0u64..5000u64,
+        additional in 1u64..5000u64,
+        total_count in 1u64..10000u64
+    ) {
+        let capped_base = base_fetched.min(total_count);
+        let capped_more = (capped_base + additional).min(total_count);
+
+        let ratio_base = capped_base as f64 / total_count as f64;
+        let ratio_more = capped_more as f64 / total_count as f64;
+
+        prop_assert!(ratio_more >= ratio_base,
+            "Adding fetched items decreased coverage: {} -> {} (base={}, more={}, total={})",
+            ratio_base, ratio_more, capped_base, capped_more, total_count);
+    }
+
+    // Zero fetched with positive total always gives 0% coverage.
+    #[test]
+    fn prop_zero_fetched_is_zero_coverage(total_count in 1u64..10000u64) {
+        let ratio = 0u64 as f64 / total_count as f64;
+        prop_assert_eq!(ratio, 0.0);
+    }
+}
+
+// ============================================================================
+// Window Length Invariant Tests
+// ============================================================================
+
+proptest! {
+    // All generated day windows have positive length.
+    #[test]
+    fn prop_day_windows_positive_length(
+        since in strategy_naive_date(),
+        days in 1u64..365u64
+    ) {
+        let until: NaiveDate = since.checked_add_days(chrono::Days::new(days)).unwrap();
+        let windows = day_windows(since, until);
+        for w in &windows {
+            prop_assert!(window_len_days(w) > 0, "Day window has non-positive length");
+        }
+    }
+
+    // Number of day windows equals the day span.
+    #[test]
+    fn prop_day_windows_count_equals_span(
+        since in strategy_naive_date(),
+        days in 1u64..365u64
+    ) {
+        let until: NaiveDate = since.checked_add_days(chrono::Days::new(days)).unwrap();
+        let windows = day_windows(since, until);
+        prop_assert_eq!(
+            windows.len() as u64, days,
+            "Day window count {} != day span {}", windows.len(), days
+        );
+    }
+
+    // All generated week windows have positive length.
+    #[test]
+    fn prop_week_windows_positive_length(
+        since in strategy_naive_date(),
+        days in 7u64..365u64
+    ) {
+        let until: NaiveDate = since.checked_add_days(chrono::Days::new(days)).unwrap();
+        let windows = week_windows(since, until);
+        for w in &windows {
+            prop_assert!(window_len_days(w) > 0, "Week window has non-positive length");
+        }
+    }
+
+    // All generated month windows have positive length.
+    #[test]
+    fn prop_month_windows_positive_length(
+        since in strategy_naive_date(),
+        days in 28u64..730u64
+    ) {
+        let until: NaiveDate = since.checked_add_days(chrono::Days::new(days)).unwrap();
+        let windows = month_windows(since, until);
+        for w in &windows {
+            prop_assert!(window_len_days(w) > 0, "Month window has non-positive length");
+        }
+    }
+
+    // Empty range (since == until) produces no windows.
+    #[test]
+    fn prop_empty_range_no_day_windows(since in strategy_naive_date()) {
+        let windows = day_windows(since, since);
+        prop_assert!(windows.is_empty(), "Empty range should produce no day windows");
+    }
+
+    // Empty range produces no week windows.
+    #[test]
+    fn prop_empty_range_no_week_windows(since in strategy_naive_date()) {
+        let windows = week_windows(since, since);
+        prop_assert!(windows.is_empty(), "Empty range should produce no week windows");
+    }
+
+    // Empty range produces no month windows.
+    #[test]
+    fn prop_empty_range_no_month_windows(since in strategy_naive_date()) {
+        let windows = month_windows(since, since);
+        prop_assert!(windows.is_empty(), "Empty range should produce no month windows");
+    }
+}

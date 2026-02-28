@@ -195,4 +195,80 @@ proptest! {
         let after = until.checked_add_days(chrono::Days::new(1)).unwrap();
         prop_assert!(!window.contains(after));
     }
+
+    // TimeWindow always contains its start date.
+    #[test]
+    fn prop_time_window_contains_start(
+        since in shiplog_testkit::proptest::strategy_naive_date(),
+        days in 1u64..365u64
+    ) {
+        let until = since.checked_add_days(chrono::Days::new(days)).unwrap();
+        let window = TimeWindow { since, until };
+        prop_assert!(window.contains(since));
+    }
+
+    // TimeWindow always contains the day before until (end - 1).
+    #[test]
+    fn prop_time_window_contains_end_minus_one(
+        since in shiplog_testkit::proptest::strategy_naive_date(),
+        days in 1u64..365u64
+    ) {
+        let until = since.checked_add_days(chrono::Days::new(days)).unwrap();
+        let window = TimeWindow { since, until };
+        let end_minus_one = until.pred_opt().unwrap();
+        prop_assert!(window.contains(end_minus_one));
+    }
+}
+
+// ============================================================================
+// Full YAML Round-Trip Tests
+// ============================================================================
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(50))]
+
+    // EventEnvelope survives YAML serialization roundtrip.
+    #[test]
+    fn prop_event_envelope_yaml_roundtrip(event in shiplog_testkit::proptest::strategy_event_envelope()) {
+        let yaml = serde_yaml::to_string(&event).unwrap();
+        let deserialized: EventEnvelope = serde_yaml::from_str(&yaml).unwrap();
+        prop_assert_eq!(&event.id, &deserialized.id);
+        prop_assert_eq!(&event.kind, &deserialized.kind);
+        prop_assert_eq!(&event.actor, &deserialized.actor);
+        prop_assert_eq!(&event.repo, &deserialized.repo);
+        prop_assert_eq!(event.occurred_at, deserialized.occurred_at);
+    }
+
+    // CoverageManifest survives YAML serialization roundtrip.
+    #[test]
+    fn prop_coverage_manifest_yaml_roundtrip(manifest in shiplog_testkit::proptest::strategy_coverage_manifest()) {
+        let yaml = serde_yaml::to_string(&manifest).unwrap();
+        let deserialized: CoverageManifest = serde_yaml::from_str(&yaml).unwrap();
+        prop_assert_eq!(&manifest.user, &deserialized.user);
+        prop_assert_eq!(&manifest.window.since, &deserialized.window.since);
+        prop_assert_eq!(&manifest.window.until, &deserialized.window.until);
+        prop_assert_eq!(&manifest.completeness, &deserialized.completeness);
+    }
+}
+
+// ============================================================================
+// Enum Variant Serialization (proptest-driven)
+// ============================================================================
+
+proptest! {
+    // All ManualEventType variants survive JSON roundtrip.
+    #[test]
+    fn prop_manual_event_type_roundtrip(met in shiplog_testkit::proptest::strategy_manual_payload()) {
+        let json = serde_json::to_string(&met.event_type).unwrap();
+        let deserialized: ManualEventType = serde_json::from_str(&json).unwrap();
+        prop_assert_eq!(met.event_type, deserialized);
+    }
+
+    // EventPayload preserves its discriminant and content through JSON roundtrip.
+    #[test]
+    fn prop_event_payload_full_roundtrip(payload in shiplog_testkit::proptest::strategy_event_payload()) {
+        let json = serde_json::to_string(&payload).unwrap();
+        let back: EventPayload = serde_json::from_str(&json).unwrap();
+        prop_assert_eq!(payload, back);
+    }
 }
