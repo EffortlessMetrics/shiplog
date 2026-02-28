@@ -219,3 +219,166 @@ fn bdd_manifest_fields_are_populated() {
         .run()
         .expect("all manifest fields should be correctly populated");
 }
+
+// ── Scenario: JSONL roundtrip preserves event IDs and kinds ─────────────
+
+#[test]
+fn bdd_jsonl_roundtrip_preserves_event_fields() {
+    Scenario::new("JSONL roundtrip preserves event IDs, kinds, and actor")
+        .given("a set of PR events with known fields", |ctx| {
+            let events: Vec<_> = (1..=3)
+                .map(|i| shiplog_testkit::pr_event("acme/roundtrip", i, &format!("PR {i}")))
+                .collect();
+            let dir = tempfile::tempdir().unwrap();
+            let path = dir.path().join("roundtrip.jsonl");
+            write_events_jsonl(&path, &events).unwrap();
+
+            let original_ids: Vec<String> = events.iter().map(|e| e.id.to_string()).collect();
+            ctx.strings
+                .insert("original_ids".into(), original_ids.join(","));
+            ctx.strings.insert(
+                "jsonl_text".into(),
+                std::fs::read_to_string(&path).unwrap(),
+            );
+            ctx.paths.insert("tmp_dir".into(), dir.keep());
+        })
+        .when("the JSONL is parsed back into events", |ctx| {
+            let text = ctx.string("jsonl_text").ok_or("missing jsonl_text")?.to_owned();
+            let mut parsed_ids = Vec::new();
+            let mut all_pr = true;
+            let mut all_actor_user = true;
+            for line in text.lines() {
+                let ev: EventEnvelope =
+                    serde_json::from_str(line).map_err(|e| format!("parse error: {e}"))?;
+                parsed_ids.push(ev.id.to_string());
+                if ev.kind != shiplog_schema::event::EventKind::PullRequest {
+                    all_pr = false;
+                }
+                if ev.actor.login != "user" {
+                    all_actor_user = false;
+                }
+            }
+            ctx.strings
+                .insert("parsed_ids".into(), parsed_ids.join(","));
+            ctx.flags.insert("all_pr_kind".into(), all_pr);
+            ctx.flags.insert("all_actor_user".into(), all_actor_user);
+            Ok(())
+        })
+        .then("event IDs match the originals", |ctx| {
+            let original = ctx.string("original_ids").ok_or("missing original_ids")?;
+            let parsed = ctx.string("parsed_ids").ok_or("missing parsed_ids")?;
+            if original != parsed {
+                return Err(format!(
+                    "ID mismatch\n  original: {original}\n  parsed:   {parsed}"
+                ));
+            }
+            Ok(())
+        })
+        .then("all events are PullRequest kind", |ctx| {
+            let all_pr = ctx.flag("all_pr_kind").ok_or("missing all_pr_kind flag")?;
+            if !all_pr {
+                return Err("expected all events to be PullRequest kind".into());
+            }
+            Ok(())
+        })
+        .then("all events have actor login 'user'", |ctx| {
+            let all_user = ctx
+                .flag("all_actor_user")
+                .ok_or("missing all_actor_user flag")?;
+            if !all_user {
+                return Err("expected all events to have actor login 'user'".into());
+            }
+            Ok(())
+        })
+        .run()
+        .expect("JSONL roundtrip should preserve all event fields");
+}
+
+// ── Scenario: Coverage manifest JSON is pretty-printed ──────────────────
+
+#[test]
+fn bdd_coverage_manifest_is_pretty_printed() {
+    Scenario::new("Coverage manifest JSON is pretty-printed and valid")
+        .given("a coverage manifest written to disk", |ctx| {
+            let cov = fixtures::test_coverage("charlie", Completeness::Partial);
+            let dir = tempfile::tempdir().unwrap();
+            let path = dir.path().join("coverage.manifest.json");
+            write_coverage_manifest(&path, &cov).unwrap();
+
+            ctx.strings.insert(
+                "manifest_text".into(),
+                std::fs::read_to_string(&path).unwrap(),
+            );
+            ctx.paths.insert("tmp_dir".into(), dir.keep());
+        })
+        .when("the manifest text is inspected", |ctx| {
+            let text = ctx
+                .string("manifest_text")
+                .ok_or("missing manifest_text")?
+                .to_owned();
+            ctx.flags
+                .insert("has_newlines".into(), text.contains('\n'));
+            ctx.flags
+                .insert("has_indentation".into(), text.contains("  "));
+            // Verify it parses as valid JSON
+            let parsed: serde_json::Value =
+                serde_json::from_str(&text).map_err(|e| format!("invalid JSON: {e}"))?;
+            ctx.flags.insert("is_object".into(), parsed.is_object());
+            Ok(())
+        })
+        .then("the JSON should contain newlines", |ctx| {
+            let has = ctx
+                .flag("has_newlines")
+                .ok_or("missing has_newlines flag")?;
+            if !has {
+                return Err("manifest JSON should be pretty-printed with newlines".into());
+            }
+            Ok(())
+        })
+        .then("the JSON should be a valid object", |ctx| {
+            let is_obj = ctx.flag("is_object").ok_or("missing is_object flag")?;
+            if !is_obj {
+                return Err("manifest JSON should be a top-level object".into());
+            }
+            Ok(())
+        })
+        .run()
+        .expect("coverage manifest should be pretty-printed valid JSON");
+}
+
+// ── Scenario: Empty events produce empty JSONL ──────────────────────────
+
+#[test]
+fn bdd_empty_events_produce_empty_jsonl() {
+    Scenario::new("Empty event list produces empty JSONL file")
+        .given("an empty list of events", |ctx| {
+            let dir = tempfile::tempdir().unwrap();
+            let path = dir.path().join("empty.jsonl");
+            write_events_jsonl(&path, &[]).unwrap();
+
+            ctx.strings.insert(
+                "jsonl_text".into(),
+                std::fs::read_to_string(&path).unwrap(),
+            );
+            ctx.paths.insert("tmp_dir".into(), dir.keep());
+        })
+        .when("the JSONL file is read", |ctx| {
+            let text = ctx.string("jsonl_text").ok_or("missing jsonl_text")?.to_owned();
+            let line_count = if text.is_empty() {
+                0u64
+            } else {
+                text.lines().count() as u64
+            };
+            ctx.numbers.insert("line_count".into(), line_count);
+            Ok(())
+        })
+        .then("the JSONL file should have zero lines", |ctx| {
+            let count = ctx.number("line_count").ok_or("missing line_count")?;
+            if count != 0 {
+                return Err(format!("expected 0 lines, got {count}"));
+            }
+            Ok(())
+        })
+        .run()
+        .expect("empty events should produce empty JSONL file");
+}

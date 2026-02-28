@@ -399,3 +399,163 @@ fn coverage_manifest_roundtrip_preserves_sources() {
         .run()
         .expect("manifest sources scenario should pass");
 }
+
+// ============================================================================
+// Scenario: Multi-source coverage tracking
+// ============================================================================
+
+#[test]
+fn multi_source_manifest_lists_all_sources() {
+    Scenario::new("Multi-source coverage manifest tracks github and manual sources")
+        .given("events from both github and manual sources", |ctx| {
+            ctx.strings.insert("source_1".into(), "github".into());
+            ctx.strings.insert("source_2".into(), "manual".into());
+        })
+        .when("the manifest is constructed with multiple sources", |ctx| {
+            let mut manifest = CoverageBuilder::new("multi-user")
+                .completeness(Completeness::Complete)
+                .build();
+            manifest.sources.push("manual".to_string());
+
+            ctx.numbers
+                .insert("source_count".into(), manifest.sources.len() as u64);
+            ctx.flags.insert(
+                "has_github".into(),
+                manifest.sources.contains(&"github".to_string()),
+            );
+            ctx.flags.insert(
+                "has_manual".into(),
+                manifest.sources.contains(&"manual".to_string()),
+            );
+            Ok(())
+        })
+        .then("two sources should be listed", |ctx| {
+            let count = assert_present(ctx.number("source_count"), "source count")?;
+            assert_eq(count, 2, "source count")
+        })
+        .then("github should be a source", |ctx| {
+            assert_true(
+                ctx.flag("has_github").unwrap_or(false),
+                "github in sources",
+            )
+        })
+        .then("manual should be a source", |ctx| {
+            assert_true(
+                ctx.flag("has_manual").unwrap_or(false),
+                "manual in sources",
+            )
+        })
+        .run()
+        .expect("multi-source scenario should pass");
+}
+
+// ============================================================================
+// Scenario: Partial coverage with multiple slices tracks per-slice status
+// ============================================================================
+
+#[test]
+fn partial_coverage_per_slice_status() {
+    Scenario::new("Partial coverage tracks incomplete slices alongside complete ones")
+        .given("a Q1 2025 range with three monthly slices", |ctx| {
+            ctx.strings.insert("since".into(), "2025-01-01".into());
+            ctx.strings.insert("until".into(), "2025-04-01".into());
+        })
+        .when("two slices are complete and one is partial", |ctx| {
+            let since = NaiveDate::from_ymd_opt(2025, 1, 1).unwrap();
+            let until = NaiveDate::from_ymd_opt(2025, 4, 1).unwrap();
+            let windows = month_windows(since, until);
+
+            let slices: Vec<CoverageSlice> = windows
+                .iter()
+                .enumerate()
+                .map(|(i, w)| CoverageSlice {
+                    window: w.clone(),
+                    query: "github prs".to_string(),
+                    total_count: 10,
+                    fetched: if i == 1 { 7 } else { 10 },
+                    incomplete_results: Some(i == 1),
+                    notes: if i == 1 {
+                        vec!["Rate limit hit".to_string()]
+                    } else {
+                        vec![]
+                    },
+                })
+                .collect();
+
+            let complete_count = slices.iter().filter(|s| s.fetched == s.total_count).count();
+            let incomplete_count = slices.iter().filter(|s| s.fetched < s.total_count).count();
+            let total_missing: u64 = slices
+                .iter()
+                .map(|s| s.total_count - s.fetched)
+                .sum();
+
+            ctx.numbers
+                .insert("complete_slices".into(), complete_count as u64);
+            ctx.numbers
+                .insert("incomplete_slices".into(), incomplete_count as u64);
+            ctx.numbers.insert("total_missing".into(), total_missing);
+            Ok(())
+        })
+        .then("two slices should be complete", |ctx| {
+            let count = assert_present(ctx.number("complete_slices"), "complete slices")?;
+            assert_eq(count, 2, "complete slice count")
+        })
+        .then("one slice should be incomplete", |ctx| {
+            let count = assert_present(ctx.number("incomplete_slices"), "incomplete slices")?;
+            assert_eq(count, 1, "incomplete slice count")
+        })
+        .then("3 total receipts should be missing", |ctx| {
+            let missing = assert_present(ctx.number("total_missing"), "total missing")?;
+            assert_eq(missing, 3, "total missing receipts")
+        })
+        .run()
+        .expect("partial coverage per-slice scenario should pass");
+}
+
+// ============================================================================
+// Scenario: Week windows produce correct partitions
+// ============================================================================
+
+#[test]
+fn week_windows_partition_correctly() {
+    Scenario::new("Week windows partition a 2-week range into 2 windows")
+        .given("a two-week date range", |ctx| {
+            ctx.strings.insert("since".into(), "2025-03-03".into());
+            ctx.strings.insert("until".into(), "2025-03-17".into());
+        })
+        .when("week windows are generated", |ctx| {
+            let since = NaiveDate::from_ymd_opt(2025, 3, 3).unwrap();
+            let until = NaiveDate::from_ymd_opt(2025, 3, 17).unwrap();
+            let windows = shiplog_coverage::week_windows(since, until);
+
+            ctx.numbers
+                .insert("window_count".into(), windows.len() as u64);
+            ctx.flags.insert(
+                "all_seven_days".into(),
+                windows.iter().all(|w| window_len_days(w) == 7),
+            );
+            ctx.flags.insert(
+                "contiguous".into(),
+                windows.windows(2).all(|p| p[0].until == p[1].since),
+            );
+            Ok(())
+        })
+        .then("there should be 2 week windows", |ctx| {
+            let count = assert_present(ctx.number("window_count"), "window count")?;
+            assert_eq(count, 2, "week window count")
+        })
+        .then("each window should be exactly 7 days", |ctx| {
+            assert_true(
+                ctx.flag("all_seven_days").unwrap_or(false),
+                "all windows are 7 days",
+            )
+        })
+        .then("windows should be contiguous", |ctx| {
+            assert_true(
+                ctx.flag("contiguous").unwrap_or(false),
+                "week windows are contiguous",
+            )
+        })
+        .run()
+        .expect("week windows scenario should pass");
+}

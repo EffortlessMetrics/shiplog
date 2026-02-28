@@ -306,3 +306,157 @@ fn bdd_empty_event_list_produces_empty_result() {
         .run()
         .expect("scenario should pass");
 }
+
+// ---------------------------------------------------------------------------
+// Scenario 5: Range events spanning the window boundary are included
+// ---------------------------------------------------------------------------
+
+fn given_yaml_with_range_event_spanning_boundary(ctx: &mut ScenarioContext) {
+    let temp = tempfile::tempdir().unwrap();
+    let path = temp.path().join("manual_events.yaml");
+
+    let file = ManualEventsFile {
+        version: 1,
+        generated_at: Utc::now(),
+        events: vec![create_entry(
+            "cross-boundary",
+            ManualEventType::Incident,
+            ManualDate::Range {
+                start: NaiveDate::from_ymd_opt(2024, 12, 28).unwrap(),
+                end: NaiveDate::from_ymd_opt(2025, 1, 5).unwrap(),
+            },
+            "Incident spanning year boundary",
+        )],
+    };
+    write_manual_events(&path, &file).unwrap();
+
+    let raw = Box::into_raw(Box::new(temp));
+    ctx.data.insert(
+        "_tempdir_handle".to_string(),
+        (raw as usize).to_le_bytes().to_vec(),
+    );
+    ctx.paths.insert("events_path".to_string(), path);
+    ctx.strings.insert("user".to_string(), "eve".to_string());
+    ctx.strings
+        .insert("since".to_string(), "2025-01-01".to_string());
+    ctx.strings
+        .insert("until".to_string(), "2025-06-01".to_string());
+}
+
+#[test]
+fn bdd_range_event_spanning_boundary_is_included() {
+    Scenario::new("Range event spanning into the window is included")
+        .given(
+            "a YAML file with a range event that starts before but ends within the window",
+            given_yaml_with_range_event_spanning_boundary,
+        )
+        .when("the manual ingestor runs", when_ingestor_runs)
+        .then(
+            "the event is included because its range overlaps the window",
+            |ctx: &ScenarioContext| {
+                let count = assert_present(ctx.number("event_count"), "event_count")?;
+                assert_true(count >= 1, "boundary-spanning event should be included")
+            },
+        )
+        .run()
+        .expect("scenario should pass");
+}
+
+// ---------------------------------------------------------------------------
+// Scenario 6: Multiple event types are ingested with correct kinds
+// ---------------------------------------------------------------------------
+
+fn given_yaml_with_diverse_event_types(ctx: &mut ScenarioContext) {
+    let temp = tempfile::tempdir().unwrap();
+    let path = temp.path().join("manual_events.yaml");
+
+    let date = ManualDate::Single(NaiveDate::from_ymd_opt(2025, 3, 15).unwrap());
+    let file = ManualEventsFile {
+        version: 1,
+        generated_at: Utc::now(),
+        events: vec![
+            create_entry("design-1", ManualEventType::Design, date.clone(), "System design doc"),
+            create_entry("incident-1", ManualEventType::Incident, date.clone(), "Outage response"),
+            create_entry("mentoring-1", ManualEventType::Mentoring, date.clone(), "Onboarding session"),
+            create_entry("launch-1", ManualEventType::Launch, date.clone(), "Feature launch"),
+            create_entry("note-1", ManualEventType::Note, date.clone(), "Weekly sync notes"),
+        ],
+    };
+    write_manual_events(&path, &file).unwrap();
+
+    let raw = Box::into_raw(Box::new(temp));
+    ctx.data.insert(
+        "_tempdir_handle".to_string(),
+        (raw as usize).to_le_bytes().to_vec(),
+    );
+    ctx.paths.insert("events_path".to_string(), path);
+    ctx.strings.insert("user".to_string(), "frank".to_string());
+    ctx.strings
+        .insert("since".to_string(), "2025-01-01".to_string());
+    ctx.strings
+        .insert("until".to_string(), "2025-06-01".to_string());
+}
+
+#[test]
+fn bdd_diverse_event_types_all_ingested() {
+    Scenario::new("All manual event types are ingested")
+        .given(
+            "a YAML file with Design, Incident, Mentoring, Launch, and Note events",
+            given_yaml_with_diverse_event_types,
+        )
+        .when("the manual ingestor runs", when_ingestor_runs)
+        .then(
+            "all five events are present in the output",
+            |ctx: &ScenarioContext| {
+                let count = assert_present(ctx.number("event_count"), "event_count")?;
+                assert_eq(count, 5, "event count for diverse types")
+            },
+        )
+        .then(
+            "coverage is Complete with no warnings",
+            |ctx: &ScenarioContext| {
+                let comp = assert_present(ctx.string("completeness"), "completeness")?;
+                assert_eq(comp, "Complete", "completeness for all-valid events")?;
+                let warnings = assert_present(ctx.number("warning_count"), "warning_count")?;
+                assert_eq(warnings, 0, "warning count")
+            },
+        )
+        .run()
+        .expect("scenario should pass");
+}
+
+// ---------------------------------------------------------------------------
+// Scenario 7: Missing YAML file produces clear error
+// ---------------------------------------------------------------------------
+
+#[test]
+fn bdd_missing_yaml_file_returns_empty_with_warning() {
+    Scenario::new("Missing YAML file returns empty output with a warning")
+        .given("a path to a YAML file that does not exist", |ctx| {
+            let temp = tempfile::tempdir().unwrap();
+            let path = temp.path().join("nonexistent.yaml");
+            let raw = Box::into_raw(Box::new(temp));
+            ctx.data.insert(
+                "_tempdir_handle".to_string(),
+                (raw as usize).to_le_bytes().to_vec(),
+            );
+            ctx.paths.insert("events_path".to_string(), path);
+            ctx.strings.insert("user".to_string(), "ghost".to_string());
+            ctx.strings
+                .insert("since".to_string(), "2025-01-01".to_string());
+            ctx.strings
+                .insert("until".to_string(), "2025-06-01".to_string());
+        })
+        .when("the manual ingestor runs", when_ingestor_runs)
+        .then(
+            "the output has zero events and a warning about missing file",
+            |ctx: &ScenarioContext| {
+                let count = assert_present(ctx.number("event_count"), "event_count")?;
+                assert_eq(count, 0, "event count for missing file")?;
+                let warnings = assert_present(ctx.number("warning_count"), "warning_count")?;
+                assert_true(warnings >= 1, "should have at least one warning")
+            },
+        )
+        .run()
+        .expect("scenario should pass");
+}

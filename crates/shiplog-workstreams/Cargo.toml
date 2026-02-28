@@ -24,6 +24,7 @@ shiplog-workstream-layout = { path = "../shiplog-workstream-layout", version = "
 chrono.workspace = true
 tempfile = "3"
 proptest.workspace = true
+serde_yaml.workspace = true
 shiplog-testkit = { path = "../shiplog-testkit", version = "0.2.1" }
 
 

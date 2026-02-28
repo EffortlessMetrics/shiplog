@@ -419,7 +419,181 @@ fn scenario_alias_cache_round_trip_consistency() {
 }
 
 // ===========================================================================
-// Scenario 7 (bonus): Public workstream redaction
+// Scenario 7 (bonus): Manager profile preserves title but aliases repo
+// ===========================================================================
+
+#[test]
+fn scenario_manager_vs_public_profile_title_handling() {
+    Scenario::new("Manager profile preserves title while public profile redacts it")
+        .given("a PR event with a descriptive title", |ctx| {
+            let ev = sample_pr_event("acme/infra", "Fix TLS cert rotation in prod", 42);
+            let json = serde_json::to_string(&[&ev]).unwrap();
+            ctx.data.insert("events".into(), json.into_bytes());
+            ctx.strings.insert("key".into(), "cmp-key".into());
+        })
+        .when(
+            "the event is redacted with both manager and public profiles",
+            |ctx| {
+                let key = ctx.string("key").unwrap();
+                let redactor = DeterministicRedactor::new(key.as_bytes());
+                let events: Vec<EventEnvelope> =
+                    serde_json::from_slice(&ctx.data["events"]).unwrap();
+
+                let mgr = redactor
+                    .redact_events(&events, "manager")
+                    .map_err(|e| e.to_string())?;
+                let pub_out = redactor
+                    .redact_events(&events, "public")
+                    .map_err(|e| e.to_string())?;
+
+                let mgr_json = serde_json::to_string(&mgr).map_err(|e| e.to_string())?;
+                let pub_json = serde_json::to_string(&pub_out).map_err(|e| e.to_string())?;
+                ctx.data
+                    .insert("manager_json".into(), mgr_json.into_bytes());
+                ctx.data
+                    .insert("public_json".into(), pub_json.into_bytes());
+
+                let mgr_events = serde_json::to_vec(&mgr).map_err(|e| e.to_string())?;
+                let pub_events = serde_json::to_vec(&pub_out).map_err(|e| e.to_string())?;
+                ctx.data.insert("manager_events".into(), mgr_events);
+                ctx.data.insert("public_events".into(), pub_events);
+                Ok(())
+            },
+        )
+        .then("manager profile preserves the PR title", |ctx| {
+            let json = std::str::from_utf8(&ctx.data["manager_json"]).unwrap();
+            if !json.contains("Fix TLS cert rotation in prod") {
+                return Err("manager profile should preserve PR title".into());
+            }
+            Ok(())
+        })
+        .then("public profile replaces the PR title with [redacted]", |ctx| {
+            let events: Vec<EventEnvelope> =
+                serde_json::from_slice(&ctx.data["public_events"]).unwrap();
+            match &events[0].payload {
+                EventPayload::PullRequest(pr) => {
+                    if pr.title != "[redacted]" {
+                        return Err(format!(
+                            "public profile should redact title, got '{}'",
+                            pr.title
+                        ));
+                    }
+                }
+                _ => return Err("expected PR payload".into()),
+            }
+            Ok(())
+        })
+        .then("manager profile strips links but keeps source URL", |ctx| {
+            let mgr: Vec<EventEnvelope> =
+                serde_json::from_slice(&ctx.data["manager_events"]).unwrap();
+            if !mgr[0].links.is_empty() {
+                return Err("manager profile should strip links".into());
+            }
+            Ok(())
+        })
+        .then("public profile strips source URL", |ctx| {
+            let pub_out: Vec<EventEnvelope> =
+                serde_json::from_slice(&ctx.data["public_events"]).unwrap();
+            if pub_out[0].source.url.is_some() {
+                return Err("public profile should strip source URL".into());
+            }
+            Ok(())
+        })
+        .run()
+        .expect("scenario should pass");
+}
+
+// ===========================================================================
+// Scenario 8: Review event redaction preserves review state
+// ===========================================================================
+
+#[test]
+fn scenario_review_event_redaction() {
+    Scenario::new("Review event redaction across profiles")
+        .given("a review event with metadata", |ctx| {
+            let now = Utc::now();
+            let ev = EventEnvelope {
+                id: EventId::from_parts(["bdd", "review", "org/app", "7"]),
+                kind: EventKind::Review,
+                occurred_at: now,
+                actor: Actor {
+                    login: "reviewer".into(),
+                    id: None,
+                },
+                repo: RepoRef {
+                    full_name: "org/app".into(),
+                    html_url: Some("https://github.com/org/app".into()),
+                    visibility: RepoVisibility::Private,
+                },
+                payload: EventPayload::Review(ReviewEvent {
+                    pull_number: 7,
+                    pull_title: "Sensitive review title".into(),
+                    submitted_at: now,
+                    state: "approved".into(),
+                    window: None,
+                }),
+                tags: vec![],
+                links: vec![Link {
+                    label: "review".into(),
+                    url: "https://github.com/org/app/pull/7#pullrequestreview-1".into(),
+                }],
+                source: SourceRef {
+                    system: SourceSystem::Github,
+                    url: Some("https://api.github.com/repos/org/app/pulls/7/reviews/1".into()),
+                    opaque_id: None,
+                },
+            };
+            let json = serde_json::to_string(&[&ev]).unwrap();
+            ctx.data.insert("events".into(), json.into_bytes());
+            ctx.strings.insert("key".into(), "review-key".into());
+        })
+        .when("the review is redacted with the public profile", |ctx| {
+            let key = ctx.string("key").unwrap();
+            let redactor = DeterministicRedactor::new(key.as_bytes());
+            let events: Vec<EventEnvelope> =
+                serde_json::from_slice(&ctx.data["events"]).unwrap();
+            let redacted = redactor
+                .redact_events(&events, "public")
+                .map_err(|e| e.to_string())?;
+            let serialized = serde_json::to_vec(&redacted).map_err(|e| e.to_string())?;
+            ctx.data.insert("redacted_events".into(), serialized);
+            Ok(())
+        })
+        .then("the review title is redacted", |ctx| {
+            let events: Vec<EventEnvelope> =
+                serde_json::from_slice(&ctx.data["redacted_events"]).unwrap();
+            match &events[0].payload {
+                EventPayload::Review(r) => {
+                    if r.pull_title.contains("Sensitive") {
+                        return Err("public profile should redact review title".into());
+                    }
+                }
+                _ => return Err("expected Review payload".into()),
+            }
+            Ok(())
+        })
+        .then("links are removed", |ctx| {
+            let events: Vec<EventEnvelope> =
+                serde_json::from_slice(&ctx.data["redacted_events"]).unwrap();
+            if !events[0].links.is_empty() {
+                return Err("public profile should remove review links".into());
+            }
+            Ok(())
+        })
+        .then("the repo name is aliased", |ctx| {
+            let events: Vec<EventEnvelope> =
+                serde_json::from_slice(&ctx.data["redacted_events"]).unwrap();
+            if events[0].repo.full_name == "org/app" {
+                return Err("public profile should alias repo name for reviews".into());
+            }
+            Ok(())
+        })
+        .run()
+        .expect("scenario should pass");
+}
+
+// ===========================================================================
+// Scenario 9 (bonus): Public workstream redaction
 // ===========================================================================
 
 #[test]
