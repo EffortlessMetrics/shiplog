@@ -281,6 +281,74 @@ mod tests {
         assert_eq!(result.unwrap(), "");
     }
 
+    // --- Snapshot tests ---
+
+    #[test]
+    fn snapshot_default_export_options() {
+        let opts = ExportOptions::default();
+        insta::assert_yaml_snapshot!(opts);
+    }
+
+    #[test]
+    fn snapshot_export_data_populated() {
+        let mut data = ExportData::new("Q1 2025 Review".to_string());
+        data.add_event(ExportEvent {
+            id: "evt-001".to_string(),
+            source: "github".to_string(),
+            title: "Implement OAuth2 flow".to_string(),
+            timestamp: "2025-01-15T10:30:00Z".to_string(),
+        });
+        data.add_event(ExportEvent {
+            id: "evt-002".to_string(),
+            source: "jira".to_string(),
+            title: "Database migration plan".to_string(),
+            timestamp: "2025-01-20T14:00:00Z".to_string(),
+        });
+        insta::assert_yaml_snapshot!(data);
+    }
+
+    #[test]
+    fn snapshot_json_export_output() {
+        let mut data = ExportData::new("Sprint Report".to_string());
+        data.add_event(ExportEvent {
+            id: "pr-42".to_string(),
+            source: "github".to_string(),
+            title: "Add user authentication".to_string(),
+            timestamp: "2025-02-01T09:00:00Z".to_string(),
+        });
+        let opts = ExportOptions {
+            format: ExportFormat::Json,
+            pretty: true,
+            include_metadata: true,
+        };
+        let output = export_data(&data, &opts).unwrap();
+        insta::assert_snapshot!(output);
+    }
+
+    #[test]
+    fn snapshot_csv_export_output() {
+        let mut data = ExportData::new("Sprint Report".to_string());
+        data.add_event(ExportEvent {
+            id: "pr-42".to_string(),
+            source: "github".to_string(),
+            title: "Add user authentication".to_string(),
+            timestamp: "2025-02-01T09:00:00Z".to_string(),
+        });
+        data.add_event(ExportEvent {
+            id: "pr-43".to_string(),
+            source: "manual".to_string(),
+            title: "Design review session".to_string(),
+            timestamp: "2025-02-02T14:30:00Z".to_string(),
+        });
+        let opts = ExportOptions {
+            format: ExportFormat::Csv,
+            pretty: false,
+            include_metadata: false,
+        };
+        let output = export_data(&data, &opts).unwrap();
+        insta::assert_snapshot!(output);
+    }
+
     // --- Edge case tests ---
 
     #[test]

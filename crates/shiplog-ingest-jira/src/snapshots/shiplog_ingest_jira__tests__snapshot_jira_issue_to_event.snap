@@ -1,0 +1,31 @@
+---
+source: crates/shiplog-ingest-jira/src/lib.rs
+expression: events
+---
+- id: 0df65ced71c9ea1b113d19df1be0c3f63a458da5c02ec4f2ebc9e602030d378c
+  kind: Manual
+  occurred_at: "2025-01-15T10:00:00Z"
+  actor:
+    login: alice
+    id: ~
+  repo:
+    full_name: jira/jira.atlassian.com
+    html_url: "https://jira.atlassian.com"
+    visibility: Private
+  payload:
+    type: Manual
+    data:
+      event_type: Other
+      title: Implement caching layer
+      description: Add Redis caching for API responses
+      started_at: 2025-01-15
+      ended_at: 2025-01-20
+      impact: "Issue: PROJ-42"
+  tags: []
+  links:
+    - label: Jira Issue
+      url: "https://jira.atlassian.com/browse/PROJ-42"
+  source:
+    system: jira
+    url: "https://jira.atlassian.com/browse/PROJ-42"
+    opaque_id: "10001"

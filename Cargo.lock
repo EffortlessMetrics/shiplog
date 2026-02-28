@@ -2008,6 +2008,8 @@ dependencies = [
  "anyhow",
  "chrono",
  "clap",
+ "serde_json",
+ "serde_yaml_ng",
  "shiplog-cluster-llm",
  "shiplog-engine",
  "shiplog-ingest-git",
@@ -2591,6 +2593,7 @@ name = "shiplog-export"
 version = "0.2.1"
 dependencies = [
  "anyhow",
+ "insta",
  "proptest",
  "serde",
  "serde_json",
@@ -2796,6 +2799,7 @@ version = "0.3.0"
 dependencies = [
  "anyhow",
  "chrono",
+ "insta",
  "mutants",
  "proptest",
  "reqwest",
@@ -2832,6 +2836,7 @@ version = "0.3.0"
 dependencies = [
  "anyhow",
  "chrono",
+ "insta",
  "mutants",
  "proptest",
  "reqwest",
@@ -3980,6 +3985,7 @@ version = "0.2.1"
 dependencies = [
  "chrono",
  "proptest",
+ "serde_yaml_ng",
  "shiplog-ids",
  "shiplog-ports",
  "shiplog-schema",

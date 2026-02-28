@@ -1,0 +1,31 @@
+---
+source: crates/shiplog-ingest-linear/src/lib.rs
+expression: events
+---
+- id: 2894f4159959a3c007dacf6be132fad4833d4ba5092418c077afce58ce3c38d0
+  kind: Manual
+  occurred_at: "2025-01-05T11:00:00Z"
+  actor:
+    login: bob
+    id: ~
+  repo:
+    full_name: linear/unknown
+    html_url: "https://linear.app"
+    visibility: Private
+  payload:
+    type: Manual
+    data:
+      event_type: Other
+      title: Fix button alignment
+      description: ~
+      started_at: 2025-01-05
+      ended_at: ~
+      impact: "Issue: FE-45"
+  tags: []
+  links:
+    - label: Linear Issue
+      url: "https://linear.app/issue/FE-45"
+  source:
+    system: linear
+    url: "https://linear.app/issue/FE-45"
+    opaque_id: issue-uuid-002

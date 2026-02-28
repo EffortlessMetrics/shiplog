@@ -31,3 +31,4 @@ shiplog-cache = { path = "../shiplog-cache", version = "0.2.1" }
 tempfile.workspace = true
 serde_json.workspace = true
 proptest.workspace = true
+insta.workspace = true

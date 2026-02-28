@@ -1,0 +1,31 @@
+---
+source: crates/shiplog-ingest-jira/src/lib.rs
+expression: events
+---
+- id: 2099ddd53e9b27fccff7a5b3d2a7264a49adbfff82feedd10a7ded1aa3ad869f
+  kind: Manual
+  occurred_at: "2025-01-10T08:00:00Z"
+  actor:
+    login: bob
+    id: ~
+  repo:
+    full_name: jira/jira.atlassian.com
+    html_url: "https://jira.atlassian.com"
+    visibility: Private
+  payload:
+    type: Manual
+    data:
+      event_type: Other
+      title: Fix login timeout
+      description: ~
+      started_at: 2025-01-10
+      ended_at: ~
+      impact: "Issue: BUG-7"
+  tags: []
+  links:
+    - label: Jira Issue
+      url: "https://jira.atlassian.com/browse/BUG-7"
+  source:
+    system: jira
+    url: "https://jira.atlassian.com/browse/BUG-7"
+    opaque_id: "20001"

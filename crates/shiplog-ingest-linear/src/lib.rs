@@ -642,4 +642,85 @@ mod tests {
         );
         assert_eq!(ing.api_base_url(), "https://api.linear.app/graphql");
     }
+
+    // --- Snapshot tests ---
+
+    #[test]
+    fn snapshot_linear_issue_to_event() {
+        let ing = LinearIngestor::new(
+            "alice".to_string(),
+            NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
+            NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),
+        );
+
+        let created = NaiveDate::from_ymd_opt(2025, 1, 10)
+            .unwrap()
+            .and_hms_opt(9, 0, 0)
+            .unwrap()
+            .and_utc();
+        let completed = NaiveDate::from_ymd_opt(2025, 1, 18)
+            .unwrap()
+            .and_hms_opt(16, 0, 0)
+            .unwrap()
+            .and_utc();
+
+        let issues = vec![LinearIssue {
+            id: "issue-uuid-001".to_string(),
+            identifier: "ENG-123".to_string(),
+            title: "Implement API rate limiting".to_string(),
+            description: Some("Add rate limiting middleware to all public endpoints".to_string()),
+            state: Some(LinearState {
+                id: "state-1".to_string(),
+                name: "Done".to_string(),
+                type_: "completed".to_string(),
+            }),
+            project: Some(LinearProject {
+                id: "proj-1".to_string(),
+                name: "Backend Infrastructure".to_string(),
+                key: "INFRA".to_string(),
+            }),
+            created_at: created,
+            completed_at: Some(completed),
+            canceled_at: None,
+            assignee: Some(LinearUserAccount {
+                id: "user-1".to_string(),
+                name: "alice".to_string(),
+                display_name: "Alice Smith".to_string(),
+            }),
+        }];
+
+        let events = ing.issues_to_events(issues).unwrap();
+        insta::assert_yaml_snapshot!(events);
+    }
+
+    #[test]
+    fn snapshot_linear_issue_to_event_minimal() {
+        let ing = LinearIngestor::new(
+            "bob".to_string(),
+            NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
+            NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),
+        );
+
+        let created = NaiveDate::from_ymd_opt(2025, 1, 5)
+            .unwrap()
+            .and_hms_opt(11, 0, 0)
+            .unwrap()
+            .and_utc();
+
+        let issues = vec![LinearIssue {
+            id: "issue-uuid-002".to_string(),
+            identifier: "FE-45".to_string(),
+            title: "Fix button alignment".to_string(),
+            description: None,
+            state: None,
+            project: None,
+            created_at: created,
+            completed_at: None,
+            canceled_at: None,
+            assignee: None,
+        }];
+
+        let events = ing.issues_to_events(issues).unwrap();
+        insta::assert_yaml_snapshot!(events);
+    }
 }
