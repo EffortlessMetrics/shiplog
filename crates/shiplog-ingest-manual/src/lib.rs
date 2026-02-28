@@ -112,11 +112,33 @@ impl Ingestor for ManualIngestor {
 }
 
 /// Read manual events from a YAML file.
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// use shiplog_ingest_manual::read_manual_events;
+/// use std::path::Path;
+///
+/// let file = read_manual_events(Path::new("manual_events.yaml"))?;
+/// println!("Found {} events", file.events.len());
+/// # Ok::<(), anyhow::Error>(())
+/// ```
 pub fn read_manual_events(path: &Path) -> Result<ManualEventsFile> {
     shiplog_manual_events::read_manual_events(path)
 }
 
 /// Write manual events to a YAML file.
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// use shiplog_ingest_manual::{create_empty_file, write_manual_events};
+/// use std::path::Path;
+///
+/// let file = create_empty_file();
+/// write_manual_events(Path::new("manual_events.yaml"), &file)?;
+/// # Ok::<(), anyhow::Error>(())
+/// ```
 pub fn write_manual_events(path: &Path, file: &ManualEventsFile) -> Result<()> {
     shiplog_manual_events::write_manual_events(path, file)
 }
@@ -491,5 +513,75 @@ mod tests {
         let output = ing.ingest().unwrap();
         assert!(output.events.is_empty());
         assert!(!output.coverage.warnings.is_empty());
+    }
+
+    #[test]
+    fn event_ending_one_day_before_window_since_is_excluded() {
+        // end_date == window.since - 1 → end_date < since → excluded.
+        // Combined with event_with_end_date_equal_to_window_since_is_included,
+        // this kills the < → <= mutation on the boundary check.
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("manual_events.yaml");
+        let file = ManualEventsFile {
+            version: 1,
+            generated_at: Utc::now(),
+            events: vec![ManualEventEntry {
+                id: "day-before".to_string(),
+                event_type: ManualEventType::Note,
+                date: ManualDate::Single(NaiveDate::from_ymd_opt(2025, 2, 28).unwrap()),
+                title: "Day Before Window".to_string(),
+                description: None,
+                workstream: None,
+                tags: vec![],
+                receipts: vec![],
+                impact: None,
+            }],
+        };
+        write_manual_events(&path, &file).unwrap();
+
+        // Window since = 2025-03-01; event ends 2025-02-28 (one day before)
+        let ing = ManualIngestor::new(
+            &path,
+            "testuser".to_string(),
+            NaiveDate::from_ymd_opt(2025, 3, 1).unwrap(),
+            NaiveDate::from_ymd_opt(2025, 4, 1).unwrap(),
+        );
+        let output = ing.ingest().unwrap();
+        assert_eq!(
+            output.events.len(),
+            0,
+            "event ending before window.since must be excluded"
+        );
+
+        // Now verify the boundary: end_date == window.since IS included
+        let file2 = ManualEventsFile {
+            version: 1,
+            generated_at: Utc::now(),
+            events: vec![ManualEventEntry {
+                id: "at-since".to_string(),
+                event_type: ManualEventType::Note,
+                date: ManualDate::Single(NaiveDate::from_ymd_opt(2025, 3, 1).unwrap()),
+                title: "At Window Since".to_string(),
+                description: None,
+                workstream: None,
+                tags: vec![],
+                receipts: vec![],
+                impact: None,
+            }],
+        };
+        write_manual_events(&path, &file2).unwrap();
+
+        let ing2 = ManualIngestor::new(
+            &path,
+            "testuser".to_string(),
+            NaiveDate::from_ymd_opt(2025, 3, 1).unwrap(),
+            NaiveDate::from_ymd_opt(2025, 4, 1).unwrap(),
+        );
+        let output2 = ing2.ingest().unwrap();
+        assert_eq!(
+            output2.events.len(),
+            1,
+            "event on window.since boundary must be included"
+        );
     }
 }

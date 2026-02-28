@@ -74,6 +74,20 @@ impl GithubIngestor {
     }
 
     /// Enable caching with the given cache directory.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use shiplog_ingest_github::GithubIngestor;
+    /// use chrono::NaiveDate;
+    ///
+    /// let ingestor = GithubIngestor::new(
+    ///     "octocat".into(),
+    ///     NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
+    ///     NaiveDate::from_ymd_opt(2025, 4, 1).unwrap(),
+    /// ).with_cache("./cache")?;
+    /// # Ok::<(), anyhow::Error>(())
+    /// ```
     pub fn with_cache(mut self, cache_dir: impl Into<PathBuf>) -> Result<Self> {
         let cache_path = cache_dir.into().join("github-api-cache.db");
         if let Some(parent) = cache_path.parent() {
@@ -86,6 +100,20 @@ impl GithubIngestor {
     }
 
     /// Enable in-memory caching (useful for testing).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use shiplog_ingest_github::GithubIngestor;
+    /// use chrono::NaiveDate;
+    ///
+    /// let ingestor = GithubIngestor::new(
+    ///     "octocat".into(),
+    ///     NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
+    ///     NaiveDate::from_ymd_opt(2025, 4, 1).unwrap(),
+    /// ).with_in_memory_cache().unwrap();
+    /// assert!(ingestor.cache.is_some());
+    /// ```
     pub fn with_in_memory_cache(mut self) -> Result<Self> {
         let cache = ApiCache::open_in_memory()?;
         self.cache = Some(cache);
@@ -1144,6 +1172,30 @@ mod tests {
         // so segment[0] == "api". This correctly falls back.
         assert_eq!(full, "unknown/unknown");
         assert_eq!(html, "https://ghes.corp");
+    }
+
+    #[test]
+    fn repo_from_repo_url_three_plus_segments_wrong_prefix_falls_back() {
+        // 3+ segments but v[0] != "repos" → must fall back.
+        // Kills && → || mutation: with ||, v.len()>=3 alone would enter the block.
+        let (full, html) = repo_from_repo_url(
+            "https://api.github.com/users/octocat/repos",
+            "https://github.com",
+        );
+        assert_eq!(full, "unknown/unknown");
+        assert_eq!(html, "https://github.com");
+    }
+
+    #[test]
+    fn repo_from_repo_url_exactly_two_segments_repos_prefix_falls_back() {
+        // v[0] == "repos" but only 2 segments → must fall back.
+        // Kills && → || mutation: with ||, v[0]=="repos" alone would enter the block.
+        let (full, html) = repo_from_repo_url(
+            "https://api.github.com/repos/owner-only",
+            "https://github.com",
+        );
+        assert_eq!(full, "unknown/unknown");
+        assert_eq!(html, "https://github.com");
     }
 
     #[test]

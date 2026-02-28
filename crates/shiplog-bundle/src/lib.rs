@@ -38,6 +38,25 @@ fn is_scoped_include(rel_path: &str, profile: &BundleProfile) -> bool {
     }
 }
 
+/// Write `bundle.manifest.json` containing SHA-256 checksums for all files
+/// included in the given profile scope.
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// use shiplog_bundle::write_bundle_manifest;
+/// use shiplog_ids::RunId;
+/// use shiplog_schema::bundle::BundleProfile;
+/// use std::path::Path;
+///
+/// let manifest = write_bundle_manifest(
+///     Path::new("./out/run_123"),
+///     &RunId::now("example"),
+///     &BundleProfile::Internal,
+/// )?;
+/// println!("Bundled {} files", manifest.files.len());
+/// # Ok::<(), anyhow::Error>(())
+/// ```
 pub fn write_bundle_manifest(
     out_dir: &Path,
     run_id: &RunId,
@@ -73,6 +92,22 @@ pub fn write_bundle_manifest(
     Ok(manifest)
 }
 
+/// Write a profile-scoped zip archive from the run directory.
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// use shiplog_bundle::write_zip;
+/// use shiplog_schema::bundle::BundleProfile;
+/// use std::path::Path;
+///
+/// write_zip(
+///     Path::new("./out/run_123"),
+///     Path::new("./out/run_123.zip"),
+///     &BundleProfile::Internal,
+/// )?;
+/// # Ok::<(), anyhow::Error>(())
+/// ```
 pub fn write_zip(out_dir: &Path, zip_path: &Path, profile: &BundleProfile) -> Result<()> {
     let file = File::create(zip_path).with_context(|| format!("create zip {zip_path:?}"))?;
     let mut zip = zip::ZipWriter::new(file);

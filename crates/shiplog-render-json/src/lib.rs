@@ -15,6 +15,19 @@ use std::path::Path;
 /// - line-delimited, append-friendly
 /// - diff-friendly
 /// - can be streamed
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// use shiplog_render_json::write_events_jsonl;
+/// use shiplog_schema::event::EventEnvelope;
+/// use std::path::Path;
+///
+/// # fn example(events: &[EventEnvelope]) -> anyhow::Result<()> {
+/// write_events_jsonl(Path::new("ledger.events.jsonl"), events)?;
+/// # Ok(())
+/// # }
+/// ```
 pub fn write_events_jsonl(path: &Path, events: &[EventEnvelope]) -> Result<()> {
     let mut f = std::fs::File::create(path).with_context(|| format!("create {path:?}"))?;
     for ev in events {

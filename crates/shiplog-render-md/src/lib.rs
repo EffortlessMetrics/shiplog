@@ -28,6 +28,35 @@ pub enum SectionOrder {
 /// - headings
 /// - short bullets
 /// - receipts with URLs when available
+///
+/// # Examples
+///
+/// Use as a [`Renderer`] trait object to render events into Markdown:
+///
+/// ```rust,no_run
+/// use shiplog_render_md::MarkdownRenderer;
+/// use shiplog_ports::Renderer;
+/// use shiplog_schema::event::EventEnvelope;
+/// use shiplog_schema::workstream::WorkstreamsFile;
+/// use shiplog_schema::coverage::CoverageManifest;
+///
+/// # fn example(
+/// #     events: &[EventEnvelope],
+/// #     workstreams: &WorkstreamsFile,
+/// #     coverage: &CoverageManifest,
+/// # ) -> anyhow::Result<()> {
+/// let renderer = MarkdownRenderer::new();
+/// let markdown = renderer.render_packet_markdown(
+///     "octocat",
+///     "2025-01-01..2025-04-01",
+///     events,
+///     workstreams,
+///     coverage,
+/// )?;
+/// println!("{}", markdown);
+/// # Ok(())
+/// # }
+/// ```
 pub struct MarkdownRenderer {
     /// Section ordering configuration
     pub section_order: SectionOrder,
@@ -921,6 +950,41 @@ mod tests {
         render_coverage(&mut out, &coverage);
         assert!(out.contains("Slicing applied"));
         assert!(!out.contains("... and"));
+    }
+
+    #[test]
+    fn coverage_empty_slices_no_incomplete_no_slicing() {
+        // No slices at all → no "incomplete results" or "Slicing applied" messages.
+        // Strengthens > → >= mutation coverage on partial_count and capped checks.
+        let coverage = make_coverage(vec![], vec![]);
+        let mut out = String::new();
+        render_coverage(&mut out, &coverage);
+        assert!(!out.contains("incomplete results"));
+        assert!(!out.contains("Slicing applied"));
+        assert!(!out.contains("Query slices"));
+    }
+
+    #[test]
+    fn coverage_none_incomplete_results_no_warning() {
+        // incomplete_results: None → defaults to false → no warning.
+        // Kills > → >= mutation on partial_count when None is present.
+        let coverage = make_coverage(
+            vec![CoverageSlice {
+                window: TimeWindow {
+                    since: NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
+                    until: NaiveDate::from_ymd_opt(2024, 12, 31).unwrap(),
+                },
+                query: "test".into(),
+                total_count: 10,
+                fetched: 10,
+                incomplete_results: None,
+                notes: vec![],
+            }],
+            vec![],
+        );
+        let mut out = String::new();
+        render_coverage(&mut out, &coverage);
+        assert!(!out.contains("incomplete results"));
     }
 
     #[test]

@@ -71,9 +71,37 @@ impl<'a> Engine<'a> {
         }
     }
 
-    /// Run the full pipeline: ingest → cluster → render
+    /// Run the full pipeline: ingest → cluster → render.
     ///
     /// Uses WorkstreamManager to respect user-curated workstreams.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use shiplog_engine::Engine;
+    /// use shiplog_ports::{IngestOutput, Renderer, WorkstreamClusterer, Redactor};
+    /// use shiplog_schema::bundle::BundleProfile;
+    /// use std::path::Path;
+    ///
+    /// # fn example(
+    /// #     renderer: &dyn Renderer,
+    /// #     clusterer: &dyn WorkstreamClusterer,
+    /// #     redactor: &dyn Redactor,
+    /// #     ingest: IngestOutput,
+    /// # ) -> anyhow::Result<()> {
+    /// let engine = Engine::new(renderer, clusterer, redactor);
+    /// let (outputs, ws_source) = engine.run(
+    ///     ingest,
+    ///     "octocat",
+    ///     "2025-01-01..2025-04-01",
+    ///     Path::new("./out/run_123"),
+    ///     false,
+    ///     &BundleProfile::Internal,
+    /// )?;
+    /// println!("Packet written to {:?}", outputs.packet_md);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn run(
         &self,
         ingest: IngestOutput,
@@ -188,6 +216,34 @@ impl<'a> Engine<'a> {
     ///
     /// When `workstreams` is `Some`, uses them directly (writes as curated).
     /// When `None`, falls through to normal clustering.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use shiplog_engine::Engine;
+    /// use shiplog_ports::{IngestOutput, Renderer, WorkstreamClusterer, Redactor};
+    /// use shiplog_schema::bundle::BundleProfile;
+    /// use std::path::Path;
+    ///
+    /// # fn example(
+    /// #     renderer: &dyn Renderer,
+    /// #     clusterer: &dyn WorkstreamClusterer,
+    /// #     redactor: &dyn Redactor,
+    /// #     ingest: IngestOutput,
+    /// # ) -> anyhow::Result<()> {
+    /// let engine = Engine::new(renderer, clusterer, redactor);
+    /// let (outputs, _) = engine.import(
+    ///     ingest,
+    ///     "octocat",
+    ///     "2025-01-01..2025-04-01",
+    ///     Path::new("./out/import_run"),
+    ///     false,
+    ///     None, // or Some(workstreams) to supply pre-built workstreams
+    ///     &BundleProfile::Internal,
+    /// )?;
+    /// # Ok(())
+    /// # }
+    /// ```
     #[allow(clippy::too_many_arguments)]
     pub fn import(
         &self,
@@ -279,9 +335,37 @@ impl<'a> Engine<'a> {
         ))
     }
 
-    /// Refresh receipts and stats without regenerating workstreams
+    /// Refresh receipts and stats without regenerating workstreams.
     ///
     /// This preserves user curation while updating event data.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use shiplog_engine::Engine;
+    /// use shiplog_ports::{IngestOutput, Renderer, WorkstreamClusterer, Redactor};
+    /// use shiplog_schema::bundle::BundleProfile;
+    /// use std::path::Path;
+    ///
+    /// # fn example(
+    /// #     renderer: &dyn Renderer,
+    /// #     clusterer: &dyn WorkstreamClusterer,
+    /// #     redactor: &dyn Redactor,
+    /// #     ingest: IngestOutput,
+    /// # ) -> anyhow::Result<()> {
+    /// let engine = Engine::new(renderer, clusterer, redactor);
+    /// // out_dir must already contain workstreams.yaml or workstreams.suggested.yaml
+    /// let outputs = engine.refresh(
+    ///     ingest,
+    ///     "octocat",
+    ///     "2025-01-01..2025-04-01",
+    ///     Path::new("./out/existing_run"),
+    ///     false,
+    ///     &BundleProfile::Internal,
+    /// )?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn refresh(
         &self,
         ingest: IngestOutput,
@@ -420,6 +504,29 @@ impl<'a> Engine<'a> {
     /// - Resolves conflicts for events that appear in multiple sources
     /// - Merges coverage manifests from all sources
     /// - Sorts events by timestamp
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use shiplog_engine::{Engine, ConflictResolution};
+    /// use shiplog_ports::{IngestOutput, Renderer, WorkstreamClusterer, Redactor};
+    ///
+    /// # fn example(
+    /// #     renderer: &dyn Renderer,
+    /// #     clusterer: &dyn WorkstreamClusterer,
+    /// #     redactor: &dyn Redactor,
+    /// #     output_a: IngestOutput,
+    /// #     output_b: IngestOutput,
+    /// # ) -> anyhow::Result<()> {
+    /// let engine = Engine::new(renderer, clusterer, redactor);
+    /// let merged = engine.merge(
+    ///     vec![output_a, output_b],
+    ///     ConflictResolution::PreferMostRecent,
+    /// )?;
+    /// println!("Merged {} events", merged.events.len());
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn merge(
         &self,
         ingest_outputs: Vec<IngestOutput>,
