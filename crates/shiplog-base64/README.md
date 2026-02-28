@@ -15,7 +15,7 @@ assert_eq!(decoded, b"Hello, World!");
 
 // String variants
 let encoded = encode_string("Hello");
-assert_eq!(encoded, "SGVsbG8");
+assert_eq!(encoded, "SGVsbG8=");
 
 let decoded = decode_to_string(&encoded).unwrap();
 assert_eq!(decoded, "Hello");

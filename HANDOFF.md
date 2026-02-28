@@ -103,13 +103,13 @@ Notes:
 ### 3.3 Render (no re-fetch)
 
 ```bash
-shiplog render --run-dir out/<run_id>
+shiplog render --run <run_id>
 ```
 
 Add safe sharing variants:
 
 ```bash
-shiplog render --run-dir out/<run_id> --redact-key <KEY>
+shiplog render --run <run_id> --redact-key <KEY>
 ```
 
 ### 3.4 Refresh (re-fetch receipts; keep curation)

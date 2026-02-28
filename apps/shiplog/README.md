@@ -37,7 +37,7 @@ shiplog collect github \
 cp out/<run_id>/workstreams.suggested.yaml out/<run_id>/workstreams.yaml
 
 # 3. Re-render the packet with your curated workstreams
-shiplog render --run-dir out/<run_id>
+shiplog render --run <run_id>
 ```
 
 Output goes to `out/<run_id>/` containing `packet.md`, `ledger.events.jsonl`, `coverage.manifest.json`, and optional redacted profiles.
@@ -74,7 +74,7 @@ Output goes to `out/<run_id>/` containing `packet.md`, `ledger.events.jsonl`, `c
 Provide a key to generate redacted packets:
 
 ```bash
-shiplog render --run-dir out/<run_id> --redact-key my-stable-secret
+shiplog render --run <run_id> --redact-key my-stable-secret
 ```
 
 This produces `profiles/manager/packet.md` (context preserved, details stripped) and `profiles/public/packet.md` (repos and workstreams aliased, sensitive fields removed).

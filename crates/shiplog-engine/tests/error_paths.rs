@@ -347,8 +347,7 @@ fn refresh_errors_on_corrupted_suggested_yaml_when_no_curated() {
         Ok(_) => unreachable!(),
     };
     assert!(
-        err.to_string()
-            .contains("parse suggested workstreams yaml"),
+        err.to_string().contains("parse suggested workstreams yaml"),
         "unexpected: {err}"
     );
 }

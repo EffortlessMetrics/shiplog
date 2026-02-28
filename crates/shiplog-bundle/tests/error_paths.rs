@@ -41,8 +41,7 @@ fn write_bundle_manifest_on_empty_dir_manager_profile_succeeds() {
     let dir = tempfile::tempdir().unwrap();
     let run_id = RunId::now("test");
 
-    let manifest =
-        write_bundle_manifest(dir.path(), &run_id, &BundleProfile::Manager).unwrap();
+    let manifest = write_bundle_manifest(dir.path(), &run_id, &BundleProfile::Manager).unwrap();
     assert!(manifest.files.is_empty());
     assert_eq!(manifest.profile, BundleProfile::Manager);
 }
@@ -100,8 +99,7 @@ fn manager_profile_on_dir_without_profiles_subdir_returns_empty() {
     std::fs::write(dir.path().join("coverage.manifest.json"), "{}").unwrap();
 
     let run_id = RunId::now("test");
-    let manifest =
-        write_bundle_manifest(dir.path(), &run_id, &BundleProfile::Manager).unwrap();
+    let manifest = write_bundle_manifest(dir.path(), &run_id, &BundleProfile::Manager).unwrap();
 
     // Manager profile requires profiles/manager/packet.md — the top-level
     // packet.md doesn't match, but coverage.manifest.json does.
@@ -124,8 +122,7 @@ fn public_profile_on_dir_without_profiles_subdir_returns_only_coverage() {
     std::fs::write(dir.path().join("ledger.events.jsonl"), "").unwrap();
 
     let run_id = RunId::now("test");
-    let manifest =
-        write_bundle_manifest(dir.path(), &run_id, &BundleProfile::Public).unwrap();
+    let manifest = write_bundle_manifest(dir.path(), &run_id, &BundleProfile::Public).unwrap();
 
     let paths: Vec<&str> = manifest.files.iter().map(|f| f.path.as_str()).collect();
     assert_eq!(paths.len(), 1, "only coverage should be included");
@@ -142,12 +139,10 @@ fn manifest_checksums_are_deterministic() {
     std::fs::write(dir.path().join("packet.md"), "hello world").unwrap();
 
     let run_id = RunId::now("test");
-    let m1 =
-        write_bundle_manifest(dir.path(), &run_id, &BundleProfile::Internal).unwrap();
+    let m1 = write_bundle_manifest(dir.path(), &run_id, &BundleProfile::Internal).unwrap();
     // Remove the manifest file so it doesn't interfere with second run
     std::fs::remove_file(dir.path().join("bundle.manifest.json")).unwrap();
-    let m2 =
-        write_bundle_manifest(dir.path(), &run_id, &BundleProfile::Internal).unwrap();
+    let m2 = write_bundle_manifest(dir.path(), &run_id, &BundleProfile::Internal).unwrap();
 
     // Checksums should be identical for the same content
     assert_eq!(m1.files.len(), m2.files.len());

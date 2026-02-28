@@ -7,9 +7,7 @@ use chrono::{NaiveDate, TimeZone, Utc};
 use shiplog_ids::{EventId, RunId, WorkstreamId};
 use shiplog_ports::Renderer;
 use shiplog_render_md::MarkdownRenderer;
-use shiplog_schema::coverage::{
-    Completeness, CoverageManifest, CoverageSlice, TimeWindow,
-};
+use shiplog_schema::coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow};
 use shiplog_schema::event::{
     Actor, EventEnvelope, EventKind, EventPayload, Link, PullRequestEvent, PullRequestState,
     RepoRef, RepoVisibility, SourceRef, SourceSystem,
@@ -99,7 +97,10 @@ fn render_empty_workstreams_with_events_succeeds() {
     );
 
     let md = result.unwrap();
-    assert!(md.contains("No workstreams found"), "should note no workstreams");
+    assert!(
+        md.contains("No workstreams found"),
+        "should note no workstreams"
+    );
     assert!(md.contains("1 PRs"), "should still count events");
 }
 

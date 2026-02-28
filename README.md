@@ -88,7 +88,7 @@ cp out/<run_id>/workstreams.suggested.yaml out/<run_id>/workstreams.yaml
 ### 3. Re-render the packet
 
 ```bash
-shiplog render --run-dir out/<run_id>
+shiplog render --run <run_id>
 ```
 
 This regenerates `packet.md` using your curated workstreams while preserving the original ledger and coverage data. Add `--redact-key <KEY>` to also generate manager and public profile packets.
@@ -157,7 +157,7 @@ shiplog collect manual \
 Generate redacted packets by providing a key:
 
 ```bash
-shiplog render --run-dir out/<run_id> --redact-key my-stable-secret
+shiplog render --run <run_id> --redact-key my-stable-secret
 ```
 
 The key drives deterministic HMAC-SHA256 aliasing. Same key + same input = same aliases across runs.
@@ -174,7 +174,7 @@ The key drives deterministic HMAC-SHA256 aliasing. Same key + same input = same 
 Bundle a specific profile as a zip:
 
 ```bash
-shiplog render --run-dir out/<run_id> --redact-key my-stable-secret --zip --bundle-profile manager
+shiplog render --run <run_id> --redact-key my-stable-secret --zip --bundle-profile manager
 ```
 
 ## Architecture

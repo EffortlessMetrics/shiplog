@@ -24,7 +24,7 @@ let cache = ApiCache::open("./.shiplog-cache.db")?;
 cache.set("key", serde_json::json!({"value": "data"}))?;
 
 // Set a value with custom TTL (7 days)
-cache.set_with_ttl("key", serde_json::json!({"value": "data"}), std::time::Duration::from_secs(7 * 24 * 60 * 60))?;
+cache.set_with_ttl("key", &serde_json::json!({"value": "data"}), chrono::Duration::days(7))?;
 
 // Get a value (returns None if expired or not found)
 let value: Option<String> = cache.get("key")?;
@@ -57,7 +57,7 @@ let cache = ApiCache::open("./.shiplog-cache.db")?;
 Create a cache with a maximum size limit.
 
 ```rust
-let cache = ApiCache::open("./.cache.db")?.with_max_size(1024 * 1024 * 1024)?;
+let cache = ApiCache::open("./.cache.db")?.with_max_size(1024 * 1024 * 1024);
 ```
 
 #### `with_ttl(ttl: Duration) -> Self`
@@ -65,7 +65,7 @@ let cache = ApiCache::open("./.cache.db")?.with_max_size(1024 * 1024 * 1024)?;
 Set the default TTL for cache entries.
 
 ```rust
-let cache = ApiCache::open("./cache.db")?.with_ttl(std::time::Duration::from_secs(7 * 24 * 60 * 60))?;
+let cache = ApiCache::open("./cache.db")?.with_ttl(chrono::Duration::days(7));
 ```
 
 ### `get<T: DeserializeOwned>(&self, key: &str) -> Result<Option<T>>`
@@ -89,7 +89,7 @@ cache.set("key", serde_json::json!({"value": "data"}))?;
 Store a value in the cache with a custom TTL.
 
 ```rust
-cache.set_with_ttl("key", serde_json::json!({"value": "data"}), std::time::Duration::from_secs(7 * 24 * 60 * 60))?;
+cache.set_with_ttl("key", &serde_json::json!({"value": "data"}), chrono::Duration::days(7))?;
 ```
 
 ### `contains(&self, key: &str) -> Result<bool>`
