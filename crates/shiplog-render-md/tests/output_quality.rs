@@ -12,10 +12,7 @@ use shiplog_schema::{
     event::*,
     workstream::{Workstream, WorkstreamStats, WorkstreamsFile},
 };
-use shiplog_testkit::{
-    fixtures::WorkstreamFixture,
-    pr_event,
-};
+use shiplog_testkit::{fixtures::WorkstreamFixture, pr_event};
 
 // ── Helpers ──────────────────────────────────────────────────────────────
 
@@ -191,10 +188,7 @@ fn links_absent_when_no_url() {
     let md = render(&[event], &workstreams, &deterministic_coverage());
 
     // Should not contain broken Markdown links like [](...)
-    assert!(
-        !md.contains("[]("),
-        "Should not render empty-label links"
-    );
+    assert!(!md.contains("[]("), "Should not render empty-label links");
 }
 
 // ── Workstream stats rendering ──────────────────────────────────────────
@@ -389,7 +383,10 @@ fn different_section_orders_produce_different_output() {
     // Default: Summary before Coverage
     let default_sum = default_md.find("# Summary").unwrap();
     let default_cov = default_md.find("## Coverage").unwrap();
-    assert!(default_sum < default_cov, "Default: Summary before Coverage");
+    assert!(
+        default_sum < default_cov,
+        "Default: Summary before Coverage"
+    );
 
     // CoverageFirst: Coverage before Summary
     let cf_cov = coverage_first_md.find("## Coverage").unwrap();
@@ -513,7 +510,12 @@ fn claim_scaffolds_present_for_each_workstream() {
         "Each workstream should have a claim scaffold block"
     );
 
-    for field in &["Problem: _fill_", "What I shipped: _fill_", "Why it mattered: _fill_", "Result: _fill_"] {
+    for field in &[
+        "Problem: _fill_",
+        "What I shipped: _fill_",
+        "Why it mattered: _fill_",
+        "Result: _fill_",
+    ] {
         assert!(md.contains(field), "Missing claim field: {field}");
     }
 }

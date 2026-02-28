@@ -88,10 +88,7 @@ fn event_repo_has_required_fields() {
 
     assert!(repo.contains_key("full_name"), "Repo missing 'full_name'");
     assert!(repo.contains_key("html_url"), "Repo missing 'html_url'");
-    assert!(
-        repo.contains_key("visibility"),
-        "Repo missing 'visibility'"
-    );
+    assert!(repo.contains_key("visibility"), "Repo missing 'visibility'");
 }
 
 #[test]
@@ -194,10 +191,7 @@ fn null_optional_fields_serialized_correctly() {
         json["repo"]["html_url"].is_null(),
         "repo.html_url should be null"
     );
-    assert!(
-        json["source"]["url"].is_null(),
-        "source.url should be null"
-    );
+    assert!(json["source"]["url"].is_null(), "source.url should be null");
     assert!(
         json["source"]["opaque_id"].is_null(),
         "source.opaque_id should be null"
@@ -246,10 +240,7 @@ fn event_ordering_preserved_across_writes() {
 
     assert_eq!(parsed.len(), events.len());
     for (i, (orig, loaded)) in events.iter().zip(parsed.iter()).enumerate() {
-        assert_eq!(
-            orig.id, loaded.id,
-            "Event order mismatch at index {i}"
-        );
+        assert_eq!(orig.id, loaded.id, "Event order mismatch at index {i}");
     }
 }
 
@@ -278,11 +269,7 @@ fn event_ordering_deterministic_across_repeated_writes() {
 #[test]
 fn coverage_sources_order_preserved() {
     let mut cov = deterministic_coverage(Completeness::Complete);
-    cov.sources = vec![
-        "github".into(),
-        "manual".into(),
-        "json_import".into(),
-    ];
+    cov.sources = vec!["github".into(), "manual".into(), "json_import".into()];
 
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("coverage.manifest.json");
@@ -291,7 +278,10 @@ fn coverage_sources_order_preserved() {
     let text = std::fs::read_to_string(&path).unwrap();
     let loaded: CoverageManifest = serde_json::from_str(&text).unwrap();
 
-    assert_eq!(loaded.sources, cov.sources, "Source order should be preserved");
+    assert_eq!(
+        loaded.sources, cov.sources,
+        "Source order should be preserved"
+    );
 }
 
 // ── Pretty-print vs compact output ─────────────────────────────────────
@@ -351,10 +341,7 @@ fn coverage_manifest_is_pretty_printed() {
 
     // Pretty-printed JSON has newlines and indentation
     assert!(text.contains('\n'), "Manifest should be multi-line");
-    assert!(
-        text.contains("  "),
-        "Manifest should contain indentation"
-    );
+    assert!(text.contains("  "), "Manifest should contain indentation");
 
     // But still valid JSON
     let parsed: serde_json::Value = serde_json::from_str(&text).unwrap();

@@ -21,7 +21,7 @@ use shiplog_workstream_cluster::RepoClusterer;
 use std::path::{Path, PathBuf};
 
 #[derive(Parser, Debug)]
-#[command(name = "shiplog")]
+#[command(name = "shiplog", version)]
 #[command(about = "Generate self-review packets with receipts + coverage.", long_about = None)]
 struct Cli {
     #[command(subcommand)]
