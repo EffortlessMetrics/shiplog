@@ -3,7 +3,9 @@
 use proptest::prelude::*;
 use shiplog_ids::{EventId, WorkstreamId};
 use shiplog_schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
-use shiplog_workstream_layout::write_workstreams;
+use shiplog_workstream_layout::{
+    CURATED_FILENAME, SUGGESTED_FILENAME, WorkstreamManager, write_workstreams,
+};
 use tempfile::tempdir;
 
 fn alpha_token() -> impl Strategy<Value = String> {
@@ -67,5 +69,46 @@ proptest! {
         let yaml = serde_yaml::to_string(&ws).unwrap();
         let parsed: WorkstreamsFile = serde_yaml::from_str(&yaml).unwrap();
         prop_assert_eq!(parsed, ws);
+    }
+
+    #[test]
+    fn prop_curated_path_always_ends_with_curated_filename(dir_name in alpha_token()) {
+        let dir = std::path::PathBuf::from(format!("/tmp/{dir_name}"));
+        let path = WorkstreamManager::curated_path(&dir);
+        prop_assert_eq!(
+            path.file_name().unwrap().to_str().unwrap(),
+            CURATED_FILENAME
+        );
+        prop_assert!(path.starts_with(&dir));
+    }
+
+    #[test]
+    fn prop_suggested_path_always_ends_with_suggested_filename(dir_name in alpha_token()) {
+        let dir = std::path::PathBuf::from(format!("/tmp/{dir_name}"));
+        let path = WorkstreamManager::suggested_path(&dir);
+        prop_assert_eq!(
+            path.file_name().unwrap().to_str().unwrap(),
+            SUGGESTED_FILENAME
+        );
+        prop_assert!(path.starts_with(&dir));
+    }
+
+    #[test]
+    fn prop_curated_and_suggested_paths_are_different(dir_name in alpha_token()) {
+        let dir = std::path::PathBuf::from(format!("/tmp/{dir_name}"));
+        let curated = WorkstreamManager::curated_path(&dir);
+        let suggested = WorkstreamManager::suggested_path(&dir);
+        prop_assert_ne!(curated, suggested);
+    }
+
+    #[test]
+    fn prop_write_then_read_file_is_valid_yaml(ws in workstreams_file()) {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("check.yaml");
+        write_workstreams(&path, &ws).unwrap();
+
+        let text = std::fs::read_to_string(&path).unwrap();
+        // Should parse as valid YAML without error
+        let _: serde_yaml::Value = serde_yaml::from_str(&text).unwrap();
     }
 }

@@ -274,4 +274,74 @@ mod tests {
         .unwrap();
         assert!(WorkstreamManager::has_curated(temp_dir.path()));
     }
+
+    #[test]
+    fn curated_path_uses_correct_filename() {
+        let dir = Path::new("/some/dir");
+        let path = WorkstreamManager::curated_path(dir);
+        assert_eq!(path.file_name().unwrap(), CURATED_FILENAME);
+    }
+
+    #[test]
+    fn suggested_path_uses_correct_filename() {
+        let dir = Path::new("/some/dir");
+        let path = WorkstreamManager::suggested_path(dir);
+        assert_eq!(path.file_name().unwrap(), SUGGESTED_FILENAME);
+    }
+
+    #[test]
+    fn write_suggested_writes_to_correct_path() {
+        let temp_dir = tempdir().unwrap();
+        let ws = make_workstreams("suggested-write", "repo/sw");
+        WorkstreamManager::write_suggested(temp_dir.path(), &ws).unwrap();
+
+        let suggested_path = WorkstreamManager::suggested_path(temp_dir.path());
+        assert!(suggested_path.exists());
+
+        let loaded = read_workstreams(&suggested_path).unwrap();
+        assert_eq!(loaded.workstreams[0].title, "suggested-write");
+    }
+
+    #[test]
+    fn try_load_returns_none_when_empty() {
+        let temp_dir = tempdir().unwrap();
+        let result = WorkstreamManager::try_load(temp_dir.path()).unwrap();
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn load_or_cluster_with_nonexistent_path_falls_back() {
+        let non_existent = Path::new("/does/not/exist/workstreams.yaml");
+        let loaded = load_or_cluster(Some(non_existent), &FakeClusterer, &[]).unwrap();
+        assert_eq!(loaded.workstreams[0].title, "fallback");
+    }
+
+    #[test]
+    fn write_read_roundtrip_preserves_empty_workstreams() {
+        let temp_dir = tempdir().unwrap();
+        let ws = WorkstreamsFile {
+            version: 1,
+            generated_at: Utc::now(),
+            workstreams: vec![],
+        };
+        let path = temp_dir.path().join("empty.yaml");
+        write_workstreams(&path, &ws).unwrap();
+        let loaded = read_workstreams(&path).unwrap();
+        assert!(loaded.workstreams.is_empty());
+        assert_eq!(loaded.version, 1);
+    }
+
+    #[test]
+    fn write_suggested_overwrites_existing() {
+        let temp_dir = tempdir().unwrap();
+        let ws1 = make_workstreams("first", "repo/first");
+        let ws2 = make_workstreams("second", "repo/second");
+
+        WorkstreamManager::write_suggested(temp_dir.path(), &ws1).unwrap();
+        WorkstreamManager::write_suggested(temp_dir.path(), &ws2).unwrap();
+
+        let loaded =
+            read_workstreams(&WorkstreamManager::suggested_path(temp_dir.path())).unwrap();
+        assert_eq!(loaded.workstreams[0].title, "second");
+    }
 }

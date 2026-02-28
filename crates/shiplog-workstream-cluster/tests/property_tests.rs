@@ -5,6 +5,7 @@ use shiplog_ports::WorkstreamClusterer;
 use shiplog_schema::event::EventEnvelope;
 use shiplog_testkit::proptest::*;
 use shiplog_workstream_cluster::RepoClusterer;
+use shiplog_workstream_receipt_policy::WORKSTREAM_RECEIPT_LIMIT_TOTAL;
 
 fn clustered_workstreams(events: &[EventEnvelope]) -> Vec<shiplog_schema::workstream::Workstream> {
     RepoClusterer.cluster(events).unwrap().workstreams
@@ -68,6 +69,53 @@ proptest! {
             } else {
                 repo_to_ws.insert(event.repo.full_name.clone(), ws);
             }
+        }
+    }
+
+    #[test]
+    fn prop_receipts_never_exceed_total_limit(events in strategy_event_vec(100)) {
+        let workstreams = clustered_workstreams(&events);
+        for ws in &workstreams {
+            prop_assert!(ws.receipts.len() <= WORKSTREAM_RECEIPT_LIMIT_TOTAL);
+        }
+    }
+
+    #[test]
+    fn prop_stats_sum_matches_event_count(events in strategy_event_vec(50)) {
+        let workstreams = clustered_workstreams(&events);
+        for ws in &workstreams {
+            let stat_total = ws.stats.pull_requests + ws.stats.reviews + ws.stats.manual_events;
+            prop_assert_eq!(stat_total, ws.events.len());
+        }
+    }
+
+    #[test]
+    fn prop_all_workstreams_tagged_repo(events in strategy_event_vec(50)) {
+        let workstreams = clustered_workstreams(&events);
+        for ws in &workstreams {
+            prop_assert!(ws.tags.contains(&"repo".to_string()));
+        }
+    }
+
+    #[test]
+    fn prop_workstream_count_equals_distinct_repos(events in strategy_event_vec(50)) {
+        let workstreams = clustered_workstreams(&events);
+        let distinct_repos: std::collections::HashSet<_> =
+            events.iter().map(|e| &e.repo.full_name).collect();
+        prop_assert_eq!(workstreams.len(), distinct_repos.len());
+    }
+
+    #[test]
+    fn prop_deterministic_clustering(events in strategy_event_vec(30)) {
+        let a = RepoClusterer.cluster(&events).unwrap();
+        let b = RepoClusterer.cluster(&events).unwrap();
+        prop_assert_eq!(a.workstreams.len(), b.workstreams.len());
+        for (wa, wb) in a.workstreams.iter().zip(b.workstreams.iter()) {
+            prop_assert_eq!(&wa.id, &wb.id);
+            prop_assert_eq!(&wa.title, &wb.title);
+            prop_assert_eq!(&wa.events, &wb.events);
+            prop_assert_eq!(&wa.receipts, &wb.receipts);
+            prop_assert_eq!(&wa.stats, &wb.stats);
         }
     }
 }

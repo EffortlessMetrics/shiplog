@@ -22,5 +22,8 @@ shiplog-ports = { path = "../shiplog-ports", version = "0.2.1" }
 shiplog-workstream-receipt-policy = { path = "../shiplog-workstream-receipt-policy", version = "0.2.1" }
 
 [dev-dependencies]
+chrono.workspace = true
+insta.workspace = true
 proptest.workspace = true
+shiplog-ids = { path = "../shiplog-ids", version = "0.2.1" }
 shiplog-testkit = { path = "../shiplog-testkit", version = "0.2.1" }

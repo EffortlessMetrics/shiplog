@@ -1,0 +1,35 @@
+---
+source: crates/shiplog-workstream-layout/tests/snapshot.rs
+assertion_line: 59
+expression: text
+---
+version: 1
+generated_at: 2025-06-15T12:00:00Z
+workstreams:
+- id: e0c77d6a2485456d3e77515339326ff1e582151d2a9a63492248d374261f017f
+  title: acme/app
+  summary: Main application
+  tags:
+  - repo
+  stats:
+    pull_requests: 5
+    reviews: 2
+    manual_events: 1
+  events:
+  - 1749059e22fcdb4caf1cce69dca4cda217be2ee8d0f26b5d389adce0fe2c74f8
+  - 83b02477fd8b88d225b7c1168c643e7d25c025782561e45d378593887a7bb3f9
+  receipts:
+  - 1749059e22fcdb4caf1cce69dca4cda217be2ee8d0f26b5d389adce0fe2c74f8
+- id: a3bcaa9bf92e0f2669ad6cdfd64cf98240d054f7475e5a1fcccd42d92dfc3561
+  title: acme/lib
+  summary: null
+  tags:
+  - repo
+  stats:
+    pull_requests: 1
+    reviews: 0
+    manual_events: 0
+  events:
+  - 5ca6d17dc237b22a67d89055e2d9240442e373c3022b6e465c24630fd6f5bc9f
+  receipts:
+  - 5ca6d17dc237b22a67d89055e2d9240442e373c3022b6e465c24630fd6f5bc9f

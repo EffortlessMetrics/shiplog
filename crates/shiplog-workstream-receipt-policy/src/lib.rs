@@ -98,6 +98,91 @@ mod tests {
         assert!(!should_render_receipt_at(5));
     }
 
+    #[test]
+    fn truncate_empty_vec_is_noop() {
+        let mut v: Vec<i32> = vec![];
+        truncate_cluster_receipts(&mut v);
+        assert!(v.is_empty());
+    }
+
+    #[test]
+    fn truncate_at_exactly_limit_preserves_all() {
+        let mut v: Vec<usize> = (0..WORKSTREAM_RECEIPT_LIMIT_TOTAL).collect();
+        truncate_cluster_receipts(&mut v);
+        assert_eq!(v.len(), WORKSTREAM_RECEIPT_LIMIT_TOTAL);
+        assert_eq!(v, (0..WORKSTREAM_RECEIPT_LIMIT_TOTAL).collect::<Vec<_>>());
+    }
+
+    #[test]
+    fn truncate_below_limit_preserves_all() {
+        let mut v: Vec<usize> = (0..3).collect();
+        truncate_cluster_receipts(&mut v);
+        assert_eq!(v.len(), 3);
+    }
+
+    #[test]
+    fn max_cluster_receipts_for_pr_is_usize_max() {
+        assert_eq!(
+            max_cluster_receipts_for_kind(&EventKind::PullRequest),
+            usize::MAX
+        );
+    }
+
+    #[test]
+    fn max_cluster_receipts_for_review() {
+        assert_eq!(
+            max_cluster_receipts_for_kind(&EventKind::Review),
+            WORKSTREAM_RECEIPT_LIMIT_REVIEW
+        );
+    }
+
+    #[test]
+    fn max_cluster_receipts_for_manual() {
+        assert_eq!(
+            max_cluster_receipts_for_kind(&EventKind::Manual),
+            WORKSTREAM_RECEIPT_LIMIT_MANUAL
+        );
+    }
+
+    #[test]
+    fn review_and_manual_limits_both_fit_within_total() {
+        assert!(WORKSTREAM_RECEIPT_LIMIT_REVIEW <= WORKSTREAM_RECEIPT_LIMIT_TOTAL);
+        assert!(WORKSTREAM_RECEIPT_LIMIT_MANUAL <= WORKSTREAM_RECEIPT_LIMIT_TOTAL);
+    }
+
+    #[test]
+    fn render_limit_within_total_limit() {
+        assert!(WORKSTREAM_RECEIPT_RENDER_LIMIT <= WORKSTREAM_RECEIPT_LIMIT_TOTAL);
+    }
+
+    #[test]
+    fn once_excluded_always_excluded_for_reviews() {
+        let boundary = WORKSTREAM_RECEIPT_LIMIT_REVIEW;
+        assert!(!should_include_cluster_receipt(&EventKind::Review, boundary));
+        assert!(!should_include_cluster_receipt(
+            &EventKind::Review,
+            boundary + 1
+        ));
+        assert!(!should_include_cluster_receipt(
+            &EventKind::Review,
+            boundary + 100
+        ));
+    }
+
+    #[test]
+    fn once_excluded_always_excluded_for_manual() {
+        let boundary = WORKSTREAM_RECEIPT_LIMIT_MANUAL;
+        assert!(!should_include_cluster_receipt(&EventKind::Manual, boundary));
+        assert!(!should_include_cluster_receipt(
+            &EventKind::Manual,
+            boundary + 1
+        ));
+        assert!(!should_include_cluster_receipt(
+            &EventKind::Manual,
+            boundary + 100
+        ));
+    }
+
     proptest! {
         #[test]
         fn prop_cluster_receipt_limits_stay_consistent(kind_code in 0u8..3, count in 0usize..30) {
@@ -119,6 +204,20 @@ mod tests {
             let visible = should_render_receipt_at(index);
             let expected = index < WORKSTREAM_RECEIPT_RENDER_LIMIT;
             prop_assert_eq!(visible, expected);
+        }
+
+        #[test]
+        fn prop_inclusion_is_monotonically_decreasing(kind_code in 0u8..3, count in 0usize..100) {
+            let kind = match kind_code {
+                0 => EventKind::PullRequest,
+                1 => EventKind::Review,
+                _ => EventKind::Manual,
+            };
+
+            if !should_include_cluster_receipt(&kind, count) {
+                // Once excluded, must stay excluded for all higher counts
+                prop_assert!(!should_include_cluster_receipt(&kind, count + 1));
+            }
         }
     }
 }

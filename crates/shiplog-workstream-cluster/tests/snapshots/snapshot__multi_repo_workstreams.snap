@@ -1,0 +1,46 @@
+---
+source: crates/shiplog-workstream-cluster/tests/snapshot.rs
+assertion_line: 86
+expression: ws.workstreams
+---
+- id: e0c77d6a2485456d3e77515339326ff1e582151d2a9a63492248d374261f017f
+  title: acme/app
+  summary: ~
+  tags:
+    - repo
+  stats:
+    pull_requests: 1
+    reviews: 0
+    manual_events: 0
+  events:
+    - 5b04c518560c9cfcce266474c56989b847a1763c100089d873763c17e89e3f63
+  receipts:
+    - 5b04c518560c9cfcce266474c56989b847a1763c100089d873763c17e89e3f63
+- id: e8a9f82411fcbf3962bc5b89c91da4542b2c5e5ab6c2d8379b837d58579ac11d
+  title: acme/docs
+  summary: ~
+  tags:
+    - repo
+  stats:
+    pull_requests: 0
+    reviews: 0
+    manual_events: 1
+  events:
+    - 7cc591529703745a96915a63bc55c9ef227039520a613aa56e6b4aa90e780888
+  receipts:
+    - 7cc591529703745a96915a63bc55c9ef227039520a613aa56e6b4aa90e780888
+- id: a3bcaa9bf92e0f2669ad6cdfd64cf98240d054f7475e5a1fcccd42d92dfc3561
+  title: acme/lib
+  summary: ~
+  tags:
+    - repo
+  stats:
+    pull_requests: 1
+    reviews: 1
+    manual_events: 0
+  events:
+    - cce5850f78522c15412b13e660e961f0069dc140b3c54494b9dc7029d71c907c
+    - b169a18300c1925423f37807884df89a0683976ac4d24306b8f1acb386ced5ed
+  receipts:
+    - cce5850f78522c15412b13e660e961f0069dc140b3c54494b9dc7029d71c907c
+    - b169a18300c1925423f37807884df89a0683976ac4d24306b8f1acb386ced5ed

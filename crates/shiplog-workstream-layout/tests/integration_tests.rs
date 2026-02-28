@@ -6,7 +6,7 @@ use shiplog_schema::event::EventEnvelope;
 use shiplog_schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
 use shiplog_workstream_cluster::RepoClusterer;
 use shiplog_workstream_layout::{
-    CURATED_FILENAME, SUGGESTED_FILENAME, WorkstreamManager, write_workstreams,
+    CURATED_FILENAME, SUGGESTED_FILENAME, WorkstreamManager, load_or_cluster, write_workstreams,
 };
 use tempfile::tempdir;
 
@@ -108,4 +108,78 @@ fn integration_generates_when_no_files_exist() {
         SUGGESTED_FILENAME
     );
     assert!(WorkstreamManager::suggested_path(temp_dir.path()).exists());
+}
+
+#[test]
+fn integration_load_or_cluster_with_real_clusterer() {
+    let events = [
+        make_event("acme/app", "1"),
+        make_event("acme/lib", "2"),
+    ];
+
+    let loaded = load_or_cluster(None, &RepoClusterer, &events).unwrap();
+    assert_eq!(loaded.workstreams.len(), 2);
+}
+
+#[test]
+fn integration_write_suggested_then_load_effective_reads_it() {
+    let temp_dir = tempdir().unwrap();
+    let ws = make_file("auto-suggested");
+    WorkstreamManager::write_suggested(temp_dir.path(), &ws).unwrap();
+
+    let loaded =
+        WorkstreamManager::load_effective(temp_dir.path(), &RepoClusterer, &[]).unwrap();
+    assert_eq!(loaded.workstreams[0].title, "auto-suggested");
+}
+
+#[test]
+fn integration_curated_overrides_suggested_on_load_effective() {
+    let temp_dir = tempdir().unwrap();
+    WorkstreamManager::write_suggested(temp_dir.path(), &make_file("old-suggested")).unwrap();
+    write_workstreams(
+        &WorkstreamManager::curated_path(temp_dir.path()),
+        &make_file("user-curated"),
+    )
+    .unwrap();
+
+    let loaded =
+        WorkstreamManager::load_effective(temp_dir.path(), &RepoClusterer, &[]).unwrap();
+    assert_eq!(loaded.workstreams[0].title, "user-curated");
+}
+
+#[test]
+fn integration_multiple_workstreams_roundtrip() {
+    let temp_dir = tempdir().unwrap();
+    let ws = WorkstreamsFile {
+        version: 1,
+        generated_at: Utc::now(),
+        workstreams: vec![
+            Workstream {
+                id: shiplog_ids::WorkstreamId::from_parts(["repo", "a"]),
+                title: "repo-a".into(),
+                summary: Some("First".into()),
+                tags: vec!["repo".into()],
+                stats: WorkstreamStats { pull_requests: 3, reviews: 1, manual_events: 0 },
+                events: vec![EventId::from_parts(["e", "1"])],
+                receipts: vec![EventId::from_parts(["e", "1"])],
+            },
+            Workstream {
+                id: shiplog_ids::WorkstreamId::from_parts(["repo", "b"]),
+                title: "repo-b".into(),
+                summary: None,
+                tags: vec!["repo".into()],
+                stats: WorkstreamStats::zero(),
+                events: vec![],
+                receipts: vec![],
+            },
+        ],
+    };
+
+    let path = temp_dir.path().join(CURATED_FILENAME);
+    write_workstreams(&path, &ws).unwrap();
+
+    let loaded = WorkstreamManager::try_load(temp_dir.path()).unwrap().unwrap();
+    assert_eq!(loaded.workstreams.len(), 2);
+    assert_eq!(loaded.workstreams[0].title, "repo-a");
+    assert_eq!(loaded.workstreams[1].title, "repo-b");
 }

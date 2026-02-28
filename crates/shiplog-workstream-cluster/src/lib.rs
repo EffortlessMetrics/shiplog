@@ -181,4 +181,90 @@ mod tests {
             b.workstreams[0].id.to_string()
         );
     }
+
+    #[test]
+    fn empty_events_produce_no_workstreams() {
+        let ws = RepoClusterer.cluster(&[]).unwrap();
+        assert!(ws.workstreams.is_empty());
+        assert_eq!(ws.version, 1);
+    }
+
+    #[test]
+    fn single_event_produces_one_workstream() {
+        let events = vec![make_event("repo/solo", "only", 1, EventKind::PullRequest)];
+        let ws = RepoClusterer.cluster(&events).unwrap();
+        assert_eq!(ws.workstreams.len(), 1);
+        assert_eq!(ws.workstreams[0].title, "repo/solo");
+        assert_eq!(ws.workstreams[0].events.len(), 1);
+        assert_eq!(ws.workstreams[0].receipts.len(), 1);
+    }
+
+    #[test]
+    fn stats_are_bumped_correctly_for_mixed_kinds() {
+        let events = vec![
+            make_event("repo/mix", "pr1", 1, EventKind::PullRequest),
+            make_event("repo/mix", "pr2", 2, EventKind::PullRequest),
+            make_event("repo/mix", "rev1", 3, EventKind::Review),
+            make_event("repo/mix", "man1", 4, EventKind::Manual),
+            make_event("repo/mix", "man2", 5, EventKind::Manual),
+            make_event("repo/mix", "man3", 6, EventKind::Manual),
+        ];
+        let ws = RepoClusterer.cluster(&events).unwrap();
+        assert_eq!(ws.workstreams.len(), 1);
+        let stats = &ws.workstreams[0].stats;
+        assert_eq!(stats.pull_requests, 2);
+        assert_eq!(stats.reviews, 1);
+        assert_eq!(stats.manual_events, 3);
+    }
+
+    #[test]
+    fn all_workstreams_tagged_with_repo() {
+        let events = vec![
+            make_event("repo/a", "1", 1, EventKind::PullRequest),
+            make_event("repo/b", "2", 2, EventKind::Review),
+            make_event("repo/c", "3", 3, EventKind::Manual),
+        ];
+        let ws = RepoClusterer.cluster(&events).unwrap();
+        for w in &ws.workstreams {
+            assert!(w.tags.contains(&"repo".to_string()));
+        }
+    }
+
+    #[test]
+    fn workstreams_are_sorted_by_repo_name() {
+        let events = vec![
+            make_event("repo/zulu", "z1", 1, EventKind::PullRequest),
+            make_event("repo/alpha", "a1", 2, EventKind::PullRequest),
+            make_event("repo/mike", "m1", 3, EventKind::PullRequest),
+        ];
+        let ws = RepoClusterer.cluster(&events).unwrap();
+        let titles: Vec<_> = ws.workstreams.iter().map(|w| &w.title).collect();
+        assert_eq!(titles, vec!["repo/alpha", "repo/mike", "repo/zulu"]);
+    }
+
+    #[test]
+    fn pr_receipts_are_capped_by_total_limit() {
+        let events = (0..20)
+            .map(|i| make_event("repo/prs", &format!("p{i}"), i, EventKind::PullRequest))
+            .collect::<Vec<_>>();
+        let ws = RepoClusterer.cluster(&events).unwrap();
+        assert_eq!(ws.workstreams[0].events.len(), 20);
+        assert_eq!(
+            ws.workstreams[0].receipts.len(),
+            WORKSTREAM_RECEIPT_LIMIT_TOTAL
+        );
+    }
+
+    #[test]
+    fn different_repos_produce_different_ids() {
+        let events = vec![
+            make_event("repo/a", "1", 1, EventKind::PullRequest),
+            make_event("repo/b", "2", 2, EventKind::PullRequest),
+        ];
+        let ws = RepoClusterer.cluster(&events).unwrap();
+        assert_ne!(
+            ws.workstreams[0].id.to_string(),
+            ws.workstreams[1].id.to_string()
+        );
+    }
 }

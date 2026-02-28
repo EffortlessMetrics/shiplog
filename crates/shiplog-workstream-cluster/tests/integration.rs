@@ -117,3 +117,62 @@ fn repo_clusterer_obeys_receipt_policy_caps() {
     assert_eq!(manual_ws.receipts.len(), WORKSTREAM_RECEIPT_LIMIT_MANUAL);
     assert_eq!(pr_ws.receipts.len(), WORKSTREAM_RECEIPT_LIMIT_TOTAL);
 }
+
+#[test]
+fn mixed_event_kinds_in_same_repo_produce_correct_stats() {
+    let events = vec![
+        event("org/mix", "p1", 1, EventKind::PullRequest),
+        event("org/mix", "p2", 2, EventKind::PullRequest),
+        event("org/mix", "p3", 3, EventKind::PullRequest),
+        event("org/mix", "r1", 4, EventKind::Review),
+        event("org/mix", "r2", 5, EventKind::Review),
+        event("org/mix", "m1", 6, EventKind::Manual),
+    ];
+
+    let ws = RepoClusterer.cluster(&events).unwrap();
+    assert_eq!(ws.workstreams.len(), 1);
+    let w = &ws.workstreams[0];
+    assert_eq!(w.stats.pull_requests, 3);
+    assert_eq!(w.stats.reviews, 2);
+    assert_eq!(w.stats.manual_events, 1);
+    assert_eq!(w.events.len(), 6);
+}
+
+#[test]
+fn many_repos_each_get_own_workstream() {
+    let events: Vec<_> = (0..50)
+        .map(|i| {
+            event(
+                &format!("org/repo-{i}"),
+                &format!("e{i}"),
+                i,
+                EventKind::PullRequest,
+            )
+        })
+        .collect();
+
+    let ws = RepoClusterer.cluster(&events).unwrap();
+    assert_eq!(ws.workstreams.len(), 50);
+    for w in &ws.workstreams {
+        assert_eq!(w.events.len(), 1);
+    }
+}
+
+#[test]
+fn workstream_ids_are_derived_from_repo_name() {
+    let events = vec![
+        event("org/alpha", "a1", 1, EventKind::PullRequest),
+        event("org/beta", "b1", 2, EventKind::PullRequest),
+    ];
+
+    let ws = RepoClusterer.cluster(&events).unwrap();
+    // IDs should be deterministic and different
+    let id_a = ws.workstreams[0].id.to_string();
+    let id_b = ws.workstreams[1].id.to_string();
+    assert_ne!(id_a, id_b);
+
+    // Re-cluster same events should produce same IDs
+    let ws2 = RepoClusterer.cluster(&events).unwrap();
+    assert_eq!(id_a, ws2.workstreams[0].id.to_string());
+    assert_eq!(id_b, ws2.workstreams[1].id.to_string());
+}
