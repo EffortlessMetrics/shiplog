@@ -407,6 +407,277 @@ mod tests {
             "expected 'expecting' message in error, got: {err}"
         );
     }
+
+    #[test]
+    fn source_ref_serde_roundtrip() {
+        let sr = SourceRef {
+            system: SourceSystem::Github,
+            url: Some("https://api.github.com/repos/acme/widgets/pulls/1".into()),
+            opaque_id: Some("PR_abc".into()),
+        };
+        let json = serde_json::to_string(&sr).unwrap();
+        let back: SourceRef = serde_json::from_str(&json).unwrap();
+        assert_eq!(sr, back);
+    }
+
+    #[test]
+    fn source_ref_optional_fields_absent() {
+        let sr = SourceRef {
+            system: SourceSystem::Manual,
+            url: None,
+            opaque_id: None,
+        };
+        let json = serde_json::to_string(&sr).unwrap();
+        let back: SourceRef = serde_json::from_str(&json).unwrap();
+        assert_eq!(sr, back);
+    }
+
+    #[test]
+    fn actor_serde_roundtrip() {
+        let actor = Actor {
+            login: "octocat".into(),
+            id: Some(12345),
+        };
+        let json = serde_json::to_string(&actor).unwrap();
+        let back: Actor = serde_json::from_str(&json).unwrap();
+        assert_eq!(actor, back);
+    }
+
+    #[test]
+    fn actor_optional_id() {
+        let actor = Actor {
+            login: "ghost".into(),
+            id: None,
+        };
+        let json = serde_json::to_string(&actor).unwrap();
+        let back: Actor = serde_json::from_str(&json).unwrap();
+        assert_eq!(actor, back);
+    }
+
+    #[test]
+    fn repo_ref_serde_roundtrip() {
+        let rr = RepoRef {
+            full_name: "acme/widgets".into(),
+            html_url: Some("https://github.com/acme/widgets".into()),
+            visibility: RepoVisibility::Public,
+        };
+        let json = serde_json::to_string(&rr).unwrap();
+        let back: RepoRef = serde_json::from_str(&json).unwrap();
+        assert_eq!(rr, back);
+    }
+
+    #[test]
+    fn link_serde_roundtrip() {
+        let link = Link {
+            label: "pr".into(),
+            url: "https://github.com/acme/widgets/pull/42".into(),
+        };
+        let json = serde_json::to_string(&link).unwrap();
+        let back: Link = serde_json::from_str(&json).unwrap();
+        assert_eq!(link, back);
+    }
+
+    #[test]
+    fn event_envelope_pr_serde_roundtrip() {
+        use chrono::{TimeZone, Utc};
+
+        let ts = Utc.with_ymd_and_hms(2025, 6, 1, 12, 0, 0).unwrap();
+        let event = EventEnvelope {
+            id: EventId::from_parts(["github", "pr", "acme/widgets", "42"]),
+            kind: EventKind::PullRequest,
+            occurred_at: ts,
+            actor: Actor {
+                login: "octocat".into(),
+                id: Some(1),
+            },
+            repo: RepoRef {
+                full_name: "acme/widgets".into(),
+                html_url: Some("https://github.com/acme/widgets".into()),
+                visibility: RepoVisibility::Public,
+            },
+            payload: EventPayload::PullRequest(PullRequestEvent {
+                number: 42,
+                title: "Add feature".into(),
+                state: PullRequestState::Merged,
+                created_at: ts,
+                merged_at: Some(ts),
+                additions: Some(100),
+                deletions: Some(20),
+                changed_files: Some(5),
+                touched_paths_hint: vec!["src/lib.rs".into()],
+                window: None,
+            }),
+            tags: vec!["feature".into()],
+            links: vec![],
+            source: SourceRef {
+                system: SourceSystem::Github,
+                url: None,
+                opaque_id: None,
+            },
+        };
+        let json = serde_json::to_string(&event).unwrap();
+        let back: EventEnvelope = serde_json::from_str(&json).unwrap();
+        assert_eq!(event, back);
+    }
+
+    #[test]
+    fn event_envelope_review_serde_roundtrip() {
+        use chrono::{TimeZone, Utc};
+
+        let ts = Utc.with_ymd_and_hms(2025, 6, 1, 12, 0, 0).unwrap();
+        let event = EventEnvelope {
+            id: EventId::from_parts(["github", "review", "acme/widgets", "42", "1"]),
+            kind: EventKind::Review,
+            occurred_at: ts,
+            actor: Actor {
+                login: "reviewer".into(),
+                id: None,
+            },
+            repo: RepoRef {
+                full_name: "acme/widgets".into(),
+                html_url: None,
+                visibility: RepoVisibility::Private,
+            },
+            payload: EventPayload::Review(ReviewEvent {
+                pull_number: 42,
+                pull_title: "Add feature".into(),
+                submitted_at: ts,
+                state: "approved".into(),
+                window: None,
+            }),
+            tags: vec![],
+            links: vec![],
+            source: SourceRef {
+                system: SourceSystem::Github,
+                url: None,
+                opaque_id: None,
+            },
+        };
+        let json = serde_json::to_string(&event).unwrap();
+        let back: EventEnvelope = serde_json::from_str(&json).unwrap();
+        assert_eq!(event, back);
+    }
+
+    #[test]
+    fn event_envelope_manual_serde_roundtrip() {
+        use chrono::{TimeZone, Utc};
+
+        let ts = Utc.with_ymd_and_hms(2025, 3, 15, 10, 0, 0).unwrap();
+        let event = EventEnvelope {
+            id: EventId::from_parts(["manual", "incident-1"]),
+            kind: EventKind::Manual,
+            occurred_at: ts,
+            actor: Actor {
+                login: "oncall".into(),
+                id: None,
+            },
+            repo: RepoRef {
+                full_name: "acme/widgets".into(),
+                html_url: None,
+                visibility: RepoVisibility::Unknown,
+            },
+            payload: EventPayload::Manual(ManualEvent {
+                event_type: ManualEventType::Incident,
+                title: "P1 incident".into(),
+                description: Some("Responded to outage".into()),
+                started_at: Some(NaiveDate::from_ymd_opt(2025, 3, 15).unwrap()),
+                ended_at: Some(NaiveDate::from_ymd_opt(2025, 3, 16).unwrap()),
+                impact: Some("Reduced MTTR".into()),
+            }),
+            tags: vec!["incident".into()],
+            links: vec![Link {
+                label: "postmortem".into(),
+                url: "https://wiki/incident-1".into(),
+            }],
+            source: SourceRef {
+                system: SourceSystem::Manual,
+                url: None,
+                opaque_id: None,
+            },
+        };
+        let json = serde_json::to_string(&event).unwrap();
+        let back: EventEnvelope = serde_json::from_str(&json).unwrap();
+        assert_eq!(event, back);
+    }
+
+    #[test]
+    fn manual_events_file_serde_roundtrip() {
+        use chrono::{TimeZone, Utc};
+
+        let ts = Utc.with_ymd_and_hms(2025, 6, 1, 0, 0, 0).unwrap();
+        let file = ManualEventsFile {
+            version: 1,
+            generated_at: ts,
+            events: vec![ManualEventEntry {
+                id: "entry-1".into(),
+                event_type: ManualEventType::Design,
+                date: ManualDate::Single(NaiveDate::from_ymd_opt(2025, 5, 1).unwrap()),
+                title: "Architecture review".into(),
+                description: Some("Reviewed microservice boundaries".into()),
+                workstream: Some("platform".into()),
+                tags: vec!["architecture".into()],
+                receipts: vec![Link {
+                    label: "doc".into(),
+                    url: "https://docs/arch".into(),
+                }],
+                impact: Some("Improved service isolation".into()),
+            }],
+        };
+        let json = serde_json::to_string(&file).unwrap();
+        let back: ManualEventsFile = serde_json::from_str(&json).unwrap();
+        assert_eq!(file, back);
+    }
+
+    #[test]
+    fn manual_event_entry_type_field_renamed() {
+        // Verify #[serde(rename = "type")] works correctly
+        use chrono::NaiveDate;
+
+        let entry = ManualEventEntry {
+            id: "e1".into(),
+            event_type: ManualEventType::Note,
+            date: ManualDate::Single(NaiveDate::from_ymd_opt(2025, 1, 1).unwrap()),
+            title: "Test".into(),
+            description: None,
+            workstream: None,
+            tags: vec![],
+            receipts: vec![],
+            impact: None,
+        };
+        let json = serde_json::to_string(&entry).unwrap();
+        // The JSON should contain "type" not "event_type"
+        assert!(
+            json.contains(r#""type":"#),
+            "expected 'type' key in JSON, got: {json}"
+        );
+        assert!(
+            !json.contains(r#""event_type":"#),
+            "should not contain 'event_type' key in JSON, got: {json}"
+        );
+        let back: ManualEventEntry = serde_json::from_str(&json).unwrap();
+        assert_eq!(entry, back);
+    }
+
+    #[test]
+    fn manual_date_range_in_entry() {
+        let entry = ManualEventEntry {
+            id: "e2".into(),
+            event_type: ManualEventType::Migration,
+            date: ManualDate::Range {
+                start: NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
+                end: NaiveDate::from_ymd_opt(2025, 3, 31).unwrap(),
+            },
+            title: "DB migration".into(),
+            description: None,
+            workstream: None,
+            tags: vec![],
+            receipts: vec![],
+            impact: None,
+        };
+        let json = serde_json::to_string(&entry).unwrap();
+        let back: ManualEventEntry = serde_json::from_str(&json).unwrap();
+        assert_eq!(entry, back);
+    }
 }
 
 /// File format for manual_events.yaml

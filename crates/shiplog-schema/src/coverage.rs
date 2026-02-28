@@ -110,4 +110,57 @@ mod tests {
         let after = w.until.succ_opt().unwrap();
         assert!(!w.contains(after));
     }
+
+    #[test]
+    fn completeness_serde_roundtrip() {
+        for variant in [
+            Completeness::Complete,
+            Completeness::Partial,
+            Completeness::Unknown,
+        ] {
+            let json = serde_json::to_string(&variant).unwrap();
+            let back: Completeness = serde_json::from_str(&json).unwrap();
+            assert_eq!(variant, back);
+        }
+    }
+
+    #[test]
+    fn coverage_slice_serde_roundtrip() {
+        let slice = CoverageSlice {
+            window: window(),
+            query: "author:octocat is:merged".into(),
+            total_count: 10,
+            fetched: 10,
+            incomplete_results: Some(false),
+            notes: vec!["all fetched".into()],
+        };
+        let json = serde_json::to_string(&slice).unwrap();
+        let back: CoverageSlice = serde_json::from_str(&json).unwrap();
+        assert_eq!(slice, back);
+    }
+
+    #[test]
+    fn coverage_manifest_serde_roundtrip() {
+        let manifest = CoverageManifest {
+            run_id: shiplog_ids::RunId("test-run".into()),
+            generated_at: chrono::Utc::now(),
+            user: "testuser".into(),
+            window: window(),
+            mode: "merged".into(),
+            sources: vec!["github".into()],
+            slices: vec![CoverageSlice {
+                window: window(),
+                query: "author:testuser".into(),
+                total_count: 5,
+                fetched: 5,
+                incomplete_results: None,
+                notes: vec![],
+            }],
+            warnings: vec!["test warning".into()],
+            completeness: Completeness::Partial,
+        };
+        let json = serde_json::to_string(&manifest).unwrap();
+        let back: CoverageManifest = serde_json::from_str(&json).unwrap();
+        assert_eq!(manifest, back);
+    }
 }
