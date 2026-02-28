@@ -9,3 +9,6 @@ description = "Process utilities for shiplog."
 readme = "README.md"
 
 [dependencies]
+
+[dev-dependencies]
+proptest.workspace = true

@@ -116,7 +116,10 @@ fn issue_status_as_str_all_variants() {
 
 #[test]
 fn issue_status_from_str_exact() {
-    assert_eq!(IssueStatus::from_str("backlog").unwrap(), IssueStatus::Backlog);
+    assert_eq!(
+        IssueStatus::from_str("backlog").unwrap(),
+        IssueStatus::Backlog
+    );
     assert_eq!(IssueStatus::from_str("todo").unwrap(), IssueStatus::Todo);
     assert_eq!(
         IssueStatus::from_str("in_progress").unwrap(),
@@ -132,7 +135,10 @@ fn issue_status_from_str_exact() {
 
 #[test]
 fn issue_status_from_str_case_insensitive() {
-    assert_eq!(IssueStatus::from_str("BACKLOG").unwrap(), IssueStatus::Backlog);
+    assert_eq!(
+        IssueStatus::from_str("BACKLOG").unwrap(),
+        IssueStatus::Backlog
+    );
     assert_eq!(IssueStatus::from_str("TODO").unwrap(), IssueStatus::Todo);
     assert_eq!(IssueStatus::from_str("Done").unwrap(), IssueStatus::Done);
 }

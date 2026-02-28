@@ -25,7 +25,7 @@ pub fn strategy_naive_date() -> impl Strategy<Value = NaiveDate> {
     })
 }
 
-/// Strategy for generating valid DateTime<Utc> values
+/// Strategy for generating valid `DateTime<Utc>` values
 pub fn strategy_datetime_utc() -> impl Strategy<Value = chrono::DateTime<Utc>> {
     (strategy_naive_date(), 0u32..24, 0u32..60, 0u32..60).prop_map(|(date, h, m, s)| {
         Utc.with_ymd_and_hms(date.year(), date.month(), date.day(), h, m, s)

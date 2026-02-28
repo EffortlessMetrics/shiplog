@@ -272,7 +272,12 @@ fn flexible_data_serde_roundtrip() {
 fn from_json_invalid_returns_error() {
     let result: Result<Simple, _> = from_json("{broken");
     assert!(result.is_err());
-    assert!(result.unwrap_err().to_string().contains("JSON deserialization"));
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("JSON deserialization")
+    );
 }
 
 #[test]

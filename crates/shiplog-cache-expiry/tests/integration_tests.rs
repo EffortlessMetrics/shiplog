@@ -1,7 +1,9 @@
 //! Integration tests for shiplog-cache-expiry.
 
 use chrono::{DateTime, Duration, Utc};
-use shiplog_cache_expiry::{CacheExpiryWindow, is_expired, is_valid, now_rfc3339, parse_rfc3339_utc};
+use shiplog_cache_expiry::{
+    CacheExpiryWindow, is_expired, is_valid, now_rfc3339, parse_rfc3339_utc,
+};
 
 fn dt(secs: i64) -> DateTime<Utc> {
     DateTime::<Utc>::from_timestamp(secs, 0).expect("valid timestamp")

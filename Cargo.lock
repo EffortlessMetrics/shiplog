@@ -2037,6 +2037,7 @@ name = "shiplog-actor"
 version = "0.2.1"
 dependencies = [
  "anyhow",
+ "proptest",
  "tokio",
 ]
 
@@ -2054,6 +2055,7 @@ name = "shiplog-aggregator"
 version = "0.2.1"
 dependencies = [
  "anyhow",
+ "proptest",
 ]
 
 [[package]]
@@ -2204,7 +2206,14 @@ dependencies = [
 name = "shiplog-cache"
 version = "0.2.1"
 dependencies = [
+ "chrono",
+ "insta",
+ "proptest",
+ "serde",
+ "serde_json",
  "shiplog-cache-sqlite",
+ "shiplog-testkit",
+ "tempfile",
 ]
 
 [[package]]
@@ -2228,13 +2237,16 @@ name = "shiplog-cache-expiry"
 version = "0.2.1"
 dependencies = [
  "chrono",
+ "insta",
  "proptest",
+ "shiplog-testkit",
 ]
 
 [[package]]
 name = "shiplog-cache-key"
 version = "0.2.1"
 dependencies = [
+ "insta",
  "proptest",
  "shiplog-testkit",
 ]
@@ -2268,6 +2280,7 @@ dependencies = [
 name = "shiplog-cache-stats"
 version = "0.2.1"
 dependencies = [
+ "insta",
  "proptest",
  "shiplog-testkit",
 ]
@@ -2545,6 +2558,7 @@ name = "shiplog-enumerator"
 version = "0.2.1"
 dependencies = [
  "anyhow",
+ "proptest",
 ]
 
 [[package]]
@@ -2783,6 +2797,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "mutants",
+ "proptest",
  "reqwest",
  "serde",
  "serde_json",
@@ -2801,6 +2816,7 @@ version = "0.2.1"
 dependencies = [
  "anyhow",
  "chrono",
+ "proptest",
  "serde",
  "serde_json",
  "shiplog-ids",
@@ -2817,6 +2833,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "mutants",
+ "proptest",
  "reqwest",
  "serde",
  "serde_json",
@@ -2858,6 +2875,7 @@ version = "0.2.1"
 dependencies = [
  "anyhow",
  "itertools",
+ "proptest",
 ]
 
 [[package]]
@@ -3079,6 +3097,7 @@ name = "shiplog-pool"
 version = "0.2.1"
 dependencies = [
  "anyhow",
+ "proptest",
 ]
 
 [[package]]
@@ -3087,6 +3106,7 @@ version = "0.2.1"
 dependencies = [
  "anyhow",
  "chrono",
+ "proptest",
  "shiplog-ids",
  "shiplog-schema",
  "tokio",
@@ -3113,6 +3133,9 @@ dependencies = [
 [[package]]
 name = "shiplog-proc"
 version = "0.2.1"
+dependencies = [
+ "proptest",
+]
 
 [[package]]
 name = "shiplog-processor"
@@ -3428,6 +3451,7 @@ version = "0.2.1"
 dependencies = [
  "anyhow",
  "chrono",
+ "proptest",
  "serde",
  "serde_json",
  "serde_yaml_ng",
@@ -3726,6 +3750,7 @@ version = "0.2.1"
 dependencies = [
  "proptest",
  "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -3771,6 +3796,7 @@ version = "0.2.1"
 dependencies = [
  "anyhow",
  "chrono",
+ "proptest",
  "tokio",
 ]
 
@@ -3779,7 +3805,9 @@ name = "shiplog-tui"
 version = "0.2.1"
 dependencies = [
  "anyhow",
+ "proptest",
  "serde",
+ "serde_json",
  "tempfile",
 ]
 
@@ -3852,6 +3880,7 @@ version = "0.2.1"
 dependencies = [
  "anyhow",
  "notify",
+ "proptest",
  "serde",
  "serde_json",
  "tempfile",
@@ -3870,6 +3899,7 @@ name = "shiplog-web"
 version = "0.2.1"
 dependencies = [
  "anyhow",
+ "proptest",
  "serde",
  "serde_json",
  "tempfile",
@@ -3880,6 +3910,7 @@ name = "shiplog-window"
 version = "0.2.1"
 dependencies = [
  "anyhow",
+ "proptest",
 ]
 
 [[package]]
@@ -3888,6 +3919,7 @@ version = "0.2.1"
 dependencies = [
  "anyhow",
  "chrono",
+ "proptest",
 ]
 
 [[package]]

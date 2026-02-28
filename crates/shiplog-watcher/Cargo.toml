@@ -16,3 +16,4 @@ notify = "8.0.0"
 
 [dev-dependencies]
 tempfile.workspace = true
+proptest.workspace = true

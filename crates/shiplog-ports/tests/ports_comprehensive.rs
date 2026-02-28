@@ -12,7 +12,6 @@ use shiplog_schema::event::{
 };
 use shiplog_schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
 
-
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 fn make_coverage(user: &str) -> CoverageManifest {
@@ -534,9 +533,7 @@ fn pipeline_ingest_cluster_render_redact() {
 #[test]
 fn clusterer_handles_many_events() {
     let c = CountingClusterer;
-    let events: Vec<_> = (0..100)
-        .map(|i| make_pr_event(&i.to_string()))
-        .collect();
+    let events: Vec<_> = (0..100).map(|i| make_pr_event(&i.to_string())).collect();
     let result = c.cluster(&events).unwrap();
     assert_eq!(result.workstreams.len(), 1);
     assert_eq!(result.workstreams[0].events.len(), 100);

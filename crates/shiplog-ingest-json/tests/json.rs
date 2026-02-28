@@ -263,7 +263,11 @@ fn ingestor_empty_events_file() {
 fn ingestor_missing_events_file() {
     let tmp = tempfile::tempdir().unwrap();
     let coverage_path = tmp.path().join(FILE_COVERAGE_MANIFEST_JSON);
-    std::fs::write(&coverage_path, serde_json::to_string(&make_coverage()).unwrap()).unwrap();
+    std::fs::write(
+        &coverage_path,
+        serde_json::to_string(&make_coverage()).unwrap(),
+    )
+    .unwrap();
 
     let ing = JsonIngestor {
         events_path: tmp.path().join("missing.jsonl"),

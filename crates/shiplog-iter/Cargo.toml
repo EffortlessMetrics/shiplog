@@ -11,3 +11,6 @@ readme = "README.md"
 [dependencies]
 anyhow.workspace = true
 itertools.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
