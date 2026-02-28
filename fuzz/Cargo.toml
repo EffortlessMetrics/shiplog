@@ -22,6 +22,8 @@ shiplog-workstream-layout = { path = "../crates/shiplog-workstream-layout" }
 shiplog-redaction-repo = { path = "../crates/shiplog-redaction-repo" }
 shiplog-redaction-policy = { path = "../crates/shiplog-redaction-policy" }
 shiplog-redaction-projector = { path = "../crates/shiplog-redaction-projector" }
+shiplog-redact = { path = "../crates/shiplog-redact" }
+shiplog-receipt = { path = "../crates/shiplog-receipt" }
 shiplog-cache-key = { path = "../crates/shiplog-cache-key" }
 shiplog-workstream-cluster = { path = "../crates/shiplog-workstream-cluster", version = "0.2.1" }
 shiplog-ports = { path = "../crates/shiplog-ports", version = "0.2.1" }
@@ -71,6 +73,41 @@ bench = false
 [[bin]]
 name = "parse_manual_events"
 path = "fuzz_targets/parse_manual_events.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "receipt_markdown"
+path = "fuzz_targets/receipt_markdown.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "redact_event"
+path = "fuzz_targets/redact_event.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "coverage_manifest"
+path = "fuzz_targets/coverage_manifest.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "bundle_manifest"
+path = "fuzz_targets/bundle_manifest.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "schema_event_deser"
+path = "fuzz_targets/schema_event_deser.rs"
 test = false
 doc = false
 bench = false
