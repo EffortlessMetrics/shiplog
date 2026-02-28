@@ -1,0 +1,6 @@
+---
+source: crates/shiplog-render-json/tests/output_quality.rs
+assertion_line: 206
+expression: text
+---
+{"id":"85823746312b813964b3f306df1e9fe0bf2124fadefc0d8a7bf10fe0e2b42973","kind":"PullRequest","occurred_at":"1970-01-01T00:00:00Z","actor":{"login":"user","id":null},"repo":{"full_name":"acme/repo","html_url":null,"visibility":"Unknown"},"payload":{"type":"PullRequest","data":{"number":1,"title":"Null test","state":"Open","created_at":"1970-01-01T00:00:00Z","merged_at":null,"additions":null,"deletions":null,"changed_files":null,"touched_paths_hint":[],"window":null}},"tags":[],"links":[],"source":{"system":"github","url":null,"opaque_id":null}}

@@ -1,0 +1,49 @@
+---
+source: crates/shiplog-render-json/tests/output_quality.rs
+assertion_line: 426
+expression: text
+---
+{
+  "run_id": "quality_test_run_2025",
+  "generated_at": "2024-01-01T00:00:00Z",
+  "user": "testuser",
+  "window": {
+    "since": "2025-01-01",
+    "until": "2025-04-01"
+  },
+  "mode": "merged",
+  "sources": [
+    "github"
+  ],
+  "slices": [
+    {
+      "window": {
+        "since": "2025-01-01",
+        "until": "2025-02-01"
+      },
+      "query": "author:testuser is:merged",
+      "total_count": 200,
+      "fetched": 100,
+      "incomplete_results": true,
+      "notes": [
+        "Rate limited"
+      ]
+    },
+    {
+      "window": {
+        "since": "2025-02-01",
+        "until": "2025-03-01"
+      },
+      "query": "author:testuser is:merged",
+      "total_count": 50,
+      "fetched": 50,
+      "incomplete_results": false,
+      "notes": []
+    }
+  ],
+  "warnings": [
+    "Some data may be missing due to API limits",
+    "Review data was not available for 3 repos"
+  ],
+  "completeness": "Partial"
+}

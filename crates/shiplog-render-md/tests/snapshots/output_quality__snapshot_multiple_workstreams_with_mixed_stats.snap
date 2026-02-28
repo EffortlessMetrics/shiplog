@@ -1,0 +1,84 @@
+---
+source: crates/shiplog-render-md/tests/output_quality.rs
+assertion_line: 483
+expression: md
+---
+# Summary
+
+**Window:** 2025-Q1
+
+**Workstreams:** 2
+
+**Events:** 3 PRs, 1 reviews, 0 manual
+
+**Coverage:** Complete
+
+**Sources:** github
+
+## Workstreams
+
+### API Platform
+
+Backend API improvements
+
+**Claim scaffolds**
+
+- Problem: _fill_
+- What I shipped: _fill_
+- Why it mattered: _fill_
+- Result: _fill_
+
+_PRs: 2, Reviews: 1, Manual: 0_
+
+### Web Frontend
+
+Dashboard improvements
+
+**Claim scaffolds**
+
+- Problem: _fill_
+- What I shipped: _fill_
+- Why it mattered: _fill_
+- Result: _fill_
+
+_PRs: 1, Reviews: 0, Manual: 0_
+
+## Receipts
+
+### Workstream: API Platform
+
+- [PR] API auth endpoint (1970-01-01) — [acme/api](https://github.com/acme/api/pull/1)
+- [PR] API rate limiting (1970-01-01) — [acme/api](https://github.com/acme/api/pull/2)
+- [Review] approved (1970-01-01) — [acme/api](https://github.com/acme/api/pull/1)
+
+### Workstream: Web Frontend
+
+- [PR] Dashboard redesign (1970-01-01) — [acme/web](https://github.com/acme/web/pull/3)
+
+## Coverage
+
+- **Date window:** 2025-01-01 to 2025-04-01
+- **Mode:** merged
+- **Sources:** github
+- **Completeness:** Complete
+
+## Appendix: All Receipts
+
+### API Platform
+
+- [PR] API auth endpoint (1970-01-01) — [acme/api](https://github.com/acme/api/pull/1)
+- [PR] API rate limiting (1970-01-01) — [acme/api](https://github.com/acme/api/pull/2)
+- [Review] approved (1970-01-01) — [acme/api](https://github.com/acme/api/pull/1)
+
+### Web Frontend
+
+- [PR] Dashboard redesign (1970-01-01) — [acme/web](https://github.com/acme/web/pull/3)
+
+---
+
+## File Artifacts
+
+- `ledger.events.jsonl` (canonical events)
+- `coverage.manifest.json` (completeness + slicing)
+- `workstreams.yaml` (editable clustering)
+- `manual_events.yaml` (non-GitHub work)
