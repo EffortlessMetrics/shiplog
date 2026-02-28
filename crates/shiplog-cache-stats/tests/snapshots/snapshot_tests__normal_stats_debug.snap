@@ -1,0 +1,5 @@
+---
+source: crates/shiplog-cache-stats/tests/snapshot_tests.rs
+expression: "format!(\"{stats:?}\")"
+---
+CacheStats { total_entries: 25, expired_entries: 8, valid_entries: 17, cache_size_mb: 10 }
