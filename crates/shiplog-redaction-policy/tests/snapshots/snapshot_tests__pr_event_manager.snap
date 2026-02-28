@@ -1,0 +1,44 @@
+---
+source: crates/shiplog-redaction-policy/tests/snapshot_tests.rs
+assertion_line: 161
+expression: json
+---
+{
+  "id": "85baeefada372e563fc69fcc7793b1956bbaec96ecfc9f4d8b19806b68b5955a",
+  "kind": "PullRequest",
+  "occurred_at": "2025-06-15T12:00:00Z",
+  "actor": {
+    "login": "developer",
+    "id": 42
+  },
+  "repo": {
+    "full_name": "acme/secret-project",
+    "html_url": "https://github.com/acme/secret-project",
+    "visibility": "Private"
+  },
+  "payload": {
+    "type": "PullRequest",
+    "data": {
+      "number": 99,
+      "title": "Implement confidential feature X",
+      "state": "Merged",
+      "created_at": "2025-06-15T12:00:00Z",
+      "merged_at": "2025-06-15T12:00:00Z",
+      "additions": 150,
+      "deletions": 30,
+      "changed_files": 8,
+      "touched_paths_hint": [],
+      "window": null
+    }
+  },
+  "tags": [
+    "feature",
+    "priority"
+  ],
+  "links": [],
+  "source": {
+    "system": "github",
+    "url": "https://api.github.com/repos/acme/secret-project/pulls/99",
+    "opaque_id": null
+  }
+}

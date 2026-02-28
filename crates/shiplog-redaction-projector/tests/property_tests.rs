@@ -5,6 +5,7 @@ use shiplog_redaction_policy::{redact_events_with_aliases, redact_workstreams_wi
 use shiplog_redaction_projector::{
     parse_profile, project_events_with_aliases, project_workstreams_with_aliases,
 };
+use shiplog_schema::event::EventPayload;
 use shiplog_testkit::proptest::*;
 
 fn test_alias(kind: &str, value: &str) -> String {
@@ -50,5 +51,60 @@ proptest! {
         let projected_canonical = project_events_with_aliases(&events, canonical, &test_alias);
 
         prop_assert_eq!(projected_raw, projected_canonical);
+    }
+
+    #[test]
+    fn prop_projector_preserves_event_ids_and_kinds(
+        events in strategy_event_vec(20),
+        profile in prop_oneof![Just("internal"), Just("manager"), Just("public"), Just("unknown")]
+    ) {
+        let projected = project_events_with_aliases(&events, profile, &test_alias);
+        prop_assert_eq!(events.len(), projected.len());
+        for (orig, proj) in events.iter().zip(projected.iter()) {
+            prop_assert_eq!(&orig.id, &proj.id);
+            prop_assert_eq!(&orig.kind, &proj.kind);
+        }
+    }
+
+    #[test]
+    fn prop_projector_public_clears_links_and_source_url(
+        events in strategy_event_vec(20),
+    ) {
+        let projected = project_events_with_aliases(&events, "public", &test_alias);
+        for event in &projected {
+            prop_assert!(event.links.is_empty());
+            prop_assert!(event.source.url.is_none());
+        }
+    }
+
+    #[test]
+    fn prop_projector_internal_is_identity(
+        events in strategy_event_vec(20),
+    ) {
+        let projected = project_events_with_aliases(&events, "internal", &test_alias);
+        prop_assert_eq!(projected, events);
+    }
+
+    #[test]
+    fn prop_projector_workstream_count_preserved(
+        workstreams in strategy_workstreams_file(),
+        profile in prop_oneof![Just("internal"), Just("manager"), Just("public")]
+    ) {
+        let projected = project_workstreams_with_aliases(&workstreams, profile, &test_alias);
+        prop_assert_eq!(workstreams.workstreams.len(), projected.workstreams.len());
+    }
+
+    #[test]
+    fn prop_projector_public_events_all_titled_redacted(
+        events in strategy_event_vec(20),
+    ) {
+        let projected = project_events_with_aliases(&events, "public", &test_alias);
+        for event in &projected {
+            match &event.payload {
+                EventPayload::PullRequest(pr) => prop_assert_eq!(&pr.title, "[redacted]"),
+                EventPayload::Review(r) => prop_assert_eq!(&r.pull_title, "[redacted]"),
+                EventPayload::Manual(m) => prop_assert_eq!(&m.title, "[redacted]"),
+            }
+        }
     }
 }

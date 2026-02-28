@@ -1,0 +1,36 @@
+---
+source: crates/shiplog-redaction-policy/tests/snapshot_tests.rs
+assertion_line: 177
+expression: json
+---
+{
+  "id": "239e0edefce51db7af09018c608c70652d2eb786550d90797d8b6566935a1fd0",
+  "kind": "Review",
+  "occurred_at": "2025-06-15T14:00:00Z",
+  "actor": {
+    "login": "reviewer",
+    "id": 7
+  },
+  "repo": {
+    "full_name": "repo-REDACTED(acme/secret-project)",
+    "html_url": null,
+    "visibility": "Unknown"
+  },
+  "payload": {
+    "type": "Review",
+    "data": {
+      "pull_number": 99,
+      "pull_title": "[redacted]",
+      "submitted_at": "2025-06-15T14:00:00Z",
+      "state": "approved",
+      "window": null
+    }
+  },
+  "tags": [],
+  "links": [],
+  "source": {
+    "system": "github",
+    "url": null,
+    "opaque_id": null
+  }
+}

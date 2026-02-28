@@ -1,0 +1,26 @@
+---
+source: crates/shiplog-redaction-policy/tests/snapshot_tests.rs
+assertion_line: 209
+expression: json
+---
+{
+  "id": "cf9305c73e8f42313275ea69fb3664109f07aaa0b608339ad6700e0b7f8a74cb",
+  "title": "Secret Platform Migration",
+  "summary": null,
+  "tags": [
+    "platform",
+    "repo",
+    "security"
+  ],
+  "stats": {
+    "pull_requests": 5,
+    "reviews": 3,
+    "manual_events": 1
+  },
+  "events": [
+    "85baeefada372e563fc69fcc7793b1956bbaec96ecfc9f4d8b19806b68b5955a"
+  ],
+  "receipts": [
+    "85baeefada372e563fc69fcc7793b1956bbaec96ecfc9f4d8b19806b68b5955a"
+  ]
+}

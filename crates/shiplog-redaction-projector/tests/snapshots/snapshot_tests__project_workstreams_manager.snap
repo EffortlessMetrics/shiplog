@@ -1,0 +1,26 @@
+---
+source: crates/shiplog-redaction-projector/tests/snapshot_tests.rs
+expression: json
+---
+{
+  "version": 1,
+  "generated_at": "2025-06-15T12:00:00Z",
+  "workstreams": [
+    {
+      "id": "d5a16afa37374c0df4d06ae8687f4494d3f50fc4af0468c478279393d098e062",
+      "title": "Secret Initiative",
+      "summary": null,
+      "tags": [
+        "repo",
+        "infra"
+      ],
+      "stats": {
+        "pull_requests": 1,
+        "reviews": 0,
+        "manual_events": 1
+      },
+      "events": [],
+      "receipts": []
+    }
+  ]
+}
