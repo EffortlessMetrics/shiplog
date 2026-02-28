@@ -277,11 +277,11 @@ fn date_filtering_with_month_windows_mid_month() {
             ctx.numbers.insert("window_count".into(), windows.len() as u64);
             ctx.flags.insert(
                 "starts_at_since".into(),
-                windows.first().map_or(false, |w| w.since == since),
+                windows.first().is_some_and(|w| w.since == since),
             );
             ctx.flags.insert(
                 "ends_at_until".into(),
-                windows.last().map_or(false, |w| w.until == until),
+                windows.last().is_some_and(|w| w.until == until),
             );
             Ok(())
         })

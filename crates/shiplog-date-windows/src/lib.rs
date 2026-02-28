@@ -273,13 +273,13 @@ mod tests {
         let until = NaiveDate::from_ymd_opt(2025, 1, 22).unwrap(); // Wednesday
         let w = week_windows(since, until);
         // Internal boundaries (all except first.since and last.until) should be Mondays
-        for i in 1..w.len() {
+        for (i, win) in w.iter().enumerate().skip(1) {
             assert_eq!(
-                w[i].since.weekday(),
+                win.since.weekday(),
                 Weekday::Mon,
                 "Window {} starts on {:?}, expected Monday",
                 i,
-                w[i].since.weekday()
+                win.since.weekday()
             );
         }
     }

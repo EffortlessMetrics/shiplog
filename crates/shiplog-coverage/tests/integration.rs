@@ -153,7 +153,7 @@ fn manifest_slices_with_mixed_completeness() -> Result<()> {
     let until = NaiveDate::from_ymd_opt(2025, 3, 1).unwrap();
     let windows = month_windows(since, until);
 
-    let slices = vec![
+    let slices = [
         CoverageSlice {
             window: windows[0].clone(),
             query: "github prs jan".to_string(),

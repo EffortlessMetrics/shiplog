@@ -45,7 +45,7 @@ fn all_variants_have_distinct_as_str() {
 #[test]
 fn clone_and_copy_produce_equal_values() {
     let original = RedactionProfile::Manager;
-    let cloned = original.clone();
+    let cloned = original;
     let copied = original;
     assert_eq!(original, cloned);
     assert_eq!(original, copied);

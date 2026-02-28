@@ -59,12 +59,12 @@ fn when_ingestor_runs(ctx: &mut ScenarioContext) -> Result<(), String> {
     let path = assert_present(ctx.path("events_path"), "events_path")?;
     let user = assert_present(ctx.string("user"), "user")?;
     let since = NaiveDate::parse_from_str(
-        &assert_present(ctx.string("since"), "since")?,
+        assert_present(ctx.string("since"), "since")?,
         "%Y-%m-%d",
     )
     .map_err(|e| e.to_string())?;
     let until = NaiveDate::parse_from_str(
-        &assert_present(ctx.string("until"), "until")?,
+        assert_present(ctx.string("until"), "until")?,
         "%Y-%m-%d",
     )
     .map_err(|e| e.to_string())?;
@@ -83,11 +83,11 @@ fn when_ingestor_runs(ctx: &mut ScenarioContext) -> Result<(), String> {
         format!("{:?}", output.coverage.completeness),
     );
     // Store first event opaque_id if any
-    if let Some(ev) = output.events.first() {
-        if let Some(id) = &ev.source.opaque_id {
-            ctx.strings
-                .insert("first_event_id".to_string(), id.clone());
-        }
+    if let Some(ev) = output.events.first()
+        && let Some(id) = &ev.source.opaque_id
+    {
+        ctx.strings
+            .insert("first_event_id".to_string(), id.clone());
     }
     Ok(())
 }
@@ -213,12 +213,12 @@ fn when_ingestor_runs_and_captures_error(ctx: &mut ScenarioContext) -> Result<()
     let path = assert_present(ctx.path("events_path"), "events_path")?;
     let user = assert_present(ctx.string("user"), "user")?;
     let since = NaiveDate::parse_from_str(
-        &assert_present(ctx.string("since"), "since")?,
+        assert_present(ctx.string("since"), "since")?,
         "%Y-%m-%d",
     )
     .map_err(|e| e.to_string())?;
     let until = NaiveDate::parse_from_str(
-        &assert_present(ctx.string("until"), "until")?,
+        assert_present(ctx.string("until"), "until")?,
         "%Y-%m-%d",
     )
     .map_err(|e| e.to_string())?;
