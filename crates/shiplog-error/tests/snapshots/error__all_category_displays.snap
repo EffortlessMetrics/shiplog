@@ -1,0 +1,13 @@
+---
+source: crates/shiplog-error/tests/error.rs
+expression: displays
+---
+- parse
+- validation
+- io
+- config
+- network
+- authentication
+- rate_limit
+- timeout
+- unknown

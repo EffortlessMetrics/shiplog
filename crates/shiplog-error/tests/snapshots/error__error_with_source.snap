@@ -1,0 +1,6 @@
+---
+source: crates/shiplog-error/tests/error.rs
+expression: "format!(\"{err}\")"
+---
+[io] cannot read config
+Caused by: file not found

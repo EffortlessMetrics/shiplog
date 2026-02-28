@@ -1,0 +1,21 @@
+---
+source: crates/shiplog-team-aggregate/tests/team_aggregate_tests.rs
+assertion_line: 414
+expression: "serde_json::to_string_pretty(&cov_json).unwrap()"
+---
+{
+  "completeness": "Complete",
+  "generated_at": "REDACTED",
+  "mode": "merged",
+  "run_id": "REDACTED",
+  "slices": [],
+  "sources": [
+    "alice"
+  ],
+  "user": "alice",
+  "warnings": [],
+  "window": {
+    "since": "2025-01-01",
+    "until": "2025-02-01"
+  }
+}

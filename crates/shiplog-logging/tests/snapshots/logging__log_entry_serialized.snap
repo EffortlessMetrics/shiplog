@@ -1,0 +1,8 @@
+---
+source: crates/shiplog-logging/tests/logging.rs
+expression: entry
+---
+timestamp: "2025-01-01T00:00:00+00:00"
+level: error
+component: ingest
+message: rate limit exceeded

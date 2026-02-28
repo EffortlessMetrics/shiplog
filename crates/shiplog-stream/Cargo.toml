@@ -12,3 +12,7 @@ readme = "README.md"
 tokio = { version = "1.49.0", features = ["rt", "macros"] }
 anyhow.workspace = true
 futures = "0.3"
+
+[dev-dependencies]
+proptest.workspace = true
+tokio = { version = "1.49.0", features = ["rt", "macros", "rt-multi-thread"] }

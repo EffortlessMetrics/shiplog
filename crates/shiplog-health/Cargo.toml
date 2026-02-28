@@ -13,3 +13,8 @@ tokio = { workspace = true, features = ["sync", "time"] }
 anyhow.workspace = true
 serde = { workspace = true, features = ["derive"] }
 chrono.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+tokio = { workspace = true, features = ["rt", "macros"] }
+serde_json.workspace = true

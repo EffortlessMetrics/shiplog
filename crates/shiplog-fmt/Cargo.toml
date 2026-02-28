@@ -11,3 +11,7 @@ readme = "README.md"
 [dependencies]
 anyhow.workspace = true
 chrono.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+insta.workspace = true

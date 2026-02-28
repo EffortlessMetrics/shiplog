@@ -18,3 +18,4 @@ rand = "0.9"
 
 [dev-dependencies]
 proptest.workspace = true
+insta.workspace = true

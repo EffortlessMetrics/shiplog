@@ -1,0 +1,12 @@
+---
+source: crates/shiplog-alias/tests/alias.rs
+expression: results
+---
+- - repo
+  - repo-cbae9590bb75
+- - user
+  - user-3235b516e0e9
+- - ws
+  - ws-0051ee7491e3
+- - pr
+  - pr-424ea533d336

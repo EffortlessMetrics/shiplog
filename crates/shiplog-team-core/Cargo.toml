@@ -17,3 +17,9 @@ anyhow.workspace = true
 chrono.workspace = true
 serde.workspace = true
 serde_yaml.workspace = true
+
+[dev-dependencies]
+insta.workspace = true
+proptest.workspace = true
+serde_json.workspace = true
+tempfile.workspace = true

@@ -1,0 +1,7 @@
+---
+source: crates/shiplog-validator/tests/validator.rs
+expression: err
+---
+field: email
+message: email cannot be empty
+code: Empty

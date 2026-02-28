@@ -17,3 +17,4 @@ snap = "1.1"
 
 [dev-dependencies]
 tempfile.workspace = true
+proptest.workspace = true

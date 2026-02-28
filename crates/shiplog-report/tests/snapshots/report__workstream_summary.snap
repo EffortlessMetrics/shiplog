@@ -1,0 +1,7 @@
+---
+source: crates/shiplog-report/tests/report.rs
+expression: ws
+---
+name: infrastructure
+event_count: 42
+coverage: 78.5

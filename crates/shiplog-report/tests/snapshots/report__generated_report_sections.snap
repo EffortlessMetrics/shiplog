@@ -1,0 +1,20 @@
+---
+source: crates/shiplog-report/tests/report.rs
+expression: yaml
+---
+- title: Summary
+  content: |-
+    Total workstreams: 2
+    Total events: 80
+    Average coverage: 87.5%
+  order: 0
+- title: api
+  content: |-
+    Events: 50
+    Coverage: 85.0%
+  order: 1
+- title: web
+  content: |-
+    Events: 30
+    Coverage: 90.0%
+  order: 2

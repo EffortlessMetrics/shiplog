@@ -10,3 +10,7 @@ readme = "README.md"
 
 [dependencies]
 url.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+insta.workspace = true

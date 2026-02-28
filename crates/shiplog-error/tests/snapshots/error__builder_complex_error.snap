@@ -1,0 +1,5 @@
+---
+source: crates/shiplog-error/tests/error.rs
+expression: "format!(\"{err}\")"
+---
+[network] request failed (url=https://api.github.com/repos, status=429, retry_after=60s)

@@ -1,0 +1,7 @@
+---
+source: crates/shiplog-validator/tests/validator.rs
+expression: err
+---
+field: email
+message: "invalid email format: not-an-email"
+code: InvalidFormat

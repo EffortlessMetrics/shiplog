@@ -11,3 +11,6 @@ readme = "README.md"
 [dependencies]
 tokio = { workspace = true, features = ["signal", "sync", "time"] }
 anyhow.workspace = true
+
+[dev-dependencies]
+tokio = { version = "1.49.0", features = ["rt-multi-thread", "macros", "sync", "time", "signal"] }

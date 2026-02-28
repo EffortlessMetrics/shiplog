@@ -9,3 +9,7 @@ description = "Semantic version utilities for shiplog."
 readme = "README.md"
 
 [dependencies]
+
+[dev-dependencies]
+proptest.workspace = true
+insta.workspace = true

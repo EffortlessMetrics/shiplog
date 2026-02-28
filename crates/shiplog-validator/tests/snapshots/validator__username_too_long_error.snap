@@ -1,0 +1,7 @@
+---
+source: crates/shiplog-validator/tests/validator.rs
+expression: err
+---
+field: username
+message: username must be at most 32 characters
+code: TooLong

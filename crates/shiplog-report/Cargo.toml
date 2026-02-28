@@ -16,3 +16,6 @@ chrono.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
+proptest.workspace = true
+insta.workspace = true
+serde_yaml.workspace = true

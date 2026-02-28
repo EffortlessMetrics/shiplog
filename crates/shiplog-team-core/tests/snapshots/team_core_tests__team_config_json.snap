@@ -1,0 +1,22 @@
+---
+source: crates/shiplog-team-core/tests/team_core_tests.rs
+assertion_line: 279
+expression: json
+---
+{
+  "members": [
+    "alice",
+    "bob"
+  ],
+  "aliases": {
+    "alice": "Alice S."
+  },
+  "sections": [
+    "summary",
+    "coverage"
+  ],
+  "template": null,
+  "since": "2025-01-01",
+  "until": "2025-07-01",
+  "required_schema_version": null
+}

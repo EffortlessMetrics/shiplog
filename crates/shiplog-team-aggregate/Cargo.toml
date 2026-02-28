@@ -24,4 +24,7 @@ shiplog-team-core = { path = "../shiplog-team-core", version = "0.2.1" }
 shiplog-team-render = { path = "../shiplog-team-render", version = "0.2.1" }
 
 [dev-dependencies]
+insta.workspace = true
+proptest.workspace = true
+serde_json.workspace = true
 tempfile.workspace = true

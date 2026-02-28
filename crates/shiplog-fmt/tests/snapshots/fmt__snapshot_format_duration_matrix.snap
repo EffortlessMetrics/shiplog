@@ -1,0 +1,13 @@
+---
+source: crates/shiplog-fmt/tests/fmt.rs
+expression: "formatted.join(\"\\n\")"
+---
+     0s => 0s
+     1s => 1s
+    59s => 59s
+    60s => 1m
+    61s => 1m 1s
+  3599s => 59m 59s
+  3600s => 1h
+  3661s => 1h 1m
+ 86400s => 24h

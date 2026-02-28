@@ -1,0 +1,13 @@
+---
+source: crates/shiplog-fmt/tests/fmt.rs
+expression: "formatted.join(\"\\n\")"
+---
+                   0 => 0 B
+                   1 => 1 B
+                 512 => 512 B
+                1023 => 1023 B
+                1024 => 1.00 KB
+                1536 => 1.50 KB
+             1048576 => 1.00 MB
+          1073741824 => 1.00 GB
+18446744073709551615 => 17179869184.00 GB

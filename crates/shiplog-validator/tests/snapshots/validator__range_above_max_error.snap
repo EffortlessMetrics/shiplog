@@ -1,0 +1,7 @@
+---
+source: crates/shiplog-validator/tests/validator.rs
+expression: err
+---
+field: value
+message: value 200 is greater than maximum 100
+code: OutOfRange

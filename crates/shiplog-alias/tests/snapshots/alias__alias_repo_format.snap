@@ -1,0 +1,5 @@
+---
+source: crates/shiplog-alias/tests/alias.rs
+expression: alias
+---
+repo-13477c8c1b81

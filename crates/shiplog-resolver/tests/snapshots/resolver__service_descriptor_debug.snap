@@ -1,0 +1,5 @@
+---
+source: crates/shiplog-resolver/tests/resolver.rs
+expression: "format!(\"{desc:?}\")"
+---
+ServiceDescriptor { id: "my-service", lifetime: Singleton }

@@ -1,0 +1,9 @@
+---
+source: crates/shiplog-config/tests/config.rs
+expression: yaml
+---
+output_dir: ./packets
+cache_dir: ./.shiplog-cache
+incremental: true
+verbose: false
+workstreams: []
