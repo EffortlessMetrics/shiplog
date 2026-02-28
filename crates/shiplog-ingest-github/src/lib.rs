@@ -41,6 +41,23 @@ pub struct GithubIngestor {
 }
 
 impl GithubIngestor {
+    /// Create a new GitHub ingestor for the given user and date range.
+    ///
+    /// Defaults to `merged` mode with no reviews, no cache, and no throttle.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use shiplog_ingest_github::GithubIngestor;
+    /// use chrono::NaiveDate;
+    ///
+    /// let ingestor = GithubIngestor::new(
+    ///     "octocat".into(),
+    ///     NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
+    ///     NaiveDate::from_ymd_opt(2025, 4, 1).unwrap(),
+    /// );
+    /// assert_eq!(ingestor.mode, "merged");
+    /// ```
     pub fn new(user: String, since: NaiveDate, until: NaiveDate) -> Self {
         Self {
             user,

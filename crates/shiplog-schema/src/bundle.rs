@@ -12,6 +12,16 @@ pub struct FileChecksum {
 }
 
 /// Which redaction profile a bundle was built for.
+///
+/// # Examples
+///
+/// ```
+/// use shiplog_schema::bundle::BundleProfile;
+///
+/// let p: BundleProfile = "manager".parse().unwrap();
+/// assert_eq!(p, BundleProfile::Manager);
+/// assert_eq!(p.as_str(), "manager");
+/// ```
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub enum BundleProfile {
     #[default]
@@ -21,6 +31,17 @@ pub enum BundleProfile {
 }
 
 impl BundleProfile {
+    /// Returns the canonical lowercase name of this profile.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use shiplog_schema::bundle::BundleProfile;
+    ///
+    /// assert_eq!(BundleProfile::Internal.as_str(), "internal");
+    /// assert_eq!(BundleProfile::Manager.as_str(), "manager");
+    /// assert_eq!(BundleProfile::Public.as_str(), "public");
+    /// ```
     pub fn as_str(&self) -> &str {
         match self {
             Self::Internal => "internal",

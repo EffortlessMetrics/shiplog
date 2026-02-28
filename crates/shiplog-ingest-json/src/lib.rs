@@ -32,6 +32,20 @@ impl Ingestor for JsonIngestor {
 ///
 /// Each non-empty line is parsed as a JSON-encoded `EventEnvelope`.
 /// `source` is included in error context messages.
+///
+/// # Examples
+///
+/// ```
+/// use shiplog_ingest_json::parse_events_jsonl;
+///
+/// // Empty input yields no events:
+/// let events = parse_events_jsonl("", "test").unwrap();
+/// assert!(events.is_empty());
+///
+/// // Blank lines are silently skipped:
+/// let events = parse_events_jsonl("\n  \n", "test").unwrap();
+/// assert!(events.is_empty());
+/// ```
 pub fn parse_events_jsonl(text: &str, source: &str) -> Result<Vec<EventEnvelope>> {
     let mut out = Vec::new();
     for (i, line) in text.lines().enumerate() {

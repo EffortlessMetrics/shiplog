@@ -44,6 +44,21 @@ pub enum WorkstreamSource {
 }
 
 impl<'a> Engine<'a> {
+    /// Create a new engine with the given renderer, clusterer, and redactor.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use shiplog_engine::Engine;
+    /// use shiplog_ports::{Renderer, WorkstreamClusterer, Redactor};
+    /// # fn example(
+    /// #     renderer: &dyn Renderer,
+    /// #     clusterer: &dyn WorkstreamClusterer,
+    /// #     redactor: &dyn Redactor,
+    /// # ) {
+    /// let engine = Engine::new(renderer, clusterer, redactor);
+    /// # }
+    /// ```
     pub fn new(
         renderer: &'a dyn Renderer,
         clusterer: &'a dyn WorkstreamClusterer,

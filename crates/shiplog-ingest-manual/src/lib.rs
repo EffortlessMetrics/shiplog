@@ -25,6 +25,21 @@ pub struct ManualIngestor {
 }
 
 impl ManualIngestor {
+    /// Create a new manual ingestor for the given YAML file and date window.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use shiplog_ingest_manual::ManualIngestor;
+    /// use chrono::NaiveDate;
+    ///
+    /// let ingestor = ManualIngestor::new(
+    ///     "manual_events.yaml",
+    ///     "octocat".to_string(),
+    ///     NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
+    ///     NaiveDate::from_ymd_opt(2025, 4, 1).unwrap(),
+    /// );
+    /// ```
     pub fn new(
         events_path: impl AsRef<Path>,
         user: String,
@@ -107,11 +122,38 @@ pub fn write_manual_events(path: &Path, file: &ManualEventsFile) -> Result<()> {
 }
 
 /// Create a new empty manual events file.
+///
+/// # Examples
+///
+/// ```
+/// use shiplog_ingest_manual::create_empty_file;
+///
+/// let file = create_empty_file();
+/// assert_eq!(file.version, 1);
+/// assert!(file.events.is_empty());
+/// ```
 pub fn create_empty_file() -> ManualEventsFile {
     shiplog_manual_events::create_empty_file()
 }
 
 /// Helper to create a simple manual event entry.
+///
+/// # Examples
+///
+/// ```
+/// use shiplog_ingest_manual::create_entry;
+/// use shiplog_schema::event::{ManualEventType, ManualDate};
+/// use chrono::NaiveDate;
+///
+/// let entry = create_entry(
+///     "design-review-1",
+///     ManualEventType::Design,
+///     ManualDate::Single(NaiveDate::from_ymd_opt(2025, 3, 15).unwrap()),
+///     "API design review",
+/// );
+/// assert_eq!(entry.id, "design-review-1");
+/// assert_eq!(entry.title, "API design review");
+/// ```
 pub fn create_entry(
     id: impl Into<String>,
     event_type: ManualEventType,

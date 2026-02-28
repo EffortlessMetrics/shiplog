@@ -11,6 +11,18 @@ pub struct WorkstreamStats {
 }
 
 impl WorkstreamStats {
+    /// Returns a stats struct with all counters set to zero.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use shiplog_schema::workstream::WorkstreamStats;
+    ///
+    /// let s = WorkstreamStats::zero();
+    /// assert_eq!(s.pull_requests, 0);
+    /// assert_eq!(s.reviews, 0);
+    /// assert_eq!(s.manual_events, 0);
+    /// ```
     pub fn zero() -> Self {
         Self {
             pull_requests: 0,

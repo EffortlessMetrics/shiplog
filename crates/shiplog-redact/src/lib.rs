@@ -56,6 +56,16 @@ impl DeterministicRedactor {
     }
 
     /// Path to the alias cache file in a given output directory.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use shiplog_redact::DeterministicRedactor;
+    /// use std::path::Path;
+    ///
+    /// let p = DeterministicRedactor::cache_path(Path::new("/out/run_1"));
+    /// assert!(p.to_string_lossy().contains("redaction.aliases.json"));
+    /// ```
     pub fn cache_path(out_dir: &Path) -> PathBuf {
         DeterministicAliasStore::cache_path(out_dir)
     }

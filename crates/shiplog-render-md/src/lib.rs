@@ -43,11 +43,28 @@ impl Default for MarkdownRenderer {
 
 impl MarkdownRenderer {
     /// Create a new renderer with default section ordering.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use shiplog_render_md::MarkdownRenderer;
+    ///
+    /// let renderer = MarkdownRenderer::new();
+    /// ```
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Create a new renderer with custom section ordering.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use shiplog_render_md::{MarkdownRenderer, SectionOrder};
+    ///
+    /// let renderer = MarkdownRenderer::new()
+    ///     .with_section_order(SectionOrder::CoverageFirst);
+    /// ```
     pub fn with_section_order(mut self, order: SectionOrder) -> Self {
         self.section_order = order;
         self
