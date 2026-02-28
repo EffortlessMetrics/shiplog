@@ -25,6 +25,7 @@ shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
 shiplog-ports = { path = "../shiplog-ports", version = "0.2.1" }
 shiplog-workstream-layout = { path = "../shiplog-workstream-layout", version = "0.2.1" }
 shiplog-redact = { path = "../shiplog-redact", version = "0.2.1" }
+serde_json.workspace = true
 shiplog-output-layout = { path = "../shiplog-output-layout", version = "0.2.1" }
 shiplog-render-md = { path = "../shiplog-render-md", version = "0.2.1" }
 shiplog-render-json = { path = "../shiplog-render-json", version = "0.2.1" }
@@ -34,5 +35,16 @@ shiplog-workstream-cluster = { path = "../shiplog-workstream-cluster", version =
 
 [dev-dependencies]
 tempfile.workspace = true
-
-
+anyhow.workspace = true
+chrono.workspace = true
+proptest.workspace = true
+serde_yaml.workspace = true
+shiplog-ids = { path = "../shiplog-ids", version = "0.2.1" }
+shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
+shiplog-ports = { path = "../shiplog-ports", version = "0.2.1" }
+shiplog-testkit = { path = "../shiplog-testkit", version = "0.2.1" }
+shiplog-output-layout = { path = "../shiplog-output-layout", version = "0.2.1" }
+shiplog-workstream-layout = { path = "../shiplog-workstream-layout", version = "0.2.1" }
+shiplog-workstream-cluster = { path = "../shiplog-workstream-cluster", version = "0.2.1" }
+shiplog-render-md = { path = "../shiplog-render-md", version = "0.2.1" }
+shiplog-redact = { path = "../shiplog-redact", version = "0.2.1" }
