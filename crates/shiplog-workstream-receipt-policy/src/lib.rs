@@ -146,13 +146,17 @@ mod tests {
 
     #[test]
     fn review_and_manual_limits_both_fit_within_total() {
-        assert!(WORKSTREAM_RECEIPT_LIMIT_REVIEW <= WORKSTREAM_RECEIPT_LIMIT_TOTAL);
-        assert!(WORKSTREAM_RECEIPT_LIMIT_MANUAL <= WORKSTREAM_RECEIPT_LIMIT_TOTAL);
+        const {
+            assert!(WORKSTREAM_RECEIPT_LIMIT_REVIEW <= WORKSTREAM_RECEIPT_LIMIT_TOTAL);
+            assert!(WORKSTREAM_RECEIPT_LIMIT_MANUAL <= WORKSTREAM_RECEIPT_LIMIT_TOTAL);
+        }
     }
 
     #[test]
     fn render_limit_within_total_limit() {
-        assert!(WORKSTREAM_RECEIPT_RENDER_LIMIT <= WORKSTREAM_RECEIPT_LIMIT_TOTAL);
+        const {
+            assert!(WORKSTREAM_RECEIPT_RENDER_LIMIT <= WORKSTREAM_RECEIPT_LIMIT_TOTAL);
+        }
     }
 
     #[test]

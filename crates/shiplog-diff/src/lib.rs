@@ -426,7 +426,7 @@ mod tests {
     #[test]
     fn diff_preserves_event_data_in_added() {
         let event = make_event("new-id", "new title");
-        let diff = diff_events(&[], &[event.clone()]);
+        let diff = diff_events(&[], std::slice::from_ref(&event));
         assert_eq!(diff.added.len(), 1);
         assert_eq!(diff.added[0].id, event.id);
     }
@@ -434,7 +434,7 @@ mod tests {
     #[test]
     fn diff_preserves_event_data_in_removed() {
         let event = make_event("old-id", "old title");
-        let diff = diff_events(&[event.clone()], &[]);
+        let diff = diff_events(std::slice::from_ref(&event), &[]);
         assert_eq!(diff.removed.len(), 1);
         assert_eq!(diff.removed[0].id, event.id);
     }
@@ -444,7 +444,7 @@ mod tests {
         let old_event = make_event("1", "old");
         let mut new_event = make_event("1", "new");
         new_event.id = old_event.id.clone();
-        let diff = diff_events(&[old_event.clone()], &[new_event.clone()]);
+        let diff = diff_events(std::slice::from_ref(&old_event), std::slice::from_ref(&new_event));
         assert_eq!(diff.modified.len(), 1);
         assert_eq!(diff.modified[0].old_event, old_event);
         assert_eq!(diff.modified[0].new_event, new_event);
