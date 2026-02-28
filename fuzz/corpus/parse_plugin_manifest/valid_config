@@ -1,0 +1,1 @@
+{"name":"my-plugin","path":"/usr/local/bin/plugin","args":["--verbose"],"enabled":true,"settings":{"key":"value"}}
