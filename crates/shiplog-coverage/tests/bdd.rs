@@ -434,16 +434,10 @@ fn multi_source_manifest_lists_all_sources() {
             assert_eq(count, 2, "source count")
         })
         .then("github should be a source", |ctx| {
-            assert_true(
-                ctx.flag("has_github").unwrap_or(false),
-                "github in sources",
-            )
+            assert_true(ctx.flag("has_github").unwrap_or(false), "github in sources")
         })
         .then("manual should be a source", |ctx| {
-            assert_true(
-                ctx.flag("has_manual").unwrap_or(false),
-                "manual in sources",
-            )
+            assert_true(ctx.flag("has_manual").unwrap_or(false), "manual in sources")
         })
         .run()
         .expect("multi-source scenario should pass");
@@ -484,10 +478,7 @@ fn partial_coverage_per_slice_status() {
 
             let complete_count = slices.iter().filter(|s| s.fetched == s.total_count).count();
             let incomplete_count = slices.iter().filter(|s| s.fetched < s.total_count).count();
-            let total_missing: u64 = slices
-                .iter()
-                .map(|s| s.total_count - s.fetched)
-                .sum();
+            let total_missing: u64 = slices.iter().map(|s| s.total_count - s.fetched).sum();
 
             ctx.numbers
                 .insert("complete_slices".into(), complete_count as u64);

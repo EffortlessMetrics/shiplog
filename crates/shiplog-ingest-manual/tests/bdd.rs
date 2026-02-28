@@ -375,11 +375,36 @@ fn given_yaml_with_diverse_event_types(ctx: &mut ScenarioContext) {
         version: 1,
         generated_at: Utc::now(),
         events: vec![
-            create_entry("design-1", ManualEventType::Design, date.clone(), "System design doc"),
-            create_entry("incident-1", ManualEventType::Incident, date.clone(), "Outage response"),
-            create_entry("mentoring-1", ManualEventType::Mentoring, date.clone(), "Onboarding session"),
-            create_entry("launch-1", ManualEventType::Launch, date.clone(), "Feature launch"),
-            create_entry("note-1", ManualEventType::Note, date.clone(), "Weekly sync notes"),
+            create_entry(
+                "design-1",
+                ManualEventType::Design,
+                date.clone(),
+                "System design doc",
+            ),
+            create_entry(
+                "incident-1",
+                ManualEventType::Incident,
+                date.clone(),
+                "Outage response",
+            ),
+            create_entry(
+                "mentoring-1",
+                ManualEventType::Mentoring,
+                date.clone(),
+                "Onboarding session",
+            ),
+            create_entry(
+                "launch-1",
+                ManualEventType::Launch,
+                date.clone(),
+                "Feature launch",
+            ),
+            create_entry(
+                "note-1",
+                ManualEventType::Note,
+                date.clone(),
+                "Weekly sync notes",
+            ),
         ],
     };
     write_manual_events(&path, &file).unwrap();

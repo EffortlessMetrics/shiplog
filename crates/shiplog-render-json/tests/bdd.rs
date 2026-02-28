@@ -236,14 +236,15 @@ fn bdd_jsonl_roundtrip_preserves_event_fields() {
             let original_ids: Vec<String> = events.iter().map(|e| e.id.to_string()).collect();
             ctx.strings
                 .insert("original_ids".into(), original_ids.join(","));
-            ctx.strings.insert(
-                "jsonl_text".into(),
-                std::fs::read_to_string(&path).unwrap(),
-            );
+            ctx.strings
+                .insert("jsonl_text".into(), std::fs::read_to_string(&path).unwrap());
             ctx.paths.insert("tmp_dir".into(), dir.keep());
         })
         .when("the JSONL is parsed back into events", |ctx| {
-            let text = ctx.string("jsonl_text").ok_or("missing jsonl_text")?.to_owned();
+            let text = ctx
+                .string("jsonl_text")
+                .ok_or("missing jsonl_text")?
+                .to_owned();
             let mut parsed_ids = Vec::new();
             let mut all_pr = true;
             let mut all_actor_user = true;
@@ -316,8 +317,7 @@ fn bdd_coverage_manifest_is_pretty_printed() {
                 .string("manifest_text")
                 .ok_or("missing manifest_text")?
                 .to_owned();
-            ctx.flags
-                .insert("has_newlines".into(), text.contains('\n'));
+            ctx.flags.insert("has_newlines".into(), text.contains('\n'));
             ctx.flags
                 .insert("has_indentation".into(), text.contains("  "));
             // Verify it parses as valid JSON
@@ -356,14 +356,15 @@ fn bdd_empty_events_produce_empty_jsonl() {
             let path = dir.path().join("empty.jsonl");
             write_events_jsonl(&path, &[]).unwrap();
 
-            ctx.strings.insert(
-                "jsonl_text".into(),
-                std::fs::read_to_string(&path).unwrap(),
-            );
+            ctx.strings
+                .insert("jsonl_text".into(), std::fs::read_to_string(&path).unwrap());
             ctx.paths.insert("tmp_dir".into(), dir.keep());
         })
         .when("the JSONL file is read", |ctx| {
-            let text = ctx.string("jsonl_text").ok_or("missing jsonl_text")?.to_owned();
+            let text = ctx
+                .string("jsonl_text")
+                .ok_or("missing jsonl_text")?
+                .to_owned();
             let line_count = if text.is_empty() {
                 0u64
             } else {

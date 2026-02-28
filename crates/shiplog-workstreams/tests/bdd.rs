@@ -7,8 +7,8 @@ use shiplog_ids::EventId;
 use shiplog_ports::WorkstreamClusterer;
 use shiplog_schema::event::*;
 use shiplog_schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
-use shiplog_testkit::bdd::assertions::*;
 use shiplog_testkit::bdd::Scenario;
+use shiplog_testkit::bdd::assertions::*;
 use shiplog_workstreams::{RepoClusterer, WorkstreamManager, write_workstreams};
 
 // ---------------------------------------------------------------------------
@@ -112,9 +112,14 @@ fn scenario_repo_clusterer_groups_by_repo() {
             ctx.numbers.insert("clustered_events".into(), total_events);
 
             let titles: Vec<String> = ws.workstreams.iter().map(|w| w.title.clone()).collect();
-            ctx.flags.insert("has_api".into(), titles.contains(&"org/api".to_string()));
-            ctx.flags.insert("has_web".into(), titles.contains(&"org/web".to_string()));
-            ctx.flags.insert("has_infra".into(), titles.contains(&"org/infra".to_string()));
+            ctx.flags
+                .insert("has_api".into(), titles.contains(&"org/api".to_string()));
+            ctx.flags
+                .insert("has_web".into(), titles.contains(&"org/web".to_string()));
+            ctx.flags.insert(
+                "has_infra".into(),
+                titles.contains(&"org/infra".to_string()),
+            );
             ctx.flags.insert(
                 "all_tagged_repo".into(),
                 ws.workstreams
@@ -134,7 +139,10 @@ fn scenario_repo_clusterer_groups_by_repo() {
         .then("each repo has a workstream", |ctx| {
             assert_true(ctx.flag("has_api").unwrap_or(false), "org/api workstream")?;
             assert_true(ctx.flag("has_web").unwrap_or(false), "org/web workstream")?;
-            assert_true(ctx.flag("has_infra").unwrap_or(false), "org/infra workstream")
+            assert_true(
+                ctx.flag("has_infra").unwrap_or(false),
+                "org/infra workstream",
+            )
         })
         .then("all workstreams are tagged with 'repo'", |ctx| {
             assert_true(
@@ -153,10 +161,12 @@ fn scenario_repo_clusterer_groups_by_repo() {
 #[test]
 fn scenario_mixed_event_kinds_stats() {
     Scenario::new("Mixed event kinds produce correct workstream stats")
-        .given("events with PRs, reviews, and manual entries in one repo", |ctx| {
-            ctx.strings
-                .insert("repo".into(), "acme/mixed".to_string());
-        })
+        .given(
+            "events with PRs, reviews, and manual entries in one repo",
+            |ctx| {
+                ctx.strings.insert("repo".into(), "acme/mixed".to_string());
+            },
+        )
         .when("the RepoClusterer clusters the events", |ctx| {
             let events = vec![
                 make_event("acme/mixed", "pr1", 1, EventKind::PullRequest),
@@ -169,10 +179,14 @@ fn scenario_mixed_event_kinds_stats() {
 
             let ws = RepoClusterer.cluster(&events).map_err(|e| e.to_string())?;
             let stats = &ws.workstreams[0].stats;
-            ctx.numbers.insert("pr_count".into(), stats.pull_requests as u64);
-            ctx.numbers.insert("review_count".into(), stats.reviews as u64);
-            ctx.numbers.insert("manual_count".into(), stats.manual_events as u64);
-            ctx.numbers.insert("total_events".into(), ws.workstreams[0].events.len() as u64);
+            ctx.numbers
+                .insert("pr_count".into(), stats.pull_requests as u64);
+            ctx.numbers
+                .insert("review_count".into(), stats.reviews as u64);
+            ctx.numbers
+                .insert("manual_count".into(), stats.manual_events as u64);
+            ctx.numbers
+                .insert("total_events".into(), ws.workstreams[0].events.len() as u64);
             Ok(())
         })
         .then("2 pull requests in stats", |ctx| {
@@ -210,18 +224,14 @@ fn scenario_curated_overrides_suggested() {
             write_workstreams(&WorkstreamManager::curated_path(dir.path()), &curated).unwrap();
             write_workstreams(&WorkstreamManager::suggested_path(dir.path()), &suggested).unwrap();
 
-            ctx.paths
-                .insert("out_dir".into(), dir.path().to_path_buf());
-            ctx.strings.insert(
-                "tmp_root".into(),
-                dir.keep().to_string_lossy().into_owned(),
-            );
+            ctx.paths.insert("out_dir".into(), dir.path().to_path_buf());
+            ctx.strings
+                .insert("tmp_root".into(), dir.keep().to_string_lossy().into_owned());
         })
         .when("the WorkstreamManager loads effective workstreams", |ctx| {
             let out_dir = ctx.path("out_dir").unwrap().to_path_buf();
-            let ws =
-                WorkstreamManager::load_effective(&out_dir, &RepoClusterer, &[])
-                    .map_err(|e| e.to_string())?;
+            let ws = WorkstreamManager::load_effective(&out_dir, &RepoClusterer, &[])
+                .map_err(|e| e.to_string())?;
             ctx.strings
                 .insert("loaded_title".into(), ws.workstreams[0].title.clone());
             Ok(())
@@ -243,12 +253,9 @@ fn scenario_missing_files_fall_back_to_clustering() {
     Scenario::new("Missing workstream files trigger clustering from events")
         .given("a directory with no workstream files", |ctx| {
             let dir = tempfile::tempdir().unwrap();
-            ctx.paths
-                .insert("out_dir".into(), dir.path().to_path_buf());
-            ctx.strings.insert(
-                "tmp_root".into(),
-                dir.keep().to_string_lossy().into_owned(),
-            );
+            ctx.paths.insert("out_dir".into(), dir.path().to_path_buf());
+            ctx.strings
+                .insert("tmp_root".into(), dir.keep().to_string_lossy().into_owned());
         })
         .when("WorkstreamManager loads with events", |ctx| {
             let out_dir = ctx.path("out_dir").unwrap().to_path_buf();
@@ -324,7 +331,8 @@ fn scenario_empty_events_no_workstreams() {
 fn scenario_workstreams_sorted_alphabetically() {
     Scenario::new("Workstreams are sorted alphabetically by repo name")
         .given("events from repos in reverse alphabetical order", |ctx| {
-            ctx.strings.insert("expected_order".into(), "alpha,bravo,zulu".into());
+            ctx.strings
+                .insert("expected_order".into(), "alpha,bravo,zulu".into());
         })
         .when("the RepoClusterer clusters the events", |ctx| {
             let events = vec![
@@ -355,7 +363,8 @@ fn scenario_workstreams_sorted_alphabetically() {
 fn scenario_deterministic_workstream_ids() {
     Scenario::new("Same repo always produces the same workstream ID")
         .given("events from the same repo", |ctx| {
-            ctx.strings.insert("repo".into(), "acme/deterministic".into());
+            ctx.strings
+                .insert("repo".into(), "acme/deterministic".into());
         })
         .when("the clusterer runs twice", |ctx| {
             let events = vec![

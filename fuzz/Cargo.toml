@@ -33,6 +33,9 @@ shiplog-cache-sqlite = { path = "../crates/shiplog-cache-sqlite" }
 shiplog-date-windows = { path = "../crates/shiplog-date-windows" }
 shiplog-cluster-llm-prompt = { path = "../crates/shiplog-cluster-llm-prompt", version = "0.2.1" }
 shiplog-cluster-llm-parse = { path = "../crates/shiplog-cluster-llm-parse", version = "0.2.1" }
+shiplog-team-core = { path = "../crates/shiplog-team-core" }
+shiplog-semver = { path = "../crates/shiplog-semver" }
+shiplog-url = { path = "../crates/shiplog-url" }
 chrono = "0.4.44"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
@@ -238,6 +241,52 @@ bench = false
 [[bin]]
 name = "workstream_layout"
 path = "fuzz_targets/workstream_layout.rs"
+test = false
+doc = false
+bench = false
+
+# ============================================================================
+# Critical-Crate Fuzzing Targets
+# ============================================================================
+
+[[bin]]
+name = "fuzz_workstream_yaml"
+path = "fuzz_targets/fuzz_workstream_yaml.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_cache_key"
+path = "fuzz_targets/fuzz_cache_key.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_team_config"
+path = "fuzz_targets/fuzz_team_config.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_ingest_jsonl"
+path = "fuzz_targets/fuzz_ingest_jsonl.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_semver_parse"
+path = "fuzz_targets/fuzz_semver_parse.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_url_parse"
+path = "fuzz_targets/fuzz_url_parse.rs"
 test = false
 doc = false
 bench = false

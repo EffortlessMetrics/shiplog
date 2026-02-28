@@ -450,8 +450,7 @@ fn scenario_manager_vs_public_profile_title_handling() {
                 let pub_json = serde_json::to_string(&pub_out).map_err(|e| e.to_string())?;
                 ctx.data
                     .insert("manager_json".into(), mgr_json.into_bytes());
-                ctx.data
-                    .insert("public_json".into(), pub_json.into_bytes());
+                ctx.data.insert("public_json".into(), pub_json.into_bytes());
 
                 let mgr_events = serde_json::to_vec(&mgr).map_err(|e| e.to_string())?;
                 let pub_events = serde_json::to_vec(&pub_out).map_err(|e| e.to_string())?;
@@ -467,22 +466,25 @@ fn scenario_manager_vs_public_profile_title_handling() {
             }
             Ok(())
         })
-        .then("public profile replaces the PR title with [redacted]", |ctx| {
-            let events: Vec<EventEnvelope> =
-                serde_json::from_slice(&ctx.data["public_events"]).unwrap();
-            match &events[0].payload {
-                EventPayload::PullRequest(pr) => {
-                    if pr.title != "[redacted]" {
-                        return Err(format!(
-                            "public profile should redact title, got '{}'",
-                            pr.title
-                        ));
+        .then(
+            "public profile replaces the PR title with [redacted]",
+            |ctx| {
+                let events: Vec<EventEnvelope> =
+                    serde_json::from_slice(&ctx.data["public_events"]).unwrap();
+                match &events[0].payload {
+                    EventPayload::PullRequest(pr) => {
+                        if pr.title != "[redacted]" {
+                            return Err(format!(
+                                "public profile should redact title, got '{}'",
+                                pr.title
+                            ));
+                        }
                     }
+                    _ => return Err("expected PR payload".into()),
                 }
-                _ => return Err("expected PR payload".into()),
-            }
-            Ok(())
-        })
+                Ok(())
+            },
+        )
         .then("manager profile strips links but keeps source URL", |ctx| {
             let mgr: Vec<EventEnvelope> =
                 serde_json::from_slice(&ctx.data["manager_events"]).unwrap();
@@ -550,8 +552,7 @@ fn scenario_review_event_redaction() {
         .when("the review is redacted with the public profile", |ctx| {
             let key = ctx.string("key").unwrap();
             let redactor = DeterministicRedactor::new(key.as_bytes());
-            let events: Vec<EventEnvelope> =
-                serde_json::from_slice(&ctx.data["events"]).unwrap();
+            let events: Vec<EventEnvelope> = serde_json::from_slice(&ctx.data["events"]).unwrap();
             let redacted = redactor
                 .redact_events(&events, "public")
                 .map_err(|e| e.to_string())?;

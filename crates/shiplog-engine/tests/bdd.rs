@@ -12,8 +12,8 @@ use shiplog_render_md::MarkdownRenderer;
 use shiplog_schema::bundle::BundleProfile;
 use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
 use shiplog_schema::event::*;
-use shiplog_testkit::bdd::assertions::*;
 use shiplog_testkit::bdd::Scenario;
+use shiplog_testkit::bdd::assertions::*;
 use shiplog_workstream_cluster::RepoClusterer;
 
 // ---------------------------------------------------------------------------
@@ -104,10 +104,8 @@ fn scenario_full_pipeline_creates_all_artifacts() {
             ctx.paths
                 .insert("out_dir".into(), dir.path().join("bdd_run"));
             // Keep tempdir alive
-            ctx.strings.insert(
-                "tmp_root".into(),
-                dir.keep().to_string_lossy().into_owned(),
-            );
+            ctx.strings
+                .insert("tmp_root".into(), dir.keep().to_string_lossy().into_owned());
         })
         .when("the engine runs the full pipeline", |ctx| {
             let out_dir = ctx.path("out_dir").unwrap().to_path_buf();
@@ -132,10 +130,8 @@ fn scenario_full_pipeline_creates_all_artifacts() {
 
             ctx.flags
                 .insert("packet_exists".into(), outputs.packet_md.exists());
-            ctx.flags.insert(
-                "ledger_exists".into(),
-                outputs.ledger_events_jsonl.exists(),
-            );
+            ctx.flags
+                .insert("ledger_exists".into(), outputs.ledger_events_jsonl.exists());
             ctx.flags.insert(
                 "coverage_exists".into(),
                 outputs.coverage_manifest_json.exists(),
@@ -210,10 +206,8 @@ fn scenario_pipeline_clusters_events_by_repo() {
             let dir = tempfile::tempdir().unwrap();
             ctx.paths
                 .insert("out_dir".into(), dir.path().join("bdd_cluster"));
-            ctx.strings.insert(
-                "tmp_root".into(),
-                dir.keep().to_string_lossy().into_owned(),
-            );
+            ctx.strings
+                .insert("tmp_root".into(), dir.keep().to_string_lossy().into_owned());
         })
         .when("the engine runs and generates workstreams", |ctx| {
             let out_dir = ctx.path("out_dir").unwrap().to_path_buf();
@@ -238,8 +232,7 @@ fn scenario_pipeline_clusters_events_by_repo() {
                 .map_err(|e| e.to_string())?;
 
             // Read packet to verify workstream sections
-            let packet = std::fs::read_to_string(&outputs.packet_md)
-                .map_err(|e| e.to_string())?;
+            let packet = std::fs::read_to_string(&outputs.packet_md).map_err(|e| e.to_string())?;
             ctx.flags
                 .insert("has_backend".into(), packet.contains("org/backend"));
             ctx.flags
@@ -291,10 +284,8 @@ fn scenario_public_profile_packet_strips_sensitive_data() {
             let dir = tempfile::tempdir().unwrap();
             ctx.paths
                 .insert("out_dir".into(), dir.path().join("bdd_public"));
-            ctx.strings.insert(
-                "tmp_root".into(),
-                dir.keep().to_string_lossy().into_owned(),
-            );
+            ctx.strings
+                .insert("tmp_root".into(), dir.keep().to_string_lossy().into_owned());
             ctx.strings
                 .insert("sensitive_title".into(), "Fix secret API key leak".into());
             ctx.strings
@@ -325,17 +316,19 @@ fn scenario_public_profile_packet_strips_sensitive_data() {
                 .join(FILE_PACKET_MD);
             let public_packet =
                 std::fs::read_to_string(&public_packet_path).map_err(|e| e.to_string())?;
-            ctx.strings
-                .insert("public_packet".into(), public_packet);
+            ctx.strings.insert("public_packet".into(), public_packet);
             Ok(())
         })
-        .then("the public packet does not contain the sensitive title", |ctx| {
-            let packet = ctx.string("public_packet").unwrap();
-            if packet.contains("Fix secret API key leak") {
-                return Err("public packet should not contain sensitive PR title".into());
-            }
-            Ok(())
-        })
+        .then(
+            "the public packet does not contain the sensitive title",
+            |ctx| {
+                let packet = ctx.string("public_packet").unwrap();
+                if packet.contains("Fix secret API key leak") {
+                    return Err("public packet should not contain sensitive PR title".into());
+                }
+                Ok(())
+            },
+        )
         .then("the public packet does not contain the repo name", |ctx| {
             let packet = ctx.string("public_packet").unwrap();
             if packet.contains("acme/secret-service") {
@@ -358,10 +351,8 @@ fn scenario_pipeline_with_zip_creates_archive() {
             let dir = tempfile::tempdir().unwrap();
             ctx.paths
                 .insert("out_dir".into(), dir.path().join("bdd_zip"));
-            ctx.strings.insert(
-                "tmp_root".into(),
-                dir.keep().to_string_lossy().into_owned(),
-            );
+            ctx.strings
+                .insert("tmp_root".into(), dir.keep().to_string_lossy().into_owned());
         })
         .when("the engine runs with zip enabled", |ctx| {
             let out_dir = ctx.path("out_dir").unwrap().to_path_buf();

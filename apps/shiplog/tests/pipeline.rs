@@ -11,9 +11,7 @@ use shiplog_redact::DeterministicRedactor;
 use shiplog_render_md::MarkdownRenderer;
 use shiplog_schema::bundle::BundleProfile;
 use shiplog_schema::coverage::CoverageManifest;
-use shiplog_schema::event::{
-    ManualDate, ManualEventEntry, ManualEventType, ManualEventsFile,
-};
+use shiplog_schema::event::{ManualDate, ManualEventEntry, ManualEventType, ManualEventsFile};
 use shiplog_workstream_cluster::RepoClusterer;
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
@@ -36,12 +34,11 @@ fn fixture_ingest() -> IngestOutput {
 }
 
 fn test_engine() -> Engine<'static> {
-    let renderer: &'static dyn Renderer =
-        Box::leak(Box::new(MarkdownRenderer::default()));
-    let clusterer: &'static dyn WorkstreamClusterer =
-        Box::leak(Box::new(RepoClusterer));
-    let redactor: &'static dyn Redactor =
-        Box::leak(Box::new(DeterministicRedactor::new(b"integration-test-key")));
+    let renderer: &'static dyn Renderer = Box::leak(Box::new(MarkdownRenderer::default()));
+    let clusterer: &'static dyn WorkstreamClusterer = Box::leak(Box::new(RepoClusterer));
+    let redactor: &'static dyn Redactor = Box::leak(Box::new(DeterministicRedactor::new(
+        b"integration-test-key",
+    )));
     Engine::new(renderer, clusterer, redactor)
 }
 
@@ -69,15 +66,17 @@ fn json_ingest_to_markdown_output() -> Result<()> {
     let packet = std::fs::read_to_string(&outputs.packet_md)?;
 
     // Verify expected markdown sections
-    assert!(packet.contains("# Summary"), "packet should contain Summary heading");
+    assert!(
+        packet.contains("# Summary"),
+        "packet should contain Summary heading"
+    );
     assert!(
         packet.contains("2025-01-01..2025-04-01"),
         "packet should reference the window label"
     );
     // Verify it contains PR-related content
     assert!(
-        packet.contains("Payments ledger rewrite")
-            || packet.contains("Schema hardening"),
+        packet.contains("Payments ledger rewrite") || packet.contains("Schema hardening"),
         "packet should contain PR titles from fixtures"
     );
 
@@ -349,10 +348,7 @@ fn redacted_output_strips_sensitive_data() -> Result<()> {
     )?;
 
     // Read the public profile packet
-    let public_packet_path = out_dir
-        .join("profiles")
-        .join("public")
-        .join("packet.md");
+    let public_packet_path = out_dir.join("profiles").join("public").join("packet.md");
     assert!(
         public_packet_path.exists(),
         "public profile packet should exist"
@@ -381,10 +377,7 @@ fn redacted_output_strips_sensitive_data() -> Result<()> {
     );
 
     // Manager profile should also exist
-    let manager_packet_path = out_dir
-        .join("profiles")
-        .join("manager")
-        .join("packet.md");
+    let manager_packet_path = out_dir.join("profiles").join("manager").join("packet.md");
     assert!(
         manager_packet_path.exists(),
         "manager profile packet should exist"
