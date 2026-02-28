@@ -24,6 +24,7 @@ shiplog-cache = { path = "../shiplog-cache", version = "0.2.1", optional = true 
 
 [dev-dependencies]
 tempfile.workspace = true
+proptest.workspace = true
 
 [features]
 default = []
