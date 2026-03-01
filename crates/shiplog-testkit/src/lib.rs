@@ -12,6 +12,7 @@ pub mod proptest;
 // BDD scenario modules
 pub mod scenarios {
     pub mod later;
+    pub mod user_workflows;
     pub mod v02x;
     pub mod v03x;
 }
@@ -24,6 +25,9 @@ mod bdd_v03x_tests;
 
 #[cfg(test)]
 mod bdd_later_tests;
+
+#[cfg(test)]
+mod bdd_user_workflow_tests;
 
 /// Small helpers for building fixtures in tests.
 ///
