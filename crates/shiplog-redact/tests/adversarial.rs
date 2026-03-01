@@ -85,8 +85,10 @@ fn double_redaction_re_aliases_repo_names() {
     let ev = make_event("original title", "org/repo");
     let first = r.redact_events(&[ev], "public").unwrap();
     let second = r.redact_events(&first, "public").unwrap();
-    assert_ne!(first[0].repo.full_name, second[0].repo.full_name,
-        "double-redaction re-aliases repo names");
+    assert_ne!(
+        first[0].repo.full_name, second[0].repo.full_name,
+        "double-redaction re-aliases repo names"
+    );
     if let EventPayload::PullRequest(pr) = &second[0].payload {
         assert_eq!(pr.title, "[redacted]");
     }
@@ -95,7 +97,10 @@ fn double_redaction_re_aliases_repo_names() {
 #[test]
 fn unicode_key_and_data() {
     let r = DeterministicRedactor::new("\u{65E5}\u{672C}\u{8A9E}\u{1F510}".as_bytes());
-    let ev = make_event("\u{30BF}\u{30A4}\u{30C8}\u{30EB}", "\u{7D44}\u{7E54}/\u{30EA}\u{30DD}");
+    let ev = make_event(
+        "\u{30BF}\u{30A4}\u{30C8}\u{30EB}",
+        "\u{7D44}\u{7E54}/\u{30EA}\u{30DD}",
+    );
     let result = r.redact_events(&[ev], "public");
     assert!(result.is_ok());
 }
@@ -157,7 +162,10 @@ fn review_event_title_stripped_in_public() {
         id: EventId::from_parts(["review", "1"]),
         kind: EventKind::Review,
         occurred_at: Utc::now(),
-        actor: Actor { login: "reviewer".into(), id: None },
+        actor: Actor {
+            login: "reviewer".into(),
+            id: None,
+        },
         repo: RepoRef {
             full_name: "org/repo".into(),
             html_url: None,

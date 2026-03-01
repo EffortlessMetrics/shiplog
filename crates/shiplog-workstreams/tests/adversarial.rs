@@ -11,7 +11,10 @@ fn make_pr_event(repo: &str, id_suffix: &str) -> EventEnvelope {
         id: EventId::from_parts(["test", id_suffix]),
         kind: EventKind::PullRequest,
         occurred_at: Utc::now(),
-        actor: Actor { login: "user".into(), id: None },
+        actor: Actor {
+            login: "user".into(),
+            id: None,
+        },
         repo: RepoRef {
             full_name: repo.into(),
             html_url: None,
@@ -44,7 +47,10 @@ fn make_review_event(repo: &str, id_suffix: &str) -> EventEnvelope {
         id: EventId::from_parts(["review", id_suffix]),
         kind: EventKind::Review,
         occurred_at: Utc::now(),
-        actor: Actor { login: "reviewer".into(), id: None },
+        actor: Actor {
+            login: "reviewer".into(),
+            id: None,
+        },
         repo: RepoRef {
             full_name: repo.into(),
             html_url: None,
@@ -72,7 +78,10 @@ fn make_manual_event(repo: &str, id_suffix: &str) -> EventEnvelope {
         id: EventId::from_parts(["manual", id_suffix]),
         kind: EventKind::Manual,
         occurred_at: Utc::now(),
-        actor: Actor { login: "author".into(), id: None },
+        actor: Actor {
+            login: "author".into(),
+            id: None,
+        },
         repo: RepoRef {
             full_name: repo.into(),
             html_url: None,
