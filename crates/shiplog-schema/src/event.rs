@@ -149,6 +149,7 @@ impl<'de> Deserialize<'de> for SourceSystem {
     }
 }
 
+/// Provenance reference for an event, linking it back to its source system.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SourceRef {
     pub system: SourceSystem,
@@ -158,44 +159,101 @@ pub struct SourceRef {
     pub opaque_id: Option<String>,
 }
 
+/// The person or bot that triggered an event.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Actor {
+    /// GitHub login handle (e.g. `"octocat"`).
     pub login: String,
+    /// Numeric user ID when known.
     pub id: Option<u64>,
 }
 
+/// Visibility level of a repository.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub enum RepoVisibility {
+    /// Publicly accessible repository.
     Public,
+    /// Private repository.
     Private,
+    /// Visibility could not be determined.
     Unknown,
 }
 
+/// A reference to a GitHub repository with display metadata.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct RepoRef {
     /// "owner/name" when known.
     pub full_name: String,
     /// HTML URL (not API URL) when known.
     pub html_url: Option<String>,
+    /// Repository visibility level.
     pub visibility: RepoVisibility,
 }
 
+/// A labelled hyperlink attached to an event (e.g. PR URL, postmortem).
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Link {
+    /// Human-readable label (e.g. `"pr"`, `"postmortem"`).
     pub label: String,
+    /// Fully-qualified URL.
     pub url: String,
 }
 
+/// Discriminant for the top-level event kind.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub enum EventKind {
+    /// A pull request authored by the user.
     PullRequest,
+    /// A code review submitted by the user.
     Review,
+    /// A manually-entered event (non-GitHub work).
     Manual,
 }
 
 /// The canonical event record.
 ///
 /// This is the data spine. Everything else should be derived from it.
+///
+/// # Examples
+///
+/// ```
+/// use shiplog_schema::event::*;
+/// use shiplog_ids::EventId;
+/// use chrono::{TimeZone, Utc};
+///
+/// let ts = Utc.with_ymd_and_hms(2025, 6, 1, 12, 0, 0).unwrap();
+/// let ev = EventEnvelope {
+///     id: EventId::from_parts(["github", "pr", "acme/widgets", "1"]),
+///     kind: EventKind::PullRequest,
+///     occurred_at: ts,
+///     actor: Actor { login: "octocat".into(), id: Some(1) },
+///     repo: RepoRef {
+///         full_name: "acme/widgets".into(),
+///         html_url: None,
+///         visibility: RepoVisibility::Public,
+///     },
+///     payload: EventPayload::PullRequest(PullRequestEvent {
+///         number: 1,
+///         title: "Fix bug".into(),
+///         state: PullRequestState::Merged,
+///         created_at: ts,
+///         merged_at: Some(ts),
+///         additions: Some(10),
+///         deletions: Some(2),
+///         changed_files: Some(1),
+///         touched_paths_hint: vec![],
+///         window: None,
+///     }),
+///     tags: vec![],
+///     links: vec![],
+///     source: SourceRef {
+///         system: SourceSystem::Github,
+///         url: None,
+///         opaque_id: None,
+///     },
+/// };
+/// assert_eq!(ev.kind, EventKind::PullRequest);
+/// ```
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct EventEnvelope {
     pub id: EventId,

@@ -53,6 +53,32 @@ pub struct CoverageSlice {
     pub notes: Vec<String>,
 }
 
+/// The coverage manifest for a run.
+///
+/// # Examples
+///
+/// ```
+/// use shiplog_schema::coverage::*;
+/// use shiplog_ids::RunId;
+/// use chrono::{NaiveDate, Utc};
+///
+/// let manifest = CoverageManifest {
+///     run_id: RunId::now("test"),
+///     generated_at: Utc::now(),
+///     user: "octocat".into(),
+///     window: TimeWindow {
+///         since: NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
+///         until: NaiveDate::from_ymd_opt(2025, 4, 1).unwrap(),
+///     },
+///     mode: "merged".into(),
+///     sources: vec!["github".into()],
+///     slices: vec![],
+///     warnings: vec![],
+///     completeness: Completeness::Complete,
+/// };
+/// assert_eq!(manifest.user, "octocat");
+/// assert_eq!(manifest.completeness, Completeness::Complete);
+/// ```
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct CoverageManifest {
     pub run_id: shiplog_ids::RunId,

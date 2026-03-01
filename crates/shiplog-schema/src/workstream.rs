@@ -45,6 +45,30 @@ pub struct Workstream {
     pub receipts: Vec<EventId>,
 }
 
+/// Top-level workstreams file used for persistence and curation.
+///
+/// # Examples
+///
+/// ```
+/// use shiplog_schema::workstream::{WorkstreamsFile, Workstream, WorkstreamStats};
+/// use shiplog_ids::WorkstreamId;
+/// use chrono::Utc;
+///
+/// let file = WorkstreamsFile {
+///     version: 1,
+///     generated_at: Utc::now(),
+///     workstreams: vec![Workstream {
+///         id: WorkstreamId::from_parts(["repo", "acme/widgets"]),
+///         title: "widgets".into(),
+///         summary: Some("Widget work".into()),
+///         tags: vec!["infra".into()],
+///         stats: WorkstreamStats::zero(),
+///         events: vec![],
+///         receipts: vec![],
+///     }],
+/// };
+/// assert_eq!(file.workstreams.len(), 1);
+/// ```
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct WorkstreamsFile {
     pub version: u32,
@@ -53,6 +77,30 @@ pub struct WorkstreamsFile {
 }
 
 impl Workstream {
+    /// Increment the stat counter for the given event kind.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use shiplog_schema::workstream::{Workstream, WorkstreamStats};
+    /// use shiplog_schema::event::EventKind;
+    /// use shiplog_ids::WorkstreamId;
+    ///
+    /// let mut ws = Workstream {
+    ///     id: WorkstreamId::from_parts(["repo", "acme/widgets"]),
+    ///     title: "widgets".into(),
+    ///     summary: None,
+    ///     tags: vec![],
+    ///     stats: WorkstreamStats::zero(),
+    ///     events: vec![],
+    ///     receipts: vec![],
+    /// };
+    /// ws.bump_stats(&EventKind::PullRequest);
+    /// ws.bump_stats(&EventKind::PullRequest);
+    /// ws.bump_stats(&EventKind::Review);
+    /// assert_eq!(ws.stats.pull_requests, 2);
+    /// assert_eq!(ws.stats.reviews, 1);
+    /// ```
     pub fn bump_stats(&mut self, kind: &EventKind) {
         match kind {
             EventKind::PullRequest => self.stats.pull_requests += 1,
