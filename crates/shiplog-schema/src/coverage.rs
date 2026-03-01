@@ -34,7 +34,7 @@ impl TimeWindow {
 }
 
 /// How complete the data fetch was for a given window.
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum Completeness {
     /// All expected data was fetched.
     Complete,
@@ -42,6 +42,16 @@ pub enum Completeness {
     Partial,
     /// Completeness could not be determined.
     Unknown,
+}
+
+impl std::fmt::Display for Completeness {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Complete => f.write_str("Complete"),
+            Self::Partial => f.write_str("Partial"),
+            Self::Unknown => f.write_str("Unknown"),
+        }
+    }
 }
 
 /// One query window and what happened.

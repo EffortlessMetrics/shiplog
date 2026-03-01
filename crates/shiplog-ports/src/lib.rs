@@ -42,7 +42,7 @@ use shiplog_schema::workstream::WorkstreamsFile;
 /// };
 /// assert!(output.events.is_empty());
 /// ```
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct IngestOutput {
     /// The collected event envelopes.
     pub events: Vec<EventEnvelope>,

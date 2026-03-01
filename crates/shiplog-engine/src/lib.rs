@@ -33,6 +33,7 @@ pub struct Engine<'a> {
 }
 
 /// Paths to every artifact produced by a pipeline run.
+#[derive(Debug, Clone, PartialEq)]
 pub struct RunOutputs {
     /// Root output directory for this run.
     pub out_dir: PathBuf,
@@ -51,6 +52,7 @@ pub struct RunOutputs {
 }
 
 /// What type of workstream file was used/created
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum WorkstreamSource {
     /// User-curated workstreams.yaml
     Curated,
@@ -58,6 +60,16 @@ pub enum WorkstreamSource {
     Suggested,
     /// Newly generated from events
     Generated,
+}
+
+impl std::fmt::Display for WorkstreamSource {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Curated => f.write_str("Curated"),
+            Self::Suggested => f.write_str("Suggested"),
+            Self::Generated => f.write_str("Generated"),
+        }
+    }
 }
 
 impl<'a> Engine<'a> {

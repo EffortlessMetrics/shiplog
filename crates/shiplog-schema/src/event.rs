@@ -175,7 +175,7 @@ pub struct Actor {
 }
 
 /// Visibility level of a repository.
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum RepoVisibility {
     /// Publicly accessible repository.
     Public,
@@ -183,6 +183,16 @@ pub enum RepoVisibility {
     Private,
     /// Visibility could not be determined.
     Unknown,
+}
+
+impl fmt::Display for RepoVisibility {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Public => f.write_str("Public"),
+            Self::Private => f.write_str("Private"),
+            Self::Unknown => f.write_str("Unknown"),
+        }
+    }
 }
 
 /// A reference to a GitHub repository with display metadata.
@@ -206,7 +216,7 @@ pub struct Link {
 }
 
 /// Discriminant for the top-level event kind.
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum EventKind {
     /// A pull request authored by the user.
     PullRequest,
@@ -214,6 +224,16 @@ pub enum EventKind {
     Review,
     /// A manually-entered event (non-GitHub work).
     Manual,
+}
+
+impl fmt::Display for EventKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::PullRequest => f.write_str("PullRequest"),
+            Self::Review => f.write_str("Review"),
+            Self::Manual => f.write_str("Manual"),
+        }
+    }
 }
 
 /// The canonical event record.
@@ -260,7 +280,7 @@ pub enum EventKind {
 /// };
 /// assert_eq!(ev.kind, EventKind::PullRequest);
 /// ```
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct EventEnvelope {
     /// Deterministic, content-derived event identifier.
     pub id: EventId,
@@ -283,7 +303,7 @@ pub struct EventEnvelope {
 }
 
 /// Payload is tagged for forward-compatible evolution.
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(tag = "type", content = "data")]
 pub enum EventPayload {
     /// Pull request authored by the user.
@@ -295,7 +315,7 @@ pub enum EventPayload {
 }
 
 /// Lifecycle state of a pull request.
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum PullRequestState {
     /// Still open for review.
     Open,
@@ -307,8 +327,19 @@ pub enum PullRequestState {
     Unknown,
 }
 
+impl fmt::Display for PullRequestState {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Open => f.write_str("Open"),
+            Self::Closed => f.write_str("Closed"),
+            Self::Merged => f.write_str("Merged"),
+            Self::Unknown => f.write_str("Unknown"),
+        }
+    }
+}
+
 /// A pull request event with diff-stat metadata.
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct PullRequestEvent {
     /// PR number within the repository.
     pub number: u64,
@@ -333,7 +364,7 @@ pub struct PullRequestEvent {
 }
 
 /// A code review submitted on a pull request.
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ReviewEvent {
     /// Number of the PR that was reviewed.
     pub pull_number: u64,
@@ -348,7 +379,7 @@ pub struct ReviewEvent {
 }
 
 /// Types of manual events for non-GitHub work.
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum ManualEventType {
     /// General note or achievement
     Note,
@@ -368,6 +399,21 @@ pub enum ManualEventType {
     Other,
 }
 
+impl fmt::Display for ManualEventType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Note => f.write_str("Note"),
+            Self::Incident => f.write_str("Incident"),
+            Self::Design => f.write_str("Design"),
+            Self::Mentoring => f.write_str("Mentoring"),
+            Self::Launch => f.write_str("Launch"),
+            Self::Migration => f.write_str("Migration"),
+            Self::Review => f.write_str("Review"),
+            Self::Other => f.write_str("Other"),
+        }
+    }
+}
+
 /// Manual event for work that doesn't have GitHub artifacts.
 ///
 /// This allows the packet to include:
@@ -376,7 +422,7 @@ pub enum ManualEventType {
 /// - Mentoring
 /// - Cross-team design
 /// - Unmerged prototypes that still mattered
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ManualEvent {
     /// Type of manual event
     pub event_type: ManualEventType,
@@ -778,7 +824,7 @@ mod tests {
 }
 
 /// File format for manual_events.yaml
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ManualEventsFile {
     /// Schema version for forward compatibility.
     pub version: u32,
@@ -789,7 +835,7 @@ pub struct ManualEventsFile {
 }
 
 /// Individual manual event entry with metadata
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ManualEventEntry {
     /// Unique identifier for this entry
     pub id: String,
@@ -813,7 +859,7 @@ pub struct ManualEventEntry {
 }
 
 /// Date specification for manual events — either a single day or a range.
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(untagged)]
 pub enum ManualDate {
     /// A single calendar date.
