@@ -19,9 +19,17 @@ shiplog-date-windows = { path = "../shiplog-date-windows", version = "0.2.1" }
 [dev-dependencies]
 anyhow.workspace = true
 chrono.workspace = true
+criterion.workspace = true
 insta = { workspace = true, features = ["json"] }
 proptest.workspace = true
 serde_json.workspace = true
 shiplog-ids = { path = "../shiplog-ids", version = "0.2.1" }
 shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
 shiplog-testkit = { path = "../shiplog-testkit", version = "0.2.1" }
+
+[[bench]]
+name = "coverage"
+harness = false
+
+[lints]
+workspace = true

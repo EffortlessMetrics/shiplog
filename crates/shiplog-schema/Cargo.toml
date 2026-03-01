@@ -20,8 +20,15 @@ chrono.workspace = true
 shiplog-ids = { path = "../shiplog-ids", version = "0.2.1" }
 
 [dev-dependencies]
+criterion.workspace = true
 proptest.workspace = true
 insta = { workspace = true, features = ["json"] }
 shiplog-testkit = { path = "../shiplog-testkit", version = "0.2.1" }
 serde_yaml.workspace = true
 
+[[bench]]
+name = "serialization"
+harness = false
+
+[lints]
+workspace = true

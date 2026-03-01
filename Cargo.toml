@@ -256,6 +256,20 @@ predicates = "3.1.3"
 mutants = "0.0.4"
 criterion = { version = "0.5", features = ["html_reports"] }
 
+[workspace.lints.rust]
+unsafe_code = "forbid"
+# Too many types lack Debug (53+); allow for now, revisit later
+missing_debug_implementations = "allow"
+
+[workspace.lints.clippy]
+# Correctness
+enum_glob_use = "warn"
+# Style
+needless_pass_by_value = "warn"
+# Pedantic (selective)
+cloned_instead_of_copied = "warn"
+flat_map_option = "warn"
+
 [profile.release]
 codegen-units = 1
 lto = "thin"
