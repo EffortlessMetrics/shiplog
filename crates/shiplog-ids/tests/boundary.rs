@@ -29,7 +29,10 @@ fn event_id_from_multiple_empty_strings() {
     assert_eq!(id.0.len(), 64);
     // Must differ from single empty string
     let single = EventId::from_parts([""]);
-    assert_ne!(id, single, "multiple empty parts should differ from single empty part");
+    assert_ne!(
+        id, single,
+        "multiple empty parts should differ from single empty part"
+    );
 }
 
 #[test]
@@ -56,7 +59,10 @@ fn event_id_with_null_bytes() {
     let id = EventId::from_parts(["hello\0world"]);
     assert_eq!(id.0.len(), 64);
     let plain = EventId::from_parts(["helloworld"]);
-    assert_ne!(id, plain, "null byte in input should produce different hash");
+    assert_ne!(
+        id, plain,
+        "null byte in input should produce different hash"
+    );
 }
 
 #[test]

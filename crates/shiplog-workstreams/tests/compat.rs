@@ -62,7 +62,10 @@ workstreams:
 "#;
     let wf: WorkstreamsFile = serde_yaml::from_str(yaml).unwrap();
     let ws = &wf.workstreams[0];
-    assert_eq!(ws.summary.as_deref(), Some("Kubernetes migration and monitoring"));
+    assert_eq!(
+        ws.summary.as_deref(),
+        Some("Kubernetes migration and monitoring")
+    );
     assert_eq!(ws.tags, vec!["infra", "k8s"]);
     assert_eq!(ws.receipts.len(), 1);
 }

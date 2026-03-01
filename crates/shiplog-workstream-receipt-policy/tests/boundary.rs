@@ -5,9 +5,8 @@
 use shiplog_schema::event::EventKind;
 use shiplog_workstream_receipt_policy::{
     WORKSTREAM_RECEIPT_LIMIT_MANUAL, WORKSTREAM_RECEIPT_LIMIT_REVIEW,
-    WORKSTREAM_RECEIPT_LIMIT_TOTAL, WORKSTREAM_RECEIPT_RENDER_LIMIT,
-    max_cluster_receipts_for_kind, should_include_cluster_receipt, should_render_receipt_at,
-    truncate_cluster_receipts,
+    WORKSTREAM_RECEIPT_LIMIT_TOTAL, WORKSTREAM_RECEIPT_RENDER_LIMIT, max_cluster_receipts_for_kind,
+    should_include_cluster_receipt, should_render_receipt_at, truncate_cluster_receipts,
 };
 
 // ============================================================================
@@ -128,7 +127,9 @@ fn render_visible_at_index_zero() {
 
 #[test]
 fn render_visible_at_one_below_limit() {
-    assert!(should_render_receipt_at(WORKSTREAM_RECEIPT_RENDER_LIMIT - 1));
+    assert!(should_render_receipt_at(
+        WORKSTREAM_RECEIPT_RENDER_LIMIT - 1
+    ));
 }
 
 #[test]

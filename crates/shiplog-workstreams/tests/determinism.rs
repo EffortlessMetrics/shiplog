@@ -84,11 +84,7 @@ fn workstream_ordering_deterministic_across_100_iterations() {
 
     for _ in 0..ITERATIONS {
         let result = RepoClusterer.cluster(&events).unwrap();
-        let order: Vec<String> = result
-            .workstreams
-            .iter()
-            .map(|w| w.title.clone())
-            .collect();
+        let order: Vec<String> = result.workstreams.iter().map(|w| w.title.clone()).collect();
         assert_eq!(
             ref_order, order,
             "workstream ordering must be stable across calls"

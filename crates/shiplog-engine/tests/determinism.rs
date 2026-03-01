@@ -159,17 +159,12 @@ fn profile_packets_deterministic_across_runs() {
             )
             .unwrap();
 
-        let manager_md = std::fs::read_to_string(
-            out_dir
-                .join("profiles")
-                .join("manager")
-                .join("packet.md"),
-        )
-        .unwrap();
-        let public_md = std::fs::read_to_string(
-            out_dir.join("profiles").join("public").join("packet.md"),
-        )
-        .unwrap();
+        let manager_md =
+            std::fs::read_to_string(out_dir.join("profiles").join("manager").join("packet.md"))
+                .unwrap();
+        let public_md =
+            std::fs::read_to_string(out_dir.join("profiles").join("public").join("packet.md"))
+                .unwrap();
 
         manager_packets.push(manager_md);
         public_packets.push(public_md);

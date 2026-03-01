@@ -52,7 +52,10 @@ fn workstream_id_deterministic_across_100_iterations() {
     let reference = WorkstreamId::from_parts(["repo", "acme/widgets"]);
     for _ in 0..ITERATIONS {
         let id = WorkstreamId::from_parts(["repo", "acme/widgets"]);
-        assert_eq!(id, reference, "WorkstreamId must be identical on every call");
+        assert_eq!(
+            id, reference,
+            "WorkstreamId must be identical on every call"
+        );
     }
 }
 

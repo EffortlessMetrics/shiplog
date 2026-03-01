@@ -379,7 +379,13 @@ fn none_optional_fields_present_in_pr_event() {
     };
     let json = serde_json::to_string(&pr).unwrap();
     let v: serde_json::Value = serde_json::from_str(&json).unwrap();
-    for key in ["merged_at", "additions", "deletions", "changed_files", "window"] {
+    for key in [
+        "merged_at",
+        "additions",
+        "deletions",
+        "changed_files",
+        "window",
+    ] {
         assert!(
             v.get(key).is_some(),
             "Optional field '{key}' must be present as null"
