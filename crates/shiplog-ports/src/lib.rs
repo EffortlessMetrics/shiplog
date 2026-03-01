@@ -1,3 +1,4 @@
+#![warn(missing_docs)]
 //! Port trait definitions for the shiplog pipeline.
 //!
 //! Defines the four core abstractions: [`Ingestor`] (data collection),
@@ -43,7 +44,9 @@ use shiplog_schema::workstream::WorkstreamsFile;
 /// ```
 #[derive(Clone, Debug)]
 pub struct IngestOutput {
+    /// The collected event envelopes.
     pub events: Vec<EventEnvelope>,
+    /// Coverage manifest describing what was queried and fetched.
     pub coverage: CoverageManifest,
 }
 
@@ -66,6 +69,7 @@ pub struct IngestOutput {
 /// }
 /// ```
 pub trait Ingestor {
+    /// Fetch events from the data source and return them with coverage metadata.
     fn ingest(&self) -> Result<IngestOutput>;
 }
 
@@ -90,6 +94,7 @@ pub trait Ingestor {
 /// }
 /// ```
 pub trait WorkstreamClusterer {
+    /// Group events into workstreams and return the resulting file.
     fn cluster(&self, events: &[EventEnvelope]) -> Result<WorkstreamsFile>;
 }
 
@@ -122,6 +127,7 @@ pub trait WorkstreamClusterer {
 /// }
 /// ```
 pub trait Renderer {
+    /// Render a Markdown shipping packet from the given events and metadata.
     fn render_packet_markdown(
         &self,
         user: &str,
@@ -156,7 +162,9 @@ pub trait Renderer {
 /// }
 /// ```
 pub trait Redactor {
+    /// Apply a redaction profile to events, returning redacted copies.
     fn redact_events(&self, events: &[EventEnvelope], profile: &str) -> Result<Vec<EventEnvelope>>;
+    /// Apply a redaction profile to workstreams, returning redacted copies.
     fn redact_workstreams(
         &self,
         workstreams: &WorkstreamsFile,
