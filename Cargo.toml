@@ -15,6 +15,7 @@ members = [
   "crates/shiplog-redaction-repo",
   "crates/shiplog-redaction-policy",
   "crates/shiplog-redaction-projector",
+  "crates/shiplog-receipt",
   "crates/shiplog-render-md",
   "crates/shiplog-render-json",
   "crates/shiplog-bundle",
@@ -253,6 +254,7 @@ tempfile = "3.25.0"
 assert_cmd = "2.0.16"
 predicates = "3.1.3"
 mutants = "0.0.4"
+criterion = { version = "0.5", features = ["html_reports"] }
 
 [profile.release]
 codegen-units = 1
