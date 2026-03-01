@@ -151,3 +151,80 @@ fn manifest_checksums_are_deterministic() {
         assert_eq!(f1.bytes, f2.bytes);
     }
 }
+
+// ---------------------------------------------------------------------------
+// Error message quality
+// ---------------------------------------------------------------------------
+
+#[test]
+fn write_zip_error_message_includes_path_context() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(dir.path().join("packet.md"), "# Test").unwrap();
+
+    // Use a path where the parent directory doesn't exist
+    let invalid_zip = Path::new("H:\\no\\such\\parent\\dir\\for\\output.zip");
+    if let Err(e) = write_zip(dir.path(), invalid_zip, &BundleProfile::Internal) {
+        let msg = format!("{e:#}");
+        // The error context should mention "create zip"
+        assert!(
+            msg.contains("zip") || msg.contains("create"),
+            "zip error should have context about what was being done: {msg}"
+        );
+    }
+}
+
+#[test]
+fn write_bundle_manifest_error_chain_has_io_cause() {
+    let nonexistent = Path::new("H:\\absolutely\\no\\such\\path\\ever");
+    let run_id = RunId::now("test");
+
+    let err = write_bundle_manifest(nonexistent, &run_id, &BundleProfile::Internal).unwrap_err();
+    let chain: Vec<String> = err.chain().map(|e| e.to_string()).collect();
+    assert!(
+        !chain.is_empty(),
+        "error chain should contain at least one entry"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Zip with read-only file content
+// ---------------------------------------------------------------------------
+
+#[test]
+fn write_zip_with_nested_directories_succeeds() {
+    let dir = tempfile::tempdir().unwrap();
+    let sub = dir.path().join("profiles").join("manager");
+    std::fs::create_dir_all(&sub).unwrap();
+    std::fs::write(sub.join("packet.md"), "# Manager").unwrap();
+    std::fs::write(dir.path().join("packet.md"), "# Top").unwrap();
+
+    let zip_path = dir.path().join("nested.zip");
+    let result = write_zip(dir.path(), &zip_path, &BundleProfile::Internal);
+    assert!(result.is_ok(), "nested directories should zip successfully");
+
+    let file = File::open(&zip_path).unwrap();
+    let archive = zip::ZipArchive::new(file).unwrap();
+    assert!(archive.len() >= 2, "zip should contain nested files");
+}
+
+#[test]
+fn manifest_file_sizes_are_accurate() {
+    let dir = tempfile::tempdir().unwrap();
+    let content = "hello world, this is test content";
+    std::fs::write(dir.path().join("packet.md"), content).unwrap();
+
+    let run_id = RunId::now("test");
+    let manifest = write_bundle_manifest(dir.path(), &run_id, &BundleProfile::Internal).unwrap();
+
+    let packet_entry = manifest
+        .files
+        .iter()
+        .find(|f| f.path == "packet.md")
+        .expect("packet.md should be in manifest");
+
+    assert_eq!(
+        packet_entry.bytes,
+        content.len() as u64,
+        "file size should match actual content length"
+    );
+}

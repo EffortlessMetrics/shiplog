@@ -47,4 +47,6 @@ shiplog-output-layout = { path = "../shiplog-output-layout", version = "0.2.1" }
 shiplog-workstream-layout = { path = "../shiplog-workstream-layout", version = "0.2.1" }
 shiplog-workstream-cluster = { path = "../shiplog-workstream-cluster", version = "0.2.1" }
 shiplog-render-md = { path = "../shiplog-render-md", version = "0.2.1" }
+shiplog-render-json = { path = "../shiplog-render-json", version = "0.2.1" }
 shiplog-redact = { path = "../shiplog-redact", version = "0.2.1" }
+serde_json.workspace = true

@@ -377,3 +377,220 @@ fn render_large_event_list_succeeds() {
         "should truncate receipts with appendix link"
     );
 }
+
+// ---------------------------------------------------------------------------
+// Error message quality and graceful degradation
+// ---------------------------------------------------------------------------
+
+#[test]
+fn render_with_unicode_event_titles_does_not_panic() {
+    let renderer = MarkdownRenderer::new();
+    let events = vec![pr_event("1", 1, "🚀 设计文档 αβγ — «test»")];
+
+    let ws = WorkstreamsFile {
+        version: 1,
+        generated_at: Utc::now(),
+        workstreams: vec![Workstream {
+            id: WorkstreamId::from_parts(["ws", "unicode"]),
+            title: "Unicode Workstream 日本語".into(),
+            summary: Some("Summary with émojis 🎉".into()),
+            tags: vec![],
+            stats: WorkstreamStats {
+                pull_requests: 1,
+                reviews: 0,
+                manual_events: 0,
+            },
+            events: vec![events[0].id.clone()],
+            receipts: vec![events[0].id.clone()],
+        }],
+    };
+
+    let result = renderer.render_packet_markdown(
+        "dev",
+        "2025-01-01..2025-02-01",
+        &events,
+        &ws,
+        &base_coverage(),
+    );
+
+    let md = result.unwrap();
+    assert!(
+        md.contains("Unicode Workstream"),
+        "should contain unicode workstream title"
+    );
+}
+
+#[test]
+fn render_with_empty_window_label_succeeds() {
+    let renderer = MarkdownRenderer::new();
+    let events = vec![pr_event("1", 1, "Test PR")];
+
+    let ws = WorkstreamsFile {
+        version: 1,
+        generated_at: Utc::now(),
+        workstreams: vec![],
+    };
+
+    let result = renderer.render_packet_markdown("dev", "", &events, &ws, &base_coverage());
+    assert!(result.is_ok(), "empty window label should not cause error");
+}
+
+#[test]
+fn render_with_empty_user_succeeds() {
+    let renderer = MarkdownRenderer::new();
+    let result = renderer.render_packet_markdown(
+        "",
+        "2025-01-01..2025-02-01",
+        &[],
+        &WorkstreamsFile {
+            version: 1,
+            generated_at: Utc::now(),
+            workstreams: vec![],
+        },
+        &base_coverage(),
+    );
+    assert!(result.is_ok(), "empty user should not cause error");
+}
+
+#[test]
+fn render_workstream_with_zero_stats_succeeds() {
+    let renderer = MarkdownRenderer::new();
+    let ws = WorkstreamsFile {
+        version: 1,
+        generated_at: Utc::now(),
+        workstreams: vec![Workstream {
+            id: WorkstreamId::from_parts(["ws", "zero"]),
+            title: "Zero Stats Workstream".into(),
+            summary: None,
+            tags: vec![],
+            stats: WorkstreamStats {
+                pull_requests: 0,
+                reviews: 0,
+                manual_events: 0,
+            },
+            events: vec![],
+            receipts: vec![],
+        }],
+    };
+
+    let result = renderer.render_packet_markdown(
+        "dev",
+        "2025-01-01..2025-02-01",
+        &[],
+        &ws,
+        &base_coverage(),
+    );
+    let md = result.unwrap();
+    assert!(
+        md.contains("Zero Stats Workstream"),
+        "zero-stats workstream should still appear"
+    );
+}
+
+#[test]
+fn render_workstream_with_very_long_title_does_not_panic() {
+    let renderer = MarkdownRenderer::new();
+    let long_title = "A".repeat(10_000);
+    let ws = WorkstreamsFile {
+        version: 1,
+        generated_at: Utc::now(),
+        workstreams: vec![Workstream {
+            id: WorkstreamId::from_parts(["ws", "long"]),
+            title: long_title.clone(),
+            summary: Some("B".repeat(50_000)),
+            tags: vec![],
+            stats: WorkstreamStats {
+                pull_requests: 0,
+                reviews: 0,
+                manual_events: 0,
+            },
+            events: vec![],
+            receipts: vec![],
+        }],
+    };
+
+    let result = renderer.render_packet_markdown(
+        "dev",
+        "2025-01-01..2025-02-01",
+        &[],
+        &ws,
+        &base_coverage(),
+    );
+    let md = result.unwrap();
+    assert!(
+        md.contains(&long_title[..100]),
+        "long title should appear in output"
+    );
+}
+
+#[test]
+fn render_multiple_warnings_all_appear_in_output() {
+    let renderer = MarkdownRenderer::new();
+    let coverage = CoverageManifest {
+        warnings: vec![
+            "Warning Alpha: first issue".into(),
+            "Warning Beta: second issue".into(),
+            "Warning Gamma: third issue".into(),
+        ],
+        completeness: Completeness::Partial,
+        ..base_coverage()
+    };
+
+    let result = renderer.render_packet_markdown(
+        "dev",
+        "2025-01-01..2025-02-01",
+        &[],
+        &WorkstreamsFile {
+            version: 1,
+            generated_at: Utc::now(),
+            workstreams: vec![],
+        },
+        &coverage,
+    );
+
+    let md = result.unwrap();
+    assert!(md.contains("Warning Alpha"), "first warning should appear");
+    assert!(md.contains("Warning Beta"), "second warning should appear");
+    assert!(md.contains("Warning Gamma"), "third warning should appear");
+}
+
+#[test]
+fn render_section_order_coverage_first_changes_layout() {
+    use shiplog_render_md::SectionOrder;
+
+    let default_renderer = MarkdownRenderer::new();
+    let coverage_first_renderer =
+        MarkdownRenderer::new().with_section_order(SectionOrder::CoverageFirst);
+
+    let events = vec![pr_event("1", 1, "Test PR")];
+    let ws = WorkstreamsFile {
+        version: 1,
+        generated_at: Utc::now(),
+        workstreams: vec![],
+    };
+
+    let md_default = default_renderer
+        .render_packet_markdown(
+            "dev",
+            "2025-01-01..2025-02-01",
+            &events,
+            &ws,
+            &base_coverage(),
+        )
+        .unwrap();
+    let md_coverage = coverage_first_renderer
+        .render_packet_markdown(
+            "dev",
+            "2025-01-01..2025-02-01",
+            &events,
+            &ws,
+            &base_coverage(),
+        )
+        .unwrap();
+
+    // Both should succeed; layout should differ
+    assert_ne!(
+        md_default, md_coverage,
+        "different section orders should produce different output"
+    );
+}

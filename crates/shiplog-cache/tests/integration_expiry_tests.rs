@@ -25,7 +25,7 @@ fn stored_timestamps_follow_expiry_window_contract() {
         .query_row(
             "SELECT cached_at, expires_at FROM cache_entries WHERE key = ?1",
             ["contract-key"],
-            |row| Ok((row.get(0)?, row.get(1)?)),
+            |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
         )
         .unwrap();
 
@@ -60,7 +60,7 @@ fn negative_ttl_entries_are_expired_immediately() {
         .query_row(
             "SELECT cached_at, expires_at FROM cache_entries WHERE key = ?1",
             ["expired-key"],
-            |row| Ok((row.get(0)?, row.get(1)?)),
+            |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
         )
         .unwrap();
 

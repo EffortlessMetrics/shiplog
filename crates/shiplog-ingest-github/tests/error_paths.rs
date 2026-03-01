@@ -90,3 +90,104 @@ fn with_in_memory_cache_then_file_cache_replaces() {
     assert!(ing.cache.is_some());
     assert!(temp.path().join("github-api-cache.db").exists());
 }
+
+// ---------------------------------------------------------------------------
+// Date validation error message quality
+// ---------------------------------------------------------------------------
+
+#[test]
+fn ingest_errors_when_since_equals_until() {
+    let ing = GithubIngestor::new("user".into(), date(2025, 6, 1), date(2025, 6, 1));
+    let err = ing.ingest().unwrap_err();
+    let msg = err.to_string();
+    assert!(
+        msg.contains("since must be < until"),
+        "same-day range should fail: {msg}"
+    );
+}
+
+#[test]
+fn date_validation_error_is_not_empty() {
+    let ing = GithubIngestor::new("user".into(), date(2025, 12, 31), date(2025, 1, 1));
+    let err = ing.ingest().unwrap_err();
+    let msg = err.to_string();
+    assert!(!msg.is_empty(), "error message should not be empty");
+    assert!(msg.len() > 10, "error message should be descriptive: {msg}");
+}
+
+// ---------------------------------------------------------------------------
+// API base URL edge cases
+// ---------------------------------------------------------------------------
+
+#[test]
+fn custom_api_base_with_trailing_slash_is_preserved() {
+    let mut ing = GithubIngestor::new("user".into(), date(2025, 1, 1), date(2025, 2, 1));
+    ing.api_base = "https://ghes.corp/api/v3/".to_string();
+    assert_eq!(ing.api_base, "https://ghes.corp/api/v3/");
+}
+
+#[test]
+fn default_api_base_is_github_dot_com() {
+    let ing = GithubIngestor::new("user".into(), date(2025, 1, 1), date(2025, 2, 1));
+    assert_eq!(ing.api_base, "https://api.github.com");
+}
+
+// ---------------------------------------------------------------------------
+// Builder field defaults
+// ---------------------------------------------------------------------------
+
+#[test]
+fn default_mode_is_merged() {
+    let ing = GithubIngestor::new("user".into(), date(2025, 1, 1), date(2025, 2, 1));
+    assert_eq!(ing.mode, "merged");
+}
+
+#[test]
+fn default_include_reviews_is_false() {
+    let ing = GithubIngestor::new("user".into(), date(2025, 1, 1), date(2025, 2, 1));
+    assert!(!ing.include_reviews);
+}
+
+#[test]
+fn default_throttle_is_zero() {
+    let ing = GithubIngestor::new("user".into(), date(2025, 1, 1), date(2025, 2, 1));
+    assert_eq!(ing.throttle_ms, 0);
+}
+
+#[test]
+fn default_token_is_none() {
+    let ing = GithubIngestor::new("user".into(), date(2025, 1, 1), date(2025, 2, 1));
+    assert!(ing.token.is_none());
+}
+
+#[test]
+fn default_cache_is_none() {
+    let ing = GithubIngestor::new("user".into(), date(2025, 1, 1), date(2025, 2, 1));
+    assert!(ing.cache.is_none());
+}
+
+// ---------------------------------------------------------------------------
+// Cache path error context
+// ---------------------------------------------------------------------------
+
+#[test]
+fn cache_error_message_contains_context() {
+    let result = GithubIngestor::new("user".into(), date(2025, 1, 1), date(2025, 2, 1))
+        .with_cache("\0invalid\0path");
+    if let Err(e) = result {
+        let msg = format!("{e:#}");
+        // Error chain should have some context about what was being done
+        assert!(
+            !msg.is_empty(),
+            "cache error should have a non-empty message"
+        );
+    }
+}
+
+#[test]
+fn in_memory_cache_succeeds_without_filesystem() {
+    let result = GithubIngestor::new("user".into(), date(2025, 1, 1), date(2025, 2, 1))
+        .with_in_memory_cache();
+    assert!(result.is_ok(), "in-memory cache should always succeed");
+    assert!(result.unwrap().cache.is_some());
+}

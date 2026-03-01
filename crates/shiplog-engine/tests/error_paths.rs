@@ -434,3 +434,142 @@ fn merge_single_input_succeeds() {
     assert!(result.is_ok());
     assert_eq!(result.unwrap().events.len(), 1);
 }
+
+// ---------------------------------------------------------------------------
+// Error context message quality
+// ---------------------------------------------------------------------------
+
+#[test]
+fn run_to_invalid_dir_includes_path_in_error() {
+    let engine = real_engine();
+    let invalid = std::path::Path::new("H:\\this\\path\\does\\not\\exist\\nested\\deep");
+    let result = engine.run(
+        make_ingest(one_event()),
+        "tester",
+        "2025-01-01..2025-02-01",
+        invalid,
+        false,
+        &BundleProfile::Internal,
+    );
+    // Should fail creating the directory, and the error context should mention the path
+    // On Windows this may succeed (create_dir_all) so only assert if it fails
+    if let Err(e) = result {
+        let msg = format!("{e:#}");
+        assert!(
+            msg.contains("does\\not\\exist") || msg.contains("does/not/exist"),
+            "error should include the path: {msg}"
+        );
+    }
+}
+
+#[test]
+fn import_renderer_error_chain_preserves_cause() {
+    let dir = tempfile::tempdir().unwrap();
+    let out = dir.path().join("chain_test");
+
+    let renderer: &'static dyn Renderer = Box::leak(Box::new(FailingRenderer));
+    let clusterer: &'static dyn WorkstreamClusterer = Box::leak(Box::new(RepoClusterer));
+    let redactor: &'static dyn Redactor = Box::leak(Box::new(NoopRedactor));
+    let engine = Engine::new(renderer, clusterer, redactor);
+
+    let err = match engine.import(
+        make_ingest(one_event()),
+        "tester",
+        "2025-01-01..2025-02-01",
+        &out,
+        false,
+        None,
+        &BundleProfile::Internal,
+    ) {
+        Err(e) => e,
+        Ok(_) => panic!("expected renderer error for chain test"),
+    };
+
+    // The original cause "renderer exploded" should be reachable via the chain
+    let chain: Vec<String> = err.chain().map(|e| e.to_string()).collect();
+    assert!(
+        chain.iter().any(|msg| msg.contains("renderer exploded")),
+        "error chain should contain original cause: {chain:?}"
+    );
+}
+
+#[test]
+fn refresh_no_workstreams_error_message_is_actionable() {
+    let dir = tempfile::tempdir().unwrap();
+    let out = dir.path().join("no_ws");
+    std::fs::create_dir_all(&out).unwrap();
+
+    let engine = real_engine();
+    let err = match engine.refresh(
+        make_ingest(one_event()),
+        "tester",
+        "2025-01-01..2025-02-01",
+        &out,
+        false,
+        &BundleProfile::Internal,
+    ) {
+        Err(e) => e,
+        Ok(_) => panic!("expected no-workstreams error"),
+    };
+
+    let msg = err.to_string();
+    assert!(
+        msg.contains("collect"),
+        "error should suggest running collect: {msg}"
+    );
+}
+
+#[test]
+fn run_with_failing_renderer_still_writes_ledger_before_error() {
+    let dir = tempfile::tempdir().unwrap();
+    let out = dir.path().join("partial_write");
+
+    let renderer: &'static dyn Renderer = Box::leak(Box::new(FailingRenderer));
+    let clusterer: &'static dyn WorkstreamClusterer = Box::leak(Box::new(RepoClusterer));
+    let redactor: &'static dyn Redactor = Box::leak(Box::new(NoopRedactor));
+    let engine = Engine::new(renderer, clusterer, redactor);
+
+    let _ = engine.run(
+        make_ingest(one_event()),
+        "tester",
+        "2025-01-01..2025-02-01",
+        &out,
+        false,
+        &BundleProfile::Internal,
+    );
+
+    // Ledger is written before rendering, so it should exist even on render failure
+    let ledger = out.join("ledger.events.jsonl");
+    assert!(
+        ledger.exists(),
+        "ledger should be written before render step"
+    );
+}
+
+#[test]
+fn merge_empty_inputs_returns_error() {
+    let engine = real_engine();
+    let result = engine.merge(vec![], shiplog_engine::ConflictResolution::PreferFirst);
+    // Merging zero sources is an error condition
+    assert!(result.is_err(), "merging zero inputs should error");
+    let msg = result.unwrap_err().to_string();
+    assert!(!msg.is_empty(), "merge error should have a message");
+}
+
+#[test]
+fn run_empty_user_does_not_panic() {
+    let dir = tempfile::tempdir().unwrap();
+    let out = dir.path().join("empty_user");
+
+    let engine = real_engine();
+    let result = engine.run(
+        make_ingest(one_event()),
+        "",
+        "2025-01-01..2025-02-01",
+        &out,
+        false,
+        &BundleProfile::Internal,
+    );
+    // Should succeed (empty user is valid, just unusual)
+    assert!(result.is_ok());
+}
