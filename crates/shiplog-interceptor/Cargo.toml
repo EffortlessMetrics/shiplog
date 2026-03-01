@@ -7,6 +7,11 @@ license.workspace = true
 authors.workspace = true
 description = "Request/response interception utilities for shiplog."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-interceptor"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "interceptor", "pattern", "pipeline", "processing"]
+categories = ["development-tools", "rust-patterns"]
 
 [dependencies]
 anyhow.workspace = true

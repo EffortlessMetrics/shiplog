@@ -7,6 +7,11 @@ license.workspace = true
 authors.workspace = true
 description = "Latch and barrier utilities for synchronization in shiplog."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-latch"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "latch", "concurrency", "async", "synchronization"]
+categories = ["concurrency", "asynchronous"]
 
 [dependencies]
 tokio = { version = "1.49.0", features = ["rt", "rt-multi-thread", "macros", "sync"] }

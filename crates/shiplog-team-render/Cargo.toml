@@ -7,6 +7,7 @@ license.workspace = true
 authors.workspace = true
 description = "Team packet rendering contracts and markdown/template rendering for team aggregation."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-team-render"
 repository.workspace = true
 homepage.workspace = true
 keywords = ["team", "render", "aggregation", "packet", "template"]

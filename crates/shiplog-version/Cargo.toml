@@ -7,5 +7,10 @@ license.workspace = true
 authors.workspace = true
 description = "Version parsing and comparison utilities for shiplog."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-version"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "version", "configuration", "environment", "utility"]
+categories = ["development-tools", "config"]
 
 [dependencies]

@@ -7,6 +7,11 @@ license.workspace = true
 authors.workspace = true
 description = "Aggregation utilities for shiplog."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-aggregator"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "aggregator", "pattern", "pipeline", "processing"]
+categories = ["development-tools", "rust-patterns"]
 
 [dependencies]
 anyhow.workspace = true

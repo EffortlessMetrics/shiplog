@@ -7,6 +7,11 @@ license.workspace = true
 authors.workspace = true
 description = "Batching utilities for bulk shiplog operations."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-batcher"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "batcher", "messaging", "events", "pipeline"]
+categories = ["development-tools", "asynchronous"]
 
 [dependencies]
 anyhow.workspace = true

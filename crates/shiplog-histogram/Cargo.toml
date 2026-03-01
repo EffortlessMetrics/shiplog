@@ -7,6 +7,11 @@ license.workspace = true
 authors.workspace = true
 description = "Histogram utilities for metrics."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-histogram"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "histogram", "statistics", "metrics", "observability"]
+categories = ["development-tools"]
 
 [dependencies]
 anyhow.workspace = true

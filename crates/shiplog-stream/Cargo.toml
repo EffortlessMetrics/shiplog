@@ -7,6 +7,11 @@ license.workspace = true
 authors.workspace = true
 description = "Stream utilities for shiplog."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-stream"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "stream", "streaming", "pipeline", "data-processing"]
+categories = ["development-tools", "data-structures"]
 
 [dependencies]
 tokio = { version = "1.49.0", features = ["rt", "macros"] }

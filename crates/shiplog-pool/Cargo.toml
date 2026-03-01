@@ -7,6 +7,11 @@ license.workspace = true
 authors.workspace = true
 description = "Object pooling utilities for shiplog."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-pool"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "pool", "concurrency", "async", "synchronization"]
+categories = ["concurrency", "asynchronous"]
 
 [dependencies]
 anyhow.workspace = true

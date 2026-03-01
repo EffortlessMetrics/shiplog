@@ -7,6 +7,11 @@ license.workspace = true
 authors.workspace = true
 description = "Dependency resolution utilities for shiplog."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-resolver"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "resolver", "pattern", "pipeline", "processing"]
+categories = ["development-tools", "rust-patterns"]
 
 [dependencies]
 anyhow.workspace = true

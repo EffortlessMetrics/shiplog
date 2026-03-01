@@ -6,6 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 authors.workspace = true
 description = "Prompt formatting helpers for LLM workstream clustering."
+documentation = "https://docs.rs/shiplog-cluster-llm-prompt"
 repository.workspace = true
 homepage.workspace = true
 keywords = ["llm", "clustering", "workstreams", "prompt", "text-processing"]

@@ -7,6 +7,11 @@ license.workspace = true
 authors.workspace = true
 description = "Channel utilities for shiplog."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-channel"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "channel", "concurrency", "async", "synchronization"]
+categories = ["concurrency", "asynchronous"]
 
 [dependencies]
 tokio = { version = "1.49.0", features = ["rt", "macros", "sync"] }

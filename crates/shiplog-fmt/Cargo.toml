@@ -7,6 +7,11 @@ license.workspace = true
 authors.workspace = true
 description = "Formatting utilities for shiplog."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-fmt"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "fmt", "text", "parsing", "utility"]
+categories = ["development-tools", "text-processing"]
 
 [dependencies]
 anyhow.workspace = true

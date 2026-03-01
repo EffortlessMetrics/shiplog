@@ -7,6 +7,11 @@ license.workspace = true
 authors.workspace = true
 description = "Counter utilities for shiplog."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-counter"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "counter", "statistics", "metrics", "observability"]
+categories = ["development-tools"]
 
 [dependencies]
 anyhow.workspace = true

@@ -7,6 +7,11 @@ license.workspace = true
 authors.workspace = true
 description = "Cryptographic utilities for shiplog (hashing, encryption)."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-crypto"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "crypto", "security", "authentication", "cryptography"]
+categories = ["authentication", "cryptography"]
 
 [dependencies]
 anyhow.workspace = true

@@ -7,6 +7,11 @@ license.workspace = true
 authors.workspace = true
 description = "Report generation from workstream data."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-report"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "report", "reporting", "summary", "output"]
+categories = ["development-tools"]
 
 [dependencies]
 anyhow.workspace = true

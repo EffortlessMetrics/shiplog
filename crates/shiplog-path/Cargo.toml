@@ -7,6 +7,11 @@ license.workspace = true
 authors.workspace = true
 description = "Path handling utilities for shiplog."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-path"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "path", "encoding", "utility", "conversion"]
+categories = ["development-tools", "encoding"]
 
 [dependencies]
 

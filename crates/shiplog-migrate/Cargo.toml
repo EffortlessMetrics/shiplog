@@ -7,6 +7,11 @@ license.workspace = true
 authors.workspace = true
 description = "Schema migration utilities for shiplog."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-migrate"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "migrate", "migration", "schema", "versioning"]
+categories = ["development-tools"]
 
 [dependencies]
 anyhow.workspace = true

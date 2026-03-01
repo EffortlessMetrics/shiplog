@@ -7,6 +7,11 @@ license.workspace = true
 authors.workspace = true
 description = "Authentication and authorization utilities for shiplog."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-auth"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "auth", "security", "authentication", "cryptography"]
+categories = ["authentication", "cryptography"]
 
 [dependencies]
 anyhow.workspace = true

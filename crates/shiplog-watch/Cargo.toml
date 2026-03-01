@@ -7,6 +7,11 @@ license.workspace = true
 authors.workspace = true
 description = "File system watching for changes in shiplog."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-watch"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "watch", "filesystem", "monitoring", "events"]
+categories = ["development-tools", "filesystem"]
 
 [dependencies]
 anyhow.workspace = true

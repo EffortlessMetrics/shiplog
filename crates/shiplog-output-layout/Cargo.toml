@@ -7,6 +7,7 @@ license.workspace = true
 authors.workspace = true
 description = "Canonical artifact layout and path contracts for shiplog."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-output-layout"
 repository.workspace = true
 homepage.workspace = true
 keywords = ["shiplog", "artifacts", "paths", "contracts", "interop"]

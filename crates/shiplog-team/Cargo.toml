@@ -7,6 +7,11 @@ license.workspace = true
 authors.workspace = true
 description = "Team aggregation mode for generating team-level shipping summaries."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-team"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "team", "aggregation", "multi-user", "reporting"]
+categories = ["development-tools"]
 
 [dependencies]
 shiplog-team-aggregate = { path = "../shiplog-team-aggregate", version = "0.2.1" }

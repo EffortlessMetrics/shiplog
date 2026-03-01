@@ -7,6 +7,11 @@ license.workspace = true
 authors.workspace = true
 description = "Statistics and analytics on events/workstreams."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-stats"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "stats", "statistics", "metrics", "observability"]
+categories = ["development-tools"]
 
 [dependencies]
 anyhow.workspace = true

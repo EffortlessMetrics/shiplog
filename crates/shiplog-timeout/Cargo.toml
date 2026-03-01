@@ -7,6 +7,11 @@ license.workspace = true
 authors.workspace = true
 description = "Timeout utilities for shiplog."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-timeout"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "timeout", "concurrency", "async", "synchronization"]
+categories = ["concurrency", "asynchronous"]
 
 [dependencies]
 tokio = { version = "1.49.0", features = ["rt", "macros", "time", "sync"] }

@@ -7,6 +7,11 @@ license.workspace = true
 authors.workspace = true
 description = "Configuration management and loading for shiplog."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-config"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "config", "configuration", "environment", "utility"]
+categories = ["development-tools", "config"]
 
 [dependencies]
 anyhow.workspace = true

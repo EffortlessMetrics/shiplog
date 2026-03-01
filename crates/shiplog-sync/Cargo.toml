@@ -7,6 +7,11 @@ license.workspace = true
 authors.workspace = true
 description = "Synchronization utilities for remote sources."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-sync"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "sync", "synchronization", "data", "consistency"]
+categories = ["development-tools"]
 
 [dependencies]
 anyhow.workspace = true

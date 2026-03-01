@@ -7,6 +7,11 @@ license.workspace = true
 authors.workspace = true
 description = "Health check utilities for shiplog."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-health"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "health", "healthcheck", "monitoring", "utility"]
+categories = ["development-tools"]
 
 [dependencies]
 tokio = { workspace = true, features = ["sync", "time"] }

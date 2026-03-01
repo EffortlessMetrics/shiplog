@@ -7,6 +7,11 @@ license.workspace = true
 authors.workspace = true
 description = "Metering utilities for shiplog."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-meter"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "meter", "statistics", "metrics", "observability"]
+categories = ["development-tools"]
 
 [dependencies]
 anyhow.workspace = true

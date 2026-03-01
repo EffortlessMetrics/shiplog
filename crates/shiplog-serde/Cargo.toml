@@ -7,6 +7,11 @@ license.workspace = true
 authors.workspace = true
 description = "Serialization/deserialization utilities for shiplog."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-serde"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "serde", "text", "parsing", "utility"]
+categories = ["development-tools", "text-processing"]
 
 [dependencies]
 anyhow.workspace = true

@@ -7,6 +7,11 @@ license.workspace = true
 authors.workspace = true
 description = "URL parsing and utilities for shiplog."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-url"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "url", "encoding", "utility", "conversion"]
+categories = ["development-tools", "encoding"]
 
 [dependencies]
 url.workspace = true

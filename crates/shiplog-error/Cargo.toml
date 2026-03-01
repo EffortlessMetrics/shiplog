@@ -7,6 +7,11 @@ license.workspace = true
 authors.workspace = true
 description = "Error handling utilities for shiplog."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-error"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "error", "error-handling", "anyhow", "utility"]
+categories = ["development-tools", "rust-patterns"]
 
 [dependencies]
 anyhow.workspace = true

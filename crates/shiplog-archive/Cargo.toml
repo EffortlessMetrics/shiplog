@@ -7,6 +7,11 @@ license.workspace = true
 authors.workspace = true
 description = "Archive/compress old packets."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-archive"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "archive", "storage", "io", "filesystem"]
+categories = ["development-tools", "filesystem"]
 
 [dependencies]
 anyhow.workspace = true
