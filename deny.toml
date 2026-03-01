@@ -28,11 +28,6 @@ expression = "MIT AND ISC AND OpenSSL"
 license-files = [{ path = "LICENSE", hash = 0xbd0c0542 }]
 
 [[licenses.clarify]]
-name = "cssparser"
-expression = "MPL-2.0"
-license-files = [{ path = "LICENSE", hash = 0x0ea32916 }]
-
-[[licenses.clarify]]
 name = "web-sys"
 expression = "MIT OR Apache-2.0 OR MPL-2.0"
 license-files = [{ path = "LICENSE-MIT", hash = 0xeb3b9901 }]
@@ -62,5 +57,6 @@ unknown-registry = "deny"
 unknown-git = "deny"
 allow-registry = [
     "https://github.com/rust-lang/crates.io-index",
+    "https://index.crates.io",
 ]
 allow-git = []
