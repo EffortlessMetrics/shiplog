@@ -486,7 +486,7 @@ fn run_propagates_renderer_error() {
     };
 
     assert!(
-        err.to_string().contains("renderer exploded"),
+        format!("{err:#}").contains("renderer exploded"),
         "unexpected error: {err}"
     );
 }
@@ -518,7 +518,7 @@ fn run_propagates_clusterer_error_when_no_workstreams_file() {
     };
 
     assert!(
-        err.to_string().contains("clusterer exploded"),
+        format!("{err:#}").contains("clusterer exploded"),
         "unexpected error: {err}"
     );
 }
@@ -550,7 +550,7 @@ fn run_propagates_redactor_error() {
     };
 
     assert!(
-        err.to_string().contains("redactor exploded"),
+        format!("{err:#}").contains("redactor exploded"),
         "unexpected error: {err}"
     );
 }
