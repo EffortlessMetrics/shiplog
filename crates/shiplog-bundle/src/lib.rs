@@ -65,7 +65,9 @@ pub fn write_bundle_manifest(
     let mut files = Vec::new();
 
     for path in walk_files(out_dir, profile)? {
-        let bytes = std::fs::metadata(&path)?.len();
+        let bytes = std::fs::metadata(&path)
+            .with_context(|| format!("read metadata for {path:?}"))?
+            .len();
         let sha256 = sha256_file(&path)?;
         let rel = path
             .strip_prefix(out_dir)
@@ -87,8 +89,9 @@ pub fn write_bundle_manifest(
         files,
     };
 
-    let text = serde_json::to_string_pretty(&manifest)?;
-    std::fs::write(out_dir.join(FILE_BUNDLE_MANIFEST_JSON), text)?;
+    let text = serde_json::to_string_pretty(&manifest).context("serialize bundle manifest")?;
+    std::fs::write(out_dir.join(FILE_BUNDLE_MANIFEST_JSON), text)
+        .context("write bundle.manifest.json")?;
     Ok(manifest)
 }
 
@@ -122,23 +125,24 @@ pub fn write_zip(out_dir: &Path, zip_path: &Path, profile: &BundleProfile) -> Re
             .to_string_lossy()
             .replace('\\', "/");
 
-        zip.start_file(rel, opts)?;
-        let mut f = File::open(&path)?;
+        zip.start_file(rel, opts).context("start zip entry")?;
+        let mut f = File::open(&path).with_context(|| format!("open {path:?} for zip"))?;
         let mut buf = Vec::new();
-        f.read_to_end(&mut buf)?;
-        zip.write_all(&buf)?;
+        f.read_to_end(&mut buf)
+            .with_context(|| format!("read {path:?}"))?;
+        zip.write_all(&buf).context("write zip entry")?;
     }
 
-    zip.finish()?;
+    zip.finish().context("finalize zip archive")?;
     Ok(())
 }
 
 fn sha256_file(path: &Path) -> Result<String> {
-    let mut f = File::open(path)?;
+    let mut f = File::open(path).with_context(|| format!("open {path:?} for hashing"))?;
     let mut h = Sha256::new();
     let mut buf = [0u8; 8192];
     loop {
-        let n = f.read(&mut buf)?;
+        let n = f.read(&mut buf).with_context(|| format!("read {path:?}"))?;
         if n == 0 {
             break;
         }
@@ -151,8 +155,8 @@ fn walk_files(root: &Path, profile: &BundleProfile) -> Result<Vec<PathBuf>> {
     let mut out = Vec::new();
     let mut stack = vec![root.to_path_buf()];
     while let Some(p) = stack.pop() {
-        for entry in std::fs::read_dir(&p)? {
-            let entry = entry?;
+        for entry in std::fs::read_dir(&p).with_context(|| format!("read directory {p:?}"))? {
+            let entry = entry.with_context(|| format!("read entry in {p:?}"))?;
             let path = entry.path();
             if path.is_dir() {
                 stack.push(path);
