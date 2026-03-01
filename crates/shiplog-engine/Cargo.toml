@@ -50,6 +50,7 @@ shiplog-render-md = { path = "../shiplog-render-md", version = "0.2.1" }
 shiplog-render-json = { path = "../shiplog-render-json", version = "0.2.1" }
 shiplog-redact = { path = "../shiplog-redact", version = "0.2.1" }
 serde_json.workspace = true
+shiplog-ingest-json = { path = "../shiplog-ingest-json", version = "0.2.1" }
 
 [lints]
 workspace = true
