@@ -42,6 +42,8 @@ serde_json.workspace = true
 serde_yaml.workspace = true
 anyhow.workspace = true
 chrono.workspace = true
+assert_cmd.workspace = true
+predicates.workspace = true
 shiplog-engine = { path = "../../crates/shiplog-engine", version = "0.2.1" }
 shiplog-ingest-json = { path = "../../crates/shiplog-ingest-json", version = "0.2.1" }
 shiplog-ingest-manual = { path = "../../crates/shiplog-ingest-manual", version = "0.2.1" }
