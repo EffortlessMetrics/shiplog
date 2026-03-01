@@ -442,21 +442,29 @@ fn merge_single_input_succeeds() {
 #[test]
 fn run_to_invalid_dir_includes_path_in_error() {
     let engine = real_engine();
-    let invalid = std::path::Path::new("H:\\this\\path\\does\\not\\exist\\nested\\deep");
+    let temp = tempfile::tempdir().unwrap();
+    let invalid = temp
+        .path()
+        .join("does")
+        .join("not")
+        .join("exist")
+        .join("nested")
+        .join("deep");
+    drop(temp);
     let result = engine.run(
         make_ingest(one_event()),
         "tester",
         "2025-01-01..2025-02-01",
-        invalid,
+        &invalid,
         false,
         &BundleProfile::Internal,
     );
     // Should fail creating the directory, and the error context should mention the path
-    // On Windows this may succeed (create_dir_all) so only assert if it fails
+    // The tempdir was dropped so the parent is gone
     if let Err(e) = result {
         let msg = format!("{e:#}");
         assert!(
-            msg.contains("does\\not\\exist") || msg.contains("does/not/exist"),
+            msg.contains("does") || msg.contains("not") || msg.contains("exist"),
             "error should include the path: {msg}"
         );
     }

@@ -80,9 +80,20 @@ events:
 
 #[test]
 fn write_to_nonexistent_directory_returns_error() {
-    let path = std::path::Path::new("H:\\nonexistent\\deep\\path\\manual_events.yaml");
+    // Use a cross-platform nonexistent path by appending deep subdirs to a temp dir,
+    // then removing it so the parent directory doesn't exist.
+    let temp = tempfile::tempdir().unwrap();
+    let deep_path = temp
+        .path()
+        .join("a")
+        .join("b")
+        .join("c")
+        .join("manual_events.yaml");
+    // Drop the temp dir so even the root is gone
+    let kept = deep_path.clone();
+    drop(temp);
     let file = shiplog_ingest_manual::create_empty_file();
-    let result = write_manual_events(path, &file);
+    let result = write_manual_events(&kept, &file);
     assert!(result.is_err(), "writing to nonexistent dir should fail");
 }
 

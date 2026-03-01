@@ -7,7 +7,6 @@ use shiplog_bundle::{write_bundle_manifest, write_zip};
 use shiplog_ids::RunId;
 use shiplog_schema::bundle::BundleProfile;
 use std::fs::File;
-use std::path::Path;
 
 // ---------------------------------------------------------------------------
 // sha256_file on non-existent file (tested indirectly via manifest)
@@ -15,10 +14,12 @@ use std::path::Path;
 
 #[test]
 fn write_bundle_manifest_on_nonexistent_dir_errors() {
-    let nonexistent = Path::new("H:\\this\\path\\does\\not\\exist\\at\\all");
+    let temp = tempfile::tempdir().unwrap();
+    let nonexistent = temp.path().join("does").join("not").join("exist");
+    drop(temp);
     let run_id = RunId::now("test");
 
-    let result = write_bundle_manifest(nonexistent, &run_id, &BundleProfile::Internal);
+    let result = write_bundle_manifest(&nonexistent, &run_id, &BundleProfile::Internal);
     assert!(result.is_err(), "should fail on nonexistent directory");
 }
 
@@ -66,9 +67,11 @@ fn write_zip_to_invalid_path_errors() {
 fn write_zip_on_nonexistent_source_dir_errors() {
     let dir = tempfile::tempdir().unwrap();
     let zip_path = dir.path().join("output.zip");
-    let nonexistent = Path::new("H:\\no\\such\\dir\\for\\zip");
+    let temp2 = tempfile::tempdir().unwrap();
+    let nonexistent = temp2.path().join("no").join("such").join("dir");
+    drop(temp2);
 
-    let result = write_zip(nonexistent, &zip_path, &BundleProfile::Internal);
+    let result = write_zip(&nonexistent, &zip_path, &BundleProfile::Internal);
     assert!(result.is_err(), "non-existent source dir should fail");
 }
 
@@ -162,8 +165,10 @@ fn write_zip_error_message_includes_path_context() {
     std::fs::write(dir.path().join("packet.md"), "# Test").unwrap();
 
     // Use a path where the parent directory doesn't exist
-    let invalid_zip = Path::new("H:\\no\\such\\parent\\dir\\for\\output.zip");
-    if let Err(e) = write_zip(dir.path(), invalid_zip, &BundleProfile::Internal) {
+    let temp3 = tempfile::tempdir().unwrap();
+    let invalid_zip = temp3.path().join("no").join("such").join("output.zip");
+    drop(temp3);
+    if let Err(e) = write_zip(dir.path(), &invalid_zip, &BundleProfile::Internal) {
         let msg = format!("{e:#}");
         // The error context should mention "create zip"
         assert!(
@@ -175,10 +180,12 @@ fn write_zip_error_message_includes_path_context() {
 
 #[test]
 fn write_bundle_manifest_error_chain_has_io_cause() {
-    let nonexistent = Path::new("H:\\absolutely\\no\\such\\path\\ever");
+    let temp4 = tempfile::tempdir().unwrap();
+    let nonexistent = temp4.path().join("absolutely").join("no").join("such");
+    drop(temp4);
     let run_id = RunId::now("test");
 
-    let err = write_bundle_manifest(nonexistent, &run_id, &BundleProfile::Internal).unwrap_err();
+    let err = write_bundle_manifest(&nonexistent, &run_id, &BundleProfile::Internal).unwrap_err();
     let chain: Vec<String> = err.chain().map(|e| e.to_string()).collect();
     assert!(
         !chain.is_empty(),
