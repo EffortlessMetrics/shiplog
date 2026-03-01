@@ -26,6 +26,8 @@ jobs:
           components: rustfmt, clippy
 
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "check-${{ matrix.os }}"
 
       - name: Check formatting
         if: matrix.os == 'ubuntu-latest'
@@ -37,9 +39,57 @@ jobs:
       - name: Run tests
         run: cargo test --workspace
 
+      - name: Doc-tests
+        run: cargo test --doc --workspace
+
+      - name: Build docs
+        if: matrix.os == 'ubuntu-latest'
+        run: cargo doc --workspace --no-deps
+        env:
+          RUSTDOCFLAGS: "-D warnings"
+
       - name: Build release
         run: cargo build --workspace --release
 
       - name: Publish dry-run (canary)
         if: matrix.os == 'ubuntu-latest'
         run: cargo publish -p shiplog-ids --dry-run
+
+  deny:
+    name: cargo-deny
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.92"
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "deny"
+
+      - name: Install cargo-deny
+        run: cargo install cargo-deny --locked
+
+      - name: cargo deny check
+        run: cargo deny check
+
+  msrv:
+    name: MSRV (1.92)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install MSRV toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.92"
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "msrv"
+
+      - name: Check workspace compiles on MSRV
+        run: cargo check --workspace --all-features
