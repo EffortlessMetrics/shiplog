@@ -63,8 +63,12 @@ fn empty_key_produces_deterministic_output() {
     let r1 = DeterministicRedactor::new(b"");
     let r2 = DeterministicRedactor::new(b"");
     let ev = make_event("test title", "org/repo");
-    let out1 = r1.redact_events(&[ev.clone()], "public").unwrap();
-    let out2 = r2.redact_events(&[ev], "public").unwrap();
+    let out1 = r1
+        .redact_events(std::slice::from_ref(&ev), "public")
+        .unwrap();
+    let out2 = r2
+        .redact_events(std::slice::from_ref(&ev), "public")
+        .unwrap();
     let json1 = serde_json::to_string(&out1).unwrap();
     let json2 = serde_json::to_string(&out2).unwrap();
     assert_eq!(json1, json2, "empty key should still be deterministic");
@@ -139,8 +143,12 @@ fn different_keys_produce_different_aliases() {
     let r1 = DeterministicRedactor::new(b"key-alpha");
     let r2 = DeterministicRedactor::new(b"key-beta");
     let ev = make_event("same title", "same/repo");
-    let out1 = r1.redact_events(&[ev.clone()], "public").unwrap();
-    let out2 = r2.redact_events(&[ev], "public").unwrap();
+    let out1 = r1
+        .redact_events(std::slice::from_ref(&ev), "public")
+        .unwrap();
+    let out2 = r2
+        .redact_events(std::slice::from_ref(&ev), "public")
+        .unwrap();
     assert_ne!(out1[0].repo.full_name, out2[0].repo.full_name);
 }
 
