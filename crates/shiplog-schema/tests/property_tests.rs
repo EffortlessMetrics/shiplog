@@ -272,3 +272,45 @@ proptest! {
         prop_assert_eq!(payload, back);
     }
 }
+
+// ============================================================================
+// SourceSystem Case-Insensitive Parsing Tests
+// ============================================================================
+
+proptest! {
+    // SourceSystem::from_str_lossy is case-insensitive for known variants.
+    #[test]
+    fn prop_source_system_case_insensitive(
+        variant in prop_oneof![
+            Just("github"), Just("GITHUB"), Just("Github"), Just("GiThUb"),
+            Just("manual"), Just("MANUAL"), Just("Manual"),
+            Just("unknown"), Just("UNKNOWN"), Just("Unknown"),
+            Just("json_import"), Just("JSONIMPORT"), Just("JsonImport"),
+            Just("local_git"), Just("LOCALGIT"), Just("LocalGit"),
+        ]
+    ) {
+        let parsed = SourceSystem::from_str_lossy(variant);
+        let lower = variant.to_ascii_lowercase();
+        let canonical = SourceSystem::from_str_lossy(&lower);
+        prop_assert_eq!(parsed, canonical, "from_str_lossy should be case-insensitive");
+    }
+
+    // SourceSystem Display output matches as_str().
+    #[test]
+    fn prop_source_system_display_equals_as_str(
+        ss in shiplog_testkit::proptest::base_strategy_source_system()
+    ) {
+        let display = format!("{}", ss);
+        prop_assert_eq!(display, ss.as_str());
+    }
+
+    // Full EventEnvelope JSON roundtrip preserves full structural equality.
+    #[test]
+    fn prop_event_envelope_full_equality_json_roundtrip(
+        event in shiplog_testkit::proptest::strategy_event_envelope()
+    ) {
+        let json = serde_json::to_string(&event).unwrap();
+        let back: EventEnvelope = serde_json::from_str(&json).unwrap();
+        prop_assert_eq!(&event, &back);
+    }
+}

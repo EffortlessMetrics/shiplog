@@ -289,3 +289,55 @@ proptest! {
         prop_assert!(any_repo_differs, "Different keys should produce different repo aliases");
     }
 }
+
+// ============================================================================
+// Additional Redaction Invariant Tests
+// ============================================================================
+
+proptest! {
+    // Public redacted events preserve their EventId (structural identity stable through redaction).
+    #[test]
+    fn prop_public_redaction_preserves_event_ids(
+        events in strategy_event_vec(10),
+        key_bytes in proptest::collection::vec(any::<u8>(), 1..32)
+    ) {
+        let r = shiplog_redact::DeterministicRedactor::new(&key_bytes);
+        let redacted = r.redact_events(&events, "public").unwrap();
+
+        for (orig, red) in events.iter().zip(redacted.iter()) {
+            prop_assert_eq!(&orig.id, &red.id, "EventId must be stable through public redaction");
+        }
+    }
+
+    // Manager redaction is deterministic with the same key.
+    #[test]
+    fn prop_manager_redaction_deterministic(
+        events in strategy_event_vec(15),
+        key_bytes in proptest::collection::vec(any::<u8>(), 1..32)
+    ) {
+        let r1 = shiplog_redact::DeterministicRedactor::new(&key_bytes);
+        let r2 = shiplog_redact::DeterministicRedactor::new(&key_bytes);
+
+        let out1 = r1.redact_events(&events, "manager").unwrap();
+        let out2 = r2.redact_events(&events, "manager").unwrap();
+
+        prop_assert_eq!(out1, out2);
+    }
+
+    // Redaction preserves event ordering (position-stable).
+    #[test]
+    fn prop_redaction_preserves_event_order(
+        events in strategy_event_vec(20),
+        key_bytes in proptest::collection::vec(any::<u8>(), 1..32),
+        profile in prop_oneof![Just("internal"), Just("manager"), Just("public")]
+    ) {
+        let r = shiplog_redact::DeterministicRedactor::new(&key_bytes);
+        let redacted = r.redact_events(&events, profile).unwrap();
+
+        prop_assert_eq!(events.len(), redacted.len());
+        for (orig, red) in events.iter().zip(redacted.iter()) {
+            // Event kind must be preserved regardless of profile.
+            prop_assert_eq!(&orig.kind, &red.kind);
+        }
+    }
+}

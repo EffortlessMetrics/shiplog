@@ -244,3 +244,41 @@ proptest! {
         );
     }
 }
+
+// ============================================================================
+// Additional Algebraic Property Tests
+// ============================================================================
+
+proptest! {
+    // EventId hex string decodes to exactly 32 bytes (valid SHA-256 digest).
+    #[test]
+    fn prop_event_id_decodes_to_32_bytes(parts in proptest::collection::vec(".*", 0..5)) {
+        let id = EventId::from_parts(parts.iter().map(|s| s.as_str()).collect::<Vec<_>>().as_slice());
+        let bytes = hex::decode(id.to_string()).expect("valid hex");
+        prop_assert_eq!(bytes.len(), 32);
+    }
+
+    // EventId and WorkstreamId from identical parts share the same underlying hash.
+    #[test]
+    fn prop_event_and_workstream_same_hash(parts in proptest::collection::vec("[a-zA-Z0-9]{1,20}", 1..4)) {
+        let refs: Vec<&str> = parts.iter().map(|s| s.as_str()).collect();
+        let eid = EventId::from_parts(refs.as_slice());
+        let wid = WorkstreamId::from_parts(refs.as_slice());
+        prop_assert_eq!(eid.to_string(), wid.to_string());
+    }
+
+    // Appending an extra part always changes the EventId.
+    #[test]
+    fn prop_event_id_extra_part_changes_hash(
+        base in proptest::collection::vec("[a-zA-Z0-9]{1,20}", 1..4),
+        extra in "[a-zA-Z0-9]{1,20}"
+    ) {
+        let refs: Vec<&str> = base.iter().map(|s| s.as_str()).collect();
+        let id_base = EventId::from_parts(refs.as_slice());
+        let mut extended = base.clone();
+        extended.push(extra);
+        let refs2: Vec<&str> = extended.iter().map(|s| s.as_str()).collect();
+        let id_extended = EventId::from_parts(refs2.as_slice());
+        prop_assert_ne!(id_base, id_extended);
+    }
+}

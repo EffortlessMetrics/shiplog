@@ -235,3 +235,48 @@ proptest! {
         }
     }
 }
+
+// ============================================================================
+// Additional Clustering Algebraic Property Tests
+// ============================================================================
+
+// Empty input must produce zero workstreams.
+#[test]
+fn prop_empty_input_produces_no_workstreams() {
+    let ws = clustered_workstreams(&[]);
+    assert!(ws.is_empty());
+}
+
+proptest! {
+    // Number of workstreams equals number of distinct repos.
+    #[test]
+    fn prop_workstream_count_equals_distinct_repos(
+        events in strategy_event_vec(50)
+    ) {
+        let workstreams = clustered_workstreams(&events);
+        let distinct_repos: std::collections::HashSet<&str> =
+            events.iter().map(|e| e.repo.full_name.as_str()).collect();
+        prop_assert_eq!(workstreams.len(), distinct_repos.len());
+    }
+
+    // Total events across all workstreams equals the input event count.
+    #[test]
+    fn prop_total_event_count_matches_input(
+        events in strategy_event_vec(50)
+    ) {
+        let workstreams = clustered_workstreams(&events);
+        let total: usize = workstreams.iter().map(|ws| ws.events.len()).sum();
+        prop_assert_eq!(total, events.len());
+    }
+
+    // Each workstream has a non-empty events list (no phantom workstreams).
+    #[test]
+    fn prop_no_empty_workstreams(
+        events in strategy_event_vec(50)
+    ) {
+        let workstreams = clustered_workstreams(&events);
+        for ws in &workstreams {
+            prop_assert!(!ws.events.is_empty(), "workstream '{}' has zero events", ws.title);
+        }
+    }
+}
