@@ -6,8 +6,12 @@ This roadmap is organized by horizon rather than dates. Items move between horiz
 
 Active development. These items are in progress or planned for the next minor release.
 
+- ✅ **Local git ingest adapter** (`shiplog-ingest-git`) -- Ingest commit history directly from a local git repository without going through the GitHub API.
+- ✅ **GitLab ingest adapter** (`shiplog-ingest-gitlab`) -- Merge request and review ingestion from GitLab, including self-hosted instances.
+- ✅ **Jira ingest adapter** (`shiplog-ingest-jira`) -- Pull issue and ticket data as evidence alongside code activity.
+- ✅ **Linear ingest adapter** (`shiplog-ingest-linear`) -- Pull issue data from Linear via GraphQL API.
+- ✅ **Configurable packet templates** (`shiplog-template`) -- User-defined templates for packet rendering.
 - **Binary releases via GitHub Actions** -- Pre-built binaries for Linux, macOS, and Windows so users do not need a Rust toolchain to install shiplog.
-- **Local git ingest adapter** (`shiplog-ingest-git`) -- Ingest commit history directly from a local git repository without going through the GitHub API.
 - **Improved packet formatting** -- Better Markdown structure, configurable section ordering, and cleaner receipt presentation.
 - **Cache improvements** -- TTL configuration, cache size limits, and cache inspection commands.
 
@@ -15,10 +19,7 @@ Active development. These items are in progress or planned for the next minor re
 
 Planned after current work stabilizes. Design may still evolve.
 
-- **GitLab ingest adapter** -- Merge request and review ingestion from GitLab, including self-hosted instances.
-- **Jira/Linear ingest adapter** -- Pull issue and ticket data as evidence alongside code activity.
 - **Multi-source merging** -- Combine events from multiple sources (e.g., GitHub + manual + Jira) into a single coherent packet with unified coverage tracking.
-- **Configurable packet templates** -- User-defined Markdown templates for packet rendering, replacing the built-in layout.
 - **LLM clustering as default feature** -- Move LLM-assisted clustering out of feature-gate once the interface stabilizes.
 
 ## Later (exploratory)
