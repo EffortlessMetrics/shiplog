@@ -16,3 +16,6 @@ categories = ["development-tools", "data-structures"]
 [dependencies]
 anyhow.workspace = true
 chrono.workspace = true
+
+[lints]
+workspace = true

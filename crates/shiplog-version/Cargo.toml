@@ -14,3 +14,6 @@ keywords = ["shiplog", "version", "configuration", "environment", "utility"]
 categories = ["development-tools", "config"]
 
 [dependencies]
+
+[lints]
+workspace = true

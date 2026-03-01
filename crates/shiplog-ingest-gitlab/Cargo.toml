@@ -32,3 +32,6 @@ shiplog-cache-key = { path = "../shiplog-cache-key", version = "0.2.1" }
 tempfile.workspace = true
 proptest.workspace = true
 serde_json.workspace = true
+
+[lints]
+workspace = true

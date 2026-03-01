@@ -23,3 +23,6 @@ tokio.workspace = true
 proptest.workspace = true
 shiplog-ids = { path = "../shiplog-ids", version = "0.2.1" }
 shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
+
+[lints]
+workspace = true

@@ -14,3 +14,6 @@ keywords = ["shiplog", "chars", "text", "parsing", "utility"]
 categories = ["development-tools", "text-processing"]
 
 [dependencies]
+
+[lints]
+workspace = true

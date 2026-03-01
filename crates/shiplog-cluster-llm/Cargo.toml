@@ -29,3 +29,6 @@ shiplog-cluster-llm-parse = { path = "../shiplog-cluster-llm-parse", version = "
 
 [dev-dependencies]
 proptest.workspace = true
+
+[lints]
+workspace = true

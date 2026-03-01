@@ -22,3 +22,6 @@ shiplog-output-layout = { path = "../shiplog-output-layout", version = "0.2.1" }
 [dev-dependencies]
 proptest.workspace = true
 insta.workspace = true
+
+[lints]
+workspace = true

@@ -25,3 +25,6 @@ serde_json.workspace = true
 shiplog-alias = { path = "../shiplog-alias", version = "0.2.1" }
 shiplog-ids = { path = "../shiplog-ids", version = "0.2.1" }
 shiplog-testkit = { path = "../shiplog-testkit", version = "0.2.1" }
+
+[lints]
+workspace = true

@@ -17,3 +17,6 @@ categories = ["development-tools", "text-processing"]
 
 [dev-dependencies]
 proptest.workspace = true
+
+[lints]
+workspace = true

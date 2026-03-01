@@ -89,12 +89,7 @@ fn bench_window_len_days(c: &mut Criterion) {
     let windows = month_windows(since, until);
 
     group.bench_function("iterate_quarter_windows", |b| {
-        b.iter(|| {
-            black_box(&windows)
-                .iter()
-                .map(|w| window_len_days(w))
-                .sum::<i64>()
-        });
+        b.iter(|| black_box(&windows).iter().map(window_len_days).sum::<i64>());
     });
 
     let year_since = NaiveDate::from_ymd_opt(2025, 1, 1).unwrap();
@@ -105,7 +100,7 @@ fn bench_window_len_days(c: &mut Criterion) {
         b.iter(|| {
             black_box(&year_days)
                 .iter()
-                .map(|w| window_len_days(w))
+                .map(window_len_days)
                 .sum::<i64>()
         });
     });

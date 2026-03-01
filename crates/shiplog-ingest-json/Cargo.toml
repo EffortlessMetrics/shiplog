@@ -29,4 +29,5 @@ proptest.workspace = true
 shiplog-ids = { path = "../shiplog-ids", version = "0.2.1" }
 shiplog-output-layout = { path = "../shiplog-output-layout", version = "0.2.1" }
 
-
+[lints]
+workspace = true

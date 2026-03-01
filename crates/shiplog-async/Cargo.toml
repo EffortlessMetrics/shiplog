@@ -16,3 +16,6 @@ categories = ["concurrency", "asynchronous"]
 [dependencies]
 tokio = { version = "1.49.0", features = ["rt", "macros", "sync", "time"] }
 anyhow.workspace = true
+
+[lints]
+workspace = true

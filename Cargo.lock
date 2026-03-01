@@ -2822,7 +2822,6 @@ dependencies = [
  "serde_yaml_ng",
  "shiplog-bundle",
  "shiplog-ids",
- "shiplog-ingest-json",
  "shiplog-merge",
  "shiplog-output-layout",
  "shiplog-ports",

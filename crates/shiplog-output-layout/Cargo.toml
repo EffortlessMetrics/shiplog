@@ -17,3 +17,6 @@ categories = ["development-tools", "filesystem"]
 
 [dev-dependencies]
 proptest = "1.10.0"
+
+[lints]
+workspace = true

@@ -26,3 +26,6 @@ chrono.workspace = true
 rusqlite = { version = "0.38", features = ["bundled"] }
 shiplog-cache-expiry = { path = "../shiplog-cache-expiry", version = "0.2.1" }
 shiplog-testkit = { path = "../shiplog-testkit", version = "0.2.1" }
+
+[lints]
+workspace = true

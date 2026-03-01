@@ -20,3 +20,6 @@ chrono.workspace = true
 proptest.workspace = true
 insta.workspace = true
 shiplog-testkit = { path = "../shiplog-testkit", version = "0.2.1" }
+
+[lints]
+workspace = true

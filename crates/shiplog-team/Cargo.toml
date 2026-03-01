@@ -23,3 +23,6 @@ shiplog-ids = { path = "../shiplog-ids", version = "0.2.1" }
 shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
 shiplog-team-core = { path = "../shiplog-team-core", version = "0.2.1" }
 tempfile.workspace = true
+
+[lints]
+workspace = true

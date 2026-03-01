@@ -19,3 +19,6 @@ rand = "0.9"
 
 [dev-dependencies]
 proptest.workspace = true
+
+[lints]
+workspace = true

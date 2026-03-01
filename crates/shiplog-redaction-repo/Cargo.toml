@@ -22,3 +22,6 @@ proptest.workspace = true
 serde_json.workspace = true
 shiplog-alias = { path = "../shiplog-alias", version = "0.2.1" }
 shiplog-testkit = { path = "../shiplog-testkit", version = "0.2.1" }
+
+[lints]
+workspace = true

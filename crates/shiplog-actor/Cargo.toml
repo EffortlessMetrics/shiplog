@@ -20,3 +20,6 @@ anyhow.workspace = true
 [dev-dependencies]
 proptest.workspace = true
 tokio = { version = "1.49.0", features = ["rt-multi-thread", "macros", "sync"] }
+
+[lints]
+workspace = true
