@@ -245,15 +245,11 @@ fn no_subcommand_returns_error() {
 
 #[test]
 fn collect_without_source_fails_with_help() {
-    shiplog_cmd()
-        .arg("collect")
-        .assert()
-        .failure()
-        .stderr(
-            predicate::str::contains("github")
-                .or(predicate::str::contains("json"))
-                .or(predicate::str::contains("subcommand")),
-        );
+    shiplog_cmd().arg("collect").assert().failure().stderr(
+        predicate::str::contains("github")
+            .or(predicate::str::contains("json"))
+            .or(predicate::str::contains("subcommand")),
+    );
 }
 
 #[test]
@@ -269,9 +265,7 @@ fn collect_github_missing_user_fails() {
         ])
         .assert()
         .failure()
-        .stderr(
-            predicate::str::contains("--user").or(predicate::str::contains("required")),
-        );
+        .stderr(predicate::str::contains("--user").or(predicate::str::contains("required")));
 }
 
 #[test]
@@ -287,9 +281,7 @@ fn collect_github_missing_since_fails() {
         ])
         .assert()
         .failure()
-        .stderr(
-            predicate::str::contains("--since").or(predicate::str::contains("required")),
-        );
+        .stderr(predicate::str::contains("--since").or(predicate::str::contains("required")));
 }
 
 #[test]
@@ -316,9 +308,7 @@ fn collect_json_missing_coverage_fails() {
         .args(["collect", "json", "--events", "some_file.jsonl"])
         .assert()
         .failure()
-        .stderr(
-            predicate::str::contains("--coverage").or(predicate::str::contains("required")),
-        );
+        .stderr(predicate::str::contains("--coverage").or(predicate::str::contains("required")));
 }
 
 #[test]
@@ -347,8 +337,7 @@ fn render_unknown_flag_fails() {
         .assert()
         .failure()
         .stderr(
-            predicate::str::contains("unexpected argument")
-                .or(predicate::str::contains("error")),
+            predicate::str::contains("unexpected argument").or(predicate::str::contains("error")),
         );
 }
 
