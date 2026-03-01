@@ -94,7 +94,8 @@ impl GithubIngestor {
             std::fs::create_dir_all(parent)
                 .with_context(|| format!("create GitHub cache directory {parent:?}"))?;
         }
-        let cache = ApiCache::open(cache_path)?;
+        let cache = ApiCache::open(&cache_path)
+            .with_context(|| format!("open GitHub API cache at {cache_path:?}"))?;
         self.cache = Some(cache);
         Ok(self)
     }
@@ -115,7 +116,7 @@ impl GithubIngestor {
     /// assert!(ingestor.cache.is_some());
     /// ```
     pub fn with_in_memory_cache(mut self) -> Result<Self> {
-        let cache = ApiCache::open_in_memory()?;
+        let cache = ApiCache::open_in_memory().context("open in-memory API cache")?;
         self.cache = Some(cache);
         Ok(self)
     }
@@ -194,7 +195,7 @@ impl Ingestor for GithubIngestor {
             return Err(anyhow!("since must be < until"));
         }
 
-        let client = self.client()?;
+        let client = self.client().context("create GitHub API client")?;
         let run_id = RunId::now("shiplog");
         let mut slices: Vec<CoverageSlice> = Vec::new();
         let mut warnings: Vec<String> = Vec::new();
