@@ -144,10 +144,8 @@ fn import_propagates_renderer_error() {
         Err(e) => e,
         Ok(_) => panic!("expected renderer error"),
     };
-    assert!(
-        err.to_string().contains("renderer exploded"),
-        "unexpected: {err}"
-    );
+    let msg = format!("{err:#}");
+    assert!(msg.contains("renderer exploded"), "unexpected: {msg}");
 }
 
 #[test]
@@ -174,10 +172,8 @@ fn import_propagates_redactor_error() {
         Err(e) => e,
         Ok(_) => panic!("expected redactor error"),
     };
-    assert!(
-        err.to_string().contains("redactor exploded"),
-        "unexpected: {err}"
-    );
+    let msg = format!("{err:#}");
+    assert!(msg.contains("redactor exploded"), "unexpected: {msg}");
 }
 
 #[test]
@@ -205,10 +201,8 @@ fn import_propagates_clusterer_error_when_no_workstreams() {
         Err(e) => e,
         Ok(_) => panic!("expected clusterer error"),
     };
-    assert!(
-        err.to_string().contains("clusterer exploded"),
-        "unexpected: {err}"
-    );
+    let msg = format!("{err:#}");
+    assert!(msg.contains("clusterer exploded"), "unexpected: {msg}");
 }
 
 // ---------------------------------------------------------------------------
@@ -246,10 +240,8 @@ fn refresh_propagates_renderer_error() {
         Err(e) => e,
         Ok(_) => panic!("expected renderer error"),
     };
-    assert!(
-        err.to_string().contains("renderer exploded"),
-        "unexpected: {err}"
-    );
+    let msg = format!("{err:#}");
+    assert!(msg.contains("renderer exploded"), "unexpected: {msg}");
 }
 
 #[test]
@@ -282,10 +274,8 @@ fn refresh_propagates_redactor_error() {
         Err(e) => e,
         Ok(_) => panic!("expected redactor error"),
     };
-    assert!(
-        err.to_string().contains("redactor exploded"),
-        "unexpected: {err}"
-    );
+    let msg = format!("{err:#}");
+    assert!(msg.contains("redactor exploded"), "unexpected: {msg}");
 }
 
 #[test]
