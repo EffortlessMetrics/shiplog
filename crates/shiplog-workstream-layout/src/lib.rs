@@ -19,6 +19,18 @@ pub const CURATED_FILENAME: &str = "workstreams.yaml";
 pub const SUGGESTED_FILENAME: &str = "workstreams.suggested.yaml";
 
 /// Load an existing YAML file if present, otherwise run clustering.
+///
+/// # Examples
+///
+/// Fall back to clustering when no file is given:
+///
+/// ```
+/// use shiplog_workstream_layout::load_or_cluster;
+/// use shiplog_workstream_cluster::RepoClusterer;
+///
+/// let ws = load_or_cluster(None, &RepoClusterer, &[]).unwrap();
+/// assert!(ws.workstreams.is_empty());
+/// ```
 pub fn load_or_cluster(
     maybe_yaml: Option<&Path>,
     clusterer: &dyn WorkstreamClusterer,
@@ -31,6 +43,18 @@ pub fn load_or_cluster(
 }
 
 /// Write a `WorkstreamsFile` as YAML.
+///
+/// # Examples
+///
+/// ```
+/// # use chrono::Utc;
+/// use shiplog_workstream_layout::write_workstreams;
+/// use shiplog_schema::workstream::WorkstreamsFile;
+///
+/// let ws = WorkstreamsFile { version: 1, generated_at: Utc::now(), workstreams: vec![] };
+/// let dir = tempfile::tempdir().unwrap();
+/// write_workstreams(&dir.path().join("ws.yaml"), &ws).unwrap();
+/// ```
 pub fn write_workstreams(path: &Path, workstreams: &WorkstreamsFile) -> Result<()> {
     let yaml = serde_yaml::to_string(workstreams)?;
     std::fs::write(path, yaml).with_context(|| format!("write workstreams to {path:?}"))?;
@@ -57,6 +81,20 @@ impl WorkstreamManager {
     /// 1. `workstreams.yaml` if present
     /// 2. `workstreams.suggested.yaml` if present
     /// 3. generate via clusterer and persist suggested file
+    ///
+    /// # Examples
+    ///
+    /// When no files exist, clustering runs and writes `workstreams.suggested.yaml`:
+    ///
+    /// ```
+    /// use shiplog_workstream_layout::WorkstreamManager;
+    /// use shiplog_workstream_cluster::RepoClusterer;
+    ///
+    /// let dir = tempfile::tempdir().unwrap();
+    /// let ws = WorkstreamManager::load_effective(dir.path(), &RepoClusterer, &[]).unwrap();
+    /// assert!(ws.workstreams.is_empty());
+    /// assert!(WorkstreamManager::suggested_path(dir.path()).exists());
+    /// ```
     pub fn load_effective(
         out_dir: &Path,
         clusterer: &dyn WorkstreamClusterer,
@@ -79,27 +117,80 @@ impl WorkstreamManager {
 
     /// Write machine-generated suggested workstreams.
     /// This always overwrites `workstreams.suggested.yaml`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use chrono::Utc;
+    /// use shiplog_workstream_layout::WorkstreamManager;
+    /// use shiplog_schema::workstream::WorkstreamsFile;
+    ///
+    /// let ws = WorkstreamsFile { version: 1, generated_at: Utc::now(), workstreams: vec![] };
+    /// let dir = tempfile::tempdir().unwrap();
+    /// WorkstreamManager::write_suggested(dir.path(), &ws).unwrap();
+    /// assert!(WorkstreamManager::suggested_path(dir.path()).exists());
+    /// ```
     pub fn write_suggested(out_dir: &Path, workstreams: &WorkstreamsFile) -> Result<()> {
         let path = Self::suggested_path(out_dir);
         write_workstreams(&path, workstreams)
     }
 
     /// Check whether the curated workstreams file exists.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use shiplog_workstream_layout::WorkstreamManager;
+    ///
+    /// let dir = tempfile::tempdir().unwrap();
+    /// assert!(!WorkstreamManager::has_curated(dir.path()));
+    /// ```
     pub fn has_curated(out_dir: &Path) -> bool {
         Self::curated_path(out_dir).exists()
     }
 
     /// Get the curated file path.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use shiplog_workstream_layout::WorkstreamManager;
+    /// use std::path::Path;
+    ///
+    /// let path = WorkstreamManager::curated_path(Path::new("./out/run_1"));
+    /// assert!(path.ends_with("workstreams.yaml"));
+    /// ```
     pub fn curated_path(out_dir: &Path) -> PathBuf {
         out_dir.join(Self::CURATED_FILENAME)
     }
 
     /// Get the suggested file path.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use shiplog_workstream_layout::WorkstreamManager;
+    /// use std::path::Path;
+    ///
+    /// let path = WorkstreamManager::suggested_path(Path::new("./out/run_1"));
+    /// assert!(path.ends_with("workstreams.suggested.yaml"));
+    /// ```
     pub fn suggested_path(out_dir: &Path) -> PathBuf {
         out_dir.join(Self::SUGGESTED_FILENAME)
     }
 
     /// Try to load curated then suggested workstreams.
+    ///
+    /// Returns `None` when neither file exists.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use shiplog_workstream_layout::WorkstreamManager;
+    ///
+    /// let dir = tempfile::tempdir().unwrap();
+    /// assert!(WorkstreamManager::try_load(dir.path()).unwrap().is_none());
+    /// ```
     pub fn try_load(out_dir: &Path) -> Result<Option<WorkstreamsFile>> {
         let curated_path = Self::curated_path(out_dir);
         if curated_path.exists() {

@@ -2822,6 +2822,7 @@ dependencies = [
  "serde_yaml_ng",
  "shiplog-bundle",
  "shiplog-ids",
+ "shiplog-ingest-json",
  "shiplog-merge",
  "shiplog-output-layout",
  "shiplog-ports",
@@ -3632,6 +3633,7 @@ dependencies = [
  "shiplog-schema",
  "shiplog-testkit",
  "shiplog-workstream-receipt-policy",
+ "tempfile",
 ]
 
 [[package]]

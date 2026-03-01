@@ -13,6 +13,15 @@ use shiplog_workstream_receipt_policy::WORKSTREAM_RECEIPT_RENDER_LIMIT;
 use std::collections::HashMap;
 
 /// Section ordering configuration
+///
+/// # Examples
+///
+/// ```
+/// use shiplog_render_md::SectionOrder;
+///
+/// let order = SectionOrder::default();
+/// assert_eq!(order, SectionOrder::Default);
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum SectionOrder {
     /// Default order: Summary, Workstreams, Receipts, Coverage

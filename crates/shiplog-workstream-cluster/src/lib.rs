@@ -20,6 +20,19 @@ use std::collections::BTreeMap;
 /// - Group events by repository name.
 /// - Build canonical workstream titles/ids/stats.
 /// - Provide compact receipt lists by event kind.
+///
+/// # Examples
+///
+/// Cluster an empty event list:
+///
+/// ```
+/// use shiplog_workstream_cluster::RepoClusterer;
+/// use shiplog_ports::WorkstreamClusterer;
+///
+/// let ws = RepoClusterer.cluster(&[]).unwrap();
+/// assert!(ws.workstreams.is_empty());
+/// assert_eq!(ws.version, 1);
+/// ```
 pub struct RepoClusterer;
 
 impl WorkstreamClusterer for RepoClusterer {

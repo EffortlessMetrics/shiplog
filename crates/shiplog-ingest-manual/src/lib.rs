@@ -18,6 +18,24 @@ use std::path::Path;
 /// - Mentoring
 /// - Migrations planned
 /// - etc.
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// use shiplog_ingest_manual::ManualIngestor;
+/// use shiplog_ports::Ingestor;
+/// use chrono::NaiveDate;
+///
+/// let ingestor = ManualIngestor::new(
+///     "manual_events.yaml",
+///     "octocat".to_string(),
+///     NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
+///     NaiveDate::from_ymd_opt(2025, 4, 1).unwrap(),
+/// );
+/// let output = ingestor.ingest()?;
+/// println!("Found {} manual events", output.events.len());
+/// # Ok::<(), anyhow::Error>(())
+/// ```
 pub struct ManualIngestor {
     pub events_path: std::path::PathBuf,
     pub user: String,
