@@ -1,0 +1,11 @@
+---
+source: crates/shiplog-sanitize/tests/sanitize.rs
+expression: "formatted.join(\"\\n\")"
+---
+             "normal.txt" => normal.txt
+            "my file.txt" => my_file.txt
+          "file:name.txt" => file_name.txt
+       "path/to/file.txt" => path_to_file.txt
+            "a<b>c|d?e*f" => a_b_c_d_e_f
+                "日本語.txt" => 日本語.txt
+                       "" =>

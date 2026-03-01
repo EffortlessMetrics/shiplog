@@ -1,0 +1,9 @@
+---
+source: crates/shiplog-schema/tests/format_stability.rs
+expression: "WorkstreamStats::zero()"
+---
+{
+  "pull_requests": 0,
+  "reviews": 0,
+  "manual_events": 0
+}

@@ -1,0 +1,10 @@
+---
+source: crates/shiplog-sanitize/tests/sanitize.rs
+expression: "formatted.join(\"\\n\")"
+---
+             "hello" => 'hello'
+       "hello world" => 'hello world'
+       "it's a test" => 'it'\''s a test'
+         "$(danger)" => '$(danger)'
+                  "" => ''
+            "normal" => 'normal'

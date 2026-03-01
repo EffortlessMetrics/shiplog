@@ -7,6 +7,11 @@ license.workspace = true
 authors.workspace = true
 description = "Quantile estimation utilities."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-quantile"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "quantile", "statistics", "metrics", "observability"]
+categories = ["development-tools"]
 
 [dependencies]
 anyhow.workspace = true
@@ -16,3 +21,7 @@ chrono.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
+proptest.workspace = true
+
+[lints]
+workspace = true

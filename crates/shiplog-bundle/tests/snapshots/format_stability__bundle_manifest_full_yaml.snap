@@ -1,0 +1,14 @@
+---
+source: crates/shiplog-bundle/tests/format_stability.rs
+expression: manifest
+---
+run_id: yaml_test_run
+generated_at: "2025-06-01T12:00:00Z"
+profile: Manager
+files:
+  - path: profiles/manager/packet.md
+    sha256: abc123
+    bytes: 2048
+  - path: coverage.manifest.json
+    sha256: def456
+    bytes: 256

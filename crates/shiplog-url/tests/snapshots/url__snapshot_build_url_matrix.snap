@@ -1,0 +1,9 @@
+---
+source: crates/shiplog-url/tests/url.rs
+expression: "formatted.join(\"\\n\")"
+---
+https://example.com:Some(443)/ => https://example.com:443/
+http://localhost:Some(8080)/api/v1 => http://localhost:8080/api/v1
+https://example.com:None/path => https://example.com/path
+ftp://files.example.com:None/data => ftp://files.example.com/data
+https://example.com:None => https://example.com

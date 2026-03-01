@@ -1,0 +1,16 @@
+---
+source: crates/shiplog-workstream-receipt-policy/tests/snapshot.rs
+assertion_line: 70
+expression: output
+---
+index= 0 -> visible=true
+index= 1 -> visible=true
+index= 2 -> visible=true
+index= 3 -> visible=true
+index= 4 -> visible=true
+index= 5 -> visible=false
+index= 6 -> visible=false
+index= 7 -> visible=false
+index= 8 -> visible=false
+index= 9 -> visible=false
+index=10 -> visible=false

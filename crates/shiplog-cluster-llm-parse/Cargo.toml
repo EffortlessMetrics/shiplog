@@ -1,0 +1,29 @@
+[package]
+name = "shiplog-cluster-llm-parse"
+version = "0.2.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Parse LLM clustering responses into shiplog workstream artifacts."
+readme = "README.md"
+documentation = "https://docs.rs/shiplog-cluster-llm-parse"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["llm", "clustering", "workstreams", "parser", "text-processing"]
+categories = ["data-structures", "development-tools"]
+
+[dependencies]
+anyhow.workspace = true
+chrono.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+shiplog-ids = { path = "../shiplog-ids", version = "0.2.1" }
+shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
+
+[dev-dependencies]
+proptest.workspace = true
+shiplog-ids = { path = "../shiplog-ids", version = "0.2.1" }
+
+[lints]
+workspace = true

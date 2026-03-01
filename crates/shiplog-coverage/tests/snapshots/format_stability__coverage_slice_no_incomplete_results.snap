@@ -1,0 +1,15 @@
+---
+source: crates/shiplog-coverage/tests/format_stability.rs
+expression: slice
+---
+{
+  "window": {
+    "since": "2025-06-01",
+    "until": "2025-07-01"
+  },
+  "query": "test",
+  "total_count": 0,
+  "fetched": 0,
+  "incomplete_results": null,
+  "notes": []
+}

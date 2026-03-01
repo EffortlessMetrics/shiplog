@@ -1,0 +1,63 @@
+---
+source: crates/shiplog-render-md/tests/snapshot.rs
+assertion_line: 300
+expression: result
+---
+# Summary
+
+**Window:** 2025-Q1
+
+**Workstreams:** 1
+
+**Events:** 1 PRs, 1 reviews, 1 manual
+
+**Coverage:** Complete
+
+**Sources:** github
+
+## Workstreams
+
+### Mixed Work
+
+Cross-cutting work
+
+**Claim scaffolds**
+
+- Problem: _fill_
+- What I shipped: _fill_
+- Why it mattered: _fill_
+- Result: _fill_
+
+_PRs: 1, Reviews: 1, Manual: 1_
+
+## Receipts
+
+### Workstream: Mixed Work
+
+- [PR] Implement feature X (1970-01-01) — [owner/repo](https://github.com/owner/repo/pull/42)
+- [Review] approved (1970-01-01) — [owner/repo](https://github.com/owner/repo/pull/42)
+- [🚨] Production outage resolution (1970-01-01)
+
+## Coverage
+
+- **Date window:** 2025-01-01 to 2025-04-01
+- **Mode:** merged
+- **Sources:** github
+- **Completeness:** Complete
+
+## Appendix: All Receipts
+
+### Mixed Work
+
+- [PR] Implement feature X (1970-01-01) — [owner/repo](https://github.com/owner/repo/pull/42)
+- [Review] approved (1970-01-01) — [owner/repo](https://github.com/owner/repo/pull/42)
+- [🚨] Production outage resolution (1970-01-01)
+
+---
+
+## File Artifacts
+
+- `ledger.events.jsonl` (canonical events)
+- `coverage.manifest.json` (completeness + slicing)
+- `workstreams.yaml` (editable clustering)
+- `manual_events.yaml` (non-GitHub work)

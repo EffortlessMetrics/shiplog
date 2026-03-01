@@ -7,6 +7,7 @@ license.workspace = true
 authors.workspace = true
 description = "Local git repository ingestor for shiplog: collect commit history directly from local git repositories."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-ingest-git"
 repository.workspace = true
 homepage.workspace = true
 keywords = ["git", "ingest", "commit-history", "shiplog"]
@@ -24,7 +25,11 @@ shiplog-cache = { path = "../shiplog-cache", version = "0.2.1", optional = true 
 
 [dev-dependencies]
 tempfile.workspace = true
+proptest.workspace = true
 
 [features]
 default = []
 cache = ["dep:shiplog-cache"]
+
+[lints]
+workspace = true

@@ -1,0 +1,35 @@
+---
+source: crates/shiplog-schema/tests/format_stability.rs
+expression: event
+---
+{
+  "id": "3cd5882f3cd17c0d0c61f7d5af9cc8685ac4281a04c4256187d2ad25b927d423",
+  "kind": "Review",
+  "occurred_at": "2025-06-01T12:00:00Z",
+  "actor": {
+    "login": "r",
+    "id": null
+  },
+  "repo": {
+    "full_name": "x/y",
+    "html_url": null,
+    "visibility": "Unknown"
+  },
+  "payload": {
+    "type": "Review",
+    "data": {
+      "pull_number": 1,
+      "pull_title": "t",
+      "submitted_at": "2025-06-01T12:00:00Z",
+      "state": "approved",
+      "window": null
+    }
+  },
+  "tags": [],
+  "links": [],
+  "source": {
+    "system": "unknown",
+    "url": null,
+    "opaque_id": null
+  }
+}

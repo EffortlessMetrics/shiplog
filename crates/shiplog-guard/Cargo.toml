@@ -7,6 +7,17 @@ license.workspace = true
 authors.workspace = true
 description = "RAII guard utilities for shiplog."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-guard"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "guard", "concurrency", "async", "synchronization"]
+categories = ["concurrency", "asynchronous"]
 
 [dependencies]
 anyhow.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+
+[lints]
+workspace = true

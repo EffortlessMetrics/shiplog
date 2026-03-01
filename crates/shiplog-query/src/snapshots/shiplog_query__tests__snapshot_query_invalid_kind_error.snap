@@ -1,0 +1,5 @@
+---
+source: crates/shiplog-query/src/lib.rs
+expression: err.to_string()
+---
+Invalid value for field: Unknown kind: doesnotexist

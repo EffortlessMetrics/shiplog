@@ -1,0 +1,16 @@
+---
+source: crates/shiplog-coverage/tests/snapshot.rs
+assertion_line: 36
+expression: slice
+---
+{
+  "window": {
+    "since": "2025-01-01",
+    "until": "2025-02-01"
+  },
+  "query": "github prs merged:2025-01-01..2025-02-01",
+  "total_count": 15,
+  "fetched": 15,
+  "incomplete_results": false,
+  "notes": []
+}

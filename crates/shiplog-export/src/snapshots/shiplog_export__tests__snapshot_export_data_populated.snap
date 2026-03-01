@@ -1,0 +1,14 @@
+---
+source: crates/shiplog-export/src/lib.rs
+expression: data
+---
+title: Q1 2025 Review
+events:
+  - id: evt-001
+    source: github
+    title: Implement OAuth2 flow
+    timestamp: "2025-01-15T10:30:00Z"
+  - id: evt-002
+    source: jira
+    title: Database migration plan
+    timestamp: "2025-01-20T14:00:00Z"

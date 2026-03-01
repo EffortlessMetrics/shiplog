@@ -7,5 +7,17 @@ license.workspace = true
 authors.workspace = true 
 description = "Sanitization utilities for shiplog." 
 readme = "README.md" 
+documentation = "https://docs.rs/shiplog-sanitize"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "sanitize", "text", "parsing", "utility"]
+categories = ["development-tools", "text-processing"]
  
 [dependencies]
+
+[dev-dependencies]
+proptest.workspace = true
+insta.workspace = true
+
+[lints]
+workspace = true

@@ -15,6 +15,22 @@ use std::path::PathBuf;
 /// - tests
 /// - fixtures
 /// - future "org mode" where an upstream collector produces a ledger and shiplog just renders
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// use shiplog_ingest_json::JsonIngestor;
+/// use shiplog_ports::Ingestor;
+/// use std::path::PathBuf;
+///
+/// let ingestor = JsonIngestor {
+///     events_path: PathBuf::from("ledger.events.jsonl"),
+///     coverage_path: PathBuf::from("coverage.manifest.json"),
+/// };
+/// let output = ingestor.ingest()?;
+/// println!("Loaded {} events", output.events.len());
+/// # Ok::<(), anyhow::Error>(())
+/// ```
 pub struct JsonIngestor {
     pub events_path: PathBuf,
     pub coverage_path: PathBuf,
@@ -32,6 +48,20 @@ impl Ingestor for JsonIngestor {
 ///
 /// Each non-empty line is parsed as a JSON-encoded `EventEnvelope`.
 /// `source` is included in error context messages.
+///
+/// # Examples
+///
+/// ```
+/// use shiplog_ingest_json::parse_events_jsonl;
+///
+/// // Empty input yields no events:
+/// let events = parse_events_jsonl("", "test").unwrap();
+/// assert!(events.is_empty());
+///
+/// // Blank lines are silently skipped:
+/// let events = parse_events_jsonl("\n  \n", "test").unwrap();
+/// assert!(events.is_empty());
+/// ```
 pub fn parse_events_jsonl(text: &str, source: &str) -> Result<Vec<EventEnvelope>> {
     let mut out = Vec::new();
     for (i, line) in text.lines().enumerate() {
@@ -52,7 +82,8 @@ fn read_events(path: &PathBuf) -> Result<Vec<EventEnvelope>> {
 
 fn read_coverage(path: &PathBuf) -> Result<CoverageManifest> {
     let text = std::fs::read_to_string(path).with_context(|| format!("read {path:?}"))?;
-    let cov: CoverageManifest = serde_json::from_str(&text).with_context(|| "parse coverage")?;
+    let cov: CoverageManifest =
+        serde_json::from_str(&text).with_context(|| format!("parse coverage manifest {path:?}"))?;
     Ok(cov)
 }
 

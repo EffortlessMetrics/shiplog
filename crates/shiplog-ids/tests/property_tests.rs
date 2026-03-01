@@ -162,3 +162,123 @@ proptest! {
         prop_assert_eq!(display, id.to_string());
     }
 }
+
+// ============================================================================
+// Serde Roundtrip Property Tests
+// ============================================================================
+
+proptest! {
+    // EventId survives JSON serialization roundtrip.
+    #[test]
+    fn prop_event_id_serde_roundtrip(parts in proptest::collection::vec("[a-zA-Z0-9_-]{1,50}", 1..5)) {
+        let id = EventId::from_parts(parts.iter().map(|s| s.as_str()).collect::<Vec<_>>().as_slice());
+        let json = serde_json::to_string(&id).unwrap();
+        let deserialized: EventId = serde_json::from_str(&json).unwrap();
+        prop_assert_eq!(id, deserialized);
+    }
+
+    // WorkstreamId survives JSON serialization roundtrip.
+    #[test]
+    fn prop_workstream_id_serde_roundtrip(parts in proptest::collection::vec("[a-zA-Z0-9_-]{1,50}", 1..3)) {
+        let id = WorkstreamId::from_parts(parts.iter().map(|s| s.as_str()).collect::<Vec<_>>().as_slice());
+        let json = serde_json::to_string(&id).unwrap();
+        let deserialized: WorkstreamId = serde_json::from_str(&json).unwrap();
+        prop_assert_eq!(id, deserialized);
+    }
+
+    // RunId survives JSON serialization roundtrip.
+    #[test]
+    fn prop_run_id_serde_roundtrip(prefix in "[a-z]{3,20}") {
+        let id = RunId::now(&prefix);
+        let json = serde_json::to_string(&id).unwrap();
+        let deserialized: RunId = serde_json::from_str(&json).unwrap();
+        prop_assert_eq!(id, deserialized);
+    }
+}
+
+// ============================================================================
+// Part Order Sensitivity Property Tests
+// ============================================================================
+
+proptest! {
+    // Swapping two distinct parts produces a different EventId.
+    #[test]
+    fn prop_event_id_part_order_matters(
+        a in "[a-zA-Z0-9]{1,30}",
+        b in "[a-zA-Z0-9]{1,30}",
+        prefix in proptest::collection::vec("[a-zA-Z0-9]{1,20}", 0..3)
+    ) {
+        prop_assume!(a != b);
+        let mut parts_ab = prefix.clone();
+        parts_ab.push(a.clone());
+        parts_ab.push(b.clone());
+
+        let mut parts_ba = prefix;
+        parts_ba.push(b);
+        parts_ba.push(a);
+
+        let id_ab = EventId::from_parts(parts_ab.iter().map(|s| s.as_str()).collect::<Vec<_>>().as_slice());
+        let id_ba = EventId::from_parts(parts_ba.iter().map(|s| s.as_str()).collect::<Vec<_>>().as_slice());
+        prop_assert_ne!(id_ab, id_ba);
+    }
+
+    // ID string always matches SHA-256 hex regex pattern.
+    #[test]
+    fn prop_event_id_matches_sha256_regex(parts in proptest::collection::vec(".*", 0..5)) {
+        let id = EventId::from_parts(parts.iter().map(|s| s.as_str()).collect::<Vec<_>>().as_slice());
+        let id_str = id.to_string();
+        prop_assert!(
+            id_str.len() == 64 && id_str.chars().all(|c| matches!(c, '0'..='9' | 'a'..='f')),
+            "ID '{}' does not match /^[0-9a-f]{{64}}$/", id_str
+        );
+    }
+
+    // WorkstreamId string always matches SHA-256 hex regex pattern.
+    #[test]
+    fn prop_workstream_id_matches_sha256_regex(parts in proptest::collection::vec(".*", 0..5)) {
+        let id = WorkstreamId::from_parts(parts.iter().map(|s| s.as_str()).collect::<Vec<_>>().as_slice());
+        let id_str = id.to_string();
+        prop_assert!(
+            id_str.len() == 64 && id_str.chars().all(|c| matches!(c, '0'..='9' | 'a'..='f')),
+            "ID '{}' does not match /^[0-9a-f]{{64}}$/", id_str
+        );
+    }
+}
+
+// ============================================================================
+// Additional Algebraic Property Tests
+// ============================================================================
+
+proptest! {
+    // EventId hex string decodes to exactly 32 bytes (valid SHA-256 digest).
+    #[test]
+    fn prop_event_id_decodes_to_32_bytes(parts in proptest::collection::vec(".*", 0..5)) {
+        let id = EventId::from_parts(parts.iter().map(|s| s.as_str()).collect::<Vec<_>>().as_slice());
+        let bytes = hex::decode(id.to_string()).expect("valid hex");
+        prop_assert_eq!(bytes.len(), 32);
+    }
+
+    // EventId and WorkstreamId from identical parts share the same underlying hash.
+    #[test]
+    fn prop_event_and_workstream_same_hash(parts in proptest::collection::vec("[a-zA-Z0-9]{1,20}", 1..4)) {
+        let refs: Vec<&str> = parts.iter().map(|s| s.as_str()).collect();
+        let eid = EventId::from_parts(refs.as_slice());
+        let wid = WorkstreamId::from_parts(refs.as_slice());
+        prop_assert_eq!(eid.to_string(), wid.to_string());
+    }
+
+    // Appending an extra part always changes the EventId.
+    #[test]
+    fn prop_event_id_extra_part_changes_hash(
+        base in proptest::collection::vec("[a-zA-Z0-9]{1,20}", 1..4),
+        extra in "[a-zA-Z0-9]{1,20}"
+    ) {
+        let refs: Vec<&str> = base.iter().map(|s| s.as_str()).collect();
+        let id_base = EventId::from_parts(refs.as_slice());
+        let mut extended = base.clone();
+        extended.push(extra);
+        let refs2: Vec<&str> = extended.iter().map(|s| s.as_str()).collect();
+        let id_extended = EventId::from_parts(refs2.as_slice());
+        prop_assert_ne!(id_base, id_extended);
+    }
+}

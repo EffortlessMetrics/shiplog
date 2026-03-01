@@ -1,0 +1,7 @@
+---
+source: crates/shiplog-validator/tests/validator.rs
+expression: err
+---
+field: username
+message: "username can only contain letters, numbers, underscores, and hyphens"
+code: InvalidFormat

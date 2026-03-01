@@ -7,6 +7,14 @@ license.workspace = true
 authors.workspace = true
 description = "Task spawning utilities for shiplog."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-spawn"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "spawn", "concurrency", "async", "synchronization"]
+categories = ["concurrency", "asynchronous"]
 
 [dependencies]
 anyhow.workspace = true
+
+[lints]
+workspace = true

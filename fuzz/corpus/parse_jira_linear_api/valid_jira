@@ -1,0 +1,1 @@
+{"key":"PROJ-123","summary":"Fix login bug","created":"2025-01-10T12:00:00Z","updated":"2025-01-15T16:00:00Z","status":{"name":"Done"},"fields":{"description":"User cannot login","priority":{"name":"High","id":"1"}}}

@@ -308,4 +308,249 @@ mod tests {
         assert_eq!(summary.unchanged_count, 0);
         assert_eq!(summary.total_changes(), 3);
     }
+
+    // --- Edge-case tests ---
+
+    #[test]
+    fn diff_both_empty() {
+        let diff = diff_events(&[], &[]);
+        assert!(diff.added.is_empty());
+        assert!(diff.removed.is_empty());
+        assert!(diff.modified.is_empty());
+        assert!(diff.unchanged.is_empty());
+        assert_eq!(diff_summary(&diff).total_changes(), 0);
+    }
+
+    #[test]
+    fn diff_identical_lists() {
+        let events = vec![
+            make_event("a", "title a"),
+            make_event("b", "title b"),
+            make_event("c", "title c"),
+        ];
+        let diff = diff_events(&events, &events);
+        assert!(diff.added.is_empty());
+        assert!(diff.removed.is_empty());
+        assert!(diff.modified.is_empty());
+        assert_eq!(diff.unchanged.len(), 3);
+    }
+
+    #[test]
+    fn diff_completely_disjoint() {
+        let old = vec![make_event("a", "old a"), make_event("b", "old b")];
+        let new = vec![make_event("c", "new c"), make_event("d", "new d")];
+        let diff = diff_events(&old, &new);
+        assert_eq!(diff.added.len(), 2);
+        assert_eq!(diff.removed.len(), 2);
+        assert!(diff.modified.is_empty());
+        assert!(diff.unchanged.is_empty());
+    }
+
+    #[test]
+    fn diff_tag_change_detected() {
+        let mut old_event = make_event("1", "title");
+        old_event.tags = vec!["alpha".to_string()];
+        let mut new_event = make_event("1", "title");
+        new_event.tags = vec!["beta".to_string()];
+
+        let diff = diff_events(&[old_event], &[new_event]);
+        assert_eq!(diff.modified.len(), 1);
+        let change = &diff.modified[0];
+        assert!(change.changes.iter().any(|c| c.field_name == "tags"));
+    }
+
+    #[test]
+    fn diff_actor_change_detected() {
+        let old_event = make_event("1", "title");
+        let mut new_event = make_event("1", "title");
+        new_event.actor.login = "newuser".to_string();
+
+        let diff = diff_events(&[old_event], &[new_event]);
+        assert_eq!(diff.modified.len(), 1);
+        assert!(
+            diff.modified[0]
+                .changes
+                .iter()
+                .any(|c| c.field_name == "actor.login")
+        );
+    }
+
+    #[test]
+    fn diff_description_change_detected() {
+        let old_event = make_event("1", "title");
+        let mut new_event = make_event("1", "title");
+        if let EventPayload::Manual(ref mut m) = new_event.payload {
+            m.description = Some("added description".to_string());
+        }
+        let diff = diff_events(&[old_event], &[new_event]);
+        assert_eq!(diff.modified.len(), 1);
+        assert!(
+            diff.modified[0]
+                .changes
+                .iter()
+                .any(|c| c.field_name == "payload.description")
+        );
+    }
+
+    #[test]
+    fn diff_multiple_field_changes() {
+        let old_event = make_event("1", "old title");
+        let mut new_event = make_event("1", "new title");
+        new_event.actor.login = "different".to_string();
+        new_event.tags = vec!["new-tag".to_string()];
+
+        let diff = diff_events(&[old_event], &[new_event]);
+        assert_eq!(diff.modified.len(), 1);
+        assert!(diff.modified[0].changes.len() >= 3); // title, actor, tags
+    }
+
+    #[test]
+    fn diff_single_added() {
+        let diff = diff_events(&[], &[make_event("x", "new")]);
+        let summary = diff_summary(&diff);
+        assert_eq!(summary.added_count, 1);
+        assert_eq!(summary.removed_count, 0);
+        assert_eq!(summary.modified_count, 0);
+        assert_eq!(summary.total_changes(), 1);
+    }
+
+    #[test]
+    fn diff_single_removed() {
+        let diff = diff_events(&[make_event("x", "old")], &[]);
+        let summary = diff_summary(&diff);
+        assert_eq!(summary.added_count, 0);
+        assert_eq!(summary.removed_count, 1);
+        assert_eq!(summary.total_changes(), 1);
+    }
+
+    #[test]
+    fn diff_summary_default_is_zero() {
+        let s = DiffSummary::default();
+        assert_eq!(s.added_count, 0);
+        assert_eq!(s.removed_count, 0);
+        assert_eq!(s.modified_count, 0);
+        assert_eq!(s.unchanged_count, 0);
+        assert_eq!(s.total_changes(), 0);
+    }
+
+    #[test]
+    fn diff_preserves_event_data_in_added() {
+        let event = make_event("new-id", "new title");
+        let diff = diff_events(&[], std::slice::from_ref(&event));
+        assert_eq!(diff.added.len(), 1);
+        assert_eq!(diff.added[0].id, event.id);
+    }
+
+    #[test]
+    fn diff_preserves_event_data_in_removed() {
+        let event = make_event("old-id", "old title");
+        let diff = diff_events(std::slice::from_ref(&event), &[]);
+        assert_eq!(diff.removed.len(), 1);
+        assert_eq!(diff.removed[0].id, event.id);
+    }
+
+    #[test]
+    fn diff_change_contains_both_versions() {
+        let old_event = make_event("1", "old");
+        let mut new_event = make_event("1", "new");
+        new_event.id = old_event.id.clone();
+        let diff = diff_events(
+            std::slice::from_ref(&old_event),
+            std::slice::from_ref(&new_event),
+        );
+        assert_eq!(diff.modified.len(), 1);
+        assert_eq!(diff.modified[0].old_event, old_event);
+        assert_eq!(diff.modified[0].new_event, new_event);
+    }
+
+    // --- Snapshot tests ---
+
+    #[test]
+    fn snapshot_diff_summary() {
+        let old = vec![
+            make_event("keep", "unchanged"),
+            make_event("mod", "before"),
+            make_event("del", "removed"),
+        ];
+        let new = vec![
+            make_event("keep", "unchanged"),
+            make_event("mod", "after"),
+            make_event("add", "new event"),
+        ];
+        let diff = diff_events(&old, &new);
+        let summary = diff_summary(&diff);
+        insta::assert_debug_snapshot!(summary);
+    }
+
+    #[test]
+    fn snapshot_field_changes() {
+        let old_event = make_event("1", "original title");
+        let mut new_event = make_event("1", "updated title");
+        new_event.tags = vec!["new-tag".to_string()];
+        new_event.actor.login = "newactor".to_string();
+        let diff = diff_events(&[old_event], &[new_event]);
+        let field_names: Vec<&str> = diff.modified[0]
+            .changes
+            .iter()
+            .map(|c| c.field_name.as_str())
+            .collect();
+        insta::assert_debug_snapshot!(field_names);
+    }
+
+    #[test]
+    fn snapshot_diff_event_default() {
+        let diff = EventDiff::default();
+        insta::assert_debug_snapshot!(diff);
+    }
+
+    // --- Property tests ---
+
+    mod prop {
+        use super::*;
+        use proptest::prelude::*;
+
+        proptest! {
+            #[test]
+            fn diff_identical_has_no_changes(n in 0usize..6) {
+                let events: Vec<_> = (0..n).map(|i| make_event(&format!("e{i}"), &format!("title {i}"))).collect();
+                let diff = diff_events(&events, &events);
+                prop_assert!(diff.added.is_empty());
+                prop_assert!(diff.removed.is_empty());
+                prop_assert!(diff.modified.is_empty());
+                prop_assert_eq!(diff.unchanged.len(), n);
+            }
+
+            #[test]
+            fn diff_counts_are_consistent(
+                n_shared in 0usize..4,
+                n_old_only in 0usize..4,
+                n_new_only in 0usize..4,
+            ) {
+                let shared: Vec<_> = (0..n_shared).map(|i| make_event(&format!("shared{i}"), "same")).collect();
+                let old_only: Vec<_> = (0..n_old_only).map(|i| make_event(&format!("old{i}"), "old")).collect();
+                let new_only: Vec<_> = (0..n_new_only).map(|i| make_event(&format!("new{i}"), "new")).collect();
+
+                let mut old = shared.clone();
+                old.extend(old_only);
+                let mut new = shared;
+                new.extend(new_only);
+
+                let diff = diff_events(&old, &new);
+                let summary = diff_summary(&diff);
+                prop_assert_eq!(summary.removed_count, n_old_only);
+                prop_assert_eq!(summary.added_count, n_new_only);
+                prop_assert_eq!(summary.unchanged_count, n_shared);
+            }
+
+            #[test]
+            fn diff_reverse_swaps_added_removed(n_old in 0usize..3, n_new in 0usize..3) {
+                let old: Vec<_> = (0..n_old).map(|i| make_event(&format!("a{i}"), "old")).collect();
+                let new: Vec<_> = (0..n_new).map(|i| make_event(&format!("b{i}"), "new")).collect();
+                let forward = diff_summary(&diff_events(&old, &new));
+                let reverse = diff_summary(&diff_events(&new, &old));
+                prop_assert_eq!(forward.added_count, reverse.removed_count);
+                prop_assert_eq!(forward.removed_count, reverse.added_count);
+            }
+        }
+    }
 }

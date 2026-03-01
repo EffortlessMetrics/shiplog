@@ -7,7 +7,15 @@ license.workspace = true
 authors.workspace = true
 description = "Graceful shutdown utilities for shiplog."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-shutdown"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "shutdown", "concurrency", "async", "synchronization"]
+categories = ["concurrency", "asynchronous"]
 
 [dependencies]
 tokio = { workspace = true, features = ["sync", "time", "rt-multi-thread", "macros"] }
 anyhow.workspace = true
+
+[lints]
+workspace = true

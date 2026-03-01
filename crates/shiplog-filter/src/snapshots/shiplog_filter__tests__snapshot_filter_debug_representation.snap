@@ -1,0 +1,34 @@
+---
+source: crates/shiplog-filter/src/lib.rs
+assertion_line: 497
+expression: filter
+---
+EventFilter {
+    source_systems: Some(
+        [
+            Github,
+        ],
+    ),
+    event_kinds: Some(
+        [
+            PullRequest,
+        ],
+    ),
+    since: Some(
+        2025-01-01T00:00:00Z,
+    ),
+    until: Some(
+        2025-06-30T00:00:00Z,
+    ),
+    actor_login: Some(
+        "octocat",
+    ),
+    tags: Some(
+        [
+            "feature",
+        ],
+    ),
+    repo_full_name: Some(
+        "owner/repo",
+    ),
+}

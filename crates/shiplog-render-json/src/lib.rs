@@ -15,6 +15,19 @@ use std::path::Path;
 /// - line-delimited, append-friendly
 /// - diff-friendly
 /// - can be streamed
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// use shiplog_render_json::write_events_jsonl;
+/// use shiplog_schema::event::EventEnvelope;
+/// use std::path::Path;
+///
+/// # fn example(events: &[EventEnvelope]) -> anyhow::Result<()> {
+/// write_events_jsonl(Path::new("ledger.events.jsonl"), events)?;
+/// # Ok(())
+/// # }
+/// ```
 pub fn write_events_jsonl(path: &Path, events: &[EventEnvelope]) -> Result<()> {
     let mut f = std::fs::File::create(path).with_context(|| format!("create {path:?}"))?;
     for ev in events {
@@ -25,6 +38,33 @@ pub fn write_events_jsonl(path: &Path, events: &[EventEnvelope]) -> Result<()> {
     Ok(())
 }
 
+/// Write a coverage manifest as pretty-printed JSON.
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// use shiplog_render_json::write_coverage_manifest;
+/// use shiplog_schema::coverage::{CoverageManifest, Completeness, TimeWindow};
+/// use shiplog_ids::RunId;
+/// use chrono::{NaiveDate, Utc};
+/// use std::path::Path;
+///
+/// let cov = CoverageManifest {
+///     run_id: RunId::now("example"),
+///     generated_at: Utc::now(),
+///     user: "octocat".into(),
+///     window: TimeWindow {
+///         since: NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
+///         until: NaiveDate::from_ymd_opt(2025, 4, 1).unwrap(),
+///     },
+///     mode: "merged".into(),
+///     sources: vec!["github".into()],
+///     slices: vec![],
+///     warnings: vec![],
+///     completeness: Completeness::Complete,
+/// };
+/// write_coverage_manifest(Path::new("coverage.manifest.json"), &cov).unwrap();
+/// ```
 pub fn write_coverage_manifest(path: &Path, cov: &CoverageManifest) -> Result<()> {
     let text = serde_json::to_string_pretty(cov).context("serialize coverage")?;
     std::fs::write(path, text).with_context(|| format!("write {path:?}"))?;

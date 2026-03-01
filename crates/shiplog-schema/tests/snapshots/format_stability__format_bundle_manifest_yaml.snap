@@ -1,0 +1,14 @@
+---
+source: crates/shiplog-schema/tests/format_stability.rs
+expression: manifest
+---
+run_id: test_run_789
+generated_at: "2025-06-01T12:00:00Z"
+profile: Manager
+files:
+  - path: packet.md
+    sha256: abc123def456
+    bytes: 4096
+  - path: profiles/manager/packet.md
+    sha256: 789abc012def
+    bytes: 2048

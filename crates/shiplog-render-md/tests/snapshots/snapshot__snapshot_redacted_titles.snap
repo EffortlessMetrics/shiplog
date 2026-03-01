@@ -1,0 +1,61 @@
+---
+source: crates/shiplog-render-md/tests/snapshot.rs
+assertion_line: 105
+expression: result
+---
+# Summary
+
+**Window:** 2025-Q1
+
+**Workstreams:** 1
+
+**Events:** 2 PRs, 0 reviews, 0 manual
+
+**Coverage:** Complete
+
+**Sources:** github
+
+## Workstreams
+
+### [REDACTED]
+
+[REDACTED]
+
+**Claim scaffolds**
+
+- Problem: _fill_
+- What I shipped: _fill_
+- Why it mattered: _fill_
+- Result: _fill_
+
+_PRs: 2, Reviews: 0, Manual: 0_
+
+## Receipts
+
+### Workstream: [REDACTED]
+
+- [PR] [REDACTED] (1970-01-01) — [owner/repo](https://github.com/owner/repo/pull/10)
+- [PR] [REDACTED] (1970-01-01) — [owner/repo](https://github.com/owner/repo/pull/11)
+
+## Coverage
+
+- **Date window:** 2025-01-01 to 2025-04-01
+- **Mode:** merged
+- **Sources:** github
+- **Completeness:** Complete
+
+## Appendix: All Receipts
+
+### [REDACTED]
+
+- [PR] [REDACTED] (1970-01-01) — [owner/repo](https://github.com/owner/repo/pull/10)
+- [PR] [REDACTED] (1970-01-01) — [owner/repo](https://github.com/owner/repo/pull/11)
+
+---
+
+## File Artifacts
+
+- `ledger.events.jsonl` (canonical events)
+- `coverage.manifest.json` (completeness + slicing)
+- `workstreams.yaml` (editable clustering)
+- `manual_events.yaml` (non-GitHub work)

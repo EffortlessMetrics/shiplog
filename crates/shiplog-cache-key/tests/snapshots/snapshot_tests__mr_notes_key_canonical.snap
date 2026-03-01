@@ -1,0 +1,5 @@
+---
+source: crates/shiplog-cache-key/tests/snapshot_tests.rs
+expression: key
+---
+gitlab:mr:notes:project123:mr456:page7

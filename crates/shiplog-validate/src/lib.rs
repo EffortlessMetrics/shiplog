@@ -154,4 +154,221 @@ mod tests {
         assert!(result.is_err());
         assert!(result.unwrap_err().message.contains("at least one event"));
     }
+
+    // --- Edge case tests ---
+
+    #[test]
+    fn event_id_all_zeros() {
+        let id = "0".repeat(64);
+        assert!(EventValidator::validate_event_id(&id).is_ok());
+    }
+
+    #[test]
+    fn event_id_all_fs() {
+        let id = "f".repeat(64);
+        assert!(EventValidator::validate_event_id(&id).is_ok());
+    }
+
+    #[test]
+    fn event_id_uppercase_hex_is_valid() {
+        let id = "A".repeat(64);
+        assert!(EventValidator::validate_event_id(&id).is_ok());
+    }
+
+    #[test]
+    fn event_id_mixed_case_hex() {
+        // "aAbBcCdDeEfF" is 12 chars, repeat 5 = 60, plus "0123" = 64
+        let id = "aAbBcCdDeEfF".repeat(5) + "0123";
+        assert_eq!(id.len(), 64);
+        assert!(EventValidator::validate_event_id(&id).is_ok());
+    }
+
+    #[test]
+    fn event_id_63_chars_too_short() {
+        let id = "a".repeat(63);
+        let result = EventValidator::validate_event_id(&id);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().message.contains("64"));
+    }
+
+    #[test]
+    fn event_id_65_chars_too_long() {
+        let id = "a".repeat(65);
+        let result = EventValidator::validate_event_id(&id);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().message.contains("64"));
+    }
+
+    #[test]
+    fn event_id_non_hex_at_end() {
+        let mut id = "a".repeat(63);
+        id.push('z');
+        let result = EventValidator::validate_event_id(&id);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().message.contains("hexadecimal"));
+    }
+
+    #[test]
+    fn event_id_whitespace_only() {
+        let id = " ".repeat(64);
+        let result = EventValidator::validate_event_id(&id);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().message.contains("hexadecimal"));
+    }
+
+    #[test]
+    fn source_all_valid_sources() {
+        for source in &["github", "jira", "linear", "gitlab", "manual", "git"] {
+            assert!(
+                EventValidator::validate_source(source).is_ok(),
+                "expected '{}' to be valid",
+                source
+            );
+        }
+    }
+
+    #[test]
+    fn source_empty_string_is_invalid() {
+        let result = EventValidator::validate_source("");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn source_case_sensitive() {
+        assert!(EventValidator::validate_source("GitHub").is_err());
+        assert!(EventValidator::validate_source("GITHUB").is_err());
+    }
+
+    #[test]
+    fn source_with_whitespace_is_invalid() {
+        assert!(EventValidator::validate_source(" github").is_err());
+        assert!(EventValidator::validate_source("github ").is_err());
+    }
+
+    #[test]
+    fn packet_single_event_is_valid() {
+        let packet = Packet {
+            id: "p".to_string(),
+            events: vec!["e1".to_string()],
+        };
+        assert!(PacketValidator::validate_packet(&packet).is_ok());
+    }
+
+    #[test]
+    fn packet_many_events_is_valid() {
+        let packet = Packet {
+            id: "p".to_string(),
+            events: (0..1000).map(|i| format!("e{}", i)).collect(),
+        };
+        assert!(PacketValidator::validate_packet(&packet).is_ok());
+    }
+
+    #[test]
+    fn validation_error_display() {
+        let err = ValidationError {
+            field: "test_field".to_string(),
+            message: "something went wrong".to_string(),
+        };
+        let displayed = format!("{}", err);
+        assert!(displayed.contains("test_field"));
+        assert!(displayed.contains("something went wrong"));
+    }
+
+    #[test]
+    fn validation_error_is_std_error() {
+        let err = ValidationError {
+            field: "f".to_string(),
+            message: "m".to_string(),
+        };
+        let std_err: &dyn std::error::Error = &err;
+        assert!(!std_err.to_string().is_empty());
+    }
+
+    #[test]
+    fn validation_error_serde_roundtrip() {
+        let err = ValidationError {
+            field: "event_id".to_string(),
+            message: "bad id".to_string(),
+        };
+        let json = serde_json::to_string(&err).unwrap();
+        let deserialized: ValidationError = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.field, err.field);
+        assert_eq!(deserialized.message, err.message);
+    }
+
+    #[test]
+    fn packet_serde_roundtrip() {
+        let packet = Packet {
+            id: "pkt-1".to_string(),
+            events: vec!["e1".to_string(), "e2".to_string()],
+        };
+        let json = serde_json::to_string(&packet).unwrap();
+        let deserialized: Packet = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.id, packet.id);
+        assert_eq!(deserialized.events, packet.events);
+    }
+
+    // --- Property tests ---
+
+    mod prop {
+        use super::*;
+        use proptest::prelude::*;
+
+        fn hex_string_64() -> impl Strategy<Value = String> {
+            proptest::string::string_regex("[0-9a-fA-F]{64}").unwrap()
+        }
+
+        proptest! {
+            #[test]
+            fn valid_hex_ids_always_pass(id in hex_string_64()) {
+                prop_assert!(EventValidator::validate_event_id(&id).is_ok());
+            }
+
+            #[test]
+            fn short_ids_always_fail(id in "[0-9a-f]{1,63}") {
+                prop_assert!(EventValidator::validate_event_id(&id).is_err());
+            }
+
+            #[test]
+            fn long_ids_always_fail(id in "[0-9a-f]{65,128}") {
+                prop_assert!(EventValidator::validate_event_id(&id).is_err());
+            }
+
+            #[test]
+            fn non_hex_64_chars_always_fail(id in "[g-z]{64}") {
+                prop_assert!(EventValidator::validate_event_id(&id).is_err());
+            }
+
+            #[test]
+            fn arbitrary_source_rejected_unless_known(source in "[a-z]{1,20}") {
+                let valid = ["github", "jira", "linear", "gitlab", "manual", "git"];
+                if valid.contains(&source.as_str()) {
+                    prop_assert!(EventValidator::validate_source(&source).is_ok());
+                } else {
+                    prop_assert!(EventValidator::validate_source(&source).is_err());
+                }
+            }
+
+            #[test]
+            fn nonempty_packet_always_valid(n in 1usize..50) {
+                let packet = Packet {
+                    id: "p".to_string(),
+                    events: (0..n).map(|i| format!("e{}", i)).collect(),
+                };
+                prop_assert!(PacketValidator::validate_packet(&packet).is_ok());
+            }
+
+            #[test]
+            fn validation_error_serde_roundtrip_prop(
+                field in "[a-z_]{1,30}",
+                message in ".{1,100}"
+            ) {
+                let err = ValidationError { field: field.clone(), message: message.clone() };
+                let json = serde_json::to_string(&err).unwrap();
+                let de: ValidationError = serde_json::from_str(&json).unwrap();
+                prop_assert_eq!(de.field, field);
+                prop_assert_eq!(de.message, message);
+            }
+        }
+    }
 }

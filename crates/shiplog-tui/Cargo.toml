@@ -7,6 +7,11 @@ license.workspace = true
 authors.workspace = true
 description = "Interactive terminal UI for curating workstreams."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-tui"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "tui", "terminal", "interactive", "ui"]
+categories = ["command-line-utilities"]
 
 [dependencies]
 anyhow.workspace = true
@@ -14,3 +19,8 @@ serde.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
+proptest.workspace = true
+serde_json = { workspace = true }
+
+[lints]
+workspace = true

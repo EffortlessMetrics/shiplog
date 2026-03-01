@@ -1,0 +1,5 @@
+---
+source: crates/shiplog-cache-key/tests/snapshot_tests.rs
+expression: key
+---
+pr:reviews:https://api.github.com/repos/octocat/hello/pulls/42:page3

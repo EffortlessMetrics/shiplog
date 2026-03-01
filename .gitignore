@@ -12,6 +12,7 @@ clippy_output.txt
 *.db
 
 # Fuzz artifacts (cargo-fuzz)
+fuzz/target/
 fuzz/corpus/
 fuzz/artifacts/
 fuzz/coverage/
@@ -26,6 +27,9 @@ tarpaulin-report.*
 # Mutation testing (cargo-mutants)
 mutants.out/
 mutants.out.*
+
+# Proptest regressions
+*.proptest-regressions
 
 # Insta snapshot review
 *.snap.new

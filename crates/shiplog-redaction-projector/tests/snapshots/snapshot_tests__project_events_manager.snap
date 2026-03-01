@@ -1,0 +1,74 @@
+---
+source: crates/shiplog-redaction-projector/tests/snapshot_tests.rs
+expression: json
+---
+[
+  {
+    "id": "85baeefada372e563fc69fcc7793b1956bbaec96ecfc9f4d8b19806b68b5955a",
+    "kind": "PullRequest",
+    "occurred_at": "2025-06-15T12:00:00Z",
+    "actor": {
+      "login": "dev",
+      "id": 1
+    },
+    "repo": {
+      "full_name": "acme/core",
+      "html_url": "https://github.com/acme/core",
+      "visibility": "Private"
+    },
+    "payload": {
+      "type": "PullRequest",
+      "data": {
+        "number": 10,
+        "title": "Add secret feature",
+        "state": "Merged",
+        "created_at": "2025-06-15T12:00:00Z",
+        "merged_at": "2025-06-15T12:00:00Z",
+        "additions": 50,
+        "deletions": 5,
+        "changed_files": 3,
+        "touched_paths_hint": [],
+        "window": null
+      }
+    },
+    "tags": [],
+    "links": [],
+    "source": {
+      "system": "github",
+      "url": "https://api.github.com/repos/acme/core/pulls/10",
+      "opaque_id": null
+    }
+  },
+  {
+    "id": "6fd7b3f61b4e906678cee794ae14f6c9c4139f0f468d0fd69427aad30a4331e0",
+    "kind": "Manual",
+    "occurred_at": "2025-06-15T12:00:00Z",
+    "actor": {
+      "login": "dev",
+      "id": 1
+    },
+    "repo": {
+      "full_name": "acme/core",
+      "html_url": null,
+      "visibility": "Private"
+    },
+    "payload": {
+      "type": "Manual",
+      "data": {
+        "event_type": "Design",
+        "title": "Architecture review",
+        "description": null,
+        "started_at": null,
+        "ended_at": null,
+        "impact": null
+      }
+    },
+    "tags": [],
+    "links": [],
+    "source": {
+      "system": "manual",
+      "url": null,
+      "opaque_id": null
+    }
+  }
+]

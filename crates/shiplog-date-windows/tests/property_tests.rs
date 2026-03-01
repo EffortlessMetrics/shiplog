@@ -96,3 +96,61 @@ proptest! {
         }
     }
 }
+
+// ============================================================================
+// Additional Window Partition Property Tests
+// ============================================================================
+
+proptest! {
+    // Sum of day window lengths equals the total number of days in the range.
+    #[test]
+    fn prop_day_windows_sum_equals_range(
+        since in strategy_naive_date(),
+        days in 1u64..365u64
+    ) {
+        let until: NaiveDate = since.checked_add_days(chrono::Days::new(days)).unwrap();
+        let windows = day_windows(since, until);
+        let total: i64 = windows.iter().map(window_len_days).sum();
+        prop_assert_eq!(total, (until - since).num_days());
+    }
+
+    // Every window produced by any partitioner has positive length (since < until).
+    #[test]
+    fn prop_all_windows_positive_length(
+        since in strategy_naive_date(),
+        days in 1u64..365u64
+    ) {
+        let until: NaiveDate = since.checked_add_days(chrono::Days::new(days)).unwrap();
+        for w in day_windows(since, until).iter()
+            .chain(week_windows(since, until).iter())
+            .chain(month_windows(since, until).iter())
+        {
+            prop_assert!(w.since < w.until, "window {:?}..{:?} has non-positive length", w.since, w.until);
+        }
+    }
+
+    // Number of day windows equals the number of calendar days in the range.
+    #[test]
+    fn prop_day_window_count_equals_days(
+        since in strategy_naive_date(),
+        days in 1u64..365u64
+    ) {
+        let until: NaiveDate = since.checked_add_days(chrono::Days::new(days)).unwrap();
+        let windows = day_windows(since, until);
+        prop_assert_eq!(windows.len() as i64, (until - since).num_days());
+    }
+
+    // Week windows total days equals the full date range span.
+    #[test]
+    fn prop_week_windows_sum_equals_range(
+        since in strategy_naive_date(),
+        days in 7u64..365u64
+    ) {
+        let until: NaiveDate = since.checked_add_days(chrono::Days::new(days)).unwrap();
+        let windows = week_windows(since, until);
+        if !windows.is_empty() {
+            let total: i64 = windows.iter().map(window_len_days).sum();
+            prop_assert_eq!(total, (until - since).num_days());
+        }
+    }
+}

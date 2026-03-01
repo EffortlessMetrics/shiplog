@@ -103,13 +103,13 @@ Notes:
 ### 3.3 Render (no re-fetch)
 
 ```bash
-shiplog render --run-dir out/<run_id>
+shiplog render --run <run_id>
 ```
 
 Add safe sharing variants:
 
 ```bash
-shiplog render --run-dir out/<run_id> --redact-key <KEY>
+shiplog render --run <run_id> --redact-key <KEY>
 ```
 
 ### 3.4 Refresh (re-fetch receipts; keep curation)
@@ -208,12 +208,17 @@ Three render profiles:
 - `shiplog-ids`: stable deterministic IDs
 - `shiplog-engine`: orchestration (collect/render/refresh/import)
 - `shiplog-ingest-github`: GitHub adapter (window slicing, caching, GHES)
+- `shiplog-ingest-git`: local git repository adapter
+- `shiplog-ingest-gitlab`: GitLab adapter (MR/review events, self-hosted)
+- `shiplog-ingest-jira`: Jira adapter (issue search, status filtering)
+- `shiplog-ingest-linear`: Linear adapter (GraphQL, issue ingestion)
 - `shiplog-cache`: SQLite TTL cache for API responses
 - `shiplog-workstreams`: clustering + curated/suggested semantics
 - `shiplog-redact`: deterministic redaction profiles + alias cache persistence
 - `shiplog-bundle`: manifests + zip bundles (profile-scoped)
 - `shiplog-render-md`: Markdown packet renderer (snapshot-tested)
 - `shiplog-render-json`: JSON/JSONL render outputs
+- `shiplog-template`: configurable packet templates
 - `shiplog-cluster-llm`: optional semantic clustering via OpenAI-compatible endpoint
 - `shiplog-testkit`: scenario helpers (BDD) - dev-only by default
 
@@ -326,13 +331,15 @@ Goal: reduce onboarding friction:
 **Now (v0.2.x)**
 
 - Binary releases (CI)
-- Local git ingest adapter
-- GitLab + Jira adapters (at least basic PR/issue ingestion)
+- ✅ Local git ingest adapter
+- ✅ GitLab adapter
+- ✅ Jira + Linear adapters
+- ✅ Configurable packet templates
+- Cache improvements (TTL config, size limits)
 
 **Next (v0.3.x)**
 
 - Multi-source merging with identity resolution
-- Templateable packet rendering
 - Better non-code work capture (manual lane ergonomics)
 
 **Non-goals**

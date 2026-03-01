@@ -1,0 +1,31 @@
+---
+source: crates/shiplog-bundle/tests/format_stability.rs
+expression: manifest
+---
+{
+  "run_id": "stability_test_run",
+  "generated_at": "2025-06-01T12:00:00Z",
+  "profile": "Internal",
+  "files": [
+    {
+      "path": "packet.md",
+      "sha256": "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "bytes": 8192
+    },
+    {
+      "path": "ledger.events.jsonl",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 1024
+    },
+    {
+      "path": "coverage.manifest.json",
+      "sha256": "d7a8fbb307d7809469ca9abcb0082e4f8d5651e46d3cdb762d02d0bf37c9e592",
+      "bytes": 512
+    },
+    {
+      "path": "profiles/manager/packet.md",
+      "sha256": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+      "bytes": 4096
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+---
+source: crates/shiplog-redaction-policy/tests/snapshot_tests.rs
+assertion_line: 169
+expression: json
+---
+{
+  "id": "85baeefada372e563fc69fcc7793b1956bbaec96ecfc9f4d8b19806b68b5955a",
+  "kind": "PullRequest",
+  "occurred_at": "2025-06-15T12:00:00Z",
+  "actor": {
+    "login": "developer",
+    "id": 42
+  },
+  "repo": {
+    "full_name": "repo-REDACTED(acme/secret-project)",
+    "html_url": null,
+    "visibility": "Unknown"
+  },
+  "payload": {
+    "type": "PullRequest",
+    "data": {
+      "number": 99,
+      "title": "[redacted]",
+      "state": "Merged",
+      "created_at": "2025-06-15T12:00:00Z",
+      "merged_at": "2025-06-15T12:00:00Z",
+      "additions": 150,
+      "deletions": 30,
+      "changed_files": 8,
+      "touched_paths_hint": [],
+      "window": null
+    }
+  },
+  "tags": [
+    "feature",
+    "priority"
+  ],
+  "links": [],
+  "source": {
+    "system": "github",
+    "url": null,
+    "opaque_id": null
+  }
+}

@@ -14,7 +14,7 @@ let uuid = Uuid::new();
 println!("Generated UUID: {}", uuid);
 
 let id = generate_id("event");
-println!("Generated ID: {}", id");
+println!("Generated ID: {}", id);
 ```
 
 ## Features

@@ -5,15 +5,23 @@
 
 use anyhow::Result;
 use shiplog_ports::Renderer;
+use shiplog_receipt::format_receipt_markdown;
 use shiplog_schema::coverage::CoverageManifest;
-use shiplog_schema::event::{EventEnvelope, EventKind, EventPayload, ManualEventType};
+use shiplog_schema::event::{EventEnvelope, EventKind};
 use shiplog_schema::workstream::WorkstreamsFile;
+use shiplog_workstream_receipt_policy::WORKSTREAM_RECEIPT_RENDER_LIMIT;
 use std::collections::HashMap;
 
-/// Maximum receipts to show per workstream in main packet
-const MAX_RECEIPTS_PER_WORKSTREAM: usize = 5;
-
 /// Section ordering configuration
+///
+/// # Examples
+///
+/// ```
+/// use shiplog_render_md::SectionOrder;
+///
+/// let order = SectionOrder::default();
+/// assert_eq!(order, SectionOrder::Default);
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum SectionOrder {
     /// Default order: Summary, Workstreams, Receipts, Coverage
@@ -29,6 +37,35 @@ pub enum SectionOrder {
 /// - headings
 /// - short bullets
 /// - receipts with URLs when available
+///
+/// # Examples
+///
+/// Use as a [`Renderer`] trait object to render events into Markdown:
+///
+/// ```rust,no_run
+/// use shiplog_render_md::MarkdownRenderer;
+/// use shiplog_ports::Renderer;
+/// use shiplog_schema::event::EventEnvelope;
+/// use shiplog_schema::workstream::WorkstreamsFile;
+/// use shiplog_schema::coverage::CoverageManifest;
+///
+/// # fn example(
+/// #     events: &[EventEnvelope],
+/// #     workstreams: &WorkstreamsFile,
+/// #     coverage: &CoverageManifest,
+/// # ) -> anyhow::Result<()> {
+/// let renderer = MarkdownRenderer::new();
+/// let markdown = renderer.render_packet_markdown(
+///     "octocat",
+///     "2025-01-01..2025-04-01",
+///     events,
+///     workstreams,
+///     coverage,
+/// )?;
+/// println!("{}", markdown);
+/// # Ok(())
+/// # }
+/// ```
 pub struct MarkdownRenderer {
     /// Section ordering configuration
     pub section_order: SectionOrder,
@@ -44,11 +81,28 @@ impl Default for MarkdownRenderer {
 
 impl MarkdownRenderer {
     /// Create a new renderer with default section ordering.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use shiplog_render_md::MarkdownRenderer;
+    ///
+    /// let renderer = MarkdownRenderer::new();
+    /// ```
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Create a new renderer with custom section ordering.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use shiplog_render_md::{MarkdownRenderer, SectionOrder};
+    ///
+    /// let renderer = MarkdownRenderer::new()
+    ///     .with_section_order(SectionOrder::CoverageFirst);
+    /// ```
     pub fn with_section_order(mut self, order: SectionOrder) -> Self {
         self.section_order = order;
         self
@@ -197,10 +251,10 @@ fn render_receipts(out: &mut String, events: &[EventEnvelope], workstreams: &Wor
 
         // Split receipts into main (top N) and appendix (remainder)
         let (main_receipts, appendix_receipts): (Vec<_>, Vec<_>) =
-            if ws.receipts.len() <= MAX_RECEIPTS_PER_WORKSTREAM {
+            if ws.receipts.len() <= WORKSTREAM_RECEIPT_RENDER_LIMIT {
                 (ws.receipts.clone(), Vec::new())
             } else {
-                let (main, appendix) = ws.receipts.split_at(MAX_RECEIPTS_PER_WORKSTREAM);
+                let (main, appendix) = ws.receipts.split_at(WORKSTREAM_RECEIPT_RENDER_LIMIT);
                 (main.to_vec(), appendix.to_vec())
             };
 
@@ -215,7 +269,7 @@ fn render_receipts(out: &mut String, events: &[EventEnvelope], workstreams: &Wor
         } else {
             for id in &main_receipts {
                 if let Some(ev) = by_id.get(&id.0) {
-                    out.push_str(&format!("- {}\n", format_receipt_clean(ev)));
+                    out.push_str(&format!("{}\n", format_receipt_markdown(ev)));
                 }
             }
             if !appendix_receipts.is_empty() {
@@ -314,7 +368,7 @@ fn render_appendix(out: &mut String, events: &[EventEnvelope], workstreams: &Wor
         // Show all events for this workstream, not just receipts
         for event_id in &ws.events {
             if let Some(ev) = by_id.get(&event_id.0) {
-                out.push_str(&format!("- {}\n", format_receipt_clean(ev)));
+                out.push_str(&format!("{}\n", format_receipt_markdown(ev)));
             }
         }
         out.push('\n');
@@ -328,81 +382,6 @@ fn render_file_artifacts(out: &mut String) {
     out.push_str("- `coverage.manifest.json` (completeness + slicing)\n");
     out.push_str("- `workstreams.yaml` (editable clustering)\n");
     out.push_str("- `manual_events.yaml` (non-GitHub work)\n");
-}
-
-/// Format a receipt with cleaner presentation including event type, title, date, and link.
-fn format_receipt_clean(ev: &EventEnvelope) -> String {
-    match (&ev.kind, &ev.payload) {
-        (EventKind::PullRequest, EventPayload::PullRequest(pr)) => {
-            let title = &pr.title;
-            let _number = pr.number;
-            let repo = &ev.repo.full_name;
-            let url = ev
-                .links
-                .iter()
-                .find(|l| l.label == "pr")
-                .map(|l| l.url.as_str())
-                .unwrap_or("");
-            let date_str = ev.occurred_at.format("%Y-%m-%d").to_string();
-
-            if url.is_empty() {
-                format!("- [PR] {} ({}) — {}", title, date_str, repo)
-            } else {
-                format!("- [PR] {} ({}) — [{}]({})", title, date_str, repo, url)
-            }
-        }
-        (EventKind::Review, EventPayload::Review(r)) => {
-            let _number = r.pull_number;
-            let repo = &ev.repo.full_name;
-            let url = ev
-                .links
-                .iter()
-                .find(|l| l.label == "pr")
-                .map(|l| l.url.as_str())
-                .unwrap_or("");
-            let date_str = ev.occurred_at.format("%Y-%m-%d").to_string();
-
-            if url.is_empty() {
-                format!("- [Review] {} ({}) — {}", r.state, date_str, repo)
-            } else {
-                format!(
-                    "- [Review] {} ({}) — [{}]({})",
-                    r.state, date_str, repo, url
-                )
-            }
-        }
-        (EventKind::Manual, EventPayload::Manual(m)) => {
-            let emoji = manual_type_emoji(&m.event_type);
-            let title = &m.title;
-            let links: Vec<String> = ev
-                .links
-                .iter()
-                .map(|l| format!("[{}]({})", l.label, l.url))
-                .collect();
-            let links_str = if links.is_empty() {
-                String::new()
-            } else {
-                format!(" — {}", links.join(", "))
-            };
-            let date_str = ev.occurred_at.format("%Y-%m-%d").to_string();
-
-            format!("- [{}] {} ({}){}", emoji, title, date_str, links_str)
-        }
-        _ => format!("- event {}", ev.id),
-    }
-}
-
-fn manual_type_emoji(event_type: &ManualEventType) -> &'static str {
-    match event_type {
-        ManualEventType::Note => "📝",
-        ManualEventType::Incident => "🚨",
-        ManualEventType::Design => "🏗️",
-        ManualEventType::Mentoring => "👨‍🏫",
-        ManualEventType::Launch => "🚀",
-        ManualEventType::Migration => "🔄",
-        ManualEventType::Review => "👀",
-        ManualEventType::Other => "📌",
-    }
 }
 
 #[cfg(test)]
@@ -983,10 +962,45 @@ mod tests {
     }
 
     #[test]
+    fn coverage_empty_slices_no_incomplete_no_slicing() {
+        // No slices at all → no "incomplete results" or "Slicing applied" messages.
+        // Strengthens > → >= mutation coverage on partial_count and capped checks.
+        let coverage = make_coverage(vec![], vec![]);
+        let mut out = String::new();
+        render_coverage(&mut out, &coverage);
+        assert!(!out.contains("incomplete results"));
+        assert!(!out.contains("Slicing applied"));
+        assert!(!out.contains("Query slices"));
+    }
+
+    #[test]
+    fn coverage_none_incomplete_results_no_warning() {
+        // incomplete_results: None → defaults to false → no warning.
+        // Kills > → >= mutation on partial_count when None is present.
+        let coverage = make_coverage(
+            vec![CoverageSlice {
+                window: TimeWindow {
+                    since: NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
+                    until: NaiveDate::from_ymd_opt(2024, 12, 31).unwrap(),
+                },
+                query: "test".into(),
+                total_count: 10,
+                fetched: 10,
+                incomplete_results: None,
+                notes: vec![],
+            }],
+            vec![],
+        );
+        let mut out = String::new();
+        render_coverage(&mut out, &coverage);
+        assert!(!out.contains("incomplete results"));
+    }
+
+    #[test]
     fn review_event_shows_review_tag_and_state() {
-        // Kills Review match arm deletion in format_receipt_clean
+        // Kills Review match arm deletion in format_receipt_markdown
         let ev = create_test_review("r1", "approved", false);
-        let formatted = format_receipt_clean(&ev);
+        let formatted = format_receipt_markdown(&ev);
         assert!(formatted.contains("[Review]"));
         assert!(formatted.contains("approved"));
     }
@@ -995,7 +1009,7 @@ mod tests {
     fn review_with_pr_link_shows_markdown_link() {
         // Kills == → != mutation on `l.label == "pr"` check
         let ev = create_test_review("r2", "changes_requested", true);
-        let formatted = format_receipt_clean(&ev);
+        let formatted = format_receipt_markdown(&ev);
         assert!(formatted.contains("[Review]"));
         assert!(formatted.contains("[owner/repo]"));
         assert!(formatted.contains("(https://github.com/owner/repo/pull/42)"));
@@ -1005,7 +1019,7 @@ mod tests {
     fn review_without_pr_link_shows_plain_repo() {
         // No "pr" link → repo name is shown without markdown link syntax
         let ev = create_test_review("r3", "approved", false);
-        let formatted = format_receipt_clean(&ev);
+        let formatted = format_receipt_markdown(&ev);
         assert!(formatted.contains("owner/repo"));
         assert!(!formatted.contains("]("));
     }

@@ -1,0 +1,5 @@
+---
+source: crates/shiplog-adapter/tests/adapter.rs
+expression: adapter.adapt()
+---
+[adapter] Adaptee: val

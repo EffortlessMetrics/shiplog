@@ -7,6 +7,14 @@ license.workspace = true
 authors.workspace = true
 description = "Data chunking utilities for shiplog."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-chunker"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "chunker", "iterator", "collection", "traversal"]
+categories = ["development-tools", "rust-patterns"]
 
 [dependencies]
 anyhow.workspace = true
+
+[lints]
+workspace = true

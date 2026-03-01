@@ -1,6 +1,7 @@
 //! One-time initialization utilities for shiplog.
 //!
 //! This crate provides one-time initialization primitives for safe lazy initialization.
+#![allow(unsafe_code)]
 
 use std::cell::UnsafeCell;
 use std::sync::atomic::{AtomicBool, Ordering};

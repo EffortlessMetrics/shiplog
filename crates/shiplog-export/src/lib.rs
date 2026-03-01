@@ -280,4 +280,436 @@ mod tests {
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "");
     }
+
+    // --- Snapshot tests ---
+
+    #[test]
+    fn snapshot_default_export_options() {
+        let opts = ExportOptions::default();
+        insta::assert_yaml_snapshot!(opts);
+    }
+
+    #[test]
+    fn snapshot_export_data_populated() {
+        let mut data = ExportData::new("Q1 2025 Review".to_string());
+        data.add_event(ExportEvent {
+            id: "evt-001".to_string(),
+            source: "github".to_string(),
+            title: "Implement OAuth2 flow".to_string(),
+            timestamp: "2025-01-15T10:30:00Z".to_string(),
+        });
+        data.add_event(ExportEvent {
+            id: "evt-002".to_string(),
+            source: "jira".to_string(),
+            title: "Database migration plan".to_string(),
+            timestamp: "2025-01-20T14:00:00Z".to_string(),
+        });
+        insta::assert_yaml_snapshot!(data);
+    }
+
+    #[test]
+    fn snapshot_json_export_output() {
+        let mut data = ExportData::new("Sprint Report".to_string());
+        data.add_event(ExportEvent {
+            id: "pr-42".to_string(),
+            source: "github".to_string(),
+            title: "Add user authentication".to_string(),
+            timestamp: "2025-02-01T09:00:00Z".to_string(),
+        });
+        let opts = ExportOptions {
+            format: ExportFormat::Json,
+            pretty: true,
+            include_metadata: true,
+        };
+        let output = export_data(&data, &opts).unwrap();
+        insta::assert_snapshot!(output);
+    }
+
+    #[test]
+    fn snapshot_csv_export_output() {
+        let mut data = ExportData::new("Sprint Report".to_string());
+        data.add_event(ExportEvent {
+            id: "pr-42".to_string(),
+            source: "github".to_string(),
+            title: "Add user authentication".to_string(),
+            timestamp: "2025-02-01T09:00:00Z".to_string(),
+        });
+        data.add_event(ExportEvent {
+            id: "pr-43".to_string(),
+            source: "manual".to_string(),
+            title: "Design review session".to_string(),
+            timestamp: "2025-02-02T14:30:00Z".to_string(),
+        });
+        let opts = ExportOptions {
+            format: ExportFormat::Csv,
+            pretty: false,
+            include_metadata: false,
+        };
+        let output = export_data(&data, &opts).unwrap();
+        insta::assert_snapshot!(output);
+    }
+
+    // --- Edge case tests ---
+
+    #[test]
+    fn export_format_display_all_variants() {
+        assert_eq!(format!("{}", ExportFormat::Jsonl), "jsonl");
+        assert_eq!(format!("{}", ExportFormat::Markdown), "markdown");
+    }
+
+    #[test]
+    fn export_format_extension_jsonl() {
+        assert_eq!(ExportFormat::Jsonl.extension(), "jsonl");
+    }
+
+    #[test]
+    fn export_format_eq_and_copy() {
+        let a = ExportFormat::Json;
+        let b = a; // Copy
+        assert_eq!(a, b);
+        assert_ne!(ExportFormat::Json, ExportFormat::Csv);
+    }
+
+    #[test]
+    fn export_data_new_starts_empty() {
+        let data = ExportData::new("My Title".to_string());
+        assert_eq!(data.title, "My Title");
+        assert!(data.events.is_empty());
+    }
+
+    #[test]
+    fn export_data_add_event_accumulates() {
+        let mut data = ExportData::new("T".to_string());
+        for i in 0..5 {
+            data.add_event(ExportEvent {
+                id: format!("e{}", i),
+                source: "github".to_string(),
+                title: format!("Event {}", i),
+                timestamp: "2024-01-01T00:00:00Z".to_string(),
+            });
+        }
+        assert_eq!(data.events.len(), 5);
+    }
+
+    #[test]
+    fn json_exporter_pretty_vs_compact() {
+        let mut data = ExportData::new("T".to_string());
+        data.add_event(ExportEvent {
+            id: "e1".to_string(),
+            source: "github".to_string(),
+            title: "X".to_string(),
+            timestamp: "2024-01-01T00:00:00Z".to_string(),
+        });
+
+        let pretty_opts = ExportOptions {
+            format: ExportFormat::Json,
+            pretty: true,
+            include_metadata: false,
+        };
+        let compact_opts = ExportOptions {
+            format: ExportFormat::Json,
+            pretty: false,
+            include_metadata: false,
+        };
+
+        let pretty = export_data(&data, &pretty_opts).unwrap();
+        let compact = export_data(&data, &compact_opts).unwrap();
+        assert!(
+            pretty.contains('\n'),
+            "pretty output should contain newlines"
+        );
+        assert!(
+            !compact.contains('\n'),
+            "compact output should not contain newlines"
+        );
+        // Both should parse to the same value
+        let p: serde_json::Value = serde_json::from_str(&pretty).unwrap();
+        let c: serde_json::Value = serde_json::from_str(&compact).unwrap();
+        assert_eq!(p, c);
+    }
+
+    #[test]
+    fn json_export_empty_events() {
+        let data = ExportData::new("Empty".to_string());
+        let options = ExportOptions::default();
+        let result = export_data(&data, &options).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+        assert!(parsed["events"].as_array().unwrap().is_empty());
+    }
+
+    #[test]
+    fn csv_header_always_present() {
+        let data = ExportData::new("T".to_string());
+        let exporter = CsvExporter;
+        let options = ExportOptions::default();
+        let result = exporter.export(&data, &options).unwrap();
+        assert!(result.starts_with("id,source,title,timestamp\n"));
+    }
+
+    #[test]
+    fn csv_empty_events_only_header() {
+        let data = ExportData::new("T".to_string());
+        let exporter = CsvExporter;
+        let options = ExportOptions::default();
+        let result = exporter.export(&data, &options).unwrap();
+        assert_eq!(result, "id,source,title,timestamp\n");
+    }
+
+    #[test]
+    fn csv_multiple_events_correct_line_count() {
+        let mut data = ExportData::new("T".to_string());
+        for i in 0..3 {
+            data.add_event(ExportEvent {
+                id: format!("e{}", i),
+                source: "github".to_string(),
+                title: format!("Title {}", i),
+                timestamp: "2024-01-01T00:00:00Z".to_string(),
+            });
+        }
+        let exporter = CsvExporter;
+        let options = ExportOptions::default();
+        let result = exporter.export(&data, &options).unwrap();
+        // Header + 3 data lines, each terminated with \n
+        let lines: Vec<&str> = result.lines().collect();
+        assert_eq!(lines.len(), 4); // header + 3 events
+    }
+
+    #[test]
+    fn csv_event_with_commas_in_title() {
+        let mut data = ExportData::new("T".to_string());
+        data.add_event(ExportEvent {
+            id: "e1".to_string(),
+            source: "github".to_string(),
+            title: "Fix bug, improve perf, add tests".to_string(),
+            timestamp: "2024-01-01T00:00:00Z".to_string(),
+        });
+        let exporter = CsvExporter;
+        let options = ExportOptions::default();
+        let result = exporter.export(&data, &options).unwrap();
+        // Title is quoted, so commas inside should be safe
+        assert!(result.contains("\"Fix bug, improve perf, add tests\""));
+    }
+
+    #[test]
+    fn jsonl_single_event_no_trailing_newline() {
+        let mut data = ExportData::new("T".to_string());
+        data.add_event(ExportEvent {
+            id: "e1".to_string(),
+            source: "github".to_string(),
+            title: "X".to_string(),
+            timestamp: "2024-01-01T00:00:00Z".to_string(),
+        });
+        let options = ExportOptions {
+            format: ExportFormat::Jsonl,
+            pretty: false,
+            include_metadata: false,
+        };
+        let result = export_data(&data, &options).unwrap();
+        assert_eq!(result.lines().count(), 1);
+        assert!(!result.ends_with('\n'));
+    }
+
+    #[test]
+    fn markdown_format_falls_back_to_json() {
+        let mut data = ExportData::new("T".to_string());
+        data.add_event(ExportEvent {
+            id: "e1".to_string(),
+            source: "github".to_string(),
+            title: "X".to_string(),
+            timestamp: "2024-01-01T00:00:00Z".to_string(),
+        });
+        let md_opts = ExportOptions {
+            format: ExportFormat::Markdown,
+            pretty: true,
+            include_metadata: false,
+        };
+        let json_opts = ExportOptions {
+            format: ExportFormat::Json,
+            pretty: true,
+            include_metadata: false,
+        };
+        let md_result = export_data(&data, &md_opts).unwrap();
+        let json_result = export_data(&data, &json_opts).unwrap();
+        assert_eq!(md_result, json_result);
+    }
+
+    #[test]
+    fn export_event_serde_roundtrip() {
+        let event = ExportEvent {
+            id: "e1".to_string(),
+            source: "github".to_string(),
+            title: "Test \"special\" chars & more".to_string(),
+            timestamp: "2024-06-15T12:30:00Z".to_string(),
+        };
+        let json = serde_json::to_string(&event).unwrap();
+        let de: ExportEvent = serde_json::from_str(&json).unwrap();
+        assert_eq!(de.id, event.id);
+        assert_eq!(de.title, event.title);
+    }
+
+    #[test]
+    fn export_data_serde_roundtrip() {
+        let mut data = ExportData::new("Roundtrip".to_string());
+        data.add_event(ExportEvent {
+            id: "e1".to_string(),
+            source: "github".to_string(),
+            title: "T".to_string(),
+            timestamp: "2024-01-01T00:00:00Z".to_string(),
+        });
+        let json = serde_json::to_string(&data).unwrap();
+        let de: ExportData = serde_json::from_str(&json).unwrap();
+        assert_eq!(de.title, data.title);
+        assert_eq!(de.events.len(), 1);
+    }
+
+    #[test]
+    fn export_options_serde_roundtrip() {
+        let opts = ExportOptions {
+            format: ExportFormat::Csv,
+            pretty: false,
+            include_metadata: true,
+        };
+        let json = serde_json::to_string(&opts).unwrap();
+        let de: ExportOptions = serde_json::from_str(&json).unwrap();
+        assert_eq!(de.format, ExportFormat::Csv);
+        assert!(!de.pretty);
+        assert!(de.include_metadata);
+    }
+
+    #[test]
+    fn re_exported_layout_constants_are_available() {
+        // Verify re-exports from shiplog-output-layout work
+        assert_eq!(FILE_PACKET_MD, "packet.md");
+        assert_eq!(FILE_LEDGER_EVENTS_JSONL, "ledger.events.jsonl");
+        assert_eq!(FILE_COVERAGE_MANIFEST_JSON, "coverage.manifest.json");
+        assert_eq!(FILE_BUNDLE_MANIFEST_JSON, "bundle.manifest.json");
+        assert_eq!(DIR_PROFILES, "profiles");
+        assert_eq!(PROFILE_INTERNAL, "internal");
+        assert_eq!(PROFILE_MANAGER, "manager");
+        assert_eq!(PROFILE_PUBLIC, "public");
+    }
+
+    #[test]
+    fn re_exported_run_artifact_paths_works() {
+        let paths = RunArtifactPaths::new("/tmp/run");
+        assert!(paths.packet_md().ends_with("packet.md"));
+    }
+
+    #[test]
+    fn re_exported_zip_path_for_profile_works() {
+        let p = zip_path_for_profile(std::path::Path::new("/tmp/run"), "public");
+        assert!(p.to_string_lossy().contains("public"));
+    }
+
+    // --- Property tests ---
+
+    mod prop {
+        use super::*;
+        use proptest::prelude::*;
+
+        fn arb_export_event() -> impl Strategy<Value = ExportEvent> {
+            (
+                "[a-z0-9\\-]{1,20}",
+                prop_oneof!["github", "manual", "jira", "linear"],
+                ".*",
+                "20[0-9]{2}-[01][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9]Z",
+            )
+                .prop_map(|(id, source, title, timestamp)| ExportEvent {
+                    id,
+                    source,
+                    title,
+                    timestamp,
+                })
+        }
+
+        proptest! {
+            #[test]
+            fn json_export_always_produces_valid_json(
+                events in proptest::collection::vec(arb_export_event(), 0..10),
+                pretty in proptest::bool::ANY,
+            ) {
+                let mut data = ExportData::new("PropTest".to_string());
+                for e in events {
+                    data.add_event(e);
+                }
+                let opts = ExportOptions { format: ExportFormat::Json, pretty, include_metadata: true };
+                let result = export_data(&data, &opts).unwrap();
+                let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+                prop_assert!(parsed.is_object());
+            }
+
+            #[test]
+            fn jsonl_lines_count_equals_event_count(
+                events in proptest::collection::vec(arb_export_event(), 1..20),
+            ) {
+                let n = events.len();
+                let mut data = ExportData::new("T".to_string());
+                for e in events {
+                    data.add_event(e);
+                }
+                let opts = ExportOptions { format: ExportFormat::Jsonl, pretty: false, include_metadata: false };
+                let result = export_data(&data, &opts).unwrap();
+                prop_assert_eq!(result.lines().count(), n);
+            }
+
+            #[test]
+            fn jsonl_each_line_is_valid_json(
+                events in proptest::collection::vec(arb_export_event(), 1..10),
+            ) {
+                let mut data = ExportData::new("T".to_string());
+                for e in events {
+                    data.add_event(e);
+                }
+                let opts = ExportOptions { format: ExportFormat::Jsonl, pretty: false, include_metadata: false };
+                let result = export_data(&data, &opts).unwrap();
+                for line in result.lines() {
+                    let parsed: Result<ExportEvent, _> = serde_json::from_str(line);
+                    prop_assert!(parsed.is_ok(), "line is not valid JSON: {}", line);
+                }
+            }
+
+            #[test]
+            fn csv_line_count_is_header_plus_events(
+                events in proptest::collection::vec(arb_export_event(), 0..15),
+            ) {
+                let n = events.len();
+                let mut data = ExportData::new("T".to_string());
+                for e in events {
+                    data.add_event(e);
+                }
+                let exporter = CsvExporter;
+                let opts = ExportOptions::default();
+                let result = exporter.export(&data, &opts).unwrap();
+                let line_count = result.lines().count();
+                // header + n events
+                prop_assert_eq!(line_count, 1 + n);
+            }
+
+            #[test]
+            fn export_event_serde_roundtrip_prop(event in arb_export_event()) {
+                let json = serde_json::to_string(&event).unwrap();
+                let de: ExportEvent = serde_json::from_str(&json).unwrap();
+                prop_assert_eq!(de.id, event.id);
+                prop_assert_eq!(de.source, event.source);
+                prop_assert_eq!(de.title, event.title);
+                prop_assert_eq!(de.timestamp, event.timestamp);
+            }
+
+            #[test]
+            fn export_format_display_matches_extension_logic(
+                fmt in prop_oneof![
+                    Just(ExportFormat::Json),
+                    Just(ExportFormat::Jsonl),
+                    Just(ExportFormat::Csv),
+                    Just(ExportFormat::Markdown),
+                ]
+            ) {
+                let display = format!("{}", fmt);
+                let ext = fmt.extension();
+                // Display and extension are both non-empty
+                prop_assert!(!display.is_empty());
+                prop_assert!(!ext.is_empty());
+            }
+        }
+    }
 }

@@ -1,0 +1,13 @@
+version: 1
+generated_at: "2025-06-01T12:00:00Z"
+workstreams:
+  - id: "abc123"
+    title: "Auth"
+    summary: "OAuth2 integration"
+    tags: ["security"]
+    stats:
+      pull_requests: 1
+      reviews: 0
+      manual_events: 0
+    events: ["evt1"]
+    receipts: ["evt1"]

@@ -7,9 +7,20 @@ license.workspace = true
 authors.workspace = true
 description = "Shared state utilities for shiplog."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-shared"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "shared", "concurrency", "async", "synchronization"]
+categories = ["concurrency", "asynchronous"]
 
 [dependencies]
 tokio = { version = "1.49.0", features = ["rt", "macros", "sync"] }
 anyhow.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+
+[dev-dependencies]
+tokio = { version = "1.49.0", features = ["rt-multi-thread", "macros", "sync", "time"] }
+
+[lints]
+workspace = true

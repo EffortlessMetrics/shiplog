@@ -1,0 +1,1 @@
+{"name":"my-plugin","version":"1.0.0","min_shiplog":"0.1.0","api_version":"1","schema_version":"1","capabilities":["ingest"],"author":"dev","description":"A test plugin"}

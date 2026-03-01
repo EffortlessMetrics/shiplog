@@ -1,0 +1,6 @@
+---
+source: crates/shiplog-render-json/tests/snapshot.rs
+assertion_line: 22
+expression: text
+---
+{"id":"5fe344ad0cf9acbffb4bc45a718ad98b4138abd47bb97882294b7a6d74e78db5","kind":"PullRequest","occurred_at":"1970-01-01T00:00:00Z","actor":{"login":"user","id":null},"repo":{"full_name":"acme/widgets","html_url":"https://github.com/acme/widgets","visibility":"Unknown"},"payload":{"type":"PullRequest","data":{"number":42,"title":"Add caching layer","state":"Merged","created_at":"1970-01-01T00:00:00Z","merged_at":"1970-01-01T00:00:00Z","additions":1,"deletions":0,"changed_files":1,"touched_paths_hint":[],"window":{"since":"2025-01-01","until":"2025-02-01"}}},"tags":[],"links":[{"label":"pr","url":"https://github.com/acme/widgets/pull/42"}],"source":{"system":"github","url":"https://api.github.com/...","opaque_id":null}}

@@ -1,0 +1,6 @@
+---
+source: crates/shiplog-workstream-cluster/tests/snapshot.rs
+assertion_line: 92
+expression: ws.workstreams
+---
+[]

@@ -1,0 +1,9 @@
+---
+source: crates/shiplog-hash/tests/hash.rs
+expression: "formatted.join(\"\\n\")"
+---
+             "" => e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+        "hello" => 2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824
+  "hello world" => b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9
+      "shiplog" => 2bcfe5ff13f646fac69d7bea4a7451fdd564a88f318dbed56f78a1410f555845
+         "test" => 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08

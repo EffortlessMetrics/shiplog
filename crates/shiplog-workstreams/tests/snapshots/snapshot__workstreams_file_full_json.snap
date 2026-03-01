@@ -1,0 +1,29 @@
+---
+source: crates/shiplog-workstreams/tests/snapshot.rs
+expression: ws
+---
+{
+  "version": 1,
+  "generated_at": "2025-06-01T12:00:00Z",
+  "workstreams": [
+    {
+      "id": "c342740613232e073739eb582b858afc00bc2959d2e541055dbdf88dbe51e73a",
+      "title": "Widgets Core",
+      "summary": "Core widget library improvements",
+      "tags": [
+        "core"
+      ],
+      "stats": {
+        "pull_requests": 5,
+        "reviews": 3,
+        "manual_events": 1
+      },
+      "events": [
+        "5fe344ad0cf9acbffb4bc45a718ad98b4138abd47bb97882294b7a6d74e78db5"
+      ],
+      "receipts": [
+        "5fe344ad0cf9acbffb4bc45a718ad98b4138abd47bb97882294b7a6d74e78db5"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+---
+source: crates/shiplog-template/src/lib.rs
+assertion_line: 758
+expression: result
+---
+# Q1 2025 Shipping Packet
+
+**Author:** alice
+**Period:** 2025-01-01 to 2025-03-31

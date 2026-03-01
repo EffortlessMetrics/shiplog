@@ -1,0 +1,15 @@
+---
+source: crates/shiplog-export/src/lib.rs
+expression: output
+---
+{
+  "title": "Sprint Report",
+  "events": [
+    {
+      "id": "pr-42",
+      "source": "github",
+      "title": "Add user authentication",
+      "timestamp": "2025-02-01T09:00:00Z"
+    }
+  ]
+}

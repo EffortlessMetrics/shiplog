@@ -29,6 +29,8 @@ shiplog-cache = { path = "../shiplog-cache", version = "0.2.1" }
 shiplog-cache-key = { path = "../shiplog-cache-key", version = "0.2.1" }
 
 [dev-dependencies]
+proptest.workspace = true
 tempfile.workspace = true
 
-
+[lints]
+workspace = true

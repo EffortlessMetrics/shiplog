@@ -1,0 +1,8 @@
+---
+source: crates/shiplog-schema/tests/snapshot.rs
+expression: window()
+---
+{
+  "since": "2025-01-01",
+  "until": "2025-04-01"
+}

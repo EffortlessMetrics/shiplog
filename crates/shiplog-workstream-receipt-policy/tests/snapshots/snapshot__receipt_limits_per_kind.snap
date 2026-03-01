@@ -1,0 +1,8 @@
+---
+source: crates/shiplog-workstream-receipt-policy/tests/snapshot.rs
+assertion_line: 31
+expression: output
+---
+PullRequest: 18446744073709551615
+Review: 5
+Manual: 7

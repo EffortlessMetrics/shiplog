@@ -1,0 +1,35 @@
+---
+source: crates/shiplog-schema/tests/format_stability.rs
+expression: manifest
+---
+run_id: test_run_456
+generated_at: "2025-06-01T12:00:00Z"
+user: octocat
+window:
+  since: 2025-01-01
+  until: 2025-04-01
+mode: merged
+sources:
+  - github
+  - manual
+slices:
+  - window:
+      since: 2025-01-01
+      until: 2025-02-01
+    query: "author:octocat is:merged"
+    total_count: 15
+    fetched: 15
+    incomplete_results: false
+    notes: []
+  - window:
+      since: 2025-02-01
+      until: 2025-03-01
+    query: "author:octocat is:merged"
+    total_count: 50
+    fetched: 30
+    incomplete_results: true
+    notes:
+      - Rate limited
+warnings:
+  - Incomplete results for February
+completeness: Partial

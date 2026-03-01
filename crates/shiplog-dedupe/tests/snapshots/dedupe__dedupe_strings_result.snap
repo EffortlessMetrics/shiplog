@@ -1,0 +1,8 @@
+---
+source: crates/shiplog-dedupe/tests/dedupe.rs
+expression: result
+---
+- apple
+- banana
+- cherry
+- date

@@ -1,0 +1,36 @@
+---
+source: crates/shiplog-schema/tests/format_stability.rs
+expression: event
+---
+{
+  "id": "5c36abcc3376713e4888fad8b7711d289c4d6555a353588dfde8170dbf1729e6",
+  "kind": "Manual",
+  "occurred_at": "2025-06-01T12:00:00Z",
+  "actor": {
+    "login": "m",
+    "id": null
+  },
+  "repo": {
+    "full_name": "x/y",
+    "html_url": null,
+    "visibility": "Unknown"
+  },
+  "payload": {
+    "type": "Manual",
+    "data": {
+      "event_type": "Note",
+      "title": "n",
+      "description": null,
+      "started_at": null,
+      "ended_at": null,
+      "impact": null
+    }
+  },
+  "tags": [],
+  "links": [],
+  "source": {
+    "system": "unknown",
+    "url": null,
+    "opaque_id": null
+  }
+}

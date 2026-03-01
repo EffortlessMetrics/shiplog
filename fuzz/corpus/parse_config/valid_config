@@ -1,0 +1,3 @@
+profile: internal
+output_dir: ./out
+cache_dir: ./.cache

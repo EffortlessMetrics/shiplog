@@ -1,0 +1,39 @@
+---
+source: crates/shiplog-redaction-policy/tests/snapshot_tests.rs
+assertion_line: 193
+expression: json
+---
+{
+  "id": "6fd7b3f61b4e906678cee794ae14f6c9c4139f0f468d0fd69427aad30a4331e0",
+  "kind": "Manual",
+  "occurred_at": "2025-06-16T09:00:00Z",
+  "actor": {
+    "login": "developer",
+    "id": 42
+  },
+  "repo": {
+    "full_name": "repo-REDACTED(acme/secret-project)",
+    "html_url": null,
+    "visibility": "Unknown"
+  },
+  "payload": {
+    "type": "Manual",
+    "data": {
+      "event_type": "Incident",
+      "title": "[redacted]",
+      "description": null,
+      "started_at": "2025-06-16",
+      "ended_at": "2025-06-16",
+      "impact": null
+    }
+  },
+  "tags": [
+    "incident"
+  ],
+  "links": [],
+  "source": {
+    "system": "manual",
+    "url": null,
+    "opaque_id": null
+  }
+}

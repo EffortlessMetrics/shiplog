@@ -12,17 +12,30 @@ libfuzzer-sys = "0.4"
 shiplog-ingest-json = { path = "../crates/shiplog-ingest-json" }
 shiplog-ingest-github = { path = "../crates/shiplog-ingest-github" }
 shiplog-ingest-manual = { path = "../crates/shiplog-ingest-manual" }
+shiplog-manual-events = { path = "../crates/shiplog-manual-events", version = "0.2.1" }
 shiplog-workstreams = { path = "../crates/shiplog-workstreams" }
 shiplog-schema = { path = "../crates/shiplog-schema" }
+shiplog-workstream-receipt-policy = { path = "../crates/shiplog-workstream-receipt-policy", version = "0.2.1" }
 shiplog-ids = { path = "../crates/shiplog-ids" }
 shiplog-redaction-profile = { path = "../crates/shiplog-redaction-profile" }
+shiplog-workstream-layout = { path = "../crates/shiplog-workstream-layout" }
 shiplog-redaction-repo = { path = "../crates/shiplog-redaction-repo" }
 shiplog-redaction-policy = { path = "../crates/shiplog-redaction-policy" }
 shiplog-redaction-projector = { path = "../crates/shiplog-redaction-projector" }
+shiplog-redact = { path = "../crates/shiplog-redact" }
+shiplog-receipt = { path = "../crates/shiplog-receipt" }
 shiplog-cache-key = { path = "../crates/shiplog-cache-key" }
+shiplog-workstream-cluster = { path = "../crates/shiplog-workstream-cluster", version = "0.2.1" }
+shiplog-ports = { path = "../crates/shiplog-ports", version = "0.2.1" }
 shiplog-cache-stats = { path = "../crates/shiplog-cache-stats" }
 shiplog-cache-expiry = { path = "../crates/shiplog-cache-expiry" }
+shiplog-cache-sqlite = { path = "../crates/shiplog-cache-sqlite" }
 shiplog-date-windows = { path = "../crates/shiplog-date-windows" }
+shiplog-cluster-llm-prompt = { path = "../crates/shiplog-cluster-llm-prompt", version = "0.2.1" }
+shiplog-cluster-llm-parse = { path = "../crates/shiplog-cluster-llm-parse", version = "0.2.1" }
+shiplog-team-core = { path = "../crates/shiplog-team-core" }
+shiplog-semver = { path = "../crates/shiplog-semver" }
+shiplog-url = { path = "../crates/shiplog-url" }
 chrono = "0.4.44"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
@@ -63,6 +76,41 @@ bench = false
 [[bin]]
 name = "parse_manual_events"
 path = "fuzz_targets/parse_manual_events.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "receipt_markdown"
+path = "fuzz_targets/receipt_markdown.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "redact_event"
+path = "fuzz_targets/redact_event.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "coverage_manifest"
+path = "fuzz_targets/coverage_manifest.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "bundle_manifest"
+path = "fuzz_targets/bundle_manifest.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "schema_event_deser"
+path = "fuzz_targets/schema_event_deser.rs"
 test = false
 doc = false
 bench = false
@@ -149,8 +197,96 @@ doc = false
 bench = false
 
 [[bin]]
+name = "cache_sqlite"
+path = "fuzz_targets/cache_sqlite.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
 name = "date_windows"
 path = "fuzz_targets/date_windows.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "workstream_cluster"
+path = "fuzz_targets/workstream_cluster.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "cluster_llm_prompt"
+path = "fuzz_targets/cluster_llm_prompt.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "cluster_llm_parse"
+path = "fuzz_targets/cluster_llm_parse.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "workstream_receipt_policy"
+path = "fuzz_targets/workstream_receipt_policy.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "workstream_layout"
+path = "fuzz_targets/workstream_layout.rs"
+test = false
+doc = false
+bench = false
+
+# ============================================================================
+# Critical-Crate Fuzzing Targets
+# ============================================================================
+
+[[bin]]
+name = "fuzz_workstream_yaml"
+path = "fuzz_targets/fuzz_workstream_yaml.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_cache_key"
+path = "fuzz_targets/fuzz_cache_key.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_team_config"
+path = "fuzz_targets/fuzz_team_config.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_ingest_jsonl"
+path = "fuzz_targets/fuzz_ingest_jsonl.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_semver_parse"
+path = "fuzz_targets/fuzz_semver_parse.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_url_parse"
+path = "fuzz_targets/fuzz_url_parse.rs"
 test = false
 doc = false
 bench = false

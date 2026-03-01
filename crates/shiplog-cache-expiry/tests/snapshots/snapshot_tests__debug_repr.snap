@@ -1,0 +1,5 @@
+---
+source: crates/shiplog-cache-expiry/tests/snapshot_tests.rs
+expression: "format!(\"{w:?}\")"
+---
+CacheExpiryWindow { cached_at: 2023-11-14T22:13:20Z, expires_at: 2023-11-14T22:14:50Z }

@@ -1,0 +1,9 @@
+---
+source: crates/shiplog-workstream-cluster/tests/snapshot.rs
+assertion_line: 111
+expression: stats
+---
+- - org/proj
+  - pull_requests: 2
+    reviews: 2
+    manual_events: 1

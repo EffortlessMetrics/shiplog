@@ -13,34 +13,19 @@ jobs:
   mutation-test:
     name: Mutation Testing
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 120
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: "1.92"
           components: rustfmt, clippy
 
-      - name: Cache cargo registry
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Cache cargo index
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/git
-          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Cache cargo build
-        uses: actions/cache@v4
-        with:
-          path: target
-          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+      - uses: Swatinem/rust-cache@v2
 
       - name: Install cargo-mutants
         run: cargo install cargo-mutants --locked
@@ -51,7 +36,7 @@ jobs:
         run: |
           set +e
           fail=0
-          echo "Testing Tier 1: Critical Core crates..."
+          echo "Testing Tier 1: Critical Core crates (target ≥ 90%)..."
           run_mutants_keepalive () {
             local crate="$1"
             local timeout="$2"
@@ -72,6 +57,11 @@ jobs:
           cargo mutants -p shiplog-redact --timeout 180 --copy-target=false || fail=1
           run_mutants_keepalive shiplog-coverage 600 || fail=1
           cargo mutants -p shiplog-ids --timeout 120 --copy-target=false || fail=1
+          cargo mutants -p shiplog-ports --timeout 120 --copy-target=false || fail=1
+          cargo mutants -p shiplog-date-windows --timeout 120 --copy-target=false || fail=1
+          cargo mutants -p shiplog-validate --timeout 120 --copy-target=false || fail=1
+          cargo mutants -p shiplog-redaction-policy --timeout 120 --copy-target=false || fail=1
+          cargo mutants -p shiplog-redaction-profile --timeout 120 --copy-target=false || fail=1
           exit $fail
 
       - name: Run mutation tests for Tier 2 crates
@@ -80,11 +70,18 @@ jobs:
         run: |
           set +e
           fail=0
-          echo "Testing Tier 2: Pipeline Core crates..."
+          echo "Testing Tier 2: Pipeline Core crates (target ≥ 80%)..."
           cargo mutants -p shiplog-engine --timeout 150 --copy-target=false || fail=1
           cargo mutants -p shiplog-bundle --timeout 150 --copy-target=false || fail=1
           cargo mutants -p shiplog-workstreams --timeout 150 --copy-target=false || fail=1
-          cargo mutants -p shiplog-ports --timeout 120 --copy-target=false || fail=1
+          cargo mutants -p shiplog-workstream-cluster --timeout 150 --copy-target=false || fail=1
+          cargo mutants -p shiplog-workstream-receipt-policy --timeout 120 --copy-target=false || fail=1
+          cargo mutants -p shiplog-workstream-layout --timeout 120 --copy-target=false || fail=1
+          cargo mutants -p shiplog-redaction-repo --timeout 120 --copy-target=false || fail=1
+          cargo mutants -p shiplog-redaction-projector --timeout 120 --copy-target=false || fail=1
+          cargo mutants -p shiplog-output-layout --timeout 120 --copy-target=false || fail=1
+          cargo mutants -p shiplog-manual-events --timeout 120 --copy-target=false || fail=1
+          cargo mutants -p shiplog-export --timeout 120 --copy-target=false || fail=1
           exit $fail
 
       - name: Run mutation tests for Tier 3 crates
@@ -93,13 +90,28 @@ jobs:
         run: |
           set +e
           fail=0
-          echo "Testing Tier 3: Adapters and Renderers crates..."
+          echo "Testing Tier 3: Adapters and Renderers crates (target ≥ 70%)..."
           cargo mutants -p shiplog-ingest-github --timeout 120 --copy-target=false || fail=1
           cargo mutants -p shiplog-ingest-json --timeout 120 --copy-target=false || fail=1
           cargo mutants -p shiplog-ingest-manual --timeout 120 --copy-target=false || fail=1
+          cargo mutants -p shiplog-ingest-git --timeout 120 --copy-target=false || fail=1
+          cargo mutants -p shiplog-ingest-gitlab --timeout 120 --copy-target=false || fail=1
+          cargo mutants -p shiplog-ingest-jira --timeout 120 --copy-target=false || fail=1
+          cargo mutants -p shiplog-ingest-linear --timeout 120 --copy-target=false || fail=1
           cargo mutants -p shiplog-render-md --timeout 120 --copy-target=false || fail=1
           cargo mutants -p shiplog-render-json --timeout 120 --copy-target=false || fail=1
           cargo mutants -p shiplog-cache --timeout 120 --copy-target=false || fail=1
+          cargo mutants -p shiplog-cache-sqlite --timeout 120 --copy-target=false || fail=1
+          cargo mutants -p shiplog-cache-key --timeout 120 --copy-target=false || fail=1
+          cargo mutants -p shiplog-cache-stats --timeout 120 --copy-target=false || fail=1
+          cargo mutants -p shiplog-cache-expiry --timeout 120 --copy-target=false || fail=1
+          cargo mutants -p shiplog-template --timeout 120 --copy-target=false || fail=1
+          cargo mutants -p shiplog-filter --timeout 120 --copy-target=false || fail=1
+          cargo mutants -p shiplog-merge --timeout 120 --copy-target=false || fail=1
+          cargo mutants -p shiplog-diff --timeout 120 --copy-target=false || fail=1
+          cargo mutants -p shiplog-query --timeout 120 --copy-target=false || fail=1
+          cargo mutants -p shiplog-storage --timeout 120 --copy-target=false || fail=1
+          cargo mutants -p shiplog-config --timeout 120 --copy-target=false || fail=1
           exit $fail
 
       - name: Run mutation tests for Tier 4 crates
@@ -108,31 +120,21 @@ jobs:
         run: |
           set +e
           fail=0
-          echo "Testing Tier 4: LLM Clustering and App crates..."
+          echo "Testing Tier 4: Supporting and Experimental crates (target ≥ 60%)..."
           cargo mutants -p shiplog-cluster-llm --timeout 120 --copy-target=false || fail=1
-          exit $fail
-
-      - name: Run mutation tests for v0.2.x (Now) crates
-        id: v02x
-        continue-on-error: true
-        run: |
-          set +e
-          fail=0
-          echo "Testing v0.2.x Now: Local git ingest adapter..."
-          cargo mutants -p shiplog-ingest-git --timeout 120 --copy-target=false || fail=1
-          exit $fail
-
-      - name: Run mutation tests for v0.3.x (Next) roadmap crates
-        id: v03x
-        continue-on-error: true
-        run: |
-          set +e
-          fail=0
-          echo "Testing v0.3.x Roadmap: GitLab, Jira, Linear, Template..."
-          cargo mutants -p shiplog-ingest-gitlab --timeout 120 --copy-target=false || fail=1
-          cargo mutants -p shiplog-ingest-jira --timeout 120 --copy-target=false || fail=1
-          cargo mutants -p shiplog-ingest-linear --timeout 120 --copy-target=false || fail=1
-          cargo mutants -p shiplog-template --timeout 120 --copy-target=false || fail=1
+          cargo mutants -p shiplog-cluster-llm-parse --timeout 120 --copy-target=false || fail=1
+          cargo mutants -p shiplog-cluster-llm-prompt --timeout 120 --copy-target=false || fail=1
+          cargo mutants -p shiplog-plugin --timeout 120 --copy-target=false || fail=1
+          cargo mutants -p shiplog-team-core --timeout 120 --copy-target=false || fail=1
+          cargo mutants -p shiplog-team-aggregate --timeout 120 --copy-target=false || fail=1
+          cargo mutants -p shiplog-team-render --timeout 120 --copy-target=false || fail=1
+          cargo mutants -p shiplog-report --timeout 120 --copy-target=false || fail=1
+          cargo mutants -p shiplog-transform --timeout 120 --copy-target=false || fail=1
+          cargo mutants -p shiplog-migrate --timeout 120 --copy-target=false || fail=1
+          cargo mutants -p shiplog-archive --timeout 120 --copy-target=false || fail=1
+          cargo mutants -p shiplog-notify --timeout 120 --copy-target=false || fail=1
+          cargo mutants -p shiplog-stats --timeout 120 --copy-target=false || fail=1
+          cargo mutants -p shiplog --timeout 120 --copy-target=false || fail=1
           exit $fail
 
       - name: Check mutation results
@@ -141,9 +143,7 @@ jobs:
           if [ "${{ steps.tier1.outcome }}" = "failure" ] || \
              [ "${{ steps.tier2.outcome }}" = "failure" ] || \
              [ "${{ steps.tier3.outcome }}" = "failure" ] || \
-             [ "${{ steps.tier4.outcome }}" = "failure" ] || \
-             [ "${{ steps.v02x.outcome }}" = "failure" ] || \
-             [ "${{ steps.v03x.outcome }}" = "failure" ]; then
+             [ "${{ steps.tier4.outcome }}" = "failure" ]; then
             echo "Mutation testing failed for one or more tiers"
             exit 1
           fi
@@ -166,10 +166,7 @@ jobs:
           echo "Mutation testing completed. Check the uploaded artifacts for detailed results." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "## Minimum Scores by Tier" >> $GITHUB_STEP_SUMMARY
-          echo "- Tier 1 (Critical Core): ≥ 85%" >> $GITHUB_STEP_SUMMARY
-          echo "- Tier 2 (Pipeline Core): ≥ 75%" >> $GITHUB_STEP_SUMMARY
-          echo "- Tier 3 (Adapters/Renderers): ≥ 65%" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## Roadmap Crate Coverage" >> $GITHUB_STEP_SUMMARY
-          echo "- v0.2.x (Now): shiplog-ingest-git" >> $GITHUB_STEP_SUMMARY
-          echo "- v0.3.x (Next): shiplog-ingest-gitlab, shiplog-ingest-jira, shiplog-ingest-linear, shiplog-template" >> $GITHUB_STEP_SUMMARY
+          echo "- Tier 1 (Critical Core): ≥ 90%" >> $GITHUB_STEP_SUMMARY
+          echo "- Tier 2 (Pipeline Core): ≥ 80%" >> $GITHUB_STEP_SUMMARY
+          echo "- Tier 3 (Adapters/Renderers): ≥ 70%" >> $GITHUB_STEP_SUMMARY
+          echo "- Tier 4 (Supporting/Experimental): ≥ 60%" >> $GITHUB_STEP_SUMMARY

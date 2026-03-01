@@ -16,3 +16,6 @@ categories = ["caching", "development-tools"]
 [dependencies]
 anyhow.workspace = true
 chrono.workspace = true
+
+[lints]
+workspace = true

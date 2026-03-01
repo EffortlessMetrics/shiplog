@@ -1,0 +1,22 @@
+---
+source: crates/shiplog-workstream-cluster/tests/snapshot.rs
+assertion_line: 73
+expression: ws.workstreams
+---
+- id: e0c77d6a2485456d3e77515339326ff1e582151d2a9a63492248d374261f017f
+  title: acme/app
+  summary: ~
+  tags:
+    - repo
+  stats:
+    pull_requests: 2
+    reviews: 1
+    manual_events: 0
+  events:
+    - a0961c55fb085367333ee0029afbf5a40d6246dd245fcf4535c4dac8bb11cc65
+    - 07a4aa4ded55a7c291df82ab15e15217bc0bf9988db6dab158a08b458f7451e3
+    - 2a5fbd45211df033bd39e3184977c9e684316d4757e3ccfe331bf0e266c3ef71
+  receipts:
+    - a0961c55fb085367333ee0029afbf5a40d6246dd245fcf4535c4dac8bb11cc65
+    - 07a4aa4ded55a7c291df82ab15e15217bc0bf9988db6dab158a08b458f7451e3
+    - 2a5fbd45211df033bd39e3184977c9e684316d4757e3ccfe331bf0e266c3ef71

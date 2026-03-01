@@ -1,0 +1,21 @@
+---
+source: crates/shiplog-team-render/tests/team_render_tests.rs
+assertion_line: 306
+expression: packet
+---
+# Team Shipping Packet
+
+Members configured: 2
+Members included: 1
+Members missing ledgers: bob
+Total events: 3
+
+## Summary
+
+- Sources: alice, bob
+- Coverage completeness: Complete
+- Coverage slices: 0
+
+## Warnings
+
+- Missing ledger

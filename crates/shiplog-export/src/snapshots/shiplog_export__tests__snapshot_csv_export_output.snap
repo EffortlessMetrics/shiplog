@@ -1,0 +1,7 @@
+---
+source: crates/shiplog-export/src/lib.rs
+expression: output
+---
+id,source,title,timestamp
+"pr-42","github","Add user authentication","2025-02-01T09:00:00Z"
+"pr-43","manual","Design review session","2025-02-02T14:30:00Z"

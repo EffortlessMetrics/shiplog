@@ -1,0 +1,16 @@
+---
+source: crates/shiplog-bundle/tests/format_stability.rs
+expression: manifest
+---
+{
+  "run_id": "public_test",
+  "generated_at": "2025-06-01T12:00:00Z",
+  "profile": "Public",
+  "files": [
+    {
+      "path": "profiles/public/packet.md",
+      "sha256": "aabbcc",
+      "bytes": 100
+    }
+  ]
+}

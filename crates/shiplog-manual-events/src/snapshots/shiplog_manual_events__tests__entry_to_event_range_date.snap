@@ -1,0 +1,30 @@
+---
+source: crates/shiplog-manual-events/src/lib.rs
+assertion_line: 571
+expression: ev
+---
+id: 675e81434c55ef1b69bc183bc025cf897eff343bd6dd32df9b3cb9c718d529fd
+kind: Manual
+occurred_at: "[timestamp]"
+actor:
+  login: responder
+  id: ~
+repo:
+  full_name: infra/reliability
+  html_url: ~
+  visibility: Unknown
+payload:
+  type: Manual
+  data:
+    event_type: Incident
+    title: Multi-day Incident
+    description: Handled production outage
+    started_at: 2025-03-01
+    ended_at: 2025-03-05
+    impact: Reduced downtime by 50%
+tags: []
+links: []
+source:
+  system: manual
+  url: ~
+  opaque_id: snap-range

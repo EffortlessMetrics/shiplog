@@ -236,6 +236,33 @@ mod v03x_tests {
             .expect("Scenario should lock output layout microcrate contract");
     }
 
+    #[cfg(feature = "microcrate_manual_events")]
+    #[test]
+    fn microcrate_contracts_scenario_manual_events() {
+        let scenario = microcrate_manual_events_contract();
+        scenario
+            .run()
+            .expect("Scenario should lock manual-events microcrate contract");
+    }
+
+    #[cfg(feature = "microcrate_cluster_llm_prompt")]
+    #[test]
+    fn microcrate_contracts_scenario_cluster_llm_prompt() {
+        let scenario = microcrate_cluster_llm_prompt_contract();
+        scenario
+            .run()
+            .expect("Scenario should lock cluster-llm-prompt microcrate contract");
+    }
+
+    #[cfg(feature = "microcrate_cluster_llm_parse")]
+    #[test]
+    fn microcrate_contracts_scenario_cluster_llm_parse() {
+        let scenario = microcrate_cluster_llm_parse_contract();
+        scenario
+            .run()
+            .expect("Scenario should lock cluster-llm-parse microcrate contract");
+    }
+
     #[cfg(feature = "microcrate_validate")]
     #[test]
     fn microcrate_contracts_scenario_validate() {
@@ -297,6 +324,24 @@ mod v03x_tests {
         scenario
             .run()
             .expect("Scenario should lock date-windows microcrate contract");
+    }
+
+    #[cfg(feature = "microcrate_workstream_cluster")]
+    #[test]
+    fn microcrate_contracts_scenario_workstream_cluster() {
+        let scenario = microcrate_workstream_cluster_contract();
+        scenario
+            .run()
+            .expect("Scenario should lock repo-based workstream cluster microcrate contract");
+    }
+
+    #[cfg(feature = "microcrate_workstream_receipt_policy")]
+    #[test]
+    fn microcrate_contracts_scenario_workstream_receipt_policy() {
+        let scenario = microcrate_workstream_receipt_policy_contract();
+        scenario
+            .run()
+            .expect("Scenario should lock workstream receipt policy microcrate contract");
     }
 
     #[cfg(feature = "microcrate_redaction_repo")]

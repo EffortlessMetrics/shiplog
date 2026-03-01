@@ -1,0 +1,32 @@
+---
+source: crates/shiplog-schema/tests/format_stability.rs
+expression: ws
+---
+version: 1
+generated_at: "2025-06-01T12:00:00Z"
+workstreams:
+  - id: 0544bb5a3630bdac7e9da0276c87a8f1b89cd5d011903d1791cb77a3c521b037
+    title: Authentication
+    summary: OAuth2 integration
+    tags:
+      - security
+      - backend
+    stats:
+      pull_requests: 5
+      reviews: 3
+      manual_events: 1
+    events:
+      - 5fe344ad0cf9acbffb4bc45a718ad98b4138abd47bb97882294b7a6d74e78db5
+      - 9eb6122aaf446d8c41202c2b4111bcc9d56398b701d02110c1682006463db5fd
+    receipts:
+      - 5fe344ad0cf9acbffb4bc45a718ad98b4138abd47bb97882294b7a6d74e78db5
+  - id: 854641c5173b036874a9bacabb1017455d3403e8bcea7126799742ccac65d774
+    title: Infrastructure
+    summary: ~
+    tags: []
+    stats:
+      pull_requests: 0
+      reviews: 0
+      manual_events: 0
+    events: []
+    receipts: []

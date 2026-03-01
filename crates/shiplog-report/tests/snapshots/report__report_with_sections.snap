@@ -1,0 +1,17 @@
+---
+source: crates/shiplog-report/tests/report.rs
+expression: yaml
+---
+- title: Summary
+  content: 'Total: 100 events'
+  order: 0
+- title: Backend
+  content: |-
+    Events: 60
+    Coverage: 85.0%
+  order: 1
+- title: Frontend
+  content: |-
+    Events: 40
+    Coverage: 92.0%
+  order: 2

@@ -23,27 +23,12 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: "1.92"
           components: rustfmt, clippy
 
-      - name: Cache cargo registry
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Cache cargo index
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/git
-          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Cache cargo build
-        uses: actions/cache@v4
-        with:
-          path: target
-          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+      - uses: Swatinem/rust-cache@v2
 
       - name: Run property tests
         run: |
@@ -68,6 +53,69 @@ jobs:
       - name: Run property tests for shiplog-cache
         run: cargo test -p shiplog-cache -- --test-threads=4
 
+      - name: Run property tests for shiplog-bundle
+        run: cargo test -p shiplog-bundle -- --test-threads=4
+
+      - name: Run property tests for shiplog-engine
+        run: cargo test -p shiplog-engine -- --test-threads=4
+
+      - name: Run property tests for shiplog-date-windows
+        run: cargo test -p shiplog-date-windows -- --test-threads=4
+
+      - name: Run property tests for shiplog-ingest-manual
+        run: cargo test -p shiplog-ingest-manual -- --test-threads=4
+
+      - name: Run property tests for shiplog-render-md
+        run: cargo test -p shiplog-render-md -- --test-threads=4
+
+      - name: Run property tests for shiplog-render-json
+        run: cargo test -p shiplog-render-json -- --test-threads=4
+
+      - name: Run property tests for shiplog-cluster-llm
+        run: cargo test -p shiplog-cluster-llm -- --test-threads=4
+
+      - name: Run property tests for shiplog-cluster-llm-parse
+        run: cargo test -p shiplog-cluster-llm-parse -- --test-threads=4
+
+      - name: Run property tests for shiplog-cluster-llm-prompt
+        run: cargo test -p shiplog-cluster-llm-prompt -- --test-threads=4
+
+      - name: Run property tests for shiplog-receipt
+        run: cargo test -p shiplog-receipt -- --test-threads=4
+
+      - name: Run property tests for shiplog-redaction-profile
+        run: cargo test -p shiplog-redaction-profile -- --test-threads=4
+
+      - name: Run property tests for shiplog-redaction-repo
+        run: cargo test -p shiplog-redaction-repo -- --test-threads=4
+
+      - name: Run property tests for shiplog-redaction-projector
+        run: cargo test -p shiplog-redaction-projector -- --test-threads=4
+
+      - name: Run property tests for shiplog-redaction-policy
+        run: cargo test -p shiplog-redaction-policy -- --test-threads=4
+
+      - name: Run property tests for shiplog-workstream-receipt-policy
+        run: cargo test -p shiplog-workstream-receipt-policy -- --test-threads=4
+
+      - name: Run property tests for shiplog-workstream-layout
+        run: cargo test -p shiplog-workstream-layout -- --test-threads=4
+
+      - name: Run property tests for shiplog-workstream-cluster
+        run: cargo test -p shiplog-workstream-cluster -- --test-threads=4
+
+      - name: Run property tests for shiplog-cache-key
+        run: cargo test -p shiplog-cache-key -- --test-threads=4
+
+      - name: Run property tests for shiplog-cache-expiry
+        run: cargo test -p shiplog-cache-expiry -- --test-threads=4
+
+      - name: Run property tests for shiplog-cache-stats
+        run: cargo test -p shiplog-cache-stats -- --test-threads=4
+
+      - name: Run property tests for shiplog-cache-sqlite
+        run: cargo test -p shiplog-cache-sqlite -- --test-threads=4
+
       - name: Run property tests for shiplog-testkit (roadmap)
         run: cargo test -p shiplog-testkit roadmap_property_tests -- --test-threads=4
 
@@ -85,4 +133,25 @@ jobs:
           echo "- shiplog-coverage" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog-workstreams" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog-cache" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-bundle" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-engine" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-date-windows" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-ingest-manual" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-render-md" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-render-json" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-cluster-llm" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-cluster-llm-parse" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-cluster-llm-prompt" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-receipt" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-redaction-profile" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-redaction-repo" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-redaction-projector" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-redaction-policy" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-workstream-receipt-policy" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-workstream-layout" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-workstream-cluster" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-cache-key" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-cache-expiry" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-cache-stats" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog-cache-sqlite" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog-testkit (roadmap property tests)" >> $GITHUB_STEP_SUMMARY

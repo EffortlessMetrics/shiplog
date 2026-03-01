@@ -19,23 +19,33 @@ merge_pipeline = []
 team = ["shiplog-team", "shiplog-team-core", "shiplog-team-aggregate"]
 microcrate_export = ["shiplog-export"]
 microcrate_output_layout = ["shiplog-output-layout"]
+microcrate_manual_events = ["shiplog-manual-events"]
 microcrate_validate = ["shiplog-validate"]
 microcrate_storage = ["shiplog-storage"]
 microcrate_notify = ["shiplog-notify"]
+microcrate_cluster_llm_prompt = ["shiplog-cluster-llm-prompt"]
+microcrate_cluster_llm_parse = ["shiplog-cluster-llm-parse"]
 microcrate_cache_key = ["shiplog-cache-key"]
 microcrate_cache_stats = ["shiplog-cache-stats"]
 microcrate_cache_expiry = ["shiplog-cache-expiry"]
 microcrate_redaction_repo = ["shiplog-redaction-repo"]
+microcrate_workstream_cluster = ["shiplog-workstream-cluster"]
+microcrate_workstream_receipt_policy = ["shiplog-workstream-receipt-policy"]
 microcrate_date_windows = ["shiplog-date-windows"]
 microcrate_contracts = [
     "microcrate_export",
     "microcrate_output_layout",
+    "microcrate_manual_events",
     "microcrate_validate",
     "microcrate_storage",
     "microcrate_notify",
+    "microcrate_cluster_llm_prompt",
+    "microcrate_cluster_llm_parse",
     "microcrate_cache_key",
     "microcrate_cache_stats",
     "microcrate_cache_expiry",
+    "microcrate_workstream_cluster",
+    "microcrate_workstream_receipt_policy",
     "microcrate_redaction_repo",
     "microcrate_date_windows",
 ]
@@ -53,14 +63,20 @@ shiplog-render-md = { path = "../shiplog-render-md", version = "0.2.1" }
 shiplog-workstreams = { path = "../shiplog-workstreams", version = "0.2.1" }
 shiplog-export = { path = "../shiplog-export", version = "0.2.1", optional = true }
 shiplog-output-layout = { path = "../shiplog-output-layout", version = "0.2.1", optional = true }
+shiplog-workstream-layout = { path = "../shiplog-workstream-layout", version = "0.2.1" }
 shiplog-validate = { path = "../shiplog-validate", version = "0.2.1", optional = true }
 shiplog-storage = { path = "../shiplog-storage", version = "0.2.1", optional = true }
 shiplog-notify = { path = "../shiplog-notify", version = "0.2.1", optional = true }
+shiplog-cluster-llm-prompt = { path = "../shiplog-cluster-llm-prompt", version = "0.2.1", optional = true }
+shiplog-cluster-llm-parse = { path = "../shiplog-cluster-llm-parse", version = "0.2.1", optional = true }
 shiplog-cache-key = { path = "../shiplog-cache-key", version = "0.2.1", optional = true }
 shiplog-cache-stats = { path = "../shiplog-cache-stats", version = "0.2.1", optional = true }
 shiplog-cache-expiry = { path = "../shiplog-cache-expiry", version = "0.2.1", optional = true }
 shiplog-redaction-repo = { path = "../shiplog-redaction-repo", version = "0.2.1", optional = true }
+shiplog-workstream-cluster = { path = "../shiplog-workstream-cluster", version = "0.2.1", optional = true }
+shiplog-workstream-receipt-policy = { path = "../shiplog-workstream-receipt-policy", version = "0.2.1", optional = true }
 shiplog-date-windows = { path = "../shiplog-date-windows", version = "0.2.1", optional = true }
+shiplog-manual-events = { path = "../shiplog-manual-events", version = "0.2.1", optional = true }
 proptest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -70,4 +86,5 @@ tempfile.workspace = true
 shiplog-redact = { path = "../shiplog-redact", version = "0.2.1" }
 serde.workspace = true
 
-
+[lints]
+workspace = true

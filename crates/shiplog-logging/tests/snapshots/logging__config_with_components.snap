@@ -1,0 +1,6 @@
+---
+source: crates/shiplog-logging/tests/logging.rs
+expression: sorted_levels
+---
+engine: debug
+network: trace

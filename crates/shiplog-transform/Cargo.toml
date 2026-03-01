@@ -7,6 +7,11 @@ license.workspace = true
 authors.workspace = true
 description = "Event transformation and enrichment pipeline for shiplog."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-transform"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "transform", "data", "conversion", "pipeline"]
+categories = ["development-tools"]
 
 [dependencies]
 anyhow.workspace = true
@@ -16,3 +21,7 @@ chrono.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
+proptest.workspace = true
+
+[lints]
+workspace = true

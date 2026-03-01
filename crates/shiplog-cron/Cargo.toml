@@ -7,6 +7,11 @@ license.workspace = true
 authors.workspace = true
 description = "Continuous/cron mode for scheduled shiplog collection."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-cron"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "cron", "time", "scheduling", "utility"]
+categories = ["date-and-time", "development-tools"]
 
 [dependencies]
 anyhow.workspace = true
@@ -15,3 +20,7 @@ serde_json.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
+proptest.workspace = true
+
+[lints]
+workspace = true

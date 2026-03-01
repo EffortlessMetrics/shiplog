@@ -23,5 +23,12 @@ reqwest.workspace = true
 shiplog-ids = { path = "../shiplog-ids", version = "0.2.1" }
 shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
 shiplog-ports = { path = "../shiplog-ports", version = "0.2.1" }
-shiplog-workstreams = { path = "../shiplog-workstreams", version = "0.2.1" }
+shiplog-workstream-cluster = { path = "../shiplog-workstream-cluster", version = "0.2.1" }
+shiplog-cluster-llm-prompt = { path = "../shiplog-cluster-llm-prompt", version = "0.2.1" }
+shiplog-cluster-llm-parse = { path = "../shiplog-cluster-llm-parse", version = "0.2.1" }
 
+[dev-dependencies]
+proptest.workspace = true
+
+[lints]
+workspace = true

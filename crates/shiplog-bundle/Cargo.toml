@@ -26,5 +26,15 @@ shiplog-ids = { path = "../shiplog-ids", version = "0.2.1" }
 
 [dev-dependencies]
 tempfile.workspace = true
+proptest.workspace = true
+insta = { workspace = true, features = ["json"] }
+serde_json.workspace = true
+sha2.workspace = true
+hex.workspace = true
+zip.workspace = true
+shiplog-ids = { path = "../shiplog-ids", version = "0.2.1" }
+shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
+shiplog-output-layout = { path = "../shiplog-output-layout", version = "0.2.1" }
 
-
+[lints]
+workspace = true

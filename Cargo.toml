@@ -3,15 +3,19 @@ resolver = "2"
 members = [
   "crates/shiplog-ids",
   "crates/shiplog-schema",
-  "crates/shiplog-ports",
-  "crates/shiplog-coverage",
-  "crates/shiplog-date-windows",
-  "crates/shiplog-workstreams",
+    "crates/shiplog-ports",
+    "crates/shiplog-coverage",
+    "crates/shiplog-date-windows",
+    "crates/shiplog-workstream-cluster",
+    "crates/shiplog-workstream-receipt-policy",
+    "crates/shiplog-workstream-layout",
+    "crates/shiplog-workstreams",
   "crates/shiplog-redact",
   "crates/shiplog-redaction-profile",
   "crates/shiplog-redaction-repo",
   "crates/shiplog-redaction-policy",
   "crates/shiplog-redaction-projector",
+  "crates/shiplog-receipt",
   "crates/shiplog-render-md",
   "crates/shiplog-render-json",
   "crates/shiplog-bundle",
@@ -19,17 +23,21 @@ members = [
   "crates/shiplog-ingest-json",
   "crates/shiplog-ingest-github",
   "crates/shiplog-ingest-manual",
+  "crates/shiplog-manual-events",
   "crates/shiplog-ingest-git",
   "crates/shiplog-ingest-gitlab",
   "crates/shiplog-ingest-jira",
   "crates/shiplog-ingest-linear",
-  "crates/shiplog-cache",
-  "crates/shiplog-cache-key",
+    "crates/shiplog-cache",
+    "crates/shiplog-cache-sqlite",
+    "crates/shiplog-cache-key",
   "crates/shiplog-cache-stats",
   "crates/shiplog-cache-expiry",
   "crates/shiplog-template",
   "crates/shiplog-testkit",
   "crates/shiplog-cluster-llm",
+  "crates/shiplog-cluster-llm-parse",
+  "crates/shiplog-cluster-llm-prompt",
   # New microcrates
   "crates/shiplog-validate",
   "crates/shiplog-export",
@@ -238,12 +246,30 @@ reqwest = { version = "0.13.2", features = ["blocking", "json"] }
 url = "2.5.8"
 itertools = "0.14.0"
 proptest = "1.10.0"
-insta = "1.46.3"
+insta = { version = "1.46.3", features = ["yaml"] }
 regex = "1.12.3"
 zip = "8.1.0"
 tokio = { version = "1.49.0", features = ["rt", "macros"] }
 tempfile = "3.25.0"
+assert_cmd = "2.0.16"
+predicates = "3.1.3"
 mutants = "0.0.4"
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[workspace.lints.rust]
+# deny (not forbid) so shiplog-once can #![allow(unsafe_code)] for UnsafeCell
+unsafe_code = "deny"
+# Too many types lack Debug (53+); allow for now, revisit later
+missing_debug_implementations = "allow"
+
+[workspace.lints.clippy]
+# Correctness
+enum_glob_use = "warn"
+# Style — too many hits (30+) across codebase; allow for now
+needless_pass_by_value = "allow"
+# Pedantic — too many hits (40+) across codebase; allow for now
+cloned_instead_of_copied = "allow"
+flat_map_option = "warn"
 
 [profile.release]
 codegen-units = 1

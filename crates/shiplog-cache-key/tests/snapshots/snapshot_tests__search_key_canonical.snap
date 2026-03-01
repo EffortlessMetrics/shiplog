@@ -1,0 +1,5 @@
+---
+source: crates/shiplog-cache-key/tests/snapshot_tests.rs
+expression: key
+---
+search:dc4133c34fea6058:page2:per100

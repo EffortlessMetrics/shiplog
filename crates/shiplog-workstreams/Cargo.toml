@@ -14,17 +14,20 @@ keywords = ["workstreams", "clustering", "yaml", "curation", "pipeline"]
 categories = ["development-tools", "filesystem"]
 
 [dependencies]
-anyhow.workspace = true
-chrono.workspace = true
-serde.workspace = true
-serde_yaml.workspace = true
 shiplog-ids = { path = "../shiplog-ids", version = "0.2.1" }
 shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
 shiplog-ports = { path = "../shiplog-ports", version = "0.2.1" }
+shiplog-workstream-cluster = { path = "../shiplog-workstream-cluster", version = "0.2.1" }
+shiplog-workstream-layout = { path = "../shiplog-workstream-layout", version = "0.2.1" }
 
 [dev-dependencies]
+chrono.workspace = true
 tempfile = "3"
 proptest.workspace = true
+serde_yaml.workspace = true
+serde_json.workspace = true
+insta = { workspace = true, features = ["json"] }
 shiplog-testkit = { path = "../shiplog-testkit", version = "0.2.1" }
 
-
+[lints]
+workspace = true

@@ -7,6 +7,17 @@ license.workspace = true
 authors.workspace = true
 description = "Enumeration utilities for shiplog."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-enumerator"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "enumerator", "iterator", "collection", "traversal"]
+categories = ["development-tools", "rust-patterns"]
 
 [dependencies]
 anyhow.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+
+[lints]
+workspace = true

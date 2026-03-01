@@ -1,0 +1,40 @@
+---
+source: crates/shiplog-schema/tests/snapshot.rs
+expression: event
+---
+{
+  "id": "c02b246136b4fb94dab57b4b2d80262927691987738d8833caf911baf613680d",
+  "kind": "Review",
+  "occurred_at": "2025-06-01T12:00:00Z",
+  "actor": {
+    "login": "reviewer",
+    "id": 2
+  },
+  "repo": {
+    "full_name": "acme/widgets",
+    "html_url": "https://github.com/acme/widgets",
+    "visibility": "Private"
+  },
+  "payload": {
+    "type": "Review",
+    "data": {
+      "pull_number": 42,
+      "pull_title": "Add feature X",
+      "submitted_at": "2025-06-01T12:00:00Z",
+      "state": "approved",
+      "window": {
+        "since": "2025-01-01",
+        "until": "2025-04-01"
+      }
+    }
+  },
+  "tags": [
+    "review"
+  ],
+  "links": [],
+  "source": {
+    "system": "github",
+    "url": null,
+    "opaque_id": null
+  }
+}

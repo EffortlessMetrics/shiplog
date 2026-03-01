@@ -19,5 +19,15 @@ sha2.workspace = true
 hex.workspace = true
 
 [dev-dependencies]
+criterion.workspace = true
+hex.workspace = true
+insta = { workspace = true, features = ["json"] }
 proptest.workspace = true
+serde_json.workspace = true
 
+[[bench]]
+name = "id_generation"
+harness = false
+
+[lints]
+workspace = true

@@ -1,0 +1,32 @@
+[package]
+name = "shiplog-workstream-cluster"
+version = "0.2.1"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Repository-based workstream clustering strategy for shiplog."
+readme = "README.md"
+documentation = "https://docs.rs/shiplog-workstream-cluster"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["clustering", "workstreams", "events", "ports", "strategy"]
+categories = ["development-tools", "algorithms"]
+
+[dependencies]
+anyhow.workspace = true
+chrono.workspace = true
+shiplog-ids = { path = "../shiplog-ids", version = "0.2.1" }
+shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
+shiplog-ports = { path = "../shiplog-ports", version = "0.2.1" }
+shiplog-workstream-receipt-policy = { path = "../shiplog-workstream-receipt-policy", version = "0.2.1" }
+
+[dev-dependencies]
+chrono.workspace = true
+insta.workspace = true
+proptest.workspace = true
+shiplog-ids = { path = "../shiplog-ids", version = "0.2.1" }
+shiplog-testkit = { path = "../shiplog-testkit", version = "0.2.1" }
+
+[lints]
+workspace = true

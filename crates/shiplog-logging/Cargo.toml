@@ -7,6 +7,11 @@ license.workspace = true
 authors.workspace = true
 description = "Logging configuration and utilities for shiplog."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-logging"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "logging", "tracing", "diagnostics", "utility"]
+categories = ["development-tools"]
 
 [dependencies]
 anyhow.workspace = true
@@ -16,3 +21,8 @@ chrono.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
+proptest.workspace = true
+insta.workspace = true
+
+[lints]
+workspace = true

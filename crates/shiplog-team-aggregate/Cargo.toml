@@ -7,6 +7,7 @@ license.workspace = true
 authors.workspace = true
 description = "Team aggregation engine for combining member ledgers and rendering team packets."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-team-aggregate"
 repository.workspace = true
 homepage.workspace = true
 keywords = ["team", "aggregation", "shipping", "report", "events"]
@@ -24,4 +25,11 @@ shiplog-team-core = { path = "../shiplog-team-core", version = "0.2.1" }
 shiplog-team-render = { path = "../shiplog-team-render", version = "0.2.1" }
 
 [dev-dependencies]
+insta.workspace = true
+proptest.workspace = true
+serde_json.workspace = true
+shiplog-testkit = { path = "../shiplog-testkit" }
 tempfile.workspace = true
+
+[lints]
+workspace = true

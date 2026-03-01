@@ -7,6 +7,17 @@ license.workspace = true
 authors.workspace = true
 description = "Trie data structure implementation for shiplog."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-trie"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "trie", "data-structure", "collection", "algorithm"]
+categories = ["data-structures", "algorithms"]
 
 [dependencies]
 anyhow.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+
+[lints]
+workspace = true

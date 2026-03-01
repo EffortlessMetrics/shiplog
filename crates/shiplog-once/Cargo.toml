@@ -7,7 +7,18 @@ license.workspace = true
 authors.workspace = true
 description = "One-time initialization utilities for shiplog."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-once"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "once", "concurrency", "async", "synchronization"]
+categories = ["concurrency", "asynchronous"]
 
 [dependencies]
 tokio = { version = "1.49.0", features = ["rt", "macros", "sync"] }
 anyhow.workspace = true
+
+[dev-dependencies]
+tokio = { version = "1.49.0", features = ["rt-multi-thread", "macros", "sync", "time"] }
+
+[lints]
+workspace = true

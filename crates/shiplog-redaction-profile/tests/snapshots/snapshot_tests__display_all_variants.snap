@@ -1,0 +1,7 @@
+---
+source: crates/shiplog-redaction-profile/tests/snapshot_tests.rs
+expression: "display.join(\"\\n\")"
+---
+internal
+manager
+public

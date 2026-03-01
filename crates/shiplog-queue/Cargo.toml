@@ -19,4 +19,8 @@ serde.workspace = true
 serde_json.workspace = true
 
 [dev-dependencies]
+proptest.workspace = true
 tokio.workspace = true
+
+[lints]
+workspace = true

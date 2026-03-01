@@ -7,6 +7,18 @@ license.workspace = true
 authors.workspace = true
 description = "Adapter pattern utilities for shiplog."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-adapter"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "adapter", "pattern", "pipeline", "processing"]
+categories = ["development-tools", "rust-patterns"]
 
 [dependencies]
 anyhow.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+insta.workspace = true
+
+[lints]
+workspace = true

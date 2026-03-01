@@ -1,0 +1,61 @@
+---
+source: crates/shiplog-render-md/tests/output_quality.rs
+assertion_line: 304
+expression: md
+---
+# Summary
+
+**Window:** 2025-Q1
+
+**Workstreams:** 1
+
+**Events:** 3 PRs, 0 reviews, 0 manual
+
+**Coverage:** Complete
+
+**Sources:** github
+
+## Workstreams
+
+### Markdown syntax in titles
+
+**Claim scaffolds**
+
+- Problem: _fill_
+- What I shipped: _fill_
+- Why it mattered: _fill_
+- Result: _fill_
+
+_PRs: 3, Reviews: 0, Manual: 0_
+
+## Receipts
+
+### Workstream: Markdown syntax in titles
+
+- [PR] Use `Option<T>` instead of null (1970-01-01) — [acme/repo](https://github.com/acme/repo/pull/1)
+- [PR] Fix #123: [urgent] pipe | handling (1970-01-01) — [acme/repo](https://github.com/acme/repo/pull/2)
+- [PR] Support **bold** and *italic* in docs (1970-01-01) — [acme/repo](https://github.com/acme/repo/pull/3)
+
+## Coverage
+
+- **Date window:** 2025-01-01 to 2025-04-01
+- **Mode:** merged
+- **Sources:** github
+- **Completeness:** Complete
+
+## Appendix: All Receipts
+
+### Markdown syntax in titles
+
+- [PR] Use `Option<T>` instead of null (1970-01-01) — [acme/repo](https://github.com/acme/repo/pull/1)
+- [PR] Fix #123: [urgent] pipe | handling (1970-01-01) — [acme/repo](https://github.com/acme/repo/pull/2)
+- [PR] Support **bold** and *italic* in docs (1970-01-01) — [acme/repo](https://github.com/acme/repo/pull/3)
+
+---
+
+## File Artifacts
+
+- `ledger.events.jsonl` (canonical events)
+- `coverage.manifest.json` (completeness + slicing)
+- `workstreams.yaml` (editable clustering)
+- `manual_events.yaml` (non-GitHub work)

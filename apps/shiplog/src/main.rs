@@ -17,11 +17,11 @@ use shiplog_render_md::MarkdownRenderer;
 use shiplog_schema::bundle::BundleProfile;
 #[cfg(feature = "team")]
 use shiplog_team::{TeamAggregator, resolve_team_config, write_team_outputs};
-use shiplog_workstreams::RepoClusterer;
+use shiplog_workstream_cluster::RepoClusterer;
 use std::path::{Path, PathBuf};
 
 #[derive(Parser, Debug)]
-#[command(name = "shiplog")]
+#[command(name = "shiplog", version)]
 #[command(about = "Generate self-review packets with receipts + coverage.", long_about = None)]
 struct Cli {
     #[command(subcommand)]
@@ -490,8 +490,9 @@ fn main() -> Result<()> {
                         token,
                         &api_base,
                         cache_dir,
-                    )?;
-                    let ingest = ing.ingest()?;
+                    )
+                    .context("create GitHub ingestor")?;
+                    let ingest = ing.ingest().context("ingest events")?;
                     let run_id = ingest.coverage.run_id.to_string();
                     let run_dir = out.join(&run_id);
 
@@ -516,10 +517,13 @@ fn main() -> Result<()> {
                     let cache_path = DeterministicRedactor::cache_path(&run_dir);
                     let _ = redactor.load_cache(&cache_path);
 
-                    let (outputs, ws_source) =
-                        engine.run(ingest, &user, &window_label, &run_dir, zip, &bundle_profile)?;
+                    let (outputs, ws_source) = engine
+                        .run(ingest, &user, &window_label, &run_dir, zip, &bundle_profile)
+                        .context("run engine pipeline")?;
 
-                    redactor.save_cache(&cache_path)?;
+                    redactor
+                        .save_cache(&cache_path)
+                        .with_context(|| format!("save redaction cache to {cache_path:?}"))?;
 
                     println!("Collected and wrote:");
                     print_outputs(&outputs, ws_source);
@@ -535,7 +539,7 @@ fn main() -> Result<()> {
                         events_path: events,
                         coverage_path: coverage,
                     };
-                    let ingest = ing.ingest()?;
+                    let ingest = ing.ingest().context("ingest events")?;
                     let run_id = ingest.coverage.run_id.to_string();
                     let run_dir = out.join(&run_id);
 
@@ -558,10 +562,13 @@ fn main() -> Result<()> {
                     let cache_path = DeterministicRedactor::cache_path(&run_dir);
                     let _ = redactor.load_cache(&cache_path);
 
-                    let (outputs, ws_source) =
-                        engine.run(ingest, &user, &window_label, &run_dir, zip, &bundle_profile)?;
+                    let (outputs, ws_source) = engine
+                        .run(ingest, &user, &window_label, &run_dir, zip, &bundle_profile)
+                        .context("run engine pipeline")?;
 
-                    redactor.save_cache(&cache_path)?;
+                    redactor
+                        .save_cache(&cache_path)
+                        .with_context(|| format!("save redaction cache to {cache_path:?}"))?;
 
                     println!("Collected and wrote:");
                     print_outputs(&outputs, ws_source);
@@ -574,7 +581,7 @@ fn main() -> Result<()> {
                     until,
                 } => {
                     let ing = ManualIngestor::new(&events, user.clone(), since, until);
-                    let ingest = ing.ingest()?;
+                    let ingest = ing.ingest().context("ingest events")?;
                     let run_id = ingest.coverage.run_id.to_string();
                     let run_dir = out.join(&run_id);
                     let window_label = format!("{}..{}", since, until);
@@ -598,10 +605,13 @@ fn main() -> Result<()> {
                     let cache_path = DeterministicRedactor::cache_path(&run_dir);
                     let _ = redactor.load_cache(&cache_path);
 
-                    let (outputs, ws_source) =
-                        engine.run(ingest, &user, &window_label, &run_dir, zip, &bundle_profile)?;
+                    let (outputs, ws_source) = engine
+                        .run(ingest, &user, &window_label, &run_dir, zip, &bundle_profile)
+                        .context("run engine pipeline")?;
 
-                    redactor.save_cache(&cache_path)?;
+                    redactor
+                        .save_cache(&cache_path)
+                        .with_context(|| format!("save redaction cache to {cache_path:?}"))?;
 
                     println!("Collected and wrote:");
                     print_outputs(&outputs, ws_source);
@@ -621,7 +631,7 @@ fn main() -> Result<()> {
                     if include_merges {
                         ing = ing.with_merges(true);
                     }
-                    let ingest = ing.ingest()?;
+                    let ingest = ing.ingest().context("ingest events")?;
                     let run_id = ingest.coverage.run_id.to_string();
                     let run_dir = out.join(&run_id);
                     let window_label = format!("{}..{}", since, until);
@@ -645,16 +655,20 @@ fn main() -> Result<()> {
                     let cache_path = DeterministicRedactor::cache_path(&run_dir);
                     let _ = redactor.load_cache(&cache_path);
 
-                    let (outputs, ws_source) = engine.run(
-                        ingest,
-                        "local",
-                        &window_label,
-                        &run_dir,
-                        zip,
-                        &bundle_profile,
-                    )?;
+                    let (outputs, ws_source) = engine
+                        .run(
+                            ingest,
+                            "local",
+                            &window_label,
+                            &run_dir,
+                            zip,
+                            &bundle_profile,
+                        )
+                        .context("run engine pipeline")?;
 
-                    redactor.save_cache(&cache_path)?;
+                    redactor
+                        .save_cache(&cache_path)
+                        .with_context(|| format!("save redaction cache to {cache_path:?}"))?;
 
                     println!("Collected and wrote:");
                     print_outputs(&outputs, ws_source);
@@ -698,15 +712,18 @@ fn main() -> Result<()> {
                 events_path,
                 coverage_path,
             };
-            let ingest = ing.ingest()?;
+            let ingest = ing.ingest().context("ingest events")?;
 
             let cache_path = DeterministicRedactor::cache_path(&run_dir);
             let _ = redactor.load_cache(&cache_path);
 
-            let outputs =
-                engine.refresh(ingest, &user, &window_label, &run_dir, zip, &bundle_profile)?;
+            let outputs = engine
+                .refresh(ingest, &user, &window_label, &run_dir, zip, &bundle_profile)
+                .context("refresh engine pipeline")?;
 
-            redactor.save_cache(&cache_path)?;
+            redactor
+                .save_cache(&cache_path)
+                .with_context(|| format!("save redaction cache to {cache_path:?}"))?;
 
             println!("Rendered from existing events:");
             print_outputs(&outputs, WorkstreamSource::Curated);
@@ -768,8 +785,9 @@ fn main() -> Result<()> {
                         token,
                         &api_base,
                         cache_dir,
-                    )?;
-                    let ingest = ing.ingest()?;
+                    )
+                    .context("create GitHub ingestor")?;
+                    let ingest = ing.ingest().context("ingest events")?;
 
                     let window_label = format!("{}..{}", since, until);
 
@@ -783,16 +801,13 @@ fn main() -> Result<()> {
                         );
                     }
 
-                    let outputs = engine.refresh(
-                        ingest,
-                        &user,
-                        &window_label,
-                        &run_dir,
-                        zip,
-                        &bundle_profile,
-                    )?;
+                    let outputs = engine
+                        .refresh(ingest, &user, &window_label, &run_dir, zip, &bundle_profile)
+                        .context("refresh engine pipeline")?;
 
-                    redactor.save_cache(&cache_path)?;
+                    redactor
+                        .save_cache(&cache_path)
+                        .with_context(|| format!("save redaction cache to {cache_path:?}"))?;
 
                     println!("Refreshed while preserving workstream curation:");
                     print_outputs_simple(&outputs);
@@ -818,18 +833,15 @@ fn main() -> Result<()> {
                         events_path: events,
                         coverage_path: coverage,
                     };
-                    let ingest = ing.ingest()?;
+                    let ingest = ing.ingest().context("ingest events")?;
 
-                    let outputs = engine.refresh(
-                        ingest,
-                        &user,
-                        &window_label,
-                        &run_dir,
-                        zip,
-                        &bundle_profile,
-                    )?;
+                    let outputs = engine
+                        .refresh(ingest, &user, &window_label, &run_dir, zip, &bundle_profile)
+                        .context("refresh engine pipeline")?;
 
-                    redactor.save_cache(&cache_path)?;
+                    redactor
+                        .save_cache(&cache_path)
+                        .with_context(|| format!("save redaction cache to {cache_path:?}"))?;
 
                     println!("Refreshed while preserving workstream curation:");
                     print_outputs_simple(&outputs);
@@ -852,19 +864,16 @@ fn main() -> Result<()> {
                     }
 
                     let ing = ManualIngestor::new(&events, user.clone(), since, until);
-                    let ingest = ing.ingest()?;
+                    let ingest = ing.ingest().context("ingest events")?;
                     let window_label = format!("{}..{}", since, until);
 
-                    let outputs = engine.refresh(
-                        ingest,
-                        &user,
-                        &window_label,
-                        &run_dir,
-                        zip,
-                        &bundle_profile,
-                    )?;
+                    let outputs = engine
+                        .refresh(ingest, &user, &window_label, &run_dir, zip, &bundle_profile)
+                        .context("refresh engine pipeline")?;
 
-                    redactor.save_cache(&cache_path)?;
+                    redactor
+                        .save_cache(&cache_path)
+                        .with_context(|| format!("save redaction cache to {cache_path:?}"))?;
 
                     println!("Refreshed while preserving workstream curation:");
                     print_outputs_simple(&outputs);
@@ -894,13 +903,19 @@ fn main() -> Result<()> {
                 template,
                 required_schema_version,
                 alias,
-            )?;
+            )
+            .context("resolve team configuration")?;
 
             let aggregator = TeamAggregator::new(cfg);
-            let result = aggregator.aggregate(&members_root)?;
-            let packet = aggregator.render_packet_markdown(&result)?;
+            let result = aggregator
+                .aggregate(&members_root)
+                .context("aggregate team results")?;
+            let packet = aggregator
+                .render_packet_markdown(&result)
+                .context("render team packet")?;
 
-            let output_paths = write_team_outputs(&out, &packet, &result)?;
+            let output_paths =
+                write_team_outputs(&out, &packet, &result).context("write team outputs")?;
 
             println!("Team packet generated:");
             println!("- {}", output_paths.packet.display());
@@ -953,7 +968,7 @@ fn main() -> Result<()> {
                 events_path,
                 coverage_path,
             };
-            let ingest = ing.ingest()?;
+            let ingest = ing.ingest().context("ingest events")?;
             let run_id = ingest.coverage.run_id.to_string();
             let run_dir = out.join(&run_id);
 
@@ -969,23 +984,28 @@ fn main() -> Result<()> {
             let workstreams = if regen {
                 None
             } else {
-                shiplog_workstreams::WorkstreamManager::try_load(&dir)?
+                shiplog_workstreams::WorkstreamManager::try_load(&dir)
+                    .context("load workstreams from import directory")?
             };
 
             let cache_path = DeterministicRedactor::cache_path(&run_dir);
             let _ = redactor.load_cache(&cache_path);
 
-            let (outputs, ws_source) = engine.import(
-                ingest,
-                &user,
-                &window_label,
-                &run_dir,
-                zip,
-                workstreams,
-                &bundle_profile,
-            )?;
+            let (outputs, ws_source) = engine
+                .import(
+                    ingest,
+                    &user,
+                    &window_label,
+                    &run_dir,
+                    zip,
+                    workstreams,
+                    &bundle_profile,
+                )
+                .context("import engine pipeline")?;
 
-            redactor.save_cache(&cache_path)?;
+            redactor
+                .save_cache(&cache_path)
+                .with_context(|| format!("save redaction cache to {cache_path:?}"))?;
 
             println!("Imported and wrote:");
             print_outputs(&outputs, ws_source);
@@ -1038,8 +1058,9 @@ fn main() -> Result<()> {
                         token,
                         &api_base,
                         cache_dir,
-                    )?;
-                    let ingest = ing.ingest()?;
+                    )
+                    .context("create GitHub ingestor")?;
+                    let ingest = ing.ingest().context("ingest events")?;
                     let run_id = ingest.coverage.run_id.to_string();
                     let run_dir = out.join(&run_id);
 
@@ -1047,10 +1068,13 @@ fn main() -> Result<()> {
                     let _ = redactor.load_cache(&cache_path);
 
                     let window_label = format!("{}..{}", since, until);
-                    let (outputs, ws_source) =
-                        engine.run(ingest, &user, &window_label, &run_dir, zip, &bundle_profile)?;
+                    let (outputs, ws_source) = engine
+                        .run(ingest, &user, &window_label, &run_dir, zip, &bundle_profile)
+                        .context("run engine pipeline")?;
 
-                    redactor.save_cache(&cache_path)?;
+                    redactor
+                        .save_cache(&cache_path)
+                        .with_context(|| format!("save redaction cache to {cache_path:?}"))?;
 
                     println!("Wrote:");
                     print_outputs(&outputs, ws_source);
@@ -1066,17 +1090,20 @@ fn main() -> Result<()> {
                         events_path: events,
                         coverage_path: coverage,
                     };
-                    let ingest = ing.ingest()?;
+                    let ingest = ing.ingest().context("ingest events")?;
                     let run_id = ingest.coverage.run_id.to_string();
                     let run_dir = out.join(&run_id);
 
                     let cache_path = DeterministicRedactor::cache_path(&run_dir);
                     let _ = redactor.load_cache(&cache_path);
 
-                    let (outputs, ws_source) =
-                        engine.run(ingest, &user, &window_label, &run_dir, zip, &bundle_profile)?;
+                    let (outputs, ws_source) = engine
+                        .run(ingest, &user, &window_label, &run_dir, zip, &bundle_profile)
+                        .context("run engine pipeline")?;
 
-                    redactor.save_cache(&cache_path)?;
+                    redactor
+                        .save_cache(&cache_path)
+                        .with_context(|| format!("save redaction cache to {cache_path:?}"))?;
 
                     println!("Wrote:");
                     print_outputs(&outputs, ws_source);
@@ -1089,7 +1116,7 @@ fn main() -> Result<()> {
                     until,
                 } => {
                     let ing = ManualIngestor::new(&events, user.clone(), since, until);
-                    let ingest = ing.ingest()?;
+                    let ingest = ing.ingest().context("ingest events")?;
                     let run_id = ingest.coverage.run_id.to_string();
                     let run_dir = out.join(&run_id);
                     let window_label = format!("{}..{}", since, until);
@@ -1097,10 +1124,13 @@ fn main() -> Result<()> {
                     let cache_path = DeterministicRedactor::cache_path(&run_dir);
                     let _ = redactor.load_cache(&cache_path);
 
-                    let (outputs, ws_source) =
-                        engine.run(ingest, &user, &window_label, &run_dir, zip, &bundle_profile)?;
+                    let (outputs, ws_source) = engine
+                        .run(ingest, &user, &window_label, &run_dir, zip, &bundle_profile)
+                        .context("run engine pipeline")?;
 
-                    redactor.save_cache(&cache_path)?;
+                    redactor
+                        .save_cache(&cache_path)
+                        .with_context(|| format!("save redaction cache to {cache_path:?}"))?;
 
                     println!("Wrote:");
                     print_outputs(&outputs, ws_source);

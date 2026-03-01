@@ -7,7 +7,18 @@ license.workspace = true
 authors.workspace = true
 description = "Windowing utilities for stream processing in shiplog."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-windowing"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "windowing", "streaming", "pipeline", "data-processing"]
+categories = ["development-tools", "data-structures"]
 
 [dependencies]
 anyhow.workspace = true
 chrono.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+
+[lints]
+workspace = true

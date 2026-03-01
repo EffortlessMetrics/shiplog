@@ -1,0 +1,82 @@
+---
+source: crates/shiplog-render-md/tests/snapshot.rs
+assertion_line: 74
+expression: result
+---
+# Summary
+
+**Window:** 2025-Q1
+
+**Workstreams:** 2
+
+**Events:** 4 PRs, 0 reviews, 0 manual
+
+**Coverage:** Complete
+
+**Sources:** github
+
+## Workstreams
+
+### Special Characters
+
+Workstream with tricky titles
+
+**Claim scaffolds**
+
+- Problem: _fill_
+- What I shipped: _fill_
+- Why it mattered: _fill_
+- Result: _fill_
+
+_PRs: 2, Reviews: 0, Manual: 0_
+
+### Unicode & Emoji
+
+**Claim scaffolds**
+
+- Problem: _fill_
+- What I shipped: _fill_
+- Why it mattered: _fill_
+- Result: _fill_
+
+_PRs: 2, Reviews: 0, Manual: 0_
+
+## Receipts
+
+### Workstream: Special Characters
+
+- [PR] Fix <script>alert('xss')</script> injection (1970-01-01) — [owner/repo](https://github.com/owner/repo/pull/1)
+- [PR] Handle `backtick` & "quotes" in titles (1970-01-01) — [owner/repo](https://github.com/owner/repo/pull/2)
+
+### Workstream: Unicode & Emoji
+
+- [PR] Support émojis 🎉 and ünïcödé (1970-01-01) — [owner/repo](https://github.com/owner/repo/pull/3)
+- [PR] Pipes | and [brackets] and (parens) (1970-01-01) — [owner/repo](https://github.com/owner/repo/pull/4)
+
+## Coverage
+
+- **Date window:** 2025-01-01 to 2025-04-01
+- **Mode:** merged
+- **Sources:** github
+- **Completeness:** Complete
+
+## Appendix: All Receipts
+
+### Special Characters
+
+- [PR] Fix <script>alert('xss')</script> injection (1970-01-01) — [owner/repo](https://github.com/owner/repo/pull/1)
+- [PR] Handle `backtick` & "quotes" in titles (1970-01-01) — [owner/repo](https://github.com/owner/repo/pull/2)
+
+### Unicode & Emoji
+
+- [PR] Support émojis 🎉 and ünïcödé (1970-01-01) — [owner/repo](https://github.com/owner/repo/pull/3)
+- [PR] Pipes | and [brackets] and (parens) (1970-01-01) — [owner/repo](https://github.com/owner/repo/pull/4)
+
+---
+
+## File Artifacts
+
+- `ledger.events.jsonl` (canonical events)
+- `coverage.manifest.json` (completeness + slicing)
+- `workstreams.yaml` (editable clustering)
+- `manual_events.yaml` (non-GitHub work)

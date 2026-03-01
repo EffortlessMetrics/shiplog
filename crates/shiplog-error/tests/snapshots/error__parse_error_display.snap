@@ -1,0 +1,5 @@
+---
+source: crates/shiplog-error/tests/error.rs
+expression: "format!(\"{err}\")"
+---
+[parse] unexpected token at line 5

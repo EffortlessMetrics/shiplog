@@ -1,0 +1,5 @@
+---
+source: crates/shiplog-resolver/tests/resolver.rs
+expression: "format!(\"{err}\")"
+---
+ResolverError: Service 'database' not registered

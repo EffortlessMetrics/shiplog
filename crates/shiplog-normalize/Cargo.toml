@@ -7,5 +7,16 @@ license.workspace = true
 authors.workspace = true
 description = "Normalization utilities for shiplog."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-normalize"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "normalize", "text", "parsing", "utility"]
+categories = ["development-tools", "text-processing"]
 
 [dependencies]
+
+[dev-dependencies]
+proptest.workspace = true
+
+[lints]
+workspace = true

@@ -1,0 +1,12 @@
+version: 1
+generated_at: "2025-01-01T00:00:00Z"
+events:
+  - id: "design-doc"
+    type: Design
+    date: "2025-01-15"
+    title: "Auth redesign"
+    description: null
+    workstream: null
+    tags: []
+    receipts: []
+    impact: null

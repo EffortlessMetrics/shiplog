@@ -211,3 +211,39 @@ fn bdd_manager_projection_keeps_context_and_strips_sensitive_detail() {
 
     scenario.run().expect("BDD scenario should pass");
 }
+
+fn when_internal_profile_is_applied(ctx: &mut ScenarioContext) -> Result<(), String> {
+    let events_bytes = assert_present(ctx.data.get("events"), "events bytes")?;
+
+    let events: Vec<EventEnvelope> =
+        serde_json::from_slice(events_bytes).map_err(|e| e.to_string())?;
+
+    let redacted_events =
+        redact_events_with_aliases(&events, RedactionProfile::Internal, &bdd_alias);
+
+    ctx.flags.insert(
+        "events_unchanged".to_string(),
+        serde_json::to_string(&events).unwrap() == serde_json::to_string(&redacted_events).unwrap(),
+    );
+    Ok(())
+}
+
+fn then_internal_projection_is_identity(ctx: &ScenarioContext) -> Result<(), String> {
+    assert_true(
+        ctx.flag("events_unchanged").unwrap_or(false),
+        "internal profile produces identical events",
+    )
+}
+
+#[test]
+fn bdd_internal_projection_is_identity() {
+    let scenario = Scenario::new("Internal projection is identity transform")
+        .given("sensitive event input", given_sensitive_inputs)
+        .when(
+            "internal redaction profile is applied",
+            when_internal_profile_is_applied,
+        )
+        .then("events are unchanged", then_internal_projection_is_identity);
+
+    scenario.run().expect("BDD scenario should pass");
+}

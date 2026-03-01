@@ -7,6 +7,14 @@ license.workspace = true
 authors.workspace = true
 description = "Base64 encoding/decoding utilities for shiplog."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-base64"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "base64", "encoding", "utility", "conversion"]
+categories = ["development-tools", "encoding"]
 
 [dependencies]
 base64 = "0.22"
+
+[lints]
+workspace = true

@@ -318,6 +318,8 @@ impl Ingestor for LocalGitIngestor {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use git2::Signature;
+    use proptest::prelude::*;
     use tempfile::TempDir;
 
     fn create_test_repo() -> Result<(TempDir, Repository)> {
@@ -352,6 +354,87 @@ mod tests {
                 "Second commit",
                 &tree,
                 &[&repo.head()?.peel_to_commit()?],
+            )?;
+        }
+
+        Ok((dir, repo))
+    }
+
+    /// Create a repo with commits from multiple authors and a merge commit.
+    fn create_multi_author_repo() -> Result<(TempDir, Repository)> {
+        let dir = TempDir::new()?;
+        let repo = Repository::init(dir.path())?;
+
+        let mut config = repo.config()?;
+        config.set_str("user.name", "Alice")?;
+        config.set_str("user.email", "alice@example.com")?;
+
+        let alice = Signature::now("Alice", "alice@example.com")?;
+        let bob = Signature::now("Bob", "bob@example.com")?;
+
+        // Initial commit by Alice
+        let mut index = repo.index()?;
+        let tree_id = index.write_tree()?;
+
+        let c1 = {
+            let tree = repo.find_tree(tree_id)?;
+            repo.commit(Some("HEAD"), &alice, &alice, "Alice initial", &tree, &[])?
+        };
+
+        // Commit by Bob
+        let c2 = {
+            let tree = repo.find_tree(tree_id)?;
+            let c1_commit = repo.find_commit(c1)?;
+            repo.commit(
+                Some("HEAD"),
+                &bob,
+                &bob,
+                "Bob feature work",
+                &tree,
+                &[&c1_commit],
+            )?
+        };
+
+        // Another commit by Alice
+        let c3 = {
+            let tree = repo.find_tree(tree_id)?;
+            let c2_commit = repo.find_commit(c2)?;
+            repo.commit(
+                Some("HEAD"),
+                &alice,
+                &alice,
+                "Alice second commit",
+                &tree,
+                &[&c2_commit],
+            )?
+        };
+
+        // Create a branch for the merge
+        let branch_commit = {
+            let tree = repo.find_tree(tree_id)?;
+            let c3_commit = repo.find_commit(c3)?;
+            repo.commit(
+                None, // don't update HEAD
+                &bob,
+                &bob,
+                "Bob branch commit",
+                &tree,
+                &[&c3_commit],
+            )?
+        };
+
+        // Merge commit (two parents)
+        {
+            let tree = repo.find_tree(tree_id)?;
+            let c3_commit = repo.find_commit(c3)?;
+            let branch_commit_obj = repo.find_commit(branch_commit)?;
+            let _merge = repo.commit(
+                Some("HEAD"),
+                &alice,
+                &alice,
+                "Merge branch into main",
+                &tree,
+                &[&c3_commit, &branch_commit_obj],
             )?;
         }
 
@@ -492,5 +575,317 @@ mod tests {
 
         let result = ingestor.ingest();
         assert!(result.is_err());
+    }
+
+    // ── Property tests ──────────────────────────────────────────────────
+
+    proptest! {
+        #[test]
+        fn git_time_to_datetime_always_valid(secs in 0i64..=4_102_444_800i64) {
+            let time = Time::new(secs, 0);
+            let dt = LocalGitIngestor::git_time_to_datetime(&time);
+            prop_assert_eq!(dt.timestamp(), secs);
+        }
+
+        #[test]
+        fn git_time_to_datetime_negative_yields_epoch(secs in i64::MIN..0i64) {
+            let time = Time::new(secs, 0);
+            let dt = LocalGitIngestor::git_time_to_datetime(&time);
+            // Negative timestamps either map correctly or fall back to epoch 0
+            prop_assert!(dt.timestamp() == secs || dt.timestamp() == 0);
+        }
+
+        #[test]
+        fn is_in_date_range_boundary_inclusive(
+            day_offset in 0u32..365,
+        ) {
+            let since = NaiveDate::from_ymd_opt(2025, 1, 1).unwrap();
+            let until = NaiveDate::from_ymd_opt(2025, 12, 31).unwrap();
+            let ingestor = LocalGitIngestor::new("/tmp", since, until);
+
+            let test_date = since + chrono::Duration::days(day_offset as i64);
+            // Build a DateTime at midnight UTC on that date
+            let dt = test_date.and_hms_opt(0, 0, 0).unwrap().and_utc();
+
+            if test_date >= since && test_date <= until {
+                prop_assert!(ingestor.is_in_date_range(&dt));
+            } else {
+                prop_assert!(!ingestor.is_in_date_range(&dt));
+            }
+        }
+
+        #[test]
+        fn builder_preserves_author(author in "[a-z]+@[a-z]+\\.[a-z]+") {
+            let ingestor = LocalGitIngestor::new(
+                "/tmp",
+                NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
+                NaiveDate::from_ymd_opt(2025, 12, 31).unwrap(),
+            )
+            .with_author(&author);
+            prop_assert_eq!(ingestor.author.as_deref(), Some(author.as_str()));
+        }
+
+        #[test]
+        fn builder_preserves_merges(flag in proptest::bool::ANY) {
+            let ingestor = LocalGitIngestor::new(
+                "/tmp",
+                NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
+                NaiveDate::from_ymd_opt(2025, 12, 31).unwrap(),
+            )
+            .with_merges(flag);
+            prop_assert_eq!(ingestor.include_merges, flag);
+        }
+    }
+
+    // ── Integration tests with fixture repos ────────────────────────────
+
+    #[test]
+    fn ingest_author_filter_isolates_single_author() {
+        let (_dir, repo) = create_multi_author_repo().unwrap();
+        let repo_path = repo.path().parent().unwrap().to_path_buf();
+
+        // Only Alice's commits
+        let alice_ingestor = LocalGitIngestor::new(
+            &repo_path,
+            NaiveDate::from_ymd_opt(2020, 1, 1).unwrap(),
+            NaiveDate::from_ymd_opt(2030, 12, 31).unwrap(),
+        )
+        .with_author("alice@example.com");
+        let alice_out = alice_ingestor.ingest().unwrap();
+
+        // Only Bob's commits
+        let bob_ingestor = LocalGitIngestor::new(
+            &repo_path,
+            NaiveDate::from_ymd_opt(2020, 1, 1).unwrap(),
+            NaiveDate::from_ymd_opt(2030, 12, 31).unwrap(),
+        )
+        .with_author("bob@example.com");
+        let bob_out = bob_ingestor.ingest().unwrap();
+
+        // All commits (no author filter)
+        let all_ingestor = LocalGitIngestor::new(
+            &repo_path,
+            NaiveDate::from_ymd_opt(2020, 1, 1).unwrap(),
+            NaiveDate::from_ymd_opt(2030, 12, 31).unwrap(),
+        )
+        .with_merges(true);
+        let all_out = all_ingestor.ingest().unwrap();
+
+        assert!(!alice_out.events.is_empty());
+        assert!(!bob_out.events.is_empty());
+        // Author-filtered sets should be subsets of all events
+        assert!(alice_out.events.len() + bob_out.events.len() <= all_out.events.len());
+    }
+
+    #[test]
+    fn author_matching_is_case_insensitive() {
+        let (_dir, repo) = create_test_repo().unwrap();
+        let head = repo.head().unwrap();
+        let commit = head.peel_to_commit().unwrap();
+
+        let upper = LocalGitIngestor::new(
+            "/tmp",
+            NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
+            NaiveDate::from_ymd_opt(2025, 12, 31).unwrap(),
+        )
+        .with_author("TEST@EXAMPLE.COM");
+        assert!(upper.matches_author(&commit));
+
+        let mixed = LocalGitIngestor::new(
+            "/tmp",
+            NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
+            NaiveDate::from_ymd_opt(2025, 12, 31).unwrap(),
+        )
+        .with_author("Test@Example.Com");
+        assert!(mixed.matches_author(&commit));
+    }
+
+    #[test]
+    fn author_matching_by_name() {
+        let (_dir, repo) = create_test_repo().unwrap();
+        let head = repo.head().unwrap();
+        let commit = head.peel_to_commit().unwrap();
+
+        // Match by name instead of email
+        let by_name = LocalGitIngestor::new(
+            "/tmp",
+            NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
+            NaiveDate::from_ymd_opt(2025, 12, 31).unwrap(),
+        )
+        .with_author("Test User");
+        assert!(by_name.matches_author(&commit));
+    }
+
+    #[test]
+    fn no_author_filter_matches_all() {
+        let (_dir, repo) = create_test_repo().unwrap();
+        let head = repo.head().unwrap();
+        let commit = head.peel_to_commit().unwrap();
+
+        let ingestor = LocalGitIngestor::new(
+            "/tmp",
+            NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
+            NaiveDate::from_ymd_opt(2025, 12, 31).unwrap(),
+        );
+        // No author set → matches everything
+        assert!(ingestor.matches_author(&commit));
+    }
+
+    #[test]
+    fn merge_commit_detected_in_multi_author_repo() {
+        let (_dir, repo) = create_multi_author_repo().unwrap();
+        let head = repo.head().unwrap();
+        let commit = head.peel_to_commit().unwrap();
+
+        // The HEAD in multi_author_repo is the merge commit
+        assert!(LocalGitIngestor::is_merge_commit(&commit));
+    }
+
+    #[test]
+    fn ingest_excludes_merges_by_default() {
+        let (_dir, repo) = create_multi_author_repo().unwrap();
+        let repo_path = repo.path().parent().unwrap().to_path_buf();
+
+        let no_merge = LocalGitIngestor::new(
+            &repo_path,
+            NaiveDate::from_ymd_opt(2020, 1, 1).unwrap(),
+            NaiveDate::from_ymd_opt(2030, 12, 31).unwrap(),
+        );
+        let with_merge = LocalGitIngestor::new(
+            &repo_path,
+            NaiveDate::from_ymd_opt(2020, 1, 1).unwrap(),
+            NaiveDate::from_ymd_opt(2030, 12, 31).unwrap(),
+        )
+        .with_merges(true);
+
+        let no_merge_out = no_merge.ingest().unwrap();
+        let with_merge_out = with_merge.ingest().unwrap();
+
+        // Including merges should produce at least one more event
+        assert!(with_merge_out.events.len() > no_merge_out.events.len());
+    }
+
+    #[test]
+    fn ingest_narrow_date_range_filters_correctly() {
+        let (_dir, repo) = create_test_repo().unwrap();
+        let repo_path = repo.path().parent().unwrap().to_path_buf();
+
+        // Use a date range far in the past — no commits should match
+        let ingestor = LocalGitIngestor::new(
+            &repo_path,
+            NaiveDate::from_ymd_opt(2000, 1, 1).unwrap(),
+            NaiveDate::from_ymd_opt(2000, 1, 2).unwrap(),
+        );
+        let output = ingestor.ingest().unwrap();
+        assert!(output.events.is_empty());
+        assert_eq!(output.coverage.slices[0].total_count, 0);
+    }
+
+    #[test]
+    fn ingest_nonexistent_author_yields_empty() {
+        let (_dir, repo) = create_test_repo().unwrap();
+        let repo_path = repo.path().parent().unwrap().to_path_buf();
+
+        let ingestor = LocalGitIngestor::new(
+            &repo_path,
+            NaiveDate::from_ymd_opt(2020, 1, 1).unwrap(),
+            NaiveDate::from_ymd_opt(2030, 12, 31).unwrap(),
+        )
+        .with_author("nobody@nowhere.com");
+        let output = ingestor.ingest().unwrap();
+        assert!(output.events.is_empty());
+    }
+
+    #[test]
+    fn coverage_manifest_populated_correctly() {
+        let (_dir, repo) = create_test_repo().unwrap();
+        let repo_path = repo.path().parent().unwrap().to_path_buf();
+
+        let since = NaiveDate::from_ymd_opt(2020, 1, 1).unwrap();
+        let until = NaiveDate::from_ymd_opt(2030, 12, 31).unwrap();
+        let ingestor = LocalGitIngestor::new(&repo_path, since, until);
+        let output = ingestor.ingest().unwrap();
+
+        assert_eq!(output.coverage.window.since, since);
+        assert_eq!(output.coverage.window.until, until);
+        assert_eq!(output.coverage.user, "local");
+        assert_eq!(output.coverage.mode, "local");
+        assert_eq!(output.coverage.sources, vec!["local_git"]);
+        assert_eq!(output.coverage.slices.len(), 1);
+
+        let slice = &output.coverage.slices[0];
+        assert_eq!(slice.total_count, slice.fetched);
+        assert_eq!(slice.total_count, output.events.len() as u64);
+        assert_eq!(slice.incomplete_results, Some(false));
+    }
+
+    #[test]
+    fn events_sorted_newest_first() {
+        let (_dir, repo) = create_test_repo().unwrap();
+        let repo_path = repo.path().parent().unwrap().to_path_buf();
+
+        let ingestor = LocalGitIngestor::new(
+            &repo_path,
+            NaiveDate::from_ymd_opt(2020, 1, 1).unwrap(),
+            NaiveDate::from_ymd_opt(2030, 12, 31).unwrap(),
+        );
+        let output = ingestor.ingest().unwrap();
+
+        for pair in output.events.windows(2) {
+            assert!(pair[0].occurred_at >= pair[1].occurred_at);
+        }
+    }
+
+    #[test]
+    fn all_events_have_local_git_source() {
+        let (_dir, repo) = create_test_repo().unwrap();
+        let repo_path = repo.path().parent().unwrap().to_path_buf();
+
+        let ingestor = LocalGitIngestor::new(
+            &repo_path,
+            NaiveDate::from_ymd_opt(2020, 1, 1).unwrap(),
+            NaiveDate::from_ymd_opt(2030, 12, 31).unwrap(),
+        );
+        let output = ingestor.ingest().unwrap();
+
+        for event in &output.events {
+            assert_eq!(event.source.system, SourceSystem::LocalGit);
+            assert!(event.source.opaque_id.is_some());
+            assert_eq!(event.kind, EventKind::PullRequest);
+        }
+    }
+
+    // ── Error handling tests ────────────────────────────────────────────
+
+    #[test]
+    fn ingest_equal_dates_errors() {
+        let (_dir, repo) = create_test_repo().unwrap();
+        let repo_path = repo.path().parent().unwrap().to_path_buf();
+
+        let same_date = NaiveDate::from_ymd_opt(2025, 6, 15).unwrap();
+        let ingestor = LocalGitIngestor::new(&repo_path, same_date, same_date);
+        let err = ingestor.ingest().unwrap_err();
+        assert!(err.to_string().contains("since must be < until"));
+    }
+
+    #[test]
+    fn open_path_exists_but_not_a_repo() {
+        let dir = TempDir::new().unwrap();
+        let ingestor = LocalGitIngestor::new(
+            dir.path(),
+            NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
+            NaiveDate::from_ymd_opt(2025, 12, 31).unwrap(),
+        );
+
+        let result = ingestor.open_repo();
+        let err = result.err().expect("expected an error");
+        assert!(err.to_string().contains("Failed to open git repository"));
+    }
+
+    #[test]
+    fn git_time_to_datetime_at_epoch() {
+        let time = Time::new(0, 0);
+        let dt = LocalGitIngestor::git_time_to_datetime(&time);
+        assert_eq!(dt.timestamp(), 0);
     }
 }

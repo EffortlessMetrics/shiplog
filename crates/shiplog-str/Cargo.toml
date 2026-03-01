@@ -7,6 +7,14 @@ license.workspace = true
 authors.workspace = true
 description = "String utilities for shiplog."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-str"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "str", "text", "parsing", "utility"]
+categories = ["development-tools", "text-processing"]
 
 [dependencies]
 anyhow.workspace = true
+
+[lints]
+workspace = true

@@ -677,6 +677,47 @@ fn build_url_with_params(base: &str, params: &[(&str, String)]) -> Result<url::U
 #[cfg(test)]
 mod tests {
     use super::*;
+    use proptest::prelude::*;
+
+    // ── Helpers ─────────────────────────────────────────────────────────
+
+    fn default_ingestor() -> GitlabIngestor {
+        GitlabIngestor::new(
+            "alice".to_string(),
+            NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
+            NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),
+        )
+    }
+
+    fn sample_mr_json() -> serde_json::Value {
+        serde_json::json!({
+            "id": 101,
+            "iid": 42,
+            "project_id": 7,
+            "title": "Add feature X",
+            "state": "merged",
+            "created_at": "2025-01-10T12:00:00Z",
+            "merged_at": "2025-01-11T08:30:00Z",
+            "closed_at": null,
+            "additions": 120,
+            "deletions": 30,
+            "changed_files": 5,
+            "labels": ["backend", "feature"],
+            "author": { "id": 1, "username": "alice" },
+            "project": { "id": 7, "path_with_namespace": "org/repo", "public": true }
+        })
+    }
+
+    fn sample_note_json() -> serde_json::Value {
+        serde_json::json!({
+            "id": 501,
+            "system": false,
+            "created_at": "2025-01-10T14:00:00Z",
+            "author": { "id": 2, "username": "bob" }
+        })
+    }
+
+    // ── Existing tests (preserved) ──────────────────────────────────────
 
     #[test]
     fn with_cache_creates_missing_directory() {
@@ -824,5 +865,516 @@ mod tests {
                 ("per_page".to_string(), "100".to_string()),
             ]
         );
+    }
+
+    // ── Property tests ──────────────────────────────────────────────────
+
+    proptest! {
+        #[test]
+        fn mr_state_roundtrips(variant in prop_oneof![
+            Just(MrState::Opened),
+            Just(MrState::Merged),
+            Just(MrState::Closed),
+            Just(MrState::All),
+        ]) {
+            let s = variant.as_str();
+            let parsed: MrState = s.parse().unwrap();
+            prop_assert_eq!(parsed, variant);
+        }
+
+        #[test]
+        fn mr_state_parse_case_insensitive(
+            variant in prop_oneof![
+                Just("opened"), Just("OPENED"), Just("Opened"),
+                Just("merged"), Just("MERGED"), Just("Merged"),
+                Just("closed"), Just("CLOSED"), Just("Closed"),
+                Just("all"), Just("ALL"), Just("All"),
+            ]
+        ) {
+            let parsed = variant.parse::<MrState>();
+            prop_assert!(parsed.is_ok());
+        }
+
+        #[test]
+        fn mr_state_invalid_always_errors(s in "[a-z]{6,10}") {
+            // The 4 valid values are 3-6 chars; with 6-10 random chars
+            // we avoid collisions with valid variants
+            let parsed = s.parse::<MrState>();
+            prop_assert!(parsed.is_err());
+        }
+
+        #[test]
+        fn build_url_with_params_never_panics(
+            key in "[a-zA-Z_]{1,10}",
+            value in "[ -~]{0,50}",
+        ) {
+            let result = build_url_with_params(
+                "https://gitlab.com/api/v4/test",
+                &[(&key, value)],
+            );
+            prop_assert!(result.is_ok());
+        }
+
+        #[test]
+        fn build_url_with_empty_params_is_identity(
+            path in "/[a-z/]{1,30}",
+        ) {
+            let base = format!("https://gitlab.com/api/v4{}", path);
+            let url = build_url_with_params(&base, &[]).unwrap();
+            // No query string when params are empty
+            prop_assert!(url.query().is_none());
+        }
+
+        #[test]
+        fn api_base_url_always_has_v4(hostname in "[a-z]{3,12}\\.[a-z]{2,6}") {
+            let mut ing = default_ingestor();
+            ing.instance = hostname;
+            let base = ing.api_base_url();
+            prop_assert!(base.ends_with("/api/v4"));
+            prop_assert!(base.starts_with("https://"));
+        }
+
+        #[test]
+        fn builder_token_rejects_empty_accepts_nonempty(
+            token in ".{1,50}"
+        ) {
+            let result = default_ingestor().with_token(token);
+            prop_assert!(result.is_ok());
+        }
+    }
+
+    // ── API response deserialization tests ───────────────────────────────
+
+    #[test]
+    fn deserialize_gitlab_user() {
+        let json = r#"{"id": 42, "username": "alice"}"#;
+        let user: GitlabUser = serde_json::from_str(json).unwrap();
+        assert_eq!(user.id, 42);
+        assert_eq!(user.username, "alice");
+    }
+
+    #[test]
+    fn deserialize_gitlab_project() {
+        let json = r#"{
+            "id": 7,
+            "path_with_namespace": "org/myrepo",
+            "public": false
+        }"#;
+        let project: GitlabProject = serde_json::from_str(json).unwrap();
+        assert_eq!(project.id, 7);
+        assert_eq!(project.path_with_namespace, "org/myrepo");
+        assert!(!project.public);
+    }
+
+    #[test]
+    fn deserialize_gitlab_merge_request() {
+        let mr: GitlabMergeRequest = serde_json::from_value(sample_mr_json()).unwrap();
+        assert_eq!(mr.id, 101);
+        assert_eq!(mr.iid, 42);
+        assert_eq!(mr.project_id, 7);
+        assert_eq!(mr.title, "Add feature X");
+        assert_eq!(mr.state, "merged");
+        assert_eq!(mr.additions, Some(120));
+        assert_eq!(mr.deletions, Some(30));
+        assert_eq!(mr.changed_files, Some(5));
+        assert_eq!(mr.labels, vec!["backend", "feature"]);
+        assert_eq!(mr.author.username, "alice");
+        assert_eq!(mr.project.path_with_namespace, "org/repo");
+        assert!(mr.merged_at.is_some());
+        assert!(mr.closed_at.is_none());
+    }
+
+    #[test]
+    fn deserialize_mr_with_null_optional_fields() {
+        let json = serde_json::json!({
+            "id": 200,
+            "iid": 10,
+            "project_id": 3,
+            "title": "Minimal MR",
+            "state": "opened",
+            "created_at": "2025-01-05T09:00:00Z",
+            "merged_at": null,
+            "closed_at": null,
+            "additions": null,
+            "deletions": null,
+            "changed_files": null,
+            "labels": [],
+            "author": { "id": 1, "username": "alice" },
+            "project": { "id": 3, "path_with_namespace": "org/minimal", "public": true }
+        });
+        let mr: GitlabMergeRequest = serde_json::from_value(json).unwrap();
+        assert!(mr.merged_at.is_none());
+        assert!(mr.additions.is_none());
+        assert!(mr.deletions.is_none());
+        assert!(mr.changed_files.is_none());
+        assert!(mr.labels.is_empty());
+    }
+
+    #[test]
+    fn deserialize_gitlab_note() {
+        let note: GitlabNote = serde_json::from_value(sample_note_json()).unwrap();
+        assert_eq!(note.id, 501);
+        assert!(!note.system);
+        assert_eq!(note.author.username, "bob");
+    }
+
+    #[test]
+    fn deserialize_system_note() {
+        let json = serde_json::json!({
+            "id": 502,
+            "system": true,
+            "created_at": "2025-01-10T14:30:00Z",
+            "author": { "id": 99, "username": "gitlab-bot" }
+        });
+        let note: GitlabNote = serde_json::from_value(json).unwrap();
+        assert!(note.system);
+    }
+
+    #[test]
+    fn deserialize_gitlab_author() {
+        let json = r#"{"id": 5, "username": "charlie"}"#;
+        let author: GitlabAuthor = serde_json::from_str(json).unwrap();
+        assert_eq!(author.id, 5);
+        assert_eq!(author.username, "charlie");
+    }
+
+    // ── mrs_to_events conversion tests ──────────────────────────────────
+
+    #[test]
+    fn mrs_to_events_converts_merged_mr() {
+        let ing = default_ingestor();
+        let mr: GitlabMergeRequest = serde_json::from_value(sample_mr_json()).unwrap();
+
+        let events = ing.mrs_to_events(vec![mr]).unwrap();
+        assert_eq!(events.len(), 1);
+
+        let ev = &events[0];
+        assert_eq!(ev.kind, EventKind::PullRequest);
+        assert_eq!(ev.actor.login, "alice");
+        assert_eq!(ev.actor.id, Some(1));
+        assert_eq!(ev.repo.full_name, "org/repo");
+        assert_eq!(ev.repo.visibility, RepoVisibility::Public);
+        assert_eq!(ev.tags, vec!["backend", "feature"]);
+
+        // Check source
+        assert_eq!(ev.source.system, SourceSystem::Other("gitlab".to_string()));
+        assert!(
+            ev.source
+                .url
+                .as_ref()
+                .unwrap()
+                .contains("merge_requests/42")
+        );
+        assert_eq!(ev.source.opaque_id.as_deref(), Some("101"));
+
+        // Check links
+        assert_eq!(ev.links.len(), 1);
+        assert_eq!(ev.links[0].label, "GitLab MR");
+        assert!(ev.links[0].url.contains("org/repo/-/merge_requests/42"));
+
+        // Check payload
+        if let EventPayload::PullRequest(pr) = &ev.payload {
+            assert_eq!(pr.number, 42);
+            assert_eq!(pr.title, "Add feature X");
+            assert_eq!(pr.state, PullRequestState::Merged);
+            assert!(pr.merged_at.is_some());
+            assert_eq!(pr.additions, Some(120));
+            assert_eq!(pr.deletions, Some(30));
+            assert_eq!(pr.changed_files, Some(5));
+        } else {
+            panic!("Expected PullRequest payload");
+        }
+    }
+
+    #[test]
+    fn mrs_to_events_maps_all_states() {
+        let ing = default_ingestor();
+
+        for (state_str, expected) in [
+            ("opened", PullRequestState::Open),
+            ("merged", PullRequestState::Merged),
+            ("closed", PullRequestState::Closed),
+            ("unknown_state", PullRequestState::Unknown),
+        ] {
+            let mut json = sample_mr_json();
+            json["state"] = serde_json::json!(state_str);
+            // Bump id to avoid duplicate EventId
+            json["id"] = serde_json::json!(state_str.len() as u64 + 1000);
+            let mr: GitlabMergeRequest = serde_json::from_value(json).unwrap();
+            let events = ing.mrs_to_events(vec![mr]).unwrap();
+            if let EventPayload::PullRequest(pr) = &events[0].payload {
+                assert_eq!(pr.state, expected, "state mismatch for '{}'", state_str);
+            }
+        }
+    }
+
+    #[test]
+    fn mrs_to_events_private_visibility() {
+        let ing = default_ingestor();
+
+        let mut json = sample_mr_json();
+        json["project"]["public"] = serde_json::json!(false);
+        let mr: GitlabMergeRequest = serde_json::from_value(json).unwrap();
+        let events = ing.mrs_to_events(vec![mr]).unwrap();
+        assert_eq!(events[0].repo.visibility, RepoVisibility::Private);
+    }
+
+    #[test]
+    fn mrs_to_events_empty_input() {
+        let ing = default_ingestor();
+        let events = ing.mrs_to_events(vec![]).unwrap();
+        assert!(events.is_empty());
+    }
+
+    #[test]
+    fn mrs_to_events_custom_instance() {
+        let mut ing = default_ingestor();
+        ing.instance = "gitlab.internal.co".to_string();
+
+        let mr: GitlabMergeRequest = serde_json::from_value(sample_mr_json()).unwrap();
+        let events = ing.mrs_to_events(vec![mr]).unwrap();
+
+        let url = events[0].links[0].url.as_str();
+        assert!(url.starts_with("https://gitlab.internal.co/"));
+    }
+
+    // ── notes_to_review_events conversion tests ─────────────────────────
+
+    #[test]
+    fn notes_to_review_events_converts_non_system_non_author_notes() {
+        let ing = default_ingestor();
+        let mr: GitlabMergeRequest = serde_json::from_value(sample_mr_json()).unwrap();
+        let note: GitlabNote = serde_json::from_value(sample_note_json()).unwrap();
+
+        let events = ing.notes_to_review_events(vec![note], &mr).unwrap();
+        assert_eq!(events.len(), 1);
+
+        let ev = &events[0];
+        assert_eq!(ev.kind, EventKind::Review);
+        assert_eq!(ev.actor.login, "bob");
+        assert!(ev.links[0].url.contains("#note_501"));
+
+        if let EventPayload::Review(rev) = &ev.payload {
+            assert_eq!(rev.pull_number, 42);
+            assert_eq!(rev.pull_title, "Add feature X");
+            assert_eq!(rev.state, "approved");
+        } else {
+            panic!("Expected Review payload");
+        }
+    }
+
+    #[test]
+    fn notes_to_review_events_skips_system_notes() {
+        let ing = default_ingestor();
+        let mr: GitlabMergeRequest = serde_json::from_value(sample_mr_json()).unwrap();
+
+        let system_note: GitlabNote = serde_json::from_value(serde_json::json!({
+            "id": 600,
+            "system": true,
+            "created_at": "2025-01-10T15:00:00Z",
+            "author": { "id": 2, "username": "bob" }
+        }))
+        .unwrap();
+
+        let events = ing.notes_to_review_events(vec![system_note], &mr).unwrap();
+        assert!(events.is_empty());
+    }
+
+    #[test]
+    fn notes_to_review_events_skips_self_authored_notes() {
+        let ing = default_ingestor(); // user = "alice"
+        let mr: GitlabMergeRequest = serde_json::from_value(sample_mr_json()).unwrap();
+
+        let self_note: GitlabNote = serde_json::from_value(serde_json::json!({
+            "id": 601,
+            "system": false,
+            "created_at": "2025-01-10T15:30:00Z",
+            "author": { "id": 1, "username": "alice" }
+        }))
+        .unwrap();
+
+        let events = ing.notes_to_review_events(vec![self_note], &mr).unwrap();
+        assert!(events.is_empty());
+    }
+
+    #[test]
+    fn notes_to_review_events_empty_input() {
+        let ing = default_ingestor();
+        let mr: GitlabMergeRequest = serde_json::from_value(sample_mr_json()).unwrap();
+
+        let events = ing.notes_to_review_events(vec![], &mr).unwrap();
+        assert!(events.is_empty());
+    }
+
+    #[test]
+    fn notes_to_review_events_mixed_filtering() {
+        let ing = default_ingestor(); // user = "alice"
+        let mr: GitlabMergeRequest = serde_json::from_value(sample_mr_json()).unwrap();
+
+        let notes: Vec<GitlabNote> = serde_json::from_value(serde_json::json!([
+            { "id": 700, "system": false, "created_at": "2025-01-10T10:00:00Z",
+              "author": { "id": 2, "username": "bob" } },
+            { "id": 701, "system": true, "created_at": "2025-01-10T11:00:00Z",
+              "author": { "id": 2, "username": "bob" } },
+            { "id": 702, "system": false, "created_at": "2025-01-10T12:00:00Z",
+              "author": { "id": 1, "username": "alice" } },
+            { "id": 703, "system": false, "created_at": "2025-01-10T13:00:00Z",
+              "author": { "id": 3, "username": "charlie" } }
+        ]))
+        .unwrap();
+
+        let events = ing.notes_to_review_events(notes, &mr).unwrap();
+        // Only bob (700) and charlie (703); system note 701 and self-note 702 filtered
+        assert_eq!(events.len(), 2);
+        assert_eq!(events[0].actor.login, "bob");
+        assert_eq!(events[1].actor.login, "charlie");
+    }
+
+    // ── URL construction tests ──────────────────────────────────────────
+
+    #[test]
+    fn html_base_url_custom_instance() {
+        let ing = default_ingestor()
+            .with_instance("https://gitlab.myorg.io".to_string())
+            .unwrap();
+        assert_eq!(ing.html_base_url(), "https://gitlab.myorg.io");
+    }
+
+    #[test]
+    fn api_base_url_custom_instance() {
+        let ing = default_ingestor()
+            .with_instance("https://gitlab.myorg.io".to_string())
+            .unwrap();
+        assert_eq!(ing.api_base_url(), "https://gitlab.myorg.io/api/v4");
+    }
+
+    #[test]
+    fn build_url_with_no_params() {
+        let url = build_url_with_params("https://gitlab.com/api/v4/projects", &[]).unwrap();
+        assert_eq!(url.as_str(), "https://gitlab.com/api/v4/projects");
+    }
+
+    #[test]
+    fn build_url_with_special_chars_in_values() {
+        let url = build_url_with_params(
+            "https://gitlab.com/api/v4/projects",
+            &[("search", "hello world & more".to_string())],
+        )
+        .unwrap();
+        let pairs: Vec<_> = url.query_pairs().collect();
+        assert_eq!(pairs[0].1, "hello world & more");
+    }
+
+    #[test]
+    fn build_url_with_invalid_base_url_errors() {
+        let result = build_url_with_params("not-a-url", &[]);
+        assert!(result.is_err());
+    }
+
+    // ── Builder / configuration tests ───────────────────────────────────
+
+    #[test]
+    fn default_ingestor_has_expected_defaults() {
+        let ing = default_ingestor();
+        assert_eq!(ing.user, "alice");
+        assert_eq!(ing.state, MrState::Merged);
+        assert!(!ing.include_reviews);
+        assert!(ing.fetch_details);
+        assert_eq!(ing.throttle_ms, 0);
+        assert!(ing.token.is_none());
+        assert_eq!(ing.instance, "gitlab.com");
+        assert!(ing.cache.is_none());
+    }
+
+    #[test]
+    fn with_state_updates_state() {
+        let ing = default_ingestor().with_state(MrState::All);
+        assert_eq!(ing.state, MrState::All);
+    }
+
+    #[test]
+    fn with_include_reviews_updates_flag() {
+        let ing = default_ingestor().with_include_reviews(true);
+        assert!(ing.include_reviews);
+    }
+
+    #[test]
+    fn with_throttle_updates_delay() {
+        let ing = default_ingestor().with_throttle(500);
+        assert_eq!(ing.throttle_ms, 500);
+    }
+
+    #[test]
+    fn with_token_stores_value() {
+        let ing = default_ingestor()
+            .with_token("glpat-abc123".to_string())
+            .unwrap();
+        assert_eq!(ing.token.as_deref(), Some("glpat-abc123"));
+    }
+
+    #[test]
+    fn with_instance_bare_hostname() {
+        let ing = default_ingestor()
+            .with_instance("gitlab.internal.co".to_string())
+            .unwrap();
+        assert_eq!(ing.instance, "gitlab.internal.co");
+    }
+
+    // ── Error handling tests ────────────────────────────────────────────
+
+    #[test]
+    fn ingest_rejects_equal_dates() {
+        let same = NaiveDate::from_ymd_opt(2025, 6, 15).unwrap();
+        let ing = GitlabIngestor::new("alice".to_string(), same, same);
+        let err = ing.ingest().unwrap_err();
+        assert!(err.to_string().contains("since must be < until"));
+    }
+
+    #[test]
+    fn ingest_rejects_reversed_dates() {
+        let ing = GitlabIngestor::new(
+            "alice".to_string(),
+            NaiveDate::from_ymd_opt(2025, 6, 1).unwrap(),
+            NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
+        );
+        let err = ing.ingest().unwrap_err();
+        assert!(err.to_string().contains("since must be < until"));
+    }
+
+    #[test]
+    fn ingest_requires_token() {
+        let ing = default_ingestor(); // no token set
+        let err = ing.ingest().unwrap_err();
+        assert!(err.to_string().contains("token is required"));
+    }
+
+    #[test]
+    fn deserialize_mr_missing_required_field_errors() {
+        let json = serde_json::json!({
+            "id": 101,
+            // missing "iid", "project_id", "title", etc.
+        });
+        let result = serde_json::from_value::<GitlabMergeRequest>(json);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn deserialize_note_missing_required_field_errors() {
+        let json = serde_json::json!({
+            "id": 501,
+            // missing "system", "created_at", "author"
+        });
+        let result = serde_json::from_value::<GitlabNote>(json);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn deserialize_user_missing_required_field_errors() {
+        let json = serde_json::json!({
+            "id": 42
+            // missing "username"
+        });
+        let result = serde_json::from_value::<GitlabUser>(json);
+        assert!(result.is_err());
     }
 }

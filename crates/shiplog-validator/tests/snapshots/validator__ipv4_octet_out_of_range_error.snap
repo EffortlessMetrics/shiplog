@@ -1,0 +1,7 @@
+---
+source: crates/shiplog-validator/tests/validator.rs
+expression: err
+---
+field: ip_address
+message: "octet out of range: 256"
+code: OutOfRange

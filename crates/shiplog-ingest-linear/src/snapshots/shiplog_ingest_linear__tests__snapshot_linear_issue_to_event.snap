@@ -1,0 +1,31 @@
+---
+source: crates/shiplog-ingest-linear/src/lib.rs
+expression: events
+---
+- id: 87949c0f968a7767d21d8f8aa2d8bbd98c6d3d5382a9ee18a0c67a16ab0f5a47
+  kind: Manual
+  occurred_at: "2025-01-18T16:00:00Z"
+  actor:
+    login: alice
+    id: ~
+  repo:
+    full_name: linear/INFRA
+    html_url: "https://linear.app"
+    visibility: Private
+  payload:
+    type: Manual
+    data:
+      event_type: Other
+      title: Implement API rate limiting
+      description: Add rate limiting middleware to all public endpoints
+      started_at: 2025-01-10
+      ended_at: 2025-01-18
+      impact: "Issue: ENG-123"
+  tags: []
+  links:
+    - label: Linear Issue
+      url: "https://linear.app/issue/ENG-123"
+  source:
+    system: linear
+    url: "https://linear.app/issue/ENG-123"
+    opaque_id: issue-uuid-001

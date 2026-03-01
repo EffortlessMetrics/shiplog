@@ -18,5 +18,9 @@ chrono.workspace = true
 shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
 
 [dev-dependencies]
+insta.workspace = true
 proptest.workspace = true
 shiplog-testkit = { path = "../shiplog-testkit", version = "0.2.1" }
+
+[lints]
+workspace = true

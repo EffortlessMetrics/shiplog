@@ -1,0 +1,11 @@
+---
+source: crates/shiplog-validator/tests/validator.rs
+expression: displays
+---
+- EMPTY
+- INVALID_FORMAT
+- OUT_OF_RANGE
+- INVALID_VALUE
+- TOO_LONG
+- TOO_SHORT
+- MISSING

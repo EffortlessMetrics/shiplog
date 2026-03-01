@@ -7,6 +7,11 @@ license.workspace = true
 authors.workspace = true
 description = "File system watcher for real-time shiplog sync."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-watcher"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "watcher", "messaging", "events", "pipeline"]
+categories = ["development-tools", "asynchronous"]
 
 [dependencies]
 anyhow.workspace = true
@@ -16,3 +21,7 @@ notify = "8.0.0"
 
 [dev-dependencies]
 tempfile.workspace = true
+proptest.workspace = true
+
+[lints]
+workspace = true

@@ -1,0 +1,16 @@
+---
+source: crates/shiplog-workstream-receipt-policy/tests/snapshot.rs
+assertion_line: 44
+expression: output
+---
+count= 0 -> included=true
+count= 1 -> included=true
+count= 2 -> included=true
+count= 3 -> included=true
+count= 4 -> included=true
+count= 5 -> included=false
+count= 6 -> included=false
+count= 7 -> included=false
+count= 8 -> included=false
+count= 9 -> included=false
+count=10 -> included=false

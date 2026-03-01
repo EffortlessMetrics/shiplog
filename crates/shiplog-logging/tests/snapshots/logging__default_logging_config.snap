@@ -1,0 +1,9 @@
+---
+source: crates/shiplog-logging/tests/logging.rs
+expression: config
+---
+level: info
+format: plain
+timestamps: true
+colors: true
+component_levels: {}

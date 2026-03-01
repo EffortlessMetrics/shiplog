@@ -7,6 +7,17 @@ license.workspace = true
 authors.workspace = true
 description = "Atomic counter utilities for shiplog."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-atomic"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "atomic", "concurrency", "async", "synchronization"]
+categories = ["concurrency", "asynchronous"]
 
 [dependencies]
 anyhow.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+
+[lints]
+workspace = true

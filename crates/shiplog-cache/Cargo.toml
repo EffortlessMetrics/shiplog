@@ -14,22 +14,18 @@ keywords = ["cache", "sqlite", "ttl", "github", "api"]
 categories = ["caching", "development-tools"]
 
 [dependencies]
-anyhow.workspace = true
+shiplog-cache-sqlite = { path = "../shiplog-cache-sqlite", version = "0.2.1" }
+
+[dev-dependencies]
+proptest.workspace = true
+insta.workspace = true
+tempfile.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 chrono.workspace = true
-shiplog-cache-key = { path = "../shiplog-cache-key", version = "0.2.1" }
-shiplog-cache-stats = { path = "../shiplog-cache-stats", version = "0.2.1" }
+rusqlite = { version = "0.38", features = ["bundled"] }
 shiplog-cache-expiry = { path = "../shiplog-cache-expiry", version = "0.2.1" }
-shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
-
-[dependencies.rusqlite]
-version = "0.38.0"
-features = ["bundled", "chrono", "serde_json"]
-
-[dev-dependencies]
-tempfile.workspace = true
-proptest.workspace = true
 shiplog-testkit = { path = "../shiplog-testkit", version = "0.2.1" }
 
-
+[lints]
+workspace = true

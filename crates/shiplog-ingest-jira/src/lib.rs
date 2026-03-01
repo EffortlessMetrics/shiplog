@@ -623,4 +623,93 @@ mod tests {
             ]
         );
     }
+
+    // --- Snapshot tests ---
+
+    #[test]
+    fn snapshot_jira_issue_to_event() {
+        let ing = JiraIngestor::new(
+            "alice".to_string(),
+            NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
+            NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),
+        );
+
+        let created = NaiveDate::from_ymd_opt(2025, 1, 15)
+            .unwrap()
+            .and_hms_opt(10, 0, 0)
+            .unwrap()
+            .and_utc();
+        let updated = NaiveDate::from_ymd_opt(2025, 1, 20)
+            .unwrap()
+            .and_hms_opt(14, 30, 0)
+            .unwrap()
+            .and_utc();
+
+        let issues = vec![JiraIssue {
+            id: "10001".to_string(),
+            key: "PROJ-42".to_string(),
+            self_url: "https://jira.atlassian.com/rest/api/3/issue/10001".to_string(),
+            fields: JiraIssueFields {
+                summary: "Implement caching layer".to_string(),
+                status: JiraIssueStatus {
+                    name: "Done".to_string(),
+                },
+                created,
+                updated,
+                resolutiondate: Some(updated),
+                description: Some("Add Redis caching for API responses".to_string()),
+                issuetype: Some(JiraIssueType {
+                    name: "Story".to_string(),
+                }),
+                priority: Some(JiraPriority {
+                    name: "High".to_string(),
+                }),
+                assignee: Some(JiraUser {
+                    account_id: "abc123".to_string(),
+                    name: "alice".to_string(),
+                    display_name: "Alice Smith".to_string(),
+                }),
+            },
+        }];
+
+        let events = ing.issues_to_events(issues).unwrap();
+        insta::assert_yaml_snapshot!(events);
+    }
+
+    #[test]
+    fn snapshot_jira_issue_to_event_minimal() {
+        let ing = JiraIngestor::new(
+            "bob".to_string(),
+            NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
+            NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),
+        );
+
+        let created = NaiveDate::from_ymd_opt(2025, 1, 10)
+            .unwrap()
+            .and_hms_opt(8, 0, 0)
+            .unwrap()
+            .and_utc();
+
+        let issues = vec![JiraIssue {
+            id: "20001".to_string(),
+            key: "BUG-7".to_string(),
+            self_url: "https://jira.atlassian.com/rest/api/3/issue/20001".to_string(),
+            fields: JiraIssueFields {
+                summary: "Fix login timeout".to_string(),
+                status: JiraIssueStatus {
+                    name: "Open".to_string(),
+                },
+                created,
+                updated: created,
+                resolutiondate: None,
+                description: None,
+                issuetype: None,
+                priority: None,
+                assignee: None,
+            },
+        }];
+
+        let events = ing.issues_to_events(issues).unwrap();
+        insta::assert_yaml_snapshot!(events);
+    }
 }

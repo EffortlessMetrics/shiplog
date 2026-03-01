@@ -1,0 +1,18 @@
+---
+source: crates/shiplog-config/tests/config.rs
+expression: yaml
+---
+output_dir: /tmp/output
+cache_dir: /tmp/cache
+incremental: false
+verbose: true
+workstreams:
+- name: backend
+  source: github
+  config:
+    repo: acme/api
+  enabled: true
+- name: frontend
+  source: gitlab
+  config: {}
+  enabled: false

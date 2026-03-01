@@ -7,7 +7,19 @@ license.workspace = true
 authors.workspace = true
 description = "Regex utilities for shiplog."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-regex"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "regex", "text", "parsing", "utility"]
+categories = ["development-tools", "text-processing"]
 
 [dependencies]
 regex = "1.11"
 anyhow.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+insta.workspace = true
+
+[lints]
+workspace = true

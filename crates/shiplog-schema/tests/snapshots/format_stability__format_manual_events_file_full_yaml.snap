@@ -1,0 +1,22 @@
+---
+source: crates/shiplog-schema/tests/format_stability.rs
+expression: file
+---
+version: 1
+generated_at: "2025-06-01T12:00:00Z"
+events:
+  - id: incident-1
+    type: Incident
+    date:
+      start: 2025-03-15
+      end: 2025-03-16
+    title: Production outage response
+    description: Responded to production outage affecting payments
+    workstream: infrastructure
+    tags:
+      - incident
+      - oncall
+    receipts:
+      - label: postmortem
+        url: "https://wiki.internal/p42"
+    impact: Reduced MTTR by 50%

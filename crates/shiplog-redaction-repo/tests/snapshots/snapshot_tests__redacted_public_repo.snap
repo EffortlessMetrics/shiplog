@@ -1,0 +1,9 @@
+---
+source: crates/shiplog-redaction-repo/tests/snapshot_tests.rs
+expression: json
+---
+{
+  "full_name": "repo-REDACTED(oss/public-lib)",
+  "html_url": null,
+  "visibility": "Unknown"
+}

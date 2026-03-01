@@ -1,0 +1,42 @@
+---
+source: crates/shiplog-coverage/tests/snapshot.rs
+assertion_line: 112
+expression: slices
+---
+[
+  {
+    "window": {
+      "since": "2025-01-01",
+      "until": "2025-02-01"
+    },
+    "query": "github prs jan",
+    "total_count": 10,
+    "fetched": 10,
+    "incomplete_results": false,
+    "notes": []
+  },
+  {
+    "window": {
+      "since": "2025-02-01",
+      "until": "2025-03-01"
+    },
+    "query": "github prs feb",
+    "total_count": 50,
+    "fetched": 30,
+    "incomplete_results": true,
+    "notes": [
+      "Rate limited"
+    ]
+  },
+  {
+    "window": {
+      "since": "2025-03-01",
+      "until": "2025-04-01"
+    },
+    "query": "github prs mar",
+    "total_count": 8,
+    "fetched": 8,
+    "incomplete_results": false,
+    "notes": []
+  }
+]

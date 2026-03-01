@@ -7,5 +7,16 @@ license.workspace = true
 authors.workspace = true
 description = "Process utilities for shiplog."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-proc"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "proc", "configuration", "environment", "utility"]
+categories = ["development-tools", "config"]
 
 [dependencies]
+
+[dev-dependencies]
+proptest.workspace = true
+
+[lints]
+workspace = true

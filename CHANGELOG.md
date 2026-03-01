@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Testing Infrastructure
+
+- Added ~4,000+ new tests across 200+ crates (from ~1,200 to ~5,600+)
+- Added comprehensive property tests (proptest) for data integrity
+- Added snapshot tests (insta) for serialization stability
+- Added BDD scenarios for workflow testing
+- Added cross-crate integration tests for full pipeline validation
+- Added E2E CLI tests
+- Added 34 fuzz targets with seed corpora
+- Added doc-tests for core API crates
+
+### CI/CD Improvements
+
+- Added dependabot.yml for automated dependency updates
+- Fixed CI toolchain consistency (standardized on Rust 1.92)
+- Updated mutation testing configuration with proper tier assignments
+- Updated property testing workflow to cover all crates
+
 ## [0.2.1] - 2026-02-17
 
 ### Added

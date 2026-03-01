@@ -7,7 +7,18 @@ license.workspace = true
 authors.workspace = true
 description = "Skip list implementation for shiplog."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-skiplist"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "skiplist", "data-structure", "collection", "algorithm"]
+categories = ["data-structures", "algorithms"]
 
 [dependencies]
 anyhow.workspace = true
 rand = "0.9"
+
+[dev-dependencies]
+proptest.workspace = true
+
+[lints]
+workspace = true

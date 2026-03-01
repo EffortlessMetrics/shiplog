@@ -5,17 +5,17 @@
 
 mod client;
 mod config;
-mod parse;
-mod prompt;
 
 pub use client::{FailingLlmBackend, LlmBackend, MockLlmBackend, OpenAiCompatibleBackend};
 pub use config::LlmConfig;
+use shiplog_cluster_llm_parse::parse_llm_response;
+use shiplog_cluster_llm_prompt::{chunk_events, format_event_list, summarize_event, system_prompt};
 
 use anyhow::Result;
 use shiplog_ports::WorkstreamClusterer;
 use shiplog_schema::event::EventEnvelope;
 use shiplog_schema::workstream::WorkstreamsFile;
-use shiplog_workstreams::RepoClusterer;
+use shiplog_workstream_cluster::RepoClusterer;
 
 /// LLM-assisted workstream clusterer.
 pub struct LlmClusterer {
@@ -33,11 +33,11 @@ impl LlmClusterer {
         let event_list: String = subset
             .iter()
             .enumerate()
-            .map(|(i, ev)| format!("[{}] {}", i, prompt::summarize_event(ev)))
+            .map(|(i, ev)| format!("[{}] {}", i, summarize_event(ev)))
             .collect::<Vec<_>>()
             .join("\n");
 
-        let system = prompt::system_prompt(self.config.max_workstreams);
+        let system = system_prompt(self.config.max_workstreams);
         let user_msg =
             format!("Cluster these development events into workstreams:\n\n{event_list}");
 
@@ -47,16 +47,16 @@ impl LlmClusterer {
 
 impl WorkstreamClusterer for LlmClusterer {
     fn cluster(&self, events: &[EventEnvelope]) -> Result<WorkstreamsFile> {
-        let chunks = prompt::chunk_events(events, self.config.max_input_tokens);
+        let chunks = chunk_events(events, self.config.max_input_tokens);
 
         if chunks.len() <= 1 {
             // Single pass
-            let event_list = prompt::format_event_list(events);
-            let system = prompt::system_prompt(self.config.max_workstreams);
+            let event_list = format_event_list(events);
+            let system = system_prompt(self.config.max_workstreams);
             let user_msg =
                 format!("Cluster these development events into workstreams:\n\n{event_list}");
             let response = self.backend.complete(&system, &user_msg)?;
-            parse::parse_llm_response(&response, events)
+            parse_llm_response(&response, events)
         } else {
             // Multi-chunk: cluster each chunk, merge results
             let mut all_workstreams = Vec::new();
@@ -66,7 +66,7 @@ impl WorkstreamClusterer for LlmClusterer {
                 // Map local indices back to global
                 let chunk_events: Vec<EventEnvelope> =
                     chunk_indices.iter().map(|&i| events[i].clone()).collect();
-                let mut ws_file = parse::parse_llm_response(&response, &chunk_events)?;
+                let mut ws_file = parse_llm_response(&response, &chunk_events)?;
                 all_workstreams.append(&mut ws_file.workstreams);
             }
 
@@ -259,30 +259,5 @@ mod tests {
 
         let events = vec![make_test_event("org/repo", 1, "Test")];
         assert!(clusterer.cluster(&events).is_err());
-    }
-
-    #[test]
-    fn summarize_event_formats_correctly() {
-        let ev = make_test_event("myorg/myrepo", 42, "Add login page");
-        let summary = prompt::summarize_event(&ev);
-        assert!(summary.contains("PR#42"));
-        assert!(summary.contains("myorg/myrepo"));
-        assert!(summary.contains("Add login page"));
-        assert!(summary.contains("+10/-5"));
-    }
-
-    #[test]
-    fn chunk_events_splits_large_sets() {
-        // Create enough events to exceed a small token budget
-        let events: Vec<EventEnvelope> = (0..100)
-            .map(|i| make_test_event("org/repo", i, &format!("Event {i} with some extra text")))
-            .collect();
-
-        let chunks = prompt::chunk_events(&events, 500); // very small budget
-        assert!(chunks.len() > 1, "should split into multiple chunks");
-
-        // All indices should be covered
-        let all_indices: Vec<usize> = chunks.into_iter().flatten().collect();
-        assert_eq!(all_indices.len(), 100);
     }
 }

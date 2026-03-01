@@ -17,12 +17,17 @@ pub mod llm_clustering;
 #[cfg(any(
     feature = "microcrate_export",
     feature = "microcrate_output_layout",
+    feature = "microcrate_manual_events",
+    feature = "microcrate_cluster_llm_prompt",
     feature = "microcrate_validate",
+    feature = "microcrate_cluster_llm_parse",
     feature = "microcrate_storage",
     feature = "microcrate_notify",
     feature = "microcrate_cache_key",
     feature = "microcrate_cache_stats",
     feature = "microcrate_cache_expiry",
+    feature = "microcrate_workstream_cluster",
+    feature = "microcrate_workstream_receipt_policy",
     feature = "microcrate_redaction_repo",
     feature = "microcrate_date_windows"
 ))]
@@ -37,12 +42,17 @@ pub use llm_clustering::*;
 #[cfg(any(
     feature = "microcrate_export",
     feature = "microcrate_output_layout",
+    feature = "microcrate_manual_events",
+    feature = "microcrate_cluster_llm_prompt",
     feature = "microcrate_validate",
+    feature = "microcrate_cluster_llm_parse",
     feature = "microcrate_storage",
     feature = "microcrate_notify",
     feature = "microcrate_cache_key",
     feature = "microcrate_cache_stats",
     feature = "microcrate_cache_expiry",
+    feature = "microcrate_workstream_cluster",
+    feature = "microcrate_workstream_receipt_policy",
     feature = "microcrate_redaction_repo",
     feature = "microcrate_date_windows"
 ))]

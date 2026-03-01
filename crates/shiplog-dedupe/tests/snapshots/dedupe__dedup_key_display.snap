@@ -1,0 +1,5 @@
+---
+source: crates/shiplog-dedupe/tests/dedupe.rs
+expression: "format!(\"{key}\")"
+---
+my-unique-key

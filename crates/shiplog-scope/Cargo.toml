@@ -7,6 +7,14 @@ license.workspace = true
 authors.workspace = true
 description = "Scoped task utilities for shiplog."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-scope"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "scope", "concurrency", "async", "synchronization"]
+categories = ["concurrency", "asynchronous"]
 
 [dependencies]
 anyhow.workspace = true
+
+[lints]
+workspace = true

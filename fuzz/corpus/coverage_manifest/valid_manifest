@@ -1,0 +1,1 @@
+{"run_id":"run_seed","generated_at":"2025-01-01T00:00:00Z","user":"octo","window":{"since":"2025-01-01","until":"2025-04-01"},"mode":"merged","sources":["github"],"slices":[{"window":{"since":"2025-01-01","until":"2025-04-01"},"query":"seed","total_count":1,"fetched":1,"incomplete_results":false,"notes":[]}],"warnings":[],"completeness":"Complete"}

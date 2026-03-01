@@ -7,7 +7,18 @@ license.workspace = true
 authors.workspace = true
 description = "Iterator utilities and extensions for shiplog."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-iter"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "iter", "iterator", "collection", "traversal"]
+categories = ["development-tools", "rust-patterns"]
 
 [dependencies]
 anyhow.workspace = true
 itertools.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+
+[lints]
+workspace = true

@@ -2,7 +2,8 @@
 
 use proptest::prelude::*;
 use shiplog_redaction_policy::{
-    RedactionProfile, redact_events_with_aliases, redact_workstreams_with_aliases,
+    RedactionProfile, redact_event_with_aliases, redact_events_with_aliases,
+    redact_workstream_with_aliases, redact_workstreams_with_aliases,
 };
 use shiplog_schema::event::EventPayload;
 use shiplog_testkit::proptest::*;
@@ -98,5 +99,53 @@ proptest! {
     fn prop_internal_workstreams_identity(ws_file in strategy_workstreams_file()) {
         let redacted = redact_workstreams_with_aliases(&ws_file, RedactionProfile::Internal, &test_alias);
         prop_assert_eq!(redacted, ws_file);
+    }
+
+    #[test]
+    fn prop_redaction_preserves_event_count(events in strategy_event_vec(20)) {
+        for profile in [RedactionProfile::Internal, RedactionProfile::Manager, RedactionProfile::Public] {
+            let redacted = redact_events_with_aliases(&events, profile, &test_alias);
+            prop_assert_eq!(events.len(), redacted.len(), "event count changed for profile {:?}", profile);
+        }
+    }
+
+    #[test]
+    fn prop_redaction_preserves_event_id(events in strategy_event_vec(20)) {
+        for profile in [RedactionProfile::Internal, RedactionProfile::Manager, RedactionProfile::Public] {
+            let redacted = redact_events_with_aliases(&events, profile, &test_alias);
+            for (orig, red) in events.iter().zip(redacted.iter()) {
+                prop_assert_eq!(&orig.id, &red.id, "event ID changed for profile {:?}", profile);
+            }
+        }
+    }
+
+    #[test]
+    fn prop_redaction_preserves_event_kind(events in strategy_event_vec(20)) {
+        for profile in [RedactionProfile::Internal, RedactionProfile::Manager, RedactionProfile::Public] {
+            let redacted = redact_events_with_aliases(&events, profile, &test_alias);
+            for (orig, red) in events.iter().zip(redacted.iter()) {
+                prop_assert_eq!(&orig.kind, &red.kind, "event kind changed for profile {:?}", profile);
+            }
+        }
+    }
+
+    #[test]
+    fn prop_public_is_stricter_than_manager(event in strategy_event_envelope()) {
+        let manager = redact_event_with_aliases(event.clone(), RedactionProfile::Manager, &test_alias);
+        let public = redact_event_with_aliases(event.clone(), RedactionProfile::Public, &test_alias);
+
+        // Public always clears source URL; manager may keep it
+        prop_assert!(public.source.url.is_none());
+        // Public always aliases repo; manager keeps original
+        prop_assert_ne!(&public.repo.full_name, &event.repo.full_name);
+        prop_assert_eq!(&manager.repo.full_name, &event.repo.full_name);
+    }
+
+    #[test]
+    fn prop_manager_workstream_keeps_title_and_tags(ws in strategy_workstream()) {
+        let redacted = redact_workstream_with_aliases(ws.clone(), RedactionProfile::Manager, &test_alias);
+        prop_assert_eq!(&redacted.title, &ws.title);
+        prop_assert!(redacted.summary.is_none());
+        prop_assert_eq!(&redacted.tags, &ws.tags);
     }
 }

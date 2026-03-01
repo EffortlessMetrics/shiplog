@@ -1,0 +1,5 @@
+---
+source: crates/shiplog-cache-expiry/tests/snapshot_tests.rs
+expression: w.expires_at_rfc3339()
+---
+2023-11-15T22:13:20+00:00

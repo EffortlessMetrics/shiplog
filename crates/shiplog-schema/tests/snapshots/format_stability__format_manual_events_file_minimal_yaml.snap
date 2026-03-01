@@ -1,0 +1,16 @@
+---
+source: crates/shiplog-schema/tests/format_stability.rs
+expression: file
+---
+version: 1
+generated_at: "2025-06-01T12:00:00Z"
+events:
+  - id: note-1
+    type: Note
+    date: 2025-06-01
+    title: Simple note
+    description: ~
+    workstream: ~
+    tags: []
+    receipts: []
+    impact: ~

@@ -11,7 +11,31 @@ use shiplog_schema::event::EventEnvelope;
 use shiplog_schema::workstream::WorkstreamsFile;
 use std::path::{Path, PathBuf};
 
+/// Default filename for the alias cache (`redaction.aliases.json`).
+///
+/// # Examples
+///
+/// ```
+/// use shiplog_redact::CACHE_FILENAME;
+///
+/// assert_eq!(CACHE_FILENAME, "redaction.aliases.json");
+/// ```
 pub use shiplog_alias::CACHE_FILENAME;
+
+/// Redaction profile enum (`Internal`, `Manager`, `Public`).
+///
+/// # Examples
+///
+/// ```
+/// use shiplog_redact::RedactionProfile;
+///
+/// let p = RedactionProfile::from_profile_str("manager");
+/// assert_eq!(p.as_str(), "manager");
+///
+/// // Unknown strings default to Public:
+/// let unknown = RedactionProfile::from_profile_str("bogus");
+/// assert_eq!(unknown, RedactionProfile::Public);
+/// ```
 pub use shiplog_redaction_projector::RedactionProfile;
 
 /// Deterministic redactor.
@@ -20,11 +44,35 @@ pub use shiplog_redaction_projector::RedactionProfile;
 /// - It doesn't do NLP.
 /// - It doesn't detect secrets.
 /// - It does *structural* redaction so you can safely share packets.
+///
+/// # Examples
+///
+/// ```
+/// use shiplog_redact::DeterministicRedactor;
+///
+/// let redactor = DeterministicRedactor::new(b"my-secret-key");
+/// // The redactor is now ready to redact events and workstreams
+/// // via the `Redactor` trait from `shiplog_ports`.
+/// ```
 pub struct DeterministicRedactor {
     aliases: DeterministicAliasStore,
 }
 
 impl DeterministicRedactor {
+    /// Create a new redactor with the given HMAC key.
+    ///
+    /// The same key always produces the same aliases, making redaction
+    /// deterministic across runs.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use shiplog_redact::DeterministicRedactor;
+    ///
+    /// let r1 = DeterministicRedactor::new(b"key-a");
+    /// let r2 = DeterministicRedactor::new(b"key-a");
+    /// // Both produce identical aliases for the same inputs.
+    /// ```
     pub fn new(key: impl AsRef<[u8]>) -> Self {
         Self {
             aliases: DeterministicAliasStore::new(key),
@@ -32,16 +80,48 @@ impl DeterministicRedactor {
     }
 
     /// Path to the alias cache file in a given output directory.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use shiplog_redact::DeterministicRedactor;
+    /// use std::path::Path;
+    ///
+    /// let p = DeterministicRedactor::cache_path(Path::new("/out/run_1"));
+    /// assert!(p.to_string_lossy().contains("redaction.aliases.json"));
+    /// ```
     pub fn cache_path(out_dir: &Path) -> PathBuf {
         DeterministicAliasStore::cache_path(out_dir)
     }
 
     /// Load cached aliases from disk. No-op if file is missing.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use shiplog_redact::DeterministicRedactor;
+    /// use std::path::Path;
+    ///
+    /// let r = DeterministicRedactor::new(b"key");
+    /// // Loads previously-saved aliases; silently succeeds if file absent.
+    /// r.load_cache(Path::new("/out/run_1/redaction.aliases.json")).unwrap();
+    /// ```
     pub fn load_cache(&self, path: &Path) -> Result<()> {
         self.aliases.load_cache(path)
     }
 
     /// Save current aliases to disk.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use shiplog_redact::DeterministicRedactor;
+    /// use std::path::Path;
+    ///
+    /// let r = DeterministicRedactor::new(b"key");
+    /// // After redacting events, persist the alias map for future runs.
+    /// r.save_cache(Path::new("/out/run_1/redaction.aliases.json")).unwrap();
+    /// ```
     pub fn save_cache(&self, path: &Path) -> Result<()> {
         self.aliases.save_cache(path)
     }

@@ -7,6 +7,11 @@ license.workspace = true
 authors.workspace = true
 description = "Compression utilities for shiplog data."
 readme = "README.md"
+documentation = "https://docs.rs/shiplog-compressor"
+repository.workspace = true
+homepage.workspace = true
+keywords = ["shiplog", "compressor", "storage", "io", "filesystem"]
+categories = ["development-tools", "filesystem"]
 
 [dependencies]
 anyhow.workspace = true
@@ -17,3 +22,7 @@ snap = "1.1"
 
 [dev-dependencies]
 tempfile.workspace = true
+proptest.workspace = true
+
+[lints]
+workspace = true

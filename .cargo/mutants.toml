@@ -1,0 +1,91 @@
+# Runtime configuration for cargo-mutants.
+# Tier plan and crate assignments live in `cargo-mutants.toml` (project root).
+# CI workflow: `.github/workflows/mutation-testing.yml`.
+
+# Minimum timeout per test, in seconds.
+minimum_test_timeout = 60
+
+# Timeout multiplier relative to the baseline `cargo test`.
+timeout_multiplier = 3.0
+
+# Build timeout multiplier relative to the baseline `cargo build`.
+build_timeout_multiplier = 2.0
+
+# Cap lints so deny-warnings doesn't kill mutant builds.
+cap_lints = true
+
+# Only mutate source files in domain crates.
+# Generic utility / data-structure microcrates are excluded.
+examine_globs = [
+  "crates/shiplog-schema/src/**/*.rs",
+  "crates/shiplog-ids/src/**/*.rs",
+  "crates/shiplog-redact/src/**/*.rs",
+  "crates/shiplog-coverage/src/**/*.rs",
+  "crates/shiplog-ports/src/**/*.rs",
+  "crates/shiplog-date-windows/src/**/*.rs",
+  "crates/shiplog-validate/src/**/*.rs",
+  "crates/shiplog-redaction-policy/src/**/*.rs",
+  "crates/shiplog-redaction-profile/src/**/*.rs",
+  "crates/shiplog-engine/src/**/*.rs",
+  "crates/shiplog-bundle/src/**/*.rs",
+  "crates/shiplog-workstreams/src/**/*.rs",
+  "crates/shiplog-workstream-cluster/src/**/*.rs",
+  "crates/shiplog-workstream-receipt-policy/src/**/*.rs",
+  "crates/shiplog-workstream-layout/src/**/*.rs",
+  "crates/shiplog-redaction-repo/src/**/*.rs",
+  "crates/shiplog-redaction-projector/src/**/*.rs",
+  "crates/shiplog-output-layout/src/**/*.rs",
+  "crates/shiplog-manual-events/src/**/*.rs",
+  "crates/shiplog-export/src/**/*.rs",
+  "crates/shiplog-ingest-github/src/**/*.rs",
+  "crates/shiplog-ingest-json/src/**/*.rs",
+  "crates/shiplog-ingest-manual/src/**/*.rs",
+  "crates/shiplog-ingest-git/src/**/*.rs",
+  "crates/shiplog-ingest-gitlab/src/**/*.rs",
+  "crates/shiplog-ingest-jira/src/**/*.rs",
+  "crates/shiplog-ingest-linear/src/**/*.rs",
+  "crates/shiplog-render-md/src/**/*.rs",
+  "crates/shiplog-render-json/src/**/*.rs",
+  "crates/shiplog-cache/src/**/*.rs",
+  "crates/shiplog-cache-sqlite/src/**/*.rs",
+  "crates/shiplog-cache-key/src/**/*.rs",
+  "crates/shiplog-cache-stats/src/**/*.rs",
+  "crates/shiplog-cache-expiry/src/**/*.rs",
+  "crates/shiplog-template/src/**/*.rs",
+  "crates/shiplog-filter/src/**/*.rs",
+  "crates/shiplog-merge/src/**/*.rs",
+  "crates/shiplog-diff/src/**/*.rs",
+  "crates/shiplog-query/src/**/*.rs",
+  "crates/shiplog-storage/src/**/*.rs",
+  "crates/shiplog-config/src/**/*.rs",
+  "crates/shiplog-cluster-llm/src/**/*.rs",
+  "crates/shiplog-cluster-llm-parse/src/**/*.rs",
+  "crates/shiplog-cluster-llm-prompt/src/**/*.rs",
+  "crates/shiplog-plugin/src/**/*.rs",
+  "crates/shiplog-team-core/src/**/*.rs",
+  "crates/shiplog-team-aggregate/src/**/*.rs",
+  "crates/shiplog-team-render/src/**/*.rs",
+  "crates/shiplog-report/src/**/*.rs",
+  "crates/shiplog-transform/src/**/*.rs",
+  "crates/shiplog-migrate/src/**/*.rs",
+  "crates/shiplog-archive/src/**/*.rs",
+  "crates/shiplog-notify/src/**/*.rs",
+  "crates/shiplog-stats/src/**/*.rs",
+  "apps/shiplog/src/**/*.rs",
+]
+
+# Files / directories that should never be mutated.
+exclude_globs = [
+  "target/**",
+  "out/**",
+  "examples/**",
+  "fuzz/**",
+  "crates/shiplog-testkit/**",
+]
+
+# Skip trivial Display / Debug / Default impls — they rarely catch real bugs.
+exclude_re = [
+  "Display for",
+  "Debug for",
+  "Default for",
+]

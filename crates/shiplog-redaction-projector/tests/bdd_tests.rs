@@ -225,3 +225,61 @@ fn bdd_manager_profile_keeps_context_and_strips_detail() {
 
     scenario.run().expect("BDD scenario should pass");
 }
+
+fn given_internal_profile_string(ctx: &mut ScenarioContext) {
+    ctx.strings
+        .insert("profile".to_string(), "internal".to_string());
+}
+
+fn then_internal_profile_preserves_all_fields(ctx: &ScenarioContext) -> Result<(), String> {
+    let events_json = assert_present(ctx.string("events_json"), "events_json")?;
+    let workstreams_json = assert_present(ctx.string("workstreams_json"), "workstreams_json")?;
+
+    // Internal profile preserves everything
+    assert_contains(
+        events_json,
+        "Top secret launch plan",
+        "internal events keeps pr title",
+    )?;
+    assert_contains(events_json, "acme/top-secret", "internal events keeps repo")?;
+    assert_contains(
+        events_json,
+        "Sensitive root cause details",
+        "internal events keeps description",
+    )?;
+    assert_contains(
+        events_json,
+        "Customer-specific data",
+        "internal events keeps impact",
+    )?;
+    assert_contains(
+        events_json,
+        "https://github.com/acme/top-secret/pull/42",
+        "internal events keeps links",
+    )?;
+
+    assert_contains(
+        workstreams_json,
+        "Top Secret Program",
+        "internal workstreams keeps title",
+    )?;
+    assert_contains(
+        workstreams_json,
+        "Private architecture summary",
+        "internal workstreams keeps summary",
+    )
+}
+
+#[test]
+fn bdd_internal_profile_preserves_all_data() {
+    let scenario = Scenario::new("Internal profile preserves all data")
+        .given("sensitive fixtures", given_sensitive_inputs)
+        .given("an internal profile string", given_internal_profile_string)
+        .when("projection is applied", when_projection_is_applied)
+        .then(
+            "all fields including sensitive data are preserved",
+            then_internal_profile_preserves_all_fields,
+        );
+
+    scenario.run().expect("BDD scenario should pass");
+}

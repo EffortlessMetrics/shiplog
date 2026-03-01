@@ -4,23 +4,51 @@ use shiplog_ids::RunId;
 use std::fmt;
 use std::str::FromStr;
 
+/// SHA-256 checksum and size for a single file in the bundle.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct FileChecksum {
+    /// Relative path within the run directory.
     pub path: String,
+    /// Hex-encoded SHA-256 digest.
     pub sha256: String,
+    /// File size in bytes.
     pub bytes: u64,
 }
 
 /// Which redaction profile a bundle was built for.
+///
+/// # Examples
+///
+/// ```
+/// use shiplog_schema::bundle::BundleProfile;
+///
+/// let p: BundleProfile = "manager".parse().unwrap();
+/// assert_eq!(p, BundleProfile::Manager);
+/// assert_eq!(p.as_str(), "manager");
+/// ```
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub enum BundleProfile {
+    /// Full-fidelity internal packet (default).
     #[default]
     Internal,
+    /// Manager-facing packet with selective redaction.
     Manager,
+    /// Fully redacted public packet.
     Public,
 }
 
 impl BundleProfile {
+    /// Returns the canonical lowercase name of this profile.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use shiplog_schema::bundle::BundleProfile;
+    ///
+    /// assert_eq!(BundleProfile::Internal.as_str(), "internal");
+    /// assert_eq!(BundleProfile::Manager.as_str(), "manager");
+    /// assert_eq!(BundleProfile::Public.as_str(), "public");
+    /// ```
     pub fn as_str(&self) -> &str {
         match self {
             Self::Internal => "internal",
@@ -51,12 +79,17 @@ impl FromStr for BundleProfile {
     }
 }
 
+/// Manifest listing every file in a bundle together with checksums.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct BundleManifest {
+    /// Run that produced this bundle.
     pub run_id: RunId,
+    /// When the bundle was created.
     pub generated_at: DateTime<Utc>,
+    /// Redaction profile used for this bundle.
     #[serde(default)]
     pub profile: BundleProfile,
+    /// Checksums for each file in the bundle.
     pub files: Vec<FileChecksum>,
 }
 
@@ -116,5 +149,41 @@ mod tests {
         ] {
             assert_eq!(profile.to_string(), profile.as_str());
         }
+    }
+
+    #[test]
+    fn file_checksum_serde_roundtrip() {
+        let fc = FileChecksum {
+            path: "packet.md".into(),
+            sha256: "abcdef1234567890".into(),
+            bytes: 4096,
+        };
+        let json = serde_json::to_string(&fc).unwrap();
+        let back: FileChecksum = serde_json::from_str(&json).unwrap();
+        assert_eq!(fc, back);
+    }
+
+    #[test]
+    fn bundle_manifest_serde_roundtrip() {
+        let manifest = BundleManifest {
+            run_id: RunId("run-123".into()),
+            generated_at: chrono::Utc::now(),
+            profile: BundleProfile::Manager,
+            files: vec![
+                FileChecksum {
+                    path: "packet.md".into(),
+                    sha256: "abc".into(),
+                    bytes: 100,
+                },
+                FileChecksum {
+                    path: "ledger.events.jsonl".into(),
+                    sha256: "def".into(),
+                    bytes: 200,
+                },
+            ],
+        };
+        let json = serde_json::to_string(&manifest).unwrap();
+        let back: BundleManifest = serde_json::from_str(&json).unwrap();
+        assert_eq!(manifest, back);
     }
 }

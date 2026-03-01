@@ -1,3 +1,4 @@
+#![warn(missing_docs)]
 //! Stable identifier types used across the shiplog pipeline.
 //!
 //! Includes deterministic SHA-256 constructors for event/workstream IDs and a
@@ -14,6 +15,19 @@ use std::fmt;
 /// - IDs are printable and safe to paste into docs.
 ///
 /// This makes downstream redaction and diffing tractable.
+///
+/// # Examples
+///
+/// ```
+/// use shiplog_ids::EventId;
+///
+/// let id = EventId::from_parts(["github", "pr", "owner/repo", "42"]);
+/// assert_eq!(id.0.len(), 64); // SHA-256 hex string
+///
+/// // Same inputs always produce the same ID:
+/// let id2 = EventId::from_parts(["github", "pr", "owner/repo", "42"]);
+/// assert_eq!(id, id2);
+/// ```
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct EventId(pub String);
@@ -24,6 +38,16 @@ impl fmt::Display for EventId {
     }
 }
 
+/// A deterministic workstream identifier.
+///
+/// # Examples
+///
+/// ```
+/// use shiplog_ids::WorkstreamId;
+///
+/// let id = WorkstreamId::from_parts(["repo", "acme/widgets"]);
+/// assert_eq!(id.0.len(), 64);
+/// ```
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct WorkstreamId(pub String);
@@ -34,6 +58,16 @@ impl fmt::Display for WorkstreamId {
     }
 }
 
+/// A timestamp-based run identifier.
+///
+/// # Examples
+///
+/// ```
+/// use shiplog_ids::RunId;
+///
+/// let id = RunId::now("shiplog");
+/// assert!(id.0.starts_with("shiplog_"));
+/// ```
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct RunId(pub String);
@@ -51,12 +85,34 @@ impl EventId {
     /// - re-runs
     /// - different machines
     /// - different render profiles
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use shiplog_ids::EventId;
+    ///
+    /// let id = EventId::from_parts(["github", "pr", "owner/repo", "42"]);
+    /// // Different parts produce different IDs:
+    /// let other = EventId::from_parts(["github", "pr", "owner/repo", "99"]);
+    /// assert_ne!(id, other);
+    /// ```
     pub fn from_parts(parts: impl IntoIterator<Item = impl AsRef<str>>) -> Self {
         Self(hash_hex(parts))
     }
 }
 
 impl WorkstreamId {
+    /// Deterministic workstream id from stable parts.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use shiplog_ids::WorkstreamId;
+    ///
+    /// let a = WorkstreamId::from_parts(["repo", "acme/widgets"]);
+    /// let b = WorkstreamId::from_parts(["repo", "acme/widgets"]);
+    /// assert_eq!(a, b);
+    /// ```
     pub fn from_parts(parts: impl IntoIterator<Item = impl AsRef<str>>) -> Self {
         Self(hash_hex(parts))
     }
@@ -64,6 +120,17 @@ impl WorkstreamId {
 
 impl RunId {
     /// Non-deterministic enough to avoid collisions without dragging in UUID/rand.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use shiplog_ids::RunId;
+    ///
+    /// let run = RunId::now("shiplog");
+    /// // Each call generates a unique ID:
+    /// let run2 = RunId::now("shiplog");
+    /// assert_ne!(run, run2);
+    /// ```
     pub fn now(prefix: &str) -> Self {
         let nanos = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
