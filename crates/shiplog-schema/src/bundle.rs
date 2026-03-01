@@ -4,10 +4,14 @@ use shiplog_ids::RunId;
 use std::fmt;
 use std::str::FromStr;
 
+/// SHA-256 checksum and size for a single file in the bundle.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct FileChecksum {
+    /// Relative path within the run directory.
     pub path: String,
+    /// Hex-encoded SHA-256 digest.
     pub sha256: String,
+    /// File size in bytes.
     pub bytes: u64,
 }
 
@@ -24,9 +28,12 @@ pub struct FileChecksum {
 /// ```
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub enum BundleProfile {
+    /// Full-fidelity internal packet (default).
     #[default]
     Internal,
+    /// Manager-facing packet with selective redaction.
     Manager,
+    /// Fully redacted public packet.
     Public,
 }
 
@@ -72,12 +79,17 @@ impl FromStr for BundleProfile {
     }
 }
 
+/// Manifest listing every file in a bundle together with checksums.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct BundleManifest {
+    /// Run that produced this bundle.
     pub run_id: RunId,
+    /// When the bundle was created.
     pub generated_at: DateTime<Utc>,
+    /// Redaction profile used for this bundle.
     #[serde(default)]
     pub profile: BundleProfile,
+    /// Checksums for each file in the bundle.
     pub files: Vec<FileChecksum>,
 }
 

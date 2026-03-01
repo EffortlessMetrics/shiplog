@@ -1,3 +1,4 @@
+#![warn(missing_docs)]
 //! Orchestration engine for the shiplog pipeline.
 //!
 //! Wires together ingestors, clusterers, redactors, and renderers to drive the
@@ -17,19 +18,35 @@ use shiplog_schema::workstream::WorkstreamsFile;
 use shiplog_workstream_layout::WorkstreamManager;
 use std::path::{Path, PathBuf};
 
+/// The orchestration engine that wires ingestors, clusterers, redactors, and renderers.
+///
+/// This is the main coordination layer between the CLI and the microcrate adapters.
+/// Construct one via [`Engine::new`], then call [`Engine::run`], [`Engine::refresh`],
+/// or [`Engine::import`] to execute the pipeline.
 pub struct Engine<'a> {
+    /// The renderer used to produce Markdown packets.
     pub renderer: &'a dyn Renderer,
+    /// The clusterer used to group events into workstreams.
     pub clusterer: &'a dyn WorkstreamClusterer,
+    /// The redactor used to produce manager/public profiles.
     pub redactor: &'a dyn Redactor,
 }
 
+/// Paths to every artifact produced by a pipeline run.
 pub struct RunOutputs {
+    /// Root output directory for this run.
     pub out_dir: PathBuf,
+    /// Path to the rendered `packet.md`.
     pub packet_md: PathBuf,
+    /// Path to `workstreams.yaml` or `workstreams.suggested.yaml`.
     pub workstreams_yaml: PathBuf,
+    /// Path to the JSONL event ledger.
     pub ledger_events_jsonl: PathBuf,
+    /// Path to the coverage manifest JSON.
     pub coverage_manifest_json: PathBuf,
+    /// Path to the bundle integrity manifest.
     pub bundle_manifest_json: PathBuf,
+    /// Path to the zip archive, if one was created.
     pub zip_path: Option<PathBuf>,
 }
 

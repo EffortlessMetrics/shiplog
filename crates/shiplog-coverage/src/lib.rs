@@ -1,3 +1,4 @@
+#![warn(missing_docs)]
 //! Compatibility wrapper for date-window utilities.
 //!
 //! This crate now delegates windowing logic to `shiplog-date-windows` while preserving

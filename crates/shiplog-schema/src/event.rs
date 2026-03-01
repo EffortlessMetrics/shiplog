@@ -25,10 +25,15 @@ use std::fmt;
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum SourceSystem {
+    /// GitHub API.
     Github,
+    /// JSONL file import.
     JsonImport,
+    /// Local git repository.
     LocalGit,
+    /// Manually-entered event.
     Manual,
+    /// Source could not be determined.
     Unknown,
     /// Extension point for third-party source systems.
     Other(String),
@@ -152,6 +157,7 @@ impl<'de> Deserialize<'de> for SourceSystem {
 /// Provenance reference for an event, linking it back to its source system.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SourceRef {
+    /// The system that produced this event.
     pub system: SourceSystem,
     /// A stable URL when available. May be stripped during redaction.
     pub url: Option<String>,
@@ -256,14 +262,23 @@ pub enum EventKind {
 /// ```
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct EventEnvelope {
+    /// Deterministic, content-derived event identifier.
     pub id: EventId,
+    /// Top-level discriminant for the event type.
     pub kind: EventKind,
+    /// When the event happened (UTC).
     pub occurred_at: DateTime<Utc>,
+    /// Who triggered the event.
     pub actor: Actor,
+    /// Repository this event belongs to.
     pub repo: RepoRef,
+    /// Type-specific event data.
     pub payload: EventPayload,
+    /// Freeform tags for categorisation.
     pub tags: Vec<String>,
+    /// Related hyperlinks (PR URL, postmortem, etc.).
     pub links: Vec<Link>,
+    /// Provenance metadata linking back to the source system.
     pub source: SourceRef,
 }
 
@@ -271,40 +286,64 @@ pub struct EventEnvelope {
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "type", content = "data")]
 pub enum EventPayload {
+    /// Pull request authored by the user.
     PullRequest(PullRequestEvent),
+    /// Code review submitted by the user.
     Review(ReviewEvent),
+    /// Manually-entered non-GitHub event.
     Manual(ManualEvent),
 }
 
+/// Lifecycle state of a pull request.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub enum PullRequestState {
+    /// Still open for review.
     Open,
+    /// Closed without merging.
     Closed,
+    /// Merged into the target branch.
     Merged,
+    /// State could not be determined.
     Unknown,
 }
 
+/// A pull request event with diff-stat metadata.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct PullRequestEvent {
+    /// PR number within the repository.
     pub number: u64,
+    /// PR title.
     pub title: String,
+    /// Current lifecycle state.
     pub state: PullRequestState,
+    /// When the PR was opened.
     pub created_at: DateTime<Utc>,
+    /// When the PR was merged, if applicable.
     pub merged_at: Option<DateTime<Utc>>,
+    /// Lines added.
     pub additions: Option<u64>,
+    /// Lines removed.
     pub deletions: Option<u64>,
+    /// Number of files changed.
     pub changed_files: Option<u64>,
     /// Minimal risk proxy. It's not "quality". It's blast radius.
     pub touched_paths_hint: Vec<String>,
+    /// Coverage window this event was fetched within.
     pub window: Option<TimeWindow>,
 }
 
+/// A code review submitted on a pull request.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct ReviewEvent {
+    /// Number of the PR that was reviewed.
     pub pull_number: u64,
+    /// Title of the PR that was reviewed.
     pub pull_title: String,
+    /// When the review was submitted.
     pub submitted_at: DateTime<Utc>,
+    /// Review verdict (e.g. `"approved"`, `"changes_requested"`).
     pub state: String,
+    /// Coverage window this event was fetched within.
     pub window: Option<TimeWindow>,
 }
 
@@ -741,8 +780,11 @@ mod tests {
 /// File format for manual_events.yaml
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct ManualEventsFile {
+    /// Schema version for forward compatibility.
     pub version: u32,
+    /// Timestamp when this file was generated.
     pub generated_at: DateTime<Utc>,
+    /// List of manual event entries.
     pub events: Vec<ManualEventEntry>,
 }
 
@@ -770,10 +812,17 @@ pub struct ManualEventEntry {
     pub impact: Option<String>,
 }
 
-/// Date specification for manual events
+/// Date specification for manual events — either a single day or a range.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(untagged)]
 pub enum ManualDate {
+    /// A single calendar date.
     Single(NaiveDate),
-    Range { start: NaiveDate, end: NaiveDate },
+    /// An inclusive date range.
+    Range {
+        /// Start of the range.
+        start: NaiveDate,
+        /// End of the range.
+        end: NaiveDate,
+    },
 }

@@ -3,10 +3,14 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use shiplog_ids::{EventId, WorkstreamId};
 
+/// Aggregate counters for events within a workstream.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct WorkstreamStats {
+    /// Number of pull requests in this workstream.
     pub pull_requests: usize,
+    /// Number of code reviews in this workstream.
     pub reviews: usize,
+    /// Number of manually-entered events in this workstream.
     pub manual_events: usize,
 }
 
@@ -32,12 +36,18 @@ impl WorkstreamStats {
     }
 }
 
+/// A logical grouping of related events (e.g. all work on one repository).
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Workstream {
+    /// Deterministic identifier for this workstream.
     pub id: WorkstreamId,
+    /// Human-readable title.
     pub title: String,
+    /// Optional narrative summary.
     pub summary: Option<String>,
+    /// Freeform tags for categorisation.
     pub tags: Vec<String>,
+    /// Aggregate event counters.
     pub stats: WorkstreamStats,
     /// Event IDs that belong to this workstream.
     pub events: Vec<EventId>,
@@ -71,8 +81,11 @@ pub struct Workstream {
 /// ```
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct WorkstreamsFile {
+    /// Schema version for forward compatibility.
     pub version: u32,
+    /// Timestamp when this file was generated.
     pub generated_at: DateTime<Utc>,
+    /// Ordered list of workstreams.
     pub workstreams: Vec<Workstream>,
 }
 

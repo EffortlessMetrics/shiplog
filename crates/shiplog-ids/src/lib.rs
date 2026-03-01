@@ -1,3 +1,4 @@
+#![warn(missing_docs)]
 //! Stable identifier types used across the shiplog pipeline.
 //!
 //! Includes deterministic SHA-256 constructors for event/workstream IDs and a

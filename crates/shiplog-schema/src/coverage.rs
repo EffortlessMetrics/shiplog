@@ -1,6 +1,7 @@
 use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 
+/// A half-open date range `[since, until)` used for query windows.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TimeWindow {
     /// Inclusive start date (YYYY-MM-DD).
@@ -32,10 +33,14 @@ impl TimeWindow {
     }
 }
 
+/// How complete the data fetch was for a given window.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub enum Completeness {
+    /// All expected data was fetched.
     Complete,
+    /// Some data may be missing.
     Partial,
+    /// Completeness could not be determined.
     Unknown,
 }
 
@@ -45,11 +50,17 @@ pub enum Completeness {
 /// Coverage is a first-class output, not a footnote.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct CoverageSlice {
+    /// Time window this slice covers.
     pub window: TimeWindow,
+    /// The search query that produced this slice.
     pub query: String,
+    /// Total results reported by the source.
     pub total_count: u64,
+    /// How many results were actually fetched.
     pub fetched: u64,
+    /// Whether the source flagged results as incomplete.
     pub incomplete_results: Option<bool>,
+    /// Free-text notes about this slice.
     pub notes: Vec<String>,
 }
 
@@ -81,15 +92,23 @@ pub struct CoverageSlice {
 /// ```
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct CoverageManifest {
+    /// Unique identifier for the run that produced this manifest.
     pub run_id: shiplog_ids::RunId,
+    /// When the manifest was generated.
     pub generated_at: chrono::DateTime<chrono::Utc>,
+    /// GitHub username the run targeted.
     pub user: String,
+    /// Overall time window for the run.
     pub window: TimeWindow,
     /// "created" or "merged".
     pub mode: String,
+    /// Source systems queried (e.g. `["github"]`).
     pub sources: Vec<String>,
+    /// Per-window coverage slices with fetch statistics.
     pub slices: Vec<CoverageSlice>,
+    /// Human-readable warnings encountered during the run.
     pub warnings: Vec<String>,
+    /// Overall completeness verdict.
     pub completeness: Completeness,
 }
 
