@@ -7,8 +7,14 @@ use anyhow::Result;
 use chrono::Utc;
 use shiplog_ports::{IngestOutput, Ingestor};
 use shiplog_schema::coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow};
-use shiplog_schema::event::{ManualDate, ManualEventEntry, ManualEventType, ManualEventsFile};
 use std::path::Path;
+
+pub mod events;
+
+pub use events::{
+    create_empty_file, create_entry, entry_date_range, entry_to_event, events_in_window,
+    read_manual_events, write_manual_events,
+};
 
 /// Ingestor for manual events from YAML files.
 ///
@@ -103,8 +109,7 @@ impl Ingestor for ManualIngestor {
         }
 
         let file = read_manual_events(&self.events_path)?;
-        let (events, warnings) =
-            shiplog_manual_events::events_in_window(&file.events, &self.user, &self.window);
+        let (events, warnings) = events_in_window(&file.events, &self.user, &self.window);
 
         let coverage = CoverageManifest {
             run_id: shiplog_ids::RunId::now("manual"),
@@ -129,84 +134,11 @@ impl Ingestor for ManualIngestor {
     }
 }
 
-/// Read manual events from a YAML file.
-///
-/// # Examples
-///
-/// ```rust,no_run
-/// use shiplog_ingest_manual::read_manual_events;
-/// use std::path::Path;
-///
-/// let file = read_manual_events(Path::new("manual_events.yaml"))?;
-/// println!("Found {} events", file.events.len());
-/// # Ok::<(), anyhow::Error>(())
-/// ```
-pub fn read_manual_events(path: &Path) -> Result<ManualEventsFile> {
-    shiplog_manual_events::read_manual_events(path)
-}
-
-/// Write manual events to a YAML file.
-///
-/// # Examples
-///
-/// ```rust,no_run
-/// use shiplog_ingest_manual::{create_empty_file, write_manual_events};
-/// use std::path::Path;
-///
-/// let file = create_empty_file();
-/// write_manual_events(Path::new("manual_events.yaml"), &file)?;
-/// # Ok::<(), anyhow::Error>(())
-/// ```
-pub fn write_manual_events(path: &Path, file: &ManualEventsFile) -> Result<()> {
-    shiplog_manual_events::write_manual_events(path, file)
-}
-
-/// Create a new empty manual events file.
-///
-/// # Examples
-///
-/// ```
-/// use shiplog_ingest_manual::create_empty_file;
-///
-/// let file = create_empty_file();
-/// assert_eq!(file.version, 1);
-/// assert!(file.events.is_empty());
-/// ```
-pub fn create_empty_file() -> ManualEventsFile {
-    shiplog_manual_events::create_empty_file()
-}
-
-/// Helper to create a simple manual event entry.
-///
-/// # Examples
-///
-/// ```
-/// use shiplog_ingest_manual::create_entry;
-/// use shiplog_schema::event::{ManualEventType, ManualDate};
-/// use chrono::NaiveDate;
-///
-/// let entry = create_entry(
-///     "design-review-1",
-///     ManualEventType::Design,
-///     ManualDate::Single(NaiveDate::from_ymd_opt(2025, 3, 15).unwrap()),
-///     "API design review",
-/// );
-/// assert_eq!(entry.id, "design-review-1");
-/// assert_eq!(entry.title, "API design review");
-/// ```
-pub fn create_entry(
-    id: impl Into<String>,
-    event_type: ManualEventType,
-    date: ManualDate,
-    title: impl Into<String>,
-) -> ManualEventEntry {
-    shiplog_manual_events::create_entry(id, event_type, date, title)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use chrono::NaiveDate;
+    use shiplog_schema::event::{ManualDate, ManualEventEntry, ManualEventType, ManualEventsFile};
 
     fn make_test_entry(id: &str) -> ManualEventEntry {
         ManualEventEntry {

@@ -59,7 +59,6 @@
 # owner modules over time unless API_SURFACE.md deliberately promotes them.
 #
 # shiplog-output-layout
-# shiplog-manual-events
 # shiplog-receipt
 # shiplog-workstream-cluster
 # shiplog-workstream-receipt-policy

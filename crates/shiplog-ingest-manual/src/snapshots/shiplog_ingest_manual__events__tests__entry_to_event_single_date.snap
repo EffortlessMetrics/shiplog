@@ -1,6 +1,6 @@
 ---
-source: crates/shiplog-manual-events/src/lib.rs
-assertion_line: 551
+source: crates/shiplog-ingest-manual/src/events.rs
+assertion_line: 547
 expression: ev
 ---
 id: b9a2d86847ec03510f5c719f9de3a940ab6f368934ec9ebb9ab1a0eae1ce10e8

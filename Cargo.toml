@@ -38,7 +38,6 @@ members = [
   "crates/shiplog-testkit",
 
   # Internal implementation carriers kept until they are folded into owners.
-  "crates/shiplog-manual-events",
   "crates/shiplog-output-layout",
   "crates/shiplog-receipt",
   "crates/shiplog-team-core",

@@ -2402,26 +2402,13 @@ version = "0.2.1"
 dependencies = [
  "anyhow",
  "chrono",
- "proptest",
- "shiplog-ids",
- "shiplog-manual-events",
- "shiplog-ports",
- "shiplog-schema",
- "shiplog-testkit",
- "tempfile",
-]
-
-[[package]]
-name = "shiplog-manual-events"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "chrono",
  "insta",
  "proptest",
  "serde_yaml_ng",
  "shiplog-ids",
+ "shiplog-ports",
  "shiplog-schema",
+ "shiplog-testkit",
  "tempfile",
 ]
 

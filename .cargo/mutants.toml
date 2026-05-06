@@ -29,7 +29,6 @@ examine_globs = [
   "crates/shiplog-workstream-receipt-policy/src/**/*.rs",
   "crates/shiplog-workstream-layout/src/**/*.rs",
   "crates/shiplog-output-layout/src/**/*.rs",
-  "crates/shiplog-manual-events/src/**/*.rs",
   "crates/shiplog-ingest-github/src/**/*.rs",
   "crates/shiplog-ingest-json/src/**/*.rs",
   "crates/shiplog-ingest-manual/src/**/*.rs",

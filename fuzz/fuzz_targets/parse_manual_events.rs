@@ -7,7 +7,7 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use shiplog_manual_events::events_in_window;
+use shiplog_ingest_manual::events_in_window;
 use shiplog_schema::event::ManualEventsFile;
 
 fuzz_target!(|data: &[u8]| {

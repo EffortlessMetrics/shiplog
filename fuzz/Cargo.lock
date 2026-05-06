@@ -1314,7 +1314,6 @@ dependencies = [
  "shiplog-ingest-github",
  "shiplog-ingest-json",
  "shiplog-ingest-manual",
- "shiplog-manual-events",
  "shiplog-ports",
  "shiplog-receipt",
  "shiplog-redact",
@@ -1371,20 +1370,9 @@ version = "0.2.1"
 dependencies = [
  "anyhow",
  "chrono",
- "shiplog-ids",
- "shiplog-manual-events",
- "shiplog-ports",
- "shiplog-schema",
-]
-
-[[package]]
-name = "shiplog-manual-events"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "chrono",
  "serde_yaml_ng",
  "shiplog-ids",
+ "shiplog-ports",
  "shiplog-schema",
 ]
 
