@@ -4,9 +4,9 @@
 //! unicode characters, and special characters on all platforms.
 
 use chrono::{NaiveDate, Utc};
+use shiplog_bundle::{FILE_COVERAGE_MANIFEST_JSON, FILE_LEDGER_EVENTS_JSONL};
 use shiplog_ids::{EventId, RunId};
 use shiplog_ingest_json::JsonIngestor;
-use shiplog_output_layout::{FILE_COVERAGE_MANIFEST_JSON, FILE_LEDGER_EVENTS_JSONL};
 use shiplog_ports::Ingestor;
 use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
 use shiplog_schema::event::*;

@@ -83,7 +83,7 @@ nearest owning crate unless a later PR deliberately promotes them.
 - Redaction internals: `shiplog-redact::{profile, policy, projector, repo, alias}`.
 - Cache internals: `shiplog-cache::{key, stats, expiry, sqlite}`.
 - Date windows: `shiplog-coverage::windows`.
-- Output layout: `shiplog-engine::layout` or `shiplog-bundle::layout`.
+- Output layout: `shiplog-bundle::layout`.
 - Team phases: `shiplog-team::{core, aggregate, render}`.
 - Workstream phases: `shiplog-workstreams::{cluster, layout, receipt_policy}`.
 - LLM prompt/parse helpers: `shiplog-cluster-llm::{prompt, parse}`.
@@ -132,5 +132,6 @@ working product behavior. The redaction family has been folded into
 `shiplog-coverage::windows`. Cache key, stats, expiry, and SQLite storage now
 live under `shiplog-cache`; LLM prompt and parse helpers live under
 `shiplog-cluster-llm`; manual event parsing lives under
-`shiplog-ingest-manual`. Remaining carrier families should follow the same
-owner-module pattern without expanding the external API.
+`shiplog-ingest-manual`; output layout lives under `shiplog-bundle`. Remaining
+carrier families should follow the same owner-module pattern without expanding
+the external API.

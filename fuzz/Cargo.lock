@@ -1359,7 +1359,6 @@ version = "0.2.1"
 dependencies = [
  "anyhow",
  "serde_json",
- "shiplog-output-layout",
  "shiplog-ports",
  "shiplog-schema",
 ]
@@ -1375,10 +1374,6 @@ dependencies = [
  "shiplog-ports",
  "shiplog-schema",
 ]
-
-[[package]]
-name = "shiplog-output-layout"
-version = "0.2.1"
 
 [[package]]
 name = "shiplog-ports"

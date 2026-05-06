@@ -6,9 +6,9 @@
 //! coordination layer between the CLI and the adapter crates.
 
 use anyhow::{Context, Result};
+use shiplog_bundle::{DIR_PROFILES, FILE_PACKET_MD, RunArtifactPaths, zip_path_for_profile};
 use shiplog_bundle::{write_bundle_manifest, write_zip};
 pub use shiplog_merge::ConflictResolution;
-use shiplog_output_layout::{DIR_PROFILES, FILE_PACKET_MD, RunArtifactPaths, zip_path_for_profile};
 use shiplog_ports::{IngestOutput, Redactor, Renderer, WorkstreamClusterer};
 use shiplog_render_json::{write_coverage_manifest, write_events_jsonl};
 use shiplog_schema::bundle::BundleProfile;
@@ -601,8 +601,8 @@ impl<'a> Engine<'a> {
 mod tests {
     use super::*;
     use chrono::{NaiveDate, TimeZone, Utc};
+    use shiplog_bundle::{PROFILE_MANAGER, PROFILE_PUBLIC};
     use shiplog_ids::{EventId, RunId};
-    use shiplog_output_layout::{PROFILE_MANAGER, PROFILE_PUBLIC};
     use shiplog_ports::IngestOutput;
     use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
     use shiplog_schema::event::*;

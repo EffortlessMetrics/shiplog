@@ -7,14 +7,18 @@ use anyhow::{Context, Result};
 use chrono::Utc;
 use sha2::{Digest, Sha256};
 use shiplog_ids::RunId;
-use shiplog_output_layout::{
-    DIR_PROFILES, FILE_BUNDLE_MANIFEST_JSON, FILE_COVERAGE_MANIFEST_JSON, FILE_PACKET_MD,
-    FILE_REDACTION_ALIASES_JSON, PROFILE_MANAGER, PROFILE_PUBLIC,
-};
 use shiplog_schema::bundle::{BundleManifest, BundleProfile, FileChecksum};
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
+
+pub mod layout;
+
+pub use layout::{
+    DIR_PROFILES, FILE_BUNDLE_MANIFEST_JSON, FILE_COVERAGE_MANIFEST_JSON, FILE_LEDGER_EVENTS_JSONL,
+    FILE_PACKET_MD, FILE_REDACTION_ALIASES_JSON, PROFILE_INTERNAL, PROFILE_MANAGER, PROFILE_PUBLIC,
+    RunArtifactPaths, zip_path_for_profile,
+};
 
 /// Files excluded from bundles regardless of profile. `redaction.aliases.json`
 /// contains plaintext-to-alias mappings that would defeat redaction.
@@ -185,7 +189,6 @@ fn walk_files(root: &Path, profile: &BundleProfile) -> Result<Vec<PathBuf>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use shiplog_output_layout::FILE_LEDGER_EVENTS_JSONL;
 
     /// Helper: create a minimal run directory for testing.
     fn make_test_dir(dir: &Path) {

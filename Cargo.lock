@@ -2191,7 +2191,6 @@ dependencies = [
  "serde_json",
  "sha2",
  "shiplog-ids",
- "shiplog-output-layout",
  "shiplog-schema",
  "tempfile",
  "zip",
@@ -2257,7 +2256,6 @@ dependencies = [
  "shiplog-ids",
  "shiplog-ingest-json",
  "shiplog-merge",
- "shiplog-output-layout",
  "shiplog-ports",
  "shiplog-redact",
  "shiplog-render-json",
@@ -2368,8 +2366,8 @@ dependencies = [
  "proptest",
  "serde",
  "serde_json",
+ "shiplog-bundle",
  "shiplog-ids",
- "shiplog-output-layout",
  "shiplog-ports",
  "shiplog-schema",
  "tempfile",
@@ -2425,13 +2423,6 @@ dependencies = [
  "shiplog-ids",
  "shiplog-ports",
  "shiplog-schema",
-]
-
-[[package]]
-name = "shiplog-output-layout"
-version = "0.2.1"
-dependencies = [
- "proptest",
 ]
 
 [[package]]
@@ -2612,12 +2603,12 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml_ng",
+ "shiplog-bundle",
  "shiplog-coverage",
  "shiplog-engine",
  "shiplog-ids",
  "shiplog-ingest-json",
  "shiplog-merge",
- "shiplog-output-layout",
  "shiplog-ports",
  "shiplog-redact",
  "shiplog-render-json",

@@ -1,4 +1,4 @@
-use shiplog_output_layout::*;
+use shiplog_bundle::*;
 use std::path::{Path, PathBuf};
 
 #[test]

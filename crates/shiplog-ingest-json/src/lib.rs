@@ -91,8 +91,8 @@ fn read_coverage(path: &PathBuf) -> Result<CoverageManifest> {
 mod tests {
     use super::*;
     use chrono::{NaiveDate, Utc};
+    use shiplog_bundle::{FILE_COVERAGE_MANIFEST_JSON, FILE_LEDGER_EVENTS_JSONL};
     use shiplog_ids::{EventId, RunId};
-    use shiplog_output_layout::{FILE_COVERAGE_MANIFEST_JSON, FILE_LEDGER_EVENTS_JSONL};
     use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
     use shiplog_schema::event::*;
     use std::io::Write;
