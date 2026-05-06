@@ -1,7 +1,8 @@
 use proptest::prelude::*;
-use shiplog_cluster_llm::{LlmClusterer, LlmConfig, MockLlmBackend};
-use shiplog_cluster_llm_parse::parse_llm_response;
-use shiplog_cluster_llm_prompt::{chunk_events, format_event_list, summarize_event, system_prompt};
+use shiplog_cluster_llm::{
+    LlmClusterer, LlmConfig, MockLlmBackend, chunk_events, format_event_list, parse_llm_response,
+    summarize_event, system_prompt,
+};
 use shiplog_ids::EventId;
 use shiplog_ports::WorkstreamClusterer;
 use shiplog_schema::event::*;

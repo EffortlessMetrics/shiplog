@@ -71,12 +71,6 @@ jobs:
       - name: Run property tests for shiplog-cluster-llm
         run: cargo test -p shiplog-cluster-llm -- --test-threads=4
 
-      - name: Run property tests for shiplog-cluster-llm-parse
-        run: cargo test -p shiplog-cluster-llm-parse -- --test-threads=4
-
-      - name: Run property tests for shiplog-cluster-llm-prompt
-        run: cargo test -p shiplog-cluster-llm-prompt -- --test-threads=4
-
       - name: Run property tests for shiplog-receipt
         run: cargo test -p shiplog-receipt -- --test-threads=4
 
@@ -112,8 +106,6 @@ jobs:
           echo "- shiplog-render-md" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog-render-json" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog-cluster-llm" >> $GITHUB_STEP_SUMMARY
-          echo "- shiplog-cluster-llm-parse" >> $GITHUB_STEP_SUMMARY
-          echo "- shiplog-cluster-llm-prompt" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog-receipt" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog-workstream-receipt-policy" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog-workstream-layout" >> $GITHUB_STEP_SUMMARY

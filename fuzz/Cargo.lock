@@ -1273,23 +1273,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "shiplog-cluster-llm-parse"
+name = "shiplog-cluster-llm"
 version = "0.2.1"
 dependencies = [
  "anyhow",
  "chrono",
+ "mutants",
+ "reqwest",
  "serde",
  "serde_json",
  "shiplog-ids",
+ "shiplog-ports",
  "shiplog-schema",
-]
-
-[[package]]
-name = "shiplog-cluster-llm-prompt"
-version = "0.2.1"
-dependencies = [
- "chrono",
- "shiplog-schema",
+ "shiplog-workstream-cluster",
 ]
 
 [[package]]
@@ -1312,8 +1308,7 @@ dependencies = [
  "serde_yaml_ng",
  "sha2",
  "shiplog-cache",
- "shiplog-cluster-llm-parse",
- "shiplog-cluster-llm-prompt",
+ "shiplog-cluster-llm",
  "shiplog-coverage",
  "shiplog-ids",
  "shiplog-ingest-github",

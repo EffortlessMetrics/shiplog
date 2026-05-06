@@ -8,7 +8,7 @@ LLM-assisted workstream clustering adapters.
 - `LlmWithFallback`: falls back to repo clustering when LLM clustering fails.
 - `LlmConfig`: request/model/token budget configuration.
 - `OpenAiCompatibleBackend`: OpenAI chat-completions protocol backend.
-- `parse_llm_response` is delegated to `shiplog-cluster-llm-parse` as a transitional parser implementation carrier.
+- `parse_llm_response` lives in the internal `parse` module and is re-exported by this crate.
 
 ## Notes
 

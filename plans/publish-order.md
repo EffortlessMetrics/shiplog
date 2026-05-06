@@ -71,8 +71,7 @@ Some implementation carriers still exist as packages to preserve behavior during
 this cleanup. They should not be treated as crates.io product surface unless
 `API_SURFACE.md` deliberately promotes them:
 
-`shiplog-cluster-llm-parse`, `shiplog-cluster-llm-prompt`, `shiplog-manual-events`,
-`shiplog-output-layout`, `shiplog-receipt`, `shiplog-team-aggregate`,
+`shiplog-manual-events`, `shiplog-output-layout`, `shiplog-receipt`, `shiplog-team-aggregate`,
 `shiplog-team-core`, `shiplog-team-render`, `shiplog-workstream-cluster`,
 `shiplog-workstream-layout`, and `shiplog-workstream-receipt-policy`.
 

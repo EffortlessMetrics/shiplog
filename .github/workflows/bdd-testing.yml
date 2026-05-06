@@ -113,7 +113,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Test current internal carrier crates
-        run: cargo test -p shiplog-output-layout -p shiplog-receipt -p shiplog-workstream-cluster -p shiplog-workstream-receipt-policy -p shiplog-workstream-layout -p shiplog-manual-events -p shiplog-cluster-llm-parse -p shiplog-cluster-llm-prompt -p shiplog-team -p shiplog-team-core -p shiplog-team-aggregate -p shiplog-team-render -p shiplog-template -p shiplog-merge -- --test-threads=4
+        run: cargo test -p shiplog-output-layout -p shiplog-receipt -p shiplog-workstream-cluster -p shiplog-workstream-receipt-policy -p shiplog-workstream-layout -p shiplog-manual-events -p shiplog-team -p shiplog-team-core -p shiplog-team-aggregate -p shiplog-team-render -p shiplog-template -p shiplog-merge -- --test-threads=4
 
   app-tests:
     name: App Tests

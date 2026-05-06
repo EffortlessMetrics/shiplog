@@ -43,8 +43,6 @@ examine_globs = [
   "crates/shiplog-template/src/**/*.rs",
   "crates/shiplog-merge/src/**/*.rs",
   "crates/shiplog-cluster-llm/src/**/*.rs",
-  "crates/shiplog-cluster-llm-parse/src/**/*.rs",
-  "crates/shiplog-cluster-llm-prompt/src/**/*.rs",
   "crates/shiplog-team-core/src/**/*.rs",
   "crates/shiplog-team-aggregate/src/**/*.rs",
   "crates/shiplog-team-render/src/**/*.rs",

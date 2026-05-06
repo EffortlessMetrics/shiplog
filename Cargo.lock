@@ -2223,35 +2223,10 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
- "shiplog-cluster-llm-parse",
- "shiplog-cluster-llm-prompt",
  "shiplog-ids",
  "shiplog-ports",
  "shiplog-schema",
  "shiplog-workstream-cluster",
-]
-
-[[package]]
-name = "shiplog-cluster-llm-parse"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "chrono",
- "proptest",
- "serde",
- "serde_json",
- "shiplog-ids",
- "shiplog-schema",
-]
-
-[[package]]
-name = "shiplog-cluster-llm-prompt"
-version = "0.2.1"
-dependencies = [
- "chrono",
- "proptest",
- "shiplog-ids",
- "shiplog-schema",
 ]
 
 [[package]]

@@ -24,8 +24,7 @@ shiplog-workstream-cluster = { path = "../crates/shiplog-workstream-cluster", ve
 shiplog-ports = { path = "../crates/shiplog-ports", version = "0.2.1" }
 shiplog-cache = { path = "../crates/shiplog-cache" }
 shiplog-coverage = { path = "../crates/shiplog-coverage" }
-shiplog-cluster-llm-prompt = { path = "../crates/shiplog-cluster-llm-prompt", version = "0.2.1" }
-shiplog-cluster-llm-parse = { path = "../crates/shiplog-cluster-llm-parse", version = "0.2.1" }
+shiplog-cluster-llm = { path = "../crates/shiplog-cluster-llm", version = "0.2.1" }
 shiplog-team-core = { path = "../crates/shiplog-team-core" }
 shiplog-render-md = { path = "../crates/shiplog-render-md" }
 sha2 = "0.10.9"

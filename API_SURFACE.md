@@ -130,5 +130,6 @@ Some implementation seams still exist as crates while this branch preserves
 working product behavior. The redaction family has been folded into
 `shiplog-redact`, and date-window partitioning now lives under
 `shiplog-coverage::windows`. Cache key, stats, expiry, and SQLite storage now
-live under `shiplog-cache`; remaining carrier families should follow the same
+live under `shiplog-cache`; LLM prompt and parse helpers live under
+`shiplog-cluster-llm`. Remaining carrier families should follow the same
 owner-module pattern without expanding the external API.

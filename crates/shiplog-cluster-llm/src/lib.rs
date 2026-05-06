@@ -5,11 +5,13 @@
 
 mod client;
 mod config;
+pub mod parse;
+pub mod prompt;
 
 pub use client::{FailingLlmBackend, LlmBackend, MockLlmBackend, OpenAiCompatibleBackend};
 pub use config::LlmConfig;
-use shiplog_cluster_llm_parse::parse_llm_response;
-use shiplog_cluster_llm_prompt::{chunk_events, format_event_list, summarize_event, system_prompt};
+pub use parse::parse_llm_response;
+pub use prompt::{chunk_events, format_event_list, summarize_event, system_prompt};
 
 use anyhow::Result;
 use shiplog_ports::WorkstreamClusterer;
