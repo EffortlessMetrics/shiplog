@@ -110,7 +110,7 @@ jobs:
       - name: Upload binary
         uses: actions/upload-artifact@v7
         with:
-          name: shiplog-${{ matrix.target }}${{ matrix.ext }}
+          name: shiplog-${{ matrix.target }}
           path: dist/shiplog-${{ matrix.target }}${{ matrix.ext }}
           retention-days: 5
 
@@ -120,7 +120,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-binary
     outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
       version: ${{ steps.version.outputs.version }}
 
     steps:
@@ -163,7 +162,8 @@ jobs:
       - name: Upload assets
         uses: softprops/action-gh-release@v3
         with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          fail_on_unmatched_files: true
+          overwrite_files: true
           files: |
             artifacts/shiplog-x86_64-unknown-linux-gnu/shiplog-x86_64-unknown-linux-gnu
             artifacts/shiplog-x86_64-apple-darwin/shiplog-x86_64-apple-darwin
