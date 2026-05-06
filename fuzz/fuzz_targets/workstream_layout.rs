@@ -1,12 +1,14 @@
 //! Fuzz harness for workstream artifact layout.
-//! 
+//!
 //! This target covers YAML parsing and workstream file load/write behavior.
 
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use shiplog_workstream_layout::{CURATED_FILENAME, SUGGESTED_FILENAME, WorkstreamManager, write_workstreams};
 use shiplog_schema::workstream::WorkstreamsFile;
+use shiplog_workstream_layout::{
+    CURATED_FILENAME, SUGGESTED_FILENAME, WorkstreamManager, write_workstreams,
+};
 
 fuzz_target!(|data: &[u8]| {
     let input = match std::str::from_utf8(data) {

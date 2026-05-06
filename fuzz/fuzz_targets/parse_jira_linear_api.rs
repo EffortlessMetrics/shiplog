@@ -78,7 +78,7 @@ fuzz_target!(|data: &[u8]| {
     if let Ok(text) = std::str::from_utf8(data) {
         // Try to parse as Jira issue
         let _ = serde_json::from_str::<JiraIssue>(text);
-        
+
         // Try to parse as Linear issue
         let _ = serde_json::from_str::<LinearIssue>(text);
     }

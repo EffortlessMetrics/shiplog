@@ -67,7 +67,7 @@ fuzz_target!(|data: &[u8]| {
     if let Ok(text) = std::str::from_utf8(data) {
         // Try to parse as GitLab merge request
         let _ = serde_json::from_str::<GitLabMergeRequest>(text);
-        
+
         // Try to parse as GitLab review
         let _ = serde_json::from_str::<GitLabReview>(text);
     }

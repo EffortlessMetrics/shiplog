@@ -4,7 +4,7 @@ use proptest::prelude::*;
 use shiplog_ids::{EventId, WorkstreamId};
 use shiplog_schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
 use shiplog_workstream_layout::{
-    CURATED_FILENAME, SUGGESTED_FILENAME, WorkstreamManager, write_workstreams,
+    write_workstreams, WorkstreamManager, CURATED_FILENAME, SUGGESTED_FILENAME,
 };
 use tempfile::tempdir;
 
@@ -110,5 +110,24 @@ proptest! {
         let text = std::fs::read_to_string(&path).unwrap();
         // Should parse as valid YAML without error
         let _: serde_yaml::Value = serde_yaml::from_str(&text).unwrap();
+    }
+
+    #[test]
+    fn prop_idempotent_write_read_write(ws in workstreams_file()) {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("workstreams.yaml");
+        write_workstreams(&path, &ws).unwrap();
+        let text1 = std::fs::read_to_string(&path).unwrap();
+        let roundtrip: WorkstreamsFile = serde_yaml::from_str(&text1).unwrap();
+        write_workstreams(&path, &roundtrip).unwrap();
+        let text2 = std::fs::read_to_string(&path).unwrap();
+        prop_assert_eq!(text1, text2, "Write-read-write should be idempotent");
+    }
+
+    #[test]
+    fn prop_serialization_is_deterministic(ws in workstreams_file()) {
+        let yaml1 = serde_yaml::to_string(&ws).unwrap();
+        let yaml2 = serde_yaml::to_string(&ws).unwrap();
+        prop_assert_eq!(yaml1, yaml2, "Serialization should be deterministic");
     }
 }

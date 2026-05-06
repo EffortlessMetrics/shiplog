@@ -141,4 +141,16 @@ proptest! {
         let out = render(&[event], &workstreams, &coverage);
         prop_assert!(!out.is_empty());
     }
+
+    /// Rendering is deterministic: same inputs produce identical markdown.
+    #[test]
+    fn prop_rendering_is_deterministic(
+        events in strategy_event_vec(20),
+        workstreams in strategy_workstreams_file(),
+        coverage in strategy_coverage_manifest(),
+    ) {
+        let out1 = render(&events, &workstreams, &coverage);
+        let out2 = render(&events, &workstreams, &coverage);
+        prop_assert_eq!(out1, out2, "Rendering should be deterministic");
+    }
 }

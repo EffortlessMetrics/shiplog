@@ -23,7 +23,11 @@ fuzz_target!(|data: &[u8]| {
 
     let input = RepoRef {
         full_name: full_name.clone(),
-        html_url: if url_raw.is_empty() { None } else { Some(url_raw) },
+        html_url: if url_raw.is_empty() {
+            None
+        } else {
+            Some(url_raw)
+        },
         visibility: match selector {
             0 => RepoVisibility::Private,
             1 => RepoVisibility::Public,

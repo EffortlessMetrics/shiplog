@@ -14,7 +14,7 @@ fn parse_template(text: &str) -> Result<(), String> {
     let mut i = 0;
     let chars: Vec<char> = text.chars().collect();
     let len = chars.len();
-    
+
     while i < len {
         // Check for opening block
         if i + 1 < len && chars[i] == '{' && chars[i + 1] == '%' {
@@ -22,7 +22,7 @@ fn parse_template(text: &str) -> Result<(), String> {
             i += 2;
             continue;
         }
-        
+
         // Check for closing block
         if i + 1 < len && chars[i] == '%' && chars[i + 1] == '}' {
             if depth == 0 {
@@ -32,26 +32,26 @@ fn parse_template(text: &str) -> Result<(), String> {
             i += 2;
             continue;
         }
-        
+
         // Check for opening variable
         if i + 1 < len && chars[i] == '{' && chars[i + 1] == '{' {
             i += 2;
             continue;
         }
-        
+
         // Check for closing variable
         if i + 1 < len && chars[i] == '}' && chars[i + 1] == '}' {
             i += 2;
             continue;
         }
-        
+
         i += 1;
     }
-    
+
     if depth != 0 {
         return Err("Unclosed block".to_string());
     }
-    
+
     Ok(())
 }
 

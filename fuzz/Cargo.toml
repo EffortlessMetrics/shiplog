@@ -36,6 +36,9 @@ shiplog-cluster-llm-parse = { path = "../crates/shiplog-cluster-llm-parse", vers
 shiplog-team-core = { path = "../crates/shiplog-team-core" }
 shiplog-semver = { path = "../crates/shiplog-semver" }
 shiplog-url = { path = "../crates/shiplog-url" }
+shiplog-render-md = { path = "../crates/shiplog-render-md" }
+sha2 = "0.10.9"
+hex = "0.4.3"
 chrono = "0.4.44"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
@@ -287,6 +290,27 @@ bench = false
 [[bin]]
 name = "fuzz_url_parse"
 path = "fuzz_targets/fuzz_url_parse.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "render_md_packet"
+path = "fuzz_targets/render_md_packet.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "bundle_checksum"
+path = "fuzz_targets/bundle_checksum.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "workstream_yaml_roundtrip"
+path = "fuzz_targets/workstream_yaml_roundtrip.rs"
 test = false
 doc = false
 bench = false

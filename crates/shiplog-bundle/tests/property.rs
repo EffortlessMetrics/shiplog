@@ -139,4 +139,37 @@ proptest! {
             prop_assert_eq!(f.bytes, actual_len, "bytes mismatch for {}", f.path);
         }
     }
+
+    #[test]
+    fn internal_bundle_includes_all_top_level_files(content in "[a-zA-Z0-9]{1,50}") {
+        let dir = tempfile::tempdir().unwrap();
+        make_test_dir(dir.path());
+        fs::write(dir.path().join(FILE_PACKET_MD), &content).unwrap();
+
+        let run_id = RunId("all-files-test".into());
+        let manifest = write_bundle_manifest(dir.path(), &run_id, &BundleProfile::Internal).unwrap();
+        let paths: Vec<&str> = manifest.files.iter().map(|f| f.path.as_str()).collect();
+
+        prop_assert!(paths.contains(&FILE_PACKET_MD), "Missing packet.md");
+        prop_assert!(paths.contains(&FILE_LEDGER_EVENTS_JSONL), "Missing ledger.events.jsonl");
+        prop_assert!(paths.contains(&FILE_COVERAGE_MANIFEST_JSON), "Missing coverage.manifest.json");
+    }
+
+    #[test]
+    fn bundle_manifest_deterministic_across_runs(content in "[a-zA-Z0-9]{1,50}") {
+        let dir = tempfile::tempdir().unwrap();
+        make_test_dir(dir.path());
+        fs::write(dir.path().join(FILE_PACKET_MD), &content).unwrap();
+
+        let run_id1 = RunId("run-a".into());
+        let run_id2 = RunId("run-b".into());
+        let m1 = write_bundle_manifest(dir.path(), &run_id1, &BundleProfile::Internal).unwrap();
+        let m2 = write_bundle_manifest(dir.path(), &run_id2, &BundleProfile::Internal).unwrap();
+
+        prop_assert_eq!(m1.files.len(), m2.files.len());
+        for (f1, f2) in m1.files.iter().zip(m2.files.iter()) {
+            prop_assert_eq!(&f1.sha256, &f2.sha256, "SHA256 should not depend on run_id");
+            prop_assert_eq!(f1.bytes, f2.bytes);
+        }
+    }
 }

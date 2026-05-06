@@ -82,6 +82,14 @@ fuzz_target!(|data: &[u8]| {
         .collect();
 
     let assigned_set: HashSet<String> = assigned_ids.iter().cloned().collect();
-    assert_eq!(assigned_ids.len(), assigned_set.len(), "events must not duplicate across workstreams");
-    assert_eq!(assigned_set.len(), event_count, "all events should be represented exactly once");
+    assert_eq!(
+        assigned_ids.len(),
+        assigned_set.len(),
+        "events must not duplicate across workstreams"
+    );
+    assert_eq!(
+        assigned_set.len(),
+        event_count,
+        "all events should be represented exactly once"
+    );
 });

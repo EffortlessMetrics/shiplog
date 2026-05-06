@@ -1,9 +1,9 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
+use shiplog_ports::WorkstreamClusterer;
 use shiplog_schema::event::EventEnvelope;
 use shiplog_workstream_cluster::RepoClusterer;
-use shiplog_ports::WorkstreamClusterer;
 
 fuzz_target!(|data: &[u8]| {
     let input = match std::str::from_utf8(data) {

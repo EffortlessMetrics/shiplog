@@ -1,0 +1,83 @@
+---
+source: crates/shiplog-render-md/tests/format_stability.rs
+expression: result
+---
+# Summary
+
+**Window:** 2025-Q1
+
+**Workstreams:** 2
+
+**Events:** 4 PRs, 0 reviews, 0 manual
+
+**Coverage:** Complete
+
+**Sources:** github
+
+## Workstreams
+
+### Widgets Core
+
+Widget improvements
+
+**Claim scaffolds**
+
+- Problem: _fill_
+- What I shipped: _fill_
+- Why it mattered: _fill_
+- Result: _fill_
+
+_PRs: 2, Reviews: 0, Manual: 0_
+
+### Infrastructure
+
+CI/CD and observability
+
+**Claim scaffolds**
+
+- Problem: _fill_
+- What I shipped: _fill_
+- Why it mattered: _fill_
+- Result: _fill_
+
+_PRs: 2, Reviews: 0, Manual: 0_
+
+## Receipts
+
+### Workstream: Widgets Core
+
+- [PR] Add widget caching (2025-06-01) — [acme/widgets](https://github.com/acme/widgets/pull/10)
+- [PR] Fix widget rendering (2025-06-01) — [acme/widgets](https://github.com/acme/widgets/pull/11)
+
+### Workstream: Infrastructure
+
+- [PR] Setup CI pipeline (2025-06-01) — [acme/infra](https://github.com/acme/infra/pull/5)
+- [PR] Add monitoring dashboards (2025-06-01) — [acme/infra](https://github.com/acme/infra/pull/6)
+
+## Coverage
+
+- **Date window:** 2025-01-01 to 2025-04-01
+- **Mode:** merged
+- **Sources:** github
+- **Completeness:** Complete
+
+## Appendix: All Receipts
+
+### Widgets Core
+
+- [PR] Add widget caching (2025-06-01) — [acme/widgets](https://github.com/acme/widgets/pull/10)
+- [PR] Fix widget rendering (2025-06-01) — [acme/widgets](https://github.com/acme/widgets/pull/11)
+
+### Infrastructure
+
+- [PR] Setup CI pipeline (2025-06-01) — [acme/infra](https://github.com/acme/infra/pull/5)
+- [PR] Add monitoring dashboards (2025-06-01) — [acme/infra](https://github.com/acme/infra/pull/6)
+
+---
+
+## File Artifacts
+
+- `ledger.events.jsonl` (canonical events)
+- `coverage.manifest.json` (completeness + slicing)
+- `workstreams.yaml` (editable clustering)
+- `manual_events.yaml` (non-GitHub work)

@@ -4,7 +4,11 @@ use chrono::NaiveDate;
 use libfuzzer_sys::fuzz_target;
 use shiplog_date_windows::{day_windows, month_windows, week_windows};
 
-fn check_partition(windows: &[shiplog_schema::coverage::TimeWindow], since: NaiveDate, until: NaiveDate) {
+fn check_partition(
+    windows: &[shiplog_schema::coverage::TimeWindow],
+    since: NaiveDate,
+    until: NaiveDate,
+) {
     if windows.is_empty() {
         assert!(since >= until);
         return;

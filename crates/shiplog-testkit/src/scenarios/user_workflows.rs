@@ -3,8 +3,8 @@
 //! These scenarios exercise real code paths through the shiplog pipeline
 //! to verify end-to-end user workflows.
 
-use crate::bdd::assertions::*;
 use crate::bdd::Scenario;
+use crate::bdd::assertions::*;
 
 // ---------------------------------------------------------------------------
 // Scenario 1: Happy Path JSON Import
@@ -149,10 +149,13 @@ pub fn redaction_profiles() -> Scenario {
 /// on bad lines (parse_events_jsonl returns Err with line number).
 pub fn error_recovery_malformed_jsonl() -> Scenario {
     Scenario::new("Error recovery: malformed JSONL reports line errors")
-        .given("a JSONL file with some valid and some invalid lines", |ctx| {
-            ctx.numbers.insert("valid_lines".to_string(), 1);
-            ctx.numbers.insert("invalid_lines".to_string(), 1);
-        })
+        .given(
+            "a JSONL file with some valid and some invalid lines",
+            |ctx| {
+                ctx.numbers.insert("valid_lines".to_string(), 1);
+                ctx.numbers.insert("invalid_lines".to_string(), 1);
+            },
+        )
         .when("ingesting the JSONL file", |ctx| {
             ctx.flags.insert("ingestion_attempted".to_string(), true);
             Ok(())

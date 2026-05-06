@@ -15,7 +15,10 @@ fuzz_target!(|data: &[u8]| {
     let stats = CacheStats::from_raw_counts(total_entries, expired_entries, cache_size_bytes);
 
     assert!(stats.expired_entries <= stats.total_entries);
-    assert_eq!(stats.valid_entries, stats.total_entries - stats.expired_entries);
+    assert_eq!(
+        stats.valid_entries,
+        stats.total_entries - stats.expired_entries
+    );
 
     if cache_size_bytes < 0 {
         assert_eq!(stats.cache_size_mb, 0);

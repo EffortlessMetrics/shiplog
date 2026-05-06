@@ -40,12 +40,7 @@ fuzz_target!(|data: &[u8]| {
         Err(_) => return,
     };
 
-    let profile = RedactionProfile::from_profile_str(
-        parsed
-            .profile
-            .as_deref()
-            .unwrap_or("public"),
-    );
+    let profile = RedactionProfile::from_profile_str(parsed.profile.as_deref().unwrap_or("public"));
 
     let _ = redact_events_with_aliases(&parsed.events, profile, &alias);
 

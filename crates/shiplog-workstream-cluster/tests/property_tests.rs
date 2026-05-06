@@ -118,4 +118,30 @@ proptest! {
             prop_assert_eq!(&wa.stats, &wb.stats);
         }
     }
+
+    #[test]
+    fn prop_each_event_in_exactly_one_workstream(events in strategy_event_vec(40)) {
+        let workstreams = clustered_workstreams(&events);
+        for event in &events {
+            let count = workstreams.iter().filter(|ws| ws.events.contains(&event.id)).count();
+            prop_assert_eq!(count, 1, "Event {} in {} workstreams, expected 1", event.id, count);
+        }
+    }
+
+    #[test]
+    fn prop_clustering_order_independent(events in strategy_event_vec(30)) {
+        let mut reversed = events.clone();
+        reversed.reverse();
+        let a = RepoClusterer.cluster(&events).unwrap();
+        let b = RepoClusterer.cluster(&reversed).unwrap();
+        let ids_a: std::collections::HashSet<_> = a.workstreams.iter().map(|w| &w.id).collect();
+        let ids_b: std::collections::HashSet<_> = b.workstreams.iter().map(|w| &w.id).collect();
+        prop_assert_eq!(ids_a, ids_b);
+        for wa in &a.workstreams {
+            let wb = b.workstreams.iter().find(|w| w.id == wa.id).unwrap();
+            let events_a: std::collections::HashSet<_> = wa.events.iter().collect();
+            let events_b: std::collections::HashSet<_> = wb.events.iter().collect();
+            prop_assert_eq!(events_a, events_b);
+        }
+    }
 }

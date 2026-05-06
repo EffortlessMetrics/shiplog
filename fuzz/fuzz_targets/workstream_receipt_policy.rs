@@ -3,9 +3,9 @@
 use libfuzzer_sys::fuzz_target;
 use shiplog_schema::event::EventKind;
 use shiplog_workstream_receipt_policy::{
-    should_include_cluster_receipt, should_render_receipt_at,
-    truncate_cluster_receipts, WORKSTREAM_RECEIPT_LIMIT_REVIEW, WORKSTREAM_RECEIPT_LIMIT_MANUAL,
+    WORKSTREAM_RECEIPT_LIMIT_MANUAL, WORKSTREAM_RECEIPT_LIMIT_REVIEW,
     WORKSTREAM_RECEIPT_LIMIT_TOTAL, WORKSTREAM_RECEIPT_RENDER_LIMIT,
+    should_include_cluster_receipt, should_render_receipt_at, truncate_cluster_receipts,
 };
 
 fuzz_target!(|data: &[u8]| {
@@ -32,7 +32,10 @@ fuzz_target!(|data: &[u8]| {
         include_expected
     );
 
-    assert_eq!(should_render_receipt_at(idx % 64), (idx % 64) < WORKSTREAM_RECEIPT_RENDER_LIMIT);
+    assert_eq!(
+        should_render_receipt_at(idx % 64),
+        (idx % 64) < WORKSTREAM_RECEIPT_RENDER_LIMIT
+    );
 
     let cap_len = (data.get(3).copied().unwrap_or(0) as usize) % 64;
     let mut receipts = vec![0usize; cap_len];

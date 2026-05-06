@@ -226,6 +226,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "92773504d58c093f6de2459af4af33faa518c13451eb8f2b5698ed3d36e7c813"
 
 [[package]]
+name = "either"
+version = "1.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "48c757948c5ede0e46177b7add2e67155f70e33c07fea8284df6576da70b3719"
+
+[[package]]
 name = "encoding_rs"
 version = "0.8.35"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -666,6 +672,15 @@ checksum = "c91338f0783edbd6195decb37bae672fd3b165faffb89bf7b9e6942f8b1a731a"
 dependencies = [
  "memchr",
  "serde",
+]
+
+[[package]]
+name = "itertools"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2b192c782037fadd9cfa75548310488aabdbf3d2da73885b31bd0abd03351285"
+dependencies = [
+ "either",
 ]
 
 [[package]]
@@ -1247,6 +1262,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "shiplog-alias"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "hex",
+ "serde",
+ "serde_json",
+ "sha2",
+]
+
+[[package]]
 name = "shiplog-cache"
 version = "0.2.1"
 dependencies = [
@@ -1322,10 +1348,12 @@ name = "shiplog-fuzz"
 version = "0.0.0"
 dependencies = [
  "chrono",
+ "hex",
  "libfuzzer-sys",
  "serde",
  "serde_json",
  "serde_yaml_ng",
+ "sha2",
  "shiplog-cache-expiry",
  "shiplog-cache-key",
  "shiplog-cache-sqlite",
@@ -1337,13 +1365,22 @@ dependencies = [
  "shiplog-ingest-github",
  "shiplog-ingest-json",
  "shiplog-ingest-manual",
+ "shiplog-manual-events",
  "shiplog-ports",
+ "shiplog-receipt",
+ "shiplog-redact",
  "shiplog-redaction-policy",
  "shiplog-redaction-profile",
  "shiplog-redaction-projector",
  "shiplog-redaction-repo",
+ "shiplog-render-md",
  "shiplog-schema",
+ "shiplog-semver",
+ "shiplog-team-core",
+ "shiplog-url",
  "shiplog-workstream-cluster",
+ "shiplog-workstream-layout",
+ "shiplog-workstream-receipt-policy",
  "shiplog-workstreams",
 ]
 
@@ -1392,10 +1429,20 @@ version = "0.2.1"
 dependencies = [
  "anyhow",
  "chrono",
- "serde",
+ "shiplog-ids",
+ "shiplog-manual-events",
+ "shiplog-ports",
+ "shiplog-schema",
+]
+
+[[package]]
+name = "shiplog-manual-events"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "chrono",
  "serde_yaml_ng",
  "shiplog-ids",
- "shiplog-ports",
  "shiplog-schema",
 ]
 
@@ -1408,6 +1455,25 @@ name = "shiplog-ports"
 version = "0.2.1"
 dependencies = [
  "anyhow",
+ "shiplog-schema",
+]
+
+[[package]]
+name = "shiplog-receipt"
+version = "0.2.1"
+dependencies = [
+ "shiplog-schema",
+]
+
+[[package]]
+name = "shiplog-redact"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "serde_json",
+ "shiplog-alias",
+ "shiplog-ports",
+ "shiplog-redaction-projector",
  "shiplog-schema",
 ]
 
@@ -1443,6 +1509,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "shiplog-render-md"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "itertools",
+ "shiplog-ports",
+ "shiplog-receipt",
+ "shiplog-schema",
+ "shiplog-workstream-receipt-policy",
+]
+
+[[package]]
 name = "shiplog-schema"
 version = "0.2.1"
 dependencies = [
@@ -1450,6 +1529,27 @@ dependencies = [
  "serde",
  "serde_json",
  "shiplog-ids",
+]
+
+[[package]]
+name = "shiplog-semver"
+version = "0.2.1"
+
+[[package]]
+name = "shiplog-team-core"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "serde",
+ "serde_yaml_ng",
+]
+
+[[package]]
+name = "shiplog-url"
+version = "0.2.1"
+dependencies = [
+ "url",
 ]
 
 [[package]]
@@ -1461,20 +1561,35 @@ dependencies = [
  "shiplog-ids",
  "shiplog-ports",
  "shiplog-schema",
+ "shiplog-workstream-receipt-policy",
+]
+
+[[package]]
+name = "shiplog-workstream-layout"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "serde_yaml_ng",
+ "shiplog-ports",
+ "shiplog-schema",
+]
+
+[[package]]
+name = "shiplog-workstream-receipt-policy"
+version = "0.2.1"
+dependencies = [
+ "shiplog-schema",
 ]
 
 [[package]]
 name = "shiplog-workstreams"
 version = "0.2.1"
 dependencies = [
- "anyhow",
- "chrono",
- "serde",
- "serde_yaml_ng",
  "shiplog-ids",
  "shiplog-ports",
  "shiplog-schema",
  "shiplog-workstream-cluster",
+ "shiplog-workstream-layout",
 ]
 
 [[package]]

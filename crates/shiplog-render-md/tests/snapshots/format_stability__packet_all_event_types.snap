@@ -1,0 +1,62 @@
+---
+source: crates/shiplog-render-md/tests/format_stability.rs
+expression: result
+---
+# Summary
+
+**Window:** 2025-Q1
+
+**Workstreams:** 1
+
+**Events:** 1 PRs, 1 reviews, 1 manual
+
+**Coverage:** Complete
+
+**Sources:** github
+
+## Workstreams
+
+### Widgets Core
+
+Core widget development and incident response
+
+**Claim scaffolds**
+
+- Problem: _fill_
+- What I shipped: _fill_
+- Why it mattered: _fill_
+- Result: _fill_
+
+_PRs: 1, Reviews: 1, Manual: 1_
+
+## Receipts
+
+### Workstream: Widgets Core
+
+- [PR] Implement feature X (2025-06-01) — [acme/widgets](https://github.com/acme/widgets/pull/42)
+- [Review] approved (2025-06-01) — [acme/widgets](https://github.com/acme/widgets/pull/42)
+- [🚨] Production outage resolution (2025-06-01)
+
+## Coverage
+
+- **Date window:** 2025-01-01 to 2025-04-01
+- **Mode:** merged
+- **Sources:** github
+- **Completeness:** Complete
+
+## Appendix: All Receipts
+
+### Widgets Core
+
+- [PR] Implement feature X (2025-06-01) — [acme/widgets](https://github.com/acme/widgets/pull/42)
+- [Review] approved (2025-06-01) — [acme/widgets](https://github.com/acme/widgets/pull/42)
+- [🚨] Production outage resolution (2025-06-01)
+
+---
+
+## File Artifacts
+
+- `ledger.events.jsonl` (canonical events)
+- `coverage.manifest.json` (completeness + slicing)
+- `workstreams.yaml` (editable clustering)
+- `manual_events.yaml` (non-GitHub work)

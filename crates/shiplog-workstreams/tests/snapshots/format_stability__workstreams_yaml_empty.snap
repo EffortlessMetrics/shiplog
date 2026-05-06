@@ -1,0 +1,7 @@
+---
+source: crates/shiplog-workstreams/tests/format_stability.rs
+expression: text
+---
+version: 1
+generated_at: 2025-06-01T12:00:00Z
+workstreams: []

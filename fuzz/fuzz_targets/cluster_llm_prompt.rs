@@ -47,7 +47,7 @@ fuzz_target!(|data: &[u8]| {
     let max_tokens = ((data.get(1).copied().unwrap_or(0) as usize) * 16) + 1;
     let max_workstreams = ((data.get(2).copied().unwrap_or(0) as usize) % 20) + 1;
 
-    let events: Vec<EventEnvelope> = (0..event_count).map(make_event).collect();
+    let events: Vec<EventEnvelope> = (0..event_count).map(|num| make_event(num as u64)).collect();
     let rendered = format_event_list(&events);
     let chunks = chunk_events(&events, max_tokens);
     let flattened: Vec<usize> = chunks.iter().flatten().copied().collect();

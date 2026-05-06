@@ -6,6 +6,7 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
+use shiplog_ports::Redactor;
 use shiplog_redact::DeterministicRedactor;
 use shiplog_schema::event::EventEnvelope;
 

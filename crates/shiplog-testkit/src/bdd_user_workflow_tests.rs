@@ -5,8 +5,8 @@
 
 #[cfg(test)]
 mod user_workflow_tests {
-    use crate::bdd::assertions::*;
     use crate::bdd::Scenario;
+    use crate::bdd::assertions::*;
     use crate::pr_event;
 
     use chrono::{NaiveDate, Utc};
@@ -16,9 +16,7 @@ mod user_workflow_tests {
     use shiplog_redact::DeterministicRedactor;
     use shiplog_render_md::MarkdownRenderer;
     use shiplog_schema::bundle::BundleProfile;
-    use shiplog_schema::coverage::{
-        Completeness, CoverageManifest, CoverageSlice, TimeWindow,
-    };
+    use shiplog_schema::coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow};
     use shiplog_workstream_cluster::RepoClusterer;
 
     // -- helpers ---------------------------------------------------------
@@ -197,8 +195,7 @@ mod user_workflow_tests {
                     Ok(())
                 })
                 .then("suggested workstreams group by repo", |ctx| {
-                    let count =
-                        assert_present(ctx.number("workstream_count"), "workstream count")?;
+                    let count = assert_present(ctx.number("workstream_count"), "workstream count")?;
                     assert_eq(count, 2, "two workstreams from two repos")?;
                     assert_true(
                         ctx.flag("has_frontend_ws").unwrap_or(false),
@@ -209,59 +206,62 @@ mod user_workflow_tests {
                         "backend workstream exists",
                     )
                 })
-                .when("user writes curated workstreams.yaml then re-renders", |ctx| {
-                    let events: Vec<shiplog_schema::event::EventEnvelope> =
-                        serde_json::from_slice(ctx.data.get("events").unwrap()).unwrap();
+                .when(
+                    "user writes curated workstreams.yaml then re-renders",
+                    |ctx| {
+                        let events: Vec<shiplog_schema::event::EventEnvelope> =
+                            serde_json::from_slice(ctx.data.get("events").unwrap()).unwrap();
 
-                    // Simulate curation: build a WorkstreamsFile with custom titles
-                    let mut ws: shiplog_schema::workstream::WorkstreamsFile =
-                        serde_json::from_slice(ctx.data.get("workstreams").unwrap()).unwrap();
-                    for w in &mut ws.workstreams {
-                        if w.title.contains("frontend") {
-                            w.title = "UI Refresh".to_string();
-                        } else if w.title.contains("backend") {
-                            w.title = "API Improvements".to_string();
+                        // Simulate curation: build a WorkstreamsFile with custom titles
+                        let mut ws: shiplog_schema::workstream::WorkstreamsFile =
+                            serde_json::from_slice(ctx.data.get("workstreams").unwrap()).unwrap();
+                        for w in &mut ws.workstreams {
+                            if w.title.contains("frontend") {
+                                w.title = "UI Refresh".to_string();
+                            } else if w.title.contains("backend") {
+                                w.title = "API Improvements".to_string();
+                            }
                         }
-                    }
 
-                    // Write curated file, then run engine (which should pick it up)
-                    let dir = tempfile::tempdir().unwrap();
-                    let out_dir = dir.path().join("curation_run");
-                    std::fs::create_dir_all(&out_dir).unwrap();
+                        // Write curated file, then run engine (which should pick it up)
+                        let dir = tempfile::tempdir().unwrap();
+                        let out_dir = dir.path().join("curation_run");
+                        std::fs::create_dir_all(&out_dir).unwrap();
 
-                    let curated_path =
-                        shiplog_workstream_layout::WorkstreamManager::curated_path(&out_dir);
-                    shiplog_workstream_layout::write_workstreams(&curated_path, &ws).unwrap();
+                        let curated_path =
+                            shiplog_workstream_layout::WorkstreamManager::curated_path(&out_dir);
+                        shiplog_workstream_layout::write_workstreams(&curated_path, &ws).unwrap();
 
-                    let coverage = make_coverage("testuser", Completeness::Complete);
-                    let ingest = IngestOutput { events, coverage };
-                    let engine = build_engine();
-                    let (outputs, ws_source) = engine
-                        .run(
-                            ingest,
-                            "testuser",
-                            "2025-01-01..2025-02-01",
-                            &out_dir,
-                            false,
-                            &BundleProfile::Internal,
-                        )
-                        .map_err(|e| e.to_string())?;
+                        let coverage = make_coverage("testuser", Completeness::Complete);
+                        let ingest = IngestOutput { events, coverage };
+                        let engine = build_engine();
+                        let (outputs, ws_source) = engine
+                            .run(
+                                ingest,
+                                "testuser",
+                                "2025-01-01..2025-02-01",
+                                &out_dir,
+                                false,
+                                &BundleProfile::Internal,
+                            )
+                            .map_err(|e| e.to_string())?;
 
-                    ctx.flags.insert(
-                        "used_curated".to_string(),
-                        ws_source == WorkstreamSource::Curated,
-                    );
+                        ctx.flags.insert(
+                            "used_curated".to_string(),
+                            ws_source == WorkstreamSource::Curated,
+                        );
 
-                    // Verify the rendered packet references the curated title
-                    let packet = std::fs::read_to_string(&outputs.packet_md).unwrap();
-                    ctx.flags.insert(
-                        "packet_has_curated_title".to_string(),
-                        packet.contains("UI Refresh") || packet.contains("API Improvements"),
-                    );
+                        // Verify the rendered packet references the curated title
+                        let packet = std::fs::read_to_string(&outputs.packet_md).unwrap();
+                        ctx.flags.insert(
+                            "packet_has_curated_title".to_string(),
+                            packet.contains("UI Refresh") || packet.contains("API Improvements"),
+                        );
 
-                    let _ = dir.keep();
-                    Ok(())
-                })
+                        let _ = dir.keep();
+                        Ok(())
+                    },
+                )
                 .then("render uses curated workstreams", |ctx| {
                     assert_true(
                         ctx.flag("used_curated").unwrap_or(false),
@@ -397,49 +397,45 @@ mod user_workflow_tests {
 
     #[test]
     fn error_recovery_malformed_jsonl() {
-        let scenario =
-            Scenario::new("Error recovery: malformed JSONL reports line-level errors")
-                .given(
-                    "a JSONL string with one valid and one invalid line",
-                    |ctx| {
-                        let valid_event = pr_event("acme/app", 1, "Valid PR");
-                        let valid_line = serde_json::to_string(&valid_event).unwrap();
-                        let bad_line = "{not valid json}";
-                        let jsonl = format!("{valid_line}\n{bad_line}\n");
-                        ctx.data
-                            .insert("jsonl_content".to_string(), jsonl.into_bytes());
-                    },
-                )
-                .when("parsing the JSONL content", |ctx| {
-                    let content =
-                        String::from_utf8(ctx.data.get("jsonl_content").unwrap().clone()).unwrap();
-                    let result =
-                        shiplog_ingest_json::parse_events_jsonl(&content, "test-malformed");
-                    match result {
-                        Ok(_) => {
-                            ctx.flags
-                                .insert("error_has_line_number".to_string(), false);
-                        }
-                        Err(e) => {
-                            let msg = format!("{e:#}");
-                            ctx.flags
-                                .insert("error_has_line_number".to_string(), msg.contains("line 2"));
-                            ctx.strings.insert("error_message".to_string(), msg);
-                        }
+        let scenario = Scenario::new("Error recovery: malformed JSONL reports line-level errors")
+            .given(
+                "a JSONL string with one valid and one invalid line",
+                |ctx| {
+                    let valid_event = pr_event("acme/app", 1, "Valid PR");
+                    let valid_line = serde_json::to_string(&valid_event).unwrap();
+                    let bad_line = "{not valid json}";
+                    let jsonl = format!("{valid_line}\n{bad_line}\n");
+                    ctx.data
+                        .insert("jsonl_content".to_string(), jsonl.into_bytes());
+                },
+            )
+            .when("parsing the JSONL content", |ctx| {
+                let content =
+                    String::from_utf8(ctx.data.get("jsonl_content").unwrap().clone()).unwrap();
+                let result = shiplog_ingest_json::parse_events_jsonl(&content, "test-malformed");
+                match result {
+                    Ok(_) => {
+                        ctx.flags.insert("error_has_line_number".to_string(), false);
                     }
-                    Ok(())
-                })
-                .then("the error references the malformed line number", |ctx| {
-                    assert_true(
-                        ctx.flag("error_has_line_number").unwrap_or(false),
-                        "error message includes line number",
-                    )
-                })
-                .then("the error message is human-readable", |ctx| {
-                    let msg =
-                        assert_present(ctx.string("error_message"), "error message")?;
-                    assert_contains(msg, "line 2", "error references line 2")
-                });
+                    Err(e) => {
+                        let msg = format!("{e:#}");
+                        ctx.flags
+                            .insert("error_has_line_number".to_string(), msg.contains("line 2"));
+                        ctx.strings.insert("error_message".to_string(), msg);
+                    }
+                }
+                Ok(())
+            })
+            .then("the error references the malformed line number", |ctx| {
+                assert_true(
+                    ctx.flag("error_has_line_number").unwrap_or(false),
+                    "error message includes line number",
+                )
+            })
+            .then("the error message is human-readable", |ctx| {
+                let msg = assert_present(ctx.string("error_message"), "error message")?;
+                assert_contains(msg, "line 2", "error references line 2")
+            });
 
         scenario
             .run()
@@ -485,14 +481,12 @@ mod user_workflow_tests {
                     )
                     .map_err(|e| e.to_string())?;
 
-                ctx.flags
-                    .insert("pipeline_executed".to_string(), true);
+                ctx.flags.insert("pipeline_executed".to_string(), true);
                 ctx.flags
                     .insert("packet_md_exists".to_string(), outputs.packet_md.exists());
 
                 // Count workstreams in the written file
-                let ws_content =
-                    std::fs::read_to_string(&outputs.workstreams_yaml).unwrap();
+                let ws_content = std::fs::read_to_string(&outputs.workstreams_yaml).unwrap();
                 let ws: shiplog_schema::workstream::WorkstreamsFile =
                     serde_yaml::from_str(&ws_content).unwrap();
                 ctx.numbers
@@ -514,14 +508,11 @@ mod user_workflow_tests {
                 )
             })
             .then("workstreams file has zero workstreams", |ctx| {
-                let count =
-                    assert_present(ctx.number("workstream_count"), "workstream count")?;
+                let count = assert_present(ctx.number("workstream_count"), "workstream count")?;
                 assert_eq(count, 0, "zero workstreams for empty input")
             });
 
-        scenario
-            .run()
-            .expect("empty input handling should succeed");
+        scenario.run().expect("empty input handling should succeed");
     }
 
     // ====================================================================
@@ -530,84 +521,85 @@ mod user_workflow_tests {
 
     #[test]
     fn coverage_completeness() {
-        let scenario =
-            Scenario::new("Coverage completeness: slices reflect data accuracy")
-                .given("a date range with coverage slices", |ctx| {
-                    ctx.strings
-                        .insert("since".to_string(), "2025-01-01".to_string());
-                    ctx.strings
-                        .insert("until".to_string(), "2025-04-01".to_string());
-                })
-                .when("building coverage manifest with mixed slices", |ctx| {
-                    let since = NaiveDate::from_ymd_opt(2025, 1, 1).unwrap();
-                    let until = NaiveDate::from_ymd_opt(2025, 4, 1).unwrap();
+        let scenario = Scenario::new("Coverage completeness: slices reflect data accuracy")
+            .given("a date range with coverage slices", |ctx| {
+                ctx.strings
+                    .insert("since".to_string(), "2025-01-01".to_string());
+                ctx.strings
+                    .insert("until".to_string(), "2025-04-01".to_string());
+            })
+            .when("building coverage manifest with mixed slices", |ctx| {
+                let since = NaiveDate::from_ymd_opt(2025, 1, 1).unwrap();
+                let until = NaiveDate::from_ymd_opt(2025, 4, 1).unwrap();
 
-                    // Build month windows using coverage crate
-                    let windows = shiplog_coverage::month_windows(since, until);
+                // Build month windows using coverage crate
+                let windows = shiplog_coverage::month_windows(since, until);
 
-                    // Create slices: first two complete, third partial
-                    let mut slices = Vec::new();
-                    for (i, w) in windows.iter().enumerate() {
-                        let (total, fetched) = if i < 2 { (50, 50) } else { (150, 100) };
-                        slices.push(CoverageSlice {
-                            window: w.clone(),
-                            query: format!("author:user is:merged created:{}..{}", w.since, w.until),
-                            total_count: total,
-                            fetched,
-                            incomplete_results: Some(fetched < total),
-                            notes: vec![],
-                        });
-                    }
+                // Create slices: first two complete, third partial
+                let mut slices = Vec::new();
+                for (i, w) in windows.iter().enumerate() {
+                    let (total, fetched) = if i < 2 { (50, 50) } else { (150, 100) };
+                    slices.push(CoverageSlice {
+                        window: w.clone(),
+                        query: format!("author:user is:merged created:{}..{}", w.since, w.until),
+                        total_count: total,
+                        fetched,
+                        incomplete_results: Some(fetched < total),
+                        notes: vec![],
+                    });
+                }
 
-                    // Check slice accuracy
-                    let complete_ok = slices.iter().take(2).all(|s| s.fetched == s.total_count);
-                    let partial_ok = slices.last().map(|s| s.fetched < s.total_count).unwrap_or(false);
+                // Check slice accuracy
+                let complete_ok = slices.iter().take(2).all(|s| s.fetched == s.total_count);
+                let partial_ok = slices
+                    .last()
+                    .map(|s| s.fetched < s.total_count)
+                    .unwrap_or(false);
 
-                    // Overall completeness should be Partial (worst case)
-                    let overall = if slices.iter().any(|s| s.fetched < s.total_count) {
-                        Completeness::Partial
-                    } else {
-                        Completeness::Complete
-                    };
+                // Overall completeness should be Partial (worst case)
+                let overall = if slices.iter().any(|s| s.fetched < s.total_count) {
+                    Completeness::Partial
+                } else {
+                    Completeness::Complete
+                };
 
-                    ctx.flags
-                        .insert("complete_slice_accurate".to_string(), complete_ok);
-                    ctx.flags
-                        .insert("partial_slice_accurate".to_string(), partial_ok);
-                    ctx.flags.insert(
-                        "overall_completeness_correct".to_string(),
-                        overall == Completeness::Partial,
-                    );
+                ctx.flags
+                    .insert("complete_slice_accurate".to_string(), complete_ok);
+                ctx.flags
+                    .insert("partial_slice_accurate".to_string(), partial_ok);
+                ctx.flags.insert(
+                    "overall_completeness_correct".to_string(),
+                    overall == Completeness::Partial,
+                );
 
-                    // Verify month_windows produced the right count
-                    ctx.numbers
-                        .insert("window_count".to_string(), windows.len() as u64);
-                    Ok(())
-                })
-                .then("complete slices report fetched == total", |ctx| {
-                    assert_true(
-                        ctx.flag("complete_slice_accurate").unwrap_or(false),
-                        "complete slices are accurate",
-                    )
-                })
-                .then("partial slices report fetched < total", |ctx| {
-                    assert_true(
-                        ctx.flag("partial_slice_accurate").unwrap_or(false),
-                        "partial slices are accurate",
-                    )
-                })
-                .then("overall completeness reflects the worst slice", |ctx| {
-                    assert_true(
-                        ctx.flag("overall_completeness_correct").unwrap_or(false),
-                        "overall completeness is Partial when any slice is partial",
-                    )
-                })
-                .then("month windows cover the full range", |ctx| {
-                    let count =
-                        assert_present(ctx.number("window_count"), "window count")?;
-                    // Jan, Feb, Mar = 3 months
-                    assert_eq(count, 3, "three monthly windows from Jan to Apr")
-                });
+                // Verify month_windows produced the right count
+                ctx.numbers
+                    .insert("window_count".to_string(), windows.len() as u64);
+                Ok(())
+            })
+            .then("complete slices report fetched == total", |ctx| {
+                assert_true(
+                    ctx.flag("complete_slice_accurate").unwrap_or(false),
+                    "complete slices are accurate",
+                )
+            })
+            .then("partial slices report fetched < total", |ctx| {
+                assert_true(
+                    ctx.flag("partial_slice_accurate").unwrap_or(false),
+                    "partial slices are accurate",
+                )
+            })
+            .then("overall completeness reflects the worst slice", |ctx| {
+                assert_true(
+                    ctx.flag("overall_completeness_correct").unwrap_or(false),
+                    "overall completeness is Partial when any slice is partial",
+                )
+            })
+            .then("month windows cover the full range", |ctx| {
+                let count = assert_present(ctx.number("window_count"), "window count")?;
+                // Jan, Feb, Mar = 3 months
+                assert_eq(count, 3, "three monthly windows from Jan to Apr")
+            });
 
         scenario
             .run()

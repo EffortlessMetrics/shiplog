@@ -277,3 +277,51 @@ proptest! {
         prop_assert!(windows.is_empty(), "Empty range should produce no month windows");
     }
 }
+
+// ============================================================================
+// Event-to-Slice Mapping Invariant Tests
+// ============================================================================
+
+proptest! {
+    // Every date in [since, until) falls in exactly one day window.
+    #[test]
+    fn prop_every_date_in_exactly_one_day_window(
+        since in strategy_naive_date(),
+        days in 1u64..100u64
+    ) {
+        let until = since.checked_add_days(chrono::Days::new(days)).unwrap();
+        let windows = day_windows(since, until);
+        let mut date = since;
+        while date < until {
+            let count = windows.iter().filter(|w| w.contains(date)).count();
+            prop_assert_eq!(count, 1, "Date {} in {} windows, expected 1", date, count);
+            date = date.checked_add_days(chrono::Days::new(1)).unwrap();
+        }
+    }
+
+    // Sum of day window lengths equals total days in range.
+    #[test]
+    fn prop_day_window_lengths_sum_to_total_days(
+        since in strategy_naive_date(),
+        days in 1u64..365u64
+    ) {
+        let until = since.checked_add_days(chrono::Days::new(days)).unwrap();
+        let windows = day_windows(since, until);
+        let total_len: u64 = windows.iter().map(|w| window_len_days(w) as u64).sum();
+        prop_assert_eq!(total_len, days, "Sum of window lengths != total days");
+    }
+
+    // Sum of week window lengths equals total days in range.
+    #[test]
+    fn prop_week_window_lengths_sum_to_total_days(
+        since in strategy_naive_date(),
+        days in 7u64..365u64
+    ) {
+        let until = since.checked_add_days(chrono::Days::new(days)).unwrap();
+        let windows = week_windows(since, until);
+        if !windows.is_empty() {
+            let total_len: u64 = windows.iter().map(|w| window_len_days(w) as u64).sum();
+            prop_assert_eq!(total_len, days, "Sum of week window lengths != total days");
+        }
+    }
+}
