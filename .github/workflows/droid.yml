@@ -46,6 +46,7 @@ jobs:
 
       - name: Run Droid Exec
         if: env.FACTORY_API_KEY != ''
+        continue-on-error: true
         uses: Factory-AI/droid-action@v5
         with:
           factory_api_key: ${{ env.FACTORY_API_KEY }}
