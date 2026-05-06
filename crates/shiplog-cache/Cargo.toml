@@ -16,7 +16,7 @@ categories = ["caching", "development-tools"]
 [dependencies]
 anyhow.workspace = true
 chrono.workspace = true
-rusqlite = { version = "0.38.0", features = ["bundled", "chrono", "serde_json"] }
+rusqlite = { version = "0.39.0", features = ["bundled", "chrono", "serde_json"] }
 serde.workspace = true
 serde_json.workspace = true
 
