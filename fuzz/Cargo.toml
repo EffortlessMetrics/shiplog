@@ -24,7 +24,7 @@ shiplog-ports = { path = "../crates/shiplog-ports", version = "0.2.1" }
 shiplog-cache = { path = "../crates/shiplog-cache" }
 shiplog-coverage = { path = "../crates/shiplog-coverage" }
 shiplog-cluster-llm = { path = "../crates/shiplog-cluster-llm", version = "0.2.1" }
-shiplog-team-core = { path = "../crates/shiplog-team-core" }
+shiplog-team = { path = "../crates/shiplog-team" }
 sha2 = "0.10.9"
 hex = "0.4.3"
 chrono = "0.4.44"

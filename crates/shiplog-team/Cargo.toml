@@ -14,14 +14,25 @@ keywords = ["shiplog", "team", "aggregation", "multi-user", "reporting"]
 categories = ["development-tools"]
 
 [dependencies]
-shiplog-team-aggregate = { path = "../shiplog-team-aggregate", version = "0.2.1" }
+anyhow.workspace = true
+chrono.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+serde_yaml.workspace = true
+shiplog-ids = { path = "../shiplog-ids", version = "0.2.1" }
+shiplog-merge = { path = "../shiplog-merge", version = "0.2.1" }
+shiplog-ports = { path = "../shiplog-ports", version = "0.2.1" }
+shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
+shiplog-template = { path = "../shiplog-template", version = "0.3.0" }
 
 [dev-dependencies]
 chrono.workspace = true
+insta.workspace = true
+proptest.workspace = true
 serde_json.workspace = true
 shiplog-ids = { path = "../shiplog-ids", version = "0.2.1" }
 shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
-shiplog-team-core = { path = "../shiplog-team-core", version = "0.2.1" }
+shiplog-testkit = { path = "../shiplog-testkit" }
 tempfile.workspace = true
 
 [lints]

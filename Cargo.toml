@@ -37,10 +37,6 @@ members = [
   # Dev-only support
   "crates/shiplog-testkit",
 
-  # Internal implementation carriers kept until they are folded into owners.
-  "crates/shiplog-team-core",
-  "crates/shiplog-team-aggregate",
-  "crates/shiplog-team-render",
 ]
 
 [workspace.package]

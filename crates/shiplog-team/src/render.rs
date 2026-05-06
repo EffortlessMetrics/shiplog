@@ -7,11 +7,12 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use shiplog_schema::coverage::CoverageManifest;
 use shiplog_schema::event::EventEnvelope;
-use shiplog_team_core::TeamConfig;
 use shiplog_template::{TemplateContext, TemplateEngine};
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
+
+use crate::core::TeamConfig;
 
 /// One member's aggregation outcome.
 #[derive(Debug, Clone, Serialize, Deserialize)]

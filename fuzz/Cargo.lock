@@ -1318,7 +1318,7 @@ dependencies = [
  "shiplog-redact",
  "shiplog-render-md",
  "shiplog-schema",
- "shiplog-team-core",
+ "shiplog-team",
  "shiplog-workstream-cluster",
  "shiplog-workstream-layout",
  "shiplog-workstream-receipt-policy",
@@ -1375,6 +1375,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "shiplog-merge"
+version = "0.2.1"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "serde",
+ "shiplog-ids",
+ "shiplog-ports",
+ "shiplog-schema",
+]
+
+[[package]]
 name = "shiplog-ports"
 version = "0.2.1"
 dependencies = [
@@ -1418,13 +1430,29 @@ dependencies = [
 ]
 
 [[package]]
-name = "shiplog-team-core"
+name = "shiplog-team"
 version = "0.2.1"
 dependencies = [
  "anyhow",
  "chrono",
  "serde",
+ "serde_json",
  "serde_yaml_ng",
+ "shiplog-ids",
+ "shiplog-merge",
+ "shiplog-ports",
+ "shiplog-schema",
+ "shiplog-template",
+]
+
+[[package]]
+name = "shiplog-template"
+version = "0.3.0"
+dependencies = [
+ "anyhow",
+ "serde",
+ "serde_json",
+ "shiplog-schema",
 ]
 
 [[package]]

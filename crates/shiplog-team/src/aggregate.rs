@@ -8,7 +8,6 @@
 use anyhow::{Context, Result, anyhow};
 use chrono::{NaiveDate, Utc};
 use serde_json::Value;
-use shiplog_merge::{ConflictResolution, merge_ingest_outputs};
 use shiplog_ports::IngestOutput;
 use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
 use shiplog_schema::event::EventEnvelope;
@@ -16,8 +15,9 @@ use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-pub use shiplog_team_core::{TeamConfig, parse_alias_list, parse_csv_list, resolve_team_config};
-pub use shiplog_team_render::{TeamAggregateResult, TeamMemberSummary};
+use crate::core::TeamConfig;
+use crate::render::{self, TeamAggregateResult, TeamMemberSummary};
+use shiplog_merge::{ConflictResolution, merge_ingest_outputs};
 
 /// Stable output artifact locations from team packet generation.
 #[derive(Debug, Clone)]
@@ -178,7 +178,7 @@ impl TeamAggregator {
 
     /// Render a markdown packet from aggregate output.
     pub fn render_packet_markdown(&self, output: &TeamAggregateResult) -> Result<String> {
-        shiplog_team_render::render_packet_markdown(&self.config, output)
+        render::render_packet_markdown(&self.config, output)
     }
 }
 

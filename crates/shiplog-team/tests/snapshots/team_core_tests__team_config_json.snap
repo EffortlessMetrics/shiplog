@@ -1,5 +1,5 @@
 ---
-source: crates/shiplog-team-core/tests/team_core_tests.rs
+source: crates/shiplog-team/tests/team_core_tests.rs
 assertion_line: 279
 expression: json
 ---

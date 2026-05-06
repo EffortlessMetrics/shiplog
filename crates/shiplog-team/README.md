@@ -2,20 +2,17 @@
 
 Team aggregation mode for generating team-level shipping summaries from multiple member ledgers.
 
-`shiplog-team` is currently the stable public façade. The runtime aggregation
-implementation has been extracted to [`shiplog-team-aggregate`](../shiplog-team-aggregate)
-to keep a clearer domain boundary and make API surfaces easier to extend.
-Packet rendering contracts are extracted in
-[`shiplog-team-render`](../shiplog-team-render).
+`shiplog-team` is the optional public boundary for team mode. Config
+resolution, ledger aggregation, and packet rendering live as modules under
+this crate so those phases do not become separate package contracts.
 
 ## Overview
 
 This crate provides functionality to aggregate multiple team members' shiplog ledgers into a single team-level shipping summary packet.
 
 ## Features
-- Stable config and resolver contracts are exposed through `shiplog-team-core`:
+- Stable config and resolver contracts:
   - `TeamConfig`, `parse_csv_list`, `parse_alias_list`, and `resolve_team_config`
-  - keeps `shiplog-team` focused on aggregation, rendering, and output writes
 
 - Generate team-level packets from multiple member ledgers
 - Configurable sections (workstreams, coverage, receipts)

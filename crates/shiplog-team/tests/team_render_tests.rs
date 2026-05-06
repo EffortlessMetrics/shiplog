@@ -1,4 +1,4 @@
-//! Integration tests for shiplog-team-render: packet rendering, templates, edge cases.
+//! Integration tests for shiplog-team: packet rendering, templates, edge cases.
 
 use chrono::{NaiveDate, TimeZone, Utc};
 use shiplog_ids::{EventId, RunId};
@@ -7,8 +7,8 @@ use shiplog_schema::event::{
     Actor, EventEnvelope, EventKind, EventPayload, PullRequestEvent, PullRequestState, RepoRef,
     RepoVisibility, SourceRef, SourceSystem,
 };
-use shiplog_team_core::TeamConfig;
-use shiplog_team_render::{TeamAggregateResult, TeamMemberSummary, render_packet_markdown};
+use shiplog_team::TeamConfig;
+use shiplog_team::{TeamAggregateResult, TeamMemberSummary, render_packet_markdown};
 use std::path::PathBuf;
 
 // ---------------------------------------------------------------------------

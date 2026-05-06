@@ -2507,38 +2507,6 @@ dependencies = [
 name = "shiplog-team"
 version = "0.2.1"
 dependencies = [
- "chrono",
- "serde_json",
- "shiplog-ids",
- "shiplog-schema",
- "shiplog-team-aggregate",
- "shiplog-team-core",
- "tempfile",
-]
-
-[[package]]
-name = "shiplog-team-aggregate"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "chrono",
- "insta",
- "proptest",
- "serde_json",
- "shiplog-ids",
- "shiplog-merge",
- "shiplog-ports",
- "shiplog-schema",
- "shiplog-team-core",
- "shiplog-team-render",
- "shiplog-testkit",
- "tempfile",
-]
-
-[[package]]
-name = "shiplog-team-core"
-version = "0.2.1"
-dependencies = [
  "anyhow",
  "chrono",
  "insta",
@@ -2546,23 +2514,10 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml_ng",
- "shiplog-testkit",
- "tempfile",
-]
-
-[[package]]
-name = "shiplog-team-render"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "chrono",
- "insta",
- "proptest",
- "serde",
- "serde_json",
  "shiplog-ids",
+ "shiplog-merge",
+ "shiplog-ports",
  "shiplog-schema",
- "shiplog-team-core",
  "shiplog-template",
  "shiplog-testkit",
  "tempfile",
@@ -2602,8 +2557,6 @@ dependencies = [
  "shiplog-render-md",
  "shiplog-schema",
  "shiplog-team",
- "shiplog-team-aggregate",
- "shiplog-team-core",
  "shiplog-workstream-cluster",
  "shiplog-workstream-layout",
  "shiplog-workstreams",

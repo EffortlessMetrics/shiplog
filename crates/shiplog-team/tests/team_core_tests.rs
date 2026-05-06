@@ -1,7 +1,7 @@
-//! Integration tests for shiplog-team-core: config loading, parsing, resolution.
+//! Integration tests for shiplog-team: config loading, parsing, resolution.
 
 use chrono::NaiveDate;
-use shiplog_team_core::{TeamConfig, parse_alias_list, parse_csv_list, resolve_team_config};
+use shiplog_team::{TeamConfig, parse_alias_list, parse_csv_list, resolve_team_config};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
@@ -458,7 +458,7 @@ fn resolve_config_sets_required_schema_version() {
 
 mod property_tests {
     use proptest::prelude::*;
-    use shiplog_team_core::parse_csv_list;
+    use shiplog_team::parse_csv_list;
 
     proptest! {
         #[test]

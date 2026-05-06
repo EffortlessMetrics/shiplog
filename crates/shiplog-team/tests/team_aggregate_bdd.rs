@@ -1,4 +1,4 @@
-//! BDD scenarios for shiplog-team-aggregate: aggregation, missing members, date filtering.
+//! BDD scenarios for shiplog-team: aggregation, missing members, date filtering.
 
 use chrono::{NaiveDate, TimeZone, Utc};
 use shiplog_ids::EventId;
@@ -7,7 +7,7 @@ use shiplog_schema::event::{
     Actor, EventEnvelope, EventKind, EventPayload, PullRequestEvent, PullRequestState, RepoRef,
     RepoVisibility, SourceRef, SourceSystem,
 };
-use shiplog_team_aggregate::{TeamAggregator, TeamConfig};
+use shiplog_team::{TeamAggregator, TeamConfig};
 use shiplog_testkit::bdd::{Scenario, assertions};
 use std::io::Write;
 use std::path::Path;

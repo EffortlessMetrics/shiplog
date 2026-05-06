@@ -1,6 +1,6 @@
 //! Integration tests for shiplog-team facade crate.
 //!
-//! Verifies that public re-exports from shiplog-team-aggregate are accessible
+//! Verifies that public re-exports from shiplog-team are accessible
 //! through the facade, and that the facade wires correctly end-to-end.
 
 use chrono::{NaiveDate, TimeZone, Utc};
