@@ -101,7 +101,7 @@ jobs:
 
       - name: Create Release
         id: create_release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v3
         with:
           draft: true
           generate_release_notes: true
@@ -121,7 +121,7 @@ jobs:
           path: artifacts
 
       - name: Upload assets
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v3
         with:
           upload_url: ${{ needs.create-release.outputs.upload_url }}
           files: |
