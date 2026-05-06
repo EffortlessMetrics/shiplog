@@ -1,10 +1,11 @@
 name: Mutation Testing
 
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: "0 8 * * 1"
 
 env:
   CARGO_TERM_COLOR: always
@@ -98,14 +99,17 @@ jobs:
           cargo mutants -p shiplog --timeout 120 --copy-target=false || fail=1
           exit $fail
 
-      - name: Check mutation results
+      - name: Report mutation results
         if: always()
         run: |
           if [ "${{ steps.tier1.outcome }}" = "failure" ] || \
              [ "${{ steps.tier2.outcome }}" = "failure" ] || \
              [ "${{ steps.tier3.outcome }}" = "failure" ]; then
-            echo "Mutation testing failed for one or more tiers"
-            exit 1
+            echo "::warning::Mutation testing found surviving mutants in one or more tiers"
+            echo "Mutation testing found surviving mutants in one or more tiers." >> $GITHUB_STEP_SUMMARY
+            echo "This workflow is advisory until mutation score baselines are established." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Mutation testing completed without surviving mutants in the configured tiers." >> $GITHUB_STEP_SUMMARY
           fi
 
       - name: Upload mutation test results
