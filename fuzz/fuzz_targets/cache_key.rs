@@ -1,7 +1,7 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use shiplog_cache_key::CacheKey;
+use shiplog_cache::CacheKey;
 
 fuzz_target!(|data: &[u8]| {
     let split_a = data.len() / 3;

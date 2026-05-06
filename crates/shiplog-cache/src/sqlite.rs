@@ -1,18 +1,14 @@
 //! SQLite-backed implementation of `ApiCache` for shiplog API responses.
-//!
-//! This implementation carrier isolates the durable storage concern from the higher-level
-//! `shiplog-cache` facade and keeps SQL/serialization logic scoped to one place.
 
 use anyhow::{Context, Result};
 use chrono::Duration;
 use rusqlite::{Connection, OptionalExtension, params};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
-use shiplog_cache_expiry::{CacheExpiryWindow, now_rfc3339};
 use std::path::Path;
 
-pub use shiplog_cache_key::CacheKey;
-pub use shiplog_cache_stats::CacheStats;
+use crate::expiry::{CacheExpiryWindow, now_rfc3339};
+use crate::stats::CacheStats;
 
 /// Cache for API responses backed by a local SQLite database.
 #[derive(Debug)]
@@ -188,6 +184,7 @@ impl ApiCache {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::CacheKey;
 
     #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq, Clone)]
     struct TestData {

@@ -44,10 +44,10 @@ cargo fuzz run parse_jsonl -- -dict=fuzz/dictionaries/json.dict
 | `parse_github_api` | GitHub API responses | MEDIUM |
 | `parse_config` | Configuration files (shiplog.yaml) | MEDIUM |
 | `parse_manual_events` | Manual events YAML (manual_events.yaml) + manual-events window filter | HIGH |
-| `cache_key` | Cache-key generation contracts and namespacing | LOW |
-| `cache_stats` | Cache-stat normalization and invariants | LOW |
-| `cache_expiry` | Cache-expiry timestamp window and boundary invariants | LOW |
-| `cache_sqlite` | SQLite cache storage invariants and TTL-backed operations | LOW |
+| `cache_key` | `shiplog-cache` key-generation contracts and namespacing | LOW |
+| `cache_stats` | `shiplog-cache` stat normalization and invariants | LOW |
+| `cache_expiry` | `shiplog-cache` expiry timestamp window and boundary invariants | LOW |
+| `cache_sqlite` | `shiplog-cache` SQLite storage invariants and TTL-backed operations | LOW |
 | `date_windows` | Coverage-owned date-window partitioning contracts | LOW |
 | `workstream_cluster` | Repo-based workstream clustering invariants | LOW |
 | `workstream_receipt_policy` | Receipt policy boundary contracts and rendering caps | LOW |

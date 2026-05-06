@@ -2201,61 +2201,15 @@ dependencies = [
 name = "shiplog-cache"
 version = "0.2.1"
 dependencies = [
- "chrono",
- "insta",
- "proptest",
- "rusqlite",
- "serde",
- "serde_json",
- "shiplog-cache-expiry",
- "shiplog-cache-sqlite",
- "shiplog-testkit",
- "tempfile",
-]
-
-[[package]]
-name = "shiplog-cache-expiry"
-version = "0.2.1"
-dependencies = [
- "chrono",
- "insta",
- "proptest",
- "shiplog-testkit",
-]
-
-[[package]]
-name = "shiplog-cache-key"
-version = "0.2.1"
-dependencies = [
- "insta",
- "proptest",
- "shiplog-testkit",
-]
-
-[[package]]
-name = "shiplog-cache-sqlite"
-version = "0.2.1"
-dependencies = [
  "anyhow",
  "chrono",
+ "insta",
  "proptest",
  "rusqlite",
  "serde",
  "serde_json",
- "shiplog-cache-expiry",
- "shiplog-cache-key",
- "shiplog-cache-stats",
  "shiplog-testkit",
  "tempfile",
-]
-
-[[package]]
-name = "shiplog-cache-stats"
-version = "0.2.1"
-dependencies = [
- "insta",
- "proptest",
- "shiplog-testkit",
 ]
 
 [[package]]
@@ -2381,7 +2335,6 @@ dependencies = [
  "serde",
  "serde_json",
  "shiplog-cache",
- "shiplog-cache-key",
  "shiplog-coverage",
  "shiplog-ids",
  "shiplog-ports",
@@ -2402,7 +2355,6 @@ dependencies = [
  "serde",
  "serde_json",
  "shiplog-cache",
- "shiplog-cache-key",
  "shiplog-coverage",
  "shiplog-ids",
  "shiplog-ports",

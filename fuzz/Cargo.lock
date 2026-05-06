@@ -1265,37 +1265,12 @@ dependencies = [
 name = "shiplog-cache"
 version = "0.2.1"
 dependencies = [
- "shiplog-cache-sqlite",
-]
-
-[[package]]
-name = "shiplog-cache-expiry"
-version = "0.2.1"
-dependencies = [
- "chrono",
-]
-
-[[package]]
-name = "shiplog-cache-key"
-version = "0.2.1"
-
-[[package]]
-name = "shiplog-cache-sqlite"
-version = "0.2.1"
-dependencies = [
  "anyhow",
  "chrono",
  "rusqlite",
  "serde",
  "serde_json",
- "shiplog-cache-expiry",
- "shiplog-cache-key",
- "shiplog-cache-stats",
 ]
-
-[[package]]
-name = "shiplog-cache-stats"
-version = "0.2.1"
 
 [[package]]
 name = "shiplog-cluster-llm-parse"
@@ -1336,10 +1311,7 @@ dependencies = [
  "serde_json",
  "serde_yaml_ng",
  "sha2",
- "shiplog-cache-expiry",
- "shiplog-cache-key",
- "shiplog-cache-sqlite",
- "shiplog-cache-stats",
+ "shiplog-cache",
  "shiplog-cluster-llm-parse",
  "shiplog-cluster-llm-prompt",
  "shiplog-coverage",
@@ -1380,7 +1352,6 @@ dependencies = [
  "serde",
  "serde_json",
  "shiplog-cache",
- "shiplog-cache-key",
  "shiplog-coverage",
  "shiplog-ids",
  "shiplog-ports",

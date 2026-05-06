@@ -9,7 +9,7 @@ use reqwest::blocking::Client;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use shiplog_cache::ApiCache;
-use shiplog_cache_key::CacheKey;
+use shiplog_cache::CacheKey;
 use shiplog_coverage::{day_windows, month_windows, week_windows, window_len_days};
 use shiplog_ids::{EventId, RunId};
 use shiplog_ports::{IngestOutput, Ingestor};

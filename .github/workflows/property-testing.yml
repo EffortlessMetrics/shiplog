@@ -89,18 +89,6 @@ jobs:
       - name: Run property tests for shiplog-workstream-cluster
         run: cargo test -p shiplog-workstream-cluster -- --test-threads=4
 
-      - name: Run property tests for shiplog-cache-key
-        run: cargo test -p shiplog-cache-key -- --test-threads=4
-
-      - name: Run property tests for shiplog-cache-expiry
-        run: cargo test -p shiplog-cache-expiry -- --test-threads=4
-
-      - name: Run property tests for shiplog-cache-stats
-        run: cargo test -p shiplog-cache-stats -- --test-threads=4
-
-      - name: Run property tests for shiplog-cache-sqlite
-        run: cargo test -p shiplog-cache-sqlite -- --test-threads=4
-
       - name: Run property tests for shiplog-testkit (roadmap)
         run: cargo test -p shiplog-testkit roadmap_property_tests -- --test-threads=4
 
@@ -130,8 +118,4 @@ jobs:
           echo "- shiplog-workstream-receipt-policy" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog-workstream-layout" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog-workstream-cluster" >> $GITHUB_STEP_SUMMARY
-          echo "- shiplog-cache-key" >> $GITHUB_STEP_SUMMARY
-          echo "- shiplog-cache-expiry" >> $GITHUB_STEP_SUMMARY
-          echo "- shiplog-cache-stats" >> $GITHUB_STEP_SUMMARY
-          echo "- shiplog-cache-sqlite" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog-testkit (roadmap property tests)" >> $GITHUB_STEP_SUMMARY

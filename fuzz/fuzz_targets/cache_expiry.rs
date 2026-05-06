@@ -2,7 +2,7 @@
 
 use chrono::{DateTime, Duration, Utc};
 use libfuzzer_sys::fuzz_target;
-use shiplog_cache_expiry::{CacheExpiryWindow, is_expired, is_valid, parse_rfc3339_utc};
+use shiplog_cache::expiry::{CacheExpiryWindow, is_expired, is_valid, parse_rfc3339_utc};
 
 fuzz_target!(|data: &[u8]| {
     let mut padded = [0u8; 32];

@@ -2,7 +2,7 @@
 
 use chrono::Duration;
 use libfuzzer_sys::fuzz_target;
-use shiplog_cache_sqlite::ApiCache;
+use shiplog_cache::ApiCache;
 
 fuzz_target!(|data: &[u8]| {
     if data.is_empty() {

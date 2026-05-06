@@ -38,10 +38,6 @@ members = [
   "crates/shiplog-testkit",
 
   # Internal implementation carriers kept until they are folded into owners.
-  "crates/shiplog-cache-sqlite",
-  "crates/shiplog-cache-key",
-  "crates/shiplog-cache-stats",
-  "crates/shiplog-cache-expiry",
   "crates/shiplog-cluster-llm-parse",
   "crates/shiplog-cluster-llm-prompt",
   "crates/shiplog-manual-events",

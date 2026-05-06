@@ -1,7 +1,14 @@
-//! Backward-compatible public façade for shiplog cache APIs.
+//! Public facade for shiplog cache APIs.
 //!
-//! The SQLite implementation now lives in [`shiplog_cache_sqlite`]; this crate
-//! re-exports the storage API and cache-key/stat helpers used by downstream
-//! consumers.
+//! Cache key construction, expiry semantics, statistics normalization, and the
+//! SQLite-backed API cache live here as module-level implementation seams.
 
-pub use shiplog_cache_sqlite::{ApiCache, CacheKey, CacheStats};
+pub mod expiry;
+
+mod key;
+mod sqlite;
+mod stats;
+
+pub use key::CacheKey;
+pub use sqlite::ApiCache;
+pub use stats::{BYTES_PER_MEGABYTE, CacheStats};

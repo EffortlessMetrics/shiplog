@@ -20,12 +20,9 @@ shiplog-ids = { path = "../crates/shiplog-ids" }
 shiplog-workstream-layout = { path = "../crates/shiplog-workstream-layout" }
 shiplog-redact = { path = "../crates/shiplog-redact" }
 shiplog-receipt = { path = "../crates/shiplog-receipt" }
-shiplog-cache-key = { path = "../crates/shiplog-cache-key" }
 shiplog-workstream-cluster = { path = "../crates/shiplog-workstream-cluster", version = "0.2.1" }
 shiplog-ports = { path = "../crates/shiplog-ports", version = "0.2.1" }
-shiplog-cache-stats = { path = "../crates/shiplog-cache-stats" }
-shiplog-cache-expiry = { path = "../crates/shiplog-cache-expiry" }
-shiplog-cache-sqlite = { path = "../crates/shiplog-cache-sqlite" }
+shiplog-cache = { path = "../crates/shiplog-cache" }
 shiplog-coverage = { path = "../crates/shiplog-coverage" }
 shiplog-cluster-llm-prompt = { path = "../crates/shiplog-cluster-llm-prompt", version = "0.2.1" }
 shiplog-cluster-llm-parse = { path = "../crates/shiplog-cluster-llm-parse", version = "0.2.1" }
