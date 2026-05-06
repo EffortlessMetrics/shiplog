@@ -1315,7 +1315,6 @@ dependencies = [
  "shiplog-ingest-json",
  "shiplog-ingest-manual",
  "shiplog-ports",
- "shiplog-receipt",
  "shiplog-redact",
  "shiplog-render-md",
  "shiplog-schema",
@@ -1384,13 +1383,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "shiplog-receipt"
-version = "0.2.1"
-dependencies = [
- "shiplog-schema",
-]
-
-[[package]]
 name = "shiplog-redact"
 version = "0.2.1"
 dependencies = [
@@ -1411,7 +1403,6 @@ dependencies = [
  "chrono",
  "itertools",
  "shiplog-ports",
- "shiplog-receipt",
  "shiplog-schema",
  "shiplog-workstream-receipt-policy",
 ]

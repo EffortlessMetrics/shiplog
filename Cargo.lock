@@ -2438,17 +2438,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "shiplog-receipt"
-version = "0.2.1"
-dependencies = [
- "chrono",
- "proptest",
- "shiplog-ids",
- "shiplog-schema",
- "shiplog-testkit",
-]
-
-[[package]]
 name = "shiplog-redact"
 version = "0.2.1"
 dependencies = [
@@ -2493,7 +2482,6 @@ dependencies = [
  "proptest",
  "shiplog-ids",
  "shiplog-ports",
- "shiplog-receipt",
  "shiplog-schema",
  "shiplog-testkit",
  "shiplog-workstream-receipt-policy",
@@ -2603,7 +2591,6 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml_ng",
- "shiplog-bundle",
  "shiplog-coverage",
  "shiplog-engine",
  "shiplog-ids",

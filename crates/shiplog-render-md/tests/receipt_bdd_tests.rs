@@ -1,8 +1,8 @@
-//! BDD tests for shiplog-receipt.
+//! BDD tests for shiplog-render-md.
 
 use chrono::{NaiveDate, TimeZone, Utc};
 use shiplog_ids::EventId;
-use shiplog_receipt::{format_receipt_markdown, manual_type_emoji};
+use shiplog_render_md::{format_receipt_markdown, manual_type_emoji};
 use shiplog_schema::event::*;
 use shiplog_testkit::bdd::assertions::{assert_contains, assert_eq, assert_present, assert_true};
 use shiplog_testkit::bdd::{Scenario, ScenarioContext};

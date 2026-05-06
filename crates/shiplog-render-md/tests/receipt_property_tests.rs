@@ -1,9 +1,9 @@
-//! Property tests for shiplog-receipt.
+//! Property tests for shiplog-render-md.
 
 use chrono::{TimeZone, Utc};
 use proptest::prelude::*;
 use shiplog_ids::EventId;
-use shiplog_receipt::format_receipt_markdown;
+use shiplog_render_md::format_receipt_markdown;
 use shiplog_schema::event::*;
 
 fn build_pr_event(repo: &str, title: &str, number: u64, with_link: bool) -> EventEnvelope {
