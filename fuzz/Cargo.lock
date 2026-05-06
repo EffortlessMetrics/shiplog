@@ -1321,13 +1321,6 @@ dependencies = [
 name = "shiplog-coverage"
 version = "0.2.1"
 dependencies = [
- "shiplog-date-windows",
-]
-
-[[package]]
-name = "shiplog-date-windows"
-version = "0.2.1"
-dependencies = [
  "chrono",
  "shiplog-schema",
 ]
@@ -1349,7 +1342,7 @@ dependencies = [
  "shiplog-cache-stats",
  "shiplog-cluster-llm-parse",
  "shiplog-cluster-llm-prompt",
- "shiplog-date-windows",
+ "shiplog-coverage",
  "shiplog-ids",
  "shiplog-ingest-github",
  "shiplog-ingest-json",

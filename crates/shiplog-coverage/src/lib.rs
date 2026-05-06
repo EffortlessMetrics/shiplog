@@ -1,8 +1,8 @@
 #![warn(missing_docs)]
-//! Compatibility wrapper for date-window utilities.
+//! Date-window utilities for coverage and ingestion slicing.
 //!
-//! This crate now delegates windowing logic to `shiplog-date-windows` while preserving
-//! the historical public API surface of `shiplog_coverage`.
+//! This crate owns the coverage-facing windowing primitives that keep query
+//! windows explicit, contiguous, and auditable.
 //!
 //! # Examples
 //!
@@ -16,8 +16,9 @@
 //! let months = month_windows(since, until);
 //! assert_eq!(months.len(), 3); // Jan, Feb, Mar
 //!
-//! // Each window knows its length:
-//! assert_eq!(window_len_days(&months[0]), 31); // January
+//! assert_eq!(window_len_days(&months[0]), 31);
 //! ```
 
-pub use shiplog_date_windows::{day_windows, month_windows, week_windows, window_len_days};
+mod windows;
+
+pub use windows::{day_windows, month_windows, week_windows, window_len_days};

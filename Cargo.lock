@@ -2310,19 +2310,7 @@ dependencies = [
  "insta",
  "proptest",
  "serde_json",
- "shiplog-date-windows",
  "shiplog-ids",
- "shiplog-schema",
- "shiplog-testkit",
-]
-
-[[package]]
-name = "shiplog-date-windows"
-version = "0.2.1"
-dependencies = [
- "chrono",
- "insta",
- "proptest",
  "shiplog-schema",
  "shiplog-testkit",
 ]

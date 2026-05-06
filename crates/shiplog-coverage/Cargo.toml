@@ -14,17 +14,16 @@ keywords = ["coverage", "date-range", "time-window", "slicing", "ingestion"]
 categories = ["date-and-time", "development-tools"]
 
 [dependencies]
-shiplog-date-windows = { path = "../shiplog-date-windows", version = "0.2.1" }
+chrono.workspace = true
+shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
 
 [dev-dependencies]
 anyhow.workspace = true
-chrono.workspace = true
 criterion.workspace = true
 insta = { workspace = true, features = ["json"] }
 proptest.workspace = true
 serde_json.workspace = true
 shiplog-ids = { path = "../shiplog-ids", version = "0.2.1" }
-shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
 shiplog-testkit = { path = "../shiplog-testkit", version = "0.2.1" }
 
 [[bench]]

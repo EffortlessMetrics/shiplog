@@ -26,7 +26,7 @@ shiplog-ports = { path = "../crates/shiplog-ports", version = "0.2.1" }
 shiplog-cache-stats = { path = "../crates/shiplog-cache-stats" }
 shiplog-cache-expiry = { path = "../crates/shiplog-cache-expiry" }
 shiplog-cache-sqlite = { path = "../crates/shiplog-cache-sqlite" }
-shiplog-date-windows = { path = "../crates/shiplog-date-windows" }
+shiplog-coverage = { path = "../crates/shiplog-coverage" }
 shiplog-cluster-llm-prompt = { path = "../crates/shiplog-cluster-llm-prompt", version = "0.2.1" }
 shiplog-cluster-llm-parse = { path = "../crates/shiplog-cluster-llm-parse", version = "0.2.1" }
 shiplog-team-core = { path = "../crates/shiplog-team-core" }

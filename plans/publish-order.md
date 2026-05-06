@@ -73,7 +73,7 @@ this cleanup. They should not be treated as crates.io product surface unless
 
 `shiplog-cache-expiry`, `shiplog-cache-key`,
 `shiplog-cache-sqlite`, `shiplog-cache-stats`, `shiplog-cluster-llm-parse`,
-`shiplog-cluster-llm-prompt`, `shiplog-date-windows`, `shiplog-manual-events`,
+`shiplog-cluster-llm-prompt`, `shiplog-manual-events`,
 `shiplog-output-layout`, `shiplog-receipt`, `shiplog-team-aggregate`,
 `shiplog-team-core`, `shiplog-team-render`, `shiplog-workstream-cluster`,
 `shiplog-workstream-layout`, and `shiplog-workstream-receipt-policy`.

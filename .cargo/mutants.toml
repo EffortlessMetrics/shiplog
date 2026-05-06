@@ -22,7 +22,6 @@ examine_globs = [
   "crates/shiplog-redact/src/**/*.rs",
   "crates/shiplog-coverage/src/**/*.rs",
   "crates/shiplog-ports/src/**/*.rs",
-  "crates/shiplog-date-windows/src/**/*.rs",
   "crates/shiplog-engine/src/**/*.rs",
   "crates/shiplog-bundle/src/**/*.rs",
   "crates/shiplog-workstreams/src/**/*.rs",

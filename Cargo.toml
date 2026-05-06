@@ -44,7 +44,6 @@ members = [
   "crates/shiplog-cache-expiry",
   "crates/shiplog-cluster-llm-parse",
   "crates/shiplog-cluster-llm-prompt",
-  "crates/shiplog-date-windows",
   "crates/shiplog-manual-events",
   "crates/shiplog-output-layout",
   "crates/shiplog-receipt",

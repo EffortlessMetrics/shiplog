@@ -58,7 +58,6 @@
 # preserves behavior. They are not the target public doctrine; fold them into
 # owner modules over time unless API_SURFACE.md deliberately promotes them.
 #
-# shiplog-date-windows
 # shiplog-cache-sqlite
 # shiplog-cache-key
 # shiplog-cache-stats
