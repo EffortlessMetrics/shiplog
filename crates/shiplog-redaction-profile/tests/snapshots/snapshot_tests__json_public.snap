@@ -1,5 +1,0 @@
----
-source: crates/shiplog-redaction-profile/tests/snapshot_tests.rs
-expression: json
----
-"Public"

@@ -1,23 +1,20 @@
 //! Profile-string projection dispatch for shiplog redaction.
-//!
-//! This crate has a narrow responsibility:
-//! - parse incoming profile strings into `RedactionProfile`
-//! - apply extracted policy transforms with an alias resolver
 
-pub use shiplog_redaction_policy::{AliasResolver, RedactionProfile};
-use shiplog_redaction_policy::{redact_events_with_aliases, redact_workstreams_with_aliases};
+use crate::policy::{redact_events_with_aliases, redact_workstreams_with_aliases};
+use crate::profile::RedactionProfile;
+use crate::repo::AliasResolver;
 use shiplog_schema::event::EventEnvelope;
 use shiplog_schema::workstream::WorkstreamsFile;
 
 /// Parse a raw profile string into a canonical profile.
 #[must_use]
-pub fn parse_profile(profile: &str) -> RedactionProfile {
+pub(crate) fn parse_profile(profile: &str) -> RedactionProfile {
     RedactionProfile::from_profile_str(profile)
 }
 
 /// Project events using profile-string dispatch and an alias resolver.
 #[must_use]
-pub fn project_events_with_aliases<A: AliasResolver + ?Sized>(
+pub(crate) fn project_events_with_aliases<A: AliasResolver + ?Sized>(
     events: &[EventEnvelope],
     profile: &str,
     aliases: &A,
@@ -27,7 +24,7 @@ pub fn project_events_with_aliases<A: AliasResolver + ?Sized>(
 
 /// Project workstreams using profile-string dispatch and an alias resolver.
 #[must_use]
-pub fn project_workstreams_with_aliases<A: AliasResolver + ?Sized>(
+pub(crate) fn project_workstreams_with_aliases<A: AliasResolver + ?Sized>(
     workstreams: &WorkstreamsFile,
     profile: &str,
     aliases: &A,

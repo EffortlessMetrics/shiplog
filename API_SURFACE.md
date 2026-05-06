@@ -127,7 +127,6 @@ redaction policy, or output layout.
 ## Current Migration Note
 
 Some implementation seams still exist as crates while this branch preserves
-working product behavior. They are grouped in the workspace as internal
-implementation carriers and are not the target public surface. Future cleanup
-should fold them into the owner modules listed above, one owner family at a
-time, without expanding the external API.
+working product behavior. The redaction family has been folded into
+`shiplog-redact`; remaining carrier families should follow the same owner-module
+pattern without expanding the external API.

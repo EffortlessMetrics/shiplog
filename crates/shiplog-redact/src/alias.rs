@@ -1,8 +1,4 @@
 //! Deterministic alias generation and persistence helpers.
-//!
-//! This crate provides a narrow contract:
-//! - keyed deterministic alias generation
-//! - optional cache load/save for stable aliases across runs
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
@@ -22,14 +18,14 @@ pub const CACHE_FILENAME: &str = "redaction.aliases.json";
 
 /// Thread-safe deterministic alias store backed by keyed SHA-256.
 #[derive(Debug)]
-pub struct DeterministicAliasStore {
+pub(crate) struct DeterministicAliasStore {
     key: Vec<u8>,
     cache: Mutex<BTreeMap<String, String>>,
 }
 
 impl DeterministicAliasStore {
     /// Create an empty alias store with a stable key.
-    pub fn new(key: impl AsRef<[u8]>) -> Self {
+    pub(crate) fn new(key: impl AsRef<[u8]>) -> Self {
         Self {
             key: key.as_ref().to_vec(),
             cache: Mutex::new(BTreeMap::new()),
@@ -37,12 +33,12 @@ impl DeterministicAliasStore {
     }
 
     /// Path to the alias cache file in a run output directory.
-    pub fn cache_path(out_dir: &Path) -> PathBuf {
+    pub(crate) fn cache_path(out_dir: &Path) -> PathBuf {
         out_dir.join(CACHE_FILENAME)
     }
 
     /// Load aliases from disk. Missing files are treated as a no-op.
-    pub fn load_cache(&self, path: &Path) -> Result<()> {
+    pub(crate) fn load_cache(&self, path: &Path) -> Result<()> {
         if !path.exists() {
             return Ok(());
         }
@@ -66,7 +62,7 @@ impl DeterministicAliasStore {
     }
 
     /// Save aliases to disk.
-    pub fn save_cache(&self, path: &Path) -> Result<()> {
+    pub(crate) fn save_cache(&self, path: &Path) -> Result<()> {
         let entries = self
             .cache
             .lock()
@@ -83,7 +79,7 @@ impl DeterministicAliasStore {
     }
 
     /// Resolve a stable alias for a (`kind`, `value`) pair.
-    pub fn alias(&self, kind: &str, value: &str) -> String {
+    pub(crate) fn alias(&self, kind: &str, value: &str) -> String {
         let cache_key = format!("{kind}:{value}");
         #[allow(clippy::collapsible_if)]
         if let Ok(cache) = self.cache.lock() {

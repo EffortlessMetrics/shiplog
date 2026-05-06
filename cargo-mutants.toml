@@ -59,11 +59,6 @@
 # owner modules over time unless API_SURFACE.md deliberately promotes them.
 #
 # shiplog-date-windows
-# shiplog-redaction-profile
-# shiplog-redaction-repo
-# shiplog-redaction-policy
-# shiplog-redaction-projector
-# shiplog-alias
 # shiplog-cache-sqlite
 # shiplog-cache-key
 # shiplog-cache-stats

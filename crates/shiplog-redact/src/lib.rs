@@ -4,12 +4,19 @@
 //! generation backed by keyed hashing and optional alias cache persistence.
 
 use anyhow::Result;
-use shiplog_alias::DeterministicAliasStore;
 use shiplog_ports::Redactor;
-use shiplog_redaction_projector::{project_events_with_aliases, project_workstreams_with_aliases};
 use shiplog_schema::event::EventEnvelope;
 use shiplog_schema::workstream::WorkstreamsFile;
 use std::path::{Path, PathBuf};
+
+mod alias;
+mod policy;
+mod profile;
+mod projector;
+mod repo;
+
+use alias::DeterministicAliasStore;
+use projector::{project_events_with_aliases, project_workstreams_with_aliases};
 
 /// Default filename for the alias cache (`redaction.aliases.json`).
 ///
@@ -20,7 +27,7 @@ use std::path::{Path, PathBuf};
 ///
 /// assert_eq!(CACHE_FILENAME, "redaction.aliases.json");
 /// ```
-pub use shiplog_alias::CACHE_FILENAME;
+pub use alias::CACHE_FILENAME;
 
 /// Redaction profile enum (`Internal`, `Manager`, `Public`).
 ///
@@ -36,7 +43,7 @@ pub use shiplog_alias::CACHE_FILENAME;
 /// let unknown = RedactionProfile::from_profile_str("bogus");
 /// assert_eq!(unknown, RedactionProfile::Public);
 /// ```
-pub use shiplog_redaction_projector::RedactionProfile;
+pub use profile::RedactionProfile;
 
 /// Deterministic redactor.
 ///

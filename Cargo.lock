@@ -2180,20 +2180,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "shiplog-alias"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "hex",
- "insta",
- "proptest",
- "serde",
- "serde_json",
- "sha2",
- "tempfile",
-]
-
-[[package]]
 name = "shiplog-bundle"
 version = "0.2.1"
 dependencies = [
@@ -2576,70 +2562,16 @@ dependencies = [
  "anyhow",
  "chrono",
  "criterion",
- "proptest",
- "serde_json",
- "shiplog-alias",
- "shiplog-ids",
- "shiplog-ports",
- "shiplog-redaction-policy",
- "shiplog-redaction-projector",
- "shiplog-schema",
- "shiplog-testkit",
- "tempfile",
-]
-
-[[package]]
-name = "shiplog-redaction-policy"
-version = "0.2.1"
-dependencies = [
- "chrono",
- "insta",
- "proptest",
- "serde_json",
- "shiplog-alias",
- "shiplog-ids",
- "shiplog-redaction-profile",
- "shiplog-redaction-repo",
- "shiplog-schema",
- "shiplog-testkit",
-]
-
-[[package]]
-name = "shiplog-redaction-profile"
-version = "0.2.1"
-dependencies = [
- "insta",
+ "hex",
  "proptest",
  "serde",
  "serde_json",
- "shiplog-testkit",
-]
-
-[[package]]
-name = "shiplog-redaction-projector"
-version = "0.2.1"
-dependencies = [
- "chrono",
- "insta",
- "proptest",
- "serde_json",
- "shiplog-alias",
+ "sha2",
  "shiplog-ids",
- "shiplog-redaction-policy",
+ "shiplog-ports",
  "shiplog-schema",
  "shiplog-testkit",
-]
-
-[[package]]
-name = "shiplog-redaction-repo"
-version = "0.2.1"
-dependencies = [
- "insta",
- "proptest",
- "serde_json",
- "shiplog-alias",
- "shiplog-schema",
- "shiplog-testkit",
+ "tempfile",
 ]
 
 [[package]]

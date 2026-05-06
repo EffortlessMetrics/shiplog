@@ -1,13 +1,9 @@
-//! Canonical repository redaction contract for shiplog public projections.
-//!
-//! This crate has a narrow responsibility:
-//! - define the alias resolver abstraction used by public repo redaction
-//! - apply deterministic structural redaction for `RepoRef`
+//! Repository redaction helpers for public projections.
 
 use shiplog_schema::event::{RepoRef, RepoVisibility};
 
 /// Alias resolver used by public repository redaction.
-pub trait AliasResolver {
+pub(crate) trait AliasResolver {
     fn alias(&self, kind: &str, value: &str) -> String;
 }
 
@@ -22,7 +18,10 @@ where
 
 /// Redact a repository reference for `public` profile projection.
 #[must_use]
-pub fn redact_repo_public<A: AliasResolver + ?Sized>(repo: &RepoRef, aliases: &A) -> RepoRef {
+pub(crate) fn redact_repo_public<A: AliasResolver + ?Sized>(
+    repo: &RepoRef,
+    aliases: &A,
+) -> RepoRef {
     RepoRef {
         full_name: aliases.alias("repo", &repo.full_name),
         html_url: None,

@@ -17,11 +17,7 @@ shiplog-workstreams = { path = "../crates/shiplog-workstreams" }
 shiplog-schema = { path = "../crates/shiplog-schema" }
 shiplog-workstream-receipt-policy = { path = "../crates/shiplog-workstream-receipt-policy", version = "0.2.1" }
 shiplog-ids = { path = "../crates/shiplog-ids" }
-shiplog-redaction-profile = { path = "../crates/shiplog-redaction-profile" }
 shiplog-workstream-layout = { path = "../crates/shiplog-workstream-layout" }
-shiplog-redaction-repo = { path = "../crates/shiplog-redaction-repo" }
-shiplog-redaction-policy = { path = "../crates/shiplog-redaction-policy" }
-shiplog-redaction-projector = { path = "../crates/shiplog-redaction-projector" }
 shiplog-redact = { path = "../crates/shiplog-redact" }
 shiplog-receipt = { path = "../crates/shiplog-receipt" }
 shiplog-cache-key = { path = "../crates/shiplog-cache-key" }
@@ -144,34 +140,6 @@ bench = false
 [[bin]]
 name = "parse_plugin_manifest"
 path = "fuzz_targets/parse_plugin_manifest.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "redact_policy"
-path = "fuzz_targets/redact_policy.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "redaction_profile"
-path = "fuzz_targets/redaction_profile.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "redaction_repo"
-path = "fuzz_targets/redaction_repo.rs"
-test = false
-doc = false
-bench = false
-
-[[bin]]
-name = "redaction_projector"
-path = "fuzz_targets/redaction_projector.rs"
 test = false
 doc = false
 bench = false

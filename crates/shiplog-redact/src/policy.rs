@@ -1,17 +1,12 @@
-//! Profile-based structural redaction policy for shiplog.
-//!
-//! This crate holds only redaction policy rules:
-//! - profile-driven field transforms for events and workstreams
-//! - alias resolver abstraction used by `public` profile
+//! Profile-based structural redaction policy.
 
-pub use shiplog_redaction_profile::RedactionProfile;
-pub use shiplog_redaction_repo::AliasResolver;
-use shiplog_redaction_repo::redact_repo_public;
+use crate::profile::RedactionProfile;
+use crate::repo::{AliasResolver, redact_repo_public};
 use shiplog_schema::event::{EventEnvelope, EventPayload};
 use shiplog_schema::workstream::{Workstream, WorkstreamsFile};
 
 /// Redact a single event for the selected profile.
-pub fn redact_event_with_aliases<A: AliasResolver + ?Sized>(
+pub(crate) fn redact_event_with_aliases<A: AliasResolver + ?Sized>(
     mut event: EventEnvelope,
     profile: RedactionProfile,
     aliases: &A,
@@ -59,7 +54,7 @@ pub fn redact_event_with_aliases<A: AliasResolver + ?Sized>(
 }
 
 /// Redact all events for the selected profile.
-pub fn redact_events_with_aliases<A: AliasResolver + ?Sized>(
+pub(crate) fn redact_events_with_aliases<A: AliasResolver + ?Sized>(
     events: &[EventEnvelope],
     profile: RedactionProfile,
     aliases: &A,
@@ -75,7 +70,7 @@ pub fn redact_events_with_aliases<A: AliasResolver + ?Sized>(
 }
 
 /// Redact a single workstream for the selected profile.
-pub fn redact_workstream_with_aliases<A: AliasResolver + ?Sized>(
+pub(crate) fn redact_workstream_with_aliases<A: AliasResolver + ?Sized>(
     mut workstream: Workstream,
     profile: RedactionProfile,
     aliases: &A,
@@ -96,7 +91,7 @@ pub fn redact_workstream_with_aliases<A: AliasResolver + ?Sized>(
 }
 
 /// Redact all workstreams for the selected profile.
-pub fn redact_workstreams_with_aliases<A: AliasResolver + ?Sized>(
+pub(crate) fn redact_workstreams_with_aliases<A: AliasResolver + ?Sized>(
     workstreams: &WorkstreamsFile,
     profile: RedactionProfile,
     aliases: &A,

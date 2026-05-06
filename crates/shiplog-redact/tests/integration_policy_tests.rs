@@ -1,12 +1,9 @@
-//! Integration tests ensuring shiplog-redact delegates to shiplog-redaction-policy.
+//! Integration tests for shiplog-redact facade policy behavior.
 
 use chrono::Utc;
-use shiplog_alias::DeterministicAliasStore;
 use shiplog_ids::{EventId, WorkstreamId};
 use shiplog_ports::Redactor;
-use shiplog_redaction_policy::{
-    RedactionProfile, redact_events_with_aliases, redact_workstreams_with_aliases,
-};
+use shiplog_redact::{DeterministicRedactor, RedactionProfile};
 use shiplog_schema::event::*;
 use shiplog_schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
 
@@ -100,41 +97,105 @@ fn sample_workstreams() -> WorkstreamsFile {
 }
 
 #[test]
-fn redactor_event_outputs_match_extracted_policy_for_all_profiles() {
-    let redactor = shiplog_redact::DeterministicRedactor::new(b"integration-key");
-    let alias_store = DeterministicAliasStore::new(b"integration-key");
-    let alias = |kind: &str, value: &str| alias_store.alias(kind, value);
+fn profile_reexport_parses_canonical_names() {
+    assert_eq!(
+        RedactionProfile::from_profile_str("internal"),
+        RedactionProfile::Internal
+    );
+    assert_eq!(
+        RedactionProfile::from_profile_str("manager"),
+        RedactionProfile::Manager
+    );
+    assert_eq!(
+        RedactionProfile::from_profile_str("public"),
+        RedactionProfile::Public
+    );
+    assert_eq!(
+        RedactionProfile::from_profile_str("unknown"),
+        RedactionProfile::Public
+    );
+}
+
+#[test]
+fn redactor_event_profiles_apply_facade_contract() {
+    let redactor = DeterministicRedactor::new(b"integration-key");
     let events = sample_events();
 
-    for profile in ["internal", "manager", "public"] {
-        let expected = redact_events_with_aliases(
-            &events,
-            RedactionProfile::from_profile_str(profile),
-            &alias,
-        );
-        let actual = redactor
-            .redact_events(&events, profile)
-            .expect("redact events should succeed");
-        assert_eq!(actual, expected, "profile mismatch for {profile}");
+    let internal = redactor
+        .redact_events(&events, "internal")
+        .expect("internal profile succeeds");
+    assert_eq!(internal, events);
+
+    let manager = redactor
+        .redact_events(&events, "manager")
+        .expect("manager profile succeeds");
+    assert_eq!(manager[0].repo.full_name, "acme/private-repo");
+    assert!(manager[0].links.is_empty());
+    match &manager[0].payload {
+        EventPayload::PullRequest(pr) => {
+            assert_eq!(pr.title, "Sensitive PR");
+            assert!(pr.touched_paths_hint.is_empty());
+        }
+        _ => panic!("expected pull request"),
+    }
+    match &manager[1].payload {
+        EventPayload::Manual(manual) => {
+            assert_eq!(manual.title, "Sensitive Incident");
+            assert!(manual.description.is_none());
+            assert!(manual.impact.is_none());
+        }
+        _ => panic!("expected manual event"),
+    }
+
+    let public = redactor
+        .redact_events(&events, "public")
+        .expect("public profile succeeds");
+    assert_ne!(public[0].repo.full_name, "acme/private-repo");
+    assert!(public[0].repo.full_name.starts_with("repo-"));
+    assert!(public[0].repo.html_url.is_none());
+    assert!(public[0].links.is_empty());
+    assert!(public[0].source.url.is_none());
+    match &public[0].payload {
+        EventPayload::PullRequest(pr) => {
+            assert_eq!(pr.title, "[redacted]");
+            assert!(pr.touched_paths_hint.is_empty());
+        }
+        _ => panic!("expected pull request"),
+    }
+    match &public[1].payload {
+        EventPayload::Manual(manual) => {
+            assert_eq!(manual.title, "[redacted]");
+            assert!(manual.description.is_none());
+            assert!(manual.impact.is_none());
+        }
+        _ => panic!("expected manual event"),
     }
 }
 
 #[test]
-fn redactor_workstream_outputs_match_extracted_policy_for_all_profiles() {
-    let redactor = shiplog_redact::DeterministicRedactor::new(b"integration-key");
-    let alias_store = DeterministicAliasStore::new(b"integration-key");
-    let alias = |kind: &str, value: &str| alias_store.alias(kind, value);
+fn redactor_workstream_profiles_apply_facade_contract() {
+    let redactor = DeterministicRedactor::new(b"integration-key");
     let workstreams = sample_workstreams();
 
-    for profile in ["internal", "manager", "public"] {
-        let expected = redact_workstreams_with_aliases(
-            &workstreams,
-            RedactionProfile::from_profile_str(profile),
-            &alias,
-        );
-        let actual = redactor
-            .redact_workstreams(&workstreams, profile)
-            .expect("redact workstreams should succeed");
-        assert_eq!(actual, expected, "profile mismatch for {profile}");
-    }
+    let internal = redactor
+        .redact_workstreams(&workstreams, "internal")
+        .expect("internal profile succeeds");
+    assert_eq!(internal, workstreams);
+
+    let manager = redactor
+        .redact_workstreams(&workstreams, "manager")
+        .expect("manager profile succeeds");
+    let manager_ws = &manager.workstreams[0];
+    assert_eq!(manager_ws.title, "Sensitive Workstream");
+    assert!(manager_ws.summary.is_none());
+    assert!(manager_ws.tags.contains(&"repo".to_string()));
+
+    let public = redactor
+        .redact_workstreams(&workstreams, "public")
+        .expect("public profile succeeds");
+    let public_ws = &public.workstreams[0];
+    assert_ne!(public_ws.title, "Sensitive Workstream");
+    assert!(public_ws.title.starts_with("ws-"));
+    assert!(public_ws.summary.is_none());
+    assert!(!public_ws.tags.contains(&"repo".to_string()));
 }

@@ -1262,17 +1262,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "shiplog-alias"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "hex",
- "serde",
- "serde_json",
- "sha2",
-]
-
-[[package]]
 name = "shiplog-cache"
 version = "0.2.1"
 dependencies = [
@@ -1369,10 +1358,6 @@ dependencies = [
  "shiplog-ports",
  "shiplog-receipt",
  "shiplog-redact",
- "shiplog-redaction-policy",
- "shiplog-redaction-profile",
- "shiplog-redaction-projector",
- "shiplog-redaction-repo",
  "shiplog-render-md",
  "shiplog-schema",
  "shiplog-team-core",
@@ -1468,41 +1453,11 @@ name = "shiplog-redact"
 version = "0.2.1"
 dependencies = [
  "anyhow",
- "serde_json",
- "shiplog-alias",
- "shiplog-ports",
- "shiplog-redaction-projector",
- "shiplog-schema",
-]
-
-[[package]]
-name = "shiplog-redaction-policy"
-version = "0.2.1"
-dependencies = [
- "shiplog-redaction-profile",
- "shiplog-redaction-repo",
- "shiplog-schema",
-]
-
-[[package]]
-name = "shiplog-redaction-profile"
-version = "0.2.1"
-dependencies = [
+ "hex",
  "serde",
-]
-
-[[package]]
-name = "shiplog-redaction-projector"
-version = "0.2.1"
-dependencies = [
- "shiplog-redaction-policy",
- "shiplog-schema",
-]
-
-[[package]]
-name = "shiplog-redaction-repo"
-version = "0.2.1"
-dependencies = [
+ "serde_json",
+ "sha2",
+ "shiplog-ports",
  "shiplog-schema",
 ]
 
