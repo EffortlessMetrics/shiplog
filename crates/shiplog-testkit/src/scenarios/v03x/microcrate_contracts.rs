@@ -518,7 +518,7 @@ pub fn microcrate_cluster_llm_parse_contract() -> Scenario {
                 let orphan = parsed
                     .workstreams
                     .iter()
-                    .find(|ws| ws.id.to_string().ends_with("uncategorized"))
+                    .find(|ws| ws.title == "Uncategorized")
                     .ok_or_else(|| "Uncategorized workstream should exist".to_string())?;
 
                 ctx.numbers

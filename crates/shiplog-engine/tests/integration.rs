@@ -915,8 +915,12 @@ fn merge_empty_input_is_error() {
     let err = engine
         .merge(vec![], shiplog_engine::ConflictResolution::PreferFirst)
         .unwrap_err();
+    let msg = format!("{err:#}");
 
-    assert!(err.to_string().contains("No ingest outputs to merge"));
+    assert!(
+        msg.contains("No ingest outputs to merge"),
+        "unexpected merge error: {msg}"
+    );
 }
 
 // ---------------------------------------------------------------------------
