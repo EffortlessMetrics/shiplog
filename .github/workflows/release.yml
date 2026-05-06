@@ -94,23 +94,24 @@ jobs:
       - name: Build release
         run: cargo build --release --target ${{ matrix.target }} -p shiplog
 
-      - name: Prepare binary name
-        id: binary
-        run: |
-          echo "name=shiplog-${{ matrix.target }}${{ matrix.ext }}" >> $GITHUB_OUTPUT
-          echo "path=target/${{ matrix.target }}/release/shiplog${{ matrix.ext }}" >> $GITHUB_OUTPUT
-
       - name: Stage binary
         shell: bash
         run: |
           mkdir -p dist
-          cp "${{ steps.binary.outputs.path }}" "dist/${{ steps.binary.outputs.name }}"
+          src="target/${{ matrix.target }}/release/shiplog${{ matrix.ext }}"
+          dest="dist/shiplog-${{ matrix.target }}${{ matrix.ext }}"
+          if [[ ! -f "$src" ]]; then
+            echo "missing expected binary: $src" >&2
+            find target -maxdepth 4 -type f -name 'shiplog*' -print >&2 || true
+            exit 1
+          fi
+          cp "$src" "$dest"
 
       - name: Upload binary
         uses: actions/upload-artifact@v7
         with:
           name: shiplog-${{ matrix.target }}${{ matrix.ext }}
-          path: dist/${{ steps.binary.outputs.name }}
+          path: dist/shiplog-${{ matrix.target }}${{ matrix.ext }}
           retention-days: 5
 
   # Create GitHub release
