@@ -56,8 +56,8 @@ a stable import format.
 - `shiplog-ingest-json`
 - `shiplog-ingest-manual`
 
-GitLab, Jira, and Linear adapters may remain public only while they are usable
-standalone adapters with tests and documentation:
+GitLab, Jira, and Linear adapters are held with `publish = false` until they
+are usable standalone adapters with tests and documentation:
 
 - `shiplog-ingest-gitlab`
 - `shiplog-ingest-jira`
@@ -70,10 +70,11 @@ its own dependency and privacy cost.
 
 - `shiplog-cluster-llm`: optional network and privacy boundary. It must stay
   feature-gated and off by default.
-- `shiplog-team`: optional team aggregation surface.
+- `shiplog-team`: optional team aggregation surface, held with `publish = false`
+  until promoted.
 - `shiplog-merge`: public only while multi-source merge remains a supported API.
 - `shiplog-template`: public only when the packet template format is a stable
-  user contract.
+  user contract; held with `publish = false` until promoted.
 
 ## Internal Module Families
 
@@ -130,8 +131,9 @@ The weak implementation-carrier families have been folded into owner crates:
 redaction, cache, date windows, LLM prompt/parse, manual events, output layout,
 receipt formatting, team phases, and workstream phases.
 
-`shiplog-template` remains conditional: it should be published only if packet
-templates are treated as a stable user contract for this release.
+`shiplog-template` remains conditional and uses `publish = false`: it should be
+published only if packet templates are treated as a stable user contract for a
+future release.
 
 New implementation seams should start as owner modules and should not become
 workspace crates unless this document deliberately promotes them.

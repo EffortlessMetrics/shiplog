@@ -69,12 +69,14 @@ Dev-only tooling:
 
 GitLab, Jira, and Linear adapter crates remain in the workspace, but they are
 held out of the v0.2.1 crates.io release set until their CLI story, auth model,
-examples, and release-grade tests are documented.
+examples, and release-grade tests are documented. Their manifests use
+`publish = false` until a later PR deliberately promotes them.
 
 `shiplog-team` and `shiplog-template` remain workspace crates, but they are held
 out of the v0.2.1 crates.io release set until team aggregation and packet
 template syntax have stronger user-facing examples, versioning, and compatibility
-tests. The published CLI does not expose a `team` feature for v0.2.1.
+tests. Their manifests use `publish = false` until promotion. The published CLI
+does not expose a `team` feature for v0.2.1.
 
 ## Release Posture
 
