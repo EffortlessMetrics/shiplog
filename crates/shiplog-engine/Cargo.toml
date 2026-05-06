@@ -40,7 +40,7 @@ serde_yaml.workspace = true
 shiplog-ids = { path = "../shiplog-ids", version = "0.2.1" }
 shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
 shiplog-ports = { path = "../shiplog-ports", version = "0.2.1" }
-shiplog-testkit = { path = "../shiplog-testkit", version = "0.2.1" }
+shiplog-testkit = { path = "../shiplog-testkit" }
 shiplog-bundle = { path = "../shiplog-bundle", version = "0.2.1" }
 shiplog-workstreams = { path = "../shiplog-workstreams", version = "0.2.1" }
 shiplog-render-md = { path = "../shiplog-render-md", version = "0.2.1" }

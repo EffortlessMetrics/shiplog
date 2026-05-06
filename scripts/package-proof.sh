@@ -27,8 +27,6 @@ packages=(
   shiplog-ingest-git
   shiplog-ingest-github
   shiplog-cluster-llm
-  shiplog-template
-  shiplog-team
   shiplog-engine
   shiplog
 )
