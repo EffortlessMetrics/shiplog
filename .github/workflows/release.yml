@@ -165,8 +165,8 @@ jobs:
           echo "Testing --version..."
           ./target/release/shiplog --version
 
-          echo "Testing --list..."
-          ./target/release/shiplog --list
+          echo "Testing help subcommand..."
+          ./target/release/shiplog help
 
       - name: Generate validation summary
         run: |
@@ -179,7 +179,7 @@ jobs:
           echo "## Smoke Tests" >> $GITHUB_STEP_SUMMARY
           echo "- Help command: **PASSED**" >> $GITHUB_STEP_SUMMARY
           echo "- Version command: **PASSED**" >> $GITHUB_STEP_SUMMARY
-          echo "- Subcommand list: **PASSED**" >> $GITHUB_STEP_SUMMARY
+          echo "- Help subcommand: **PASSED**" >> $GITHUB_STEP_SUMMARY
 
   # Run integration tests
   release-test:
