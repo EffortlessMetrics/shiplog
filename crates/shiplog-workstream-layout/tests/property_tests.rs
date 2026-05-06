@@ -4,7 +4,7 @@ use proptest::prelude::*;
 use shiplog_ids::{EventId, WorkstreamId};
 use shiplog_schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
 use shiplog_workstream_layout::{
-    write_workstreams, WorkstreamManager, CURATED_FILENAME, SUGGESTED_FILENAME,
+    CURATED_FILENAME, SUGGESTED_FILENAME, WorkstreamManager, write_workstreams,
 };
 use tempfile::tempdir;
 
