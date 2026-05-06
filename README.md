@@ -266,8 +266,6 @@ external contract. Adapters depend on ports and schema, never the reverse.
 | `shiplog-workstreams` | Workstream clustering and user-curated YAML workflow |
 | `shiplog-merge` | Multi-source merge helpers used by the engine |
 | `shiplog-cluster-llm` | Optional LLM-assisted semantic clustering |
-| `shiplog-team` | Optional team aggregation feature surface |
-| `shiplog-template` | Template dependency for team packet rendering; not a stable user template contract by default |
 | `shiplog-redact` | Deterministic HMAC-SHA256 redaction across three profiles |
 | `shiplog-render-md` | Markdown packet renderer |
 | `shiplog-render-json` | JSON output renderer |

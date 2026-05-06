@@ -59,8 +59,6 @@ Adapters for the v0.2.1 release path:
 Optional feature surfaces:
 
 - `shiplog-cluster-llm`
-- `shiplog-team`
-- `shiplog-template`
 
 Dev-only tooling:
 
@@ -73,9 +71,10 @@ GitLab, Jira, and Linear adapter crates remain in the workspace, but they are
 held out of the v0.2.1 crates.io release set until their CLI story, auth model,
 examples, and release-grade tests are documented.
 
-`shiplog-template` remains conditional as a user-facing contract. It is included
-in the v0.2.1 package proof only because the optional `shiplog-team` feature
-depends on it.
+`shiplog-team` and `shiplog-template` remain workspace crates, but they are held
+out of the v0.2.1 crates.io release set until team aggregation and packet
+template syntax have stronger user-facing examples, versioning, and compatibility
+tests. The published CLI does not expose a `team` feature for v0.2.1.
 
 ## Release Posture
 

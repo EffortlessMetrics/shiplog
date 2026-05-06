@@ -31,15 +31,15 @@ not treat every workspace member as a publish target.
 | `shiplog-engine` | yes | orchestration API | package proof |
 | `shiplog-merge` | yes | engine dependency and merge API surface | package proof |
 | `shiplog-ingest-github` | yes | core GitHub adapter | package proof |
-| `shiplog-ingest-git` | yes | local git adapter used by the CLI `collect git` path | document refresh/run limitation |
+| `shiplog-ingest-git` | yes | local git adapter used by the CLI `collect git` path | refresh/run limitation documented |
 | `shiplog-ingest-json` | yes | stable import format | package proof |
 | `shiplog-ingest-manual` | yes | manual evidence lane | package proof |
 | `shiplog-ingest-gitlab` | hold | conditional adapter, not wired into CLI docs | CLI/auth examples and release-grade tests |
 | `shiplog-ingest-jira` | hold | conditional adapter, not wired into CLI docs | CLI/auth examples and release-grade tests |
 | `shiplog-ingest-linear` | hold | conditional adapter, not wired into CLI docs | CLI/auth examples and release-grade tests |
 | `shiplog-cluster-llm` | yes | optional privacy/network boundary behind `llm` | package proof and fallback/privacy docs |
-| `shiplog-team` | yes | optional `team` feature dependency from the CLI | package proof; examples may follow after release |
-| `shiplog-template` | yes | dependency of `shiplog-team` | package proof; do not promote template syntax as stable without docs |
+| `shiplog-team` | hold | conditional team aggregation surface | examples, CLI story, and release-grade docs |
+| `shiplog-template` | hold | conditional template contract | syntax versioning, examples, and compatibility tests |
 | `shiplog-testkit` | no | dev-only fixtures | `publish = false` |
 
 ## Topological Publish Order
@@ -69,8 +69,6 @@ shiplog-ingest-manual
 shiplog-ingest-git
 shiplog-ingest-github
 shiplog-cluster-llm
-shiplog-template
-shiplog-team
 shiplog-engine
 shiplog
 ```
@@ -80,8 +78,9 @@ set. If package dry-run proves that a public crate still depends on one of
 them, either publish that dependency deliberately or remove the dependency
 before tagging.
 
-`shiplog-template` is versioned independently at `0.3.0`; it is included here
-only because the published optional `team` feature depends on it.
+`shiplog-team` and `shiplog-template` remain workspace members but are held out
+of the v0.2.1 release set. The published CLI does not expose the optional
+`team` feature for this release.
 
 ## Observed Dry-Run Boundary
 
@@ -98,3 +97,14 @@ That is a registry-state limitation of first-time multi-crate publication, not
 a package-list failure. The release process must interleave dry-run and publish
 steps in the topological order until each required dependency version is visible
 on crates.io.
+
+After `shiplog-ids 0.2.1` was published, the next dry-run exposed a separate
+metadata issue: publishable crates must not carry versioned dev-dependencies on
+the unpublished workspace-only `shiplog-testkit`. Those dev-dependencies are
+path-only for workspace tests and are omitted from packaged crates.
+
+With that fixed, `cargo publish -p shiplog-schema --dry-run` succeeds. A resumed
+`scripts/publish-dry-run.sh --from shiplog-schema` then stops at
+`shiplog-ports` until `shiplog-schema 0.2.1` is visible on crates.io, so the
+remaining publication must continue by interleaving one dry-run and publish step
+per crate in the order above.

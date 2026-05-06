@@ -23,7 +23,7 @@ shiplog-ids = { path = "../shiplog-ids", version = "0.2.1" }
 criterion.workspace = true
 proptest.workspace = true
 insta = { workspace = true, features = ["json"] }
-shiplog-testkit = { path = "../shiplog-testkit", version = "0.2.1" }
+shiplog-testkit = { path = "../shiplog-testkit" }
 serde_yaml.workspace = true
 
 [[bench]]
