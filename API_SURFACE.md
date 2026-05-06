@@ -124,14 +124,14 @@ Use flags like these when the capability exists:
 Avoid flags named after internal implementation parts such as cache keys,
 redaction policy, or output layout.
 
-## Current Migration Note
+## Current State
 
-Some implementation seams still exist as crates while this branch preserves
-working product behavior. The redaction family has been folded into
-`shiplog-redact`, and date-window partitioning now lives under
-`shiplog-coverage::windows`. Cache key, stats, expiry, and SQLite storage now
-live under `shiplog-cache`; LLM prompt and parse helpers live under
-`shiplog-cluster-llm`; manual event parsing lives under
-`shiplog-ingest-manual`; output layout lives under `shiplog-bundle`; receipt
-formatting lives under `shiplog-render-md`. Remaining carrier families should
-follow the same owner-module pattern without expanding the external API.
+The weak implementation-carrier families have been folded into owner crates:
+redaction, cache, date windows, LLM prompt/parse, manual events, output layout,
+receipt formatting, team phases, and workstream phases.
+
+`shiplog-template` remains conditional: it should be published only if packet
+templates are treated as a stable user contract for this release.
+
+New implementation seams should start as owner modules and should not become
+workspace crates unless this document deliberately promotes them.

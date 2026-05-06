@@ -14,8 +14,8 @@ optional boundaries. Internal SRP seams should be modules inside an owner crate.
 
 ## Target public tiers
 
-These tiers are the intended public surface after transitional implementation
-carriers are either folded into owner modules or deliberately promoted.
+These tiers are the intended public surface after weak implementation-carrier
+families were folded into owner modules.
 
 ### Tier 1 - Stable contracts
 
@@ -65,14 +65,10 @@ carriers are either folded into owner modules or deliberately promoted.
 |---|---|
 | `shiplog` | CLI product and composition root |
 
-## Transitional carriers
-
-Some implementation carriers still exist as packages to preserve behavior during
-this cleanup. They should not be treated as crates.io product surface unless
-`API_SURFACE.md` deliberately promotes them:
-
-`shiplog-template`.
+## Release proof
 
 Before a release, regenerate a dependency-topological dry-run for the final
 publishable set and prove no public crate depends on an unpublished internal
-carrier.
+carrier. For v0.2.1, use
+[`plans/release-matrix-v0.2.1.md`](release-matrix-v0.2.1.md) as the concrete
+publish decision record.

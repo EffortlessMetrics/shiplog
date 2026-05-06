@@ -10,10 +10,41 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  # Prove the package surface before building release assets
+  release-preflight:
+    name: Release Preflight
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.92"
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "release-preflight"
+
+      - name: Install cargo-deny
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deny
+
+      - name: Package proof
+        run: ./scripts/package-proof.sh
+
+      - name: Publish dry run
+        run: ./scripts/publish-dry-run.sh
+
   # Build binaries for all platforms
   build-binary:
     name: Build ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
+    needs: release-preflight
     strategy:
       matrix:
         include:
@@ -73,11 +104,17 @@ jobs:
           echo "name=shiplog-${{ matrix.target }}${{ matrix.ext }}" >> $GITHUB_OUTPUT
           echo "path=target/${{ matrix.target }}/release/shiplog${{ matrix.ext }}" >> $GITHUB_OUTPUT
 
+      - name: Stage binary
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp "${{ steps.binary.outputs.path }}" "dist/${{ steps.binary.outputs.name }}"
+
       - name: Upload binary
         uses: actions/upload-artifact@v7
         with:
           name: shiplog-${{ matrix.target }}${{ matrix.ext }}
-          path: ${{ steps.binary.outputs.path }}
+          path: dist/${{ steps.binary.outputs.name }}
           retention-days: 5
 
   # Create GitHub release
@@ -120,6 +157,12 @@ jobs:
         with:
           path: artifacts
 
+      - name: Generate checksums
+        run: |
+          cd artifacts
+          find . -maxdepth 2 -type f -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
       - name: Upload assets
         uses: softprops/action-gh-release@v3
         with:
@@ -130,6 +173,7 @@ jobs:
             artifacts/shiplog-x86_64-apple-darwin/shiplog-x86_64-apple-darwin
             artifacts/shiplog-aarch64-apple-darwin/shiplog-aarch64-apple-darwin
             artifacts/shiplog-x86_64-pc-windows-msvc/shiplog-x86_64-pc-windows-msvc.exe
+            artifacts/SHA256SUMS.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -154,6 +198,18 @@ jobs:
           path: target
           key: ${{ runner.os }}-cargo-release-${{ hashFiles('**/Cargo.lock') }}
 
+      - name: Download Linux x86_64 artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: shiplog-x86_64-unknown-linux-gnu
+          path: artifacts/shiplog-x86_64-unknown-linux-gnu
+
+      - name: Smoke downloaded Linux artifact
+        run: |
+          chmod +x artifacts/shiplog-x86_64-unknown-linux-gnu/shiplog-x86_64-unknown-linux-gnu
+          artifacts/shiplog-x86_64-unknown-linux-gnu/shiplog-x86_64-unknown-linux-gnu --help
+          artifacts/shiplog-x86_64-unknown-linux-gnu/shiplog-x86_64-unknown-linux-gnu --version
+
       - name: Build release
         run: cargo build --release -p shiplog
 
@@ -177,6 +233,7 @@ jobs:
           echo "- Multi-platform builds: **SUCCESS** (Linux x86_64, Linux ARM64, macOS x86_64, macOS ARM64, Windows x86_64)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "## Smoke Tests" >> $GITHUB_STEP_SUMMARY
+          echo "- Downloaded Linux artifact help/version: **PASSED**" >> $GITHUB_STEP_SUMMARY
           echo "- Help command: **PASSED**" >> $GITHUB_STEP_SUMMARY
           echo "- Version command: **PASSED**" >> $GITHUB_STEP_SUMMARY
           echo "- Help subcommand: **PASSED**" >> $GITHUB_STEP_SUMMARY

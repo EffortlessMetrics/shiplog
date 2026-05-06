@@ -28,7 +28,7 @@ shiplog is not an analytics dashboard. It is not AI-generated narrative. It prod
 
 ## Features
 
-- 🔍 **Multi-source ingestion** — GitHub API, canonical JSONL, and manual YAML events
+- 🔍 **Multi-source ingestion** — GitHub API, local git commits, canonical JSONL, and manual YAML events
 - 📊 **Automatic workstream clustering** — repo-based by default, optional LLM-assisted semantic grouping
 - 🔒 **Deterministic HMAC-SHA256 redaction** — three profiles (internal / manager / public) with stable aliases
 - ✅ **Coverage-first design** — every claim backed by receipts; gaps explicitly flagged in the coverage manifest
@@ -134,6 +134,7 @@ out/<run_id>/
 | Source | Description |
 |--------|-------------|
 | `github` | PR and review ingestion from GitHub API (with adaptive slicing and SQLite cache) |
+| `git` | Local git commit ingestion for `collect git`; `refresh git` and `run git` are not yet supported |
 | `json` | Import from canonical JSONL event files |
 | `manual` | Ingest non-GitHub work from a YAML events file |
 
@@ -152,6 +153,14 @@ shiplog refresh github \
 shiplog collect json \
   --events ./ledger.events.jsonl \
   --coverage ./coverage.manifest.json \
+  --out ./out
+
+# Collect commits from a local git repository
+shiplog collect git \
+  --repo . \
+  --since 2025-07-01 \
+  --until 2026-01-01 \
+  --author you@example.com \
   --out ./out
 
 # Collect manual (non-GitHub) events
@@ -224,8 +233,9 @@ external contract. Adapters depend on ports and schema, never the reverse.
   +-------v------+  +-------v------+  +--------v-------+
   | Ingest       |  | Process      |  | Output         |
   | - github     |  | - workstreams|  | - render-md    |
-  | - json       |  | - redact     |  | - render-json  |
-  | - manual     |  | - cluster-llm|  | - bundle       |
+  | - git        |  | - redact     |  | - render-json  |
+  | - json       |  | - cluster-llm|  | - bundle       |
+  | - manual     |  | - team/merge |  |                |
   +--------------+  +--------------+  +----------------+
           |                  |                  |
           +------------------+------------------+
@@ -250,18 +260,23 @@ external contract. Adapters depend on ports and schema, never the reverse.
 | `shiplog-coverage` | Time windows, completeness tracking |
 | `shiplog-cache` | SQLite-backed API response cache |
 | `shiplog-ingest-github` | GitHub PR and review ingestion with adaptive slicing |
+| `shiplog-ingest-git` | Local git commit ingestion for the `collect git` path |
 | `shiplog-ingest-json` | Import from canonical JSON artifacts |
 | `shiplog-ingest-manual` | YAML-based manual event ingestion |
 | `shiplog-workstreams` | Workstream clustering and user-curated YAML workflow |
+| `shiplog-merge` | Multi-source merge helpers used by the engine |
 | `shiplog-cluster-llm` | Optional LLM-assisted semantic clustering |
+| `shiplog-team` | Optional team aggregation feature surface |
+| `shiplog-template` | Template dependency for team packet rendering; not a stable user template contract by default |
 | `shiplog-redact` | Deterministic HMAC-SHA256 redaction across three profiles |
 | `shiplog-render-md` | Markdown packet renderer |
 | `shiplog-render-json` | JSON output renderer |
 | `shiplog-bundle` | Zip archives with SHA256 checksum manifests |
 | `shiplog-testkit` | Shared test fixtures (not published) |
 
-The workspace may contain temporary internal implementation carriers during migration.
-Those are not promoted public APIs; new boundaries should start as modules first.
+Internal implementation seams live under owner crates as modules. New boundaries
+start as modules and are promoted to public crates only when they become stable
+contracts, trust surfaces, real adapters, or heavy optional boundaries.
 
 ## LLM clustering
 

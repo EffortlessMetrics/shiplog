@@ -25,6 +25,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated mutation testing configuration with proper tier assignments
 - Updated property testing workflow to cover all crates
 
+### Release Readiness
+
+- Added a v0.2.1 release matrix to separate publish targets from held adapters and dev-only tooling
+- Added package-proof and publish dry-run scripts for release-surface verification
+- Hardened release assets with checksum generation and downloaded-artifact smoke tests
+- Updated public-surface documentation to reflect the module-first post-cleanup workspace
+
 ## [0.2.1] - 2026-02-17
 
 ### Added
@@ -49,7 +56,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`--run-dir` flag**: explicit run directory for `refresh` (overrides auto-detection)
 - **`SourceSystem::Other(String)` variant**: extension point for third-party source systems (`#[non_exhaustive]`)
 - **Bundle exclusion of `redaction.aliases.json`**: alias cache is excluded from bundle manifests and zip archives to prevent redaction bypass
-- **LLM feature gate**: `shiplog-cluster-llm` is now an optional dependency behind the `llm` feature (default on); build with `--no-default-features` to omit it
+- **LLM feature gate**: `shiplog-cluster-llm` is now an optional dependency behind the `llm` feature, off by default; build with `--features llm` to include it
 - Module-level documentation (`//!` doc blocks) for `shiplog-schema`, `shiplog-coverage`, `shiplog-workstreams`, `shiplog-engine`, and `shiplog-ports`
 - CLI Reference section in README.md with full flag table
 - LLM clustering flags (`--llm-cluster`, `--llm-api-endpoint`, `--llm-model`, `--llm-api-key`) documented across all 4 doc files
