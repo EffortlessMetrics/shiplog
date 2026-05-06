@@ -12,6 +12,20 @@ optional boundaries. Internal SRP seams should be modules inside an owner crate.
 | `shiplog-testkit` | Test-only shared fixtures (`publish = false`) |
 | `shiplog-fuzz` (in `fuzz/`) | Fuzz harnesses, not a workspace member (`publish = false`) |
 
+## Deferred crates
+
+These workspace crates are deliberately not crates.io promises yet. Their
+manifests use `publish = false` until a later PR promotes them with standalone
+docs, examples, tests, and a release-matrix update.
+
+| Crate | Promotion requirement |
+|---|---|
+| `shiplog-ingest-gitlab` | CLI story, auth model, examples, and release-grade tests |
+| `shiplog-ingest-jira` | CLI story, auth model, examples, and release-grade tests |
+| `shiplog-ingest-linear` | CLI story, auth model, examples, and release-grade tests |
+| `shiplog-team` | Team aggregation examples, CLI story, and release-grade docs |
+| `shiplog-template` | Template syntax versioning, examples, and compatibility tests |
+
 ## Target public tiers
 
 These tiers are the intended public surface after weak implementation-carrier

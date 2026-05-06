@@ -34,12 +34,12 @@ not treat every workspace member as a publish target.
 | `shiplog-ingest-git` | yes | local git adapter used by the CLI `collect git` path | refresh/run limitation documented |
 | `shiplog-ingest-json` | yes | stable import format | package proof |
 | `shiplog-ingest-manual` | yes | manual evidence lane | package proof |
-| `shiplog-ingest-gitlab` | hold | conditional adapter, not wired into CLI docs | CLI/auth examples and release-grade tests |
-| `shiplog-ingest-jira` | hold | conditional adapter, not wired into CLI docs | CLI/auth examples and release-grade tests |
-| `shiplog-ingest-linear` | hold | conditional adapter, not wired into CLI docs | CLI/auth examples and release-grade tests |
+| `shiplog-ingest-gitlab` | hold | conditional adapter, not wired into CLI docs | CLI/auth examples, release-grade tests, and manifest promotion from `publish = false` |
+| `shiplog-ingest-jira` | hold | conditional adapter, not wired into CLI docs | CLI/auth examples, release-grade tests, and manifest promotion from `publish = false` |
+| `shiplog-ingest-linear` | hold | conditional adapter, not wired into CLI docs | CLI/auth examples, release-grade tests, and manifest promotion from `publish = false` |
 | `shiplog-cluster-llm` | yes | optional privacy/network boundary behind `llm` | package proof and fallback/privacy docs |
-| `shiplog-team` | hold | conditional team aggregation surface | examples, CLI story, and release-grade docs |
-| `shiplog-template` | hold | conditional template contract | syntax versioning, examples, and compatibility tests |
+| `shiplog-team` | hold | conditional team aggregation surface | examples, CLI story, release-grade docs, and manifest promotion from `publish = false` |
+| `shiplog-template` | hold | conditional template contract | syntax versioning, examples, compatibility tests, and manifest promotion from `publish = false` |
 | `shiplog-testkit` | no | dev-only fixtures | `publish = false` |
 
 ## Topological Publish Order
@@ -76,11 +76,12 @@ shiplog
 GitLab, Jira, and Linear are workspace members but are held from this release
 set. If package dry-run proves that a public crate still depends on one of
 them, either publish that dependency deliberately or remove the dependency
-before tagging.
+before tagging. Their manifests use `publish = false` until promotion.
 
 `shiplog-team` and `shiplog-template` remain workspace members but are held out
 of the v0.2.1 release set. The published CLI does not expose the optional
-`team` feature for this release.
+`team` feature for this release. Their manifests use `publish = false` until
+promotion.
 
 ## Observed Dry-Run Boundary
 
