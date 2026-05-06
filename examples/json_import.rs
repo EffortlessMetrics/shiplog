@@ -11,7 +11,7 @@ use shiplog_ports::Ingestor;
 use shiplog_redact::DeterministicRedactor;
 use shiplog_render_md::MarkdownRenderer;
 use shiplog_schema::bundle::BundleProfile;
-use shiplog_workstream_cluster::RepoClusterer;
+use shiplog_workstreams::RepoClusterer;
 use std::path::PathBuf;
 
 fn main() -> Result<()> {

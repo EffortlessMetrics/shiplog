@@ -10,7 +10,7 @@ use shiplog_schema::{
     },
     workstream::{Workstream, WorkstreamStats, WorkstreamsFile},
 };
-use shiplog_workstream_receipt_policy::WORKSTREAM_RECEIPT_RENDER_LIMIT;
+use shiplog_workstreams::WORKSTREAM_RECEIPT_RENDER_LIMIT;
 
 fn pull_request_event(id: &str) -> EventEnvelope {
     EventEnvelope {

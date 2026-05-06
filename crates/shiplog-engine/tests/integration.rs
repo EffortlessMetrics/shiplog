@@ -12,8 +12,8 @@ use shiplog_schema::bundle::BundleProfile;
 use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
 use shiplog_schema::event::*;
 use shiplog_schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
-use shiplog_workstream_cluster::RepoClusterer;
-use shiplog_workstream_layout::WorkstreamManager;
+use shiplog_workstreams::RepoClusterer;
+use shiplog_workstreams::WorkstreamManager;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -211,8 +211,7 @@ fn run_uses_curated_workstreams_when_present() {
             receipts: vec![],
         }],
     };
-    shiplog_workstream_layout::write_workstreams(&WorkstreamManager::curated_path(&out), &ws)
-        .unwrap();
+    shiplog_workstreams::write_workstreams(&WorkstreamManager::curated_path(&out), &ws).unwrap();
 
     let engine = real_engine();
     let ingest = make_ingest(vec![pr_event("acme/foo", 1, "some pr")]);
@@ -250,8 +249,7 @@ fn run_uses_suggested_workstreams_when_only_suggested_exists() {
             receipts: vec![],
         }],
     };
-    shiplog_workstream_layout::write_workstreams(&WorkstreamManager::suggested_path(&out), &ws)
-        .unwrap();
+    shiplog_workstreams::write_workstreams(&WorkstreamManager::suggested_path(&out), &ws).unwrap();
 
     let engine = real_engine();
     let ingest = make_ingest(vec![pr_event("acme/foo", 1, "some pr")]);
@@ -697,8 +695,7 @@ fn refresh_with_curated_workstreams_preserves_curation() {
             receipts: vec![],
         }],
     };
-    shiplog_workstream_layout::write_workstreams(&WorkstreamManager::curated_path(&out), &ws)
-        .unwrap();
+    shiplog_workstreams::write_workstreams(&WorkstreamManager::curated_path(&out), &ws).unwrap();
 
     let engine = real_engine();
     let ingest = make_ingest(vec![pr_event("acme/foo", 1, "refreshed")]);
@@ -741,8 +738,7 @@ fn refresh_with_suggested_workstreams_uses_suggested() {
             receipts: vec![],
         }],
     };
-    shiplog_workstream_layout::write_workstreams(&WorkstreamManager::suggested_path(&out), &ws)
-        .unwrap();
+    shiplog_workstreams::write_workstreams(&WorkstreamManager::suggested_path(&out), &ws).unwrap();
 
     let engine = real_engine();
     let ingest = make_ingest(vec![pr_event("acme/foo", 1, "refreshed")]);
@@ -804,8 +800,7 @@ fn refresh_with_empty_events_succeeds() {
         generated_at: Utc::now(),
         workstreams: vec![],
     };
-    shiplog_workstream_layout::write_workstreams(&WorkstreamManager::curated_path(&out), &ws)
-        .unwrap();
+    shiplog_workstreams::write_workstreams(&WorkstreamManager::curated_path(&out), &ws).unwrap();
 
     let engine = real_engine();
     let ingest = make_ingest(vec![]);
@@ -835,8 +830,7 @@ fn refresh_with_zip_creates_archive() {
         generated_at: Utc::now(),
         workstreams: vec![],
     };
-    shiplog_workstream_layout::write_workstreams(&WorkstreamManager::curated_path(&out), &ws)
-        .unwrap();
+    shiplog_workstreams::write_workstreams(&WorkstreamManager::curated_path(&out), &ws).unwrap();
 
     let engine = real_engine();
     let ingest = make_ingest(vec![pr_event("acme/foo", 1, "zip refresh")]);

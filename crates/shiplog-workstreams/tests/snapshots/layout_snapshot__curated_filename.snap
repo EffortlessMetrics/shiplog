@@ -1,0 +1,6 @@
+---
+source: crates/shiplog-workstreams/tests/layout_snapshot.rs
+assertion_line: 83
+expression: "shiplog_workstreams::CURATED_FILENAME"
+---
+workstreams.yaml

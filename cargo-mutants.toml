@@ -58,9 +58,6 @@
 # preserves behavior. They are not the target public doctrine; fold them into
 # owner modules over time unless API_SURFACE.md deliberately promotes them.
 #
-# shiplog-workstream-cluster
-# shiplog-workstream-receipt-policy
-# shiplog-workstream-layout
 # shiplog-template
 
 # ============================================================================

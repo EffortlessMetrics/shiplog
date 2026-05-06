@@ -8,7 +8,7 @@ use shiplog_render_md::MarkdownRenderer;
 use shiplog_schema::bundle::BundleProfile;
 use shiplog_schema::coverage::CoverageManifest;
 use shiplog_testkit::proptest::strategies::{strategy_coverage_manifest, strategy_event_vec};
-use shiplog_workstream_cluster::RepoClusterer;
+use shiplog_workstreams::RepoClusterer;
 
 fn engine() -> Engine<'static> {
     let renderer: &'static dyn Renderer = Box::leak(Box::new(MarkdownRenderer::default()));

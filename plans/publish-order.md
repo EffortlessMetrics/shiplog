@@ -71,8 +71,7 @@ Some implementation carriers still exist as packages to preserve behavior during
 this cleanup. They should not be treated as crates.io product surface unless
 `API_SURFACE.md` deliberately promotes them:
 
-`shiplog-workstream-cluster`, `shiplog-workstream-layout`, and
-`shiplog-workstream-receipt-policy`.
+`shiplog-template`.
 
 Before a release, regenerate a dependency-topological dry-run for the final
 publishable set and prove no public crate depends on an unpublished internal

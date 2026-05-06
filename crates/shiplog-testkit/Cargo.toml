@@ -27,7 +27,6 @@ shiplog-team = { path = "../shiplog-team", version = "0.2.1", optional = true }
 shiplog-ports = { path = "../shiplog-ports", version = "0.2.1" }
 shiplog-render-md = { path = "../shiplog-render-md", version = "0.2.1" }
 shiplog-workstreams = { path = "../shiplog-workstreams", version = "0.2.1" }
-shiplog-workstream-layout = { path = "../shiplog-workstream-layout", version = "0.2.1" }
 proptest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -38,7 +37,6 @@ shiplog-redact = { path = "../shiplog-redact", version = "0.2.1" }
 shiplog-engine = { path = "../shiplog-engine", version = "0.2.1" }
 shiplog-ingest-json = { path = "../shiplog-ingest-json", version = "0.2.1" }
 shiplog-render-json = { path = "../shiplog-render-json", version = "0.2.1" }
-shiplog-workstream-cluster = { path = "../shiplog-workstream-cluster", version = "0.2.1" }
 shiplog-coverage = { path = "../shiplog-coverage", version = "0.2.1" }
 serde.workspace = true
 serde_yaml.workspace = true

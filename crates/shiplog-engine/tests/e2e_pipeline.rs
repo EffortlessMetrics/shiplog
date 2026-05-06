@@ -17,8 +17,8 @@ use shiplog_schema::bundle::BundleProfile;
 use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
 use shiplog_schema::event::*;
 use shiplog_schema::workstream::WorkstreamsFile;
-use shiplog_workstream_cluster::RepoClusterer;
-use shiplog_workstream_layout::WorkstreamManager;
+use shiplog_workstreams::RepoClusterer;
+use shiplog_workstreams::WorkstreamManager;
 use std::io::Write;
 
 // ---------------------------------------------------------------------------

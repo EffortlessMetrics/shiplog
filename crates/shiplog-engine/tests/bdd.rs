@@ -14,7 +14,7 @@ use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
 use shiplog_schema::event::*;
 use shiplog_testkit::bdd::Scenario;
 use shiplog_testkit::bdd::assertions::*;
-use shiplog_workstream_cluster::RepoClusterer;
+use shiplog_workstreams::RepoClusterer;
 
 // ---------------------------------------------------------------------------
 // Helpers

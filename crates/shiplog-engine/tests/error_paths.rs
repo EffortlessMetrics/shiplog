@@ -13,8 +13,8 @@ use shiplog_schema::bundle::BundleProfile;
 use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
 use shiplog_schema::event::*;
 use shiplog_schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
-use shiplog_workstream_cluster::RepoClusterer;
-use shiplog_workstream_layout::WorkstreamManager;
+use shiplog_workstreams::RepoClusterer;
+use shiplog_workstreams::WorkstreamManager;
 
 // ---------------------------------------------------------------------------
 // Stubs
@@ -216,7 +216,7 @@ fn refresh_propagates_renderer_error() {
     std::fs::create_dir_all(&out).unwrap();
 
     // Pre-write workstreams so refresh passes the "no workstreams" check
-    shiplog_workstream_layout::write_workstreams(
+    shiplog_workstreams::write_workstreams(
         &WorkstreamManager::curated_path(&out),
         &empty_workstreams(),
     )
@@ -250,7 +250,7 @@ fn refresh_propagates_redactor_error() {
     let out = dir.path().join("refresh_fail_redact");
     std::fs::create_dir_all(&out).unwrap();
 
-    shiplog_workstream_layout::write_workstreams(
+    shiplog_workstreams::write_workstreams(
         &WorkstreamManager::curated_path(&out),
         &empty_workstreams(),
     )

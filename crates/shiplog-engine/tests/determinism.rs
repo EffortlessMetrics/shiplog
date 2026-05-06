@@ -12,7 +12,7 @@ use shiplog_render_md::MarkdownRenderer;
 use shiplog_schema::bundle::BundleProfile;
 use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
 use shiplog_schema::event::EventEnvelope;
-use shiplog_workstream_cluster::RepoClusterer;
+use shiplog_workstreams::RepoClusterer;
 
 const RUNS: usize = 3;
 

@@ -14,12 +14,9 @@ shiplog-ingest-github = { path = "../crates/shiplog-ingest-github" }
 shiplog-ingest-manual = { path = "../crates/shiplog-ingest-manual" }
 shiplog-workstreams = { path = "../crates/shiplog-workstreams" }
 shiplog-schema = { path = "../crates/shiplog-schema" }
-shiplog-workstream-receipt-policy = { path = "../crates/shiplog-workstream-receipt-policy", version = "0.2.1" }
 shiplog-ids = { path = "../crates/shiplog-ids" }
-shiplog-workstream-layout = { path = "../crates/shiplog-workstream-layout" }
 shiplog-redact = { path = "../crates/shiplog-redact" }
 shiplog-render-md = { path = "../crates/shiplog-render-md" }
-shiplog-workstream-cluster = { path = "../crates/shiplog-workstream-cluster", version = "0.2.1" }
 shiplog-ports = { path = "../crates/shiplog-ports", version = "0.2.1" }
 shiplog-cache = { path = "../crates/shiplog-cache" }
 shiplog-coverage = { path = "../crates/shiplog-coverage" }

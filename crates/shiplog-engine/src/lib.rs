@@ -15,7 +15,7 @@ use shiplog_schema::bundle::BundleProfile;
 use shiplog_schema::coverage::CoverageManifest;
 use shiplog_schema::event::EventEnvelope;
 use shiplog_schema::workstream::WorkstreamsFile;
-use shiplog_workstream_layout::WorkstreamManager;
+use shiplog_workstreams::WorkstreamManager;
 use std::path::{Path, PathBuf};
 
 /// The orchestration engine that wires ingestors, clusterers, redactors, and renderers.
@@ -299,7 +299,7 @@ impl<'a> Engine<'a> {
         let (ws, ws_source) = if let Some(ws) = workstreams {
             // Write imported workstreams as curated
             let curated_path = WorkstreamManager::curated_path(out_dir);
-            shiplog_workstream_layout::write_workstreams(&curated_path, &ws)
+            shiplog_workstreams::write_workstreams(&curated_path, &ws)
                 .with_context(|| format!("write curated workstreams to {curated_path:?}"))?;
             (ws, WorkstreamSource::Curated)
         } else {
@@ -606,7 +606,7 @@ mod tests {
     use shiplog_ports::IngestOutput;
     use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
     use shiplog_schema::event::*;
-    use shiplog_workstream_cluster::RepoClusterer;
+    use shiplog_workstreams::RepoClusterer;
 
     fn pr_event(repo: &str, number: u64, title: &str) -> EventEnvelope {
         EventEnvelope {

@@ -17,7 +17,7 @@ mod user_workflow_tests {
     use shiplog_render_md::MarkdownRenderer;
     use shiplog_schema::bundle::BundleProfile;
     use shiplog_schema::coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow};
-    use shiplog_workstream_cluster::RepoClusterer;
+    use shiplog_workstreams::RepoClusterer;
 
     // -- helpers ---------------------------------------------------------
 
@@ -229,8 +229,8 @@ mod user_workflow_tests {
                         std::fs::create_dir_all(&out_dir).unwrap();
 
                         let curated_path =
-                            shiplog_workstream_layout::WorkstreamManager::curated_path(&out_dir);
-                        shiplog_workstream_layout::write_workstreams(&curated_path, &ws).unwrap();
+                            shiplog_workstreams::WorkstreamManager::curated_path(&out_dir);
+                        shiplog_workstreams::write_workstreams(&curated_path, &ws).unwrap();
 
                         let coverage = make_coverage("testuser", Completeness::Complete);
                         let ingest = IngestOutput { events, coverage };

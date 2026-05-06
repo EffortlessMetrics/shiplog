@@ -13,7 +13,7 @@ use shiplog_render_md::MarkdownRenderer;
 use shiplog_schema::bundle::BundleProfile;
 use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
 use shiplog_schema::event::*;
-use shiplog_workstream_cluster::RepoClusterer;
+use shiplog_workstreams::RepoClusterer;
 
 fn pr_event(repo: &str, number: u64, title: &str) -> EventEnvelope {
     shiplog_testkit::pr_event(repo, number, title)
@@ -291,8 +291,8 @@ fn refresh_works_with_spaces_in_path() {
         generated_at: Utc::now(),
         workstreams: vec![],
     };
-    shiplog_workstream_layout::write_workstreams(
-        &shiplog_workstream_layout::WorkstreamManager::curated_path(&out),
+    shiplog_workstreams::write_workstreams(
+        &shiplog_workstreams::WorkstreamManager::curated_path(&out),
         &ws,
     )
     .unwrap();

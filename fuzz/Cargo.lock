@@ -1285,7 +1285,7 @@ dependencies = [
  "shiplog-ids",
  "shiplog-ports",
  "shiplog-schema",
- "shiplog-workstream-cluster",
+ "shiplog-workstreams",
 ]
 
 [[package]]
@@ -1319,9 +1319,6 @@ dependencies = [
  "shiplog-render-md",
  "shiplog-schema",
  "shiplog-team",
- "shiplog-workstream-cluster",
- "shiplog-workstream-layout",
- "shiplog-workstream-receipt-policy",
  "shiplog-workstreams",
 ]
 
@@ -1416,7 +1413,7 @@ dependencies = [
  "itertools",
  "shiplog-ports",
  "shiplog-schema",
- "shiplog-workstream-receipt-policy",
+ "shiplog-workstreams",
 ]
 
 [[package]]
@@ -1456,43 +1453,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "shiplog-workstream-cluster"
+name = "shiplog-workstreams"
 version = "0.2.1"
 dependencies = [
  "anyhow",
  "chrono",
- "shiplog-ids",
- "shiplog-ports",
- "shiplog-schema",
- "shiplog-workstream-receipt-policy",
-]
-
-[[package]]
-name = "shiplog-workstream-layout"
-version = "0.2.1"
-dependencies = [
- "anyhow",
  "serde_yaml_ng",
- "shiplog-ports",
- "shiplog-schema",
-]
-
-[[package]]
-name = "shiplog-workstream-receipt-policy"
-version = "0.2.1"
-dependencies = [
- "shiplog-schema",
-]
-
-[[package]]
-name = "shiplog-workstreams"
-version = "0.2.1"
-dependencies = [
  "shiplog-ids",
  "shiplog-ports",
  "shiplog-schema",
- "shiplog-workstream-cluster",
- "shiplog-workstream-layout",
 ]
 
 [[package]]

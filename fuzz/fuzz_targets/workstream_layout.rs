@@ -6,7 +6,7 @@
 
 use libfuzzer_sys::fuzz_target;
 use shiplog_schema::workstream::WorkstreamsFile;
-use shiplog_workstream_layout::{
+use shiplog_workstreams::{
     CURATED_FILENAME, SUGGESTED_FILENAME, WorkstreamManager, write_workstreams,
 };
 

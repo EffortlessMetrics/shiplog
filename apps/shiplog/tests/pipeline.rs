@@ -12,7 +12,7 @@ use shiplog_render_md::MarkdownRenderer;
 use shiplog_schema::bundle::BundleProfile;
 use shiplog_schema::coverage::CoverageManifest;
 use shiplog_schema::event::{ManualDate, ManualEventEntry, ManualEventType, ManualEventsFile};
-use shiplog_workstream_cluster::RepoClusterer;
+use shiplog_workstreams::RepoClusterer;
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
 
