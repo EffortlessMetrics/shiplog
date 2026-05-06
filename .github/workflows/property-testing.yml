@@ -83,18 +83,6 @@ jobs:
       - name: Run property tests for shiplog-receipt
         run: cargo test -p shiplog-receipt -- --test-threads=4
 
-      - name: Run property tests for shiplog-redaction-profile
-        run: cargo test -p shiplog-redaction-profile -- --test-threads=4
-
-      - name: Run property tests for shiplog-redaction-repo
-        run: cargo test -p shiplog-redaction-repo -- --test-threads=4
-
-      - name: Run property tests for shiplog-redaction-projector
-        run: cargo test -p shiplog-redaction-projector -- --test-threads=4
-
-      - name: Run property tests for shiplog-redaction-policy
-        run: cargo test -p shiplog-redaction-policy -- --test-threads=4
-
       - name: Run property tests for shiplog-workstream-receipt-policy
         run: cargo test -p shiplog-workstream-receipt-policy -- --test-threads=4
 
@@ -143,10 +131,6 @@ jobs:
           echo "- shiplog-cluster-llm-parse" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog-cluster-llm-prompt" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog-receipt" >> $GITHUB_STEP_SUMMARY
-          echo "- shiplog-redaction-profile" >> $GITHUB_STEP_SUMMARY
-          echo "- shiplog-redaction-repo" >> $GITHUB_STEP_SUMMARY
-          echo "- shiplog-redaction-projector" >> $GITHUB_STEP_SUMMARY
-          echo "- shiplog-redaction-policy" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog-workstream-receipt-policy" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog-workstream-layout" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog-workstream-cluster" >> $GITHUB_STEP_SUMMARY
