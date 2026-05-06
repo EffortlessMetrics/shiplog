@@ -30,7 +30,7 @@ jobs:
           components: llvm-tools-preview
 
       - name: Cache cargo binaries
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cargo/bin
           key: ${{ runner.os }}-cargo-bin-nightly-2026-02-18
@@ -142,7 +142,7 @@ jobs:
           components: llvm-tools-preview
 
       - name: Cache cargo binaries
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cargo/bin
           key: ${{ runner.os }}-cargo-bin-nightly-2026-02-18
