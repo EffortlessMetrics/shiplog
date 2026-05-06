@@ -46,7 +46,7 @@ Fuzzing
 
 ## High-level architecture (big picture)
 
-This is a microcrated Rust workspace following Clean Architecture boundaries. Key components (from Cargo.toml workspace members):
+This is a module-first Rust workspace following Clean Architecture boundaries. Public crates represent product/API contracts, trust surfaces, real adapters, or heavy optional boundaries; implementation seams should start as owner modules. See `API_SURFACE.md` before adding or promoting package boundaries. Key components (from Cargo.toml workspace members):
 
 - crates/shiplog-ids — ID types and helpers (SHA256-based deterministic IDs)
 - crates/shiplog-schema — canonical event model (the data spine)
@@ -98,9 +98,9 @@ Outputs typically produced under `out/<run_id>/` and include `packet.md`, `works
 
 - Crate naming: crates use the `shiplog-*` prefix; role is implied by the suffix (schema, ports, ingest-*, render-*, engine).
 - Ports & adapters: `crates/shiplog-ports` defines traits; ingest/render crates are adapters that implement those traits (dependency direction: adapters depend on ports and schema, not vice versa).
-- Single responsibility microcrates: most logic is split into focused crates (schema, engine, adapters, renderers) — prefer adding small crates for new orthogonal responsibilities.
+- Module-first boundaries: keep new SRP seams as modules under the owning crate first. Promote to a crate only for stable contracts, trust surfaces, real external adapters, or heavy/risky optional boundaries.
 - Testing conventions:
-  - Unit tests live inside each microcrate.
+  - Unit tests live next to the crate or owner module they verify.
   - Snapshot tests use `insta` for rendered outputs (serialize to YAML/JSON as checked-in snapshots).
   - Property tests use `proptest` for invariants (redaction, etc.).
   - BDD-style integration tests via `shiplog-testkit::bdd` for scenario-driven testing.

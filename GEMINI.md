@@ -6,7 +6,7 @@
 
 ## Architecture
 
-This project is a modular Rust workspace following **Clean Architecture** principles (Ports & Adapters).
+This project is a module-first Rust workspace following **Clean Architecture** principles (Ports & Adapters). Public crates are reserved for product/API contracts, trust surfaces, real adapters, or heavy optional boundaries. New implementation seams should start as owner modules; see [`API_SURFACE.md`](API_SURFACE.md) before adding or promoting package boundaries.
 
 ### Workspace Structure
 
@@ -140,8 +140,9 @@ Outputs go under `out/<run_id>/`:
 
 *   **Code Style:** Standard Rust style. Use `cargo fmt` and `cargo clippy`.
 *   **Dependency Direction:** Adapters depend on Ports and Schema. Ports and Schema do *not* depend on Adapters.
+*   **Boundary Direction:** Public crates represent contracts and trust surfaces. Internal SRP seams stay as modules inside the owning crate unless they are deliberately promoted in `API_SURFACE.md`.
 *   **Testing:**
-    *   **Unit Tests:** Located inside each microcrate.
+    *   **Unit Tests:** Located next to the crate or owner module they verify.
     *   **Snapshot Tests:** Used for rendered outputs (Markdown/JSON). Uses [insta](https://github.com/mitsuhiko/insta).
         *   Update snapshots: `INSTA_UPDATE=auto cargo test -p <crate-name>` (Unix) or `$env:INSTA_UPDATE='auto'; cargo test ...` (PowerShell).
     *   **Property Tests:** Used for invariants (e.g., redaction) using `proptest`.

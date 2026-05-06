@@ -33,7 +33,7 @@ shiplog is not an analytics dashboard. It is not AI-generated narrative. It prod
 - 🔒 **Deterministic HMAC-SHA256 redaction** — three profiles (internal / manager / public) with stable aliases
 - ✅ **Coverage-first design** — every claim backed by receipts; gaps explicitly flagged in the coverage manifest
 - 📦 **Zip bundling with checksums** — SHA256 manifest for integrity verification
-- 🏗️ **18-crate clean architecture** — ports & adapters with strict dependency direction
+- 🏗️ **Module-first clean architecture** — public crates for contracts, trust surfaces, adapters, and optional dependency boundaries
 
 ## Installation
 
@@ -190,7 +190,10 @@ shiplog render --run <run_id> --redact-key my-stable-secret --zip --bundle-profi
 
 ## Architecture
 
-shiplog is a microcrated Rust workspace following clean architecture (ports and adapters).
+shiplog is a module-first Rust workspace following clean architecture (ports and adapters).
+Public crates represent contracts, trust surfaces, real adapters, and optional dependency
+boundaries; internal implementation seams live under their owning crates. See
+[API_SURFACE.md](API_SURFACE.md) for the package boundary doctrine.
 
 ### Data flow
 
@@ -200,7 +203,9 @@ GitHub API ─→ Ingestor ─→ Normalizer ─→ Clusterer ─→ Renderer �
     └── Cache      └── Schema   └── Workstreams └── Redact  └── Bundle
 ```
 
-Events flow left-to-right through well-defined ports. Each stage is a separate crate with its own tests; adapters depend on ports and schema, never the reverse.
+Events flow left-to-right through well-defined ports. Product boundaries are tested at the
+crate level; smaller implementation seams stay as owner modules unless they earn an
+external contract. Adapters depend on ports and schema, never the reverse.
 
 ### Crate map
 
@@ -233,7 +238,7 @@ Events flow left-to-right through well-defined ports. Each stage is a separate c
                     +------------------+
 ```
 
-### Workspace crates
+### Public Surface
 
 | Crate | Role |
 |-------|------|
@@ -254,6 +259,9 @@ Events flow left-to-right through well-defined ports. Each stage is a separate c
 | `shiplog-render-json` | JSON output renderer |
 | `shiplog-bundle` | Zip archives with SHA256 checksum manifests |
 | `shiplog-testkit` | Shared test fixtures (not published) |
+
+The workspace may contain temporary internal implementation carriers during migration.
+Those are not promoted public APIs; new boundaries should start as modules first.
 
 ## LLM clustering
 
@@ -278,6 +286,7 @@ LLM clustering is feature-gated and off by default. It falls back to repository-
 ## Documentation
 
 - [CHANGELOG](CHANGELOG.md) -- Release history and migration notes.
+- [API_SURFACE](API_SURFACE.md) -- Public crate boundary doctrine.
 - [ROADMAP](ROADMAP.md) -- What is planned, what is next, and what is out of scope.
 - [CONTRIBUTING](CONTRIBUTING.md) -- Setup, conventions, and how to submit changes.
 - [docs.rs/shiplog](https://docs.rs/shiplog) -- API documentation for all published crates.

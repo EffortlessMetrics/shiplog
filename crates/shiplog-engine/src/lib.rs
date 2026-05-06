@@ -3,7 +3,7 @@
 //!
 //! Wires together ingestors, clusterers, redactors, and renderers to drive the
 //! `collect`, `render`, `refresh`, and `run` commands. This is the main
-//! coordination layer between the CLI and the microcrate adapters.
+//! coordination layer between the CLI and the adapter crates.
 
 use anyhow::{Context, Result};
 use shiplog_bundle::{write_bundle_manifest, write_zip};
@@ -20,7 +20,7 @@ use std::path::{Path, PathBuf};
 
 /// The orchestration engine that wires ingestors, clusterers, redactors, and renderers.
 ///
-/// This is the main coordination layer between the CLI and the microcrate adapters.
+/// This is the main coordination layer between the CLI and the adapter crates.
 /// Construct one via [`Engine::new`], then call [`Engine::run`], [`Engine::refresh`],
 /// or [`Engine::import`] to execute the pipeline.
 pub struct Engine<'a> {

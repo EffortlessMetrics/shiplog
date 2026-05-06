@@ -1,5 +1,0 @@
----
-source: crates/shiplog-report/tests/report.rs
-expression: yaml
----
-[]

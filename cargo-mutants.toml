@@ -1,102 +1,92 @@
 # Mutation testing tier plan for shiplog
 #
-# This is a *planning document* that maps workspace crates to mutation-testing
-# tiers.  The actual cargo-mutants runtime configuration lives in
-# `.cargo/mutants.toml`; the CI workflow (`.github/workflows/mutation-testing.yml`)
-# references the tiers defined here when invoking `cargo mutants -p <crate>`.
+# This is a planning document that maps the current module-first workspace to
+# mutation-testing tiers. The actual cargo-mutants runtime configuration lives
+# in `.cargo/mutants.toml`; the CI workflow invokes `cargo mutants -p <crate>`
+# according to these tiers.
 #
 # Run examples:
 #   cargo mutants --workspace
 #   cargo mutants -p shiplog-schema
 #   cargo mutants -p shiplog-schema -- test_name
-#
+
 # ============================================================================
-# Tier 1: Critical Core — target mutation score ≥ 90 %
-# Deterministic logic, security, and the canonical data spine.
-# ============================================================================
-#
-# shiplog-schema           — canonical event model, coverage types, bundle meta
-# shiplog-ids              — SHA-256 deterministic ID generation
-# shiplog-redact           — HMAC-SHA-256 redaction orchestrator
-# shiplog-coverage         — slicing, completeness, time-window logic
-# shiplog-ports            — trait definitions (Ingestor, Renderer, Redactor, Clusterer)
-# shiplog-date-windows     — month/week/day temporal partitioning
-# shiplog-validate         — event & packet validators
-# shiplog-redaction-policy — per-profile event/workstream redaction transforms
-# shiplog-redaction-profile — internal/manager/public profile enum
-#
-# ============================================================================
-# Tier 2: Pipeline Core — target mutation score ≥ 80 %
-# Orchestration, workstream management, and output layout.
+# Tier 1: Stable contracts and trust surfaces - target score >= 90%
+# Deterministic logic, privacy, completeness, and canonical data contracts.
 # ============================================================================
 #
-# shiplog-engine                    — orchestration (ingest → cluster → render)
-# shiplog-bundle                    — zip export & bundle manifest
-# shiplog-workstreams               — workstream façade (curated + suggested)
-# shiplog-workstream-cluster        — repo-based event clustering
-# shiplog-workstream-receipt-policy — receipt-limit policy & helpers
-# shiplog-workstream-layout         — YAML load/save with curated precedence
-# shiplog-redaction-repo            — repository redaction trait
-# shiplog-redaction-projector       — profile string dispatch
-# shiplog-output-layout             — path contracts for run artifacts
-# shiplog-manual-events             — manual event file I/O & conversion
-# shiplog-export                    — multi-format exporters (JSON/JSONL/CSV)
-#
+# shiplog-schema        - canonical event model, coverage types, bundle metadata
+# shiplog-ids           - SHA-256 deterministic ID generation
+# shiplog-ports         - trait definitions (Ingestor, Renderer, Redactor, Clusterer)
+# shiplog-redact        - HMAC-SHA-256 redaction orchestrator
+# shiplog-coverage      - slicing, completeness, time-window logic
+# shiplog-bundle        - zip export and bundle manifests
+
 # ============================================================================
-# Tier 3: Adapters & Renderers — target mutation score ≥ 70 %
-# Ingest adapters, renderers, caches, and pipeline utilities.
+# Tier 2: Product pipeline - target score >= 80%
+# Orchestration, curation, output, and supported reusable product behavior.
 # ============================================================================
 #
-# shiplog-ingest-github    — GitHub API adapter (adaptive date slicing)
-# shiplog-ingest-json      — JSONL import adapter
-# shiplog-ingest-manual    — manual YAML ingest adapter
-# shiplog-ingest-git       — local git-log ingest adapter
-# shiplog-ingest-gitlab    — GitLab API adapter
-# shiplog-ingest-jira      — Jira API adapter
-# shiplog-ingest-linear    — Linear API adapter
-# shiplog-render-md        — Markdown renderer (insta snapshot-tested)
-# shiplog-render-json      — JSON renderer
-# shiplog-cache            — API cache façade
-# shiplog-cache-sqlite     — SQLite-backed cache with TTL
-# shiplog-cache-key        — cache key builders
-# shiplog-cache-stats      — cache statistics
-# shiplog-cache-expiry     — TTL / expiry predicates
-# shiplog-template         — template rendering
-# shiplog-filter           — event filtering (source, kind, date, actor, tags)
-# shiplog-merge            — event merge & deduplication
-# shiplog-diff             — event-list diffing
-# shiplog-query            — query-language parser for events
-# shiplog-storage          — storage trait + in-memory impl
-# shiplog-config           — config loading/saving (JSON/YAML)
-#
+# shiplog-engine        - orchestration (ingest -> cluster -> render)
+# shiplog-workstreams   - workstream facade (curated + suggested)
+# shiplog-render-md     - Markdown renderer (insta snapshot-tested)
+# shiplog-render-json   - JSON renderer
+# shiplog-cache         - API cache facade
+# shiplog-merge         - multi-source event merge and deduplication
+
 # ============================================================================
-# Tier 4: Supporting & Experimental — target mutation score ≥ 60 %
-# LLM clustering, team aggregation, reporting, and utilities.
+# Tier 3: Real adapters and optional boundaries - target score >= 70%
+# External-system adapters and feature-gated integration surfaces.
 # ============================================================================
 #
-# shiplog-cluster-llm        — LLM-assisted workstream clustering
-# shiplog-cluster-llm-parse  — LLM response parsing & validation
-# shiplog-cluster-llm-prompt — event summarisation / prompt generation
-# shiplog-plugin             — plugin system
-# shiplog-team-core          — team config (members, aliases, schema gates)
-# shiplog-team-aggregate     — team packet aggregation engine
-# shiplog-team-render        — team packet rendering
-# shiplog-report             — report generation
-# shiplog-transform          — event transformation pipeline
-# shiplog-migrate            — schema migration utilities
-# shiplog-archive            — archive management & retention
-# shiplog-notify             — notification system
-# shiplog-stats              — event/workstream statistics
-# apps/shiplog               — CLI entrypoint
+# shiplog-ingest-github - GitHub API adapter
+# shiplog-ingest-json   - JSONL import adapter
+# shiplog-ingest-manual - manual YAML ingest adapter
+# shiplog-ingest-git    - local git-log ingest adapter
+# shiplog-ingest-gitlab - GitLab API adapter
+# shiplog-ingest-jira   - Jira API adapter
+# shiplog-ingest-linear - Linear API adapter
+# shiplog-cluster-llm   - optional LLM-assisted workstream clustering
+# shiplog-team          - optional team aggregation facade
+# apps/shiplog          - CLI entrypoint
+
+# ============================================================================
+# Transitional internal carriers
+# ============================================================================
 #
+# These packages still exist as implementation carriers while the repository
+# preserves behavior. They are not the target public doctrine; fold them into
+# owner modules over time unless API_SURFACE.md deliberately promotes them.
+#
+# shiplog-date-windows
+# shiplog-redaction-profile
+# shiplog-redaction-repo
+# shiplog-redaction-policy
+# shiplog-redaction-projector
+# shiplog-alias
+# shiplog-cache-sqlite
+# shiplog-cache-key
+# shiplog-cache-stats
+# shiplog-cache-expiry
+# shiplog-output-layout
+# shiplog-manual-events
+# shiplog-receipt
+# shiplog-workstream-cluster
+# shiplog-workstream-receipt-policy
+# shiplog-workstream-layout
+# shiplog-cluster-llm-parse
+# shiplog-cluster-llm-prompt
+# shiplog-team-core
+# shiplog-team-aggregate
+# shiplog-team-render
+# shiplog-template
+
 # ============================================================================
 # Excluded from mutation testing
 # ============================================================================
 #
-# shiplog-testkit            — test fixtures / utilities (not production code)
-# shiplog-team               — thin façade re-exporting shiplog-team-aggregate
+# shiplog-testkit - test fixtures / utilities (not production code)
 #
-# Generic utility / data-structure microcrates are excluded by default
-# because they contain minimal domain logic.  The `.cargo/mutants.toml`
-# exclude_globs list keeps them out of `cargo mutants --workspace` runs.
-# ============================================================================
+# Generic utility, data-structure, planned app-shell, and planned feature
+# packages were removed from the workspace surface. New seams should be modules
+# first, not new crates.

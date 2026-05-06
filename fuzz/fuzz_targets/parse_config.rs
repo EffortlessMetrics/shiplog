@@ -5,6 +5,7 @@
 //! Target: CLI configuration YAML
 
 #![no_main]
+#![allow(dead_code)]
 
 use libfuzzer_sys::fuzz_target;
 use serde::Deserialize;

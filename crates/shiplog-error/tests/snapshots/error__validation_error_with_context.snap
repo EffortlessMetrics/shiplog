@@ -1,5 +1,0 @@
----
-source: crates/shiplog-error/tests/error.rs
-expression: "format!(\"{err}\")"
----
-[validation] field is required (field=email, form=registration)

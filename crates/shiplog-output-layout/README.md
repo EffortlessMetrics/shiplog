@@ -17,4 +17,4 @@ shiplog crates:
 ## Stability
 
 Keep these contracts as small, additive changes only. They are intended to be a
-stable interop boundary between microcrates.
+stable interop boundary between the current product crates and transitional implementation carriers.

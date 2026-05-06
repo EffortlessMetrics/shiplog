@@ -20,9 +20,12 @@ This is what users "buy" (even when it is OSS):
 - one artifact set: **packet + ledger + coverage + bundles**
 - one mental model: **narrative is human; receipts are machine**
 
-### The substrate: a public crate ecosystem
+### The substrate: a module-first crate boundary
 
-Publishing the crates is useful for integrations, but you must be explicit about contracts:
+Public crates are useful for integrations, but only when they are real product
+contracts. The rule is:
+
+> Public crates for true product/API contracts; SRP module folders for internal implementation seams.
 
 #### Stable integration surface (treat as public API)
 
@@ -32,18 +35,29 @@ Publishing the crates is useful for integrations, but you must be explicit about
 
 These are what third parties should build against.
 
-#### Supported modules (published, but not a promise)
+#### Supported public surfaces
 
-Everything else can be published for composability/transparency, but you reserve the right to reshape internals between minor versions:
+These can be public because they map to user-visible product behavior, trust
+surfaces, real adapter boundaries, or heavy optional boundaries:
 
-- `shiplog-engine`, `shiplog-bundle`, `shiplog-redact`, `shiplog-workstreams`, `shiplog-cache`
-- `shiplog-ingest-*`, `shiplog-render-*`, `shiplog-cluster-llm`
+- `shiplog-engine`, `shiplog-coverage`, `shiplog-workstreams`, `shiplog-redact`, `shiplog-bundle`, `shiplog-cache`
+- `shiplog-ingest-*`, `shiplog-render-*`
+- `shiplog-cluster-llm`, `shiplog-team`, `shiplog-merge`, `shiplog-template` only while those feature boundaries remain real
 
 #### Dev-only
 
 - `shiplog-testkit` (recommended: **unpublished** or explicitly unstable)
 
+#### Internal module families
+
+Cache internals, redaction internals, date windows, output layout, team phases,
+workstream phases, LLM prompt/parse helpers, manual event parsing, receipt
+formatting, and generic utility/data-structure code should live under their
+owning crate as modules unless deliberately promoted.
+
 **Rule:** Do not let publishable crates depend on unpublished crates (even dev-deps) unless you have proven packaging/publish works.
+
+See `API_SURFACE.md` for the full boundary doctrine.
 
 ---
 
@@ -200,6 +214,7 @@ Three render profiles:
 - Adapters depend on foundation and ports.
 - Engine wires adapters through ports.
 - CLI wires the concrete graph; it is the "composition root."
+- New internal boundaries start as owner modules, not new workspace crates.
 
 ### Key crates
 

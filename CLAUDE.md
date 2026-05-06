@@ -40,7 +40,7 @@ Key CLI flags:
 
 ## Architecture
 
-Microcrated Rust workspace (edition 2024, MSRV 1.92) following **Clean Architecture / ports-and-adapters**. The CLI (`apps/shiplog`) drives `shiplog-engine`, which orchestrates: ingest → cluster → redact → render.
+Module-first Rust workspace (edition 2024, MSRV 1.92) following **Clean Architecture / ports-and-adapters**. Public crates represent product/API contracts, trust surfaces, real adapters, or heavy optional boundaries; implementation seams should start as modules inside an owning crate. The CLI (`apps/shiplog`) drives `shiplog-engine`, which orchestrates: ingest → cluster → redact → render. See `API_SURFACE.md` before adding or promoting package boundaries.
 
 ### Dependency layers (top → bottom)
 
@@ -88,26 +88,28 @@ Outputs go under `out/<run_id>/`: `packet.md`, `ledger.events.jsonl`, `coverage.
 
 ### Testing conventions
 
-- Unit tests live inside each microcrate's source files.
+- Unit tests live next to the crate or owner module they verify.
 - Snapshot tests (`insta`, YAML format) in `shiplog-render-md` — review snapshot diffs carefully.
 - Property-based tests (`proptest`) in `shiplog-redact` for redaction leak detection.
 - Shared fixtures via `shiplog-testkit::fixtures` to avoid cross-crate duplication.
 - BDD-style test infrastructure in `shiplog-testkit::bdd` for scenario-driven integration tests.
 - Fuzz harnesses in `fuzz/` (not part of workspace; requires `cargo-fuzz`).
 
-### Crate naming convention
+### Boundary convention
 
-Prefix `shiplog-` with suffix indicating role: `-schema`, `-ports`, `-ingest-*`, `-render-*`, `-engine`. New orthogonal responsibilities should become new microcrates rather than enlarging existing ones.
+Prefix public packages with `shiplog-` and a role suffix: `-schema`, `-ports`, `-ingest-*`, `-render-*`, `-engine`. New orthogonal responsibilities should become module folders first. Promote a module to a crate only when it is a stable contract, a trust surface, a real adapter boundary, or a heavy/risky optional boundary.
 
 ### Crate tiers
 
 | Tier | Crates | Notes |
 |------|--------|-------|
-| Foundation | `shiplog-ids`, `shiplog-schema`, `shiplog-ports`, `shiplog-coverage` | No adapter deps |
-| Adapters | `shiplog-ingest-*`, `shiplog-render-*`, `shiplog-bundle`, `shiplog-cache`, `shiplog-redact`, `shiplog-workstreams`, `shiplog-cluster-llm` | Depend on foundation |
+| Stable contracts | `shiplog-ids`, `shiplog-schema`, `shiplog-ports` | No adapter deps |
+| Trust surfaces | `shiplog-coverage`, `shiplog-redact`, `shiplog-bundle`, `shiplog-workstreams`, `shiplog-cache`, `shiplog-render-*` | Depend on foundation |
+| Adapters | `shiplog-ingest-*` | Depend on foundation and ports |
 | Orchestration | `shiplog-engine` | Wires adapters via ports |
 | App | `shiplog` (CLI) | Feature-gates: `llm` (default off) |
 | Test-only | `shiplog-testkit` | `publish = false` |
+| Internal carriers | Temporary package seams listed in `API_SURFACE.md` | Collapse into owner modules over time |
 
 ### Publishing
 

@@ -31,7 +31,8 @@ mod bdd_user_workflow_tests;
 
 /// Small helpers for building fixtures in tests.
 ///
-/// Keeping these in a microcrate avoids copy-paste across render/cluster/redact tests.
+/// Keeping these in the dev-only testkit avoids copy-paste across
+/// render/cluster/redact tests.
 pub fn pr_event(repo: &str, number: u64, title: &str) -> EventEnvelope {
     EventEnvelope {
         id: EventId::from_parts(["github", "pr", repo, &number.to_string()]),

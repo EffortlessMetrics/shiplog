@@ -278,7 +278,7 @@ pub fn team_aggregate_runtime_constructor_contract() -> Scenario {
             Ok(())
         })
         .then(
-            "constructor should be available from the microcrate",
+            "constructor should be available from the team feature surface",
             |ctx| {
                 assert_true(
                     ctx.flag("runtime_constructed").unwrap_or(false),

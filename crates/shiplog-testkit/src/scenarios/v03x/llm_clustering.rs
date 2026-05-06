@@ -1,4 +1,4 @@
-//! BDD scenarios for LLM Clustering as Default Feature (Feature 9)
+//! BDD scenarios for LLM Clustering as Opt-in Feature (Feature 9)
 //!
 //! Scenarios cover:
 //! - Primary user workflows (using LLM clustering without feature flag)

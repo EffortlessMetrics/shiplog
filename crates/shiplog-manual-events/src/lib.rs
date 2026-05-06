@@ -1,6 +1,6 @@
 //! Manual events file and mapping utilities.
 //!
-//! This microcrate is responsible for translating manual event files into canonical
+//! This implementation carrier is responsible for translating manual event files into canonical
 //! manual events and applying the half-open date-window filter used by the
 //! `shiplog-ingest-manual` adapter.
 

@@ -1,6 +1,6 @@
 # shiplog-team-aggregate
 
-Team aggregation microcrate extracted from `shiplog-team`.
+Team aggregation implementation carrier for `shiplog-team`.
 
 This crate exposes deterministic team aggregation primitives:
 - `TeamConfig` resolution contracts remain in `shiplog-team-core`.

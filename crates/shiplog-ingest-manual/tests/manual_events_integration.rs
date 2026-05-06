@@ -1,4 +1,4 @@
-//! Integration test proving manual ingest delegates to the extracted microcrate contract.
+//! Integration test proving manual ingest delegates to the manual event contract.
 
 use chrono::NaiveDate;
 use shiplog_ingest_manual::{ManualIngestor, create_empty_file, create_entry, write_manual_events};
@@ -6,7 +6,7 @@ use shiplog_ports::Ingestor;
 use tempfile::tempdir;
 
 #[test]
-fn ingest_manual_events_uses_microcrate_contract() {
+fn ingest_manual_events_uses_manual_event_contract() {
     let temp = tempdir().expect("temporary directory");
     let path = temp.path().join("manual_events.yaml");
     let mut file = create_empty_file();

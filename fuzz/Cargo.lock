@@ -1375,9 +1375,7 @@ dependencies = [
  "shiplog-redaction-repo",
  "shiplog-render-md",
  "shiplog-schema",
- "shiplog-semver",
  "shiplog-team-core",
- "shiplog-url",
  "shiplog-workstream-cluster",
  "shiplog-workstream-layout",
  "shiplog-workstream-receipt-policy",
@@ -1532,10 +1530,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "shiplog-semver"
-version = "0.2.1"
-
-[[package]]
 name = "shiplog-team-core"
 version = "0.2.1"
 dependencies = [
@@ -1543,13 +1537,6 @@ dependencies = [
  "chrono",
  "serde",
  "serde_yaml_ng",
-]
-
-[[package]]
-name = "shiplog-url"
-version = "0.2.1"
-dependencies = [
- "url",
 ]
 
 [[package]]

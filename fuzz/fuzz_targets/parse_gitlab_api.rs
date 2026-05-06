@@ -5,6 +5,7 @@
 //! Target: GitLab API response types (merge requests, reviews)
 
 #![no_main]
+#![allow(dead_code)]
 
 use libfuzzer_sys::fuzz_target;
 use serde::Deserialize;

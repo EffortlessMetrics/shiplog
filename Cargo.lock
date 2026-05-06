@@ -171,12 +171,6 @@ checksum = "5e764a1d40d510daf35e07be9eb06e75770908c27d411ee6c92109c9840eaaf7"
 
 [[package]]
 name = "bitflags"
-version = "1.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
-
-[[package]]
-name = "bitflags"
 version = "2.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "812e12b5285cc515a9c72a5c1d3b6d46a19dac5acfef5265968c166106e31dd3"
@@ -644,7 +638,6 @@ version = "1.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "843fba2746e448b37e26a819579957415c8cef339bf08564fe8b7ddbd959573c"
 dependencies = [
- "crc32fast",
  "miniz_oxide",
  "zlib-rs",
 ]
@@ -692,30 +685,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "42703706b716c37f96a77aea830392ad231f44c9e9a67872fa5548707e11b11c"
 
 [[package]]
-name = "fsevent-sys"
-version = "4.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "76ee7a02da4d231650c7cea31349b889be2f45ddb3ef3032d2ec8185f6313fd2"
-dependencies = [
- "libc",
-]
-
-[[package]]
-name = "futures"
-version = "0.3.31"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "65bc07b1a8bc7c85c5f2e110c476c7389b4554ba72af57d8445ea63a576b0876"
-dependencies = [
- "futures-channel",
- "futures-core",
- "futures-executor",
- "futures-io",
- "futures-sink",
- "futures-task",
- "futures-util",
-]
-
-[[package]]
 name = "futures-channel"
 version = "0.3.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -732,32 +701,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "05f29059c0c2090612e8d742178b0580d2dc940c837851ad723096f87af6663e"
 
 [[package]]
-name = "futures-executor"
-version = "0.3.31"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e28d1d997f585e54aebc3f97d39e72338912123a67330d723fdbb564d646c9f"
-dependencies = [
- "futures-core",
- "futures-task",
- "futures-util",
-]
-
-[[package]]
 name = "futures-io"
 version = "0.3.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e5c1b78ca4aae1ac06c48a526a655760685149f0d465d21f37abfe57ce075c6"
-
-[[package]]
-name = "futures-macro"
-version = "0.3.31"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "162ee34ebcb7c64a8abebc059ce0fee27c2262618d7b60ed8faf72fef13c3650"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
 
 [[package]]
 name = "futures-sink"
@@ -777,10 +724,8 @@ version = "0.3.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9fa08315bb612088cc391249efdc3bc77536f16c91f6cf495e6fbe85b20a4a81"
 dependencies = [
- "futures-channel",
  "futures-core",
  "futures-io",
- "futures-macro",
  "futures-sink",
  "futures-task",
  "memchr",
@@ -847,7 +792,7 @@ version = "0.20.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7b88256088d75a56f8ecfa070513a775dd9107f6530ef14919dac831af9cfe2b"
 dependencies = [
- "bitflags 2.10.0",
+ "bitflags",
  "libc",
  "libgit2-sys",
  "log",
@@ -1187,26 +1132,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "inotify"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f37dccff2791ab604f9babef0ba14fbe0be30bd368dc541e2b08d07c8aa908f3"
-dependencies = [
- "bitflags 2.10.0",
- "inotify-sys",
- "libc",
-]
-
-[[package]]
-name = "inotify-sys"
-version = "0.1.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e05c02b5e89bff3b946cedeca278abc628fe811e604f027c45a8aa3cf793d0eb"
-dependencies = [
- "libc",
-]
-
-[[package]]
 name = "inout"
 version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1327,26 +1252,6 @@ checksum = "8c942ebf8e95485ca0d52d97da7c5a2c387d0e7f0ba4c35e93bfcaee045955b3"
 dependencies = [
  "once_cell",
  "wasm-bindgen",
-]
-
-[[package]]
-name = "kqueue"
-version = "1.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eac30106d7dce88daf4a3fcb4879ea939476d5074a9b7ddd0fb97fa4bed5596a"
-dependencies = [
- "kqueue-sys",
- "libc",
-]
-
-[[package]]
-name = "kqueue-sys"
-version = "1.0.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ed9625ffda8729b85e45cf04090035ac368927b8cebc34898e7c120f52e4838b"
-dependencies = [
- "bitflags 1.3.2",
- "libc",
 ]
 
 [[package]]
@@ -1481,7 +1386,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a69bcab0ad47271a0234d9422b131806bf3968021e5dc9328caf2d4cd58557fc"
 dependencies = [
  "libc",
- "log",
  "wasi",
  "windows-sys 0.61.2",
 ]
@@ -1497,33 +1401,6 @@ name = "normalize-line-endings"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "61807f77802ff30975e01f4f071c8ba10c022052f98b3294119f3e615d13e5be"
-
-[[package]]
-name = "notify"
-version = "8.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4d3d07927151ff8575b7087f245456e549fea62edf0ec4e565a5ee50c8402bc3"
-dependencies = [
- "bitflags 2.10.0",
- "fsevent-sys",
- "inotify",
- "kqueue",
- "libc",
- "log",
- "mio",
- "notify-types",
- "walkdir",
- "windows-sys 0.60.2",
-]
-
-[[package]]
-name = "notify-types"
-version = "2.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "42b8cfee0e339a0337359f3c88165702ac6e600dc01c0cc9579a92d62b08477a"
-dependencies = [
- "bitflags 2.10.0",
-]
 
 [[package]]
 name = "num-conv"
@@ -1774,7 +1651,7 @@ checksum = "37566cb3fdacef14c0737f9546df7cfeadbfbc9fef10991038bf5015d0c80532"
 dependencies = [
  "bit-set",
  "bit-vec",
- "bitflags 2.10.0",
+ "bitflags",
  "num-traits",
  "rand",
  "rand_chacha",
@@ -2021,7 +1898,7 @@ version = "0.38.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f1c93dd1c9683b438c392c492109cb702b8090b2bfc8fed6f6e4eb4523f17af3"
 dependencies = [
- "bitflags 2.10.0",
+ "bitflags",
  "chrono",
  "fallible-iterator",
  "fallible-streaming-iterator",
@@ -2044,7 +1921,7 @@ version = "1.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "146c9e247ccc180c1f61615433868c99f3de3ae256a30a43b49f67c2d9171f34"
 dependencies = [
- "bitflags 2.10.0",
+ "bitflags",
  "errno",
  "libc",
  "linux-raw-sys",
@@ -2174,7 +2051,7 @@ version = "3.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b3297343eaf830f66ede390ea39da1d462b6b0c1b000f420d0a83f898bbbe6ef"
 dependencies = [
- "bitflags 2.10.0",
+ "bitflags",
  "core-foundation 0.10.1",
  "core-foundation-sys",
  "libc",
@@ -2303,40 +2180,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "shiplog-accumulator"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "proptest",
-]
-
-[[package]]
-name = "shiplog-actor"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "proptest",
- "tokio",
-]
-
-[[package]]
-name = "shiplog-adapter"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "insta",
- "proptest",
-]
-
-[[package]]
-name = "shiplog-aggregator"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "proptest",
-]
-
-[[package]]
 name = "shiplog-alias"
 version = "0.2.1"
 dependencies = [
@@ -2348,118 +2191,6 @@ dependencies = [
  "serde_json",
  "sha2",
  "tempfile",
-]
-
-[[package]]
-name = "shiplog-archive"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "chrono",
- "proptest",
- "serde",
- "serde_json",
- "tempfile",
- "zip",
-]
-
-[[package]]
-name = "shiplog-async"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "tokio",
-]
-
-[[package]]
-name = "shiplog-atomic"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "proptest",
-]
-
-[[package]]
-name = "shiplog-auth"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "serde",
- "serde_json",
- "tempfile",
-]
-
-[[package]]
-name = "shiplog-backup"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "chrono",
- "hex",
- "proptest",
- "serde",
- "serde_json",
- "sha2",
- "tempfile",
- "walkdir",
- "zip",
-]
-
-[[package]]
-name = "shiplog-base64"
-version = "0.2.1"
-dependencies = [
- "base64",
-]
-
-[[package]]
-name = "shiplog-batcher"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "proptest",
- "serde",
- "serde_json",
- "tempfile",
-]
-
-[[package]]
-name = "shiplog-bloom"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "proptest",
-]
-
-[[package]]
-name = "shiplog-bst"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "proptest",
-]
-
-[[package]]
-name = "shiplog-btree"
-version = "0.2.1"
-dependencies = [
- "anyhow",
-]
-
-[[package]]
-name = "shiplog-bucket"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "chrono",
-]
-
-[[package]]
-name = "shiplog-buffer"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "proptest",
 ]
 
 [[package]]
@@ -2497,22 +2228,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "shiplog-cache-2q"
-version = "0.2.1"
-dependencies = [
- "proptest",
- "shiplog-schema",
-]
-
-[[package]]
-name = "shiplog-cache-arc"
-version = "0.2.1"
-dependencies = [
- "proptest",
- "shiplog-schema",
-]
-
-[[package]]
 name = "shiplog-cache-expiry"
 version = "0.2.1"
 dependencies = [
@@ -2529,14 +2244,6 @@ dependencies = [
  "insta",
  "proptest",
  "shiplog-testkit",
-]
-
-[[package]]
-name = "shiplog-cache-lru"
-version = "0.2.1"
-dependencies = [
- "proptest",
- "shiplog-schema",
 ]
 
 [[package]]
@@ -2563,54 +2270,6 @@ dependencies = [
  "insta",
  "proptest",
  "shiplog-testkit",
-]
-
-[[package]]
-name = "shiplog-cache-ttl"
-version = "0.2.1"
-dependencies = [
- "chrono",
- "proptest",
- "shiplog-schema",
-]
-
-[[package]]
-name = "shiplog-channel"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "tokio",
-]
-
-[[package]]
-name = "shiplog-chars"
-version = "0.2.1"
-
-[[package]]
-name = "shiplog-chunker"
-version = "0.2.1"
-dependencies = [
- "anyhow",
-]
-
-[[package]]
-name = "shiplog-circuit"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "chrono",
- "proptest",
- "tokio",
-]
-
-[[package]]
-name = "shiplog-circuitbreaker"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "chrono",
- "proptest",
- "tokio",
 ]
 
 [[package]]
@@ -2656,60 +2315,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "shiplog-cogrouper"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "proptest",
-]
-
-[[package]]
-name = "shiplog-collector"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "proptest",
-]
-
-[[package]]
-name = "shiplog-compressor"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "flate2",
- "proptest",
- "serde",
- "serde_json",
- "snap",
- "tempfile",
-]
-
-[[package]]
-name = "shiplog-config"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "insta",
- "proptest",
- "serde",
- "serde_json",
- "serde_yaml_ng",
- "tempfile",
-]
-
-[[package]]
-name = "shiplog-counter"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "chrono",
- "proptest",
- "serde",
- "serde_json",
- "tempfile",
-]
-
-[[package]]
 name = "shiplog-coverage"
 version = "0.2.1"
 dependencies = [
@@ -2726,31 +2331,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "shiplog-cron"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "proptest",
- "serde",
- "serde_json",
- "tempfile",
-]
-
-[[package]]
-name = "shiplog-crypto"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "hex",
- "insta",
- "proptest",
- "serde",
- "serde_json",
- "sha2",
- "tempfile",
-]
-
-[[package]]
 name = "shiplog-date-windows"
 version = "0.2.1"
 dependencies = [
@@ -2759,56 +2339,6 @@ dependencies = [
  "proptest",
  "shiplog-schema",
  "shiplog-testkit",
-]
-
-[[package]]
-name = "shiplog-dedupe"
-version = "0.2.1"
-dependencies = [
- "hex",
- "insta",
- "proptest",
- "serde",
- "sha2",
-]
-
-[[package]]
-name = "shiplog-delayqueue"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "proptest",
-]
-
-[[package]]
-name = "shiplog-deque"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "proptest",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "shiplog-diff"
-version = "0.2.1"
-dependencies = [
- "chrono",
- "insta",
- "proptest",
- "serde",
- "serde_json",
- "shiplog-ids",
- "shiplog-schema",
-]
-
-[[package]]
-name = "shiplog-emitter"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "proptest",
 ]
 
 [[package]]
@@ -2834,175 +2364,6 @@ dependencies = [
  "shiplog-workstream-cluster",
  "shiplog-workstream-layout",
  "tempfile",
-]
-
-[[package]]
-name = "shiplog-enumerator"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "proptest",
-]
-
-[[package]]
-name = "shiplog-env"
-version = "0.2.1"
-
-[[package]]
-name = "shiplog-error"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "insta",
- "proptest",
-]
-
-[[package]]
-name = "shiplog-eventbus"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "chrono",
- "proptest",
- "serde",
- "serde_json",
- "tokio",
-]
-
-[[package]]
-name = "shiplog-export"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "insta",
- "proptest",
- "serde",
- "serde_json",
- "shiplog-output-layout",
-]
-
-[[package]]
-name = "shiplog-fenwick"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "proptest",
-]
-
-[[package]]
-name = "shiplog-filter"
-version = "0.2.1"
-dependencies = [
- "chrono",
- "insta",
- "itertools 0.14.0",
- "proptest",
- "serde",
- "serde_json",
- "shiplog-ids",
- "shiplog-schema",
-]
-
-[[package]]
-name = "shiplog-fmt"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "chrono",
- "insta",
- "proptest",
-]
-
-[[package]]
-name = "shiplog-gauge"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "chrono",
- "proptest",
- "serde",
- "serde_json",
- "tempfile",
-]
-
-[[package]]
-name = "shiplog-graph"
-version = "0.2.1"
-dependencies = [
- "proptest",
- "serde",
-]
-
-[[package]]
-name = "shiplog-guard"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "proptest",
-]
-
-[[package]]
-name = "shiplog-hash"
-version = "0.2.1"
-dependencies = [
- "hex",
- "insta",
- "proptest",
- "serde",
- "serde_json",
- "sha2",
-]
-
-[[package]]
-name = "shiplog-health"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "chrono",
- "proptest",
- "serde",
- "serde_json",
- "tokio",
-]
-
-[[package]]
-name = "shiplog-heap"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "proptest",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "shiplog-hex"
-version = "0.2.1"
-dependencies = [
- "hex",
-]
-
-[[package]]
-name = "shiplog-histogram"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "chrono",
- "proptest",
- "serde",
- "serde_json",
- "tempfile",
-]
-
-[[package]]
-name = "shiplog-hooks"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "chrono",
- "proptest",
- "serde",
- "serde_json",
 ]
 
 [[package]]
@@ -3150,78 +2511,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "shiplog-interceptor"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "proptest",
-]
-
-[[package]]
-name = "shiplog-iter"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "itertools 0.14.0",
- "proptest",
-]
-
-[[package]]
-name = "shiplog-iterator"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "itertools 0.14.0",
-]
-
-[[package]]
-name = "shiplog-joiner"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "proptest",
-]
-
-[[package]]
-name = "shiplog-latch"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "tokio",
-]
-
-[[package]]
-name = "shiplog-leakybucket"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "chrono",
- "proptest",
-]
-
-[[package]]
-name = "shiplog-logging"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "chrono",
- "insta",
- "proptest",
- "serde",
- "serde_json",
- "tempfile",
-]
-
-[[package]]
-name = "shiplog-lru"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "proptest",
- "serde",
-]
-
-[[package]]
 name = "shiplog-manual-events"
 version = "0.2.1"
 dependencies = [
@@ -3233,14 +2522,6 @@ dependencies = [
  "shiplog-ids",
  "shiplog-schema",
  "tempfile",
-]
-
-[[package]]
-name = "shiplog-matrix"
-version = "0.2.1"
-dependencies = [
- "proptest",
- "serde",
 ]
 
 [[package]]
@@ -3259,132 +2540,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "shiplog-meter"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "chrono",
- "proptest",
- "serde",
- "serde_json",
- "tempfile",
-]
-
-[[package]]
-name = "shiplog-metrics"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "chrono",
- "serde",
- "serde_json",
- "tempfile",
-]
-
-[[package]]
-name = "shiplog-middleware"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "proptest",
-]
-
-[[package]]
-name = "shiplog-migrate"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "chrono",
- "serde",
- "serde_json",
- "tempfile",
-]
-
-[[package]]
-name = "shiplog-normalize"
-version = "0.2.1"
-dependencies = [
- "proptest",
-]
-
-[[package]]
-name = "shiplog-normalizer"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "proptest",
- "serde",
-]
-
-[[package]]
-name = "shiplog-notify"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "chrono",
- "proptest",
- "serde",
-]
-
-[[package]]
-name = "shiplog-once"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "tokio",
-]
-
-[[package]]
 name = "shiplog-output-layout"
 version = "0.2.1"
 dependencies = [
- "proptest",
-]
-
-[[package]]
-name = "shiplog-parse"
-version = "0.2.1"
-dependencies = [
- "insta",
- "proptest",
-]
-
-[[package]]
-name = "shiplog-path"
-version = "0.2.1"
-dependencies = [
- "insta",
- "proptest",
-]
-
-[[package]]
-name = "shiplog-percentile"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "chrono",
- "proptest",
- "serde",
- "serde_json",
- "tempfile",
-]
-
-[[package]]
-name = "shiplog-plugin"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "proptest",
- "serde",
- "serde_json",
- "tempfile",
-]
-
-[[package]]
-name = "shiplog-pool"
-version = "0.2.1"
-dependencies = [
- "anyhow",
  "proptest",
 ]
 
@@ -3397,107 +2555,6 @@ dependencies = [
  "proptest",
  "shiplog-ids",
  "shiplog-schema",
- "tokio",
-]
-
-[[package]]
-name = "shiplog-priorityqueue"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "proptest",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "shiplog-prng"
-version = "0.2.1"
-dependencies = [
- "proptest",
- "rand",
-]
-
-[[package]]
-name = "shiplog-proc"
-version = "0.2.1"
-dependencies = [
- "proptest",
-]
-
-[[package]]
-name = "shiplog-processor"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "proptest",
-]
-
-[[package]]
-name = "shiplog-pubsub"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "proptest",
- "serde",
- "serde_json",
- "tokio",
-]
-
-[[package]]
-name = "shiplog-quantile"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "chrono",
- "proptest",
- "serde",
- "serde_json",
- "tempfile",
-]
-
-[[package]]
-name = "shiplog-query"
-version = "0.2.1"
-dependencies = [
- "chrono",
- "insta",
- "proptest",
- "serde",
- "serde_json",
- "shiplog-filter",
- "shiplog-ids",
- "shiplog-schema",
- "thiserror 2.0.18",
-]
-
-[[package]]
-name = "shiplog-queue"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "proptest",
- "serde",
- "serde_json",
- "tokio",
-]
-
-[[package]]
-name = "shiplog-random"
-version = "0.2.1"
-dependencies = [
- "insta",
- "proptest",
- "rand",
-]
-
-[[package]]
-name = "shiplog-rate"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "chrono",
- "proptest",
  "tokio",
 ]
 
@@ -3586,24 +2643,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "shiplog-reducer"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "proptest",
-]
-
-[[package]]
-name = "shiplog-regex"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "insta",
- "proptest",
- "regex",
-]
-
-[[package]]
 name = "shiplog-render-json"
 version = "0.2.1"
 dependencies = [
@@ -3637,67 +2676,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "shiplog-report"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "chrono",
- "insta",
- "proptest",
- "serde",
- "serde_json",
- "serde_yaml_ng",
- "tempfile",
-]
-
-[[package]]
-name = "shiplog-resolver"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "insta",
- "proptest",
-]
-
-[[package]]
-name = "shiplog-retry"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "proptest",
- "serde",
- "serde_json",
- "tempfile",
- "tokio",
-]
-
-[[package]]
-name = "shiplog-ring"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "proptest",
-]
-
-[[package]]
-name = "shiplog-sanitize"
-version = "0.2.1"
-dependencies = [
- "insta",
- "proptest",
-]
-
-[[package]]
-name = "shiplog-scheduler"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "chrono",
- "proptest",
- "serde",
-]
-
-[[package]]
 name = "shiplog-schema"
 version = "0.2.1"
 dependencies = [
@@ -3710,180 +2688,6 @@ dependencies = [
  "serde_yaml_ng",
  "shiplog-ids",
  "shiplog-testkit",
-]
-
-[[package]]
-name = "shiplog-scope"
-version = "0.2.1"
-dependencies = [
- "anyhow",
-]
-
-[[package]]
-name = "shiplog-segment"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "proptest",
- "serde",
-]
-
-[[package]]
-name = "shiplog-semver"
-version = "0.2.1"
-dependencies = [
- "insta",
- "proptest",
-]
-
-[[package]]
-name = "shiplog-serde"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "chrono",
- "proptest",
- "serde",
- "serde_json",
- "serde_yaml_ng",
-]
-
-[[package]]
-name = "shiplog-shared"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "serde",
- "serde_json",
- "tokio",
-]
-
-[[package]]
-name = "shiplog-shutdown"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "tokio",
-]
-
-[[package]]
-name = "shiplog-signal"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "tokio",
-]
-
-[[package]]
-name = "shiplog-sink"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "proptest",
-]
-
-[[package]]
-name = "shiplog-skiplist"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "proptest",
- "rand",
-]
-
-[[package]]
-name = "shiplog-slidingwindow"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "proptest",
-]
-
-[[package]]
-name = "shiplog-spawn"
-version = "0.2.1"
-dependencies = [
- "anyhow",
-]
-
-[[package]]
-name = "shiplog-split"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "proptest",
-]
-
-[[package]]
-name = "shiplog-stack"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "proptest",
-]
-
-[[package]]
-name = "shiplog-stats"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "chrono",
- "proptest",
- "serde",
- "serde_json",
- "tempfile",
-]
-
-[[package]]
-name = "shiplog-storage"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "proptest",
- "serde",
- "serde_json",
- "tempfile",
-]
-
-[[package]]
-name = "shiplog-str"
-version = "0.2.1"
-dependencies = [
- "anyhow",
-]
-
-[[package]]
-name = "shiplog-stream"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "futures",
- "proptest",
- "tokio",
-]
-
-[[package]]
-name = "shiplog-summary"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "chrono",
- "serde",
- "serde_json",
- "tempfile",
-]
-
-[[package]]
-name = "shiplog-sync"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "chrono",
- "proptest",
- "serde",
- "serde_json",
- "tempfile",
- "tokio",
 ]
 
 [[package]]
@@ -3974,264 +2778,24 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml_ng",
- "shiplog-cache-expiry",
- "shiplog-cache-key",
- "shiplog-cache-stats",
- "shiplog-cluster-llm-parse",
- "shiplog-cluster-llm-prompt",
  "shiplog-coverage",
- "shiplog-date-windows",
  "shiplog-engine",
- "shiplog-export",
  "shiplog-ids",
  "shiplog-ingest-json",
- "shiplog-manual-events",
  "shiplog-merge",
- "shiplog-notify",
  "shiplog-output-layout",
  "shiplog-ports",
  "shiplog-redact",
- "shiplog-redaction-repo",
  "shiplog-render-json",
  "shiplog-render-md",
  "shiplog-schema",
- "shiplog-storage",
  "shiplog-team",
  "shiplog-team-aggregate",
  "shiplog-team-core",
- "shiplog-validate",
  "shiplog-workstream-cluster",
  "shiplog-workstream-layout",
- "shiplog-workstream-receipt-policy",
  "shiplog-workstreams",
  "tempfile",
-]
-
-[[package]]
-name = "shiplog-throttler"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "chrono",
-]
-
-[[package]]
-name = "shiplog-time"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "chrono",
- "insta",
- "proptest",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "shiplog-timeout"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "proptest",
- "tokio",
-]
-
-[[package]]
-name = "shiplog-timewheel"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "proptest",
-]
-
-[[package]]
-name = "shiplog-tracker"
-version = "0.2.1"
-dependencies = [
- "proptest",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "shiplog-transform"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "chrono",
- "proptest",
- "serde",
- "serde_json",
- "tempfile",
-]
-
-[[package]]
-name = "shiplog-tree"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "proptest",
-]
-
-[[package]]
-name = "shiplog-trie"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "proptest",
-]
-
-[[package]]
-name = "shiplog-triggers"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "chrono",
- "proptest",
-]
-
-[[package]]
-name = "shiplog-ttl"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "chrono",
- "proptest",
- "tokio",
-]
-
-[[package]]
-name = "shiplog-tui"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "proptest",
- "serde",
- "serde_json",
- "tempfile",
-]
-
-[[package]]
-name = "shiplog-union"
-version = "0.2.1"
-dependencies = [
- "anyhow",
-]
-
-[[package]]
-name = "shiplog-url"
-version = "0.2.1"
-dependencies = [
- "insta",
- "proptest",
- "url",
-]
-
-[[package]]
-name = "shiplog-uuid"
-version = "0.2.1"
-dependencies = [
- "insta",
- "proptest",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "shiplog-validate"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "proptest",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "shiplog-validator"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "insta",
- "proptest",
- "regex",
- "serde",
-]
-
-[[package]]
-name = "shiplog-version"
-version = "0.2.1"
-
-[[package]]
-name = "shiplog-watch"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "notify",
- "serde",
- "serde_json",
- "tempfile",
- "tokio",
-]
-
-[[package]]
-name = "shiplog-watcher"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "notify",
- "proptest",
- "serde",
- "serde_json",
- "tempfile",
-]
-
-[[package]]
-name = "shiplog-watermark"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "chrono",
-]
-
-[[package]]
-name = "shiplog-web"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "proptest",
- "serde",
- "serde_json",
- "tempfile",
-]
-
-[[package]]
-name = "shiplog-window"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "proptest",
-]
-
-[[package]]
-name = "shiplog-windowing"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "chrono",
- "proptest",
-]
-
-[[package]]
-name = "shiplog-workflow"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "chrono",
- "proptest",
- "serde",
- "serde_json",
- "tokio",
 ]
 
 [[package]]
@@ -4293,29 +2857,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "shiplog-writer"
-version = "0.2.1"
-dependencies = [
- "anyhow",
- "proptest",
- "tempfile",
-]
-
-[[package]]
 name = "shlex"
 version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
-
-[[package]]
-name = "signal-hook-registry"
-version = "1.4.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c4db69cba1110affc0e9f7bcd48bbf87b3f4fc7c61fc9155afd4c469eb3d6c1b"
-dependencies = [
- "errno",
- "libc",
-]
 
 [[package]]
 name = "simd-adler32"
@@ -4340,12 +2885,6 @@ name = "smallvec"
 version = "1.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "67b1b7a3b5fe4f1376887184045fcf45c69e92af734b7aaddc05fb777b6fbd03"
-
-[[package]]
-name = "snap"
-version = "1.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b6b67fb9a61334225b5b790716f609cd58395f895b3fe8b328786812a40bc3b"
 
 [[package]]
 name = "socket2"
@@ -4424,7 +2963,7 @@ version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a13f3d0daba03132c0aa9767f98351b3488edc2c100cda2d2ec2b04f3d8d3c8b"
 dependencies = [
- "bitflags 2.10.0",
+ "bitflags",
  "core-foundation 0.9.4",
  "system-configuration-sys",
 ]
@@ -4563,7 +3102,6 @@ dependencies = [
  "libc",
  "mio",
  "pin-project-lite",
- "signal-hook-registry",
  "socket2",
  "tokio-macros",
  "windows-sys 0.61.2",
@@ -4624,7 +3162,7 @@ version = "0.6.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d4e6559d53cc268e5031cd8429d05415bc4cb4aefc4aa5d6cc35fbf5b924a1f8"
 dependencies = [
- "bitflags 2.10.0",
+ "bitflags",
  "bytes",
  "futures-util",
  "http",
@@ -4896,7 +3434,7 @@ version = "0.244.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "47b807c72e1bac69382b3a6fb3dbe8ea4c0ed87ff5629b8685ae6b9a611028fe"
 dependencies = [
- "bitflags 2.10.0",
+ "bitflags",
  "hashbrown 0.15.5",
  "indexmap",
  "semver",
@@ -5299,7 +3837,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9d66ea20e9553b30172b5e831994e35fbde2d165325bec84fc43dbf6f4eb9cb2"
 dependencies = [
  "anyhow",
- "bitflags 2.10.0",
+ "bitflags",
  "indexmap",
  "log",
  "serde",

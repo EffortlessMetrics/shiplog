@@ -1,6 +1,6 @@
 # shiplog-team-render
 
-Team packet rendering microcrate extracted from `shiplog-team-aggregate`.
+Team packet rendering implementation carrier for `shiplog-team`.
 
 This crate contains rendering-focused contracts for team mode:
 - `TeamAggregateResult` and `TeamMemberSummary` output models.

@@ -1,11 +1,9 @@
 # crates.io Publish Order
 
-This document records the validated publish ordering for all workspace crates.
-Crates must be published **leaf-first** (no unpublished dependencies).
-
-> Generated from `cargo metadata` topological sort on the `feature/microcrate-extraction-v2` branch.
-
----
+This document intentionally no longer lists every package directory as a public
+publish target. The current boundary doctrine is in [`API_SURFACE.md`](../API_SURFACE.md):
+public crates are stable contracts, trust surfaces, real adapters, or heavy
+optional boundaries. Internal SRP seams should be modules inside an owner crate.
 
 ## Non-publishable crates
 
@@ -14,202 +12,74 @@ Crates must be published **leaf-first** (no unpublished dependencies).
 | `shiplog-testkit` | Test-only shared fixtures (`publish = false`) |
 | `shiplog-fuzz` (in `fuzz/`) | Fuzz harnesses, not a workspace member (`publish = false`) |
 
----
+## Target public tiers
 
-## Publish tiers
+These tiers are the intended public surface after transitional implementation
+carriers are either folded into owner modules or deliberately promoted.
 
-### Tier 1 — Leaf crates (no workspace dependencies)
+### Tier 1 - Stable contracts
 
-These 138 crates have zero workspace dependencies and can be published in any order
-within the tier.
-
-**Core leaf crates:**
-
-| # | Crate | Description |
-|---|---|---|
-| 1 | `shiplog-ids` | Deterministic SHA-256 identifier types |
-| 2 | `shiplog-output-layout` | Output directory layout conventions |
-| 3 | `shiplog-cache-key` | Cache key computation |
-| 4 | `shiplog-cache-stats` | Cache statistics types |
-| 5 | `shiplog-cache-expiry` | Cache TTL / expiry logic |
-| 6 | `shiplog-redaction-profile` | Redaction profile definitions |
-| 7 | `shiplog-alias` | Deterministic alias generation |
-| 8 | `shiplog-team-core` | Team aggregation core types |
-
-**New utility / data-structure / pattern leaf crates (130 crates):**
-
-All of the following are independent leaf crates with no workspace deps.
-They can be published in any order within Tier 1.
-
-<details>
-<summary>Click to expand full list</summary>
-
-`shiplog-accumulator`, `shiplog-actor`, `shiplog-adapter`, `shiplog-aggregator`,
-`shiplog-archive`, `shiplog-async`, `shiplog-atomic`, `shiplog-auth`,
-`shiplog-backup`, `shiplog-base64`, `shiplog-batcher`, `shiplog-bloom`,
-`shiplog-bst`, `shiplog-btree`, `shiplog-bucket`, `shiplog-buffer`,
-`shiplog-channel`, `shiplog-chars`, `shiplog-chunker`, `shiplog-circuit`,
-`shiplog-circuitbreaker`, `shiplog-cogrouper`, `shiplog-collector`,
-`shiplog-compressor`, `shiplog-config`, `shiplog-counter`, `shiplog-cron`,
-`shiplog-crypto`, `shiplog-dedupe`, `shiplog-delayqueue`, `shiplog-deque`,
-`shiplog-emitter`, `shiplog-enumerator`, `shiplog-env`, `shiplog-error`,
-`shiplog-eventbus`, `shiplog-fenwick`, `shiplog-fmt`, `shiplog-gauge`,
-`shiplog-graph`, `shiplog-guard`, `shiplog-hash`, `shiplog-health`,
-`shiplog-heap`, `shiplog-hex`, `shiplog-histogram`, `shiplog-hooks`,
-`shiplog-interceptor`, `shiplog-iter`, `shiplog-iterator`, `shiplog-joiner`,
-`shiplog-latch`, `shiplog-leakybucket`, `shiplog-logging`, `shiplog-lru`,
-`shiplog-matrix`, `shiplog-meter`, `shiplog-metrics`, `shiplog-middleware`,
-`shiplog-migrate`, `shiplog-normalize`, `shiplog-normalizer`, `shiplog-notify`,
-`shiplog-once`, `shiplog-parse`, `shiplog-path`, `shiplog-percentile`,
-`shiplog-plugin`, `shiplog-pool`, `shiplog-priorityqueue`, `shiplog-prng`,
-`shiplog-proc`, `shiplog-processor`, `shiplog-pubsub`, `shiplog-quantile`,
-`shiplog-queue`, `shiplog-random`, `shiplog-rate`, `shiplog-reducer`,
-`shiplog-regex`, `shiplog-report`, `shiplog-resolver`, `shiplog-retry`,
-`shiplog-ring`, `shiplog-sanitize`, `shiplog-scheduler`, `shiplog-scope`,
-`shiplog-segment`, `shiplog-semver`, `shiplog-serde`, `shiplog-shared`,
-`shiplog-shutdown`, `shiplog-signal`, `shiplog-sink`, `shiplog-skiplist`,
-`shiplog-slidingwindow`, `shiplog-spawn`, `shiplog-split`, `shiplog-stack`,
-`shiplog-stats`, `shiplog-storage`, `shiplog-str`, `shiplog-stream`,
-`shiplog-summary`, `shiplog-sync`, `shiplog-throttler`, `shiplog-time`,
-`shiplog-timeout`, `shiplog-timewheel`, `shiplog-tracker`, `shiplog-transform`,
-`shiplog-tree`, `shiplog-trie`, `shiplog-triggers`, `shiplog-ttl`,
-`shiplog-tui`, `shiplog-union`, `shiplog-url`, `shiplog-uuid`,
-`shiplog-validate`, `shiplog-validator`, `shiplog-version`, `shiplog-watch`,
-`shiplog-watcher`, `shiplog-watermark`, `shiplog-web`, `shiplog-window`,
-`shiplog-windowing`, `shiplog-workflow`, `shiplog-writer`
-
-</details>
-
----
-
-### Tier 2 — Depends only on Tier 1
-
-| # | Crate | Depends on |
-|---|---|---|
-| 1 | `shiplog-schema` | `shiplog-ids` |
-| 2 | `shiplog-cache-sqlite` | `shiplog-cache-expiry`, `shiplog-cache-key`, `shiplog-cache-stats` |
-| 3 | `shiplog-export` | `shiplog-output-layout` |
-
----
-
-### Tier 3 — Depends on Tier 1–2
-
-| # | Crate | Depends on |
-|---|---|---|
-| 1 | `shiplog-bundle` | `shiplog-ids`, `shiplog-output-layout`, `shiplog-schema` |
-| 2 | `shiplog-cache` | `shiplog-cache-sqlite` |
-| 3 | `shiplog-cache-2q` | `shiplog-schema` |
-| 4 | `shiplog-cache-arc` | `shiplog-schema` |
-| 5 | `shiplog-cache-lru` | `shiplog-schema` |
-| 6 | `shiplog-cache-ttl` | `shiplog-schema` |
-| 7 | `shiplog-cluster-llm-parse` | `shiplog-ids`, `shiplog-schema` |
-| 8 | `shiplog-cluster-llm-prompt` | `shiplog-schema` |
-| 9 | `shiplog-date-windows` | `shiplog-schema` |
-| 10 | `shiplog-diff` | `shiplog-ids`, `shiplog-schema` |
-| 11 | `shiplog-filter` | `shiplog-ids`, `shiplog-schema` |
-| 12 | `shiplog-manual-events` | `shiplog-ids`, `shiplog-schema` |
-| 13 | `shiplog-ports` | `shiplog-schema` |
-| 14 | `shiplog-receipt` | `shiplog-schema` |
-| 15 | `shiplog-redaction-repo` | `shiplog-schema` |
-| 16 | `shiplog-render-json` | `shiplog-schema` |
-| 17 | `shiplog-template` | `shiplog-schema` |
-| 18 | `shiplog-workstream-receipt-policy` | `shiplog-schema` |
-
----
-
-### Tier 4 — Depends on Tier 1–3
-
-| # | Crate | Depends on |
-|---|---|---|
-| 1 | `shiplog-coverage` | `shiplog-date-windows` |
-| 2 | `shiplog-ingest-git` | `shiplog-cache`, `shiplog-ids`, `shiplog-ports`, `shiplog-schema` |
-| 3 | `shiplog-ingest-json` | `shiplog-output-layout`, `shiplog-ports`, `shiplog-schema` |
-| 4 | `shiplog-ingest-manual` | `shiplog-ids`, `shiplog-manual-events`, `shiplog-ports`, `shiplog-schema` |
-| 5 | `shiplog-merge` | `shiplog-ids`, `shiplog-ports`, `shiplog-schema` |
-| 6 | `shiplog-query` | `shiplog-filter`, `shiplog-ids`, `shiplog-schema` |
-| 7 | `shiplog-redaction-policy` | `shiplog-redaction-profile`, `shiplog-redaction-repo`, `shiplog-schema` |
-| 8 | `shiplog-render-md` | `shiplog-ports`, `shiplog-receipt`, `shiplog-schema`, `shiplog-workstream-receipt-policy` |
-| 9 | `shiplog-team-render` | `shiplog-schema`, `shiplog-team-core`, `shiplog-template` |
-| 10 | `shiplog-workstream-cluster` | `shiplog-ids`, `shiplog-ports`, `shiplog-schema`, `shiplog-workstream-receipt-policy` |
-| 11 | `shiplog-workstream-layout` | `shiplog-ports`, `shiplog-schema` |
-
----
-
-### Tier 5 — Depends on Tier 1–4
-
-| # | Crate | Depends on |
-|---|---|---|
-| 1 | `shiplog-cluster-llm` | `shiplog-cluster-llm-parse`, `shiplog-cluster-llm-prompt`, `shiplog-ids`, `shiplog-ports`, `shiplog-schema`, `shiplog-workstream-cluster` |
-| 2 | `shiplog-ingest-github` | `shiplog-cache`, `shiplog-cache-key`, `shiplog-coverage`, `shiplog-ids`, `shiplog-ports`, `shiplog-schema` |
-| 3 | `shiplog-ingest-gitlab` | `shiplog-cache`, `shiplog-cache-key`, `shiplog-coverage`, `shiplog-ids`, `shiplog-ports`, `shiplog-schema` |
-| 4 | `shiplog-ingest-jira` | `shiplog-cache`, `shiplog-coverage`, `shiplog-ids`, `shiplog-ports`, `shiplog-schema` |
-| 5 | `shiplog-ingest-linear` | `shiplog-cache`, `shiplog-coverage`, `shiplog-ids`, `shiplog-ports`, `shiplog-schema` |
-| 6 | `shiplog-redaction-projector` | `shiplog-redaction-policy`, `shiplog-schema` |
-| 7 | `shiplog-team-aggregate` | `shiplog-ids`, `shiplog-merge`, `shiplog-ports`, `shiplog-schema`, `shiplog-team-core`, `shiplog-team-render` |
-| 8 | `shiplog-workstreams` | `shiplog-ids`, `shiplog-ports`, `shiplog-schema`, `shiplog-workstream-cluster`, `shiplog-workstream-layout` |
-
----
-
-### Tier 6 — Depends on Tier 1–5
-
-| # | Crate | Depends on |
-|---|---|---|
-| 1 | `shiplog-redact` | `shiplog-alias`, `shiplog-ports`, `shiplog-redaction-projector`, `shiplog-schema` |
-| 2 | `shiplog-team` | `shiplog-team-aggregate` |
-
----
-
-### Tier 7 — Depends on Tier 1–6
-
-| # | Crate | Depends on |
-|---|---|---|
-| 1 | `shiplog-engine` | `shiplog-bundle`, `shiplog-ids`, `shiplog-merge`, `shiplog-output-layout`, `shiplog-ports`, `shiplog-redact`, `shiplog-render-json`, `shiplog-render-md`, `shiplog-schema`, `shiplog-workstream-cluster`, `shiplog-workstream-layout` |
-
----
-
-### Tier 8 — CLI application (final)
-
-| # | Crate | Depends on |
-|---|---|---|
-| 1 | `shiplog` | `shiplog-cluster-llm`, `shiplog-engine`, `shiplog-ingest-git`, `shiplog-ingest-github`, `shiplog-ingest-json`, `shiplog-ingest-manual`, `shiplog-ports`, `shiplog-redact`, `shiplog-render-md`, `shiplog-schema`, `shiplog-team`, `shiplog-workstream-cluster`, `shiplog-workstreams` |
-
----
-
-## Metadata checklist
-
-All publishable crates inherit the following from `[workspace.package]`:
-
-| Field | Value |
+| Crate | Role |
 |---|---|
-| `license` | `MIT OR Apache-2.0` |
-| `repository` | `https://github.com/EffortlessMetrics/shiplog` |
-| `homepage` | `https://effortlessmetrics.com/shiplog` |
-| `edition` | `2024` |
-| `rust-version` | `1.92` |
+| `shiplog-ids` | Deterministic identifier contract |
+| `shiplog-schema` | Canonical event, coverage, workstream, and bundle schema |
+| `shiplog-ports` | Extension traits for ingest, render, redact, and cluster |
 
-Each crate also provides its own:
-- `description` — crate-specific ✓
-- `readme` — `README.md` ✓
-- `documentation` — `https://docs.rs/<crate-name>` ✓
-- `keywords` — crate-specific ✓
-- `categories` — crate-specific ✓
+### Tier 2 - Trust and product surfaces
 
-## Dry-run validation
+| Crate | Role |
+|---|---|
+| `shiplog-coverage` | Completeness and coverage honesty |
+| `shiplog-redact` | Privacy/security redaction behavior |
+| `shiplog-bundle` | Shareable bundle manifests and checksums |
+| `shiplog-workstreams` | Curation/workstream domain |
+| `shiplog-cache` | Supported API-cache facade |
+| `shiplog-render-md` | Primary user artifact renderer |
+| `shiplog-render-json` | Supported machine-readable renderer |
+| `shiplog-engine` | Pipeline orchestration API |
 
-```
-$ cargo publish --dry-run --allow-dirty -p shiplog-ids
-    Packaging shiplog-ids v0.2.1
-    Verifying shiplog-ids v0.2.1
-   Compiling shiplog-ids v0.2.1
-    Finished `dev` profile
-   Uploading shiplog-ids v0.2.1
-warning: aborting upload due to dry run
-```
+### Tier 3 - Real adapters
 
-## Notes
+| Crate | Role |
+|---|---|
+| `shiplog-ingest-github` | GitHub ingest |
+| `shiplog-ingest-git` | Local git ingest |
+| `shiplog-ingest-json` | JSONL import |
+| `shiplog-ingest-manual` | Manual YAML import |
+| `shiplog-ingest-gitlab` | Conditional public adapter |
+| `shiplog-ingest-jira` | Conditional public adapter |
+| `shiplog-ingest-linear` | Conditional public adapter |
 
-- `shiplog-testkit` is `publish = false` and is only used as a `[dev-dependencies]` entry,
-  so it does not block publishing of any other crate.
-- The `fuzz/` directory is a separate workspace (`publish = false`, not a workspace member).
-- Tier 1 contains 138 leaf crates; within a tier, crates may be published in any order.
-- Total publishable crates: **182**. Total tiers: **8**.
+### Tier 4 - Optional feature boundaries
+
+| Crate | Role |
+|---|---|
+| `shiplog-cluster-llm` | Optional external LLM/privacy boundary |
+| `shiplog-team` | Optional team aggregation surface |
+| `shiplog-merge` | Public only if multi-source merge is a stable external API |
+| `shiplog-template` | Public only if packet templates become a stable user contract |
+
+### Tier 5 - CLI product
+
+| Crate | Role |
+|---|---|
+| `shiplog` | CLI product and composition root |
+
+## Transitional carriers
+
+Some implementation carriers still exist as packages to preserve behavior during
+this cleanup. They should not be treated as crates.io product surface unless
+`API_SURFACE.md` deliberately promotes them:
+
+`shiplog-alias`, `shiplog-cache-expiry`, `shiplog-cache-key`,
+`shiplog-cache-sqlite`, `shiplog-cache-stats`, `shiplog-cluster-llm-parse`,
+`shiplog-cluster-llm-prompt`, `shiplog-date-windows`, `shiplog-manual-events`,
+`shiplog-output-layout`, `shiplog-receipt`, `shiplog-redaction-policy`,
+`shiplog-redaction-profile`, `shiplog-redaction-projector`,
+`shiplog-redaction-repo`, `shiplog-team-aggregate`, `shiplog-team-core`,
+`shiplog-team-render`, `shiplog-workstream-cluster`,
+`shiplog-workstream-layout`, and `shiplog-workstream-receipt-policy`.
+
+Before a release, regenerate a dependency-topological dry-run for the final
+publishable set and prove no public crate depends on an unpublished internal
+carrier.

@@ -5,6 +5,7 @@
 //! Target: Jira and Linear API response types (issues, tickets)
 
 #![no_main]
+#![allow(dead_code)]
 
 use libfuzzer_sys::fuzz_target;
 use serde::Deserialize;

@@ -1057,7 +1057,7 @@ Scenario: Complex template with many workstreams
 
 ---
 
-### 9. LLM Clustering as Default Feature
+### 9. LLM Clustering as Opt-in Feature
 
 #### Primary User Scenarios
 
@@ -2038,7 +2038,7 @@ Example thresholds:
 This design document provides comprehensive BDD scenarios for all shiplog ROADMAP features across three horizons:
 
 - **v0.2.x (Now)**: 4 features, 36 scenarios
-- **v0.3.x (Next)**: 5 features, 39 scenarios  
+- **v0.3.x (Next)**: 5 features, 39 scenarios
 - **Later (Exploratory)**: 5 features, 33 scenarios
 
 **Total: 108 scenarios** covering:

@@ -1,8 +1,8 @@
 # Mutation Testing Strategy for shiplog
 
-**Version:** 1.0  
-**Status:** Design Document  
-**Author:** Architect Team  
+**Version:** 1.0
+**Status:** Design Document
+**Author:** Architect Team
 **Date:** 2025-02-17
 
 ---
@@ -747,19 +747,9 @@ exclude_mutants = [
 
 **Approach:**
 
-```toml
-[crates.shiplog-plugin]
-minimum_score = 60  # Lower due to abstraction
-timeout = "180s"
-
-[crates.shiplog-plugin.mutants]
-replace_bool = true
-replace_match = true
-# Exclude mutations in plugin loader (many equivalent)
-exclude_files = [
-    "src/loader.rs",  # Complex loading logic
-]
-```
+Plugin support is exploratory and does not currently justify a public
+`shiplog-plugin` package. Keep mutation coverage with the eventual owner
+crate/API when plugin contracts are real enough to promote.
 
 **Test Focus:**
 

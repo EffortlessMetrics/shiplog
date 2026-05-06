@@ -1,6 +1,6 @@
 //! SQLite-backed implementation of `ApiCache` for shiplog API responses.
 //!
-//! This microcrate isolates the durable storage concern from the higher-level
+//! This implementation carrier isolates the durable storage concern from the higher-level
 //! `shiplog-cache` facade and keeps SQL/serialization logic scoped to one place.
 
 use anyhow::{Context, Result};

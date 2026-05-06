@@ -24,16 +24,21 @@ All workspace crates should build and pass tests on a clean checkout.
 
 ## Project structure
 
-shiplog is a microcrated Rust workspace following Clean Architecture (Ports & Adapters). The workspace contains 180+ crates organized into tiers:
+shiplog is a module-first Rust workspace following Clean Architecture (Ports & Adapters).
+Public crates are reserved for stable contracts, trust surfaces, real adapters, and
+heavy optional dependency boundaries. Internal implementation seams belong under their
+owning crate as modules. See [API_SURFACE.md](API_SURFACE.md) before adding or promoting
+a package.
 
 | Tier | Examples | Role |
 |------|----------|------|
-| Foundation | `shiplog-ids`, `shiplog-schema`, `shiplog-ports`, `shiplog-coverage` | Core types and traits, no adapter dependencies |
-| Adapters | `shiplog-ingest-*`, `shiplog-render-*`, `shiplog-bundle`, `shiplog-cache*`, `shiplog-redact*`, `shiplog-workstreams`, `shiplog-cluster-llm*`, `shiplog-template` | Implement foundation traits |
+| Stable contracts | `shiplog-ids`, `shiplog-schema`, `shiplog-ports` | Core types and traits, no adapter dependencies |
+| Trust surfaces | `shiplog-coverage`, `shiplog-redact`, `shiplog-bundle`, `shiplog-workstreams`, `shiplog-render-*`, `shiplog-cache` | User-visible evidence, privacy, and output behavior |
+| Adapters | `shiplog-ingest-*` | External-system or stable-import boundaries |
 | Orchestration | `shiplog-engine` | Wires adapters together via ports |
 | App | `shiplog` (in `apps/shiplog`) | CLI entrypoint (composition root) |
 | Test-only | `shiplog-testkit` | Shared fixtures and BDD helpers, not published |
-| Utilities | `shiplog-validate`, `shiplog-filter`, `shiplog-merge`, etc. | Focused single-responsibility support crates |
+| Internal modules | cache keys/stats/expiry, redaction policy/projector, output layout, team phases, generic helpers | Module folders under owner crates unless deliberately promoted |
 
 **Key rule:** Adapters depend on ports and schema. Ports and schema never depend on adapters.
 
@@ -71,9 +76,13 @@ Use `anyhow::Result<T>` with `.context("description")?` for error propagation. A
 
 The core pipeline is synchronous. If you need async (e.g., for a new HTTP-based adapter), isolate it inside the adapter crate. Do not leak async into foundation or orchestration crates.
 
-### Prefer new microcrates
+### Module-first boundaries
 
-If a new capability is orthogonal to existing crates, create a new `shiplog-<role>` crate rather than enlarging an existing one. Follow the naming convention: `shiplog-ingest-*` for sources, `shiplog-render-*` for output formats, etc.
+Start a new boundary as a module under the nearest owning crate. Promote it to a
+new `shiplog-*` crate only when it is a stable public contract, a trust surface,
+a real external adapter boundary, or a heavy optional dependency/privacy boundary.
+Follow the naming convention only after that promotion is justified:
+`shiplog-ingest-*` for sources and `shiplog-render-*` for output formats.
 
 ### Keep it simple
 
@@ -81,7 +90,10 @@ Only make changes that are directly necessary. Do not add speculative error hand
 
 ## Adding a new crate
 
-### Ingest adapter (most common contribution)
+Crate promotion is exceptional. Use [API_SURFACE.md](API_SURFACE.md) to justify the
+boundary in the PR description.
+
+### Ingest adapter
 
 1. **Create the crate.** Add `crates/shiplog-ingest-<source>/` with a `Cargo.toml` that depends on `shiplog-ports` and `shiplog-schema`.
 
@@ -99,7 +111,7 @@ Only make changes that are directly necessary. Do not add speculative error hand
 
 ### Other crate types
 
-For renderers (`shiplog-render-*`), follow the same pattern but implement the `Renderer` trait. For utility crates, keep them focused on a single responsibility.
+For renderers (`shiplog-render-*`), follow the same pattern but implement the `Renderer` trait. For utility code, prefer an owner module. Do not add generic `shiplog-*` crates for data structures, queues, counters, parsers, normalizers, or helper functions.
 
 General steps for any new crate:
 

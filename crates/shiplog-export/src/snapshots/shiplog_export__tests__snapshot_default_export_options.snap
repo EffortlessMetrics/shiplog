@@ -1,7 +1,0 @@
----
-source: crates/shiplog-export/src/lib.rs
-expression: opts
----
-format: Json
-pretty: true
-include_metadata: true

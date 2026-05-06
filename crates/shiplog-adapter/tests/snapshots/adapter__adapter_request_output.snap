@@ -1,5 +1,0 @@
----
-source: crates/shiplog-adapter/tests/adapter.rs
-expression: adapter.request()
----
-Adapter: (Adaptee: hello world))

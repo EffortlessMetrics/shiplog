@@ -1,6 +1,6 @@
 # shiplog-cache-sqlite
 
-SQLite-backed cache persistence microcrate for shiplog.
+SQLite-backed cache persistence implementation carrier for shiplog.
 
 This crate is focused on one responsibility:
 

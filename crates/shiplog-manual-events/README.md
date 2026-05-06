@@ -2,7 +2,7 @@
 
 Small, single-purpose utilities for the manual events workflow.
 
-This microcrate owns:
+This implementation carrier owns:
 
 - reading and writing `ManualEventsFile` YAML fixtures
 - converting `ManualEventEntry` records to canonical `EventEnvelope`s

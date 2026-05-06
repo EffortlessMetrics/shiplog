@@ -69,7 +69,7 @@ All v0.3.x BDD scenarios have been implemented in [`crates/shiplog-testkit/src/s
 - **Scenario 8.9**: Custom template preserves redaction
 - **Scenario 8.10**: Complex template with many workstreams
 
-#### LLM Clustering as Default Feature ([`llm_clustering.rs`](../src/scenarios/v03x/llm_clustering.rs))
+#### LLM Clustering as Opt-in Feature ([`llm_clustering.rs`](../src/scenarios/v03x/llm_clustering.rs))
 - **Scenario 9.1**: User uses LLM clustering without feature flag
 - **Scenario 9.2**: User falls back to repo-based clustering on LLM failure
 - **Scenario 9.3**: User configures LLM clustering parameters
@@ -286,16 +286,10 @@ replace_pattern = true
 ```
 
 #### Plugin System
-```toml
-[crates.shiplog-plugin]
-minimum_score = 70
-timeout = "120s"
 
-[crates.shiplog-plugin.mutants]
-replace_bool = true
-replace_match = true
-replace_pattern = true
-```
+Plugin behavior remains exploratory. It should stay in scenario/property tests until
+there is a real plugin API surface; do not add a `shiplog-plugin` crate for the
+scenario shell alone.
 
 ---
 
@@ -410,7 +404,7 @@ cargo mutants -p shiplog-ingest-gitlab
 cargo mutants -p shiplog-ingest-jira
 cargo mutants -p shiplog-ingest-linear
 cargo mutants -p shiplog-template
-cargo mutants -p shiplog-plugin
+# Plugin mutation tests belong with the eventual owner crate/API if plugin support is promoted.
 
 # Run mutation tests for all crates
 cargo mutants --workspace
@@ -425,7 +419,7 @@ This implementation provides comprehensive testing infrastructure for all ROADMA
 - **72 BDD scenarios** covering v0.3.x and Later features
 - **14 property tests** covering ROADMAP feature invariants
 - **4 fuzzing harnesses** for ROADMAP feature input parsers
-- **5 mutation testing configurations** for ROADMAP feature crates
+- **4 mutation testing configurations** for ROADMAP feature crates, plus exploratory plugin scenarios
 
 All scenarios follow the Given/When/Then pattern and use the existing BDD framework. Property tests use proptest strategies to verify invariants. Fuzzing harnesses test robustness against malformed inputs. Mutation testing configurations ensure code quality targets are met.
 
