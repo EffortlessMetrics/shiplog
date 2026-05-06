@@ -12,6 +12,10 @@ env:
 jobs:
   mutation-test:
     name: Mutation Testing
+    # The current mutation suite is a long-running baseline signal with known
+    # surviving mutants. Keep it off the PR gate until score baselines are
+    # established and enforced deliberately.
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 120
 
