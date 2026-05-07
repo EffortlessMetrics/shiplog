@@ -36,6 +36,50 @@ fn collect_json_into(tmp: &Path) -> PathBuf {
     tmp.join("run_fixture")
 }
 
+/// Run `collect manual` into `tmp` and return the run directory path.
+fn collect_manual_into(tmp: &Path) -> PathBuf {
+    let manual_events = tmp.join("manual_events.yaml");
+    std::fs::write(
+        &manual_events,
+        r#"version: 1
+generated_at: 2026-01-01T00:00:00Z
+events:
+  - id: incident-followup
+    type: Incident
+    date: 2025-02-15
+    title: Manual incident follow-up
+    description: Verified the rollback procedure with support.
+    workstream: Platform Reliability
+    tags:
+      - reliability
+    receipts:
+      - label: incident doc
+        url: https://example.invalid/incidents/42
+    impact: Reduced repeated escalation during review window.
+"#,
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .args([
+            "collect",
+            "--out",
+            tmp.to_str().unwrap(),
+            "manual",
+            "--events",
+            manual_events.to_str().unwrap(),
+            "--user",
+            "octo",
+            "--since",
+            "2025-01-01",
+            "--until",
+            "2025-04-01",
+        ])
+        .assert()
+        .success();
+    first_run_dir(tmp)
+}
+
 fn git_available() -> bool {
     StdCommand::new("git")
         .arg("--version")
@@ -124,6 +168,7 @@ fn help_shows_all_subcommands() {
         .stdout(predicate::str::contains("render"))
         .stdout(predicate::str::contains("refresh"))
         .stdout(predicate::str::contains("workstreams"))
+        .stdout(predicate::str::contains("merge"))
         .stdout(predicate::str::contains("import"))
         .stdout(predicate::str::contains("run"));
 }
@@ -149,6 +194,17 @@ fn workstreams_help_shows_list_and_validate() {
         .stdout(predicate::str::contains("validate"))
         .stdout(predicate::str::contains("rename"))
         .stdout(predicate::str::contains("move"));
+}
+
+#[test]
+fn merge_help_shows_inputs_and_conflict_policy() {
+    shiplog_cmd()
+        .args(["merge", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--input"))
+        .stdout(predicate::str::contains("--conflict"))
+        .stdout(predicate::str::contains("prefer-most-recent"));
 }
 
 #[test]
@@ -403,6 +459,82 @@ fn collect_json_produces_all_outputs() {
         !run_dir.join("profiles/public/packet.md").exists(),
         "public profile should require an explicit redaction key"
     );
+}
+
+#[test]
+fn merge_existing_runs_writes_combined_packet() {
+    let json_tmp = TempDir::new().unwrap();
+    let manual_tmp = TempDir::new().unwrap();
+    let merge_tmp = TempDir::new().unwrap();
+
+    let json_run = collect_json_into(json_tmp.path());
+    let manual_run = collect_manual_into(manual_tmp.path());
+
+    shiplog_cmd()
+        .args([
+            "merge",
+            "--out",
+            merge_tmp.path().to_str().unwrap(),
+            "--input",
+            json_run.to_str().unwrap(),
+            "--input",
+            manual_run.to_str().unwrap(),
+            "--conflict",
+            "prefer-most-recent",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Merged and wrote:"))
+        .stdout(predicate::str::contains("- inputs: 2"));
+
+    let run_dir = first_run_dir(merge_tmp.path());
+    assert!(run_dir.join("packet.md").exists(), "missing merged packet");
+    assert!(
+        run_dir.join("ledger.events.jsonl").exists(),
+        "missing merged ledger"
+    );
+    assert!(
+        run_dir.join("coverage.manifest.json").exists(),
+        "missing merged coverage"
+    );
+
+    let packet = std::fs::read_to_string(run_dir.join("packet.md")).unwrap();
+    assert!(
+        packet.contains("Payments ledger rewrite"),
+        "merged packet should include JSON fixture evidence"
+    );
+    assert!(
+        packet.contains("Manual incident follow-up"),
+        "merged packet should include manual evidence"
+    );
+
+    let coverage = std::fs::read_to_string(run_dir.join("coverage.manifest.json")).unwrap();
+    assert!(
+        coverage.contains("\"github\""),
+        "merged coverage should include github source"
+    );
+    assert!(
+        coverage.contains("\"manual\""),
+        "merged coverage should include manual source"
+    );
+}
+
+#[test]
+fn merge_missing_input_run_fails_actionably() {
+    let tmp = TempDir::new().unwrap();
+    let missing = tmp.path().join("missing-run");
+
+    shiplog_cmd()
+        .args([
+            "merge",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--input",
+            missing.to_str().unwrap(),
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("No ledger.events.jsonl found"));
 }
 
 #[test]
