@@ -36,6 +36,41 @@ pub enum SectionOrder {
     CoverageFirst,
 }
 
+/// Controls appendix density for rendered Markdown packets.
+///
+/// The default keeps the historical full appendix behavior.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum AppendixMode {
+    /// Render every assigned event in the appendix.
+    #[default]
+    Full,
+    /// Render per-workstream receipt counts instead of every event.
+    Summary,
+    /// Omit the appendix.
+    None,
+}
+
+/// Markdown packet density controls.
+///
+/// These options affect the human-facing packet shape without changing the
+/// canonical ledger, coverage manifest, or workstream files.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MarkdownRenderOptions {
+    /// Maximum curated receipts shown per workstream in the main receipts section.
+    pub receipt_limit: usize,
+    /// Appendix detail level.
+    pub appendix_mode: AppendixMode,
+}
+
+impl Default for MarkdownRenderOptions {
+    fn default() -> Self {
+        Self {
+            receipt_limit: WORKSTREAM_RECEIPT_RENDER_LIMIT,
+            appendix_mode: AppendixMode::Full,
+        }
+    }
+}
+
 /// Minimal renderer that produces a copy-ready Markdown packet.
 ///
 /// The output is intentionally low-magic:
@@ -122,6 +157,29 @@ impl MarkdownRenderer {
         workstreams: &WorkstreamsFile,
         coverage: &CoverageManifest,
     ) -> Result<String> {
+        self.render_scaffold_markdown_with_options(
+            user,
+            window_label,
+            events,
+            workstreams,
+            coverage,
+            MarkdownRenderOptions::default(),
+        )
+    }
+
+    /// Render a writing scaffold with explicit packet density controls.
+    ///
+    /// Scaffold mode currently omits the full receipts and appendix sections,
+    /// so appendix options are accepted for API symmetry and future expansion.
+    pub fn render_scaffold_markdown_with_options(
+        &self,
+        user: &str,
+        window_label: &str,
+        events: &[EventEnvelope],
+        workstreams: &WorkstreamsFile,
+        coverage: &CoverageManifest,
+        _options: MarkdownRenderOptions,
+    ) -> Result<String> {
         let mut out = String::new();
         render_coverage(&mut out, coverage);
         render_summary(&mut out, user, window_label, events, workstreams, coverage);
@@ -139,12 +197,66 @@ impl MarkdownRenderer {
         workstreams: &WorkstreamsFile,
         coverage: &CoverageManifest,
     ) -> Result<String> {
+        self.render_receipts_markdown_with_options(
+            user,
+            window_label,
+            events,
+            workstreams,
+            coverage,
+            MarkdownRenderOptions::default(),
+        )
+    }
+
+    /// Render a dense receipts view with explicit packet density controls.
+    pub fn render_receipts_markdown_with_options(
+        &self,
+        user: &str,
+        window_label: &str,
+        events: &[EventEnvelope],
+        workstreams: &WorkstreamsFile,
+        coverage: &CoverageManifest,
+        options: MarkdownRenderOptions,
+    ) -> Result<String> {
         let mut out = String::new();
         render_summary(&mut out, user, window_label, events, workstreams, coverage);
         render_coverage(&mut out, coverage);
-        render_receipts(&mut out, events, workstreams);
-        render_appendix(&mut out, events, workstreams);
+        render_receipts(&mut out, events, workstreams, options);
+        render_appendix(&mut out, events, workstreams, options.appendix_mode);
         render_file_artifacts(&mut out);
+        Ok(out)
+    }
+
+    /// Render the default packet with explicit packet density controls.
+    pub fn render_packet_markdown_with_options(
+        &self,
+        user: &str,
+        window_label: &str,
+        events: &[EventEnvelope],
+        workstreams: &WorkstreamsFile,
+        coverage: &CoverageManifest,
+        options: MarkdownRenderOptions,
+    ) -> Result<String> {
+        let mut out = String::new();
+
+        // Render sections based on configured order
+        match self.section_order {
+            SectionOrder::Default => {
+                render_summary(&mut out, user, window_label, events, workstreams, coverage);
+                render_workstreams(&mut out, events, workstreams);
+                render_receipts(&mut out, events, workstreams, options);
+                render_coverage(&mut out, coverage);
+            }
+            SectionOrder::CoverageFirst => {
+                render_coverage(&mut out, coverage);
+                render_summary(&mut out, user, window_label, events, workstreams, coverage);
+                render_workstreams(&mut out, events, workstreams);
+                render_receipts(&mut out, events, workstreams, options);
+            }
+        }
+
+        render_appendix(&mut out, events, workstreams, options.appendix_mode);
+        render_file_artifacts(&mut out);
+
         Ok(out)
     }
 }
@@ -158,31 +270,14 @@ impl Renderer for MarkdownRenderer {
         workstreams: &WorkstreamsFile,
         coverage: &CoverageManifest,
     ) -> Result<String> {
-        let mut out = String::new();
-
-        // Render sections based on configured order
-        match self.section_order {
-            SectionOrder::Default => {
-                render_summary(&mut out, user, window_label, events, workstreams, coverage);
-                render_workstreams(&mut out, events, workstreams);
-                render_receipts(&mut out, events, workstreams);
-                render_coverage(&mut out, coverage);
-            }
-            SectionOrder::CoverageFirst => {
-                render_coverage(&mut out, coverage);
-                render_summary(&mut out, user, window_label, events, workstreams, coverage);
-                render_workstreams(&mut out, events, workstreams);
-                render_receipts(&mut out, events, workstreams);
-            }
-        }
-
-        // Appendix with all receipts
-        render_appendix(&mut out, events, workstreams);
-
-        // File artifacts
-        render_file_artifacts(&mut out);
-
-        Ok(out)
+        self.render_packet_markdown_with_options(
+            user,
+            window_label,
+            events,
+            workstreams,
+            coverage,
+            MarkdownRenderOptions::default(),
+        )
     }
 }
 
@@ -310,7 +405,12 @@ fn render_claim_prompts(out: &mut String) {
     out.push_str("- What follow-up or gap should a reviewer know about?\n\n");
 }
 
-fn render_receipts(out: &mut String, events: &[EventEnvelope], workstreams: &WorkstreamsFile) {
+fn render_receipts(
+    out: &mut String,
+    events: &[EventEnvelope],
+    workstreams: &WorkstreamsFile,
+    options: MarkdownRenderOptions,
+) {
     out.push_str("## Receipts\n\n");
 
     if workstreams.workstreams.is_empty() {
@@ -321,43 +421,52 @@ fn render_receipts(out: &mut String, events: &[EventEnvelope], workstreams: &Wor
     let by_id: HashMap<String, &EventEnvelope> =
         events.iter().map(|e| (e.id.0.clone(), e)).collect();
 
-    // Track which receipts were shown in main section (for appendix)
-    let mut shown_receipts: HashMap<String, Vec<String>> = HashMap::new();
-
     for ws in &workstreams.workstreams {
         out.push_str(&format!("### Workstream: {}\n\n", ws.title));
 
         // Split receipts into main (top N) and appendix (remainder)
-        let (main_receipts, appendix_receipts): (Vec<_>, Vec<_>) =
-            if ws.receipts.len() <= WORKSTREAM_RECEIPT_RENDER_LIMIT {
-                (ws.receipts.clone(), Vec::new())
-            } else {
-                let (main, appendix) = ws.receipts.split_at(WORKSTREAM_RECEIPT_RENDER_LIMIT);
-                (main.to_vec(), appendix.to_vec())
-            };
-
-        // Track shown receipts for this workstream
-        shown_receipts.insert(
-            ws.id.0.clone(),
-            main_receipts.iter().map(|r| r.0.clone()).collect(),
-        );
+        let (main_receipts, appendix_receipts): (Vec<_>, Vec<_>) = if ws.receipts.is_empty() {
+            (Vec::new(), Vec::new())
+        } else if ws.receipts.len() <= options.receipt_limit {
+            (ws.receipts.clone(), Vec::new())
+        } else if options.receipt_limit == 0 {
+            (Vec::new(), ws.receipts.clone())
+        } else {
+            let (main, appendix) = ws.receipts.split_at(options.receipt_limit);
+            (main.to_vec(), appendix.to_vec())
+        };
 
         if main_receipts.is_empty() {
-            out.push_str("- (none)\n\n");
+            out.push_str("- (none)\n");
         } else {
             for id in &main_receipts {
                 if let Some(ev) = by_id.get(&id.0) {
                     out.push_str(&format!("{}\n", format_receipt_markdown(ev)));
                 }
             }
-            if !appendix_receipts.is_empty() {
-                out.push_str(&format!(
-                    "- *... and {} more in [Appendix](#appendix-receipts)*\n",
-                    appendix_receipts.len()
-                ));
-            }
-            out.push('\n');
         }
+
+        if !appendix_receipts.is_empty() {
+            out.push_str(&appendix_receipt_note(
+                appendix_receipts.len(),
+                options.appendix_mode,
+            ));
+        }
+        out.push('\n');
+    }
+}
+
+fn appendix_receipt_note(count: usize, mode: AppendixMode) -> String {
+    match mode {
+        AppendixMode::Full => {
+            format!("- *... and {count} more in [Appendix](#appendix-receipts)*\n")
+        }
+        AppendixMode::Summary => {
+            format!(
+                "- *... and {count} more summarized in [Appendix](#appendix-receipt-summary)*\n"
+            )
+        }
+        AppendixMode::None => format!("- *... and {count} more omitted by appendix settings*\n"),
     }
 }
 
@@ -509,7 +618,20 @@ fn render_coverage(out: &mut String, coverage: &CoverageManifest) {
     out.push('\n');
 }
 
-fn render_appendix(out: &mut String, events: &[EventEnvelope], workstreams: &WorkstreamsFile) {
+fn render_appendix(
+    out: &mut String,
+    events: &[EventEnvelope],
+    workstreams: &WorkstreamsFile,
+    mode: AppendixMode,
+) {
+    match mode {
+        AppendixMode::Full => render_full_appendix(out, events, workstreams),
+        AppendixMode::Summary => render_appendix_summary(out, workstreams),
+        AppendixMode::None => {}
+    }
+}
+
+fn render_full_appendix(out: &mut String, events: &[EventEnvelope], workstreams: &WorkstreamsFile) {
     out.push_str("## Appendix: All Receipts\n\n");
 
     if workstreams.workstreams.is_empty() {
@@ -533,6 +655,25 @@ fn render_appendix(out: &mut String, events: &[EventEnvelope], workstreams: &Wor
             }
         }
         out.push('\n');
+    }
+    out.push_str("---\n\n");
+}
+
+fn render_appendix_summary(out: &mut String, workstreams: &WorkstreamsFile) {
+    out.push_str("## Appendix: Receipt Summary\n\n");
+
+    if workstreams.workstreams.is_empty() {
+        return;
+    }
+
+    for ws in &workstreams.workstreams {
+        out.push_str(&format!("### {}\n\n", ws.title));
+        out.push_str(&format!("- Assigned events: {}\n", ws.events.len()));
+        out.push_str(&format!(
+            "- Curated receipt anchors: {}\n",
+            ws.receipts.len()
+        ));
+        out.push_str("- Full receipt detail omitted by appendix summary mode.\n\n");
     }
     out.push_str("---\n\n");
 }

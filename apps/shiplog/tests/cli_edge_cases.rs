@@ -57,6 +57,29 @@ fn render_help_shows_usage() {
         stdout.contains("--mode"),
         "render help should mention --mode"
     );
+    assert!(
+        stdout.contains("--receipt-limit"),
+        "render help should mention --receipt-limit"
+    );
+    assert!(
+        stdout.contains("--appendix"),
+        "render help should mention --appendix"
+    );
+}
+
+#[test]
+fn render_invalid_appendix_mode_fails() {
+    let out = shiplog_bin()
+        .args(["render", "--appendix", "bogus"])
+        .output()
+        .expect("failed to run shiplog render --appendix bogus");
+
+    assert!(!out.status.success());
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        stderr.contains("invalid value"),
+        "invalid appendix mode should fail via clap value parsing, got: {stderr}"
+    );
 }
 
 #[test]
