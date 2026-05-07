@@ -28,7 +28,7 @@ shiplog is not an analytics dashboard. It is not AI-generated narrative. It prod
 
 ## Features
 
-- 🔍 **Multi-source ingestion** — GitHub API, GitLab API, Jira API, local git commits, canonical JSONL, and manual YAML events
+- 🔍 **Multi-source ingestion** — GitHub API, GitLab API, Jira API, Linear API, local git commits, canonical JSONL, and manual YAML events
 - 📊 **Automatic workstream clustering** — repo-based by default, optional LLM-assisted semantic grouping
 - 🔒 **Deterministic HMAC-SHA256 redaction** — three profiles (internal / manager / public) with stable aliases
 - ✅ **Coverage-first design** — every claim backed by receipts; gaps explicitly flagged in the coverage manifest
@@ -69,6 +69,7 @@ cargo run -p shiplog -- <subcommand>
 - A `GITHUB_TOKEN` environment variable for GitHub ingestion
 - A `GITLAB_TOKEN` environment variable for GitLab ingestion
 - A `JIRA_TOKEN` environment variable for Jira ingestion
+- A `LINEAR_API_KEY` environment variable for Linear ingestion
 
 ## Quick start
 
@@ -138,12 +139,10 @@ out/<run_id>/
 | `github` | PR and review ingestion from GitHub API (with adaptive slicing and SQLite cache) |
 | `gitlab` | Merge request and review-note ingestion from GitLab API (supports self-hosted instances) |
 | `jira` | Issue ingestion from Jira API; `--user` is the assignee JQL value, and `--auth-user` is available when Basic Auth uses a different email/username |
+| `linear` | Issue ingestion from Linear API; `--user-id` is the Linear user UUID, with upstream date/status/project filtering |
 | `git` | Local git commit ingestion for `collect git`; `refresh git` and `run git` are not yet supported |
 | `json` | Import from canonical JSONL event files |
 | `manual` | Ingest non-GitHub work from a YAML events file |
-
-Linear is available as an adapter crate for library users but is not wired into
-the CLI source list yet.
 
 ### Examples
 
@@ -188,6 +187,15 @@ shiplog collect jira \
   --until 2026-01-01 \
   --status done \
   --instance company.atlassian.net \
+  --out ./out
+
+# Collect assigned issues from Linear
+shiplog collect linear \
+  --user-id 9cfb482a-81e3-4154-b5b9-2c805e70a02d \
+  --since 2025-07-01 \
+  --until 2026-01-01 \
+  --status done \
+  --project OPS \
   --out ./out
 
 # Collect manual (non-GitHub) events

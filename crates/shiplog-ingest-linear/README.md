@@ -19,12 +19,12 @@ use shiplog_ingest_linear::LinearIngestor;
 use chrono::NaiveDate;
 
 let ingestor = LinearIngestor::new(
-    "alice".to_string(),
+    "9cfb482a-81e3-4154-b5b9-2c805e70a02d".to_string(),
     NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
     NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),
 )
 .with_api_key("your-linear-api-key".to_string())?
-.with_project("PROJ-123".to_string());
+.with_project("OPS".to_string());
 
 let output = ingestor.ingest()?;
 ```
@@ -32,10 +32,14 @@ let output = ingestor.ingest()?;
 ## Configuration
 
 - `api_key`: Linear API key (required)
-- `project`: Optional project filter
+- `user`: Linear user UUID used in the upstream `user(id:)` query
+- `project`: Optional Linear project key filter enforced in the GraphQL query
 - `status`: Optional status filter (Backlog, Todo, In Progress, Done, Cancelled, All)
 - `throttle_ms`: Delay between API requests in milliseconds (default: 0)
 - `cache`: Optional API response cache
+
+Date, status, and project filters are sent to Linear as GraphQL filters instead
+of being applied after fetching.
 
 ## License
 

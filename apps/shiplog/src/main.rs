@@ -12,6 +12,7 @@ use shiplog_ingest_github::GithubIngestor;
 use shiplog_ingest_gitlab::{GitlabIngestor, MrState};
 use shiplog_ingest_jira::{IssueStatus, JiraIngestor};
 use shiplog_ingest_json::JsonIngestor;
+use shiplog_ingest_linear::{IssueStatus as LinearIssueStatus, LinearIngestor};
 use shiplog_ingest_manual::ManualIngestor;
 use shiplog_ports::Ingestor;
 use shiplog_redact::DeterministicRedactor;
@@ -304,6 +305,37 @@ enum Source {
         no_cache: bool,
     },
 
+    /// Ingest from Linear issues assigned to a Linear user ID.
+    Linear {
+        /// Linear user UUID to report on.
+        #[arg(long)]
+        user_id: String,
+        /// Start date (inclusive), YYYY-MM-DD
+        #[arg(long)]
+        since: NaiveDate,
+        /// End date (exclusive), YYYY-MM-DD
+        #[arg(long)]
+        until: NaiveDate,
+        /// Issue status: backlog, todo, in_progress, done, cancelled, or all.
+        #[arg(long, default_value = "done")]
+        status: String,
+        /// Optional Linear project key filter.
+        #[arg(long)]
+        project: Option<String>,
+        /// Milliseconds to sleep between requests.
+        #[arg(long, default_value_t = 0)]
+        throttle_ms: u64,
+        /// Linear API key (or set LINEAR_API_KEY).
+        #[arg(long)]
+        api_key: Option<String>,
+        /// Override Linear API cache directory (defaults to `<out>/.cache`).
+        #[arg(long)]
+        cache_dir: Option<PathBuf>,
+        /// Disable Linear API caching.
+        #[arg(long)]
+        no_cache: bool,
+    },
+
     /// Ingest from JSONL events + a coverage manifest.
     Json {
         #[arg(long)]
@@ -555,6 +587,45 @@ fn make_jira_ingestor(
     Ok(ing)
 }
 
+#[allow(clippy::too_many_arguments)]
+fn make_linear_ingestor(
+    user_id: &str,
+    since: NaiveDate,
+    until: NaiveDate,
+    status: &str,
+    project: Option<String>,
+    throttle_ms: u64,
+    api_key: Option<String>,
+    cache_dir: Option<PathBuf>,
+) -> Result<LinearIngestor> {
+    let api_key = api_key.or_else(|| std::env::var("LINEAR_API_KEY").ok());
+    let status = status
+        .parse::<LinearIssueStatus>()
+        .with_context(|| format!("parse Linear issue status {status:?}"))?;
+
+    let mut ing = LinearIngestor::new(user_id.to_string(), since, until)
+        .with_status(status)
+        .with_throttle(throttle_ms);
+
+    if let Some(project) = project {
+        ing = ing.with_project(project);
+    }
+
+    if let Some(api_key) = api_key {
+        ing = ing
+            .with_api_key(api_key)
+            .context("configure Linear API key")?;
+    }
+
+    if let Some(cache_dir) = cache_dir {
+        ing = ing
+            .with_cache(cache_dir)
+            .context("configure Linear API cache")?;
+    }
+
+    Ok(ing)
+}
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
@@ -755,6 +826,73 @@ fn main() -> Result<()> {
 
                     let (outputs, ws_source) = engine
                         .run(ingest, &user, &window_label, &run_dir, zip, &bundle_profile)
+                        .context("run engine pipeline")?;
+
+                    redactor
+                        .save_cache(&cache_path)
+                        .with_context(|| format!("save redaction cache to {cache_path:?}"))?;
+
+                    println!("Collected and wrote:");
+                    print_outputs(&outputs, ws_source);
+                }
+
+                Source::Linear {
+                    user_id,
+                    since,
+                    until,
+                    status,
+                    project,
+                    throttle_ms,
+                    api_key,
+                    cache_dir,
+                    no_cache,
+                } => {
+                    let cache_dir = resolve_cache_dir(&out, cache_dir, no_cache);
+                    let ing = make_linear_ingestor(
+                        &user_id,
+                        since,
+                        until,
+                        &status,
+                        project,
+                        throttle_ms,
+                        api_key,
+                        cache_dir,
+                    )
+                    .context("create Linear ingestor")?;
+                    let ingest = ing.ingest().context("ingest events")?;
+                    let run_id = ingest.coverage.run_id.to_string();
+                    let run_dir = out.join(&run_id);
+
+                    let window_label = format!("{}..{}", since, until);
+
+                    // Check if user has curated workstreams and warn
+                    if !regen && shiplog_workstreams::WorkstreamManager::has_curated(&run_dir) {
+                        eprintln!("Note: Using existing workstreams.yaml (user-curated).");
+                        eprintln!("      Use --regen to regenerate suggestions.");
+                    }
+
+                    // If --regen, delete existing suggested workstreams so the engine regenerates them
+                    if regen {
+                        let suggested =
+                            shiplog_workstreams::WorkstreamManager::suggested_path(&run_dir);
+                        if suggested.exists() {
+                            std::fs::remove_file(&suggested)
+                                .with_context(|| format!("remove {:?} for --regen", suggested))?;
+                        }
+                    }
+
+                    let cache_path = DeterministicRedactor::cache_path(&run_dir);
+                    let _ = redactor.load_cache(&cache_path);
+
+                    let (outputs, ws_source) = engine
+                        .run(
+                            ingest,
+                            &user_id,
+                            &window_label,
+                            &run_dir,
+                            zip,
+                            &bundle_profile,
+                        )
                         .context("run engine pipeline")?;
 
                     redactor
@@ -1159,6 +1297,66 @@ fn main() -> Result<()> {
                     print_outputs_simple(&outputs);
                 }
 
+                Source::Linear {
+                    user_id,
+                    since,
+                    until,
+                    status,
+                    project,
+                    throttle_ms,
+                    api_key,
+                    cache_dir,
+                    no_cache,
+                } => {
+                    let cache_root = run_dir
+                        .parent()
+                        .map(|p| p.to_path_buf())
+                        .unwrap_or_else(|| out.clone());
+                    let cache_dir = resolve_cache_dir(&cache_root, cache_dir, no_cache);
+                    let ing = make_linear_ingestor(
+                        &user_id,
+                        since,
+                        until,
+                        &status,
+                        project,
+                        throttle_ms,
+                        api_key,
+                        cache_dir,
+                    )
+                    .context("create Linear ingestor")?;
+                    let ingest = ing.ingest().context("ingest events")?;
+
+                    let window_label = format!("{}..{}", since, until);
+
+                    if !shiplog_workstreams::WorkstreamManager::has_curated(&run_dir)
+                        && !shiplog_workstreams::WorkstreamManager::suggested_path(&run_dir)
+                            .exists()
+                    {
+                        anyhow::bail!(
+                            "No workstreams found in {:?}. Run `shiplog collect` first.",
+                            run_dir
+                        );
+                    }
+
+                    let outputs = engine
+                        .refresh(
+                            ingest,
+                            &user_id,
+                            &window_label,
+                            &run_dir,
+                            zip,
+                            &bundle_profile,
+                        )
+                        .context("refresh engine pipeline")?;
+
+                    redactor
+                        .save_cache(&cache_path)
+                        .with_context(|| format!("save redaction cache to {cache_path:?}"))?;
+
+                    println!("Refreshed while preserving workstream curation:");
+                    print_outputs_simple(&outputs);
+                }
+
                 Source::Json {
                     events,
                     coverage,
@@ -1467,6 +1665,56 @@ fn main() -> Result<()> {
                     print_outputs(&outputs, ws_source);
                 }
 
+                Source::Linear {
+                    user_id,
+                    since,
+                    until,
+                    status,
+                    project,
+                    throttle_ms,
+                    api_key,
+                    cache_dir,
+                    no_cache,
+                } => {
+                    let cache_dir = resolve_cache_dir(&out, cache_dir, no_cache);
+                    let ing = make_linear_ingestor(
+                        &user_id,
+                        since,
+                        until,
+                        &status,
+                        project,
+                        throttle_ms,
+                        api_key,
+                        cache_dir,
+                    )
+                    .context("create Linear ingestor")?;
+                    let ingest = ing.ingest().context("ingest events")?;
+                    let run_id = ingest.coverage.run_id.to_string();
+                    let run_dir = out.join(&run_id);
+
+                    let cache_path = DeterministicRedactor::cache_path(&run_dir);
+                    let _ = redactor.load_cache(&cache_path);
+
+                    let window_label = format!("{}..{}", since, until);
+                    let (outputs, ws_source) = engine
+                        .run(
+                            ingest,
+                            &user_id,
+                            &window_label,
+                            &run_dir,
+                            zip,
+                            &bundle_profile,
+                        )
+                        .context("run engine pipeline")?;
+
+                    redactor
+                        .save_cache(&cache_path)
+                        .with_context(|| format!("save redaction cache to {cache_path:?}"))?;
+
+                    println!("Wrote:");
+                    print_outputs(&outputs, ws_source);
+                }
+
                 Source::Json {
                     events,
                     coverage,
@@ -1717,6 +1965,58 @@ mod tests {
 
         assert!(
             err.to_string().contains("parse Jira issue status"),
+            "unexpected error: {err:?}"
+        );
+    }
+
+    #[test]
+    fn make_linear_ingestor_configures_cli_options() {
+        let since = NaiveDate::from_ymd_opt(2025, 1, 1).unwrap();
+        let until = NaiveDate::from_ymd_opt(2025, 2, 1).unwrap();
+        let cache_dir = tempfile::tempdir().unwrap();
+
+        let ing = make_linear_ingestor(
+            "linear-user-id",
+            since,
+            until,
+            "in_progress",
+            Some("OPS".to_string()),
+            75,
+            Some("linear-key".to_string()),
+            Some(cache_dir.path().to_path_buf()),
+        )
+        .unwrap();
+
+        assert_eq!(ing.user, "linear-user-id");
+        assert_eq!(ing.since, since);
+        assert_eq!(ing.until, until);
+        assert_eq!(ing.status, LinearIssueStatus::InProgress);
+        assert_eq!(ing.project.as_deref(), Some("OPS"));
+        assert_eq!(ing.throttle_ms, 75);
+        assert_eq!(ing.api_key.as_deref(), Some("linear-key"));
+        assert!(ing.cache.is_some());
+        assert!(cache_dir.path().join("linear-api-cache.db").exists());
+    }
+
+    #[test]
+    fn make_linear_ingestor_rejects_invalid_status() {
+        let since = NaiveDate::from_ymd_opt(2025, 1, 1).unwrap();
+        let until = NaiveDate::from_ymd_opt(2025, 2, 1).unwrap();
+
+        let err = make_linear_ingestor(
+            "linear-user-id",
+            since,
+            until,
+            "invalid",
+            None,
+            0,
+            Some("linear-key".to_string()),
+            None,
+        )
+        .unwrap_err();
+
+        assert!(
+            err.to_string().contains("parse Linear issue status"),
             "unexpected error: {err:?}"
         );
     }

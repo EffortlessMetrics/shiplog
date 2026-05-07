@@ -73,6 +73,10 @@ fn refresh_help_shows_usage() {
         "refresh help should list jira source"
     );
     assert!(
+        stdout.contains("linear"),
+        "refresh help should list linear source"
+    );
+    assert!(
         stdout.contains("--out"),
         "refresh help should mention --out"
     );
@@ -109,6 +113,10 @@ fn run_help_shows_usage() {
         "run help should list gitlab source"
     );
     assert!(stdout.contains("jira"), "run help should list jira source");
+    assert!(
+        stdout.contains("linear"),
+        "run help should list linear source"
+    );
     assert!(stdout.contains("--out"), "run help should mention --out");
 }
 

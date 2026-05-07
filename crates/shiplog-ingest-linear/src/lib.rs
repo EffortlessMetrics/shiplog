@@ -42,6 +42,17 @@ impl IssueStatus {
             Self::All => "all",
         }
     }
+
+    fn linear_state_type(&self) -> Option<&'static str> {
+        match self {
+            Self::Backlog => Some("backlog"),
+            Self::Todo => Some("unstarted"),
+            Self::InProgress => Some("started"),
+            Self::Done => Some("completed"),
+            Self::Cancelled => Some("canceled"),
+            Self::All => None,
+        }
+    }
 }
 
 impl std::str::FromStr for IssueStatus {
@@ -174,9 +185,9 @@ impl LinearIngestor {
                 "variables": variables,
             }));
 
-        // Linear uses Bearer token authentication
+        // Linear personal API keys are sent as the raw Authorization header value.
         if let Some(key) = &self.api_key {
-            req = req.bearer_auth(key);
+            req = req.header("Authorization", key);
         }
 
         let resp = req.send().context("execute Linear GraphQL query")?;
@@ -229,40 +240,39 @@ impl LinearIngestor {
     ) -> Result<(Vec<LinearIssue>, Vec<CoverageSlice>, bool)> {
         let mut slices = Vec::new();
         let mut partial = false;
+        let filter = self.issue_filter();
 
         // Build GraphQL query
         let query = r#"
-            query Issues($userId: String!, $first: Int!, $after: String) {
-                user(id: $userId) {
-                    assignedIssues(first: $first, after: $after) {
-                        nodes {
+            query Issues($first: Int!, $after: String, $filter: IssueFilter) {
+                issues(first: $first, after: $after, filter: $filter) {
+                    nodes {
+                        id
+                        identifier
+                        title
+                        description
+                        state {
                             id
-                            identifier
-                            title
-                            description
-                            state {
-                                id
-                                name
-                                type
-                            }
-                            project {
-                                id
-                                name
-                                key
-                            }
-                            createdAt
-                            completedAt
-                            canceledAt
-                            assignee {
-                                id
-                                name
-                                displayName
-                            }
+                            name
+                            type
                         }
-                        pageInfo {
-                            hasNextPage
-                            endCursor
+                        project {
+                            id
+                            name
+                            key
                         }
+                        createdAt
+                        completedAt
+                        canceledAt
+                        assignee {
+                            id
+                            name
+                            displayName
+                        }
+                    }
+                    pageInfo {
+                        hasNextPage
+                        endCursor
                     }
                 }
             }
@@ -274,30 +284,26 @@ impl LinearIngestor {
 
         loop {
             let mut variables = serde_json::json!({
-                "userId": self.user,
                 "first": 100,
+                "filter": filter,
             });
             if let Some(cursor) = &after {
                 variables["after"] = serde_json::json!(cursor);
             }
 
-            let response: LinearData<LinearUserResponse> =
+            let response: LinearData<LinearIssuesResponse> =
                 self.execute_query(client, query, &variables)?;
 
-            if let Some(user) = response.data.and_then(|u| u.user) {
-                if let Some(assigned_issues) = user.assigned_issues {
-                    if let Some(nodes) = assigned_issues.nodes {
-                        let fetched_count = nodes.len() as u64;
-                        total_count += fetched_count;
-                        issues.extend(nodes);
+            if let Some(issue_connection) = response.data.and_then(|u| u.issues) {
+                if let Some(nodes) = issue_connection.nodes {
+                    let fetched_count = nodes.len() as u64;
+                    total_count += fetched_count;
+                    issues.extend(nodes);
 
-                        // Check for partial results
-                        if assigned_issues.page_info.has_next_page {
-                            partial = true;
-                            after = assigned_issues.page_info.end_cursor;
-                        } else {
-                            break;
-                        }
+                    // Check for partial results
+                    if issue_connection.page_info.has_next_page {
+                        partial = true;
+                        after = issue_connection.page_info.end_cursor;
                     } else {
                         break;
                     }
@@ -310,12 +316,7 @@ impl LinearIngestor {
         }
 
         // Create coverage slice
-        let query_str = format!(
-            "assignee = '{}' AND created >= '{}' AND created <= '{}'",
-            self.user,
-            self.since.format("%Y-%m-%d"),
-            self.until.format("%Y-%m-%d")
-        );
+        let query_str = self.coverage_query();
 
         slices.push(CoverageSlice {
             window: TimeWindow {
@@ -330,6 +331,56 @@ impl LinearIngestor {
         });
 
         Ok((issues, slices, partial))
+    }
+
+    fn issue_filter(&self) -> serde_json::Value {
+        let mut filter = serde_json::json!({
+            "assignee": {
+                "id": {
+                    "eq": self.user,
+                },
+            },
+            "createdAt": {
+                "gte": self.since.format("%Y-%m-%d").to_string(),
+                "lt": self.until.format("%Y-%m-%d").to_string(),
+            },
+        });
+
+        if let Some(state_type) = self.status.linear_state_type() {
+            filter["state"] = serde_json::json!({
+                "type": {
+                    "eq": state_type,
+                },
+            });
+        }
+
+        if let Some(project) = &self.project {
+            filter["project"] = serde_json::json!({
+                "key": {
+                    "eq": project,
+                },
+            });
+        }
+
+        filter
+    }
+
+    fn coverage_query(&self) -> String {
+        let mut parts = vec![
+            format!("assignee.id = '{}'", self.user),
+            format!("createdAt >= '{}'", self.since.format("%Y-%m-%d")),
+            format!("createdAt < '{}'", self.until.format("%Y-%m-%d")),
+        ];
+
+        if let Some(state_type) = self.status.linear_state_type() {
+            parts.push(format!("state.type = '{state_type}'"));
+        }
+
+        if let Some(project) = &self.project {
+            parts.push(format!("project.key = '{project}'"));
+        }
+
+        parts.join(" AND ")
     }
 
     /// Convert Linear issues to shiplog events
@@ -477,14 +528,8 @@ struct LinearData<T> {
 }
 
 #[derive(Debug, Deserialize)]
-struct LinearUserResponse {
-    user: Option<LinearUser>,
-}
-
-#[derive(Debug, Deserialize)]
-struct LinearUser {
-    #[serde(rename = "assignedIssues")]
-    assigned_issues: Option<LinearIssuesConnection>,
+struct LinearIssuesResponse {
+    issues: Option<LinearIssuesConnection>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -621,6 +666,56 @@ mod tests {
         assert_eq!(IssueStatus::Done.as_str(), "done");
         assert_eq!(IssueStatus::Cancelled.as_str(), "cancelled");
         assert_eq!(IssueStatus::All.as_str(), "all");
+    }
+
+    #[test]
+    fn issue_filter_enforces_date_status_and_project_upstream() {
+        let ing = LinearIngestor::new(
+            "user-uuid".to_string(),
+            NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
+            NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),
+        )
+        .with_status(IssueStatus::InProgress)
+        .with_project("INFRA".to_string());
+
+        let filter = ing.issue_filter();
+        assert_eq!(filter["assignee"]["id"]["eq"], "user-uuid");
+        assert_eq!(filter["createdAt"]["gte"], "2025-01-01");
+        assert_eq!(filter["createdAt"]["lt"], "2025-02-01");
+        assert_eq!(filter["state"]["type"]["eq"], "started");
+        assert_eq!(filter["project"]["key"]["eq"], "INFRA");
+    }
+
+    #[test]
+    fn issue_filter_omits_status_when_all_is_requested() {
+        let ing = LinearIngestor::new(
+            "user-uuid".to_string(),
+            NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
+            NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),
+        )
+        .with_status(IssueStatus::All);
+
+        let filter = ing.issue_filter();
+        assert!(filter.get("state").is_none());
+        assert!(filter.get("project").is_none());
+    }
+
+    #[test]
+    fn coverage_query_records_resolved_filter() {
+        let ing = LinearIngestor::new(
+            "user-uuid".to_string(),
+            NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
+            NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),
+        )
+        .with_status(IssueStatus::Done)
+        .with_project("OPS".to_string());
+
+        let query = ing.coverage_query();
+        assert!(query.contains("assignee.id = 'user-uuid'"));
+        assert!(query.contains("createdAt >= '2025-01-01'"));
+        assert!(query.contains("createdAt < '2025-02-01'"));
+        assert!(query.contains("state.type = 'completed'"));
+        assert!(query.contains("project.key = 'OPS'"));
     }
 
     #[test]
