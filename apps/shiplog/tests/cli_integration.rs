@@ -70,6 +70,7 @@ fn collect_help_shows_sources_and_options() {
         .assert()
         .success()
         .stdout(predicate::str::contains("github"))
+        .stdout(predicate::str::contains("gitlab"))
         .stdout(predicate::str::contains("json"))
         .stdout(predicate::str::contains("--out"))
         .stdout(predicate::str::contains("--regen"));
@@ -87,6 +88,24 @@ fn collect_github_help_shows_github_flags() {
         .stdout(predicate::str::contains("--mode"))
         .stdout(predicate::str::contains("--include-reviews"))
         .stdout(predicate::str::contains("--no-details"));
+}
+
+#[test]
+fn collect_gitlab_help_shows_gitlab_flags() {
+    shiplog_cmd()
+        .args(["collect", "gitlab", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--user"))
+        .stdout(predicate::str::contains("--since"))
+        .stdout(predicate::str::contains("--until"))
+        .stdout(predicate::str::contains("--state"))
+        .stdout(predicate::str::contains("--instance"))
+        .stdout(predicate::str::contains("--include-reviews"))
+        .stdout(predicate::str::contains("--throttle-ms"))
+        .stdout(predicate::str::contains("--token"))
+        .stdout(predicate::str::contains("--cache-dir"))
+        .stdout(predicate::str::contains("--no-cache"));
 }
 
 #[test]

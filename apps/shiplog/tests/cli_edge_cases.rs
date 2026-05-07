@@ -65,6 +65,10 @@ fn refresh_help_shows_usage() {
         "refresh help should list github source"
     );
     assert!(
+        stdout.contains("gitlab"),
+        "refresh help should list gitlab source"
+    );
+    assert!(
         stdout.contains("--out"),
         "refresh help should mention --out"
     );
@@ -95,6 +99,10 @@ fn run_help_shows_usage() {
     assert!(
         stdout.contains("github"),
         "run help should list github source"
+    );
+    assert!(
+        stdout.contains("gitlab"),
+        "run help should list gitlab source"
     );
     assert!(stdout.contains("--out"), "run help should mention --out");
 }

@@ -28,7 +28,7 @@ shiplog is not an analytics dashboard. It is not AI-generated narrative. It prod
 
 ## Features
 
-- 🔍 **Multi-source ingestion** — GitHub API, local git commits, canonical JSONL, and manual YAML events
+- 🔍 **Multi-source ingestion** — GitHub API, GitLab API, local git commits, canonical JSONL, and manual YAML events
 - 📊 **Automatic workstream clustering** — repo-based by default, optional LLM-assisted semantic grouping
 - 🔒 **Deterministic HMAC-SHA256 redaction** — three profiles (internal / manager / public) with stable aliases
 - ✅ **Coverage-first design** — every claim backed by receipts; gaps explicitly flagged in the coverage manifest
@@ -67,6 +67,7 @@ cargo run -p shiplog -- <subcommand>
 
 - Rust 1.92+
 - A `GITHUB_TOKEN` environment variable for GitHub ingestion
+- A `GITLAB_TOKEN` environment variable for GitLab ingestion
 
 ## Quick start
 
@@ -134,12 +135,13 @@ out/<run_id>/
 | Source | Description |
 |--------|-------------|
 | `github` | PR and review ingestion from GitHub API (with adaptive slicing and SQLite cache) |
+| `gitlab` | Merge request and review-note ingestion from GitLab API (supports self-hosted instances) |
 | `git` | Local git commit ingestion for `collect git`; `refresh git` and `run git` are not yet supported |
 | `json` | Import from canonical JSONL event files |
 | `manual` | Ingest non-GitHub work from a YAML events file |
 
-GitLab, Jira, and Linear are available as adapter crates for library users but
-are not wired into the CLI source list yet.
+Jira and Linear are available as adapter crates for library users but are not
+wired into the CLI source list yet.
 
 ### Examples
 
@@ -164,6 +166,16 @@ shiplog collect git \
   --since 2025-07-01 \
   --until 2026-01-01 \
   --author you@example.com \
+  --out ./out
+
+# Collect merge requests from GitLab
+shiplog collect gitlab \
+  --user your-gitlab-username \
+  --since 2025-07-01 \
+  --until 2026-01-01 \
+  --state merged \
+  --instance gitlab.com \
+  --include-reviews \
   --out ./out
 
 # Collect manual (non-GitHub) events
