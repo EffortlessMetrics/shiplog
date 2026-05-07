@@ -19,7 +19,7 @@ use shiplog_ingest_jira::{IssueStatus, JiraIngestor};
 use shiplog_ingest_json::JsonIngestor;
 use shiplog_ingest_linear::{IssueStatus as LinearIssueStatus, LinearIngestor};
 use shiplog_ingest_manual::ManualIngestor;
-use shiplog_ports::{IngestOutput, Ingestor};
+use shiplog_ports::{IngestOutput, Ingestor, Renderer};
 use shiplog_redact::DeterministicRedactor;
 use shiplog_render_md::{MarkdownRenderer, format_receipt_markdown};
 use shiplog_schema::{
@@ -131,6 +131,9 @@ enum Command {
         /// Bundle profile: internal (full), manager, or public.
         #[arg(long, default_value = "internal")]
         bundle_profile: BundleProfile,
+        /// Packet output mode.
+        #[arg(long, value_enum, default_value = "packet")]
+        mode: RenderPacketMode,
         /// Also write a zip next to the run folder.
         #[arg(long)]
         zip: bool,
@@ -598,6 +601,16 @@ enum WorkstreamReceiptCommand {
         #[arg(long)]
         event: String,
     },
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
+enum RenderPacketMode {
+    /// Review-ready packet with coverage, workstreams, receipts, and appendix.
+    Packet,
+    /// Writing scaffold with coverage, workstream prompts, and evidence anchors.
+    Scaffold,
+    /// Dense receipts and appendix view.
+    Receipts,
 }
 
 #[derive(Subcommand, Debug, Clone)]
@@ -2196,12 +2209,19 @@ fn create_engine(
     redact_key: &str,
     clusterer: Box<dyn shiplog_ports::WorkstreamClusterer>,
 ) -> (Engine<'static>, &'static DeterministicRedactor) {
-    let renderer = Box::new(MarkdownRenderer::default());
+    create_engine_with_renderer(redact_key, clusterer, Box::new(MarkdownRenderer::default()))
+}
+
+fn create_engine_with_renderer(
+    redact_key: &str,
+    clusterer: Box<dyn shiplog_ports::WorkstreamClusterer>,
+    renderer: Box<dyn Renderer>,
+) -> (Engine<'static>, &'static DeterministicRedactor) {
     let redactor = DeterministicRedactor::new(redact_key.as_bytes());
 
     // We need to leak these to give them 'static lifetime
     // This is acceptable for a CLI tool that runs once
-    let renderer: &'static dyn shiplog_ports::Renderer = Box::leak(renderer);
+    let renderer: &'static dyn Renderer = Box::leak(renderer);
     let clusterer: &'static dyn shiplog_ports::WorkstreamClusterer = Box::leak(clusterer);
     let redactor_box = Box::new(redactor);
     let redactor_ref: &'static DeterministicRedactor = Box::leak(redactor_box);
@@ -2211,6 +2231,52 @@ fn create_engine(
         Engine::new(renderer, clusterer, redactor_trait),
         redactor_ref,
     )
+}
+
+struct ModeMarkdownRenderer {
+    mode: RenderPacketMode,
+    inner: MarkdownRenderer,
+}
+
+impl ModeMarkdownRenderer {
+    fn new(mode: RenderPacketMode) -> Self {
+        Self {
+            mode,
+            inner: MarkdownRenderer::default(),
+        }
+    }
+}
+
+impl Renderer for ModeMarkdownRenderer {
+    fn render_packet_markdown(
+        &self,
+        user: &str,
+        window_label: &str,
+        events: &[EventEnvelope],
+        workstreams: &WorkstreamsFile,
+        coverage: &shiplog_schema::coverage::CoverageManifest,
+    ) -> Result<String> {
+        match self.mode {
+            RenderPacketMode::Packet => {
+                self.inner
+                    .render_packet_markdown(user, window_label, events, workstreams, coverage)
+            }
+            RenderPacketMode::Scaffold => self.inner.render_scaffold_markdown(
+                user,
+                window_label,
+                events,
+                workstreams,
+                coverage,
+            ),
+            RenderPacketMode::Receipts => self.inner.render_receipts_markdown(
+                user,
+                window_label,
+                events,
+                workstreams,
+                coverage,
+            ),
+        }
+    }
 }
 
 fn build_clusterer(
@@ -2984,11 +3050,14 @@ fn main() -> Result<()> {
             window_label,
             redact_key,
             bundle_profile,
+            mode,
             zip,
         } => {
             let redaction_key = RedactionKey::resolve(redact_key, &bundle_profile)?;
             let clusterer: Box<dyn shiplog_ports::WorkstreamClusterer> = Box::new(RepoClusterer);
-            let (engine, redactor) = create_engine(redaction_key.engine_key(), clusterer);
+            let renderer = Box::new(ModeMarkdownRenderer::new(mode));
+            let (engine, redactor) =
+                create_engine_with_renderer(redaction_key.engine_key(), clusterer, renderer);
             let engine = engine.with_profile_rendering(redaction_key.render_profiles());
 
             // Determine which run to render

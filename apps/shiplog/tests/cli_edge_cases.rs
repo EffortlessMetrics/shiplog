@@ -53,6 +53,10 @@ fn render_help_shows_usage() {
         stdout.contains("--latest"),
         "render help should mention --latest"
     );
+    assert!(
+        stdout.contains("--mode"),
+        "render help should mention --mode"
+    );
 }
 
 #[test]

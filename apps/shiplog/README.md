@@ -48,9 +48,11 @@ shiplog workstreams validate --run latest
 
 # 3. Re-render the packet with your curated workstreams
 shiplog render --latest
+shiplog render --latest --mode scaffold
+shiplog render --latest --mode receipts
 ```
 
-Output goes to `out/<run_id>/` containing `packet.md`, `ledger.events.jsonl`, `coverage.manifest.json`, and optional redacted profiles.
+Output goes to `out/<run_id>/` containing `packet.md`, `ledger.events.jsonl`, `coverage.manifest.json`, and optional redacted profiles. Use `--mode packet` for the default packet, `--mode scaffold` for prompts and evidence anchors, or `--mode receipts` for a dense audit view.
 
 ## Commands
 

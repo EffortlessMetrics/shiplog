@@ -144,13 +144,17 @@ If you prefer direct YAML editing, copy `workstreams.suggested.yaml` to
 
 ```bash
 shiplog render --latest
+shiplog render --latest --mode scaffold
+shiplog render --latest --mode receipts
 shiplog open packet --latest
 ```
 
 This regenerates `packet.md` using your curated workstreams while preserving
 the original ledger and coverage data. Add `--redact-key <KEY>` to also
 generate manager and public profile packets. On remote shells, add
-`--print-path` to print the artifact path without launching an editor.
+`--print-path` to print the artifact path without launching an editor. Use
+`--mode packet` for the default review packet, `--mode scaffold` for prompts
+and evidence anchors, or `--mode receipts` for a dense audit view.
 
 ## Output layout
 

@@ -580,6 +580,7 @@ fn render_help_shows_render_options() {
         .stdout(predicate::str::contains("--run"))
         .stdout(predicate::str::contains("--latest"))
         .stdout(predicate::str::contains("--user"))
+        .stdout(predicate::str::contains("--mode"))
         .stdout(predicate::str::contains("--redact-key"));
 }
 
@@ -2067,6 +2068,67 @@ fn render_on_collected_directory() {
     assert!(
         tmp.path().join("run_fixture/packet.md").exists(),
         "packet.md should exist after render"
+    );
+}
+
+#[test]
+fn render_scaffold_mode_writes_prompt_focused_packet() {
+    let tmp = TempDir::new().unwrap();
+    let run_dir = collect_json_into(tmp.path());
+
+    shiplog_cmd()
+        .args([
+            "render",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+            "--mode",
+            "scaffold",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Rendered"));
+
+    let packet = std::fs::read_to_string(run_dir.join("packet.md")).unwrap();
+    assert!(packet.contains("## Coverage and Limits"));
+    assert!(packet.contains("**Suggested claim prompts**"));
+    assert!(
+        !packet.contains("\n## Receipts\n"),
+        "scaffold mode should omit the full receipts section"
+    );
+    assert!(
+        !packet.contains("\n## Appendix: All Receipts\n"),
+        "scaffold mode should omit the full appendix"
+    );
+}
+
+#[test]
+fn render_receipts_mode_writes_audit_focused_packet() {
+    let tmp = TempDir::new().unwrap();
+    let run_dir = collect_json_into(tmp.path());
+
+    shiplog_cmd()
+        .args([
+            "render",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+            "--mode",
+            "receipts",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Rendered"));
+
+    let packet = std::fs::read_to_string(run_dir.join("packet.md")).unwrap();
+    assert!(packet.contains("## Coverage and Limits"));
+    assert!(packet.contains("\n## Receipts\n"));
+    assert!(packet.contains("\n## Appendix: All Receipts\n"));
+    assert!(
+        !packet.contains("**Suggested claim prompts**"),
+        "receipts mode should omit writing prompts"
     );
 }
 

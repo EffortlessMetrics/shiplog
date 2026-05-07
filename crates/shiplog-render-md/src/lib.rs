@@ -112,6 +112,41 @@ impl MarkdownRenderer {
         self.section_order = order;
         self
     }
+
+    /// Render a writing scaffold with coverage, workstream prompts, and evidence anchors.
+    pub fn render_scaffold_markdown(
+        &self,
+        user: &str,
+        window_label: &str,
+        events: &[EventEnvelope],
+        workstreams: &WorkstreamsFile,
+        coverage: &CoverageManifest,
+    ) -> Result<String> {
+        let mut out = String::new();
+        render_coverage(&mut out, coverage);
+        render_summary(&mut out, user, window_label, events, workstreams, coverage);
+        render_workstreams(&mut out, events, workstreams);
+        render_file_artifacts(&mut out);
+        Ok(out)
+    }
+
+    /// Render a dense receipts view for audit and appendix review.
+    pub fn render_receipts_markdown(
+        &self,
+        user: &str,
+        window_label: &str,
+        events: &[EventEnvelope],
+        workstreams: &WorkstreamsFile,
+        coverage: &CoverageManifest,
+    ) -> Result<String> {
+        let mut out = String::new();
+        render_summary(&mut out, user, window_label, events, workstreams, coverage);
+        render_coverage(&mut out, coverage);
+        render_receipts(&mut out, events, workstreams);
+        render_appendix(&mut out, events, workstreams);
+        render_file_artifacts(&mut out);
+        Ok(out)
+    }
 }
 
 impl Renderer for MarkdownRenderer {

@@ -179,6 +179,54 @@ fn curated_receipts_control_main_sections_but_appendix_keeps_all_events() {
     assert!(appendix_section.contains("Supporting context"));
 }
 
+#[test]
+fn scaffold_mode_omits_full_receipts_and_appendix() {
+    let events = vec![pr_event("owner/repo", 1, "Primary proof")];
+    let ws = WorkstreamFixture::new("Curated Proof")
+        .with_event(&events[0])
+        .with_receipt(&events[0])
+        .build();
+    let workstreams = WorkstreamsFile {
+        version: 1,
+        generated_at: Utc.timestamp_opt(0, 0).unwrap(),
+        workstreams: vec![ws],
+    };
+    let coverage = test_coverage("testuser", Completeness::Complete);
+
+    let result = MarkdownRenderer::new()
+        .render_scaffold_markdown("testuser", "2025-Q1", &events, &workstreams, &coverage)
+        .unwrap();
+
+    assert!(result.contains("## Coverage and Limits"));
+    assert!(result.contains("**Suggested claim prompts**"));
+    assert!(!result.contains("\n## Receipts\n"));
+    assert!(!result.contains("\n## Appendix: All Receipts\n"));
+}
+
+#[test]
+fn receipts_mode_omits_workstream_prompts() {
+    let events = vec![pr_event("owner/repo", 1, "Primary proof")];
+    let ws = WorkstreamFixture::new("Curated Proof")
+        .with_event(&events[0])
+        .with_receipt(&events[0])
+        .build();
+    let workstreams = WorkstreamsFile {
+        version: 1,
+        generated_at: Utc.timestamp_opt(0, 0).unwrap(),
+        workstreams: vec![ws],
+    };
+    let coverage = test_coverage("testuser", Completeness::Complete);
+
+    let result = MarkdownRenderer::new()
+        .render_receipts_markdown("testuser", "2025-Q1", &events, &workstreams, &coverage)
+        .unwrap();
+
+    assert!(result.contains("## Coverage and Limits"));
+    assert!(result.contains("\n## Receipts\n"));
+    assert!(result.contains("\n## Appendix: All Receipts\n"));
+    assert!(!result.contains("**Suggested claim prompts**"));
+}
+
 // ── Snapshot: coverage with warnings and partial completeness ───────────
 
 #[test]
