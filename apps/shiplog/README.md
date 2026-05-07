@@ -4,7 +4,7 @@
 [![docs.rs](https://docs.rs/shiplog/badge.svg)](https://docs.rs/shiplog)
 [![License](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
 
-> Compile your GitHub, GitLab, git, JSON, and manual activity into defensible self-review packets -- with receipts.
+> Compile your GitHub, GitLab, Jira, git, JSON, and manual activity into defensible self-review packets -- with receipts.
 
 ## Installation
 
@@ -18,7 +18,7 @@ With optional LLM-assisted workstream clustering:
 cargo install shiplog --features llm
 ```
 
-**Prerequisites:** Rust 1.92+. Set `GITHUB_TOKEN` for GitHub ingestion or `GITLAB_TOKEN` for GitLab ingestion.
+**Prerequisites:** Rust 1.92+. Set `GITHUB_TOKEN` for GitHub ingestion, `GITLAB_TOKEN` for GitLab ingestion, or `JIRA_TOKEN` for Jira ingestion.
 
 ## Quick start
 
@@ -58,6 +58,7 @@ Output goes to `out/<run_id>/` containing `packet.md`, `ledger.events.jsonl`, `c
 |--------|-------------|
 | `github` | PR and review ingestion from GitHub API |
 | `gitlab` | Merge request and review-note ingestion from GitLab API |
+| `jira` | Issue ingestion from Jira API |
 | `git` | Local git commit ingestion |
 | `json` | Import from canonical JSONL event files |
 | `manual` | Ingest non-GitHub work from a YAML events file |
@@ -68,7 +69,7 @@ Output goes to `out/<run_id>/` containing `packet.md`, `ledger.events.jsonl`, `c
 - **Coverage tracking.** A coverage manifest documents API query windows, pagination limits, and gaps.
 - **Deterministic redaction.** Three profiles (internal/manager/public) with HMAC-SHA256 aliasing. Same key = same aliases across runs.
 - **User-owned workstreams.** Auto-generated suggestions in `workstreams.suggested.yaml`; your curated `workstreams.yaml` is never overwritten.
-- **SQLite API cache.** GitHub and GitLab API responses are cached locally to avoid redundant requests on re-runs.
+- **SQLite API cache.** GitHub, GitLab, and Jira API responses are cached locally to avoid redundant requests on re-runs.
 - **Zip bundles.** Package output as a zip archive with SHA256 checksum manifests using `--zip`.
 
 ## Redaction

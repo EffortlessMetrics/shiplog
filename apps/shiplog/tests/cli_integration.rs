@@ -71,6 +71,7 @@ fn collect_help_shows_sources_and_options() {
         .success()
         .stdout(predicate::str::contains("github"))
         .stdout(predicate::str::contains("gitlab"))
+        .stdout(predicate::str::contains("jira"))
         .stdout(predicate::str::contains("json"))
         .stdout(predicate::str::contains("--out"))
         .stdout(predicate::str::contains("--regen"));
@@ -102,6 +103,24 @@ fn collect_gitlab_help_shows_gitlab_flags() {
         .stdout(predicate::str::contains("--state"))
         .stdout(predicate::str::contains("--instance"))
         .stdout(predicate::str::contains("--include-reviews"))
+        .stdout(predicate::str::contains("--throttle-ms"))
+        .stdout(predicate::str::contains("--token"))
+        .stdout(predicate::str::contains("--cache-dir"))
+        .stdout(predicate::str::contains("--no-cache"));
+}
+
+#[test]
+fn collect_jira_help_shows_jira_flags() {
+    shiplog_cmd()
+        .args(["collect", "jira", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--user"))
+        .stdout(predicate::str::contains("--auth-user"))
+        .stdout(predicate::str::contains("--since"))
+        .stdout(predicate::str::contains("--until"))
+        .stdout(predicate::str::contains("--status"))
+        .stdout(predicate::str::contains("--instance"))
         .stdout(predicate::str::contains("--throttle-ms"))
         .stdout(predicate::str::contains("--token"))
         .stdout(predicate::str::contains("--cache-dir"))

@@ -50,7 +50,8 @@ impl std::str::FromStr for IssueStatus {
         match s.to_lowercase().as_str() {
             "open" | "to do" => Ok(Self::Open),
             "in_progress" => Ok(Self::InProgress),
-            "done" | "resolved" | "closed" => Ok(Self::Done),
+            "done" | "resolved" => Ok(Self::Done),
+            "closed" => Ok(Self::Closed),
             "all" => Ok(Self::All),
             _ => Err(anyhow!("Invalid issue status: {}", s)),
         }
@@ -59,12 +60,15 @@ impl std::str::FromStr for IssueStatus {
 
 #[derive(Debug)]
 pub struct JiraIngestor {
+    /// Jira assignee JQL value to collect issues for.
     pub user: String,
     pub since: NaiveDate,
     pub until: NaiveDate,
     pub status: IssueStatus,
     pub throttle_ms: u64,
     pub token: Option<String>,
+    /// Optional Basic Auth username/email. Defaults to `user` when omitted.
+    pub auth_user: Option<String>,
     /// Jira instance URL (e.g., "jira.atlassian.com" or "company.atlassian.net")
     pub instance: String,
     /// Optional cache for API responses
@@ -80,6 +84,7 @@ impl JiraIngestor {
             status: IssueStatus::Done,
             throttle_ms: 0,
             token: None,
+            auth_user: None,
             instance: "jira.atlassian.com".to_string(),
             cache: None,
         }
@@ -91,6 +96,15 @@ impl JiraIngestor {
             return Err(anyhow!("Jira token cannot be empty"));
         }
         self.token = Some(token);
+        Ok(self)
+    }
+
+    /// Set the Jira Basic Auth username/email when it differs from the assignee JQL value.
+    pub fn with_auth_user(mut self, auth_user: String) -> Result<Self> {
+        if auth_user.is_empty() {
+            return Err(anyhow!("Jira auth user cannot be empty"));
+        }
+        self.auth_user = Some(auth_user);
         Ok(self)
     }
 
@@ -192,7 +206,8 @@ impl JiraIngestor {
 
         // Jira uses Basic Auth with API token
         if let Some(t) = &self.token {
-            req = req.basic_auth(&self.user, Some(t));
+            let auth_user = self.auth_user.as_deref().unwrap_or(&self.user);
+            req = req.basic_auth(auth_user, Some(t));
         }
 
         let resp = req
@@ -555,7 +570,10 @@ mod tests {
             IssueStatus::InProgress
         );
         assert_eq!(IssueStatus::from_str("done").unwrap(), IssueStatus::Done);
-        assert_eq!(IssueStatus::from_str("closed").unwrap(), IssueStatus::Done);
+        assert_eq!(
+            IssueStatus::from_str("closed").unwrap(),
+            IssueStatus::Closed
+        );
         assert_eq!(IssueStatus::from_str("all").unwrap(), IssueStatus::All);
         assert!(IssueStatus::from_str("invalid").is_err());
     }
