@@ -1,6 +1,7 @@
 # shiplog
 
 [![CI](https://github.com/EffortlessMetrics/shiplog/actions/workflows/ci.yml/badge.svg)](https://github.com/EffortlessMetrics/shiplog/actions/workflows/ci.yml)
+[![Codecov](https://codecov.io/gh/EffortlessMetrics/shiplog/branch/main/graph/badge.svg)](https://codecov.io/gh/EffortlessMetrics/shiplog)
 [![crates.io](https://img.shields.io/crates/v/shiplog.svg)](https://crates.io/crates/shiplog)
 [![docs.rs](https://docs.rs/shiplog/badge.svg)](https://docs.rs/shiplog)
 [![MSRV](https://img.shields.io/badge/MSRV-1.92-blue.svg)](https://blog.rust-lang.org/)
