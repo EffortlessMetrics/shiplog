@@ -118,11 +118,113 @@ fn help_shows_all_subcommands() {
         .arg("--help")
         .assert()
         .success()
+        .stdout(predicate::str::contains("init"))
         .stdout(predicate::str::contains("collect"))
         .stdout(predicate::str::contains("render"))
         .stdout(predicate::str::contains("refresh"))
         .stdout(predicate::str::contains("import"))
         .stdout(predicate::str::contains("run"));
+}
+
+#[test]
+fn init_help_shows_options() {
+    shiplog_cmd()
+        .args(["init", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--source"))
+        .stdout(predicate::str::contains("--dry-run"))
+        .stdout(predicate::str::contains("--force"));
+}
+
+#[test]
+fn init_creates_config_and_manual_events() {
+    let tmp = TempDir::new().unwrap();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .arg("init")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Initialized shiplog"))
+        .stdout(predicate::str::contains("GITHUB_TOKEN"))
+        .stdout(predicate::str::contains("shiplog collect github"));
+
+    let config = std::fs::read_to_string(tmp.path().join("shiplog.toml")).unwrap();
+    assert!(config.contains("[sources.github]"));
+    assert!(config.contains("enabled = true"));
+    assert!(config.contains("[sources.manual]"));
+    assert!(config.contains("events = \"./manual_events.yaml\""));
+
+    let manual = std::fs::read_to_string(tmp.path().join("manual_events.yaml")).unwrap();
+    assert!(manual.contains("version: 1"));
+    assert!(manual.contains("events: []"));
+}
+
+#[test]
+fn init_dry_run_does_not_write_files() {
+    let tmp = TempDir::new().unwrap();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["init", "--dry-run", "--source", "jira"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Would write shiplog.toml"))
+        .stdout(predicate::str::contains("JIRA_TOKEN"));
+
+    assert!(!tmp.path().join("shiplog.toml").exists());
+    assert!(!tmp.path().join("manual_events.yaml").exists());
+}
+
+#[test]
+fn init_rejects_existing_files_without_force() {
+    let tmp = TempDir::new().unwrap();
+    std::fs::write(tmp.path().join("shiplog.toml"), "existing").unwrap();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .arg("init")
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("already exists"));
+}
+
+#[test]
+fn init_rejects_existing_manual_events_without_partial_write() {
+    let tmp = TempDir::new().unwrap();
+    std::fs::write(tmp.path().join("manual_events.yaml"), "existing").unwrap();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .arg("init")
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("already exists"));
+
+    assert!(
+        !tmp.path().join("shiplog.toml").exists(),
+        "init should not write shiplog.toml after detecting an existing scaffold file"
+    );
+}
+
+#[test]
+fn init_force_overwrites_existing_files() {
+    let tmp = TempDir::new().unwrap();
+    std::fs::write(tmp.path().join("shiplog.toml"), "existing").unwrap();
+    std::fs::write(tmp.path().join("manual_events.yaml"), "existing").unwrap();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["init", "--force", "--source", "jira", "--source", "linear"])
+        .assert()
+        .success();
+
+    let config = std::fs::read_to_string(tmp.path().join("shiplog.toml")).unwrap();
+    assert!(config.contains("[sources.jira]\nenabled = true"));
+    assert!(config.contains("[sources.linear]\nenabled = true"));
+    assert!(config.contains("[sources.github]\nenabled = false"));
+    assert!(config.contains("[sources.manual]\nenabled = false"));
 }
 
 // ── 3. collect --help shows collect-specific options ───────────────────────
