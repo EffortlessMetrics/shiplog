@@ -19,7 +19,11 @@ use shiplog_ingest_manual::ManualIngestor;
 use shiplog_ports::Ingestor;
 use shiplog_redact::DeterministicRedactor;
 use shiplog_render_md::MarkdownRenderer;
-use shiplog_schema::{bundle::BundleProfile, workstream::WorkstreamsFile};
+use shiplog_schema::{
+    bundle::BundleProfile,
+    event::EventEnvelope,
+    workstream::{WorkstreamStats, WorkstreamsFile},
+};
 use shiplog_workstreams::RepoClusterer;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
@@ -260,6 +264,44 @@ enum WorkstreamsCommand {
         /// Validate the most recent run explicitly.
         #[arg(long)]
         latest: bool,
+    },
+
+    /// Rename a workstream in the curated workstreams file.
+    Rename {
+        /// Output directory containing shiplog runs.
+        #[arg(long, default_value = "./out")]
+        out: PathBuf,
+        /// Run ID to edit (uses most recent if not specified).
+        #[arg(long)]
+        run: Option<String>,
+        /// Edit the most recent run explicitly.
+        #[arg(long)]
+        latest: bool,
+        /// Existing workstream title or ID.
+        #[arg(long)]
+        from: String,
+        /// New workstream title.
+        #[arg(long)]
+        to: String,
+    },
+
+    /// Move or assign one event to a workstream.
+    Move {
+        /// Output directory containing shiplog runs.
+        #[arg(long, default_value = "./out")]
+        out: PathBuf,
+        /// Run ID to edit (uses most recent if not specified).
+        #[arg(long)]
+        run: Option<String>,
+        /// Edit the most recent run explicitly.
+        #[arg(long)]
+        latest: bool,
+        /// Event ID from ledger.events.jsonl.
+        #[arg(long)]
+        event: String,
+        /// Target workstream title or ID.
+        #[arg(long)]
+        to: String,
     },
 }
 
@@ -2053,6 +2095,64 @@ fn main() -> Result<()> {
                     anyhow::bail!("{} workstream validation error(s)", errors.len());
                 }
             }
+            WorkstreamsCommand::Rename {
+                out,
+                run,
+                latest,
+                from,
+                to,
+            } => {
+                let run_dir = resolve_render_run_dir(&out, run, latest)?;
+                let (mut workstreams, source, _) = load_effective_workstreams_for_run(&run_dir)?;
+                let old_title = rename_workstream(&mut workstreams, &from, &to)?;
+                write_curated_workstreams(&run_dir, &workstreams)?;
+                println!("Renamed workstream: {old_title} -> {}", to.trim());
+                println!(
+                    "Updated: {}",
+                    shiplog_workstreams::WorkstreamManager::curated_path(&run_dir).display()
+                );
+                if matches!(source, WorkstreamsFileSource::Suggested) {
+                    println!("Created curated workstreams.yaml from suggested workstreams.");
+                }
+            }
+            WorkstreamsCommand::Move {
+                out,
+                run,
+                latest,
+                event,
+                to,
+            } => {
+                let run_dir = resolve_render_run_dir(&out, run, latest)?;
+                let (mut workstreams, source, _) = load_effective_workstreams_for_run(&run_dir)?;
+                let ledger_events = load_run_events(&run_dir)?;
+                let result =
+                    move_event_to_workstream(&mut workstreams, &event, &to, &ledger_events)?;
+                let errors = validate_workstreams_against_events(&workstreams, &ledger_events);
+                if !errors.is_empty() {
+                    for error in &errors {
+                        eprintln!("- {error}");
+                    }
+                    anyhow::bail!("{} workstream validation error(s)", errors.len());
+                }
+
+                write_curated_workstreams(&run_dir, &workstreams)?;
+                println!("Moved event {} to {}", result.event_id, result.to_title);
+                if result.from_titles.is_empty() {
+                    println!("Source: unassigned");
+                } else {
+                    println!("Source: {}", result.from_titles.join(", "));
+                }
+                if result.receipt_preserved {
+                    println!("Receipt anchor preserved in target workstream.");
+                }
+                println!(
+                    "Updated: {}",
+                    shiplog_workstreams::WorkstreamManager::curated_path(&run_dir).display()
+                );
+                if matches!(source, WorkstreamsFileSource::Suggested) {
+                    println!("Created curated workstreams.yaml from suggested workstreams.");
+                }
+            }
         },
         Command::Import {
             dir,
@@ -2553,11 +2653,161 @@ fn print_workstreams_list(
     }
 }
 
+fn rename_workstream(workstreams: &mut WorkstreamsFile, from: &str, to: &str) -> Result<String> {
+    let new_title = to.trim();
+    if new_title.is_empty() {
+        anyhow::bail!("new workstream title cannot be blank");
+    }
+
+    let idx = find_workstream_index(workstreams, from)?;
+    if workstreams
+        .workstreams
+        .iter()
+        .enumerate()
+        .any(|(other_idx, workstream)| other_idx != idx && workstream.title == new_title)
+    {
+        anyhow::bail!("another workstream is already titled {new_title:?}");
+    }
+
+    let old_title = workstreams.workstreams[idx].title.clone();
+    workstreams.workstreams[idx].title = new_title.to_string();
+    Ok(old_title)
+}
+
+struct MoveWorkstreamResult {
+    event_id: String,
+    from_titles: Vec<String>,
+    to_title: String,
+    receipt_preserved: bool,
+}
+
+fn move_event_to_workstream(
+    workstreams: &mut WorkstreamsFile,
+    event_selector: &str,
+    target_selector: &str,
+    ledger_events: &[EventEnvelope],
+) -> Result<MoveWorkstreamResult> {
+    let target_idx = find_workstream_index(workstreams, target_selector)?;
+    let event = ledger_events
+        .iter()
+        .find(|event| event.id.to_string() == event_selector)
+        .ok_or_else(|| {
+            anyhow::anyhow!("event {event_selector:?} was not found in ledger.events.jsonl")
+        })?;
+    let event_id = event.id.clone();
+    let event_key = event.id.to_string();
+
+    let mut from_titles = Vec::new();
+    let mut receipt_preserved = false;
+
+    for (idx, workstream) in workstreams.workstreams.iter_mut().enumerate() {
+        let had_event = workstream
+            .events
+            .iter()
+            .any(|candidate| candidate.to_string() == event_key);
+        if had_event && idx != target_idx {
+            from_titles.push(workstream.title.clone());
+        }
+        workstream
+            .events
+            .retain(|candidate| candidate.to_string() != event_key);
+
+        let had_receipt = workstream
+            .receipts
+            .iter()
+            .any(|candidate| candidate.to_string() == event_key);
+        receipt_preserved |= had_receipt;
+        workstream
+            .receipts
+            .retain(|candidate| candidate.to_string() != event_key);
+    }
+
+    let target = &mut workstreams.workstreams[target_idx];
+    let to_title = target.title.clone();
+    target.events.push(event_id.clone());
+    if receipt_preserved {
+        target.receipts.push(event_id);
+    }
+
+    recompute_workstream_stats(workstreams, ledger_events);
+
+    Ok(MoveWorkstreamResult {
+        event_id: event_key,
+        from_titles,
+        to_title,
+        receipt_preserved,
+    })
+}
+
+fn find_workstream_index(workstreams: &WorkstreamsFile, selector: &str) -> Result<usize> {
+    let selector = selector.trim();
+    if selector.is_empty() {
+        anyhow::bail!("workstream selector cannot be blank");
+    }
+
+    let matches: Vec<_> = workstreams
+        .workstreams
+        .iter()
+        .enumerate()
+        .filter(|(_, workstream)| {
+            workstream.title == selector || workstream.id.to_string() == selector
+        })
+        .map(|(idx, _)| idx)
+        .collect();
+
+    match matches.as_slice() {
+        [idx] => Ok(*idx),
+        [] => anyhow::bail!(
+            "no workstream matched {selector:?}; run `shiplog workstreams list` to see available titles and IDs"
+        ),
+        _ => anyhow::bail!(
+            "multiple workstreams matched {selector:?}; use the workstream ID instead"
+        ),
+    }
+}
+
+fn recompute_workstream_stats(workstreams: &mut WorkstreamsFile, ledger_events: &[EventEnvelope]) {
+    let event_kinds: HashMap<_, _> = ledger_events
+        .iter()
+        .map(|event| (event.id.to_string(), event.kind.clone()))
+        .collect();
+
+    for workstream in &mut workstreams.workstreams {
+        workstream.stats = WorkstreamStats::zero();
+        let event_ids = workstream.events.clone();
+        for event_id in event_ids {
+            if let Some(kind) = event_kinds.get(&event_id.to_string()) {
+                workstream.bump_stats(kind);
+            }
+        }
+    }
+}
+
+fn write_curated_workstreams(run_dir: &Path, workstreams: &WorkstreamsFile) -> Result<()> {
+    let curated_path = shiplog_workstreams::WorkstreamManager::curated_path(run_dir);
+    shiplog_workstreams::write_workstreams(&curated_path, workstreams)
+        .with_context(|| format!("write curated workstreams to {curated_path:?}"))
+}
+
 fn validate_workstreams_for_run(
     run_dir: &Path,
     workstreams: &WorkstreamsFile,
 ) -> Result<Vec<String>> {
-    let ledger_ids = load_run_event_ids(run_dir)?;
+    let ledger_events = load_run_events(run_dir)?;
+    Ok(validate_workstreams_against_events(
+        workstreams,
+        &ledger_events,
+    ))
+}
+
+fn validate_workstreams_against_events(
+    workstreams: &WorkstreamsFile,
+    ledger_events: &[EventEnvelope],
+) -> Vec<String> {
+    let ledger_ids: HashSet<_> = ledger_events
+        .iter()
+        .map(|event| event.id.to_string())
+        .collect();
     let mut errors = Vec::new();
 
     if workstreams.version != 1 {
@@ -2633,10 +2883,10 @@ fn validate_workstreams_for_run(
         }
     }
 
-    Ok(errors)
+    errors
 }
 
-fn load_run_event_ids(run_dir: &Path) -> Result<HashSet<String>> {
+fn load_run_events(run_dir: &Path) -> Result<Vec<EventEnvelope>> {
     let events_path = run_dir.join("ledger.events.jsonl");
     if !events_path.exists() {
         anyhow::bail!(
@@ -2660,11 +2910,7 @@ fn load_run_event_ids(run_dir: &Path) -> Result<HashSet<String>> {
     .ingest()
     .context("ingest run ledger for workstream validation")?;
 
-    Ok(ingest
-        .events
-        .into_iter()
-        .map(|event| event.id.to_string())
-        .collect())
+    Ok(ingest.events)
 }
 
 fn find_most_recent_run(out_dir: &Path) -> Result<PathBuf> {
