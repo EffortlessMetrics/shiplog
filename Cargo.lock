@@ -2240,6 +2240,7 @@ dependencies = [
  "serde_yaml_ng",
  "shiplog-cluster-llm",
  "shiplog-engine",
+ "shiplog-ids",
  "shiplog-ingest-git",
  "shiplog-ingest-github",
  "shiplog-ingest-gitlab",
