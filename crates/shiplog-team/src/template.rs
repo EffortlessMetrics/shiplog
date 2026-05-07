@@ -1,4 +1,4 @@
-//! Jinja2-like template system for packet rendering.
+//! Jinja2-like template support for team packet rendering.
 //!
 //! Provides a simple template engine supporting:
 //! - Variable substitution
@@ -33,6 +33,7 @@ impl TemplateContext {
     }
 
     /// Check if a variable exists and is truthy
+    #[cfg(test)]
     pub fn is_truthy(&self, key: &str) -> bool {
         self.get(key).map(|v| v.is_truthy()).unwrap_or(false)
     }
@@ -57,6 +58,7 @@ pub enum TemplateValue {
 
 impl TemplateValue {
     /// Check if the value is truthy (for conditionals)
+    #[cfg(test)]
     fn is_truthy(&self) -> bool {
         match self {
             TemplateValue::Boolean(b) => *b,
@@ -198,6 +200,7 @@ impl TemplateEngine {
     }
 
     /// Create a new template engine with custom delimiters
+    #[cfg(test)]
     pub fn with_delimiters(
         var_open: &str,
         var_close: &str,
@@ -760,7 +763,10 @@ mod tests {
         ctx.set("date_range", "2025-01-01 to 2025-03-31");
         let template = "# {{ title }}\n\n**Author:** {{ author }}\n**Period:** {{ date_range }}";
         let result = engine.render(template, &ctx).unwrap();
-        insta::assert_snapshot!("render_packet_header", result);
+        assert_eq!(
+            result,
+            "# Q1 2025 Shipping Packet\n\n**Author:** alice\n**Period:** 2025-01-01 to 2025-03-31"
+        );
     }
 
     #[test]
@@ -770,7 +776,7 @@ mod tests {
         ctx.set("name", "Bob");
         let template = "Name: {{ name }}, Title: {{ title }}, Org: {{ org }}";
         let result = engine.render(template, &ctx).unwrap();
-        insta::assert_snapshot!("render_missing_vars", result);
+        assert_eq!(result, "Name: Bob, Title: , Org: ");
     }
 
     // --- Property tests ---

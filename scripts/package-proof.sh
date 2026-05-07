@@ -2,6 +2,7 @@
 set -euo pipefail
 
 cargo metadata --format-version 1 --no-deps
+scripts/package-boundary-audit.sh
 cargo fmt --all -- --check
 cargo clippy --workspace --all-targets --all-features -- -D warnings
 cargo test --workspace --exclude shiplog-testkit -- --test-threads=4
@@ -26,7 +27,11 @@ packages=(
   shiplog-ingest-manual
   shiplog-ingest-git
   shiplog-ingest-github
+  shiplog-ingest-gitlab
+  shiplog-ingest-jira
+  shiplog-ingest-linear
   shiplog-cluster-llm
+  shiplog-team
   shiplog-engine
   shiplog
 )

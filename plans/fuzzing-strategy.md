@@ -983,7 +983,7 @@ fuzz_target!(|data: &[u8]| {
 ```rust
 fuzz_target!(|data: &[u8]| {
     if let Ok(text) = std::str::from_utf8(data) {
-        let _ = shiplog_template::parse_template(text);
+        let _ = parse_template(text);
     }
 });
 ```

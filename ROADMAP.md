@@ -10,7 +10,7 @@ Active development. These items are in progress or planned for the next minor re
 - ✅ **GitLab ingest adapter** (`shiplog-ingest-gitlab`) -- Merge request and review ingestion from GitLab, including self-hosted instances.
 - ✅ **Jira ingest adapter** (`shiplog-ingest-jira`) -- Pull issue and ticket data as evidence alongside code activity.
 - ✅ **Linear ingest adapter** (`shiplog-ingest-linear`) -- Pull issue data from Linear via GraphQL API.
-- ✅ **Configurable packet templates** (`shiplog-template`) -- User-defined templates for packet rendering.
+- ✅ **Team packet template support** (`shiplog-team::template`) -- Template rendering lives inside the team owner crate until packet templates become a standalone contract.
 - **Binary releases via GitHub Actions** -- Pre-built binaries for Linux, macOS, and Windows so users do not need a Rust toolchain to install shiplog.
 - **Improved packet formatting** -- Better Markdown structure, configurable section ordering, and cleaner receipt presentation.
 - **Cache improvements** -- TTL configuration, cache size limits, and cache inspection commands.

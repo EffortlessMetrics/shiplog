@@ -1503,17 +1503,6 @@ dependencies = [
  "shiplog-merge",
  "shiplog-ports",
  "shiplog-schema",
- "shiplog-template",
-]
-
-[[package]]
-name = "shiplog-template"
-version = "0.3.0"
-dependencies = [
- "anyhow",
- "serde",
- "serde_json",
- "shiplog-schema",
 ]
 
 [[package]]

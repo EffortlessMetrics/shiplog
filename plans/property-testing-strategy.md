@@ -1243,7 +1243,7 @@ graph TB
         GL[shiplog-ingest-gitlab]
         JIRA[shiplog-ingest-jira]
         LIN[shiplog-ingest-linear]
-        TPL[shiplog-template]
+        TPL[shiplog-team::template]
         PLG[future plugin owner]
     end
 ```
@@ -2035,7 +2035,7 @@ gantt
     shiplog-ingest-jira property tests         :b1, after a1, 2d
     shiplog-ingest-linear property tests       :b2, after a1, 2d
     section Templates
-    shiplog-template property tests            :c1, after b1, 2d
+    shiplog-team template property tests       :c1, after b1, 2d
     section Plugins
     future plugin owner property tests         :d1, after c1, 3d
 ```

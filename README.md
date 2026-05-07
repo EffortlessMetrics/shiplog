@@ -138,6 +138,9 @@ out/<run_id>/
 | `json` | Import from canonical JSONL event files |
 | `manual` | Ingest non-GitHub work from a YAML events file |
 
+GitLab, Jira, and Linear are available as adapter crates for library users but
+are not wired into the CLI source list yet.
+
 ### Examples
 
 ```bash
@@ -263,9 +266,13 @@ external contract. Adapters depend on ports and schema, never the reverse.
 | `shiplog-ingest-git` | Local git commit ingestion for the `collect git` path |
 | `shiplog-ingest-json` | Import from canonical JSON artifacts |
 | `shiplog-ingest-manual` | YAML-based manual event ingestion |
+| `shiplog-ingest-gitlab` | GitLab MR and review ingestion adapter |
+| `shiplog-ingest-jira` | Jira issue ingestion adapter |
+| `shiplog-ingest-linear` | Linear issue ingestion adapter |
 | `shiplog-workstreams` | Workstream clustering and user-curated YAML workflow |
 | `shiplog-merge` | Multi-source merge helpers used by the engine |
 | `shiplog-cluster-llm` | Optional LLM-assisted semantic clustering |
+| `shiplog-team` | Team aggregation support |
 | `shiplog-redact` | Deterministic HMAC-SHA256 redaction across three profiles |
 | `shiplog-render-md` | Markdown packet renderer |
 | `shiplog-render-json` | JSON output renderer |
@@ -275,6 +282,7 @@ external contract. Adapters depend on ports and schema, never the reverse.
 Internal implementation seams live under owner crates as modules. New boundaries
 start as modules and are promoted to public crates only when they become stable
 contracts, trust surfaces, real adapters, or heavy optional boundaries.
+`publish = false` is reserved for dev-only packages.
 
 ## LLM clustering
 

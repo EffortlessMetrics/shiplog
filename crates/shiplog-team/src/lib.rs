@@ -7,6 +7,7 @@
 pub mod aggregate;
 pub mod core;
 pub mod render;
+mod template;
 
 pub use aggregate::{TeamAggregator, TeamOutputFiles, write_team_outputs};
 pub use core::{TeamConfig, parse_alias_list, parse_csv_list, resolve_team_config};

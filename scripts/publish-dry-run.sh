@@ -29,7 +29,11 @@ packages=(
   shiplog-ingest-manual
   shiplog-ingest-git
   shiplog-ingest-github
+  shiplog-ingest-gitlab
+  shiplog-ingest-jira
+  shiplog-ingest-linear
   shiplog-cluster-llm
+  shiplog-team
   shiplog-engine
   shiplog
 )
