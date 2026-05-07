@@ -7,9 +7,11 @@
 use anyhow::{Context, Result};
 use chrono::{DateTime, Datelike, Months, NaiveDate, Utc};
 use clap::{Args, Parser, Subcommand, ValueEnum};
+use regex::{Regex, RegexBuilder};
 use reqwest::blocking::Client;
 use serde::Deserialize;
 use shiplog_engine::{ConflictResolution, Engine, WorkstreamSource};
+use shiplog_ids::WorkstreamId;
 use shiplog_ingest_git::LocalGitIngestor;
 use shiplog_ingest_github::GithubIngestor;
 use shiplog_ingest_gitlab::{GitlabIngestor, MrState};
@@ -23,8 +25,8 @@ use shiplog_render_md::MarkdownRenderer;
 use shiplog_schema::{
     bundle::BundleProfile,
     coverage::TimeWindow,
-    event::EventEnvelope,
-    workstream::{WorkstreamStats, WorkstreamsFile},
+    event::{EventEnvelope, EventPayload},
+    workstream::{Workstream, WorkstreamStats, WorkstreamsFile},
 };
 use shiplog_workstreams::RepoClusterer;
 use std::collections::{HashMap, HashSet};
@@ -469,6 +471,31 @@ enum WorkstreamsCommand {
         /// Target workstream title or ID.
         #[arg(long)]
         to: String,
+    },
+
+    /// Split matching events out of one workstream into another.
+    Split {
+        /// Output directory containing shiplog runs.
+        #[arg(long, default_value = "./out")]
+        out: PathBuf,
+        /// Run ID to edit (uses most recent if not specified).
+        #[arg(long)]
+        run: Option<String>,
+        /// Edit the most recent run explicitly.
+        #[arg(long)]
+        latest: bool,
+        /// Source workstream title or ID.
+        #[arg(long)]
+        from: String,
+        /// Target workstream title or ID.
+        #[arg(long)]
+        to: String,
+        /// Regex matched against event title, repo, tags, and source URLs.
+        #[arg(long)]
+        matching: String,
+        /// Create the target workstream if it does not exist.
+        #[arg(long)]
+        create: bool,
     },
 }
 
@@ -3372,6 +3399,54 @@ fn main() -> Result<()> {
                     println!("Created curated workstreams.yaml from suggested workstreams.");
                 }
             }
+            WorkstreamsCommand::Split {
+                out,
+                run,
+                latest,
+                from,
+                to,
+                matching,
+                create,
+            } => {
+                let run_dir = resolve_render_run_dir(&out, run, latest)?;
+                let (mut workstreams, source, _) = load_effective_workstreams_for_run(&run_dir)?;
+                let ledger_events = load_run_events(&run_dir)?;
+                let result = split_workstream(
+                    &mut workstreams,
+                    &from,
+                    &to,
+                    &matching,
+                    create,
+                    &ledger_events,
+                )?;
+                let errors = validate_workstreams_against_events(&workstreams, &ledger_events);
+                if !errors.is_empty() {
+                    for error in &errors {
+                        eprintln!("- {error}");
+                    }
+                    anyhow::bail!("{} workstream validation error(s)", errors.len());
+                }
+
+                write_curated_workstreams(&run_dir, &workstreams)?;
+                println!(
+                    "Split {} event(s) from {} to {}",
+                    result.event_count, result.from_title, result.to_title
+                );
+                println!("Matched: {}", result.pattern);
+                if result.receipt_count > 0 {
+                    println!("Moved {} receipt anchor(s).", result.receipt_count);
+                }
+                if result.created_target {
+                    println!("Created target workstream: {}", result.to_title);
+                }
+                println!(
+                    "Updated: {}",
+                    shiplog_workstreams::WorkstreamManager::curated_path(&run_dir).display()
+                );
+                if matches!(source, WorkstreamsFileSource::Suggested) {
+                    println!("Created curated workstreams.yaml from suggested workstreams.");
+                }
+            }
         },
         Command::Runs { cmd } => match cmd {
             RunsCommand::List { out } => {
@@ -4027,6 +4102,15 @@ struct MoveWorkstreamResult {
     receipt_preserved: bool,
 }
 
+struct SplitWorkstreamResult {
+    event_count: usize,
+    receipt_count: usize,
+    from_title: String,
+    to_title: String,
+    pattern: String,
+    created_target: bool,
+}
+
 fn move_event_to_workstream(
     workstreams: &mut WorkstreamsFile,
     event_selector: &str,
@@ -4085,7 +4169,180 @@ fn move_event_to_workstream(
     })
 }
 
+fn split_workstream(
+    workstreams: &mut WorkstreamsFile,
+    from_selector: &str,
+    target_selector: &str,
+    pattern: &str,
+    create: bool,
+    ledger_events: &[EventEnvelope],
+) -> Result<SplitWorkstreamResult> {
+    let pattern = pattern.trim();
+    if pattern.is_empty() {
+        anyhow::bail!("split matching pattern cannot be blank");
+    }
+    let matcher = RegexBuilder::new(pattern)
+        .case_insensitive(true)
+        .build()
+        .with_context(|| format!("compile split matching regex {pattern:?}"))?;
+
+    let from_idx = find_workstream_index(workstreams, from_selector)?;
+    let from_title = workstreams.workstreams[from_idx].title.clone();
+    let (target_idx, created_target) =
+        resolve_split_target_index(workstreams, target_selector, create)?;
+    if from_idx == target_idx {
+        anyhow::bail!("split target must be different from source workstream");
+    }
+    let to_title = workstreams.workstreams[target_idx].title.clone();
+
+    let events_by_id: HashMap<_, _> = ledger_events
+        .iter()
+        .map(|event| (event.id.to_string(), event))
+        .collect();
+
+    let mut matched_ids = HashSet::new();
+    for event_id in workstreams.workstreams[from_idx].events.clone() {
+        let event_key = event_id.to_string();
+        let event = events_by_id.get(event_key.as_str()).ok_or_else(|| {
+            anyhow::anyhow!("event {event_key:?} was not found in ledger.events.jsonl")
+        })?;
+        if event_matches_split_pattern(event, &matcher) {
+            matched_ids.insert(event_key);
+        }
+    }
+
+    if matched_ids.is_empty() {
+        anyhow::bail!("no events in {from_title:?} matched {pattern:?}");
+    }
+
+    let mut moved_events = Vec::new();
+    let mut moved_receipts = Vec::new();
+    for workstream in &mut workstreams.workstreams {
+        workstream.events.retain(|event_id| {
+            let event_key = event_id.to_string();
+            if matched_ids.contains(&event_key) {
+                if !moved_events
+                    .iter()
+                    .any(|candidate: &shiplog_ids::EventId| candidate.to_string() == event_key)
+                {
+                    moved_events.push(event_id.clone());
+                }
+                false
+            } else {
+                true
+            }
+        });
+
+        workstream.receipts.retain(|event_id| {
+            let event_key = event_id.to_string();
+            if matched_ids.contains(&event_key) {
+                if !moved_receipts
+                    .iter()
+                    .any(|candidate: &shiplog_ids::EventId| candidate.to_string() == event_key)
+                {
+                    moved_receipts.push(event_id.clone());
+                }
+                false
+            } else {
+                true
+            }
+        });
+    }
+
+    let target = &mut workstreams.workstreams[target_idx];
+    target.events.extend(moved_events.iter().cloned());
+    target.receipts.extend(moved_receipts.iter().cloned());
+
+    recompute_workstream_stats(workstreams, ledger_events);
+
+    Ok(SplitWorkstreamResult {
+        event_count: moved_events.len(),
+        receipt_count: moved_receipts.len(),
+        from_title,
+        to_title,
+        pattern: pattern.to_string(),
+        created_target,
+    })
+}
+
+fn resolve_split_target_index(
+    workstreams: &mut WorkstreamsFile,
+    target_selector: &str,
+    create: bool,
+) -> Result<(usize, bool)> {
+    let target_selector = target_selector.trim();
+    if target_selector.is_empty() {
+        anyhow::bail!("target workstream title or ID cannot be blank");
+    }
+
+    if let Some(idx) = find_workstream_index_optional(workstreams, target_selector)? {
+        return Ok((idx, false));
+    }
+
+    if !create {
+        anyhow::bail!("no workstream matched {target_selector:?}; add --create to create it");
+    }
+
+    let idx = workstreams.workstreams.len();
+    workstreams.workstreams.push(Workstream {
+        id: WorkstreamId::from_parts(["split", target_selector]),
+        title: target_selector.to_string(),
+        summary: None,
+        tags: vec![],
+        stats: WorkstreamStats::zero(),
+        events: vec![],
+        receipts: vec![],
+    });
+    Ok((idx, true))
+}
+
+fn event_matches_split_pattern(event: &EventEnvelope, matcher: &Regex) -> bool {
+    event_split_match_fields(event)
+        .into_iter()
+        .any(|field| matcher.is_match(&field))
+}
+
+fn event_split_match_fields(event: &EventEnvelope) -> Vec<String> {
+    let mut fields = Vec::new();
+    fields.push(event_title(event).to_string());
+    fields.push(event.repo.full_name.clone());
+    if let Some(url) = &event.repo.html_url {
+        fields.push(url.clone());
+    }
+    fields.extend(event.tags.iter().cloned());
+    if let Some(url) = &event.source.url {
+        fields.push(url.clone());
+    }
+    fields.extend(event.links.iter().map(|link| link.url.clone()));
+    fields
+}
+
+fn event_title(event: &EventEnvelope) -> &str {
+    match &event.payload {
+        EventPayload::PullRequest(payload) => &payload.title,
+        EventPayload::Review(payload) => &payload.pull_title,
+        EventPayload::Manual(payload) => &payload.title,
+    }
+}
+
 fn find_workstream_index(workstreams: &WorkstreamsFile, selector: &str) -> Result<usize> {
+    let selector = selector.trim();
+    if selector.is_empty() {
+        anyhow::bail!("workstream selector cannot be blank");
+    }
+
+    match find_workstream_index_optional(workstreams, selector)? {
+        Some(idx) => Ok(idx),
+        None => anyhow::bail!(
+            "no workstream matched {selector:?}; run `shiplog workstreams list` to see available titles and IDs"
+        ),
+    }
+}
+
+fn find_workstream_index_optional(
+    workstreams: &WorkstreamsFile,
+    selector: &str,
+) -> Result<Option<usize>> {
     let selector = selector.trim();
     if selector.is_empty() {
         anyhow::bail!("workstream selector cannot be blank");
@@ -4102,10 +4359,8 @@ fn find_workstream_index(workstreams: &WorkstreamsFile, selector: &str) -> Resul
         .collect();
 
     match matches.as_slice() {
-        [idx] => Ok(*idx),
-        [] => anyhow::bail!(
-            "no workstream matched {selector:?}; run `shiplog workstreams list` to see available titles and IDs"
-        ),
+        [idx] => Ok(Some(*idx)),
+        [] => Ok(None),
         _ => anyhow::bail!(
             "multiple workstreams matched {selector:?}; use the workstream ID instead"
         ),
