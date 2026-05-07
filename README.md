@@ -76,6 +76,9 @@ cargo run -p shiplog -- <subcommand>
 
 shiplog follows a **collect → curate → render** workflow. You fetch raw events once, organize them into workstreams, then re-render as many times as you like without hitting the API again.
 
+For a practical review-cycle walkthrough, see
+[docs/guides/review-cycle.md](docs/guides/review-cycle.md).
+
 ### 0. Initialize local files
 
 ```bash

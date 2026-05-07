@@ -149,6 +149,7 @@ This produces `profiles/manager/packet.md` (context preserved, details stripped)
 ## Links
 
 - [Repository](https://github.com/EffortlessMetrics/shiplog) -- Full README, architecture, and crate descriptions.
+- [Review-cycle guide](https://github.com/EffortlessMetrics/shiplog/blob/main/docs/guides/review-cycle.md) -- The fastest path from setup to a curated, share-safe packet.
 - [CHANGELOG](https://github.com/EffortlessMetrics/shiplog/blob/main/CHANGELOG.md) -- Release history.
 - [ROADMAP](https://github.com/EffortlessMetrics/shiplog/blob/main/ROADMAP.md) -- What is planned and what is out of scope.
 - [CONTRIBUTING](https://github.com/EffortlessMetrics/shiplog/blob/main/CONTRIBUTING.md) -- How to contribute.
