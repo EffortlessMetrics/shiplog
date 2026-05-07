@@ -626,6 +626,23 @@ fn make_linear_ingestor(
     Ok(ing)
 }
 
+fn make_git_ingestor(
+    repo: &Path,
+    since: NaiveDate,
+    until: NaiveDate,
+    author: Option<String>,
+    include_merges: bool,
+) -> LocalGitIngestor {
+    let mut ing = LocalGitIngestor::new(repo, since, until);
+    if let Some(author) = author {
+        ing = ing.with_author(author);
+    }
+    if include_merges {
+        ing = ing.with_merges(true);
+    }
+    ing
+}
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
@@ -998,13 +1015,7 @@ fn main() -> Result<()> {
                     author,
                     include_merges,
                 } => {
-                    let mut ing = LocalGitIngestor::new(&repo, since, until);
-                    if let Some(a) = author {
-                        ing = ing.with_author(a);
-                    }
-                    if include_merges {
-                        ing = ing.with_merges(true);
-                    }
+                    let ing = make_git_ingestor(&repo, since, until, author, include_merges);
                     let ingest = ing.ingest().context("ingest events")?;
                     let run_id = ingest.coverage.run_id.to_string();
                     let run_dir = out.join(&run_id);
@@ -1126,9 +1137,44 @@ fn main() -> Result<()> {
             let _ = redactor.load_cache(&cache_path);
 
             match source {
-                Source::Git { .. } => {
-                    eprintln!("ERROR: Git source not yet implemented");
-                    std::process::exit(1);
+                Source::Git {
+                    repo,
+                    since,
+                    until,
+                    author,
+                    include_merges,
+                } => {
+                    let ing = make_git_ingestor(&repo, since, until, author, include_merges);
+                    let ingest = ing.ingest().context("ingest events")?;
+                    let window_label = format!("{}..{}", since, until);
+
+                    if !shiplog_workstreams::WorkstreamManager::has_curated(&run_dir)
+                        && !shiplog_workstreams::WorkstreamManager::suggested_path(&run_dir)
+                            .exists()
+                    {
+                        anyhow::bail!(
+                            "No workstreams found in {:?}. Run `shiplog collect` first.",
+                            run_dir
+                        );
+                    }
+
+                    let outputs = engine
+                        .refresh(
+                            ingest,
+                            "local",
+                            &window_label,
+                            &run_dir,
+                            zip,
+                            &bundle_profile,
+                        )
+                        .context("refresh engine pipeline")?;
+
+                    redactor
+                        .save_cache(&cache_path)
+                        .with_context(|| format!("save redaction cache to {cache_path:?}"))?;
+
+                    println!("Refreshed while preserving workstream curation:");
+                    print_outputs_simple(&outputs);
                 }
                 Source::Github {
                     user,
@@ -1524,9 +1570,39 @@ fn main() -> Result<()> {
             let (engine, redactor) = create_engine(&key, clusterer);
 
             match source {
-                Source::Git { .. } => {
-                    eprintln!("ERROR: Git source not yet implemented");
-                    std::process::exit(1);
+                Source::Git {
+                    repo,
+                    since,
+                    until,
+                    author,
+                    include_merges,
+                } => {
+                    let ing = make_git_ingestor(&repo, since, until, author, include_merges);
+                    let ingest = ing.ingest().context("ingest events")?;
+                    let run_id = ingest.coverage.run_id.to_string();
+                    let run_dir = out.join(&run_id);
+
+                    let cache_path = DeterministicRedactor::cache_path(&run_dir);
+                    let _ = redactor.load_cache(&cache_path);
+
+                    let window_label = format!("{}..{}", since, until);
+                    let (outputs, ws_source) = engine
+                        .run(
+                            ingest,
+                            "local",
+                            &window_label,
+                            &run_dir,
+                            zip,
+                            &bundle_profile,
+                        )
+                        .context("run engine pipeline")?;
+
+                    redactor
+                        .save_cache(&cache_path)
+                        .with_context(|| format!("save redaction cache to {cache_path:?}"))?;
+
+                    println!("Wrote:");
+                    print_outputs(&outputs, ws_source);
                 }
                 Source::Github {
                     user,
@@ -2019,5 +2095,26 @@ mod tests {
             err.to_string().contains("parse Linear issue status"),
             "unexpected error: {err:?}"
         );
+    }
+
+    #[test]
+    fn make_git_ingestor_configures_cli_options() {
+        let since = NaiveDate::from_ymd_opt(2025, 1, 1).unwrap();
+        let until = NaiveDate::from_ymd_opt(2025, 2, 1).unwrap();
+        let repo = Path::new(".");
+
+        let ing = make_git_ingestor(
+            repo,
+            since,
+            until,
+            Some("dev@example.com".to_string()),
+            true,
+        );
+
+        assert_eq!(ing.repo_path, repo);
+        assert_eq!(ing.since, since);
+        assert_eq!(ing.until, until);
+        assert_eq!(ing.author.as_deref(), Some("dev@example.com"));
+        assert!(ing.include_merges);
     }
 }
