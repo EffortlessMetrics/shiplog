@@ -72,6 +72,7 @@ fn collect_help_shows_sources_and_options() {
         .stdout(predicate::str::contains("github"))
         .stdout(predicate::str::contains("gitlab"))
         .stdout(predicate::str::contains("jira"))
+        .stdout(predicate::str::contains("linear"))
         .stdout(predicate::str::contains("json"))
         .stdout(predicate::str::contains("--out"))
         .stdout(predicate::str::contains("--regen"));
@@ -123,6 +124,23 @@ fn collect_jira_help_shows_jira_flags() {
         .stdout(predicate::str::contains("--instance"))
         .stdout(predicate::str::contains("--throttle-ms"))
         .stdout(predicate::str::contains("--token"))
+        .stdout(predicate::str::contains("--cache-dir"))
+        .stdout(predicate::str::contains("--no-cache"));
+}
+
+#[test]
+fn collect_linear_help_shows_linear_flags() {
+    shiplog_cmd()
+        .args(["collect", "linear", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--user-id"))
+        .stdout(predicate::str::contains("--since"))
+        .stdout(predicate::str::contains("--until"))
+        .stdout(predicate::str::contains("--status"))
+        .stdout(predicate::str::contains("--project"))
+        .stdout(predicate::str::contains("--throttle-ms"))
+        .stdout(predicate::str::contains("--api-key"))
         .stdout(predicate::str::contains("--cache-dir"))
         .stdout(predicate::str::contains("--no-cache"));
 }

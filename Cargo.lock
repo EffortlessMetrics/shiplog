@@ -2234,6 +2234,7 @@ dependencies = [
  "shiplog-ingest-gitlab",
  "shiplog-ingest-jira",
  "shiplog-ingest-json",
+ "shiplog-ingest-linear",
  "shiplog-ingest-manual",
  "shiplog-ports",
  "shiplog-redact",
