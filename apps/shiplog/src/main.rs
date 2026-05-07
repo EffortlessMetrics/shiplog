@@ -1,7 +1,8 @@
 //! `shiplog` CLI entrypoint.
 //!
-//! Exposes `init`, `collect`, `render`, `refresh`, `workstreams`, `merge`,
-//! `import`, and `run` commands over the workspace engine and adapter crates.
+//! Exposes `init`, `doctor`, `collect`, `render`, `refresh`, `workstreams`,
+//! `runs`, `open`, `merge`, `import`, and `run` commands over the workspace
+//! engine and adapter crates.
 
 use anyhow::{Context, Result};
 use chrono::{DateTime, Datelike, Months, NaiveDate, Utc};
@@ -168,6 +169,12 @@ enum Command {
     Runs {
         #[command(subcommand)]
         cmd: RunsCommand,
+    },
+
+    /// Open generated artifacts for a run, or print their paths when unavailable.
+    Open {
+        #[command(subcommand)]
+        cmd: OpenCommand,
     },
 
     /// Merge existing run directories into one packet.
@@ -344,6 +351,57 @@ enum RunsCommand {
         /// Inspect the most recent run explicitly.
         #[arg(long)]
         latest: bool,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum OpenCommand {
+    /// Open the rendered packet for a run.
+    Packet {
+        /// Output directory containing shiplog runs.
+        #[arg(long, default_value = "./out")]
+        out: PathBuf,
+        /// Run ID to open (uses most recent if not specified).
+        #[arg(long)]
+        run: Option<String>,
+        /// Open the most recent run explicitly.
+        #[arg(long)]
+        latest: bool,
+        /// Print the path without launching a platform opener.
+        #[arg(long)]
+        print_path: bool,
+    },
+
+    /// Open the effective workstreams file for a run.
+    Workstreams {
+        /// Output directory containing shiplog runs.
+        #[arg(long, default_value = "./out")]
+        out: PathBuf,
+        /// Run ID to open (uses most recent if not specified).
+        #[arg(long)]
+        run: Option<String>,
+        /// Open the most recent run explicitly.
+        #[arg(long)]
+        latest: bool,
+        /// Print the path without launching a platform opener.
+        #[arg(long)]
+        print_path: bool,
+    },
+
+    /// Open the run output directory.
+    Out {
+        /// Output directory containing shiplog runs.
+        #[arg(long, default_value = "./out")]
+        out: PathBuf,
+        /// Run ID to open (uses most recent if not specified).
+        #[arg(long)]
+        run: Option<String>,
+        /// Open the most recent run explicitly.
+        #[arg(long)]
+        latest: bool,
+        /// Print the path without launching a platform opener.
+        #[arg(long)]
+        print_path: bool,
     },
 }
 
@@ -3326,6 +3384,52 @@ fn main() -> Result<()> {
                 print_run_show(&summary);
             }
         },
+        Command::Open { cmd } => match cmd {
+            OpenCommand::Packet {
+                out,
+                run,
+                latest,
+                print_path,
+            } => {
+                let run_dir = resolve_render_run_dir(&out, run, latest)?;
+                let packet = run_dir.join("packet.md");
+                open_existing_path(
+                    &packet,
+                    "Packet",
+                    "Run `shiplog render --latest` to create it.",
+                    print_path,
+                )?;
+            }
+            OpenCommand::Workstreams {
+                out,
+                run,
+                latest,
+                print_path,
+            } => {
+                let run_dir = resolve_render_run_dir(&out, run, latest)?;
+                let (_, _, path) = load_effective_workstreams_for_run(&run_dir)?;
+                open_existing_path(
+                    &path,
+                    "Workstreams file",
+                    "Run `shiplog collect` first.",
+                    print_path,
+                )?;
+            }
+            OpenCommand::Out {
+                out,
+                run,
+                latest,
+                print_path,
+            } => {
+                let run_dir = resolve_render_run_dir(&out, run, latest)?;
+                open_existing_path(
+                    &run_dir,
+                    "Run directory",
+                    "Run `shiplog collect` first.",
+                    print_path,
+                )?;
+            }
+        },
         Command::Merge {
             inputs,
             out,
@@ -4302,6 +4406,71 @@ fn source_list_label(sources: &[String]) -> String {
         "-".to_string()
     } else {
         sources.join(", ")
+    }
+}
+
+fn open_existing_path(path: &Path, label: &str, next_step: &str, print_path: bool) -> Result<()> {
+    if !path.exists() {
+        anyhow::bail!("{label} not found: {}. {next_step}", path.display());
+    }
+
+    open_or_print_path(path, print_path)
+}
+
+fn open_or_print_path(path: &Path, print_path: bool) -> Result<()> {
+    let display_path = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+
+    if print_path {
+        println!("{}", display_path.display());
+        return Ok(());
+    }
+
+    if try_open_path(&display_path) {
+        println!("Opened: {}", display_path.display());
+    } else {
+        println!("{}", display_path.display());
+    }
+
+    Ok(())
+}
+
+fn try_open_path(path: &Path) -> bool {
+    #[cfg(target_os = "windows")]
+    let mut command = {
+        let mut command = std::process::Command::new("explorer.exe");
+        command.arg(path);
+        command
+    };
+
+    #[cfg(target_os = "macos")]
+    let mut command = {
+        let mut command = std::process::Command::new("open");
+        command.arg(path);
+        command
+    };
+
+    #[cfg(all(unix, not(target_os = "macos")))]
+    let mut command = {
+        let mut command = std::process::Command::new("xdg-open");
+        command.arg(path);
+        command
+    };
+
+    #[cfg(not(any(target_os = "windows", target_os = "macos", unix)))]
+    {
+        let _ = path;
+        return false;
+    }
+
+    #[cfg(any(target_os = "windows", target_os = "macos", unix))]
+    {
+        command.stdin(std::process::Stdio::null());
+        command.stdout(std::process::Stdio::null());
+        command.stderr(std::process::Stdio::null());
+        command
+            .status()
+            .map(|status| status.success())
+            .unwrap_or(false)
     }
 }
 

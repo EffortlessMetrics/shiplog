@@ -95,6 +95,7 @@ For the fastest review-cycle path, collect all enabled sources from
 ```bash
 shiplog collect multi --last-6-months
 shiplog runs list
+shiplog open packet --latest
 ```
 
 This reads the enabled `[sources.*]` sections from `shiplog.toml`, collects
@@ -137,9 +138,13 @@ If you prefer direct YAML editing, copy `workstreams.suggested.yaml` to
 
 ```bash
 shiplog render --latest
+shiplog open packet --latest
 ```
 
-This regenerates `packet.md` using your curated workstreams while preserving the original ledger and coverage data. Add `--redact-key <KEY>` to also generate manager and public profile packets.
+This regenerates `packet.md` using your curated workstreams while preserving
+the original ledger and coverage data. Add `--redact-key <KEY>` to also
+generate manager and public profile packets. On remote shells, add
+`--print-path` to print the artifact path without launching an editor.
 
 ## Output layout
 
@@ -168,6 +173,7 @@ out/<run_id>/
 | `refresh <source>` | Re-fetch events while preserving curated `workstreams.yaml` |
 | `workstreams list/validate/rename/move` | Inspect, validate, and safely edit workstream curation |
 | `runs list/show` | Discover runs and inspect their sources, event counts, coverage, and artifact paths |
+| `open packet/workstreams/out` | Open run artifacts, or print their paths when opening is unavailable |
 | `merge` | Merge existing run directories into one packet |
 | `import` | Import an existing run directory and re-render |
 | `run <source>` | Legacy: collect + render in one shot |
