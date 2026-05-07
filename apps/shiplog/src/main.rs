@@ -64,7 +64,8 @@ enum Command {
         /// Also write a zip next to the run folder.
         #[arg(long)]
         zip: bool,
-        /// Redaction key. If omitted, SHIPLOG_REDACT_KEY is used.
+        /// Redaction key. Required for manager/public profiles.
+        /// If omitted, SHIPLOG_REDACT_KEY is used.
         #[arg(long)]
         redact_key: Option<String>,
         /// Bundle profile: internal (full), manager, or public.
@@ -109,7 +110,8 @@ enum Command {
         /// Window label for rendering.
         #[arg(long, default_value = "window")]
         window_label: String,
-        /// Redaction key. If omitted, SHIPLOG_REDACT_KEY is used.
+        /// Redaction key. Required for manager/public profiles.
+        /// If omitted, SHIPLOG_REDACT_KEY is used.
         #[arg(long)]
         redact_key: Option<String>,
         /// Bundle profile: internal (full), manager, or public.
@@ -136,7 +138,8 @@ enum Command {
         /// Also write a zip next to the run folder.
         #[arg(long)]
         zip: bool,
-        /// Redaction key. If omitted, SHIPLOG_REDACT_KEY is used.
+        /// Redaction key. Required for manager/public profiles.
+        /// If omitted, SHIPLOG_REDACT_KEY is used.
         #[arg(long)]
         redact_key: Option<String>,
         /// Bundle profile: internal (full), manager, or public.
@@ -167,7 +170,8 @@ enum Command {
         /// Window label for rendering.
         #[arg(long, default_value = "window")]
         window_label: String,
-        /// Redaction key. If omitted, SHIPLOG_REDACT_KEY is used.
+        /// Redaction key. Required for manager/public profiles.
+        /// If omitted, SHIPLOG_REDACT_KEY is used.
         #[arg(long)]
         redact_key: Option<String>,
         /// Bundle profile: internal (full), manager, or public.
@@ -206,7 +210,8 @@ enum Command {
         /// Also write a zip next to the run folder.
         #[arg(long)]
         zip: bool,
-        /// Redaction key. If omitted, SHIPLOG_REDACT_KEY is used.
+        /// Redaction key. Required for manager/public profiles.
+        /// If omitted, SHIPLOG_REDACT_KEY is used.
         #[arg(long)]
         redact_key: Option<String>,
         /// Bundle profile: internal (full), manager, or public.
@@ -512,13 +517,30 @@ enum WindowLabel {
 const CONFIG_FILENAME: &str = "shiplog.toml";
 const MANUAL_EVENTS_FILENAME: &str = "manual_events.yaml";
 
-fn get_redact_key(redact_key: Option<String>) -> String {
-    redact_key
-        .or_else(|| std::env::var("SHIPLOG_REDACT_KEY").ok())
-        .unwrap_or_else(|| {
-            eprintln!("WARN: no redaction key provided; using a default dev key. Don't share public packets like this.");
-            "dev-key".to_string()
-        })
+#[derive(Debug, Clone)]
+struct RedactionKey {
+    key: Option<String>,
+}
+
+impl RedactionKey {
+    fn resolve(redact_key: Option<String>, bundle_profile: &BundleProfile) -> Result<Self> {
+        let key = redact_key.or_else(|| std::env::var("SHIPLOG_REDACT_KEY").ok());
+        if key.is_none() && !matches!(bundle_profile, BundleProfile::Internal) {
+            anyhow::bail!(
+                "{} profile requires --redact-key or SHIPLOG_REDACT_KEY",
+                bundle_profile
+            );
+        }
+        Ok(Self { key })
+    }
+
+    fn engine_key(&self) -> &str {
+        self.key.as_deref().unwrap_or("")
+    }
+
+    fn render_profiles(&self) -> bool {
+        self.key.is_some()
+    }
 }
 
 impl ResolvedWindow {
@@ -1214,10 +1236,11 @@ fn main() -> Result<()> {
             llm_model,
             llm_api_key,
         } => {
-            let key = get_redact_key(redact_key);
+            let redaction_key = RedactionKey::resolve(redact_key, &bundle_profile)?;
             let clusterer =
                 build_clusterer(llm_cluster, &llm_api_endpoint, &llm_model, llm_api_key);
-            let (engine, redactor) = create_engine(&key, clusterer);
+            let (engine, redactor) = create_engine(redaction_key.engine_key(), clusterer);
+            let engine = engine.with_profile_rendering(redaction_key.render_profiles());
 
             match source {
                 Source::Github {
@@ -1641,9 +1664,10 @@ fn main() -> Result<()> {
             bundle_profile,
             zip,
         } => {
-            let key = get_redact_key(redact_key);
+            let redaction_key = RedactionKey::resolve(redact_key, &bundle_profile)?;
             let clusterer: Box<dyn shiplog_ports::WorkstreamClusterer> = Box::new(RepoClusterer);
-            let (engine, redactor) = create_engine(&key, clusterer);
+            let (engine, redactor) = create_engine(redaction_key.engine_key(), clusterer);
+            let engine = engine.with_profile_rendering(redaction_key.render_profiles());
 
             // Determine which run to render
             let run_dir = resolve_render_run_dir(&out, run, latest)?;
@@ -1688,9 +1712,10 @@ fn main() -> Result<()> {
             redact_key,
             bundle_profile,
         } => {
-            let key = get_redact_key(redact_key);
+            let redaction_key = RedactionKey::resolve(redact_key, &bundle_profile)?;
             let clusterer: Box<dyn shiplog_ports::WorkstreamClusterer> = Box::new(RepoClusterer);
-            let (engine, redactor) = create_engine(&key, clusterer);
+            let (engine, redactor) = create_engine(redaction_key.engine_key(), clusterer);
+            let engine = engine.with_profile_rendering(redaction_key.render_profiles());
 
             // Resolve run directory: explicit --run-dir, or find most recent
             let run_dir = if let Some(rd) = explicit_run_dir {
@@ -2184,10 +2209,11 @@ fn main() -> Result<()> {
                 );
             }
 
-            let key = get_redact_key(redact_key);
+            let redaction_key = RedactionKey::resolve(redact_key, &bundle_profile)?;
             let clusterer =
                 build_clusterer(llm_cluster, &llm_api_endpoint, &llm_model, llm_api_key);
-            let (engine, redactor) = create_engine(&key, clusterer);
+            let (engine, redactor) = create_engine(redaction_key.engine_key(), clusterer);
+            let engine = engine.with_profile_rendering(redaction_key.render_profiles());
 
             let ing = JsonIngestor {
                 events_path,
@@ -2248,10 +2274,11 @@ fn main() -> Result<()> {
             llm_api_key,
         } => {
             // Legacy mode: just do collect
-            let key = get_redact_key(redact_key);
+            let redaction_key = RedactionKey::resolve(redact_key, &bundle_profile)?;
             let clusterer =
                 build_clusterer(llm_cluster, &llm_api_endpoint, &llm_model, llm_api_key);
-            let (engine, redactor) = create_engine(&key, clusterer);
+            let (engine, redactor) = create_engine(redaction_key.engine_key(), clusterer);
+            let engine = engine.with_profile_rendering(redaction_key.render_profiles());
 
             match source {
                 Source::Git {
