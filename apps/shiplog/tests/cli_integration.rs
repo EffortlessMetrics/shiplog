@@ -151,6 +151,9 @@ fn collect_github_help_shows_github_flags() {
         .stdout(predicate::str::contains("--user"))
         .stdout(predicate::str::contains("--since"))
         .stdout(predicate::str::contains("--until"))
+        .stdout(predicate::str::contains("--last-6-months"))
+        .stdout(predicate::str::contains("--last-quarter"))
+        .stdout(predicate::str::contains("--year"))
         .stdout(predicate::str::contains("--mode"))
         .stdout(predicate::str::contains("--include-reviews"))
         .stdout(predicate::str::contains("--no-details"));
@@ -229,6 +232,7 @@ fn render_help_shows_render_options() {
         .success()
         .stdout(predicate::str::contains("--out"))
         .stdout(predicate::str::contains("--run"))
+        .stdout(predicate::str::contains("--latest"))
         .stdout(predicate::str::contains("--user"))
         .stdout(predicate::str::contains("--redact-key"));
 }
@@ -398,6 +402,37 @@ fn refresh_git_preserves_existing_workstreams() {
     );
 }
 
+#[test]
+fn refresh_run_dir_latest_alias_on_collected_directory() {
+    let tmp = TempDir::new().unwrap();
+    let fixtures = fixture_dir();
+    let _run_dir = collect_json_into(tmp.path());
+
+    shiplog_cmd()
+        .args([
+            "refresh",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run-dir",
+            "latest",
+            "json",
+            "--events",
+            fixtures.join("ledger.events.jsonl").to_str().unwrap(),
+            "--coverage",
+            fixtures.join("coverage.manifest.json").to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "Refreshed while preserving workstream curation",
+        ));
+
+    assert!(
+        tmp.path().join("run_fixture/packet.md").exists(),
+        "packet.md should exist after refresh --run-dir latest"
+    );
+}
+
 // ── 6. render on a pre-populated output directory ──────────────────────────
 
 #[test]
@@ -421,6 +456,41 @@ fn render_on_collected_directory() {
         tmp.path().join("run_fixture/packet.md").exists(),
         "packet.md should exist after render"
     );
+}
+
+#[test]
+fn render_latest_on_collected_directory() {
+    let tmp = TempDir::new().unwrap();
+    let _run_dir = collect_json_into(tmp.path());
+
+    shiplog_cmd()
+        .args(["render", "--out", tmp.path().to_str().unwrap(), "--latest"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Rendered"));
+
+    assert!(
+        tmp.path().join("run_fixture/packet.md").exists(),
+        "packet.md should exist after render --latest"
+    );
+}
+
+#[test]
+fn render_run_latest_alias_on_collected_directory() {
+    let tmp = TempDir::new().unwrap();
+    let _run_dir = collect_json_into(tmp.path());
+
+    shiplog_cmd()
+        .args([
+            "render",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "latest",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Rendered"));
 }
 
 #[test]
@@ -486,7 +556,7 @@ fn collect_github_missing_user_fails() {
 }
 
 #[test]
-fn collect_github_missing_since_fails() {
+fn collect_github_partial_date_window_fails() {
     shiplog_cmd()
         .args([
             "collect",
@@ -498,7 +568,10 @@ fn collect_github_missing_since_fails() {
         ])
         .assert()
         .failure()
-        .stderr(predicate::str::contains("--since").or(predicate::str::contains("required")));
+        .stderr(
+            predicate::str::contains("provide both --since and --until")
+                .or(predicate::str::contains("error")),
+        );
 }
 
 #[test]

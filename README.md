@@ -80,13 +80,12 @@ shiplog follows a **collect → curate → render** workflow. You fetch raw even
 ```bash
 shiplog collect github \
   --user your-username \
-  --since 2025-07-01 \
-  --until 2026-01-01 \
+  --last-6-months \
   --mode merged \
   --out ./out
 ```
 
-This fetches merged PRs (and optionally reviews with `--include-reviews`) for the given user and time window. Results go into `out/<run_id>/` with a JSONL event ledger, coverage manifest, and an initial packet.
+This fetches merged PRs (and optionally reviews with `--include-reviews`) for the given user and time window. If you omit a date window, shiplog defaults to the last six months. Results go into `out/<run_id>/` with a JSONL event ledger, coverage manifest, and an initial packet.
 
 ### 2. Curate workstreams
 
@@ -102,7 +101,7 @@ cp out/<run_id>/workstreams.suggested.yaml out/<run_id>/workstreams.yaml
 ### 3. Re-render the packet
 
 ```bash
-shiplog render --run <run_id>
+shiplog render --latest
 ```
 
 This regenerates `packet.md` using your curated workstreams while preserving the original ledger and coverage data. Add `--redact-key <KEY>` to also generate manager and public profile packets.
@@ -132,6 +131,22 @@ out/<run_id>/
 | `import` | Import an existing run directory and re-render |
 | `run <source>` | Legacy: collect + render in one shot |
 
+Date-based sources accept explicit dates or a preset:
+
+```bash
+--since 2025-07-01 --until 2026-01-01
+--last-6-months
+--last-quarter
+--year 2025
+```
+
+Explicit `--since/--until` dates take precedence. If no date window is provided,
+shiplog uses `--last-6-months`.
+
+Use `shiplog render --latest` or `--run latest` to re-render the most recent
+run. `shiplog refresh --run-dir latest` refreshes the same run while preserving
+curation.
+
 ### Sources
 
 | Source | Description |
@@ -150,8 +165,7 @@ out/<run_id>/
 # Refresh receipts while keeping curated workstreams
 shiplog refresh github \
   --user your-username \
-  --since 2025-07-01 \
-  --until 2026-01-01 \
+  --last-6-months \
   --run-dir out/20260115_143022 \
   --out ./out
 
@@ -164,24 +178,21 @@ shiplog collect json \
 # Collect commits from a local git repository
 shiplog collect git \
   --repo . \
-  --since 2025-07-01 \
-  --until 2026-01-01 \
+  --year 2025 \
   --author you@example.com \
   --out ./out
 
 # Refresh local git receipts while preserving curated workstreams
 shiplog refresh git \
   --repo . \
-  --since 2025-07-01 \
-  --until 2026-01-01 \
+  --year 2025 \
   --run-dir out/20260115_143022 \
   --out ./out
 
 # Collect merge requests from GitLab
 shiplog collect gitlab \
   --user your-gitlab-username \
-  --since 2025-07-01 \
-  --until 2026-01-01 \
+  --last-6-months \
   --state merged \
   --instance gitlab.com \
   --include-reviews \
@@ -191,8 +202,7 @@ shiplog collect gitlab \
 shiplog collect jira \
   --user 712020:account-id \
   --auth-user you@example.com \
-  --since 2025-07-01 \
-  --until 2026-01-01 \
+  --last-quarter \
   --status done \
   --instance company.atlassian.net \
   --out ./out
@@ -200,8 +210,7 @@ shiplog collect jira \
 # Collect assigned issues from Linear
 shiplog collect linear \
   --user-id 9cfb482a-81e3-4154-b5b9-2c805e70a02d \
-  --since 2025-07-01 \
-  --until 2026-01-01 \
+  --last-quarter \
   --status done \
   --project OPS \
   --out ./out
@@ -210,8 +219,7 @@ shiplog collect linear \
 shiplog collect manual \
   --events ./manual_events.yaml \
   --user your-username \
-  --since 2025-07-01 \
-  --until 2026-01-01 \
+  --year 2025 \
   --out ./out
 ```
 
@@ -220,7 +228,7 @@ shiplog collect manual \
 Generate redacted packets by providing a key:
 
 ```bash
-shiplog render --run <run_id> --redact-key my-stable-secret
+shiplog render --latest --redact-key my-stable-secret
 ```
 
 The key drives deterministic HMAC-SHA256 aliasing. Same key + same input = same aliases across runs.
@@ -237,7 +245,7 @@ The key drives deterministic HMAC-SHA256 aliasing. Same key + same input = same 
 Bundle a specific profile as a zip:
 
 ```bash
-shiplog render --run <run_id> --redact-key my-stable-secret --zip --bundle-profile manager
+shiplog render --latest --redact-key my-stable-secret --zip --bundle-profile manager
 ```
 
 ## Architecture
@@ -335,8 +343,7 @@ cargo install shiplog --features llm
 # Use LLM clustering during collection
 shiplog collect github \
   --user your-username \
-  --since 2025-07-01 \
-  --until 2026-01-01 \
+  --last-6-months \
   --out ./out \
   --llm-cluster \
   --llm-api-key $SHIPLOG_LLM_API_KEY

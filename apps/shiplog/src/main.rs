@@ -4,8 +4,8 @@
 //! the workspace engine and adapter crates.
 
 use anyhow::{Context, Result};
-use chrono::NaiveDate;
-use clap::{Parser, Subcommand};
+use chrono::{Datelike, Months, NaiveDate, Utc};
+use clap::{Args, Parser, Subcommand};
 use shiplog_engine::{Engine, WorkstreamSource};
 use shiplog_ingest_git::LocalGitIngestor;
 use shiplog_ingest_github::GithubIngestor;
@@ -80,6 +80,9 @@ enum Command {
         /// Run ID to render (uses most recent if not specified)
         #[arg(long)]
         run: Option<String>,
+        /// Render the most recent run explicitly.
+        #[arg(long)]
+        latest: bool,
         /// User label for rendering.
         #[arg(long, default_value = "user")]
         user: String,
@@ -205,12 +208,8 @@ enum Source {
         /// GitHub login to report on.
         #[arg(long)]
         user: String,
-        /// Start date (inclusive), YYYY-MM-DD
-        #[arg(long)]
-        since: NaiveDate,
-        /// End date (exclusive), YYYY-MM-DD
-        #[arg(long)]
-        until: NaiveDate,
+        #[command(flatten)]
+        window: DateArgs,
         /// "merged" (default) or "created"
         #[arg(long, default_value = "merged")]
         mode: String,
@@ -242,12 +241,8 @@ enum Source {
         /// GitLab username to report on.
         #[arg(long)]
         user: String,
-        /// Start date (inclusive), YYYY-MM-DD
-        #[arg(long)]
-        since: NaiveDate,
-        /// End date (exclusive), YYYY-MM-DD
-        #[arg(long)]
-        until: NaiveDate,
+        #[command(flatten)]
+        window: DateArgs,
         /// Merge request state: opened, merged, closed, or all.
         #[arg(long, default_value = "merged")]
         state: String,
@@ -279,12 +274,8 @@ enum Source {
         /// Jira Basic Auth username/email. Defaults to `--user`.
         #[arg(long)]
         auth_user: Option<String>,
-        /// Start date (inclusive), YYYY-MM-DD
-        #[arg(long)]
-        since: NaiveDate,
-        /// End date (exclusive), YYYY-MM-DD
-        #[arg(long)]
-        until: NaiveDate,
+        #[command(flatten)]
+        window: DateArgs,
         /// Issue status: open, in_progress, done, closed, or all.
         #[arg(long, default_value = "done")]
         status: String,
@@ -310,12 +301,8 @@ enum Source {
         /// Linear user UUID to report on.
         #[arg(long)]
         user_id: String,
-        /// Start date (inclusive), YYYY-MM-DD
-        #[arg(long)]
-        since: NaiveDate,
-        /// End date (exclusive), YYYY-MM-DD
-        #[arg(long)]
-        until: NaiveDate,
+        #[command(flatten)]
+        window: DateArgs,
         /// Issue status: backlog, todo, in_progress, done, cancelled, or all.
         #[arg(long, default_value = "done")]
         status: String,
@@ -358,12 +345,8 @@ enum Source {
         /// User label for rendering.
         #[arg(long, default_value = "user")]
         user: String,
-        /// Start date (inclusive), YYYY-MM-DD
-        #[arg(long)]
-        since: NaiveDate,
-        /// End date (exclusive), YYYY-MM-DD
-        #[arg(long)]
-        until: NaiveDate,
+        #[command(flatten)]
+        window: DateArgs,
     },
 
     /// Ingest from local git repository.
@@ -371,12 +354,8 @@ enum Source {
         /// Path to git repository.
         #[arg(long)]
         repo: PathBuf,
-        /// Start date (inclusive), YYYY-MM-DD
-        #[arg(long)]
-        since: NaiveDate,
-        /// End date (exclusive), YYYY-MM-DD
-        #[arg(long)]
-        until: NaiveDate,
+        #[command(flatten)]
+        window: DateArgs,
         /// Filter commits by author email.
         #[arg(long)]
         author: Option<String>,
@@ -386,6 +365,40 @@ enum Source {
     },
 }
 
+#[derive(Args, Debug, Clone)]
+struct DateArgs {
+    /// Start date (inclusive), YYYY-MM-DD.
+    #[arg(long)]
+    since: Option<NaiveDate>,
+    /// End date (exclusive), YYYY-MM-DD.
+    #[arg(long)]
+    until: Option<NaiveDate>,
+    /// Use the last six months, ending today.
+    #[arg(long)]
+    last_6_months: bool,
+    /// Use the previous calendar quarter.
+    #[arg(long)]
+    last_quarter: bool,
+    /// Use a calendar year.
+    #[arg(long)]
+    year: Option<i32>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct ResolvedWindow {
+    since: NaiveDate,
+    until: NaiveDate,
+    label: WindowLabel,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum WindowLabel {
+    Explicit,
+    LastSixMonths,
+    LastQuarter,
+    Year(i32),
+}
+
 fn get_redact_key(redact_key: Option<String>) -> String {
     redact_key
         .or_else(|| std::env::var("SHIPLOG_REDACT_KEY").ok())
@@ -393,6 +406,94 @@ fn get_redact_key(redact_key: Option<String>) -> String {
             eprintln!("WARN: no redaction key provided; using a default dev key. Don't share public packets like this.");
             "dev-key".to_string()
         })
+}
+
+impl ResolvedWindow {
+    fn window_label(&self) -> String {
+        match self.label {
+            WindowLabel::Explicit => format!("{}..{}", self.since, self.until),
+            WindowLabel::LastSixMonths => {
+                format!("last-6-months ({}..{})", self.since, self.until)
+            }
+            WindowLabel::LastQuarter => {
+                format!("last-quarter ({}..{})", self.since, self.until)
+            }
+            WindowLabel::Year(year) => format!("{year} ({}..{})", self.since, self.until),
+        }
+    }
+}
+
+fn resolve_date_window(args: DateArgs) -> Result<ResolvedWindow> {
+    resolve_date_window_for_today(args, Utc::now().date_naive())
+}
+
+fn resolve_date_window_for_today(args: DateArgs, today: NaiveDate) -> Result<ResolvedWindow> {
+    match (args.since, args.until) {
+        (Some(since), Some(until)) => return checked_window(since, until, WindowLabel::Explicit),
+        (Some(_), None) | (None, Some(_)) => {
+            anyhow::bail!("provide both --since and --until, or use a date preset")
+        }
+        (None, None) => {}
+    }
+
+    let preset_count = usize::from(args.last_6_months)
+        + usize::from(args.last_quarter)
+        + usize::from(args.year.is_some());
+    if preset_count > 1 {
+        anyhow::bail!("choose only one date preset: --last-6-months, --last-quarter, or --year")
+    }
+
+    if let Some(year) = args.year {
+        let since = NaiveDate::from_ymd_opt(year, 1, 1)
+            .ok_or_else(|| anyhow::anyhow!("invalid --year value: {year}"))?;
+        let until = NaiveDate::from_ymd_opt(year + 1, 1, 1)
+            .ok_or_else(|| anyhow::anyhow!("invalid --year value: {year}"))?;
+        return checked_window(since, until, WindowLabel::Year(year));
+    }
+
+    if args.last_quarter {
+        let start_of_current_quarter = quarter_start(today.year(), today.month())?;
+        let previous_quarter_anchor = start_of_current_quarter
+            .checked_sub_months(Months::new(3))
+            .ok_or_else(|| anyhow::anyhow!("could not resolve --last-quarter"))?;
+        return checked_window(
+            previous_quarter_anchor,
+            start_of_current_quarter,
+            WindowLabel::LastQuarter,
+        );
+    }
+
+    let since = today
+        .checked_sub_months(Months::new(6))
+        .ok_or_else(|| anyhow::anyhow!("could not resolve --last-6-months"))?;
+    checked_window(since, today, WindowLabel::LastSixMonths)
+}
+
+fn checked_window(
+    since: NaiveDate,
+    until: NaiveDate,
+    label: WindowLabel,
+) -> Result<ResolvedWindow> {
+    if since >= until {
+        anyhow::bail!("date window must satisfy --since < --until")
+    }
+    Ok(ResolvedWindow {
+        since,
+        until,
+        label,
+    })
+}
+
+fn quarter_start(year: i32, month: u32) -> Result<NaiveDate> {
+    let start_month = match month {
+        1..=3 => 1,
+        4..=6 => 4,
+        7..=9 => 7,
+        10..=12 => 10,
+        _ => anyhow::bail!("invalid month while resolving quarter: {month}"),
+    };
+    NaiveDate::from_ymd_opt(year, start_month, 1)
+        .ok_or_else(|| anyhow::anyhow!("invalid quarter start for {year}-{start_month:02}"))
 }
 
 fn create_engine(
@@ -667,8 +768,7 @@ fn main() -> Result<()> {
             match source {
                 Source::Github {
                     user,
-                    since,
-                    until,
+                    window,
                     mode,
                     include_reviews,
                     no_details,
@@ -678,11 +778,12 @@ fn main() -> Result<()> {
                     cache_dir,
                     no_cache,
                 } => {
+                    let window = resolve_date_window(window)?;
                     let cache_dir = resolve_cache_dir(&out, cache_dir, no_cache);
                     let ing = make_github_ingestor(
                         &user,
-                        since,
-                        until,
+                        window.since,
+                        window.until,
                         &mode,
                         include_reviews,
                         no_details,
@@ -696,7 +797,7 @@ fn main() -> Result<()> {
                     let run_id = ingest.coverage.run_id.to_string();
                     let run_dir = out.join(&run_id);
 
-                    let window_label = format!("{}..{}", since, until);
+                    let window_label = window.window_label();
 
                     // Check if user has curated workstreams and warn
                     if !regen && shiplog_workstreams::WorkstreamManager::has_curated(&run_dir) {
@@ -731,8 +832,7 @@ fn main() -> Result<()> {
 
                 Source::Gitlab {
                     user,
-                    since,
-                    until,
+                    window,
                     state,
                     instance,
                     include_reviews,
@@ -741,11 +841,12 @@ fn main() -> Result<()> {
                     cache_dir,
                     no_cache,
                 } => {
+                    let window = resolve_date_window(window)?;
                     let cache_dir = resolve_cache_dir(&out, cache_dir, no_cache);
                     let ing = make_gitlab_ingestor(
                         &user,
-                        since,
-                        until,
+                        window.since,
+                        window.until,
                         &state,
                         &instance,
                         include_reviews,
@@ -758,7 +859,7 @@ fn main() -> Result<()> {
                     let run_id = ingest.coverage.run_id.to_string();
                     let run_dir = out.join(&run_id);
 
-                    let window_label = format!("{}..{}", since, until);
+                    let window_label = window.window_label();
 
                     // Check if user has curated workstreams and warn
                     if !regen && shiplog_workstreams::WorkstreamManager::has_curated(&run_dir) {
@@ -794,8 +895,7 @@ fn main() -> Result<()> {
                 Source::Jira {
                     user,
                     auth_user,
-                    since,
-                    until,
+                    window,
                     status,
                     instance,
                     throttle_ms,
@@ -803,12 +903,13 @@ fn main() -> Result<()> {
                     cache_dir,
                     no_cache,
                 } => {
+                    let window = resolve_date_window(window)?;
                     let cache_dir = resolve_cache_dir(&out, cache_dir, no_cache);
                     let ing = make_jira_ingestor(
                         &user,
                         auth_user,
-                        since,
-                        until,
+                        window.since,
+                        window.until,
                         &status,
                         &instance,
                         throttle_ms,
@@ -820,7 +921,7 @@ fn main() -> Result<()> {
                     let run_id = ingest.coverage.run_id.to_string();
                     let run_dir = out.join(&run_id);
 
-                    let window_label = format!("{}..{}", since, until);
+                    let window_label = window.window_label();
 
                     // Check if user has curated workstreams and warn
                     if !regen && shiplog_workstreams::WorkstreamManager::has_curated(&run_dir) {
@@ -855,8 +956,7 @@ fn main() -> Result<()> {
 
                 Source::Linear {
                     user_id,
-                    since,
-                    until,
+                    window,
                     status,
                     project,
                     throttle_ms,
@@ -864,11 +964,12 @@ fn main() -> Result<()> {
                     cache_dir,
                     no_cache,
                 } => {
+                    let window = resolve_date_window(window)?;
                     let cache_dir = resolve_cache_dir(&out, cache_dir, no_cache);
                     let ing = make_linear_ingestor(
                         &user_id,
-                        since,
-                        until,
+                        window.since,
+                        window.until,
                         &status,
                         project,
                         throttle_ms,
@@ -880,7 +981,7 @@ fn main() -> Result<()> {
                     let run_id = ingest.coverage.run_id.to_string();
                     let run_dir = out.join(&run_id);
 
-                    let window_label = format!("{}..{}", since, until);
+                    let window_label = window.window_label();
 
                     // Check if user has curated workstreams and warn
                     if !regen && shiplog_workstreams::WorkstreamManager::has_curated(&run_dir) {
@@ -968,14 +1069,15 @@ fn main() -> Result<()> {
                 Source::Manual {
                     events,
                     user,
-                    since,
-                    until,
+                    window,
                 } => {
-                    let ing = ManualIngestor::new(&events, user.clone(), since, until);
+                    let window = resolve_date_window(window)?;
+                    let ing =
+                        ManualIngestor::new(&events, user.clone(), window.since, window.until);
                     let ingest = ing.ingest().context("ingest events")?;
                     let run_id = ingest.coverage.run_id.to_string();
                     let run_dir = out.join(&run_id);
-                    let window_label = format!("{}..{}", since, until);
+                    let window_label = window.window_label();
 
                     // Check if user has curated workstreams and warn
                     if !regen && shiplog_workstreams::WorkstreamManager::has_curated(&run_dir) {
@@ -1010,16 +1112,22 @@ fn main() -> Result<()> {
 
                 Source::Git {
                     repo,
-                    since,
-                    until,
+                    window,
                     author,
                     include_merges,
                 } => {
-                    let ing = make_git_ingestor(&repo, since, until, author, include_merges);
+                    let window = resolve_date_window(window)?;
+                    let ing = make_git_ingestor(
+                        &repo,
+                        window.since,
+                        window.until,
+                        author,
+                        include_merges,
+                    );
                     let ingest = ing.ingest().context("ingest events")?;
                     let run_id = ingest.coverage.run_id.to_string();
                     let run_dir = out.join(&run_id);
-                    let window_label = format!("{}..{}", since, until);
+                    let window_label = window.window_label();
 
                     // Check if user has curated workstreams and warn
                     if !regen && shiplog_workstreams::WorkstreamManager::has_curated(&run_dir) {
@@ -1064,6 +1172,7 @@ fn main() -> Result<()> {
         Command::Render {
             out,
             run,
+            latest,
             user,
             window_label,
             redact_key,
@@ -1075,12 +1184,7 @@ fn main() -> Result<()> {
             let (engine, redactor) = create_engine(&key, clusterer);
 
             // Determine which run to render
-            let run_dir = if let Some(run_id) = run {
-                out.join(run_id)
-            } else {
-                // Find most recent run directory
-                find_most_recent_run(&out)?
-            };
+            let run_dir = resolve_render_run_dir(&out, run, latest)?;
 
             // Read existing events and coverage
             let events_path = run_dir.join("ledger.events.jsonl");
@@ -1128,7 +1232,11 @@ fn main() -> Result<()> {
 
             // Resolve run directory: explicit --run-dir, or find most recent
             let run_dir = if let Some(rd) = explicit_run_dir {
-                rd
+                if rd == Path::new("latest") {
+                    find_most_recent_run(&out)?
+                } else {
+                    rd
+                }
             } else {
                 find_most_recent_run(&out)?
             };
@@ -1139,14 +1247,20 @@ fn main() -> Result<()> {
             match source {
                 Source::Git {
                     repo,
-                    since,
-                    until,
+                    window,
                     author,
                     include_merges,
                 } => {
-                    let ing = make_git_ingestor(&repo, since, until, author, include_merges);
+                    let window = resolve_date_window(window)?;
+                    let ing = make_git_ingestor(
+                        &repo,
+                        window.since,
+                        window.until,
+                        author,
+                        include_merges,
+                    );
                     let ingest = ing.ingest().context("ingest events")?;
-                    let window_label = format!("{}..{}", since, until);
+                    let window_label = window.window_label();
 
                     if !shiplog_workstreams::WorkstreamManager::has_curated(&run_dir)
                         && !shiplog_workstreams::WorkstreamManager::suggested_path(&run_dir)
@@ -1178,8 +1292,7 @@ fn main() -> Result<()> {
                 }
                 Source::Github {
                     user,
-                    since,
-                    until,
+                    window,
                     mode,
                     include_reviews,
                     no_details,
@@ -1189,6 +1302,7 @@ fn main() -> Result<()> {
                     cache_dir,
                     no_cache,
                 } => {
+                    let window = resolve_date_window(window)?;
                     let cache_root = run_dir
                         .parent()
                         .map(|p| p.to_path_buf())
@@ -1196,8 +1310,8 @@ fn main() -> Result<()> {
                     let cache_dir = resolve_cache_dir(&cache_root, cache_dir, no_cache);
                     let ing = make_github_ingestor(
                         &user,
-                        since,
-                        until,
+                        window.since,
+                        window.until,
                         &mode,
                         include_reviews,
                         no_details,
@@ -1209,7 +1323,7 @@ fn main() -> Result<()> {
                     .context("create GitHub ingestor")?;
                     let ingest = ing.ingest().context("ingest events")?;
 
-                    let window_label = format!("{}..{}", since, until);
+                    let window_label = window.window_label();
 
                     if !shiplog_workstreams::WorkstreamManager::has_curated(&run_dir)
                         && !shiplog_workstreams::WorkstreamManager::suggested_path(&run_dir)
@@ -1235,8 +1349,7 @@ fn main() -> Result<()> {
 
                 Source::Gitlab {
                     user,
-                    since,
-                    until,
+                    window,
                     state,
                     instance,
                     include_reviews,
@@ -1245,6 +1358,7 @@ fn main() -> Result<()> {
                     cache_dir,
                     no_cache,
                 } => {
+                    let window = resolve_date_window(window)?;
                     let cache_root = run_dir
                         .parent()
                         .map(|p| p.to_path_buf())
@@ -1252,8 +1366,8 @@ fn main() -> Result<()> {
                     let cache_dir = resolve_cache_dir(&cache_root, cache_dir, no_cache);
                     let ing = make_gitlab_ingestor(
                         &user,
-                        since,
-                        until,
+                        window.since,
+                        window.until,
                         &state,
                         &instance,
                         include_reviews,
@@ -1264,7 +1378,7 @@ fn main() -> Result<()> {
                     .context("create GitLab ingestor")?;
                     let ingest = ing.ingest().context("ingest events")?;
 
-                    let window_label = format!("{}..{}", since, until);
+                    let window_label = window.window_label();
 
                     if !shiplog_workstreams::WorkstreamManager::has_curated(&run_dir)
                         && !shiplog_workstreams::WorkstreamManager::suggested_path(&run_dir)
@@ -1291,8 +1405,7 @@ fn main() -> Result<()> {
                 Source::Jira {
                     user,
                     auth_user,
-                    since,
-                    until,
+                    window,
                     status,
                     instance,
                     throttle_ms,
@@ -1300,6 +1413,7 @@ fn main() -> Result<()> {
                     cache_dir,
                     no_cache,
                 } => {
+                    let window = resolve_date_window(window)?;
                     let cache_root = run_dir
                         .parent()
                         .map(|p| p.to_path_buf())
@@ -1308,8 +1422,8 @@ fn main() -> Result<()> {
                     let ing = make_jira_ingestor(
                         &user,
                         auth_user,
-                        since,
-                        until,
+                        window.since,
+                        window.until,
                         &status,
                         &instance,
                         throttle_ms,
@@ -1319,7 +1433,7 @@ fn main() -> Result<()> {
                     .context("create Jira ingestor")?;
                     let ingest = ing.ingest().context("ingest events")?;
 
-                    let window_label = format!("{}..{}", since, until);
+                    let window_label = window.window_label();
 
                     if !shiplog_workstreams::WorkstreamManager::has_curated(&run_dir)
                         && !shiplog_workstreams::WorkstreamManager::suggested_path(&run_dir)
@@ -1345,8 +1459,7 @@ fn main() -> Result<()> {
 
                 Source::Linear {
                     user_id,
-                    since,
-                    until,
+                    window,
                     status,
                     project,
                     throttle_ms,
@@ -1354,6 +1467,7 @@ fn main() -> Result<()> {
                     cache_dir,
                     no_cache,
                 } => {
+                    let window = resolve_date_window(window)?;
                     let cache_root = run_dir
                         .parent()
                         .map(|p| p.to_path_buf())
@@ -1361,8 +1475,8 @@ fn main() -> Result<()> {
                     let cache_dir = resolve_cache_dir(&cache_root, cache_dir, no_cache);
                     let ing = make_linear_ingestor(
                         &user_id,
-                        since,
-                        until,
+                        window.since,
+                        window.until,
                         &status,
                         project,
                         throttle_ms,
@@ -1372,7 +1486,7 @@ fn main() -> Result<()> {
                     .context("create Linear ingestor")?;
                     let ingest = ing.ingest().context("ingest events")?;
 
-                    let window_label = format!("{}..{}", since, until);
+                    let window_label = window.window_label();
 
                     if !shiplog_workstreams::WorkstreamManager::has_curated(&run_dir)
                         && !shiplog_workstreams::WorkstreamManager::suggested_path(&run_dir)
@@ -1440,9 +1554,9 @@ fn main() -> Result<()> {
                 Source::Manual {
                     events,
                     user,
-                    since,
-                    until,
+                    window,
                 } => {
+                    let window = resolve_date_window(window)?;
                     if !shiplog_workstreams::WorkstreamManager::has_curated(&run_dir)
                         && !shiplog_workstreams::WorkstreamManager::suggested_path(&run_dir)
                             .exists()
@@ -1453,9 +1567,10 @@ fn main() -> Result<()> {
                         );
                     }
 
-                    let ing = ManualIngestor::new(&events, user.clone(), since, until);
+                    let ing =
+                        ManualIngestor::new(&events, user.clone(), window.since, window.until);
                     let ingest = ing.ingest().context("ingest events")?;
-                    let window_label = format!("{}..{}", since, until);
+                    let window_label = window.window_label();
 
                     let outputs = engine
                         .refresh(ingest, &user, &window_label, &run_dir, zip, &bundle_profile)
@@ -1572,12 +1687,18 @@ fn main() -> Result<()> {
             match source {
                 Source::Git {
                     repo,
-                    since,
-                    until,
+                    window,
                     author,
                     include_merges,
                 } => {
-                    let ing = make_git_ingestor(&repo, since, until, author, include_merges);
+                    let window = resolve_date_window(window)?;
+                    let ing = make_git_ingestor(
+                        &repo,
+                        window.since,
+                        window.until,
+                        author,
+                        include_merges,
+                    );
                     let ingest = ing.ingest().context("ingest events")?;
                     let run_id = ingest.coverage.run_id.to_string();
                     let run_dir = out.join(&run_id);
@@ -1585,7 +1706,7 @@ fn main() -> Result<()> {
                     let cache_path = DeterministicRedactor::cache_path(&run_dir);
                     let _ = redactor.load_cache(&cache_path);
 
-                    let window_label = format!("{}..{}", since, until);
+                    let window_label = window.window_label();
                     let (outputs, ws_source) = engine
                         .run(
                             ingest,
@@ -1606,8 +1727,7 @@ fn main() -> Result<()> {
                 }
                 Source::Github {
                     user,
-                    since,
-                    until,
+                    window,
                     mode,
                     include_reviews,
                     no_details,
@@ -1617,11 +1737,12 @@ fn main() -> Result<()> {
                     cache_dir,
                     no_cache,
                 } => {
+                    let window = resolve_date_window(window)?;
                     let cache_dir = resolve_cache_dir(&out, cache_dir, no_cache);
                     let ing = make_github_ingestor(
                         &user,
-                        since,
-                        until,
+                        window.since,
+                        window.until,
                         &mode,
                         include_reviews,
                         no_details,
@@ -1638,7 +1759,7 @@ fn main() -> Result<()> {
                     let cache_path = DeterministicRedactor::cache_path(&run_dir);
                     let _ = redactor.load_cache(&cache_path);
 
-                    let window_label = format!("{}..{}", since, until);
+                    let window_label = window.window_label();
                     let (outputs, ws_source) = engine
                         .run(ingest, &user, &window_label, &run_dir, zip, &bundle_profile)
                         .context("run engine pipeline")?;
@@ -1653,8 +1774,7 @@ fn main() -> Result<()> {
 
                 Source::Gitlab {
                     user,
-                    since,
-                    until,
+                    window,
                     state,
                     instance,
                     include_reviews,
@@ -1663,11 +1783,12 @@ fn main() -> Result<()> {
                     cache_dir,
                     no_cache,
                 } => {
+                    let window = resolve_date_window(window)?;
                     let cache_dir = resolve_cache_dir(&out, cache_dir, no_cache);
                     let ing = make_gitlab_ingestor(
                         &user,
-                        since,
-                        until,
+                        window.since,
+                        window.until,
                         &state,
                         &instance,
                         include_reviews,
@@ -1683,7 +1804,7 @@ fn main() -> Result<()> {
                     let cache_path = DeterministicRedactor::cache_path(&run_dir);
                     let _ = redactor.load_cache(&cache_path);
 
-                    let window_label = format!("{}..{}", since, until);
+                    let window_label = window.window_label();
                     let (outputs, ws_source) = engine
                         .run(ingest, &user, &window_label, &run_dir, zip, &bundle_profile)
                         .context("run engine pipeline")?;
@@ -1699,8 +1820,7 @@ fn main() -> Result<()> {
                 Source::Jira {
                     user,
                     auth_user,
-                    since,
-                    until,
+                    window,
                     status,
                     instance,
                     throttle_ms,
@@ -1708,12 +1828,13 @@ fn main() -> Result<()> {
                     cache_dir,
                     no_cache,
                 } => {
+                    let window = resolve_date_window(window)?;
                     let cache_dir = resolve_cache_dir(&out, cache_dir, no_cache);
                     let ing = make_jira_ingestor(
                         &user,
                         auth_user,
-                        since,
-                        until,
+                        window.since,
+                        window.until,
                         &status,
                         &instance,
                         throttle_ms,
@@ -1728,7 +1849,7 @@ fn main() -> Result<()> {
                     let cache_path = DeterministicRedactor::cache_path(&run_dir);
                     let _ = redactor.load_cache(&cache_path);
 
-                    let window_label = format!("{}..{}", since, until);
+                    let window_label = window.window_label();
                     let (outputs, ws_source) = engine
                         .run(ingest, &user, &window_label, &run_dir, zip, &bundle_profile)
                         .context("run engine pipeline")?;
@@ -1743,8 +1864,7 @@ fn main() -> Result<()> {
 
                 Source::Linear {
                     user_id,
-                    since,
-                    until,
+                    window,
                     status,
                     project,
                     throttle_ms,
@@ -1752,11 +1872,12 @@ fn main() -> Result<()> {
                     cache_dir,
                     no_cache,
                 } => {
+                    let window = resolve_date_window(window)?;
                     let cache_dir = resolve_cache_dir(&out, cache_dir, no_cache);
                     let ing = make_linear_ingestor(
                         &user_id,
-                        since,
-                        until,
+                        window.since,
+                        window.until,
                         &status,
                         project,
                         throttle_ms,
@@ -1771,7 +1892,7 @@ fn main() -> Result<()> {
                     let cache_path = DeterministicRedactor::cache_path(&run_dir);
                     let _ = redactor.load_cache(&cache_path);
 
-                    let window_label = format!("{}..{}", since, until);
+                    let window_label = window.window_label();
                     let (outputs, ws_source) = engine
                         .run(
                             ingest,
@@ -1823,14 +1944,15 @@ fn main() -> Result<()> {
                 Source::Manual {
                     events,
                     user,
-                    since,
-                    until,
+                    window,
                 } => {
-                    let ing = ManualIngestor::new(&events, user.clone(), since, until);
+                    let window = resolve_date_window(window)?;
+                    let ing =
+                        ManualIngestor::new(&events, user.clone(), window.since, window.until);
                     let ingest = ing.ingest().context("ingest events")?;
                     let run_id = ingest.coverage.run_id.to_string();
                     let run_dir = out.join(&run_id);
-                    let window_label = format!("{}..{}", since, until);
+                    let window_label = window.window_label();
 
                     let cache_path = DeterministicRedactor::cache_path(&run_dir);
                     let _ = redactor.load_cache(&cache_path);
@@ -1908,9 +2030,30 @@ fn find_most_recent_run(out_dir: &Path) -> Result<PathBuf> {
         .ok_or_else(|| anyhow::anyhow!("No run directories found in {:?}", out_dir))
 }
 
+fn resolve_render_run_dir(out_dir: &Path, run: Option<String>, latest: bool) -> Result<PathBuf> {
+    if latest && run.is_some() {
+        anyhow::bail!("use either --latest or --run, not both")
+    }
+
+    match run.as_deref() {
+        Some("latest") | None => find_most_recent_run(out_dir),
+        Some(run_id) => Ok(out_dir.join(run_id)),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn date_args() -> DateArgs {
+        DateArgs {
+            since: None,
+            until: None,
+            last_6_months: false,
+            last_quarter: false,
+            year: None,
+        }
+    }
 
     #[test]
     fn resolve_cache_dir_uses_default_out_cache() {
@@ -1933,6 +2076,110 @@ mod tests {
         let explicit = PathBuf::from("D:/cache-root");
         let resolved = resolve_cache_dir(out_root, Some(explicit), true);
         assert_eq!(resolved, None);
+    }
+
+    #[test]
+    fn resolve_date_window_uses_explicit_dates() {
+        let mut args = date_args();
+        args.since = Some(NaiveDate::from_ymd_opt(2025, 1, 1).unwrap());
+        args.until = Some(NaiveDate::from_ymd_opt(2025, 2, 1).unwrap());
+        args.last_6_months = true;
+
+        let window =
+            resolve_date_window_for_today(args, NaiveDate::from_ymd_opt(2026, 5, 7).unwrap())
+                .unwrap();
+
+        assert_eq!(window.since, NaiveDate::from_ymd_opt(2025, 1, 1).unwrap());
+        assert_eq!(window.until, NaiveDate::from_ymd_opt(2025, 2, 1).unwrap());
+        assert_eq!(window.label, WindowLabel::Explicit);
+    }
+
+    #[test]
+    fn resolve_date_window_defaults_to_last_six_months() {
+        let window = resolve_date_window_for_today(
+            date_args(),
+            NaiveDate::from_ymd_opt(2026, 5, 7).unwrap(),
+        )
+        .unwrap();
+
+        assert_eq!(window.since, NaiveDate::from_ymd_opt(2025, 11, 7).unwrap());
+        assert_eq!(window.until, NaiveDate::from_ymd_opt(2026, 5, 7).unwrap());
+        assert_eq!(window.label, WindowLabel::LastSixMonths);
+        assert_eq!(
+            window.window_label(),
+            "last-6-months (2025-11-07..2026-05-07)"
+        );
+    }
+
+    #[test]
+    fn resolve_date_window_uses_last_quarter() {
+        let mut args = date_args();
+        args.last_quarter = true;
+
+        let window =
+            resolve_date_window_for_today(args, NaiveDate::from_ymd_opt(2026, 5, 7).unwrap())
+                .unwrap();
+
+        assert_eq!(window.since, NaiveDate::from_ymd_opt(2026, 1, 1).unwrap());
+        assert_eq!(window.until, NaiveDate::from_ymd_opt(2026, 4, 1).unwrap());
+        assert_eq!(window.label, WindowLabel::LastQuarter);
+    }
+
+    #[test]
+    fn resolve_date_window_uses_year() {
+        let mut args = date_args();
+        args.year = Some(2025);
+
+        let window =
+            resolve_date_window_for_today(args, NaiveDate::from_ymd_opt(2026, 5, 7).unwrap())
+                .unwrap();
+
+        assert_eq!(window.since, NaiveDate::from_ymd_opt(2025, 1, 1).unwrap());
+        assert_eq!(window.until, NaiveDate::from_ymd_opt(2026, 1, 1).unwrap());
+        assert_eq!(window.label, WindowLabel::Year(2025));
+    }
+
+    #[test]
+    fn resolve_date_window_rejects_partial_explicit_dates() {
+        let mut args = date_args();
+        args.since = Some(NaiveDate::from_ymd_opt(2025, 1, 1).unwrap());
+
+        let err = resolve_date_window_for_today(args, NaiveDate::from_ymd_opt(2026, 5, 7).unwrap())
+            .unwrap_err();
+
+        assert!(err.to_string().contains("provide both --since"));
+    }
+
+    #[test]
+    fn resolve_date_window_rejects_multiple_presets() {
+        let mut args = date_args();
+        args.last_6_months = true;
+        args.last_quarter = true;
+
+        let err = resolve_date_window_for_today(args, NaiveDate::from_ymd_opt(2026, 5, 7).unwrap())
+            .unwrap_err();
+
+        assert!(err.to_string().contains("choose only one date preset"));
+    }
+
+    #[test]
+    fn resolve_render_run_dir_rejects_latest_and_run() {
+        let err = resolve_render_run_dir(Path::new("out"), Some("run_fixture".to_string()), true)
+            .unwrap_err();
+        assert!(err.to_string().contains("either --latest or --run"));
+    }
+
+    #[test]
+    fn resolve_render_run_dir_treats_run_latest_as_most_recent() {
+        let tmp = tempfile::tempdir().unwrap();
+        let run_dir = tmp.path().join("run_fixture");
+        std::fs::create_dir(&run_dir).unwrap();
+        std::fs::write(run_dir.join("ledger.events.jsonl"), "").unwrap();
+
+        let resolved =
+            resolve_render_run_dir(tmp.path(), Some("latest".to_string()), false).unwrap();
+
+        assert_eq!(resolved, run_dir);
     }
 
     #[test]

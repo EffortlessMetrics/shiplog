@@ -49,6 +49,10 @@ fn render_help_shows_usage() {
     let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(stdout.contains("--out"), "render help should mention --out");
     assert!(stdout.contains("--run"), "render help should mention --run");
+    assert!(
+        stdout.contains("--latest"),
+        "render help should mention --latest"
+    );
 }
 
 #[test]
