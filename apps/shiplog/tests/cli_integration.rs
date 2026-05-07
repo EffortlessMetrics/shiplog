@@ -2,6 +2,7 @@
 
 use assert_cmd::Command;
 use predicates::prelude::*;
+use shiplog_schema::workstream::WorkstreamsFile;
 use std::path::{Path, PathBuf};
 use std::process::Command as StdCommand;
 use tempfile::TempDir;
@@ -145,7 +146,9 @@ fn workstreams_help_shows_list_and_validate() {
         .assert()
         .success()
         .stdout(predicate::str::contains("list"))
-        .stdout(predicate::str::contains("validate"));
+        .stdout(predicate::str::contains("validate"))
+        .stdout(predicate::str::contains("rename"))
+        .stdout(predicate::str::contains("move"));
 }
 
 #[test]
@@ -491,6 +494,139 @@ workstreams:
         .assert()
         .failure()
         .stderr(predicate::str::contains("blank title"));
+}
+
+#[test]
+fn workstreams_rename_promotes_suggested_to_curated() {
+    let tmp = TempDir::new().unwrap();
+    let run_dir = collect_json_into(tmp.path());
+
+    shiplog_cmd()
+        .args([
+            "workstreams",
+            "rename",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+            "--from",
+            "acme/platform",
+            "--to",
+            "Platform Reliability",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Renamed workstream"))
+        .stdout(predicate::str::contains("Created curated workstreams.yaml"));
+
+    assert!(run_dir.join("workstreams.suggested.yaml").exists());
+    let curated = load_curated_workstreams(&run_dir);
+    assert!(
+        curated
+            .workstreams
+            .iter()
+            .any(|workstream| workstream.title == "Platform Reliability")
+    );
+    assert!(
+        !curated
+            .workstreams
+            .iter()
+            .any(|workstream| workstream.title == "acme/platform")
+    );
+}
+
+#[test]
+fn workstreams_move_event_reassigns_event_and_validates() {
+    let tmp = TempDir::new().unwrap();
+    let run_dir = collect_json_into(tmp.path());
+
+    shiplog_cmd()
+        .args([
+            "workstreams",
+            "move",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+            "--event",
+            "fixture_pr_acme_payments_42",
+            "--to",
+            "acme/platform",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "Moved event fixture_pr_acme_payments_42 to acme/platform",
+        ));
+
+    let curated = load_curated_workstreams(&run_dir);
+    let platform = curated
+        .workstreams
+        .iter()
+        .find(|workstream| workstream.title == "acme/platform")
+        .expect("platform workstream should exist");
+    assert!(
+        platform
+            .events
+            .iter()
+            .any(|event_id| event_id.to_string() == "fixture_pr_acme_payments_42")
+    );
+
+    let payments = curated
+        .workstreams
+        .iter()
+        .find(|workstream| workstream.title == "acme/payments")
+        .expect("payments workstream should exist");
+    assert!(
+        payments
+            .events
+            .iter()
+            .all(|event_id| event_id.to_string() != "fixture_pr_acme_payments_42")
+    );
+
+    shiplog_cmd()
+        .args([
+            "workstreams",
+            "validate",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+        ])
+        .assert()
+        .success();
+}
+
+#[test]
+fn workstreams_move_unknown_event_fails_without_writing_curated() {
+    let tmp = TempDir::new().unwrap();
+    let run_dir = collect_json_into(tmp.path());
+
+    shiplog_cmd()
+        .args([
+            "workstreams",
+            "move",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+            "--event",
+            "missing-event",
+            "--to",
+            "acme/platform",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "was not found in ledger.events.jsonl",
+        ));
+
+    assert!(!run_dir.join("workstreams.yaml").exists());
+}
+
+fn load_curated_workstreams(run_dir: &Path) -> WorkstreamsFile {
+    let text = std::fs::read_to_string(run_dir.join("workstreams.yaml")).unwrap();
+    serde_yaml::from_str(&text).unwrap()
 }
 
 #[test]

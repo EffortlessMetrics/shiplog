@@ -34,10 +34,10 @@ shiplog collect github \
   --out ./out
 
 # 2. Curate workstreams
-#    Copy workstreams.suggested.yaml to workstreams.yaml and edit.
-#    shiplog never overwrites workstreams.yaml.
+#    Use CLI edits, or copy workstreams.suggested.yaml to workstreams.yaml.
 shiplog workstreams list --run latest
-cp out/<run_id>/workstreams.suggested.yaml out/<run_id>/workstreams.yaml
+shiplog workstreams rename --run latest --from "acme/platform" --to "Platform Reliability"
+shiplog workstreams move --run latest --event <event_id> --to "Platform Reliability"
 shiplog workstreams validate --run latest
 
 # 3. Re-render the packet with your curated workstreams
@@ -54,7 +54,7 @@ Output goes to `out/<run_id>/` containing `packet.md`, `ledger.events.jsonl`, `c
 | `collect <source>` | Fetch events from a source and generate packet artifacts |
 | `render` | Re-render packet from existing ledger and workstreams |
 | `refresh <source>` | Re-fetch events while preserving curated `workstreams.yaml` |
-| `workstreams list/validate` | Inspect and validate workstream curation for an existing run |
+| `workstreams list/validate/rename/move` | Inspect, validate, and safely edit workstream curation |
 | `import` | Import an existing run directory and re-render |
 | `run <source>` | Legacy: collect + render in one shot |
 
