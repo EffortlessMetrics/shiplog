@@ -54,8 +54,16 @@ _PRs: 2, Reviews: 0, Manual: 0_
 - [PR] Setup CI pipeline (2025-06-01) — [acme/infra](https://github.com/acme/infra/pull/5)
 - [PR] Add monitoring dashboards (2025-06-01) — [acme/infra](https://github.com/acme/infra/pull/6)
 
-## Coverage
+## Coverage and Limits
 
+Included:
+- Sources: github
+- Fetched events: not reported by query slices
+
+Known gaps:
+- None recorded
+
+Details:
 - **Date window:** 2025-01-01 to 2025-04-01
 - **Mode:** merged
 - **Sources:** github

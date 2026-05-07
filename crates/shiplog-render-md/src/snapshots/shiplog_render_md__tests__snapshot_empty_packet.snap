@@ -22,8 +22,16 @@ _No workstreams found_
 
 _No workstreams, no receipts_
 
-## Coverage
+## Coverage and Limits
 
+Included:
+- Sources: none recorded
+- Fetched events: not reported by query slices
+
+Known gaps:
+- None recorded
+
+Details:
 - **Date window:** 2024-01-01 to 2024-12-31
 - **Mode:** test
 - **Sources:** 
