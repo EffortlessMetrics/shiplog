@@ -80,12 +80,18 @@ shiplog follows a **collect → curate → render** workflow. You fetch raw even
 
 ```bash
 shiplog init
+shiplog config validate
+shiplog config explain
 shiplog doctor
 ```
 
 This writes `shiplog.toml` and `manual_events.yaml` in the current directory.
 Use `shiplog init --source github --source jira` to scaffold a narrower source
 set, `--dry-run` to preview, and `--force` to overwrite existing scaffold files.
+Use `shiplog config validate` for a token-free config and local path check,
+and `shiplog config explain` to see resolved defaults and enabled source
+settings. `shiplog doctor` adds token, output, identity, and safety checks
+before a collection run.
 
 ### 1. Collect events from GitHub
 
@@ -183,6 +189,7 @@ out/<run_id>/
 |---------|-------------|
 | `init` | Create `shiplog.toml` and `manual_events.yaml` scaffold files |
 | `doctor` | Check local config, enabled sources, token env vars, and output safety |
+| `config validate/explain` | Validate `shiplog.toml` and print resolved defaults/source settings |
 | `collect <source>` | Fetch events from a source and generate packet artifacts |
 | `collect multi` | Collect enabled sources from `shiplog.toml` into one merged packet |
 | `render` | Re-render packet from existing ledger and workstreams |

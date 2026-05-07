@@ -169,6 +169,7 @@ fn help_shows_all_subcommands() {
         .success()
         .stdout(predicate::str::contains("init"))
         .stdout(predicate::str::contains("doctor"))
+        .stdout(predicate::str::contains("config"))
         .stdout(predicate::str::contains("collect"))
         .stdout(predicate::str::contains("render"))
         .stdout(predicate::str::contains("refresh"))
@@ -199,6 +200,28 @@ fn doctor_help_shows_options() {
         .success()
         .stdout(predicate::str::contains("--config"))
         .stdout(predicate::str::contains("--source"));
+}
+
+#[test]
+fn config_help_shows_validate_and_explain() {
+    shiplog_cmd()
+        .args(["config", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("validate"))
+        .stdout(predicate::str::contains("explain"));
+
+    shiplog_cmd()
+        .args(["config", "validate", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--config"));
+
+    shiplog_cmd()
+        .args(["config", "explain", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--config"));
 }
 
 #[test]
@@ -454,6 +477,209 @@ profile = "manager"
         .failure()
         .stdout(predicate::str::contains("Redaction: error"))
         .stdout(predicate::str::contains("SHIPLOG_REDACT_KEY"));
+}
+
+#[test]
+fn config_validate_accepts_fixture_safe_sources() {
+    let tmp = TempDir::new().unwrap();
+    let fixtures = fixture_dir();
+    std::fs::copy(
+        fixtures.join("ledger.events.jsonl"),
+        tmp.path().join("ledger.events.jsonl"),
+    )
+    .unwrap();
+    std::fs::copy(
+        fixtures.join("coverage.manifest.json"),
+        tmp.path().join("coverage.manifest.json"),
+    )
+    .unwrap();
+    write_manual_events(&tmp.path().join("manual_events.yaml"));
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[defaults]
+out = "./out"
+window = "year:2025"
+profile = "internal"
+
+[sources.json]
+enabled = true
+events = "./ledger.events.jsonl"
+coverage = "./coverage.manifest.json"
+
+[sources.manual]
+enabled = true
+events = "./manual_events.yaml"
+"#,
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args(["config", "validate"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Config: ok"))
+        .stdout(predicate::str::contains("Window: ok, 2025"))
+        .stdout(predicate::str::contains("Sources: ok, json, manual"))
+        .stdout(predicate::str::contains("Config valid"));
+}
+
+#[test]
+fn config_validate_does_not_require_source_tokens() {
+    let tmp = TempDir::new().unwrap();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["init"])
+        .assert()
+        .success();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .args(["config", "validate"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Sources: ok, github, manual"));
+}
+
+#[test]
+fn config_validate_reports_missing_config_actionably() {
+    let tmp = TempDir::new().unwrap();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["config", "validate"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("run `shiplog init` first"));
+}
+
+#[test]
+fn config_validate_rejects_no_enabled_sources() {
+    let tmp = TempDir::new().unwrap();
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[defaults]
+window = "last-6-months"
+profile = "internal"
+"#,
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["config", "validate"])
+        .assert()
+        .failure()
+        .stdout(predicate::str::contains("Sources: error"))
+        .stdout(predicate::str::contains("enable at least one"));
+}
+
+#[test]
+fn config_validate_rejects_missing_file_source_paths() {
+    let tmp = TempDir::new().unwrap();
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[sources.manual]
+enabled = true
+events = "./missing.yaml"
+"#,
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["config", "validate"])
+        .assert()
+        .failure()
+        .stdout(predicate::str::contains("Manual: error"))
+        .stdout(predicate::str::contains("missing.yaml"));
+}
+
+#[test]
+fn config_validate_rejects_invalid_default_out_file() {
+    let tmp = TempDir::new().unwrap();
+    write_manual_events(&tmp.path().join("manual_events.yaml"));
+    std::fs::write(tmp.path().join("out-file"), "not a directory").unwrap();
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[defaults]
+out = "./out-file"
+
+[sources.manual]
+enabled = true
+events = "./manual_events.yaml"
+"#,
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["config", "validate"])
+        .assert()
+        .failure()
+        .stdout(predicate::str::contains("Output: error"))
+        .stdout(predicate::str::contains("exists but is not a directory"));
+}
+
+#[test]
+fn config_explain_prints_effective_defaults_and_sources() {
+    let tmp = TempDir::new().unwrap();
+    let fixtures = fixture_dir();
+    std::fs::copy(
+        fixtures.join("ledger.events.jsonl"),
+        tmp.path().join("ledger.events.jsonl"),
+    )
+    .unwrap();
+    std::fs::copy(
+        fixtures.join("coverage.manifest.json"),
+        tmp.path().join("coverage.manifest.json"),
+    )
+    .unwrap();
+    write_manual_events(&tmp.path().join("manual_events.yaml"));
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[defaults]
+out = "./review-out"
+window = "year:2025"
+profile = "internal"
+include_reviews = true
+
+[user]
+label = "Octo"
+
+[sources.json]
+enabled = true
+events = "./ledger.events.jsonl"
+coverage = "./coverage.manifest.json"
+
+[sources.manual]
+enabled = true
+events = "./manual_events.yaml"
+"#,
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["config", "explain"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Resolved defaults:"))
+        .stdout(predicate::str::contains(
+            "- window: year:2025 -> 2025-01-01..2026-01-01",
+        ))
+        .stdout(predicate::str::contains("- out: ./review-out ->"))
+        .stdout(predicate::str::contains("- user.label: Octo"))
+        .stdout(predicate::str::contains("Enabled sources:"))
+        .stdout(predicate::str::contains("- json: events"))
+        .stdout(predicate::str::contains("- manual: events"))
+        .stdout(predicate::str::contains("user Octo"));
 }
 
 // ── 3. collect --help shows collect-specific options ───────────────────────
@@ -779,6 +1005,90 @@ user = "octo"
         coverage.contains("\"manual\""),
         "configured multi coverage should include manual source"
     );
+}
+
+#[test]
+fn collect_multi_uses_config_default_out_when_cli_out_is_omitted() {
+    let tmp = TempDir::new().unwrap();
+    let configured_out = tmp.path().join("configured-out");
+    let fixtures = fixture_dir();
+    std::fs::copy(
+        fixtures.join("ledger.events.jsonl"),
+        tmp.path().join("ledger.events.jsonl"),
+    )
+    .unwrap();
+    std::fs::copy(
+        fixtures.join("coverage.manifest.json"),
+        tmp.path().join("coverage.manifest.json"),
+    )
+    .unwrap();
+    write_manual_events(&tmp.path().join("manual_events.yaml"));
+
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[defaults]
+out = "./configured-out"
+window = "year:2025"
+
+[sources.json]
+enabled = true
+events = "./ledger.events.jsonl"
+coverage = "./coverage.manifest.json"
+
+[sources.manual]
+enabled = true
+events = "./manual_events.yaml"
+user = "octo"
+"#,
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["collect", "multi"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Collected configured sources:"));
+
+    let run_dir = first_run_dir(&configured_out);
+    assert!(run_dir.join("packet.md").exists(), "missing merged packet");
+    assert!(
+        !tmp.path().join("out").exists(),
+        "collect multi should not write ./out when defaults.out is set"
+    );
+}
+
+#[test]
+fn collect_multi_uses_config_default_profile_for_redaction_safety() {
+    let tmp = TempDir::new().unwrap();
+    write_manual_events(&tmp.path().join("manual_events.yaml"));
+
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[defaults]
+profile = "public"
+window = "year:2025"
+
+[redaction]
+key_env = "SHIPLOG_TEST_REDACT_KEY_FOR_CONFIG"
+
+[sources.manual]
+enabled = true
+events = "./manual_events.yaml"
+user = "octo"
+"#,
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("SHIPLOG_TEST_REDACT_KEY_FOR_CONFIG")
+        .args(["collect", "multi"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "public profile requires --redact-key or SHIPLOG_TEST_REDACT_KEY_FOR_CONFIG",
+        ));
 }
 
 #[test]

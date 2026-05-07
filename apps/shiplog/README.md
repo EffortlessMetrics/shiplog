@@ -25,6 +25,9 @@ cargo install shiplog --features llm
 ```bash
 # 0. Initialize local files
 shiplog init
+shiplog config validate
+shiplog config explain
+shiplog doctor
 
 # 1. Collect events from GitHub
 shiplog collect github \
@@ -60,10 +63,16 @@ Output goes to `out/<run_id>/` containing `packet.md`, `ledger.events.jsonl`, `c
 | Command | Description |
 |---------|-------------|
 | `init` | Create `shiplog.toml` and `manual_events.yaml` scaffold files |
+| `doctor` | Check local config, enabled sources, token env vars, and output safety |
+| `config validate/explain` | Validate `shiplog.toml` and print resolved defaults/source settings |
 | `collect <source>` | Fetch events from a source and generate packet artifacts |
+| `collect multi` | Collect enabled sources from `shiplog.toml` into one merged packet |
 | `render` | Re-render packet from existing ledger and workstreams |
 | `refresh <source>` | Re-fetch events while preserving curated `workstreams.yaml` |
 | `workstreams list/validate/create/rename/move/split/receipts/receipt/delete` | Inspect, validate, and safely edit workstream curation |
+| `runs list/show` | Discover runs and inspect their sources, counts, coverage, and paths |
+| `open packet/workstreams/out` | Open run artifacts, or print their paths when opening is unavailable |
+| `merge` | Merge existing run directories into one packet |
 | `import` | Import an existing run directory and re-render |
 | `run <source>` | Legacy: collect + render in one shot |
 
@@ -73,6 +82,10 @@ Use `shiplog render --latest` or `--run latest` to re-render the most recent run
 
 Use `shiplog init --source github --source jira --dry-run` to preview a
 source-specific scaffold without writing files.
+Use `shiplog config validate` for a token-free config and local path check,
+`shiplog config explain` to print resolved defaults and enabled source
+settings, and `shiplog doctor` before collection to check tokens, output
+safety, identity, and source setup.
 
 GitHub and GitLab accept `--me` to infer the source user from `--token`,
 `GITHUB_TOKEN`, or `GITLAB_TOKEN`; use `--user <login>` to pin the identity
