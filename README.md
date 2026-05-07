@@ -146,6 +146,7 @@ out/<run_id>/
 | `render` | Re-render packet from existing ledger and workstreams |
 | `refresh <source>` | Re-fetch events while preserving curated `workstreams.yaml` |
 | `workstreams list/validate/rename/move` | Inspect, validate, and safely edit workstream curation |
+| `merge` | Merge existing run directories into one packet |
 | `import` | Import an existing run directory and re-render |
 | `run <source>` | Legacy: collect + render in one shot |
 
@@ -243,6 +244,14 @@ shiplog collect manual \
   --user your-username \
   --year 2025 \
   --out ./out
+
+# Merge existing source runs into one packet
+shiplog merge \
+  --input out/github-run \
+  --input out/jira-run \
+  --input out/manual-run \
+  --out ./out \
+  --conflict prefer-most-recent
 ```
 
 ## Redaction and profiles

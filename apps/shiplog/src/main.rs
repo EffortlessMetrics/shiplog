@@ -1,14 +1,14 @@
 //! `shiplog` CLI entrypoint.
 //!
-//! Exposes `init`, `collect`, `render`, `refresh`, `workstreams`, `import`, and
-//! `run` commands over the workspace engine and adapter crates.
+//! Exposes `init`, `collect`, `render`, `refresh`, `workstreams`, `merge`,
+//! `import`, and `run` commands over the workspace engine and adapter crates.
 
 use anyhow::{Context, Result};
 use chrono::{Datelike, Months, NaiveDate, Utc};
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use reqwest::blocking::Client;
 use serde::Deserialize;
-use shiplog_engine::{Engine, WorkstreamSource};
+use shiplog_engine::{ConflictResolution, Engine, WorkstreamSource};
 use shiplog_ingest_git::LocalGitIngestor;
 use shiplog_ingest_github::GithubIngestor;
 use shiplog_ingest_gitlab::{GitlabIngestor, MrState};
@@ -16,7 +16,7 @@ use shiplog_ingest_jira::{IssueStatus, JiraIngestor};
 use shiplog_ingest_json::JsonIngestor;
 use shiplog_ingest_linear::{IssueStatus as LinearIssueStatus, LinearIngestor};
 use shiplog_ingest_manual::ManualIngestor;
-use shiplog_ports::Ingestor;
+use shiplog_ports::{IngestOutput, Ingestor};
 use shiplog_redact::DeterministicRedactor;
 use shiplog_render_md::MarkdownRenderer;
 use shiplog_schema::{
@@ -153,6 +153,40 @@ enum Command {
         cmd: WorkstreamsCommand,
     },
 
+    /// Merge existing run directories into one packet.
+    Merge {
+        /// Input run directory containing ledger.events.jsonl and coverage.manifest.json.
+        #[arg(long = "input", required = true)]
+        inputs: Vec<PathBuf>,
+        /// Output directory (a merged run folder will be created inside).
+        #[arg(long, default_value = "./out")]
+        out: PathBuf,
+        /// Duplicate event conflict policy.
+        #[arg(long, value_enum, default_value = "prefer-most-recent")]
+        conflict: MergeConflict,
+        /// Optional user label for rendering. Defaults to the first input coverage user.
+        #[arg(long)]
+        user: Option<String>,
+        /// Optional window label for rendering. Defaults to the merged coverage date window.
+        #[arg(long)]
+        window_label: Option<String>,
+        /// Also write a zip next to the merged run folder.
+        #[arg(long)]
+        zip: bool,
+        /// Redaction key. Required for manager/public profiles.
+        /// If omitted, SHIPLOG_REDACT_KEY is used.
+        #[arg(long)]
+        redact_key: Option<String>,
+        /// Bundle profile: internal (full), manager, or public.
+        #[arg(long, default_value = "internal")]
+        bundle_profile: BundleProfile,
+        /// Regenerate workstreams even if workstreams.yaml exists.
+        /// WARNING: This will not overwrite workstreams.yaml, but will
+        /// regenerate workstreams.suggested.yaml.
+        #[arg(long)]
+        regen: bool,
+    },
+
     /// Import a pre-built ledger directory and run the full render pipeline.
     ///
     /// Use this to consume output from an upstream system or a previous
@@ -241,6 +275,36 @@ enum InitSource {
     Git,
     Json,
     Manual,
+}
+
+#[derive(ValueEnum, Debug, Clone, Copy, PartialEq, Eq)]
+enum MergeConflict {
+    #[value(name = "prefer-first")]
+    First,
+    #[value(name = "prefer-most-recent")]
+    MostRecent,
+    #[value(name = "prefer-most-complete")]
+    MostComplete,
+}
+
+impl From<MergeConflict> for ConflictResolution {
+    fn from(value: MergeConflict) -> Self {
+        match value {
+            MergeConflict::First => Self::PreferFirst,
+            MergeConflict::MostRecent => Self::PreferMostRecent,
+            MergeConflict::MostComplete => Self::PreferMostComplete,
+        }
+    }
+}
+
+impl MergeConflict {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::First => "prefer-first",
+            Self::MostRecent => "prefer-most-recent",
+            Self::MostComplete => "prefer-most-complete",
+        }
+    }
 }
 
 #[derive(Subcommand, Debug)]
@@ -2179,6 +2243,74 @@ fn main() -> Result<()> {
                 }
             }
         },
+        Command::Merge {
+            inputs,
+            out,
+            conflict,
+            user,
+            window_label,
+            zip,
+            redact_key,
+            bundle_profile,
+            regen,
+        } => {
+            let redaction_key = RedactionKey::resolve(redact_key, &bundle_profile)?;
+            let clusterer: Box<dyn shiplog_ports::WorkstreamClusterer> = Box::new(RepoClusterer);
+            let (engine, redactor) = create_engine(redaction_key.engine_key(), clusterer);
+            let engine = engine.with_profile_rendering(redaction_key.render_profiles());
+
+            let mut ingest_outputs = Vec::with_capacity(inputs.len());
+            for input in &inputs {
+                ingest_outputs.push(
+                    load_run_ingest(input)
+                        .with_context(|| format!("load merge input {}", input.display()))?,
+                );
+            }
+
+            let merged = engine
+                .merge(ingest_outputs, conflict.into())
+                .context("merge input runs")?;
+            let merge_user = user.unwrap_or_else(|| merged.coverage.user.clone());
+            let merge_window_label = window_label.unwrap_or_else(|| {
+                format!(
+                    "{}..{}",
+                    merged.coverage.window.since, merged.coverage.window.until
+                )
+            });
+            let run_id = merged.coverage.run_id.to_string();
+            let run_dir = out.join(&run_id);
+
+            if regen {
+                let suggested = shiplog_workstreams::WorkstreamManager::suggested_path(&run_dir);
+                if suggested.exists() {
+                    std::fs::remove_file(&suggested)
+                        .with_context(|| format!("remove {:?} for --regen", suggested))?;
+                }
+            }
+
+            let cache_path = DeterministicRedactor::cache_path(&run_dir);
+            let _ = redactor.load_cache(&cache_path);
+
+            let (outputs, ws_source) = engine
+                .run(
+                    merged,
+                    &merge_user,
+                    &merge_window_label,
+                    &run_dir,
+                    zip,
+                    &bundle_profile,
+                )
+                .context("run merged engine pipeline")?;
+
+            redactor
+                .save_cache(&cache_path)
+                .with_context(|| format!("save redaction cache to {cache_path:?}"))?;
+
+            println!("Merged and wrote:");
+            println!("- inputs: {}", inputs.len());
+            println!("- conflict: {}", conflict.as_str());
+            print_outputs(&outputs, ws_source);
+        }
         Command::Import {
             dir,
             out,
@@ -2914,6 +3046,11 @@ fn validate_workstreams_against_events(
 }
 
 fn load_run_events(run_dir: &Path) -> Result<Vec<EventEnvelope>> {
+    let ingest = load_run_ingest(run_dir).context("ingest run ledger for workstream validation")?;
+    Ok(ingest.events)
+}
+
+fn load_run_ingest(run_dir: &Path) -> Result<IngestOutput> {
     let events_path = run_dir.join("ledger.events.jsonl");
     if !events_path.exists() {
         anyhow::bail!(
@@ -2935,9 +3072,9 @@ fn load_run_events(run_dir: &Path) -> Result<Vec<EventEnvelope>> {
         coverage_path,
     }
     .ingest()
-    .context("ingest run ledger for workstream validation")?;
+    .context("ingest run ledger")?;
 
-    Ok(ingest.events)
+    Ok(ingest)
 }
 
 fn find_most_recent_run(out_dir: &Path) -> Result<PathBuf> {
