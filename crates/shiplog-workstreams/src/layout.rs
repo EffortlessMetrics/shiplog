@@ -1,6 +1,6 @@
 //! Workstream artifact path contracts and file precedence logic.
 //!
-//! This implementation carrier owns the loading/saving rules for workstream files:
+//! This module owns the loading/saving rules for workstream files:
 //! - `workstreams.yaml` (curated, user-owned)
 //! - `workstreams.suggested.yaml` (machine-generated)
 //!

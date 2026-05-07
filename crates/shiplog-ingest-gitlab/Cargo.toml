@@ -1,7 +1,6 @@
 [package]
 name = "shiplog-ingest-gitlab"
 version = "0.3.0"
-publish = false
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true

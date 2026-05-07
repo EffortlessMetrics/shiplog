@@ -29,6 +29,10 @@ jobs:
         with:
           shared-key: "check-${{ matrix.os }}"
 
+      - name: Package boundary audit
+        if: matrix.os == 'ubuntu-latest'
+        run: scripts/package-boundary-audit.sh
+
       - name: Check formatting
         if: matrix.os == 'ubuntu-latest'
         run: cargo fmt --all -- --check

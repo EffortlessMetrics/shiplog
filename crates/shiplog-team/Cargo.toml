@@ -1,7 +1,6 @@
 [package]
 name = "shiplog-team"
 version = "0.2.1"
-publish = false
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
@@ -24,7 +23,6 @@ shiplog-ids = { path = "../shiplog-ids", version = "0.2.1" }
 shiplog-merge = { path = "../shiplog-merge", version = "0.2.1" }
 shiplog-ports = { path = "../shiplog-ports", version = "0.2.1" }
 shiplog-schema = { path = "../shiplog-schema", version = "0.2.1" }
-shiplog-template = { path = "../shiplog-template", version = "0.3.0" }
 
 [dev-dependencies]
 chrono.workspace = true

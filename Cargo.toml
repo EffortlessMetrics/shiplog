@@ -32,7 +32,6 @@ members = [
   "crates/shiplog-cluster-llm",
   "crates/shiplog-team",
   "crates/shiplog-merge",
-  "crates/shiplog-template",
 
   # Dev-only support
   "crates/shiplog-testkit",

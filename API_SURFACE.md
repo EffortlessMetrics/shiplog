@@ -25,6 +25,10 @@ The mental model is: human narrative, machine receipts.
   merge flows.
 - `shiplog-testkit`: dev-only fixtures and BDD helpers. It is not published.
 
+Production workspace packages are either publishable public surfaces or owner
+modules. `publish = false` is reserved for dev-only packages such as
+`shiplog-testkit`.
+
 ## Stable Public Contracts
 
 These crates are the hard integration surface. Keep them small, documented, and
@@ -55,10 +59,6 @@ a stable import format.
 - `shiplog-ingest-git`
 - `shiplog-ingest-json`
 - `shiplog-ingest-manual`
-
-GitLab, Jira, and Linear adapters are held with `publish = false` until they
-are usable standalone adapters with tests and documentation:
-
 - `shiplog-ingest-gitlab`
 - `shiplog-ingest-jira`
 - `shiplog-ingest-linear`
@@ -70,11 +70,9 @@ its own dependency and privacy cost.
 
 - `shiplog-cluster-llm`: optional network and privacy boundary. It must stay
   feature-gated and off by default.
-- `shiplog-team`: optional team aggregation surface, held with `publish = false`
-  until promoted.
+- `shiplog-team`: optional team aggregation surface. Its template support is an
+  owner module, not a standalone packet-template package.
 - `shiplog-merge`: public only while multi-source merge remains a supported API.
-- `shiplog-template`: public only when the packet template format is a stable
-  user contract; held with `publish = false` until promoted.
 
 ## Internal Module Families
 
@@ -85,7 +83,7 @@ nearest owning crate unless a later PR deliberately promotes them.
 - Cache internals: `shiplog-cache::{key, stats, expiry, sqlite}`.
 - Date windows: `shiplog-coverage::windows`.
 - Output layout: `shiplog-bundle::layout`.
-- Team phases: `shiplog-team::{core, aggregate, render}`.
+- Team phases: `shiplog-team::{core, aggregate, render, template}`.
 - Workstream phases: `shiplog-workstreams::{cluster, layout, receipt_policy}`.
 - LLM prompt/parse helpers: `shiplog-cluster-llm::{prompt, parse}`.
 - Manual event parsing: `shiplog-ingest-manual::events`.
@@ -107,6 +105,10 @@ If two public crates need the same shared type, move the shared contract into
 `shiplog-schema`, `shiplog-ports`, or `shiplog-ids`. Do not hide production
 dependencies in unpublished sibling crates.
 
+No production crate should rest in the workspace with `publish = false`. If a
+new production seam is not ready to be a public package, fold it under its
+owning crate as an SRP module.
+
 ## Feature Flags
 
 Feature flags must represent user-visible capabilities or dependency
@@ -119,7 +121,6 @@ Use flags like these when the capability exists:
 - `gitlab`
 - `jira`
 - `linear`
-- `templates`
 - `plugin` only after a plugin API is promoted.
 
 Avoid flags named after internal implementation parts such as cache keys,
@@ -131,9 +132,9 @@ The weak implementation-carrier families have been folded into owner crates:
 redaction, cache, date windows, LLM prompt/parse, manual events, output layout,
 receipt formatting, team phases, and workstream phases.
 
-`shiplog-template` remains conditional and uses `publish = false`: it should be
-published only if packet templates are treated as a stable user contract for a
-future release.
+GitLab, Jira, Linear, and team are now classified as publishable public
+surfaces. `shiplog-template` has been folded into the team owner crate because
+packet templates are not a standalone public contract.
 
 New implementation seams should start as owner modules and should not become
 workspace crates unless this document deliberately promotes them.

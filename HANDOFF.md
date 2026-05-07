@@ -42,7 +42,7 @@ surfaces, real adapter boundaries, or heavy optional boundaries:
 
 - `shiplog-engine`, `shiplog-coverage`, `shiplog-workstreams`, `shiplog-redact`, `shiplog-bundle`, `shiplog-cache`
 - `shiplog-ingest-*`, `shiplog-render-*`
-- `shiplog-cluster-llm`, `shiplog-team`, `shiplog-merge`, `shiplog-template` only while those feature boundaries remain real
+- `shiplog-cluster-llm`, `shiplog-team`, and `shiplog-merge` only while those feature boundaries remain real
 
 #### Dev-only
 
@@ -233,7 +233,7 @@ Three render profiles:
 - `shiplog-bundle`: manifests + zip bundles (profile-scoped)
 - `shiplog-render-md`: Markdown packet renderer (snapshot-tested)
 - `shiplog-render-json`: JSON/JSONL render outputs
-- `shiplog-template`: configurable packet templates
+- `shiplog-team::template`: team packet template support as an owner module
 - `shiplog-cluster-llm`: optional semantic clustering via OpenAI-compatible endpoint
 - `shiplog-testkit`: scenario helpers (BDD) - dev-only by default
 

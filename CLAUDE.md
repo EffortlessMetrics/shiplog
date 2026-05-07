@@ -109,7 +109,7 @@ Prefix public packages with `shiplog-` and a role suffix: `-schema`, `-ports`, `
 | Orchestration | `shiplog-engine` | Wires adapters via ports |
 | App | `shiplog` (CLI) | Feature-gates: `llm` (default off) |
 | Test-only | `shiplog-testkit` | `publish = false` |
-| Internal carriers | Temporary package seams listed in `API_SURFACE.md` | Collapse into owner modules over time |
+| Owner modules | Internal SRP seams inside their owning crates | Not separate packages |
 
 ### Publishing
 

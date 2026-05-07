@@ -95,8 +95,8 @@ jobs:
       - name: Test stable contracts and trust surfaces
         run: cargo test -p shiplog-ids -p shiplog-schema -p shiplog-ports -p shiplog-coverage -p shiplog-cache -p shiplog-workstreams -p shiplog-redact -p shiplog-bundle -p shiplog-render-md -p shiplog-render-json -p shiplog-cluster-llm -- --test-threads=4
 
-  implementation-carrier-tests:
-    name: Internal Implementation Carrier Tests
+  optional-surface-tests:
+    name: Optional Surface Tests
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -112,8 +112,8 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
-      - name: Test current internal carrier crates
-        run: cargo test -p shiplog-workstreams -p shiplog-team -p shiplog-template -p shiplog-merge -- --test-threads=4
+      - name: Test optional surface crates
+        run: cargo test -p shiplog-workstreams -p shiplog-team -p shiplog-merge -- --test-threads=4
 
   app-tests:
     name: App Tests

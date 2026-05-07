@@ -1,7 +1,6 @@
 [package]
 name = "shiplog-ingest-jira"
 version = "0.3.0"
-publish = false
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true

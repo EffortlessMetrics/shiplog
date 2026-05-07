@@ -12,24 +12,14 @@ optional boundaries. Internal SRP seams should be modules inside an owner crate.
 | `shiplog-testkit` | Test-only shared fixtures (`publish = false`) |
 | `shiplog-fuzz` (in `fuzz/`) | Fuzz harnesses, not a workspace member (`publish = false`) |
 
-## Deferred crates
-
-These workspace crates are deliberately not crates.io promises yet. Their
-manifests use `publish = false` until a later PR promotes them with standalone
-docs, examples, tests, and a release-matrix update.
-
-| Crate | Promotion requirement |
-|---|---|
-| `shiplog-ingest-gitlab` | CLI story, auth model, examples, and release-grade tests |
-| `shiplog-ingest-jira` | CLI story, auth model, examples, and release-grade tests |
-| `shiplog-ingest-linear` | CLI story, auth model, examples, and release-grade tests |
-| `shiplog-team` | Team aggregation examples, CLI story, and release-grade docs |
-| `shiplog-template` | Template syntax versioning, examples, and compatibility tests |
+There is no deferred production-package category. Production code is either a
+publishable public crate or an owner module. `publish = false` is reserved for
+dev-only packages.
 
 ## Target public tiers
 
-These tiers are the intended public surface after weak implementation-carrier
-families were folded into owner modules.
+These tiers are the intended public surface after weak implementation seams were
+folded into owner modules.
 
 ### Tier 1 - Stable contracts
 
@@ -60,9 +50,9 @@ families were folded into owner modules.
 | `shiplog-ingest-git` | Local git ingest |
 | `shiplog-ingest-json` | JSONL import |
 | `shiplog-ingest-manual` | Manual YAML import |
-| `shiplog-ingest-gitlab` | Conditional public adapter |
-| `shiplog-ingest-jira` | Conditional public adapter |
-| `shiplog-ingest-linear` | Conditional public adapter |
+| `shiplog-ingest-gitlab` | GitLab ingest library adapter |
+| `shiplog-ingest-jira` | Jira ingest library adapter |
+| `shiplog-ingest-linear` | Linear ingest library adapter |
 
 ### Tier 4 - Optional feature boundaries
 
@@ -71,7 +61,6 @@ families were folded into owner modules.
 | `shiplog-cluster-llm` | Optional external LLM/privacy boundary |
 | `shiplog-team` | Optional team aggregation surface |
 | `shiplog-merge` | Public only if multi-source merge is a stable external API |
-| `shiplog-template` | Public only if packet templates become a stable user contract |
 
 ### Tier 5 - CLI product
 
@@ -83,6 +72,7 @@ families were folded into owner modules.
 
 Before a release, regenerate a dependency-topological dry-run for the final
 publishable set and prove no public crate depends on an unpublished internal
-carrier. For v0.2.1, use
+production package. For v0.2.1, use
 [`plans/release-matrix-v0.2.1.md`](release-matrix-v0.2.1.md) as the concrete
-publish decision record.
+historical publish decision record. Current package-boundary enforcement lives
+in `scripts/package-boundary-audit.sh`.

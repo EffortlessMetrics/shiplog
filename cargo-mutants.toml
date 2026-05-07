@@ -51,16 +51,6 @@
 # apps/shiplog          - CLI entrypoint
 
 # ============================================================================
-# Transitional internal carriers
-# ============================================================================
-#
-# These packages still exist as implementation carriers while the repository
-# preserves behavior. They are not the target public doctrine; fold them into
-# owner modules over time unless API_SURFACE.md deliberately promotes them.
-#
-# shiplog-template
-
-# ============================================================================
 # Excluded from mutation testing
 # ============================================================================
 #

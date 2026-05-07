@@ -5,11 +5,11 @@ boundary cleanup.
 
 ## Baseline
 
-- `main` was reset to `origin/main` at `c3395daef7ea280158defa14ed1915f9bf3fb172`.
-- The baseline worktree was clean and there were no open pull requests.
-- The root workspace now matches the intended public surface: CLI, stable
-  contracts, product/trust surfaces, source adapters, optional feature surfaces,
-  and dev-only testkit.
+- `main` is the release-safe baseline after v0.2.1 publication and PR queue
+  cleanup.
+- The root workspace now matches the intended package invariant: production
+  workspace crates are publishable public surfaces, and `publish = false` is
+  reserved for dev-only packages.
 
 ## Product Contract
 
@@ -56,27 +56,33 @@ Adapters for the v0.2.1 release path:
 - `shiplog-ingest-json`
 - `shiplog-ingest-manual`
 
+Additional published adapter surfaces:
+
+- `shiplog-ingest-gitlab`
+- `shiplog-ingest-jira`
+- `shiplog-ingest-linear`
+
 Optional feature surfaces:
 
 - `shiplog-cluster-llm`
+- `shiplog-team`
 
 Dev-only tooling:
 
 - `shiplog-testkit` is `publish = false`.
 - `fuzz/` is a fuzz harness workspace, not a crates.io target.
 
-## Held Surface
+## Package Boundary
 
-GitLab, Jira, and Linear adapter crates remain in the workspace, but they are
-held out of the v0.2.1 crates.io release set until their CLI story, auth model,
-examples, and release-grade tests are documented. Their manifests use
-`publish = false` until a later PR deliberately promotes them.
+There is no durable held-production-crate category. A workspace package is
+either a publishable public surface or dev-only tooling. Implementation seams
+that are not public promises live as owner modules.
 
-`shiplog-team` and `shiplog-template` remain workspace crates, but they are held
-out of the v0.2.1 crates.io release set until team aggregation and packet
-template syntax have stronger user-facing examples, versioning, and compatibility
-tests. Their manifests use `publish = false` until promotion. The published CLI
-does not expose a `team` feature for v0.2.1.
+`shiplog-template` has been folded into `shiplog-team` as an internal module
+because packet templates are not a standalone public contract. The CLI source
+list remains narrower than the library adapter surface; GitLab, Jira, Linear,
+and team are library surfaces until separate CLI work promotes user-facing
+commands.
 
 ## Release Posture
 
@@ -84,6 +90,5 @@ The v0.2.1 readiness branch should prove the current surface without expanding
 the product. It may update documentation, release matrix decisions, package
 proof scripts, release workflow validation, and changelog handoff notes.
 
-It should not add new product commands, packet redesigns, mutation thresholds,
-or additional package-boundary migrations unless package proof exposes a real
-blocker.
+It should not add packet redesigns or mutation thresholds unless package proof
+exposes a real blocker.

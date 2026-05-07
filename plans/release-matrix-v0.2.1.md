@@ -1,17 +1,19 @@
 # v0.2.1 Release Matrix
 
 This matrix is the crates.io decision record for v0.2.1. It intentionally does
-not treat every workspace member as a publish target.
+not treat every workspace member from that release branch as a publish target.
+It is historical; current main no longer permits production workspace crates to
+rest behind `publish = false`.
 
 ## Decision Rules
 
 - Publish crates that are stable contracts, product/trust surfaces, real
   adapters, or required optional feature boundaries.
-- Hold conditional adapters until their CLI story, auth model, examples, and
-  tests are release-grade.
 - Do not publish dev-only tooling.
 - If a published crate depends on another workspace crate, the dependency must
   either be published first or removed from the public feature surface.
+- After v0.2.1, production workspace crates must be either publishable packages
+  or owner modules; `publish = false` is only for dev-only tooling.
 
 ## Matrix
 
@@ -34,19 +36,19 @@ not treat every workspace member as a publish target.
 | `shiplog-ingest-git` | yes | local git adapter used by the CLI `collect git` path | refresh/run limitation documented |
 | `shiplog-ingest-json` | yes | stable import format | package proof |
 | `shiplog-ingest-manual` | yes | manual evidence lane | package proof |
-| `shiplog-ingest-gitlab` | hold | conditional adapter, not wired into CLI docs | CLI/auth examples, release-grade tests, and manifest promotion from `publish = false` |
-| `shiplog-ingest-jira` | hold | conditional adapter, not wired into CLI docs | CLI/auth examples, release-grade tests, and manifest promotion from `publish = false` |
-| `shiplog-ingest-linear` | hold | conditional adapter, not wired into CLI docs | CLI/auth examples, release-grade tests, and manifest promotion from `publish = false` |
+| `shiplog-ingest-gitlab` | no | not in the v0.2.1 CLI release set | promoted after v0.2.1 as a publishable library adapter |
+| `shiplog-ingest-jira` | no | not in the v0.2.1 CLI release set | promoted after v0.2.1 as a publishable library adapter |
+| `shiplog-ingest-linear` | no | not in the v0.2.1 CLI release set | promoted after v0.2.1 as a publishable library adapter |
 | `shiplog-cluster-llm` | yes | optional privacy/network boundary behind `llm` | package proof and fallback/privacy docs |
-| `shiplog-team` | hold | conditional team aggregation surface | examples, CLI story, release-grade docs, and manifest promotion from `publish = false` |
-| `shiplog-template` | hold | conditional template contract | syntax versioning, examples, compatibility tests, and manifest promotion from `publish = false` |
+| `shiplog-team` | no | not in the v0.2.1 CLI release set | promoted after v0.2.1 as a publishable library surface |
+| `shiplog-template` | no | not a standalone v0.2.1 contract | folded after v0.2.1 into the team owner module |
 | `shiplog-testkit` | no | dev-only fixtures | `publish = false` |
 
 ## Topological Publish Order
 
-Use this order for `scripts/publish-dry-run.sh` and for manual crates.io
-publication. For first publication of a new interdependent version, dry-run and
-publish one crate at a time, then resume from the next crate:
+This was the v0.2.1 manual crates.io publication order. For first publication
+of a new interdependent version, dry-run and publish one crate at a time, then
+resume from the next crate:
 
 ```bash
 scripts/publish-dry-run.sh --from shiplog-schema
@@ -73,15 +75,9 @@ shiplog-engine
 shiplog
 ```
 
-GitLab, Jira, and Linear are workspace members but are held from this release
-set. If package dry-run proves that a public crate still depends on one of
-them, either publish that dependency deliberately or remove the dependency
-before tagging. Their manifests use `publish = false` until promotion.
-
-`shiplog-team` and `shiplog-template` remain workspace members but are held out
-of the v0.2.1 release set. The published CLI does not expose the optional
-`team` feature for this release. Their manifests use `publish = false` until
-promotion.
+GitLab, Jira, Linear, team, and template were not published in v0.2.1. That was
+a release-scope decision, not a durable package category. Current main enforces
+the stronger invariant with `scripts/package-boundary-audit.sh`.
 
 ## Observed Dry-Run Boundary
 
