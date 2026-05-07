@@ -1,8 +1,8 @@
 //! `shiplog` CLI entrypoint.
 //!
-//! Exposes `init`, `doctor`, `collect`, `render`, `refresh`, `workstreams`,
-//! `runs`, `open`, `merge`, `import`, and `run` commands over the workspace
-//! engine and adapter crates.
+//! Exposes `init`, `doctor`, `config`, `collect`, `render`, `refresh`,
+//! `workstreams`, `runs`, `open`, `merge`, `import`, and `run` commands over
+//! the workspace engine and adapter crates.
 
 use anyhow::{Context, Result};
 use chrono::{DateTime, Datelike, Months, NaiveDate, Utc};
@@ -67,6 +67,12 @@ enum Command {
         sources: Vec<InitSource>,
     },
 
+    /// Validate and explain shiplog.toml without collecting data.
+    Config {
+        #[command(subcommand)]
+        cmd: ConfigCommand,
+    },
+
     /// Collect events from a source and generate workstream suggestions.
     ///
     /// This creates `workstreams.suggested.yaml` which you can rename to
@@ -75,8 +81,8 @@ enum Command {
         #[command(subcommand)]
         source: CollectSource,
         /// Output directory (a run folder will be created inside).
-        #[arg(long, default_value = "./out")]
-        out: PathBuf,
+        #[arg(long)]
+        out: Option<PathBuf>,
         /// Also write a zip next to the run folder.
         #[arg(long)]
         zip: bool,
@@ -85,8 +91,8 @@ enum Command {
         #[arg(long)]
         redact_key: Option<String>,
         /// Bundle profile: internal (full), manager, or public.
-        #[arg(long, default_value = "internal")]
-        bundle_profile: BundleProfile,
+        #[arg(long)]
+        bundle_profile: Option<BundleProfile>,
         /// Regenerate workstreams even if workstreams.yaml exists.
         /// WARNING: This will not overwrite workstreams.yaml, but will
         /// regenerate workstreams.suggested.yaml.
@@ -300,6 +306,23 @@ enum Command {
         /// LLM API key (or set SHIPLOG_LLM_API_KEY).
         #[arg(long)]
         llm_api_key: Option<String>,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum ConfigCommand {
+    /// Validate shiplog.toml structure and enabled source settings.
+    Validate {
+        /// Path to shiplog.toml.
+        #[arg(long, default_value = CONFIG_FILENAME)]
+        config: PathBuf,
+    },
+
+    /// Print resolved defaults and enabled source settings.
+    Explain {
+        /// Path to shiplog.toml.
+        #[arg(long, default_value = CONFIG_FILENAME)]
+        config: PathBuf,
     },
 }
 
@@ -1007,10 +1030,18 @@ struct RedactionKey {
 
 impl RedactionKey {
     fn resolve(redact_key: Option<String>, bundle_profile: &BundleProfile) -> Result<Self> {
-        let key = redact_key.or_else(|| std::env::var("SHIPLOG_REDACT_KEY").ok());
+        Self::resolve_with_env(redact_key, bundle_profile, "SHIPLOG_REDACT_KEY")
+    }
+
+    fn resolve_with_env(
+        redact_key: Option<String>,
+        bundle_profile: &BundleProfile,
+        key_env: &str,
+    ) -> Result<Self> {
+        let key = redact_key.or_else(|| std::env::var(key_env).ok());
         if key.is_none() && !matches!(bundle_profile, BundleProfile::Internal) {
             anyhow::bail!(
-                "{} profile requires --redact-key or SHIPLOG_REDACT_KEY",
+                "{} profile requires --redact-key or {key_env}",
                 bundle_profile
             );
         }
@@ -1379,6 +1410,572 @@ fn run_doctor(config_path: &Path, sources: &[InitSource]) -> Result<()> {
     }
 
     Ok(())
+}
+
+#[derive(Debug)]
+struct ConfigIssue {
+    label: &'static str,
+    detail: String,
+}
+
+fn config_issue(label: &'static str, detail: impl Into<String>) -> ConfigIssue {
+    ConfigIssue {
+        label,
+        detail: detail.into(),
+    }
+}
+
+fn run_config_validate(config_path: &Path) -> Result<()> {
+    let config = load_config_for_command(config_path)?;
+    let base_dir = config_base_dir(config_path);
+    let issues = validate_shiplog_config(&config, &base_dir);
+
+    println!("Config: ok, {}", config_path.display());
+    if issues.is_empty() {
+        print_config_validation_summary(&config, &base_dir)?;
+        println!("Config valid");
+        return Ok(());
+    }
+
+    for issue in &issues {
+        println!("{}: error, {}", issue.label, issue.detail);
+    }
+    anyhow::bail!("config validate found {} issue(s)", issues.len())
+}
+
+fn run_config_explain(config_path: &Path) -> Result<()> {
+    let config = load_config_for_command(config_path)?;
+    let base_dir = config_base_dir(config_path);
+    let issues = validate_shiplog_config(&config, &base_dir);
+    if !issues.is_empty() {
+        println!("Config: ok, {}", config_path.display());
+        for issue in &issues {
+            println!("{}: error, {}", issue.label, issue.detail);
+        }
+        anyhow::bail!("config explain requires a valid config")
+    }
+
+    print_config_explanation(config_path, &config, &base_dir)
+}
+
+fn load_config_for_command(config_path: &Path) -> Result<ShiplogConfig> {
+    if !config_path.exists() {
+        anyhow::bail!(
+            "{} not found; run `shiplog init` first",
+            config_path.display()
+        );
+    }
+    load_shiplog_config(config_path)
+}
+
+fn validate_shiplog_config(config: &ShiplogConfig, base_dir: &Path) -> Vec<ConfigIssue> {
+    let mut issues = Vec::new();
+
+    if let Err(err) = resolve_multi_window(DateArgs::default(), config) {
+        issues.push(config_issue("Window", err.to_string()));
+    }
+    if let Err(err) = doctor_config_profile(config.defaults.profile.as_deref()) {
+        issues.push(config_issue("Profile", err.to_string()));
+    }
+    if let Err(err) = validate_config_output_path(&config_default_out(config, base_dir)) {
+        issues.push(config_issue("Output", err.to_string()));
+    }
+    if config_enabled_source_names(config).is_empty() {
+        issues.push(config_issue(
+            "Sources",
+            "enable at least one [sources.<name>] section",
+        ));
+    }
+
+    validate_config_github(config, &mut issues);
+    validate_config_gitlab(config, &mut issues);
+    validate_config_jira(config, &mut issues);
+    validate_config_linear(config, &mut issues);
+    validate_config_git(config, base_dir, &mut issues);
+    validate_config_json(config, base_dir, &mut issues);
+    validate_config_manual(config, base_dir, &mut issues);
+
+    issues
+}
+
+fn validate_config_output_path(out: &Path) -> Result<()> {
+    if out.exists() {
+        if !out.is_dir() {
+            anyhow::bail!("{} exists but is not a directory", out.display());
+        }
+        return Ok(());
+    }
+
+    let parent = out
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."));
+    if !parent.exists() {
+        anyhow::bail!(
+            "{} does not exist; create it or choose a different defaults.out",
+            parent.display()
+        );
+    }
+    if !parent.is_dir() {
+        anyhow::bail!("{} exists but is not a directory", parent.display());
+    }
+    Ok(())
+}
+
+fn validate_config_github(config: &ShiplogConfig, issues: &mut Vec<ConfigIssue>) {
+    let Some(source) = config
+        .sources
+        .github
+        .as_ref()
+        .filter(|source| source.enabled)
+    else {
+        return;
+    };
+
+    validate_config_user_or_me(
+        "GitHub",
+        "sources.github.user",
+        source.user.as_deref(),
+        source.me,
+        issues,
+    );
+    let mode = optional_config_string(source.mode.as_deref()).unwrap_or_else(|| "merged".into());
+    if !matches!(mode.as_str(), "merged" | "created") {
+        issues.push(config_issue(
+            "GitHub",
+            format!("sources.github.mode must be merged or created, got {mode:?}"),
+        ));
+    }
+}
+
+fn validate_config_gitlab(config: &ShiplogConfig, issues: &mut Vec<ConfigIssue>) {
+    let Some(source) = config
+        .sources
+        .gitlab
+        .as_ref()
+        .filter(|source| source.enabled)
+    else {
+        return;
+    };
+
+    validate_config_user_or_me(
+        "GitLab",
+        "sources.gitlab.user",
+        source.user.as_deref(),
+        source.me,
+        issues,
+    );
+    let instance =
+        optional_config_string(source.instance.as_deref()).unwrap_or_else(|| "gitlab.com".into());
+    if let Err(err) = gitlab_api_base(&instance) {
+        issues.push(config_issue("GitLab", err.to_string()));
+    }
+    if let Some(state) = non_empty_string(source.state.as_deref())
+        && let Err(err) = state.parse::<MrState>()
+    {
+        issues.push(config_issue(
+            "GitLab",
+            format!("parse state {state:?}: {err}"),
+        ));
+    }
+}
+
+fn validate_config_jira(config: &ShiplogConfig, issues: &mut Vec<ConfigIssue>) {
+    let Some(source) = config.sources.jira.as_ref().filter(|source| source.enabled) else {
+        return;
+    };
+
+    if let Err(err) = required_config_string("jira", "user", source.user.as_deref()) {
+        issues.push(config_issue("Jira", err.to_string()));
+    }
+    if let Err(err) = required_config_string("jira", "instance", source.instance.as_deref()) {
+        issues.push(config_issue("Jira", err.to_string()));
+    }
+    let status = source.status.as_deref().unwrap_or("done");
+    if let Err(err) = status.parse::<IssueStatus>() {
+        issues.push(config_issue(
+            "Jira",
+            format!("parse status {status:?}: {err}"),
+        ));
+    }
+}
+
+fn validate_config_linear(config: &ShiplogConfig, issues: &mut Vec<ConfigIssue>) {
+    let Some(source) = config
+        .sources
+        .linear
+        .as_ref()
+        .filter(|source| source.enabled)
+    else {
+        return;
+    };
+
+    if let Err(err) = required_config_string("linear", "user_id", source.user_id.as_deref()) {
+        issues.push(config_issue("Linear", err.to_string()));
+    }
+    let status = source.status.as_deref().unwrap_or("done");
+    if let Err(err) = status.parse::<LinearIssueStatus>() {
+        issues.push(config_issue(
+            "Linear",
+            format!("parse status {status:?}: {err}"),
+        ));
+    }
+}
+
+fn validate_config_git(config: &ShiplogConfig, base_dir: &Path, issues: &mut Vec<ConfigIssue>) {
+    let Some(source) = config.sources.git.as_ref().filter(|source| source.enabled) else {
+        return;
+    };
+
+    match required_config_path(base_dir, "git", "repo", source.repo.as_ref()) {
+        Ok(repo) if repo.is_dir() => {}
+        Ok(repo) => issues.push(config_issue(
+            "Git",
+            format!("{} is not a directory", repo.display()),
+        )),
+        Err(err) => issues.push(config_issue("Git", err.to_string())),
+    }
+}
+
+fn validate_config_json(config: &ShiplogConfig, base_dir: &Path, issues: &mut Vec<ConfigIssue>) {
+    let Some(source) = config.sources.json.as_ref().filter(|source| source.enabled) else {
+        return;
+    };
+
+    match required_config_path(base_dir, "json", "events", source.events.as_ref()) {
+        Ok(events) if events.exists() => {}
+        Ok(events) => issues.push(config_issue(
+            "JSON",
+            format!("{} not found", events.display()),
+        )),
+        Err(err) => issues.push(config_issue("JSON", err.to_string())),
+    }
+    match required_config_path(base_dir, "json", "coverage", source.coverage.as_ref()) {
+        Ok(coverage) if coverage.exists() => {}
+        Ok(coverage) => issues.push(config_issue(
+            "JSON",
+            format!("{} not found", coverage.display()),
+        )),
+        Err(err) => issues.push(config_issue("JSON", err.to_string())),
+    }
+}
+
+fn validate_config_manual(config: &ShiplogConfig, base_dir: &Path, issues: &mut Vec<ConfigIssue>) {
+    let Some(source) = config
+        .sources
+        .manual
+        .as_ref()
+        .filter(|source| source.enabled)
+    else {
+        return;
+    };
+
+    match required_config_path(base_dir, "manual", "events", source.events.as_ref()) {
+        Ok(events) if events.exists() => {}
+        Ok(events) => issues.push(config_issue(
+            "Manual",
+            format!("{} not found", events.display()),
+        )),
+        Err(err) => issues.push(config_issue("Manual", err.to_string())),
+    }
+}
+
+fn validate_config_user_or_me(
+    label: &'static str,
+    field: &str,
+    user: Option<&str>,
+    me: bool,
+    issues: &mut Vec<ConfigIssue>,
+) {
+    match (optional_config_string(user), me) {
+        (Some(_), true) => issues.push(config_issue(
+            label,
+            format!("use either {field} or me = true, not both"),
+        )),
+        (None, false) => issues.push(config_issue(label, format!("set {field} or me = true"))),
+        _ => {}
+    }
+}
+
+fn print_config_validation_summary(config: &ShiplogConfig, base_dir: &Path) -> Result<()> {
+    let window = resolve_multi_window(DateArgs::default(), config)?;
+    let out = config_default_out(config, base_dir);
+    let profile = doctor_config_profile(config.defaults.profile.as_deref())?;
+    println!("Window: ok, {}", window.window_label());
+    println!("Output: ok, {}", out.display());
+    println!("Profile: ok, {}", profile.as_str());
+    println!(
+        "Sources: ok, {}",
+        config_enabled_source_names(config).join(", ")
+    );
+    Ok(())
+}
+
+fn print_config_explanation(
+    config_path: &Path,
+    config: &ShiplogConfig,
+    base_dir: &Path,
+) -> Result<()> {
+    let window = resolve_multi_window(DateArgs::default(), config)?;
+    let out = config_default_out(config, base_dir);
+    let profile = doctor_config_profile(config.defaults.profile.as_deref())?;
+    let window_setting = non_empty_string(config.defaults.window.as_deref())
+        .unwrap_or_else(|| "last-6-months (default)".to_string());
+    let out_setting = config
+        .defaults
+        .out
+        .as_ref()
+        .filter(|path| !path.as_os_str().is_empty())
+        .map(|path| path.display().to_string())
+        .unwrap_or_else(|| "./out (default)".to_string());
+    let include_reviews = config.defaults.include_reviews.unwrap_or(false);
+
+    println!("Config: {}", config_path.display());
+    println!("Resolved defaults:");
+    println!(
+        "- window: {} -> {}..{}",
+        window_setting, window.since, window.until
+    );
+    println!("- out: {} -> {}", out_setting, out.display());
+    println!("- profile: {}", profile.as_str());
+    println!("- include_reviews: {}", include_reviews);
+    println!(
+        "- user.label: {}",
+        optional_config_string(config.user.label.as_deref()).unwrap_or_else(|| "-".to_string())
+    );
+    println!("- redaction.key_env: {}", config_redaction_key_env(config));
+    println!("Enabled sources:");
+    for line in config_enabled_source_explanations(config, base_dir, &out) {
+        println!("- {line}");
+    }
+    Ok(())
+}
+
+fn config_default_out(config: &ShiplogConfig, base_dir: &Path) -> PathBuf {
+    config
+        .defaults
+        .out
+        .as_ref()
+        .filter(|path| !path.as_os_str().is_empty())
+        .map(|path| resolve_config_path(base_dir, path))
+        .unwrap_or_else(|| resolve_config_path(base_dir, Path::new("./out")))
+}
+
+fn config_redaction_key_env(config: &ShiplogConfig) -> String {
+    optional_config_string(config.redaction.key_env.as_deref())
+        .unwrap_or_else(|| "SHIPLOG_REDACT_KEY".to_string())
+}
+
+fn config_enabled_source_names(config: &ShiplogConfig) -> Vec<&'static str> {
+    let mut names = Vec::new();
+    if config
+        .sources
+        .github
+        .as_ref()
+        .is_some_and(|source| source.enabled)
+    {
+        names.push("github");
+    }
+    if config
+        .sources
+        .gitlab
+        .as_ref()
+        .is_some_and(|source| source.enabled)
+    {
+        names.push("gitlab");
+    }
+    if config
+        .sources
+        .jira
+        .as_ref()
+        .is_some_and(|source| source.enabled)
+    {
+        names.push("jira");
+    }
+    if config
+        .sources
+        .linear
+        .as_ref()
+        .is_some_and(|source| source.enabled)
+    {
+        names.push("linear");
+    }
+    if config
+        .sources
+        .git
+        .as_ref()
+        .is_some_and(|source| source.enabled)
+    {
+        names.push("git");
+    }
+    if config
+        .sources
+        .json
+        .as_ref()
+        .is_some_and(|source| source.enabled)
+    {
+        names.push("json");
+    }
+    if config
+        .sources
+        .manual
+        .as_ref()
+        .is_some_and(|source| source.enabled)
+    {
+        names.push("manual");
+    }
+    names
+}
+
+fn config_enabled_source_explanations(
+    config: &ShiplogConfig,
+    base_dir: &Path,
+    out: &Path,
+) -> Vec<String> {
+    let mut lines = Vec::new();
+    let default_include_reviews = config.defaults.include_reviews.unwrap_or(false);
+
+    if let Some(source) = config
+        .sources
+        .github
+        .as_ref()
+        .filter(|source| source.enabled)
+    {
+        let identity = config_identity_label(source.user.as_deref(), source.me, "--me");
+        let mode =
+            optional_config_string(source.mode.as_deref()).unwrap_or_else(|| "merged".into());
+        let include_reviews = source.include_reviews.unwrap_or(default_include_reviews);
+        let cache = config_cache_label(
+            resolve_config_cache_dir(base_dir, out, source.cache_dir.as_ref(), source.no_cache)
+                .as_deref(),
+        );
+        lines.push(format!(
+            "github: {identity}, mode {mode}, include_reviews {include_reviews}, cache {cache}"
+        ));
+    }
+    if let Some(source) = config
+        .sources
+        .gitlab
+        .as_ref()
+        .filter(|source| source.enabled)
+    {
+        let identity = config_identity_label(source.user.as_deref(), source.me, "--me");
+        let instance = optional_config_string(source.instance.as_deref())
+            .unwrap_or_else(|| "gitlab.com".into());
+        let state =
+            optional_config_string(source.state.as_deref()).unwrap_or_else(|| "merged".into());
+        let include_reviews = source.include_reviews.unwrap_or(default_include_reviews);
+        let cache = config_cache_label(
+            resolve_config_cache_dir(base_dir, out, source.cache_dir.as_ref(), source.no_cache)
+                .as_deref(),
+        );
+        lines.push(format!(
+            "gitlab: {identity}, instance {instance}, state {state}, include_reviews {include_reviews}, cache {cache}"
+        ));
+    }
+    if let Some(source) = config.sources.jira.as_ref().filter(|source| source.enabled) {
+        let user = optional_config_string(source.user.as_deref()).unwrap_or_else(|| "-".into());
+        let instance =
+            optional_config_string(source.instance.as_deref()).unwrap_or_else(|| "-".into());
+        let status =
+            optional_config_string(source.status.as_deref()).unwrap_or_else(|| "done".into());
+        let auth_user = config_jira_auth_user_label(source);
+        let cache = config_cache_label(
+            resolve_config_cache_dir(base_dir, out, source.cache_dir.as_ref(), source.no_cache)
+                .as_deref(),
+        );
+        lines.push(format!(
+            "jira: user {user}, auth {auth_user}, instance {instance}, status {status}, cache {cache}"
+        ));
+    }
+    if let Some(source) = config
+        .sources
+        .linear
+        .as_ref()
+        .filter(|source| source.enabled)
+    {
+        let user_id =
+            optional_config_string(source.user_id.as_deref()).unwrap_or_else(|| "-".into());
+        let status =
+            optional_config_string(source.status.as_deref()).unwrap_or_else(|| "done".into());
+        let project =
+            optional_config_string(source.project.as_deref()).unwrap_or_else(|| "-".into());
+        let cache = config_cache_label(
+            resolve_config_cache_dir(base_dir, out, source.cache_dir.as_ref(), source.no_cache)
+                .as_deref(),
+        );
+        lines.push(format!(
+            "linear: user_id {user_id}, status {status}, project {project}, cache {cache}"
+        ));
+    }
+    if let Some(source) = config.sources.git.as_ref().filter(|source| source.enabled) {
+        let repo = source
+            .repo
+            .as_ref()
+            .map(|path| resolve_config_path(base_dir, path).display().to_string())
+            .unwrap_or_else(|| "-".to_string());
+        let author = optional_config_string(source.author.as_deref()).unwrap_or_else(|| "-".into());
+        lines.push(format!(
+            "git: repo {repo}, author {author}, include_merges {}",
+            source.include_merges
+        ));
+    }
+    if let Some(source) = config.sources.json.as_ref().filter(|source| source.enabled) {
+        let events = source
+            .events
+            .as_ref()
+            .map(|path| resolve_config_path(base_dir, path).display().to_string())
+            .unwrap_or_else(|| "-".to_string());
+        let coverage = source
+            .coverage
+            .as_ref()
+            .map(|path| resolve_config_path(base_dir, path).display().to_string())
+            .unwrap_or_else(|| "-".to_string());
+        lines.push(format!("json: events {events}, coverage {coverage}"));
+    }
+    if let Some(source) = config
+        .sources
+        .manual
+        .as_ref()
+        .filter(|source| source.enabled)
+    {
+        let events = source
+            .events
+            .as_ref()
+            .map(|path| resolve_config_path(base_dir, path).display().to_string())
+            .unwrap_or_else(|| "-".to_string());
+        let user = optional_config_string(source.user.as_deref())
+            .or_else(|| optional_config_string(config.user.label.as_deref()))
+            .unwrap_or_else(|| "-".into());
+        lines.push(format!("manual: events {events}, user {user}"));
+    }
+
+    lines
+}
+
+fn config_identity_label(user: Option<&str>, me: bool, me_label: &str) -> String {
+    match (optional_config_string(user), me) {
+        (Some(user), false) => format!("user {user}"),
+        (None, true) => format!("identity {me_label}"),
+        (Some(user), true) => format!("user {user} and {me_label}"),
+        (None, false) => "identity -".to_string(),
+    }
+}
+
+fn config_jira_auth_user_label(source: &ConfigJiraSource) -> String {
+    if let Some(auth_user) = optional_config_string(source.auth_user.as_deref()) {
+        return format!("user {auth_user}");
+    }
+    if let Some(env_var) = optional_config_string(source.auth_user_env.as_deref()) {
+        return format!("env {env_var}");
+    }
+    "defaults to assignee".to_string()
+}
+
+fn config_cache_label(cache_dir: Option<&Path>) -> String {
+    cache_dir
+        .map(|path| path.display().to_string())
+        .unwrap_or_else(|| "disabled".to_string())
 }
 
 fn doctor_defaults(report: &mut DoctorReport, config: &ShiplogConfig, base_dir: &Path) {
@@ -2558,6 +3155,15 @@ fn main() -> Result<()> {
             run_doctor(&config, &sources)?;
         }
 
+        Command::Config { cmd } => match cmd {
+            ConfigCommand::Validate { config } => {
+                run_config_validate(&config)?;
+            }
+            ConfigCommand::Explain { config } => {
+                run_config_explain(&config)?;
+            }
+        },
+
         Command::Collect {
             source,
             out,
@@ -2570,12 +3176,6 @@ fn main() -> Result<()> {
             llm_model,
             llm_api_key,
         } => {
-            let redaction_key = RedactionKey::resolve(redact_key, &bundle_profile)?;
-            let clusterer =
-                build_clusterer(llm_cluster, &llm_api_endpoint, &llm_model, llm_api_key);
-            let (engine, redactor) = create_engine(redaction_key.engine_key(), clusterer);
-            let engine = engine.with_profile_rendering(redaction_key.render_profiles());
-
             let source = match source {
                 CollectSource::Multi {
                     config,
@@ -2583,6 +3183,26 @@ fn main() -> Result<()> {
                     conflict,
                 } => {
                     let config_model = load_shiplog_config(&config)?;
+                    let base_dir = config_base_dir(&config);
+                    let out = out
+                        .clone()
+                        .unwrap_or_else(|| config_default_out(&config_model, &base_dir));
+                    let bundle_profile = bundle_profile.clone().map(Ok).unwrap_or_else(|| {
+                        doctor_config_profile(config_model.defaults.profile.as_deref())
+                    })?;
+                    let redaction_key = RedactionKey::resolve_with_env(
+                        redact_key.clone(),
+                        &bundle_profile,
+                        &config_redaction_key_env(&config_model),
+                    )?;
+                    let clusterer = build_clusterer(
+                        llm_cluster,
+                        &llm_api_endpoint,
+                        &llm_model,
+                        llm_api_key.clone(),
+                    );
+                    let (engine, redactor) = create_engine(redaction_key.engine_key(), clusterer);
+                    let engine = engine.with_profile_rendering(redaction_key.render_profiles());
                     let window = resolve_multi_window(window, &config_model)?;
                     let configured =
                         collect_configured_sources(&config, &config_model, window, &out)?;
@@ -2665,6 +3285,13 @@ fn main() -> Result<()> {
 
                 CollectSource::Source(source) => source,
             };
+            let out = out.unwrap_or_else(|| PathBuf::from("./out"));
+            let bundle_profile = bundle_profile.unwrap_or_default();
+            let redaction_key = RedactionKey::resolve(redact_key, &bundle_profile)?;
+            let clusterer =
+                build_clusterer(llm_cluster, &llm_api_endpoint, &llm_model, llm_api_key);
+            let (engine, redactor) = create_engine(redaction_key.engine_key(), clusterer);
+            let engine = engine.with_profile_rendering(redaction_key.render_profiles());
 
             match source {
                 Source::Github {
