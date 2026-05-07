@@ -39,26 +39,7 @@ fn collect_json_into(tmp: &Path) -> PathBuf {
 /// Run `collect manual` into `tmp` and return the run directory path.
 fn collect_manual_into(tmp: &Path) -> PathBuf {
     let manual_events = tmp.join("manual_events.yaml");
-    std::fs::write(
-        &manual_events,
-        r#"version: 1
-generated_at: 2026-01-01T00:00:00Z
-events:
-  - id: incident-followup
-    type: Incident
-    date: 2025-02-15
-    title: Manual incident follow-up
-    description: Verified the rollback procedure with support.
-    workstream: Platform Reliability
-    tags:
-      - reliability
-    receipts:
-      - label: incident doc
-        url: https://example.invalid/incidents/42
-    impact: Reduced repeated escalation during review window.
-"#,
-    )
-    .unwrap();
+    write_manual_events(&manual_events);
 
     shiplog_cmd()
         .args([
@@ -78,6 +59,29 @@ events:
         .assert()
         .success();
     first_run_dir(tmp)
+}
+
+fn write_manual_events(path: &Path) {
+    std::fs::write(
+        path,
+        r#"version: 1
+generated_at: 2026-01-01T00:00:00Z
+events:
+  - id: incident-followup
+    type: Incident
+    date: 2025-02-15
+    title: Manual incident follow-up
+    description: Verified the rollback procedure with support.
+    workstream: Platform Reliability
+    tags:
+      - reliability
+    receipts:
+      - label: incident doc
+        url: https://example.invalid/incidents/42
+    impact: Reduced repeated escalation during review window.
+"#,
+    )
+    .unwrap();
 }
 
 fn git_available() -> bool {
@@ -218,11 +222,12 @@ fn init_creates_config_and_manual_events() {
         .success()
         .stdout(predicate::str::contains("Initialized shiplog"))
         .stdout(predicate::str::contains("GITHUB_TOKEN"))
-        .stdout(predicate::str::contains("shiplog collect github"));
+        .stdout(predicate::str::contains("shiplog collect multi"));
 
     let config = std::fs::read_to_string(tmp.path().join("shiplog.toml")).unwrap();
     assert!(config.contains("[sources.github]"));
     assert!(config.contains("enabled = true"));
+    assert!(config.contains("me = true"));
     assert!(config.contains("[sources.manual]"));
     assert!(config.contains("events = \"./manual_events.yaml\""));
 
@@ -306,12 +311,25 @@ fn collect_help_shows_sources_and_options() {
         .assert()
         .success()
         .stdout(predicate::str::contains("github"))
+        .stdout(predicate::str::contains("multi"))
         .stdout(predicate::str::contains("gitlab"))
         .stdout(predicate::str::contains("jira"))
         .stdout(predicate::str::contains("linear"))
         .stdout(predicate::str::contains("json"))
         .stdout(predicate::str::contains("--out"))
         .stdout(predicate::str::contains("--regen"));
+}
+
+#[test]
+fn collect_multi_help_shows_config_and_conflict_policy() {
+    shiplog_cmd()
+        .args(["collect", "multi", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--config"))
+        .stdout(predicate::str::contains("--last-6-months"))
+        .stdout(predicate::str::contains("--conflict"))
+        .stdout(predicate::str::contains("prefer-most-recent"));
 }
 
 #[test]
@@ -517,6 +535,175 @@ fn merge_existing_runs_writes_combined_packet() {
         coverage.contains("\"manual\""),
         "merged coverage should include manual source"
     );
+}
+
+#[test]
+fn collect_multi_from_config_merges_json_and_manual_sources() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+    let fixtures = fixture_dir();
+    std::fs::copy(
+        fixtures.join("ledger.events.jsonl"),
+        tmp.path().join("ledger.events.jsonl"),
+    )
+    .unwrap();
+    std::fs::copy(
+        fixtures.join("coverage.manifest.json"),
+        tmp.path().join("coverage.manifest.json"),
+    )
+    .unwrap();
+    write_manual_events(&tmp.path().join("manual_events.yaml"));
+
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[defaults]
+window = "year:2025"
+include_reviews = true
+
+[user]
+label = "octo"
+
+[sources.json]
+enabled = true
+events = "./ledger.events.jsonl"
+coverage = "./coverage.manifest.json"
+
+[sources.manual]
+enabled = true
+events = "./manual_events.yaml"
+user = "octo"
+"#,
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .args([
+            "collect",
+            "--out",
+            out.to_str().unwrap(),
+            "multi",
+            "--config",
+            tmp.path().join("shiplog.toml").to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Collected configured sources:"))
+        .stdout(predicate::str::contains("- json: success"))
+        .stdout(predicate::str::contains("- manual: success"))
+        .stdout(predicate::str::contains("Merged and wrote:"));
+
+    let run_dir = first_run_dir(&out);
+    assert!(run_dir.join("packet.md").exists(), "missing merged packet");
+    assert!(
+        run_dir.join("ledger.events.jsonl").exists(),
+        "missing merged ledger"
+    );
+    assert!(
+        run_dir.join("coverage.manifest.json").exists(),
+        "missing merged coverage"
+    );
+
+    let packet = std::fs::read_to_string(run_dir.join("packet.md")).unwrap();
+    assert!(
+        packet.contains("Payments ledger rewrite"),
+        "configured multi packet should include JSON fixture evidence"
+    );
+    assert!(
+        packet.contains("Manual incident follow-up"),
+        "configured multi packet should include manual evidence"
+    );
+
+    let coverage = std::fs::read_to_string(run_dir.join("coverage.manifest.json")).unwrap();
+    assert!(
+        coverage.contains("\"github\""),
+        "configured multi coverage should include JSON fixture source"
+    );
+    assert!(
+        coverage.contains("\"manual\""),
+        "configured multi coverage should include manual source"
+    );
+}
+
+#[test]
+fn collect_multi_records_partial_source_failures() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+    write_manual_events(&tmp.path().join("manual_events.yaml"));
+
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[defaults]
+window = "year:2025"
+
+[sources.json]
+enabled = true
+events = "./missing-ledger.events.jsonl"
+coverage = "./missing-coverage.manifest.json"
+
+[sources.manual]
+enabled = true
+events = "./manual_events.yaml"
+user = "octo"
+"#,
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .args([
+            "collect",
+            "--out",
+            out.to_str().unwrap(),
+            "multi",
+            "--config",
+            tmp.path().join("shiplog.toml").to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("- json: skipped"))
+        .stdout(predicate::str::contains("- manual: success"))
+        .stdout(predicate::str::contains("Merged and wrote:"));
+
+    let run_dir = first_run_dir(&out);
+    let packet = std::fs::read_to_string(run_dir.join("packet.md")).unwrap();
+    assert!(
+        packet.contains("Manual incident follow-up"),
+        "configured multi packet should include successful source evidence"
+    );
+
+    let coverage = std::fs::read_to_string(run_dir.join("coverage.manifest.json")).unwrap();
+    assert!(
+        coverage.contains("\"Partial\""),
+        "configured multi coverage should mark skipped sources as partial"
+    );
+    assert!(
+        coverage.contains("Configured source json was skipped"),
+        "configured multi coverage should record skipped source warning"
+    );
+}
+
+#[test]
+fn collect_multi_without_enabled_sources_fails_actionably() {
+    let tmp = TempDir::new().unwrap();
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[sources.json]
+enabled = false
+"#,
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .args([
+            "collect",
+            "--out",
+            tmp.path().join("out").to_str().unwrap(),
+            "multi",
+            "--config",
+            tmp.path().join("shiplog.toml").to_str().unwrap(),
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("No enabled sources found"));
 }
 
 #[test]
@@ -1268,6 +1455,7 @@ fn refresh_help_shows_options() {
         .assert()
         .success()
         .stdout(predicate::str::contains("github"))
+        .stdout(predicate::str::contains("multi").not())
         .stdout(predicate::str::contains("--out"))
         .stdout(predicate::str::contains("--run-dir"));
 }
@@ -1279,5 +1467,6 @@ fn run_help_shows_options() {
         .assert()
         .success()
         .stdout(predicate::str::contains("github"))
+        .stdout(predicate::str::contains("multi").not())
         .stdout(predicate::str::contains("--out"));
 }

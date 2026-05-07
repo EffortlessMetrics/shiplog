@@ -88,6 +88,23 @@ set, `--dry-run` to preview, and `--force` to overwrite existing scaffold files.
 
 ### 1. Collect events from GitHub
 
+For the fastest review-cycle path, collect all enabled sources from
+`shiplog.toml` into one merged run:
+
+```bash
+shiplog collect multi --last-6-months
+```
+
+This reads the enabled `[sources.*]` sections from `shiplog.toml`, collects
+each source, merges the resulting ledgers, and writes one packet, ledger,
+coverage manifest, workstream file, and bundle manifest under `out/<run_id>/`.
+Explicit date flags override the config window; otherwise `defaults.window`
+is used. If one configured source fails but another source succeeds, shiplog
+still writes the merged packet and records the skipped source in coverage
+warnings.
+
+For a single-source run, call the source directly:
+
 ```bash
 shiplog collect github \
   --me \
@@ -143,6 +160,7 @@ out/<run_id>/
 |---------|-------------|
 | `init` | Create `shiplog.toml` and `manual_events.yaml` scaffold files |
 | `collect <source>` | Fetch events from a source and generate packet artifacts |
+| `collect multi` | Collect enabled sources from `shiplog.toml` into one merged packet |
 | `render` | Re-render packet from existing ledger and workstreams |
 | `refresh <source>` | Re-fetch events while preserving curated `workstreams.yaml` |
 | `workstreams list/validate/rename/move` | Inspect, validate, and safely edit workstream curation |
@@ -185,6 +203,11 @@ identity explicitly.
 ### Examples
 
 ```bash
+# Collect every enabled source from shiplog.toml into one merged packet
+shiplog collect multi \
+  --config shiplog.toml \
+  --last-6-months
+
 # Refresh receipts while keeping curated workstreams
 shiplog refresh github \
   --me \
