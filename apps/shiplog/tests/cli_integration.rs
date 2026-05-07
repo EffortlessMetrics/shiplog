@@ -173,6 +173,7 @@ fn help_shows_all_subcommands() {
         .stdout(predicate::str::contains("render"))
         .stdout(predicate::str::contains("refresh"))
         .stdout(predicate::str::contains("workstreams"))
+        .stdout(predicate::str::contains("runs"))
         .stdout(predicate::str::contains("merge"))
         .stdout(predicate::str::contains("import"))
         .stdout(predicate::str::contains("run"));
@@ -209,6 +210,16 @@ fn workstreams_help_shows_list_and_validate() {
         .stdout(predicate::str::contains("validate"))
         .stdout(predicate::str::contains("rename"))
         .stdout(predicate::str::contains("move"));
+}
+
+#[test]
+fn runs_help_shows_list_and_show() {
+    shiplog_cmd()
+        .args(["runs", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("list"))
+        .stdout(predicate::str::contains("show"));
 }
 
 #[test]
@@ -906,6 +917,48 @@ fn workstreams_list_shows_latest_run_workstreams() {
         .stdout(predicate::str::contains("Count:"))
         .stdout(predicate::str::contains("acme/platform"))
         .stdout(predicate::str::contains("events="));
+}
+
+#[test]
+fn runs_list_shows_run_summaries() {
+    let tmp = TempDir::new().unwrap();
+    collect_json_into(tmp.path());
+
+    shiplog_cmd()
+        .args(["runs", "list", "--out", tmp.path().to_str().unwrap()])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Runs:"))
+        .stdout(predicate::str::contains("run_fixture"))
+        .stdout(predicate::str::contains("sources: github"))
+        .stdout(predicate::str::contains("events: 3"))
+        .stdout(predicate::str::contains("coverage: Complete"))
+        .stdout(predicate::str::contains("packet:"));
+}
+
+#[test]
+fn runs_show_latest_shows_run_details() {
+    let tmp = TempDir::new().unwrap();
+    collect_json_into(tmp.path());
+
+    shiplog_cmd()
+        .args([
+            "runs",
+            "show",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "latest",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Run: run_fixture"))
+        .stdout(predicate::str::contains("User: octo"))
+        .stdout(predicate::str::contains("Window: 2025-01-01..2025-04-01"))
+        .stdout(predicate::str::contains("Sources: github"))
+        .stdout(predicate::str::contains("Events: 3"))
+        .stdout(predicate::str::contains("Gaps: 0"))
+        .stdout(predicate::str::contains("Warnings: none"));
 }
 
 #[test]
