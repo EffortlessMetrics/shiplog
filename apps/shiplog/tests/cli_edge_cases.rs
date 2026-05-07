@@ -238,8 +238,8 @@ fn collect_github_missing_user_fails() {
     assert!(!out.status.success(), "missing --user should cause failure");
     let stderr = String::from_utf8_lossy(&out.stderr);
     assert!(
-        stderr.contains("--user") || stderr.contains("required"),
-        "stderr should mention the missing --user arg, got: {stderr}"
+        stderr.contains("provide --user") || stderr.contains("--me"),
+        "stderr should mention the missing identity arg, got: {stderr}"
     );
 }
 

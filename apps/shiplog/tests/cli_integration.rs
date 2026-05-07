@@ -251,6 +251,7 @@ fn collect_github_help_shows_github_flags() {
         .assert()
         .success()
         .stdout(predicate::str::contains("--user"))
+        .stdout(predicate::str::contains("--me"))
         .stdout(predicate::str::contains("--since"))
         .stdout(predicate::str::contains("--until"))
         .stdout(predicate::str::contains("--last-6-months"))
@@ -268,6 +269,7 @@ fn collect_gitlab_help_shows_gitlab_flags() {
         .assert()
         .success()
         .stdout(predicate::str::contains("--user"))
+        .stdout(predicate::str::contains("--me"))
         .stdout(predicate::str::contains("--since"))
         .stdout(predicate::str::contains("--until"))
         .stdout(predicate::str::contains("--state"))
@@ -654,7 +656,40 @@ fn collect_github_missing_user_fails() {
         ])
         .assert()
         .failure()
-        .stderr(predicate::str::contains("--user").or(predicate::str::contains("required")));
+        .stderr(predicate::str::contains("provide --user").or(predicate::str::contains("--me")));
+}
+
+#[test]
+fn collect_github_user_and_me_conflict_fails() {
+    shiplog_cmd()
+        .args(["collect", "github", "--user", "octocat", "--me"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("use either --user or --me"));
+}
+
+#[test]
+fn collect_github_me_without_token_fails_actionably() {
+    shiplog_cmd()
+        .env_remove("GITHUB_TOKEN")
+        .args(["collect", "github", "--me"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "Could not infer GitHub user: --me requires --token or GITHUB_TOKEN",
+        ));
+}
+
+#[test]
+fn collect_gitlab_me_without_token_fails_actionably() {
+    shiplog_cmd()
+        .env_remove("GITLAB_TOKEN")
+        .args(["collect", "gitlab", "--me"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "Could not infer GitLab user: --me requires --token or GITLAB_TOKEN",
+        ));
 }
 
 #[test]

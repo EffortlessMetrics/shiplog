@@ -6,6 +6,8 @@
 use anyhow::{Context, Result};
 use chrono::{Datelike, Months, NaiveDate, Utc};
 use clap::{Args, Parser, Subcommand, ValueEnum};
+use reqwest::blocking::Client;
+use serde::Deserialize;
 use shiplog_engine::{Engine, WorkstreamSource};
 use shiplog_ingest_git::LocalGitIngestor;
 use shiplog_ingest_github::GithubIngestor;
@@ -231,7 +233,10 @@ enum Source {
     Github {
         /// GitHub login to report on.
         #[arg(long)]
-        user: String,
+        user: Option<String>,
+        /// Infer the GitHub login from the authenticated token.
+        #[arg(long)]
+        me: bool,
         #[command(flatten)]
         window: DateArgs,
         /// "merged" (default) or "created"
@@ -264,7 +269,10 @@ enum Source {
     Gitlab {
         /// GitLab username to report on.
         #[arg(long)]
-        user: String,
+        user: Option<String>,
+        /// Infer the GitLab username from the authenticated token.
+        #[arg(long)]
+        me: bool,
         #[command(flatten)]
         window: DateArgs,
         /// Merge request state: opened, merged, closed, or all.
@@ -592,9 +600,9 @@ fn init_env_vars(selected: &[InitSource]) -> Vec<&'static str> {
 
 fn init_next_command(selected: &[InitSource]) -> &'static str {
     if init_source_enabled(selected, InitSource::Github) {
-        "shiplog collect github --user <github-user> --last-6-months"
+        "shiplog collect github --me --last-6-months"
     } else if init_source_enabled(selected, InitSource::Gitlab) {
-        "shiplog collect gitlab --user <gitlab-user> --last-6-months"
+        "shiplog collect gitlab --me --last-6-months"
     } else if init_source_enabled(selected, InitSource::Jira) {
         "shiplog collect jira --user <account-id-or-email> --auth-user <email> --last-6-months"
     } else if init_source_enabled(selected, InitSource::Linear) {
@@ -733,6 +741,127 @@ generated_at: "{generated_at}"
 events: []
 "#
     )
+}
+
+fn resolve_user_or_me(
+    source: &str,
+    explicit_user: Option<String>,
+    me: bool,
+    discover: impl FnOnce() -> Result<String>,
+) -> Result<String> {
+    match (explicit_user, me) {
+        (Some(_), true) => anyhow::bail!("use either --user or --me for {source}, not both"),
+        (Some(user), false) => Ok(user),
+        (None, true) => discover(),
+        (None, false) => {
+            anyhow::bail!("provide --user <username> or --me for {source}")
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct GithubAuthenticatedUser {
+    login: String,
+}
+
+#[derive(Deserialize)]
+struct GitlabAuthenticatedUser {
+    username: String,
+}
+
+fn discover_github_user(api_base: &str, token: Option<&str>) -> Result<String> {
+    let token = token
+        .map(ToOwned::to_owned)
+        .or_else(|| std::env::var("GITHUB_TOKEN").ok())
+        .ok_or_else(|| {
+            anyhow::anyhow!("Could not infer GitHub user: --me requires --token or GITHUB_TOKEN")
+        })?;
+
+    let client = identity_client()?;
+    let url = format!("{}/user", api_base.trim_end_matches('/'));
+    let resp = client
+        .get(&url)
+        .header("Accept", "application/vnd.github+json")
+        .header("X-GitHub-Api-Version", "2022-11-28")
+        .bearer_auth(token)
+        .send()
+        .with_context(|| format!("GET {url}"))?;
+
+    let status = resp.status();
+    if !status.is_success() {
+        let body = resp.text().unwrap_or_default();
+        anyhow::bail!("Could not infer GitHub user: GitHub API error {status}: {body}");
+    }
+
+    let user = resp
+        .json::<GithubAuthenticatedUser>()
+        .with_context(|| format!("parse GitHub authenticated user from {url}"))?;
+
+    if user.login.trim().is_empty() {
+        anyhow::bail!("Could not infer GitHub user: authenticated user response had empty login");
+    }
+
+    Ok(user.login)
+}
+
+fn discover_gitlab_user(instance: &str, token: Option<&str>) -> Result<String> {
+    let token = token
+        .map(ToOwned::to_owned)
+        .or_else(|| std::env::var("GITLAB_TOKEN").ok())
+        .ok_or_else(|| {
+            anyhow::anyhow!("Could not infer GitLab user: --me requires --token or GITLAB_TOKEN")
+        })?;
+
+    let client = identity_client()?;
+    let url = format!("{}/user", gitlab_api_base(instance)?);
+    let resp = client
+        .get(&url)
+        .header("Accept", "application/json")
+        .header("PRIVATE-TOKEN", token)
+        .send()
+        .with_context(|| format!("GET {url}"))?;
+
+    let status = resp.status();
+    if !status.is_success() {
+        let body = resp.text().unwrap_or_default();
+        anyhow::bail!("Could not infer GitLab user: GitLab API error {status}: {body}");
+    }
+
+    let user = resp
+        .json::<GitlabAuthenticatedUser>()
+        .with_context(|| format!("parse GitLab authenticated user from {url}"))?;
+
+    if user.username.trim().is_empty() {
+        anyhow::bail!(
+            "Could not infer GitLab user: authenticated user response had empty username"
+        );
+    }
+
+    Ok(user.username)
+}
+
+fn gitlab_api_base(instance: &str) -> Result<String> {
+    if instance.trim().is_empty() {
+        anyhow::bail!("GitLab instance cannot be empty");
+    }
+
+    let hostname = if instance.contains("://") {
+        reqwest::Url::parse(instance)
+            .ok()
+            .and_then(|u| u.host_str().map(|s| s.to_string()))
+            .ok_or_else(|| anyhow::anyhow!("Invalid GitLab instance URL: {instance}"))?
+    } else {
+        instance.to_string()
+    };
+
+    Ok(format!("https://{hostname}/api/v4"))
+}
+
+fn identity_client() -> Result<Client> {
+    Client::builder()
+        .user_agent(concat!("shiplog/", env!("CARGO_PKG_VERSION")))
+        .build()
+        .context("build identity discovery HTTP client")
 }
 
 fn create_engine(
@@ -1015,6 +1144,7 @@ fn main() -> Result<()> {
             match source {
                 Source::Github {
                     user,
+                    me,
                     window,
                     mode,
                     include_reviews,
@@ -1025,6 +1155,9 @@ fn main() -> Result<()> {
                     cache_dir,
                     no_cache,
                 } => {
+                    let user = resolve_user_or_me("GitHub", user, me, || {
+                        discover_github_user(&api_base, token.as_deref())
+                    })?;
                     let window = resolve_date_window(window)?;
                     let cache_dir = resolve_cache_dir(&out, cache_dir, no_cache);
                     let ing = make_github_ingestor(
@@ -1079,6 +1212,7 @@ fn main() -> Result<()> {
 
                 Source::Gitlab {
                     user,
+                    me,
                     window,
                     state,
                     instance,
@@ -1088,6 +1222,9 @@ fn main() -> Result<()> {
                     cache_dir,
                     no_cache,
                 } => {
+                    let user = resolve_user_or_me("GitLab", user, me, || {
+                        discover_gitlab_user(&instance, token.as_deref())
+                    })?;
                     let window = resolve_date_window(window)?;
                     let cache_dir = resolve_cache_dir(&out, cache_dir, no_cache);
                     let ing = make_gitlab_ingestor(
@@ -1539,6 +1676,7 @@ fn main() -> Result<()> {
                 }
                 Source::Github {
                     user,
+                    me,
                     window,
                     mode,
                     include_reviews,
@@ -1549,6 +1687,9 @@ fn main() -> Result<()> {
                     cache_dir,
                     no_cache,
                 } => {
+                    let user = resolve_user_or_me("GitHub", user, me, || {
+                        discover_github_user(&api_base, token.as_deref())
+                    })?;
                     let window = resolve_date_window(window)?;
                     let cache_root = run_dir
                         .parent()
@@ -1596,6 +1737,7 @@ fn main() -> Result<()> {
 
                 Source::Gitlab {
                     user,
+                    me,
                     window,
                     state,
                     instance,
@@ -1605,6 +1747,9 @@ fn main() -> Result<()> {
                     cache_dir,
                     no_cache,
                 } => {
+                    let user = resolve_user_or_me("GitLab", user, me, || {
+                        discover_gitlab_user(&instance, token.as_deref())
+                    })?;
                     let window = resolve_date_window(window)?;
                     let cache_root = run_dir
                         .parent()
@@ -1974,6 +2119,7 @@ fn main() -> Result<()> {
                 }
                 Source::Github {
                     user,
+                    me,
                     window,
                     mode,
                     include_reviews,
@@ -1984,6 +2130,9 @@ fn main() -> Result<()> {
                     cache_dir,
                     no_cache,
                 } => {
+                    let user = resolve_user_or_me("GitHub", user, me, || {
+                        discover_github_user(&api_base, token.as_deref())
+                    })?;
                     let window = resolve_date_window(window)?;
                     let cache_dir = resolve_cache_dir(&out, cache_dir, no_cache);
                     let ing = make_github_ingestor(
@@ -2021,6 +2170,7 @@ fn main() -> Result<()> {
 
                 Source::Gitlab {
                     user,
+                    me,
                     window,
                     state,
                     instance,
@@ -2030,6 +2180,9 @@ fn main() -> Result<()> {
                     cache_dir,
                     no_cache,
                 } => {
+                    let user = resolve_user_or_me("GitLab", user, me, || {
+                        discover_gitlab_user(&instance, token.as_deref())
+                    })?;
                     let window = resolve_date_window(window)?;
                     let cache_dir = resolve_cache_dir(&out, cache_dir, no_cache);
                     let ing = make_gitlab_ingestor(

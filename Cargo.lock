@@ -2225,6 +2225,8 @@ dependencies = [
  "chrono",
  "clap",
  "predicates",
+ "reqwest",
+ "serde",
  "serde_json",
  "serde_yaml_ng",
  "shiplog-cluster-llm",

@@ -89,13 +89,13 @@ set, `--dry-run` to preview, and `--force` to overwrite existing scaffold files.
 
 ```bash
 shiplog collect github \
-  --user your-username \
+  --me \
   --last-6-months \
   --mode merged \
   --out ./out
 ```
 
-This fetches merged PRs (and optionally reviews with `--include-reviews`) for the given user and time window. If you omit a date window, shiplog defaults to the last six months. Results go into `out/<run_id>/` with a JSONL event ledger, coverage manifest, and an initial packet.
+This fetches merged PRs (and optionally reviews with `--include-reviews`) for the authenticated GitHub user and time window. If you omit a date window, shiplog defaults to the last six months. Use `--user <login>` instead of `--me` when you want an explicit identity. Results go into `out/<run_id>/` with a JSONL event ledger, coverage manifest, and an initial packet.
 
 ### 2. Curate workstreams
 
@@ -158,6 +158,10 @@ Use `shiplog render --latest` or `--run latest` to re-render the most recent
 run. `shiplog refresh --run-dir latest` refreshes the same run while preserving
 curation.
 
+GitHub and GitLab accept `--me` to infer the source user from `--token`,
+`GITHUB_TOKEN`, or `GITLAB_TOKEN`. Use `--user <login>` when you want to pin the
+identity explicitly.
+
 ### Sources
 
 | Source | Description |
@@ -175,7 +179,7 @@ curation.
 ```bash
 # Refresh receipts while keeping curated workstreams
 shiplog refresh github \
-  --user your-username \
+  --me \
   --last-6-months \
   --run-dir out/20260115_143022 \
   --out ./out
@@ -202,7 +206,7 @@ shiplog refresh git \
 
 # Collect merge requests from GitLab
 shiplog collect gitlab \
-  --user your-gitlab-username \
+  --me \
   --last-6-months \
   --state merged \
   --instance gitlab.com \
@@ -353,7 +357,7 @@ cargo install shiplog --features llm
 
 # Use LLM clustering during collection
 shiplog collect github \
-  --user your-username \
+  --me \
   --last-6-months \
   --out ./out \
   --llm-cluster \

@@ -28,7 +28,7 @@ shiplog init
 
 # 1. Collect events from GitHub
 shiplog collect github \
-  --user your-username \
+  --me \
   --last-6-months \
   --mode merged \
   --out ./out
@@ -61,6 +61,10 @@ Use `shiplog render --latest` or `--run latest` to re-render the most recent run
 
 Use `shiplog init --source github --source jira --dry-run` to preview a
 source-specific scaffold without writing files.
+
+GitHub and GitLab accept `--me` to infer the source user from `--token`,
+`GITHUB_TOKEN`, or `GITLAB_TOKEN`; use `--user <login>` to pin the identity
+explicitly.
 
 ## Sources
 
