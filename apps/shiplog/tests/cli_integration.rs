@@ -197,8 +197,7 @@ fn workstreams_help_shows_list_and_validate() {
         .stdout(predicate::str::contains("list"))
         .stdout(predicate::str::contains("validate"))
         .stdout(predicate::str::contains("rename"))
-        .stdout(predicate::str::contains("move"))
-        .stdout(predicate::str::contains("split"));
+        .stdout(predicate::str::contains("move"));
 }
 
 #[test]
@@ -975,105 +974,6 @@ fn workstreams_move_unknown_event_fails_without_writing_curated() {
         .stderr(predicate::str::contains(
             "was not found in ledger.events.jsonl",
         ));
-
-    assert!(!run_dir.join("workstreams.yaml").exists());
-}
-
-#[test]
-fn workstreams_split_moves_matching_events_to_new_workstream() {
-    let tmp = TempDir::new().unwrap();
-    let run_dir = collect_json_into(tmp.path());
-
-    shiplog_cmd()
-        .args([
-            "workstreams",
-            "split",
-            "--out",
-            tmp.path().to_str().unwrap(),
-            "--run",
-            "run_fixture",
-            "--workstream",
-            "acme/platform",
-            "--to",
-            "Audit Exports",
-            "--matching",
-            "audit",
-        ])
-        .assert()
-        .success()
-        .stdout(predicate::str::contains(
-            "Split 1 event(s) from acme/platform to Audit Exports",
-        ))
-        .stdout(predicate::str::contains("Created target workstream"))
-        .stdout(predicate::str::contains("Created curated workstreams.yaml"));
-
-    let curated = load_curated_workstreams(&run_dir);
-    let audit = curated
-        .workstreams
-        .iter()
-        .find(|workstream| workstream.title == "Audit Exports")
-        .expect("target workstream should exist");
-    assert!(
-        audit
-            .events
-            .iter()
-            .any(|event_id| event_id.to_string() == "fixture_pr_acme_platform_13")
-    );
-
-    let platform = curated
-        .workstreams
-        .iter()
-        .find(|workstream| workstream.title == "acme/platform")
-        .expect("source workstream should remain");
-    assert!(
-        platform
-            .events
-            .iter()
-            .all(|event_id| event_id.to_string() != "fixture_pr_acme_platform_13")
-    );
-    assert!(
-        platform
-            .events
-            .iter()
-            .any(|event_id| event_id.to_string() == "fixture_review_acme_platform_77_1")
-    );
-
-    shiplog_cmd()
-        .args([
-            "workstreams",
-            "validate",
-            "--out",
-            tmp.path().to_str().unwrap(),
-            "--run",
-            "run_fixture",
-        ])
-        .assert()
-        .success();
-}
-
-#[test]
-fn workstreams_split_without_matches_fails_without_writing_curated() {
-    let tmp = TempDir::new().unwrap();
-    let run_dir = collect_json_into(tmp.path());
-
-    shiplog_cmd()
-        .args([
-            "workstreams",
-            "split",
-            "--out",
-            tmp.path().to_str().unwrap(),
-            "--run",
-            "run_fixture",
-            "--workstream",
-            "acme/platform",
-            "--to",
-            "No Matches",
-            "--matching",
-            "definitely-not-in-fixture",
-        ])
-        .assert()
-        .failure()
-        .stderr(predicate::str::contains("No events matched"));
 
     assert!(!run_dir.join("workstreams.yaml").exists());
 }

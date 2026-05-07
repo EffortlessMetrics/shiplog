@@ -9,7 +9,6 @@ use clap::{Args, Parser, Subcommand, ValueEnum};
 use reqwest::blocking::Client;
 use serde::Deserialize;
 use shiplog_engine::{ConflictResolution, Engine, WorkstreamSource};
-use shiplog_ids::WorkstreamId;
 use shiplog_ingest_git::LocalGitIngestor;
 use shiplog_ingest_github::GithubIngestor;
 use shiplog_ingest_gitlab::{GitlabIngestor, MrState};
@@ -23,8 +22,8 @@ use shiplog_render_md::MarkdownRenderer;
 use shiplog_schema::{
     bundle::BundleProfile,
     coverage::TimeWindow,
-    event::{EventEnvelope, EventPayload},
-    workstream::{Workstream, WorkstreamStats, WorkstreamsFile},
+    event::EventEnvelope,
+    workstream::{WorkstreamStats, WorkstreamsFile},
 };
 use shiplog_workstreams::RepoClusterer;
 use std::collections::{HashMap, HashSet};
@@ -373,28 +372,6 @@ enum WorkstreamsCommand {
         /// Target workstream title or ID.
         #[arg(long)]
         to: String,
-    },
-
-    /// Split matching events from one workstream into another.
-    Split {
-        /// Output directory containing shiplog runs.
-        #[arg(long, default_value = "./out")]
-        out: PathBuf,
-        /// Run ID to edit (uses most recent if not specified).
-        #[arg(long)]
-        run: Option<String>,
-        /// Edit the most recent run explicitly.
-        #[arg(long)]
-        latest: bool,
-        /// Source workstream title or ID.
-        #[arg(long)]
-        workstream: String,
-        /// Target workstream title or ID, or a new title to create.
-        #[arg(long)]
-        to: String,
-        /// Case-insensitive text to match against event titles, repos, tags, links, and source metadata.
-        #[arg(long)]
-        matching: String,
     },
 }
 
@@ -2839,52 +2816,6 @@ fn main() -> Result<()> {
                     println!("Created curated workstreams.yaml from suggested workstreams.");
                 }
             }
-            WorkstreamsCommand::Split {
-                out,
-                run,
-                latest,
-                workstream,
-                to,
-                matching,
-            } => {
-                let run_dir = resolve_render_run_dir(&out, run, latest)?;
-                let (mut workstreams, source, _) = load_effective_workstreams_for_run(&run_dir)?;
-                let ledger_events = load_run_events(&run_dir)?;
-                let result = split_workstream_by_match(
-                    &mut workstreams,
-                    &workstream,
-                    &to,
-                    &matching,
-                    &ledger_events,
-                )?;
-                let errors = validate_workstreams_against_events(&workstreams, &ledger_events);
-                if !errors.is_empty() {
-                    for error in &errors {
-                        eprintln!("- {error}");
-                    }
-                    anyhow::bail!("{} workstream validation error(s)", errors.len());
-                }
-
-                write_curated_workstreams(&run_dir, &workstreams)?;
-                println!(
-                    "Split {} event(s) from {} to {}",
-                    result.event_count, result.from_title, result.to_title
-                );
-                println!("Matching: {}", result.matching);
-                if result.receipt_count > 0 {
-                    println!("Preserved {} receipt anchor(s).", result.receipt_count);
-                }
-                if result.created_target {
-                    println!("Created target workstream: {}", result.to_title);
-                }
-                println!(
-                    "Updated: {}",
-                    shiplog_workstreams::WorkstreamManager::curated_path(&run_dir).display()
-                );
-                if matches!(source, WorkstreamsFileSource::Suggested) {
-                    println!("Created curated workstreams.yaml from suggested workstreams.");
-                }
-            }
         },
         Command::Merge {
             inputs,
@@ -3541,158 +3472,7 @@ fn move_event_to_workstream(
     })
 }
 
-struct SplitWorkstreamResult {
-    from_title: String,
-    to_title: String,
-    matching: String,
-    event_count: usize,
-    receipt_count: usize,
-    created_target: bool,
-}
-
-fn split_workstream_by_match(
-    workstreams: &mut WorkstreamsFile,
-    source_selector: &str,
-    target_selector: &str,
-    matching: &str,
-    ledger_events: &[EventEnvelope],
-) -> Result<SplitWorkstreamResult> {
-    let matching = matching.trim();
-    if matching.is_empty() {
-        anyhow::bail!("matching text cannot be blank");
-    }
-
-    let source_idx = find_workstream_index(workstreams, source_selector)?;
-    let (target_idx, created_target) =
-        find_or_create_workstream_index(workstreams, target_selector)?;
-    if source_idx == target_idx {
-        anyhow::bail!("target workstream must differ from the source workstream");
-    }
-
-    let ledger_by_id: HashMap<_, _> = ledger_events
-        .iter()
-        .map(|event| (event.id.to_string(), event))
-        .collect();
-    let source_event_ids = workstreams.workstreams[source_idx].events.clone();
-    let matched_event_ids: Vec<_> = source_event_ids
-        .into_iter()
-        .filter(|event_id| {
-            ledger_by_id
-                .get(&event_id.to_string())
-                .is_some_and(|event| event_matches_text(event, matching))
-        })
-        .collect();
-
-    if matched_event_ids.is_empty() {
-        anyhow::bail!(
-            "No events matched {matching:?} in workstream {:?}",
-            workstreams.workstreams[source_idx].title
-        );
-    }
-
-    let matched_keys: HashSet<_> = matched_event_ids
-        .iter()
-        .map(std::string::ToString::to_string)
-        .collect();
-    let from_title = workstreams.workstreams[source_idx].title.clone();
-    let to_title = workstreams.workstreams[target_idx].title.clone();
-    let matched_receipts: Vec<_> = workstreams.workstreams[source_idx]
-        .receipts
-        .iter()
-        .filter(|event_id| matched_keys.contains(&event_id.to_string()))
-        .cloned()
-        .collect();
-    let receipt_count = matched_receipts.len();
-
-    {
-        let source = &mut workstreams.workstreams[source_idx];
-        source
-            .events
-            .retain(|event_id| !matched_keys.contains(&event_id.to_string()));
-        source
-            .receipts
-            .retain(|event_id| !matched_keys.contains(&event_id.to_string()));
-    }
-
-    {
-        let target = &mut workstreams.workstreams[target_idx];
-        let mut existing_events: HashSet<_> = target
-            .events
-            .iter()
-            .map(std::string::ToString::to_string)
-            .collect();
-        for event_id in &matched_event_ids {
-            let event_key = event_id.to_string();
-            if existing_events.insert(event_key) {
-                target.events.push(event_id.clone());
-            }
-        }
-
-        let mut existing_receipts: HashSet<_> = target
-            .receipts
-            .iter()
-            .map(std::string::ToString::to_string)
-            .collect();
-        for event_id in &matched_receipts {
-            let event_key = event_id.to_string();
-            if existing_receipts.insert(event_key) {
-                target.receipts.push(event_id.clone());
-            }
-        }
-    }
-
-    recompute_workstream_stats(workstreams, ledger_events);
-
-    Ok(SplitWorkstreamResult {
-        from_title,
-        to_title,
-        matching: matching.to_string(),
-        event_count: matched_event_ids.len(),
-        receipt_count,
-        created_target,
-    })
-}
-
 fn find_workstream_index(workstreams: &WorkstreamsFile, selector: &str) -> Result<usize> {
-    match find_workstream_index_optional(workstreams, selector)? {
-        Some(idx) => Ok(idx),
-        None => anyhow::bail!(
-            "no workstream matched {:?}; run `shiplog workstreams list` to see available titles and IDs",
-            selector.trim()
-        ),
-    }
-}
-
-fn find_or_create_workstream_index(
-    workstreams: &mut WorkstreamsFile,
-    selector: &str,
-) -> Result<(usize, bool)> {
-    let selector = selector.trim();
-    if selector.is_empty() {
-        anyhow::bail!("target workstream title cannot be blank");
-    }
-
-    if let Some(idx) = find_workstream_index_optional(workstreams, selector)? {
-        return Ok((idx, false));
-    }
-
-    workstreams.workstreams.push(Workstream {
-        id: WorkstreamId::from_parts(["curated", "split", selector]),
-        title: selector.to_string(),
-        summary: None,
-        tags: vec!["curated".to_string()],
-        stats: WorkstreamStats::zero(),
-        events: vec![],
-        receipts: vec![],
-    });
-
-    Ok((workstreams.workstreams.len() - 1, true))
-}
-
-fn find_workstream_index_optional(
-    workstreams: &WorkstreamsFile,
-    selector: &str,
-) -> Result<Option<usize>> {
     let selector = selector.trim();
     if selector.is_empty() {
         anyhow::bail!("workstream selector cannot be blank");
@@ -3709,80 +3489,14 @@ fn find_workstream_index_optional(
         .collect();
 
     match matches.as_slice() {
-        [idx] => Ok(Some(*idx)),
-        [] => Ok(None),
+        [idx] => Ok(*idx),
+        [] => anyhow::bail!(
+            "no workstream matched {selector:?}; run `shiplog workstreams list` to see available titles and IDs"
+        ),
         _ => anyhow::bail!(
             "multiple workstreams matched {selector:?}; use the workstream ID instead"
         ),
     }
-}
-
-fn event_matches_text(event: &EventEnvelope, matching: &str) -> bool {
-    let needle = matching.to_ascii_lowercase();
-
-    contains_case_insensitive(&event.id.to_string(), &needle)
-        || contains_case_insensitive(&event.actor.login, &needle)
-        || contains_case_insensitive(&event.repo.full_name, &needle)
-        || event
-            .repo
-            .html_url
-            .as_deref()
-            .is_some_and(|url| contains_case_insensitive(url, &needle))
-        || event
-            .tags
-            .iter()
-            .any(|tag| contains_case_insensitive(tag, &needle))
-        || event.links.iter().any(|link| {
-            contains_case_insensitive(&link.label, &needle)
-                || contains_case_insensitive(&link.url, &needle)
-        })
-        || contains_case_insensitive(event.source.system.as_str(), &needle)
-        || event
-            .source
-            .url
-            .as_deref()
-            .is_some_and(|url| contains_case_insensitive(url, &needle))
-        || event
-            .source
-            .opaque_id
-            .as_deref()
-            .is_some_and(|id| contains_case_insensitive(id, &needle))
-        || payload_matches_text(&event.payload, &needle)
-}
-
-fn payload_matches_text(payload: &EventPayload, needle: &str) -> bool {
-    match payload {
-        EventPayload::PullRequest(pr) => {
-            contains_case_insensitive(&pr.title, needle)
-                || contains_case_insensitive(&pr.number.to_string(), needle)
-                || contains_case_insensitive(&pr.state.to_string(), needle)
-                || pr
-                    .touched_paths_hint
-                    .iter()
-                    .any(|path| contains_case_insensitive(path, needle))
-        }
-        EventPayload::Review(review) => {
-            contains_case_insensitive(&review.pull_title, needle)
-                || contains_case_insensitive(&review.pull_number.to_string(), needle)
-                || contains_case_insensitive(&review.state, needle)
-        }
-        EventPayload::Manual(manual) => {
-            contains_case_insensitive(&manual.title, needle)
-                || contains_case_insensitive(&manual.event_type.to_string(), needle)
-                || manual
-                    .description
-                    .as_deref()
-                    .is_some_and(|description| contains_case_insensitive(description, needle))
-                || manual
-                    .impact
-                    .as_deref()
-                    .is_some_and(|impact| contains_case_insensitive(impact, needle))
-        }
-    }
-}
-
-fn contains_case_insensitive(value: &str, lowercase_needle: &str) -> bool {
-    value.to_ascii_lowercase().contains(lowercase_needle)
 }
 
 fn recompute_workstream_stats(workstreams: &mut WorkstreamsFile, ledger_events: &[EventEnvelope]) {

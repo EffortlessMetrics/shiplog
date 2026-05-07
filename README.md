@@ -123,7 +123,6 @@ shiplog generates `workstreams.suggested.yaml` with auto-grouped workstreams bas
 shiplog workstreams list --run latest
 shiplog workstreams rename --run latest --from "acme/platform" --to "Platform Reliability"
 shiplog workstreams move --run latest --event <event_id> --to "Platform Reliability"
-shiplog workstreams split --run latest --workstream "acme/platform" --to "Audit Exports" --matching "audit"
 shiplog workstreams validate --run latest
 ```
 
@@ -164,7 +163,7 @@ out/<run_id>/
 | `collect multi` | Collect enabled sources from `shiplog.toml` into one merged packet |
 | `render` | Re-render packet from existing ledger and workstreams |
 | `refresh <source>` | Re-fetch events while preserving curated `workstreams.yaml` |
-| `workstreams list/validate/rename/move/split` | Inspect, validate, and safely edit workstream curation |
+| `workstreams list/validate/rename/move` | Inspect, validate, and safely edit workstream curation |
 | `merge` | Merge existing run directories into one packet |
 | `import` | Import an existing run directory and re-render |
 | `run <source>` | Legacy: collect + render in one shot |
