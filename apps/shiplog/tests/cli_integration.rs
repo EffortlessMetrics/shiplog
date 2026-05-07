@@ -211,6 +211,8 @@ fn workstreams_help_shows_list_and_validate() {
         .stdout(predicate::str::contains("validate"))
         .stdout(predicate::str::contains("rename"))
         .stdout(predicate::str::contains("move"))
+        .stdout(predicate::str::contains("create"))
+        .stdout(predicate::str::contains("delete"))
         .stdout(predicate::str::contains("split"));
 }
 
@@ -1227,6 +1229,320 @@ fn workstreams_move_unknown_event_fails_without_writing_curated() {
         ));
 
     assert!(!run_dir.join("workstreams.yaml").exists());
+}
+
+#[test]
+fn workstreams_create_promotes_suggested_to_curated() {
+    let tmp = TempDir::new().unwrap();
+    let run_dir = collect_json_into(tmp.path());
+
+    shiplog_cmd()
+        .args([
+            "workstreams",
+            "create",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+            "--title",
+            "Platform Reliability",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "Created workstream: Platform Reliability",
+        ))
+        .stdout(predicate::str::contains("Created curated workstreams.yaml"));
+
+    assert!(run_dir.join("workstreams.suggested.yaml").exists());
+    let curated = load_curated_workstreams(&run_dir);
+    let created = curated
+        .workstreams
+        .iter()
+        .find(|workstream| workstream.title == "Platform Reliability")
+        .expect("created workstream should exist");
+    assert!(created.events.is_empty());
+    assert!(created.receipts.is_empty());
+    assert_eq!(created.stats.pull_requests, 0);
+    assert_eq!(created.stats.reviews, 0);
+}
+
+#[test]
+fn workstreams_create_rejects_blank_and_duplicate_without_writing() {
+    let tmp = TempDir::new().unwrap();
+    let run_dir = collect_json_into(tmp.path());
+
+    shiplog_cmd()
+        .args([
+            "workstreams",
+            "create",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+            "--title",
+            "   ",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("title cannot be blank"));
+    assert!(!run_dir.join("workstreams.yaml").exists());
+
+    shiplog_cmd()
+        .args([
+            "workstreams",
+            "create",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+            "--title",
+            "acme/platform",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("already matches"));
+    assert!(!run_dir.join("workstreams.yaml").exists());
+}
+
+#[test]
+fn workstreams_delete_empty_workstream_succeeds() {
+    let tmp = TempDir::new().unwrap();
+    let run_dir = collect_json_into(tmp.path());
+
+    shiplog_cmd()
+        .args([
+            "workstreams",
+            "create",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+            "--title",
+            "Temporary Bucket",
+        ])
+        .assert()
+        .success();
+
+    shiplog_cmd()
+        .args([
+            "workstreams",
+            "delete",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+            "--workstream",
+            "Temporary Bucket",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "Deleted workstream: Temporary Bucket",
+        ));
+
+    let curated = load_curated_workstreams(&run_dir);
+    assert!(
+        !curated
+            .workstreams
+            .iter()
+            .any(|workstream| workstream.title == "Temporary Bucket")
+    );
+}
+
+#[test]
+fn workstreams_delete_non_empty_requires_move_or_force_without_writing() {
+    let tmp = TempDir::new().unwrap();
+    let run_dir = collect_json_into(tmp.path());
+
+    shiplog_cmd()
+        .args([
+            "workstreams",
+            "delete",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+            "--workstream",
+            "acme/platform",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("--move-to"))
+        .stderr(predicate::str::contains("--force"));
+
+    assert!(!run_dir.join("workstreams.yaml").exists());
+}
+
+#[test]
+fn workstreams_delete_non_empty_moves_events_and_recomputes_stats() {
+    let tmp = TempDir::new().unwrap();
+    let run_dir = collect_json_into(tmp.path());
+
+    shiplog_cmd()
+        .args([
+            "workstreams",
+            "create",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+            "--title",
+            "Misc",
+        ])
+        .assert()
+        .success();
+
+    shiplog_cmd()
+        .args([
+            "workstreams",
+            "delete",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+            "--workstream",
+            "acme/platform",
+            "--move-to",
+            "Misc",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "Deleted workstream: acme/platform",
+        ))
+        .stdout(predicate::str::contains("Moved 2 event(s)"));
+
+    let curated = load_curated_workstreams(&run_dir);
+    assert!(
+        !curated
+            .workstreams
+            .iter()
+            .any(|workstream| workstream.title == "acme/platform")
+    );
+    let misc = curated
+        .workstreams
+        .iter()
+        .find(|workstream| workstream.title == "Misc")
+        .expect("move target should exist");
+    assert_eq!(misc.stats.pull_requests, 1);
+    assert_eq!(misc.stats.reviews, 1);
+    assert!(
+        misc.events
+            .iter()
+            .any(|event_id| event_id.to_string() == "fixture_pr_acme_platform_13")
+    );
+    assert!(
+        misc.events
+            .iter()
+            .any(|event_id| event_id.to_string() == "fixture_review_acme_platform_77_1")
+    );
+
+    shiplog_cmd()
+        .args([
+            "workstreams",
+            "validate",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+        ])
+        .assert()
+        .success();
+}
+
+#[test]
+fn workstreams_delete_self_move_fails_without_writing() {
+    let tmp = TempDir::new().unwrap();
+    let run_dir = collect_json_into(tmp.path());
+
+    shiplog_cmd()
+        .args([
+            "workstreams",
+            "delete",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+            "--workstream",
+            "acme/platform",
+            "--move-to",
+            "acme/platform",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("must be different"));
+
+    assert!(!run_dir.join("workstreams.yaml").exists());
+}
+
+#[test]
+fn workstreams_delete_missing_move_target_fails_without_writing() {
+    let tmp = TempDir::new().unwrap();
+    let run_dir = collect_json_into(tmp.path());
+
+    shiplog_cmd()
+        .args([
+            "workstreams",
+            "delete",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+            "--workstream",
+            "acme/platform",
+            "--move-to",
+            "Missing Bucket",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("no workstream matched"));
+
+    assert!(!run_dir.join("workstreams.yaml").exists());
+}
+
+#[test]
+fn workstreams_delete_force_discards_assignments_and_validates() {
+    let tmp = TempDir::new().unwrap();
+    let run_dir = collect_json_into(tmp.path());
+
+    shiplog_cmd()
+        .args([
+            "workstreams",
+            "delete",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+            "--workstream",
+            "acme/payments",
+            "--force",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "Deleted workstream: acme/payments",
+        ))
+        .stdout(predicate::str::contains("Discarded 1 event assignment"));
+
+    let curated = load_curated_workstreams(&run_dir);
+    assert!(
+        !curated
+            .workstreams
+            .iter()
+            .any(|workstream| workstream.title == "acme/payments")
+    );
+    shiplog_cmd()
+        .args([
+            "workstreams",
+            "validate",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+        ])
+        .assert()
+        .success();
 }
 
 #[test]
