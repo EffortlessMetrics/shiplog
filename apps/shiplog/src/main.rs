@@ -52,6 +52,16 @@ enum Command {
         force: bool,
     },
 
+    /// Check local config, source setup, tokens, and output safety.
+    Doctor {
+        /// Path to shiplog.toml.
+        #[arg(long, default_value = CONFIG_FILENAME)]
+        config: PathBuf,
+        /// Limit checks to one or more sources.
+        #[arg(long = "source", value_enum)]
+        sources: Vec<InitSource>,
+    },
+
     /// Collect events from a source and generate workstream suggestions.
     ///
     /// This creates `workstreams.suggested.yaml` which you can rename to
@@ -606,12 +616,15 @@ struct ShiplogConfig {
     defaults: ConfigDefaults,
     user: ConfigUser,
     sources: ConfigSources,
+    redaction: ConfigRedaction,
 }
 
 #[derive(Deserialize, Debug, Default)]
 #[serde(default)]
 struct ConfigDefaults {
+    out: Option<PathBuf>,
     window: Option<String>,
+    profile: Option<String>,
     include_reviews: Option<bool>,
 }
 
@@ -711,6 +724,12 @@ struct ConfigManualSource {
     enabled: bool,
     events: Option<PathBuf>,
     user: Option<String>,
+}
+
+#[derive(Deserialize, Debug, Default)]
+#[serde(default)]
+struct ConfigRedaction {
+    key_env: Option<String>,
 }
 
 #[derive(Debug)]
@@ -1043,6 +1062,452 @@ fn load_shiplog_config(config_path: &Path) -> Result<ShiplogConfig> {
     let text = std::fs::read_to_string(config_path)
         .with_context(|| format!("read {}", config_path.display()))?;
     toml::from_str(&text).with_context(|| format!("parse {}", config_path.display()))
+}
+
+#[derive(Default)]
+struct DoctorReport {
+    errors: usize,
+}
+
+impl DoctorReport {
+    fn ok(&self, label: &str, detail: impl AsRef<str>) {
+        let detail = detail.as_ref();
+        if detail.is_empty() {
+            println!("{label}: ok");
+        } else {
+            println!("{label}: ok, {detail}");
+        }
+    }
+
+    fn disabled(&self, label: &str) {
+        println!("{label}: disabled");
+    }
+
+    fn error(&mut self, label: &str, detail: impl AsRef<str>) {
+        self.errors += 1;
+        println!("{label}: error, {}", detail.as_ref());
+    }
+}
+
+fn run_doctor(config_path: &Path, sources: &[InitSource]) -> Result<()> {
+    let mut report = DoctorReport::default();
+
+    if !config_path.exists() {
+        report.error(
+            "Config",
+            format!(
+                "{} not found; run `shiplog init` first",
+                config_path.display()
+            ),
+        );
+        anyhow::bail!("doctor found {} issue(s)", report.errors);
+    }
+
+    let config = match load_shiplog_config(config_path) {
+        Ok(config) => {
+            report.ok("Config", config_path.display().to_string());
+            config
+        }
+        Err(err) => {
+            report.error("Config", err.to_string());
+            anyhow::bail!("doctor found {} issue(s)", report.errors);
+        }
+    };
+
+    let base_dir = config_base_dir(config_path);
+    doctor_defaults(&mut report, &config, &base_dir);
+    doctor_sources(&mut report, &config, &base_dir, sources);
+
+    if report.errors > 0 {
+        anyhow::bail!("doctor found {} issue(s)", report.errors);
+    }
+
+    Ok(())
+}
+
+fn doctor_defaults(report: &mut DoctorReport, config: &ShiplogConfig, base_dir: &Path) {
+    match resolve_multi_window(DateArgs::default(), config) {
+        Ok(window) => report.ok("Window", window.window_label()),
+        Err(err) => report.error("Window", err.to_string()),
+    }
+
+    let out = config
+        .defaults
+        .out
+        .as_ref()
+        .filter(|path| !path.as_os_str().is_empty())
+        .map(|path| resolve_config_path(base_dir, path))
+        .unwrap_or_else(|| resolve_config_path(base_dir, Path::new("./out")));
+    match doctor_check_output_writable(&out) {
+        Ok(()) => report.ok("Output", format!("{} writable", out.display())),
+        Err(err) => report.error("Output", err.to_string()),
+    }
+
+    let profile = match doctor_config_profile(config.defaults.profile.as_deref()) {
+        Ok(profile) => {
+            report.ok("Profile", profile.as_str());
+            profile
+        }
+        Err(err) => {
+            report.error("Profile", err.to_string());
+            BundleProfile::Internal
+        }
+    };
+    let key_env = optional_config_string(config.redaction.key_env.as_deref())
+        .unwrap_or_else(|| "SHIPLOG_REDACT_KEY".to_string());
+    if matches!(profile, BundleProfile::Internal) {
+        report.ok("Redaction", "internal profile, no key required");
+    } else if env_var_present(&key_env) {
+        report.ok(
+            "Redaction",
+            format!("{} profile, {key_env} present", profile.as_str()),
+        );
+    } else {
+        report.error(
+            "Redaction",
+            format!(
+                "{} profile requires {key_env}; set it or use profile = \"internal\"",
+                profile.as_str()
+            ),
+        );
+    }
+}
+
+fn doctor_config_profile(profile: Option<&str>) -> Result<BundleProfile> {
+    let profile = non_empty_string(profile).unwrap_or_else(|| "internal".to_string());
+    profile
+        .parse::<BundleProfile>()
+        .map_err(anyhow::Error::msg)
+        .with_context(|| format!("parse defaults.profile {profile:?}"))
+}
+
+fn doctor_check_output_writable(out: &Path) -> Result<()> {
+    let probe_dir = if out.exists() {
+        if !out.is_dir() {
+            anyhow::bail!("{} exists but is not a directory", out.display());
+        }
+        out.to_path_buf()
+    } else {
+        out.parent()
+            .filter(|parent| !parent.as_os_str().is_empty())
+            .unwrap_or_else(|| Path::new("."))
+            .to_path_buf()
+    };
+
+    if !probe_dir.exists() {
+        anyhow::bail!(
+            "{} does not exist; create it or choose a different defaults.out",
+            probe_dir.display()
+        );
+    }
+
+    let probe = probe_dir.join(format!(".shiplog-doctor-write-test-{}", std::process::id()));
+    std::fs::write(&probe, b"").with_context(|| format!("write test file {}", probe.display()))?;
+    std::fs::remove_file(&probe)
+        .with_context(|| format!("remove test file {}", probe.display()))?;
+    Ok(())
+}
+
+fn doctor_sources(
+    report: &mut DoctorReport,
+    config: &ShiplogConfig,
+    base_dir: &Path,
+    selected_sources: &[InitSource],
+) {
+    doctor_github(report, config, selected_sources);
+    doctor_gitlab(report, config, selected_sources);
+    doctor_jira(report, config, selected_sources);
+    doctor_linear(report, config, selected_sources);
+    doctor_git(report, config, base_dir, selected_sources);
+    doctor_json(report, config, base_dir, selected_sources);
+    doctor_manual(report, config, base_dir, selected_sources);
+}
+
+fn doctor_should_check(selected_sources: &[InitSource], source: InitSource) -> bool {
+    selected_sources.is_empty() || selected_sources.contains(&source)
+}
+
+fn doctor_github(report: &mut DoctorReport, config: &ShiplogConfig, selected: &[InitSource]) {
+    if !doctor_should_check(selected, InitSource::Github) {
+        return;
+    }
+
+    let Some(source) = config.sources.github.as_ref() else {
+        report.disabled("GitHub");
+        return;
+    };
+    if !source.enabled {
+        report.disabled("GitHub");
+        return;
+    }
+
+    let api_base = optional_config_string(source.api_base.as_deref())
+        .unwrap_or_else(|| "https://api.github.com".to_string());
+    let token_present = env_var_present("GITHUB_TOKEN");
+    match (
+        optional_config_string(source.user.as_deref()),
+        source.me,
+        token_present,
+    ) {
+        (Some(_), true, _) => report.error("GitHub", "use either user or me, not both"),
+        (Some(user), false, true) => report.ok("GitHub", format!("token found, user {user}")),
+        (Some(user), false, false) => report.error(
+            "GitHub",
+            format!("missing GITHUB_TOKEN for configured user {user}"),
+        ),
+        (None, true, true) => match discover_github_user(&api_base, None) {
+            Ok(user) => report.ok("GitHub", format!("token found, user inferred as {user}")),
+            Err(err) => report.error("GitHub", err.to_string()),
+        },
+        (None, true, false) => {
+            report.error("GitHub", "missing GITHUB_TOKEN for me identity discovery");
+        }
+        (None, false, _) => report.error("GitHub", "set sources.github.user or me = true"),
+    }
+}
+
+fn doctor_gitlab(report: &mut DoctorReport, config: &ShiplogConfig, selected: &[InitSource]) {
+    if !doctor_should_check(selected, InitSource::Gitlab) {
+        return;
+    }
+
+    let Some(source) = config.sources.gitlab.as_ref() else {
+        report.disabled("GitLab");
+        return;
+    };
+    if !source.enabled {
+        report.disabled("GitLab");
+        return;
+    }
+
+    let instance = optional_config_string(source.instance.as_deref())
+        .unwrap_or_else(|| "gitlab.com".to_string());
+    if let Err(err) = gitlab_api_base(&instance) {
+        report.error("GitLab", err.to_string());
+        return;
+    }
+    if let Some(state) = non_empty_string(source.state.as_deref())
+        && let Err(err) = state.parse::<MrState>()
+    {
+        report.error("GitLab", format!("parse state {state:?}: {err}"));
+        return;
+    }
+
+    let token_present = env_var_present("GITLAB_TOKEN");
+    match (
+        optional_config_string(source.user.as_deref()),
+        source.me,
+        token_present,
+    ) {
+        (Some(_), true, _) => report.error("GitLab", "use either user or me, not both"),
+        (Some(user), false, true) => {
+            report.ok(
+                "GitLab",
+                format!("token found, user {user}, instance {instance}"),
+            );
+        }
+        (Some(user), false, false) => report.error(
+            "GitLab",
+            format!("missing GITLAB_TOKEN for configured user {user}"),
+        ),
+        (None, true, true) => match discover_gitlab_user(&instance, None) {
+            Ok(user) => report.ok("GitLab", format!("token found, user inferred as {user}")),
+            Err(err) => report.error("GitLab", err.to_string()),
+        },
+        (None, true, false) => {
+            report.error("GitLab", "missing GITLAB_TOKEN for me identity discovery");
+        }
+        (None, false, _) => report.error("GitLab", "set sources.gitlab.user or me = true"),
+    }
+}
+
+fn doctor_jira(report: &mut DoctorReport, config: &ShiplogConfig, selected: &[InitSource]) {
+    if !doctor_should_check(selected, InitSource::Jira) {
+        return;
+    }
+
+    let Some(source) = config.sources.jira.as_ref() else {
+        report.disabled("Jira");
+        return;
+    };
+    if !source.enabled {
+        report.disabled("Jira");
+        return;
+    }
+
+    let start_errors = report.errors;
+    let user = required_config_string("jira", "user", source.user.as_deref());
+    let instance = required_config_string("jira", "instance", source.instance.as_deref());
+    let status = source.status.as_deref().unwrap_or("done");
+    let mut details = Vec::new();
+
+    match user {
+        Ok(user) => details.push(format!("assignee {user}")),
+        Err(err) => report.error("Jira", err.to_string()),
+    }
+    match instance {
+        Ok(instance) => details.push(format!("instance {instance}")),
+        Err(err) => report.error("Jira", err.to_string()),
+    }
+    if let Err(err) = status.parse::<IssueStatus>() {
+        report.error("Jira", format!("parse status {status:?}: {err}"));
+    }
+    if env_var_present("JIRA_TOKEN") {
+        details.push("JIRA_TOKEN present".to_string());
+    } else {
+        report.error("Jira", "missing JIRA_TOKEN");
+    }
+    if let Some(auth_user) = optional_config_string(source.auth_user.as_deref()) {
+        details.push(format!("auth user {auth_user}"));
+    } else if let Some(env_var) = optional_config_string(source.auth_user_env.as_deref()) {
+        if env_var_present(&env_var) {
+            details.push(format!("auth user from {env_var}"));
+        } else {
+            details.push(format!("auth user defaults to assignee; {env_var} not set"));
+        }
+    } else {
+        details.push("auth user defaults to assignee".to_string());
+    }
+
+    if report.errors == start_errors {
+        report.ok("Jira", details.join(", "));
+    }
+}
+
+fn doctor_linear(report: &mut DoctorReport, config: &ShiplogConfig, selected: &[InitSource]) {
+    if !doctor_should_check(selected, InitSource::Linear) {
+        return;
+    }
+
+    let Some(source) = config.sources.linear.as_ref() else {
+        report.disabled("Linear");
+        return;
+    };
+    if !source.enabled {
+        report.disabled("Linear");
+        return;
+    }
+
+    let start_errors = report.errors;
+    let mut details = Vec::new();
+    match required_config_string("linear", "user_id", source.user_id.as_deref()) {
+        Ok(user_id) => details.push(format!("user_id {user_id}")),
+        Err(err) => report.error("Linear", err.to_string()),
+    }
+    let status = source.status.as_deref().unwrap_or("done");
+    if let Err(err) = status.parse::<LinearIssueStatus>() {
+        report.error("Linear", format!("parse status {status:?}: {err}"));
+    }
+    if env_var_present("LINEAR_API_KEY") {
+        details.push("LINEAR_API_KEY present".to_string());
+    } else {
+        report.error("Linear", "missing LINEAR_API_KEY");
+    }
+
+    if report.errors == start_errors {
+        report.ok("Linear", details.join(", "));
+    }
+}
+
+fn doctor_git(
+    report: &mut DoctorReport,
+    config: &ShiplogConfig,
+    base_dir: &Path,
+    selected: &[InitSource],
+) {
+    if !doctor_should_check(selected, InitSource::Git) {
+        return;
+    }
+
+    let Some(source) = config.sources.git.as_ref() else {
+        report.disabled("Git");
+        return;
+    };
+    if !source.enabled {
+        report.disabled("Git");
+        return;
+    }
+
+    match required_config_path(base_dir, "git", "repo", source.repo.as_ref()) {
+        Ok(repo) if repo.is_dir() => report.ok("Git", format!("repo {}", repo.display())),
+        Ok(repo) => report.error("Git", format!("{} is not a directory", repo.display())),
+        Err(err) => report.error("Git", err.to_string()),
+    }
+}
+
+fn doctor_json(
+    report: &mut DoctorReport,
+    config: &ShiplogConfig,
+    base_dir: &Path,
+    selected: &[InitSource],
+) {
+    if !doctor_should_check(selected, InitSource::Json) {
+        return;
+    }
+
+    let Some(source) = config.sources.json.as_ref() else {
+        report.disabled("JSON");
+        return;
+    };
+    if !source.enabled {
+        report.disabled("JSON");
+        return;
+    }
+
+    let events = required_config_path(base_dir, "json", "events", source.events.as_ref());
+    let coverage = required_config_path(base_dir, "json", "coverage", source.coverage.as_ref());
+    match (events, coverage) {
+        (Ok(events), Ok(coverage)) if events.exists() && coverage.exists() => report.ok(
+            "JSON",
+            format!(
+                "events {}, coverage {}",
+                events.display(),
+                coverage.display()
+            ),
+        ),
+        (Ok(events), Ok(_)) if !events.exists() => {
+            report.error("JSON", format!("{} not found", events.display()));
+        }
+        (Ok(_), Ok(coverage)) if !coverage.exists() => {
+            report.error("JSON", format!("{} not found", coverage.display()));
+        }
+        (Err(err), _) | (_, Err(err)) => report.error("JSON", err.to_string()),
+        _ => {}
+    }
+}
+
+fn doctor_manual(
+    report: &mut DoctorReport,
+    config: &ShiplogConfig,
+    base_dir: &Path,
+    selected: &[InitSource],
+) {
+    if !doctor_should_check(selected, InitSource::Manual) {
+        return;
+    }
+
+    let Some(source) = config.sources.manual.as_ref() else {
+        report.disabled("Manual");
+        return;
+    };
+    if !source.enabled {
+        report.disabled("Manual");
+        return;
+    }
+
+    match required_config_path(base_dir, "manual", "events", source.events.as_ref()) {
+        Ok(events) if events.exists() => {
+            report.ok("Manual", format!("{} found", events.display()));
+        }
+        Ok(events) => report.error("Manual", format!("{} not found", events.display())),
+        Err(err) => report.error("Manual", err.to_string()),
+    }
+}
+
+fn env_var_present(name: &str) -> bool {
+    std::env::var(name)
+        .ok()
+        .is_some_and(|value| !value.trim().is_empty())
 }
 
 fn resolve_multi_window(args: DateArgs, config: &ShiplogConfig) -> Result<ResolvedWindow> {
@@ -1770,6 +2235,10 @@ fn main() -> Result<()> {
             force,
         } => {
             run_init(sources, dry_run, force)?;
+        }
+
+        Command::Doctor { config, sources } => {
+            run_doctor(&config, &sources)?;
         }
 
         Command::Collect {

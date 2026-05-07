@@ -80,6 +80,7 @@ shiplog follows a **collect → curate → render** workflow. You fetch raw even
 
 ```bash
 shiplog init
+shiplog doctor
 ```
 
 This writes `shiplog.toml` and `manual_events.yaml` in the current directory.
@@ -159,6 +160,7 @@ out/<run_id>/
 | Command | Description |
 |---------|-------------|
 | `init` | Create `shiplog.toml` and `manual_events.yaml` scaffold files |
+| `doctor` | Check local config, enabled sources, token env vars, and output safety |
 | `collect <source>` | Fetch events from a source and generate packet artifacts |
 | `collect multi` | Collect enabled sources from `shiplog.toml` into one merged packet |
 | `render` | Re-render packet from existing ledger and workstreams |
