@@ -13,7 +13,7 @@ on:
     types: [opened, edited]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.issue.number || github.event.pull_request.number || github.run_id }}
+  group: droid-tag-${{ github.repository }}-${{ github.event.issue.number || github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
 jobs:
@@ -53,6 +53,7 @@ jobs:
       id-token: write
       actions: read
     env:
+      MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
       FACTORY_API_KEY: ${{ secrets.FACTORY_API_KEY }}
     steps:
       - name: Skip when Factory API key is unavailable
@@ -65,10 +66,39 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Run Droid Exec
+      - name: Configure MiniMax BYOK for Factory Droid
+        if: env.FACTORY_API_KEY != ''
+        shell: bash
+        run: |
+          mkdir -p "$HOME/.factory"
+          cat > "$HOME/.factory/settings.local.json" <<'JSON'
+          {
+            "customModels": [
+              {
+                "displayName": "MiniMax-M2.7",
+                "model": "MiniMax-M2.7",
+                "baseUrl": "https://api.minimax.io/anthropic",
+                "apiKey": "${MINIMAX_API_KEY}",
+                "provider": "anthropic",
+                "maxOutputTokens": 64000,
+                "noImageSupport": true,
+                "extraArgs": {
+                  "temperature": 1
+                }
+              }
+            ]
+          }
+          JSON
+
+      - name: Run Droid Exec with MiniMax M2.7 BYOK
         if: env.FACTORY_API_KEY != ''
         continue-on-error: true
         uses: EffortlessMetrics/droid-action-safe@01e76b659e4b1e5f23feedc8cfabf8dc14c7485f # based on Factory-AI/droid-action v5; raw debug artifact upload disabled
         with:
           factory_api_key: ${{ env.FACTORY_API_KEY }}
           upload_debug_artifacts: false
+
+          review_depth: shallow
+          review_model: "custom:MiniMax-M2.7-0"
+          security_model: "custom:MiniMax-M2.7-0"
+          show_full_output: false
