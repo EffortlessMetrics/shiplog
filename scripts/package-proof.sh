@@ -3,6 +3,7 @@ set -euo pipefail
 
 cargo metadata --format-version 1 --no-deps
 scripts/package-boundary-audit.sh
+scripts/package-version-audit.sh
 cargo fmt --all -- --check
 cargo clippy --workspace --all-targets --all-features -- -D warnings
 cargo test --workspace --exclude shiplog-testkit -- --test-threads=4

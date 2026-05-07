@@ -1,15 +1,16 @@
 # shiplog Current State
 
-This document records the release-readiness baseline after the workspace
-boundary cleanup.
+This document records the v0.3.0 release-readiness baseline after the product
+completion pass.
 
 ## Baseline
 
-- `main` is the release-safe baseline after v0.2.1 publication and PR queue
-  cleanup.
-- The root workspace now matches the intended package invariant: production
-  workspace crates are publishable public surfaces, and `publish = false` is
-  reserved for dev-only packages.
+- `main` is a release-ready product baseline for v0.3.0 once the release
+  validation scripts and hosted checks pass.
+- The workspace follows the package invariant: production workspace crates are
+  publishable public surfaces, and `publish = false` is reserved for dev-only
+  packages.
+- All workspace packages are version-aligned for the v0.3.0 release train.
 
 ## Product Contract
 
@@ -25,11 +26,69 @@ The artifact contract is:
 packet + ledger + coverage + bundles
 ```
 
-The public API doctrine remains module-first: product contracts, trust
-surfaces, real adapter boundaries, and heavy optional dependency boundaries may
-be crates; implementation seams start as modules inside owner crates.
+The CLI should let a review-cycle user initialize local config, collect from
+configured sources, inspect coverage and gaps, curate workstreams without
+hand-editing YAML, render a packet with prompts and receipts, and produce
+manager/public share profiles only with an explicit redaction key.
 
-## Public Surface
+## CLI Product Surface
+
+First-run and setup:
+
+- `shiplog init`
+- `shiplog doctor`
+- `shiplog config validate`
+- `shiplog config explain`
+- `shiplog config migrate`
+
+Collection and source coverage:
+
+- `shiplog collect github`
+- `shiplog collect gitlab`
+- `shiplog collect jira`
+- `shiplog collect linear`
+- `shiplog collect git`
+- `shiplog collect json`
+- `shiplog collect manual`
+- `shiplog collect multi`
+
+Collection supports relative date presets (`--last-6-months`, `--last-quarter`,
+`--year`) and explicit date windows. GitHub and GitLab support `--me` identity
+inference when a token is available.
+
+Curation and inspection:
+
+- `shiplog runs list`
+- `shiplog runs show`
+- `shiplog open packet`
+- `shiplog open workstreams`
+- `shiplog open out`
+- `shiplog workstreams list`
+- `shiplog workstreams validate`
+- `shiplog workstreams create`
+- `shiplog workstreams rename`
+- `shiplog workstreams move`
+- `shiplog workstreams split`
+- `shiplog workstreams receipts`
+- `shiplog workstreams receipt add/remove`
+- `shiplog workstreams delete`
+- `shiplog cache stats`
+- `shiplog cache inspect`
+- `shiplog cache clean`
+
+Rendering and sharing:
+
+- `shiplog render --mode packet`
+- `shiplog render --mode scaffold`
+- `shiplog render --mode receipts`
+- `shiplog render --receipt-limit <N>`
+- `shiplog render --appendix full|summary|none`
+- `shiplog render --bundle-profile manager|public`
+
+Manager and public profiles fail closed unless `--redact-key` or the configured
+redaction-key environment variable is provided.
+
+## Public Crate Surface
 
 Stable contracts:
 
@@ -49,15 +108,12 @@ Product and trust surfaces:
 - `shiplog-render-json`
 - `shiplog-merge`
 
-Adapters for the v0.2.1 release path:
+Source adapters:
 
 - `shiplog-ingest-github`
 - `shiplog-ingest-git`
 - `shiplog-ingest-json`
 - `shiplog-ingest-manual`
-
-Additional published adapter surfaces:
-
 - `shiplog-ingest-gitlab`
 - `shiplog-ingest-jira`
 - `shiplog-ingest-linear`
@@ -70,7 +126,7 @@ Optional feature surfaces:
 Dev-only tooling:
 
 - `shiplog-testkit` is `publish = false`.
-- `fuzz/` is a fuzz harness workspace, not a crates.io target.
+- `fuzz/` is a fuzz harness package, not a crates.io target.
 
 ## Package Boundary
 
@@ -78,17 +134,17 @@ There is no durable held-production-crate category. A workspace package is
 either a publishable public surface or dev-only tooling. Implementation seams
 that are not public promises live as owner modules.
 
-`shiplog-template` has been folded into `shiplog-team` as an internal module
-because packet templates are not a standalone public contract. The CLI source
-list remains narrower than the library adapter surface; GitLab, Jira, Linear,
-and team are library surfaces until separate CLI work promotes user-facing
-commands.
+The release proof scripts enforce both sides of the boundary:
+
+- `scripts/package-boundary-audit.sh` verifies published/dev-only
+  classification.
+- `scripts/package-version-audit.sh` verifies workspace version alignment and
+  normal workspace dependency requirements.
+- `scripts/package-proof.sh` runs both audits before package listing.
 
 ## Release Posture
 
-The v0.2.1 readiness branch should prove the current surface without expanding
-the product. It may update documentation, release matrix decisions, package
-proof scripts, release workflow validation, and changelog handoff notes.
-
-It should not add packet redesigns or mutation thresholds unless package proof
-exposes a real blocker.
+The v0.3.0 readiness branch should not add new product features. It should align
+versions, changelog entries, release matrix decisions, package proof scripts,
+release workflow smoke tests, and the release handoff for the already-merged
+product surface.

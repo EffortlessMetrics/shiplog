@@ -1,6 +1,6 @@
 [package]
 name = "shiplog"
-version = "0.2.1"
+version = "0.3.0"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
@@ -25,22 +25,22 @@ regex.workspace = true
 reqwest.workspace = true
 serde.workspace = true
 toml.workspace = true
-shiplog-engine = { path = "../../crates/shiplog-engine", version = "0.2.1" }
-shiplog-ingest-github = { path = "../../crates/shiplog-ingest-github", version = "0.2.1" }
-shiplog-ingest-git = { path = "../../crates/shiplog-ingest-git", version = "0.2.1" }
+shiplog-engine = { path = "../../crates/shiplog-engine", version = "0.3.0" }
+shiplog-ingest-github = { path = "../../crates/shiplog-ingest-github", version = "0.3.0" }
+shiplog-ingest-git = { path = "../../crates/shiplog-ingest-git", version = "0.3.0" }
 shiplog-ingest-gitlab = { path = "../../crates/shiplog-ingest-gitlab", version = "0.3.0" }
 shiplog-ingest-jira = { path = "../../crates/shiplog-ingest-jira", version = "0.3.0" }
 shiplog-ingest-linear = { path = "../../crates/shiplog-ingest-linear", version = "0.3.0" }
-shiplog-ingest-json = { path = "../../crates/shiplog-ingest-json", version = "0.2.1" }
-shiplog-ingest-manual = { path = "../../crates/shiplog-ingest-manual", version = "0.2.1" }
-shiplog-cache = { path = "../../crates/shiplog-cache", version = "0.2.1" }
-shiplog-render-md = { path = "../../crates/shiplog-render-md", version = "0.2.1" }
-shiplog-workstreams = { path = "../../crates/shiplog-workstreams", version = "0.2.1" }
-shiplog-redact = { path = "../../crates/shiplog-redact", version = "0.2.1" }
-shiplog-ports = { path = "../../crates/shiplog-ports", version = "0.2.1" }
-shiplog-schema = { path = "../../crates/shiplog-schema", version = "0.2.1" }
-shiplog-ids = { path = "../../crates/shiplog-ids", version = "0.2.1" }
-shiplog-cluster-llm = { path = "../../crates/shiplog-cluster-llm", version = "0.2.1", optional = true }
+shiplog-ingest-json = { path = "../../crates/shiplog-ingest-json", version = "0.3.0" }
+shiplog-ingest-manual = { path = "../../crates/shiplog-ingest-manual", version = "0.3.0" }
+shiplog-cache = { path = "../../crates/shiplog-cache", version = "0.3.0" }
+shiplog-render-md = { path = "../../crates/shiplog-render-md", version = "0.3.0" }
+shiplog-workstreams = { path = "../../crates/shiplog-workstreams", version = "0.3.0" }
+shiplog-redact = { path = "../../crates/shiplog-redact", version = "0.3.0" }
+shiplog-ports = { path = "../../crates/shiplog-ports", version = "0.3.0" }
+shiplog-schema = { path = "../../crates/shiplog-schema", version = "0.3.0" }
+shiplog-ids = { path = "../../crates/shiplog-ids", version = "0.3.0" }
+shiplog-cluster-llm = { path = "../../crates/shiplog-cluster-llm", version = "0.3.0", optional = true }
 
 [dev-dependencies]
 tempfile.workspace = true
@@ -50,14 +50,14 @@ anyhow.workspace = true
 chrono.workspace = true
 assert_cmd.workspace = true
 predicates.workspace = true
-shiplog-engine = { path = "../../crates/shiplog-engine", version = "0.2.1" }
-shiplog-ingest-json = { path = "../../crates/shiplog-ingest-json", version = "0.2.1" }
-shiplog-ingest-manual = { path = "../../crates/shiplog-ingest-manual", version = "0.2.1" }
-shiplog-ports = { path = "../../crates/shiplog-ports", version = "0.2.1" }
-shiplog-schema = { path = "../../crates/shiplog-schema", version = "0.2.1" }
-shiplog-render-md = { path = "../../crates/shiplog-render-md", version = "0.2.1" }
-shiplog-redact = { path = "../../crates/shiplog-redact", version = "0.2.1" }
-shiplog-workstreams = { path = "../../crates/shiplog-workstreams", version = "0.2.1" }
+shiplog-engine = { path = "../../crates/shiplog-engine", version = "0.3.0" }
+shiplog-ingest-json = { path = "../../crates/shiplog-ingest-json", version = "0.3.0" }
+shiplog-ingest-manual = { path = "../../crates/shiplog-ingest-manual", version = "0.3.0" }
+shiplog-ports = { path = "../../crates/shiplog-ports", version = "0.3.0" }
+shiplog-schema = { path = "../../crates/shiplog-schema", version = "0.3.0" }
+shiplog-render-md = { path = "../../crates/shiplog-render-md", version = "0.3.0" }
+shiplog-redact = { path = "../../crates/shiplog-redact", version = "0.3.0" }
+shiplog-workstreams = { path = "../../crates/shiplog-workstreams", version = "0.3.0" }
 
 [[example]]
 name = "json_import"

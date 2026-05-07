@@ -13,6 +13,8 @@ elif [[ "${1:-}" != "" ]]; then
   exit 2
 fi
 
+scripts/package-version-audit.sh
+
 packages=(
   shiplog-ids
   shiplog-schema

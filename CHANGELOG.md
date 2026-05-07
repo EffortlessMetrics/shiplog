@@ -7,30 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Testing Infrastructure
+## [0.3.0] - 2026-05-07
 
-- Added ~4,000+ new tests across 200+ crates (from ~1,200 to ~5,600+)
-- Added comprehensive property tests (proptest) for data integrity
-- Added snapshot tests (insta) for serialization stability
-- Added BDD scenarios for workflow testing
-- Added cross-crate integration tests for full pipeline validation
-- Added E2E CLI tests
-- Added 34 fuzz targets with seed corpora
-- Added doc-tests for core API crates
+### Added
 
-### CI/CD Improvements
+- Added CLI-supported GitLab, Jira, and Linear sources across `collect`, `refresh`, and legacy `run`.
+- Added local git parity for `refresh git` and `run git`.
+- Added `shiplog merge` to combine existing source runs into one packet.
+- Added `shiplog collect multi` to collect enabled `shiplog.toml` sources into one merged packet while recording partial source failures in coverage warnings.
+- Added first-run commands and defaults: `shiplog init`, `shiplog doctor`, `shiplog config validate`, `shiplog config explain`, `shiplog config migrate`, relative date presets, latest-run aliases, and GitHub/GitLab `--me` identity inference.
+- Added run discovery and artifact opening with `shiplog runs list/show` and `shiplog open packet/workstreams/out`.
+- Added workstream curation commands for list, validate, create, rename, move, split, receipt selection, and delete.
+- Added packet coverage and limits summaries, source/gap summaries, evidence anchors, claim prompts, render modes (`packet`, `scaffold`, `receipts`), receipt limits, and appendix density controls.
+- Added cache visibility and cleanup with `shiplog cache stats`, `shiplog cache inspect`, and `shiplog cache clean`.
+- Added example configs and a review-cycle guide with fixture-safe docs command tests.
 
-- Added dependabot.yml for automated dependency updates
-- Fixed CI toolchain consistency (standardized on Rust 1.92)
-- Updated mutation testing configuration with proper tier assignments
-- Updated property testing workflow to cover all crates
+### Changed
 
-### Release Readiness
+- Promoted GitLab, Jira, Linear, team, and merge surfaces into the v0.3.0 publish set instead of leaving production-looking crates unpublished.
+- Aligned the workspace package surface around publishable public crates plus dev-only tooling.
+- Versioned `shiplog.toml` with `[shiplog] config_version = 1` while keeping legacy configs as implicit v1.
+- Expanded release smoke tests to exercise product command help on the downloaded release artifact and release build.
 
-- Added a v0.2.1 release matrix to separate publish targets from held adapters and dev-only tooling
-- Added package-proof and publish dry-run scripts for release-surface verification
-- Hardened release assets with checksum generation and downloaded-artifact smoke tests
-- Updated public-surface documentation to reflect the module-first post-cleanup workspace
+### Security
+
+- Manager and public render/bundle profiles now fail closed unless `--redact-key` or the configured redaction-key environment variable is provided.
+
+### Testing and Release Proof
+
+- Added package boundary and package version audits to prevent unpublished production crates and mixed release versions.
+- Added fixture-safe command coverage for the review-cycle documentation path.
+- Kept mutation testing advisory while the baseline matures.
 
 ## [0.2.1] - 2026-02-17
 
@@ -184,7 +191,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Basic workspace configuration with Cargo
 - MIT/Apache-2.0 dual licensing
 
-[Unreleased]: https://github.com/EffortlessMetrics/shiplog/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/EffortlessMetrics/shiplog/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/EffortlessMetrics/shiplog/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/EffortlessMetrics/shiplog/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/EffortlessMetrics/shiplog/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/EffortlessMetrics/shiplog/compare/v0.1.0...v0.1.1

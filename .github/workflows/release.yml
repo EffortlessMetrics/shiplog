@@ -205,6 +205,8 @@ jobs:
           chmod +x artifacts/shiplog-x86_64-unknown-linux-gnu/shiplog-x86_64-unknown-linux-gnu
           artifacts/shiplog-x86_64-unknown-linux-gnu/shiplog-x86_64-unknown-linux-gnu --help
           artifacts/shiplog-x86_64-unknown-linux-gnu/shiplog-x86_64-unknown-linux-gnu --version
+          artifacts/shiplog-x86_64-unknown-linux-gnu/shiplog-x86_64-unknown-linux-gnu collect --help
+          artifacts/shiplog-x86_64-unknown-linux-gnu/shiplog-x86_64-unknown-linux-gnu render --help
 
       - name: Build release
         run: cargo build --release -p shiplog
@@ -220,6 +222,22 @@ jobs:
           echo "Testing help subcommand..."
           ./target/release/shiplog help
 
+          echo "Testing product command help..."
+          ./target/release/shiplog init --help
+          ./target/release/shiplog doctor --help
+          ./target/release/shiplog config --help
+          ./target/release/shiplog collect --help
+          ./target/release/shiplog collect github --help
+          ./target/release/shiplog collect gitlab --help
+          ./target/release/shiplog collect jira --help
+          ./target/release/shiplog collect linear --help
+          ./target/release/shiplog collect multi --help
+          ./target/release/shiplog workstreams --help
+          ./target/release/shiplog render --help
+          ./target/release/shiplog cache --help
+          ./target/release/shiplog runs --help
+          ./target/release/shiplog open --help
+
       - name: Generate validation summary
         run: |
           echo "# Release Validation Results" >> $GITHUB_STEP_SUMMARY
@@ -230,9 +248,11 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "## Smoke Tests" >> $GITHUB_STEP_SUMMARY
           echo "- Downloaded Linux artifact help/version: **PASSED**" >> $GITHUB_STEP_SUMMARY
+          echo "- Downloaded Linux artifact collect/render help: **PASSED**" >> $GITHUB_STEP_SUMMARY
           echo "- Help command: **PASSED**" >> $GITHUB_STEP_SUMMARY
           echo "- Version command: **PASSED**" >> $GITHUB_STEP_SUMMARY
           echo "- Help subcommand: **PASSED**" >> $GITHUB_STEP_SUMMARY
+          echo "- Product command help: **PASSED**" >> $GITHUB_STEP_SUMMARY
 
   # Run integration tests
   release-test:

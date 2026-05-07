@@ -17,10 +17,10 @@ shiplog-schema = { path = "../crates/shiplog-schema" }
 shiplog-ids = { path = "../crates/shiplog-ids" }
 shiplog-redact = { path = "../crates/shiplog-redact" }
 shiplog-render-md = { path = "../crates/shiplog-render-md" }
-shiplog-ports = { path = "../crates/shiplog-ports", version = "0.2.1" }
+shiplog-ports = { path = "../crates/shiplog-ports", version = "0.3.0" }
 shiplog-cache = { path = "../crates/shiplog-cache" }
 shiplog-coverage = { path = "../crates/shiplog-coverage" }
-shiplog-cluster-llm = { path = "../crates/shiplog-cluster-llm", version = "0.2.1" }
+shiplog-cluster-llm = { path = "../crates/shiplog-cluster-llm", version = "0.3.0" }
 shiplog-team = { path = "../crates/shiplog-team" }
 sha2 = "0.10.9"
 hex = "0.4.3"
