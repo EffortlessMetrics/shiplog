@@ -140,7 +140,7 @@ out/<run_id>/
 | `gitlab` | Merge request and review-note ingestion from GitLab API (supports self-hosted instances) |
 | `jira` | Issue ingestion from Jira API; `--user` is the assignee JQL value, and `--auth-user` is available when Basic Auth uses a different email/username |
 | `linear` | Issue ingestion from Linear API; `--user-id` is the Linear user UUID, with upstream date/status/project filtering |
-| `git` | Local git commit ingestion for `collect git`; `refresh git` and `run git` are not yet supported |
+| `git` | Local git commit ingestion for `collect git`, `refresh git`, and `run git` |
 | `json` | Import from canonical JSONL event files |
 | `manual` | Ingest non-GitHub work from a YAML events file |
 
@@ -167,6 +167,14 @@ shiplog collect git \
   --since 2025-07-01 \
   --until 2026-01-01 \
   --author you@example.com \
+  --out ./out
+
+# Refresh local git receipts while preserving curated workstreams
+shiplog refresh git \
+  --repo . \
+  --since 2025-07-01 \
+  --until 2026-01-01 \
+  --run-dir out/20260115_143022 \
   --out ./out
 
 # Collect merge requests from GitLab
@@ -295,7 +303,7 @@ external contract. Adapters depend on ports and schema, never the reverse.
 | `shiplog-coverage` | Time windows, completeness tracking |
 | `shiplog-cache` | SQLite-backed API response cache |
 | `shiplog-ingest-github` | GitHub PR and review ingestion with adaptive slicing |
-| `shiplog-ingest-git` | Local git commit ingestion for the `collect git` path |
+| `shiplog-ingest-git` | Local git commit ingestion for `collect git`, `refresh git`, and `run git` |
 | `shiplog-ingest-json` | Import from canonical JSON artifacts |
 | `shiplog-ingest-manual` | YAML-based manual event ingestion |
 | `shiplog-ingest-gitlab` | GitLab MR and review ingestion adapter |

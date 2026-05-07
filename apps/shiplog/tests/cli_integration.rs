@@ -3,6 +3,7 @@
 use assert_cmd::Command;
 use predicates::prelude::*;
 use std::path::{Path, PathBuf};
+use std::process::Command as StdCommand;
 use tempfile::TempDir;
 
 fn shiplog_cmd() -> Command {
@@ -32,6 +33,69 @@ fn collect_json_into(tmp: &Path) -> PathBuf {
         .assert()
         .success();
     tmp.join("run_fixture")
+}
+
+fn git_available() -> bool {
+    StdCommand::new("git")
+        .arg("--version")
+        .output()
+        .map(|out| out.status.success())
+        .unwrap_or(false)
+}
+
+fn run_git(repo: &Path, args: &[&str]) {
+    let output = StdCommand::new("git")
+        .current_dir(repo)
+        .args(args)
+        .output()
+        .unwrap_or_else(|err| panic!("failed to run git {args:?}: {err}"));
+    assert!(
+        output.status.success(),
+        "git {args:?} failed\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+fn run_git_commit(repo: &Path) {
+    let output = StdCommand::new("git")
+        .current_dir(repo)
+        .env("GIT_AUTHOR_DATE", "2025-01-15T12:00:00+00:00")
+        .env("GIT_COMMITTER_DATE", "2025-01-15T12:00:00+00:00")
+        .args(["commit", "-m", "initial commit"])
+        .output()
+        .unwrap_or_else(|err| panic!("failed to run git commit: {err}"));
+    assert!(
+        output.status.success(),
+        "git commit failed\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+fn create_local_git_repo() -> Option<TempDir> {
+    if !git_available() {
+        return None;
+    }
+
+    let tmp = TempDir::new().unwrap();
+    run_git(tmp.path(), &["init"]);
+    run_git(tmp.path(), &["config", "user.name", "Shiplog Test"]);
+    run_git(tmp.path(), &["config", "user.email", "shiplog@example.com"]);
+
+    std::fs::write(tmp.path().join("README.md"), "# fixture\n").unwrap();
+    run_git(tmp.path(), &["add", "README.md"]);
+    run_git_commit(tmp.path());
+
+    Some(tmp)
+}
+
+fn first_run_dir(out: &Path) -> PathBuf {
+    std::fs::read_dir(out)
+        .unwrap()
+        .filter_map(|entry| entry.ok().map(|entry| entry.path()))
+        .find(|path| path.join("ledger.events.jsonl").exists())
+        .expect("expected a shiplog run directory")
 }
 
 // ── 1. --version flag ──────────────────────────────────────────────────────
@@ -234,6 +298,103 @@ fn collect_json_packet_contains_expected_content() {
     assert!(
         packet.contains("acme/payments") || packet.contains("acme/platform"),
         "packet.md should reference fixture repos"
+    );
+}
+
+#[test]
+fn run_git_produces_outputs() {
+    let Some(repo) = create_local_git_repo() else {
+        eprintln!("skipping run_git_produces_outputs: git not available");
+        return;
+    };
+    let out = TempDir::new().unwrap();
+
+    shiplog_cmd()
+        .args([
+            "run",
+            "--out",
+            out.path().to_str().unwrap(),
+            "git",
+            "--repo",
+            repo.path().to_str().unwrap(),
+            "--since",
+            "2025-01-01",
+            "--until",
+            "2025-02-01",
+        ])
+        .assert()
+        .success();
+
+    let run_dir = first_run_dir(out.path());
+    assert!(run_dir.join("packet.md").exists(), "missing packet.md");
+    assert!(
+        run_dir.join("ledger.events.jsonl").exists(),
+        "missing ledger.events.jsonl"
+    );
+    assert!(
+        run_dir.join("coverage.manifest.json").exists(),
+        "missing coverage.manifest.json"
+    );
+    assert!(
+        run_dir.join("workstreams.suggested.yaml").exists(),
+        "missing workstreams.suggested.yaml"
+    );
+}
+
+#[test]
+fn refresh_git_preserves_existing_workstreams() {
+    let Some(repo) = create_local_git_repo() else {
+        eprintln!("skipping refresh_git_preserves_existing_workstreams: git not available");
+        return;
+    };
+    let out = TempDir::new().unwrap();
+
+    shiplog_cmd()
+        .args([
+            "collect",
+            "--out",
+            out.path().to_str().unwrap(),
+            "git",
+            "--repo",
+            repo.path().to_str().unwrap(),
+            "--since",
+            "2025-01-01",
+            "--until",
+            "2025-02-01",
+        ])
+        .assert()
+        .success();
+
+    let run_dir = first_run_dir(out.path());
+    shiplog_cmd()
+        .args([
+            "refresh",
+            "--out",
+            out.path().to_str().unwrap(),
+            "--run-dir",
+            run_dir.to_str().unwrap(),
+            "git",
+            "--repo",
+            repo.path().to_str().unwrap(),
+            "--since",
+            "2025-01-01",
+            "--until",
+            "2025-02-01",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "Refreshed while preserving workstream curation",
+        ));
+
+    assert!(run_dir.join("packet.md").exists(), "missing packet.md");
+    assert!(
+        run_dir.join("ledger.events.jsonl").exists(),
+        "missing ledger.events.jsonl"
+    );
+    assert!(
+        run_dir.join("workstreams.suggested.yaml").exists(),
+        "missing workstreams.suggested.yaml"
     );
 }
 
