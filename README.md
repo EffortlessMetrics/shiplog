@@ -102,8 +102,10 @@ This fetches merged PRs (and optionally reviews with `--include-reviews`) for th
 shiplog generates `workstreams.suggested.yaml` with auto-grouped workstreams based on repository. Copy it to `workstreams.yaml` and edit:
 
 ```bash
+shiplog workstreams list --run latest
 cp out/<run_id>/workstreams.suggested.yaml out/<run_id>/workstreams.yaml
 # Edit workstreams.yaml: rename groups, move PRs between workstreams, add narrative.
+shiplog workstreams validate --run latest
 ```
 
 `workstreams.yaml` is yours. shiplog never overwrites it.
@@ -139,6 +141,7 @@ out/<run_id>/
 | `collect <source>` | Fetch events from a source and generate packet artifacts |
 | `render` | Re-render packet from existing ledger and workstreams |
 | `refresh <source>` | Re-fetch events while preserving curated `workstreams.yaml` |
+| `workstreams list/validate` | Inspect and validate workstream curation for an existing run |
 | `import` | Import an existing run directory and re-render |
 | `run <source>` | Legacy: collect + render in one shot |
 

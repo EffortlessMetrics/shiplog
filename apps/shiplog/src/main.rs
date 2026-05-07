@@ -1,7 +1,7 @@
 //! `shiplog` CLI entrypoint.
 //!
-//! Exposes `collect`, `render`, `refresh`, `import`, and `run` commands over
-//! the workspace engine and adapter crates.
+//! Exposes `init`, `collect`, `render`, `refresh`, `workstreams`, `import`, and
+//! `run` commands over the workspace engine and adapter crates.
 
 use anyhow::{Context, Result};
 use chrono::{Datelike, Months, NaiveDate, Utc};
@@ -19,8 +19,9 @@ use shiplog_ingest_manual::ManualIngestor;
 use shiplog_ports::Ingestor;
 use shiplog_redact::DeterministicRedactor;
 use shiplog_render_md::MarkdownRenderer;
-use shiplog_schema::bundle::BundleProfile;
+use shiplog_schema::{bundle::BundleProfile, workstream::WorkstreamsFile};
 use shiplog_workstreams::RepoClusterer;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 #[derive(Parser, Debug)]
@@ -139,6 +140,12 @@ enum Command {
         bundle_profile: BundleProfile,
     },
 
+    /// Inspect and validate workstream curation for an existing run.
+    Workstreams {
+        #[command(subcommand)]
+        cmd: WorkstreamsCommand,
+    },
+
     /// Import a pre-built ledger directory and run the full render pipeline.
     ///
     /// Use this to consume output from an upstream system or a previous
@@ -225,6 +232,35 @@ enum InitSource {
     Git,
     Json,
     Manual,
+}
+
+#[derive(Subcommand, Debug)]
+enum WorkstreamsCommand {
+    /// List workstreams and their event/receipt counts.
+    List {
+        /// Output directory containing shiplog runs.
+        #[arg(long, default_value = "./out")]
+        out: PathBuf,
+        /// Run ID to inspect (uses most recent if not specified).
+        #[arg(long)]
+        run: Option<String>,
+        /// Inspect the most recent run explicitly.
+        #[arg(long)]
+        latest: bool,
+    },
+
+    /// Validate the effective workstreams file against the run ledger.
+    Validate {
+        /// Output directory containing shiplog runs.
+        #[arg(long, default_value = "./out")]
+        out: PathBuf,
+        /// Run ID to validate (uses most recent if not specified).
+        #[arg(long)]
+        run: Option<String>,
+        /// Validate the most recent run explicitly.
+        #[arg(long)]
+        latest: bool,
+    },
 }
 
 #[derive(Subcommand, Debug, Clone)]
@@ -1977,6 +2013,47 @@ fn main() -> Result<()> {
                 }
             }
         }
+        Command::Workstreams { cmd } => match cmd {
+            WorkstreamsCommand::List { out, run, latest } => {
+                let run_dir = resolve_render_run_dir(&out, run, latest)?;
+                let (workstreams, source, path) = load_effective_workstreams_for_run(&run_dir)?;
+                print_workstreams_list(&run_dir, &path, source, &workstreams);
+            }
+            WorkstreamsCommand::Validate { out, run, latest } => {
+                let run_dir = resolve_render_run_dir(&out, run, latest)?;
+                let (workstreams, source, path) = load_effective_workstreams_for_run(&run_dir)?;
+                let errors = validate_workstreams_for_run(&run_dir, &workstreams)?;
+                if errors.is_empty() {
+                    println!(
+                        "Workstreams valid: {} ({})",
+                        path.display(),
+                        workstream_source_label(source)
+                    );
+                    println!("- {} workstreams", workstreams.workstreams.len());
+                    println!(
+                        "- {} assigned events",
+                        workstreams
+                            .workstreams
+                            .iter()
+                            .map(|workstream| workstream.events.len())
+                            .sum::<usize>()
+                    );
+                    println!(
+                        "- {} receipts",
+                        workstreams
+                            .workstreams
+                            .iter()
+                            .map(|workstream| workstream.receipts.len())
+                            .sum::<usize>()
+                    );
+                } else {
+                    for error in &errors {
+                        eprintln!("- {error}");
+                    }
+                    anyhow::bail!("{} workstream validation error(s)", errors.len());
+                }
+            }
+        },
         Command::Import {
             dir,
             out,
@@ -2404,6 +2481,190 @@ fn print_outputs_simple(outputs: &shiplog_engine::RunOutputs) {
     if let Some(ref z) = outputs.zip_path {
         println!("- {}", z.display());
     }
+}
+
+#[derive(Clone, Copy, Debug)]
+enum WorkstreamsFileSource {
+    Curated,
+    Suggested,
+}
+
+fn load_effective_workstreams_for_run(
+    run_dir: &Path,
+) -> Result<(WorkstreamsFile, WorkstreamsFileSource, PathBuf)> {
+    let curated = shiplog_workstreams::WorkstreamManager::curated_path(run_dir);
+    if curated.exists() {
+        let workstreams = shiplog_workstreams::WorkstreamManager::try_load(run_dir)?
+            .ok_or_else(|| anyhow::anyhow!("curated workstreams disappeared from {run_dir:?}"))?;
+        return Ok((workstreams, WorkstreamsFileSource::Curated, curated));
+    }
+
+    let suggested = shiplog_workstreams::WorkstreamManager::suggested_path(run_dir);
+    if suggested.exists() {
+        let workstreams = shiplog_workstreams::WorkstreamManager::try_load(run_dir)?
+            .ok_or_else(|| anyhow::anyhow!("suggested workstreams disappeared from {run_dir:?}"))?;
+        return Ok((workstreams, WorkstreamsFileSource::Suggested, suggested));
+    }
+
+    anyhow::bail!(
+        "No workstreams found in {:?}. Run `shiplog collect` first.",
+        run_dir
+    );
+}
+
+fn workstream_source_label(source: WorkstreamsFileSource) -> &'static str {
+    match source {
+        WorkstreamsFileSource::Curated => "curated workstreams.yaml",
+        WorkstreamsFileSource::Suggested => "suggested workstreams.suggested.yaml",
+    }
+}
+
+fn print_workstreams_list(
+    run_dir: &Path,
+    path: &Path,
+    source: WorkstreamsFileSource,
+    workstreams: &WorkstreamsFile,
+) {
+    println!(
+        "Workstreams: {} ({})",
+        path.display(),
+        workstream_source_label(source)
+    );
+    println!("Run: {}", run_dir.display());
+    println!("Count: {}", workstreams.workstreams.len());
+
+    for workstream in &workstreams.workstreams {
+        let tags = if workstream.tags.is_empty() {
+            "-".to_string()
+        } else {
+            workstream.tags.join(",")
+        };
+
+        println!("- {} [{}]", workstream.title, workstream.id);
+        println!(
+            "  events={} receipts={} prs={} reviews={} manual={} tags={}",
+            workstream.events.len(),
+            workstream.receipts.len(),
+            workstream.stats.pull_requests,
+            workstream.stats.reviews,
+            workstream.stats.manual_events,
+            tags
+        );
+    }
+}
+
+fn validate_workstreams_for_run(
+    run_dir: &Path,
+    workstreams: &WorkstreamsFile,
+) -> Result<Vec<String>> {
+    let ledger_ids = load_run_event_ids(run_dir)?;
+    let mut errors = Vec::new();
+
+    if workstreams.version != 1 {
+        errors.push(format!(
+            "unsupported workstreams version {}; expected 1",
+            workstreams.version
+        ));
+    }
+
+    let mut workstream_ids = HashSet::new();
+    let mut assigned_events: HashMap<String, String> = HashMap::new();
+
+    for (idx, workstream) in workstreams.workstreams.iter().enumerate() {
+        let ordinal = idx + 1;
+        let title = if workstream.title.trim().is_empty() {
+            format!("#{ordinal}")
+        } else {
+            workstream.title.clone()
+        };
+
+        if !workstream_ids.insert(workstream.id.to_string()) {
+            errors.push(format!("duplicate workstream id {}", workstream.id));
+        }
+
+        if workstream.title.trim().is_empty() {
+            errors.push(format!("workstream {ordinal} has a blank title"));
+        }
+
+        let mut local_events = HashSet::new();
+        for event_id in &workstream.events {
+            let event_id = event_id.to_string();
+            if !local_events.insert(event_id.clone()) {
+                errors.push(format!(
+                    "workstream {title} lists event {event_id} more than once"
+                ));
+                continue;
+            }
+
+            if !ledger_ids.contains(&event_id) {
+                errors.push(format!(
+                    "workstream {title} references event {event_id} not found in ledger.events.jsonl"
+                ));
+            }
+
+            if let Some(previous) = assigned_events.insert(event_id.clone(), title.clone()) {
+                errors.push(format!(
+                    "event {event_id} is assigned to both {previous} and {title}"
+                ));
+            }
+        }
+
+        let mut local_receipts = HashSet::new();
+        for receipt_id in &workstream.receipts {
+            let receipt_id = receipt_id.to_string();
+            if !local_receipts.insert(receipt_id.clone()) {
+                errors.push(format!(
+                    "workstream {title} lists receipt {receipt_id} more than once"
+                ));
+                continue;
+            }
+
+            if !ledger_ids.contains(&receipt_id) {
+                errors.push(format!(
+                    "workstream {title} references receipt {receipt_id} not found in ledger.events.jsonl"
+                ));
+            }
+
+            if !local_events.contains(&receipt_id) {
+                errors.push(format!(
+                    "workstream {title} receipt {receipt_id} is not listed in that workstream's events"
+                ));
+            }
+        }
+    }
+
+    Ok(errors)
+}
+
+fn load_run_event_ids(run_dir: &Path) -> Result<HashSet<String>> {
+    let events_path = run_dir.join("ledger.events.jsonl");
+    if !events_path.exists() {
+        anyhow::bail!(
+            "No ledger.events.jsonl found in {:?}. Run `shiplog collect` first.",
+            run_dir
+        );
+    }
+
+    let coverage_path = run_dir.join("coverage.manifest.json");
+    if !coverage_path.exists() {
+        anyhow::bail!(
+            "No coverage.manifest.json found in {:?}. Run `shiplog collect` first.",
+            run_dir
+        );
+    }
+
+    let ingest = JsonIngestor {
+        events_path,
+        coverage_path,
+    }
+    .ingest()
+    .context("ingest run ledger for workstream validation")?;
+
+    Ok(ingest
+        .events
+        .into_iter()
+        .map(|event| event.id.to_string())
+        .collect())
 }
 
 fn find_most_recent_run(out_dir: &Path) -> Result<PathBuf> {
