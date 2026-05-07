@@ -94,6 +94,7 @@ For the fastest review-cycle path, collect all enabled sources from
 
 ```bash
 shiplog collect multi --last-6-months
+shiplog runs list
 ```
 
 This reads the enabled `[sources.*]` sections from `shiplog.toml`, collects
@@ -166,6 +167,7 @@ out/<run_id>/
 | `render` | Re-render packet from existing ledger and workstreams |
 | `refresh <source>` | Re-fetch events while preserving curated `workstreams.yaml` |
 | `workstreams list/validate/rename/move` | Inspect, validate, and safely edit workstream curation |
+| `runs list/show` | Discover runs and inspect their sources, event counts, coverage, and artifact paths |
 | `merge` | Merge existing run directories into one packet |
 | `import` | Import an existing run directory and re-render |
 | `run <source>` | Legacy: collect + render in one shot |

@@ -4,7 +4,7 @@
 //! `import`, and `run` commands over the workspace engine and adapter crates.
 
 use anyhow::{Context, Result};
-use chrono::{Datelike, Months, NaiveDate, Utc};
+use chrono::{DateTime, Datelike, Months, NaiveDate, Utc};
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use reqwest::blocking::Client;
 use serde::Deserialize;
@@ -164,6 +164,12 @@ enum Command {
         cmd: WorkstreamsCommand,
     },
 
+    /// List and inspect generated run directories.
+    Runs {
+        #[command(subcommand)]
+        cmd: RunsCommand,
+    },
+
     /// Merge existing run directories into one packet.
     Merge {
         /// Input run directory containing ledger.events.jsonl and coverage.manifest.json.
@@ -316,6 +322,29 @@ impl MergeConflict {
             Self::MostComplete => "prefer-most-complete",
         }
     }
+}
+
+#[derive(Subcommand, Debug)]
+enum RunsCommand {
+    /// List discovered runs under an output directory.
+    List {
+        /// Output directory containing shiplog runs.
+        #[arg(long, default_value = "./out")]
+        out: PathBuf,
+    },
+
+    /// Show details for one run.
+    Show {
+        /// Output directory containing shiplog runs.
+        #[arg(long, default_value = "./out")]
+        out: PathBuf,
+        /// Run ID to inspect (uses most recent if not specified).
+        #[arg(long)]
+        run: Option<String>,
+        /// Inspect the most recent run explicitly.
+        #[arg(long)]
+        latest: bool,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -3286,6 +3315,17 @@ fn main() -> Result<()> {
                 }
             }
         },
+        Command::Runs { cmd } => match cmd {
+            RunsCommand::List { out } => {
+                let summaries = load_run_summaries(&out)?;
+                print_runs_list(&out, &summaries);
+            }
+            RunsCommand::Show { out, run, latest } => {
+                let run_dir = resolve_render_run_dir(&out, run, latest)?;
+                let summary = load_run_summary(&run_dir)?;
+                print_run_show(&summary);
+            }
+        },
         Command::Merge {
             inputs,
             out,
@@ -4118,6 +4158,151 @@ fn load_run_ingest(run_dir: &Path) -> Result<IngestOutput> {
     .context("ingest run ledger")?;
 
     Ok(ingest)
+}
+
+struct RunSummary {
+    run_dir: PathBuf,
+    run_id: String,
+    generated_at: String,
+    modified_at: String,
+    user: String,
+    window: String,
+    mode: String,
+    sources: Vec<String>,
+    event_count: usize,
+    completeness: String,
+    gap_count: usize,
+    warnings: Vec<String>,
+    packet_path: PathBuf,
+    ledger_path: PathBuf,
+    coverage_path: PathBuf,
+}
+
+fn load_run_summaries(out_dir: &Path) -> Result<Vec<RunSummary>> {
+    discover_run_dirs(out_dir)?
+        .iter()
+        .map(|run_dir| load_run_summary(run_dir))
+        .collect()
+}
+
+fn load_run_summary(run_dir: &Path) -> Result<RunSummary> {
+    let ingest =
+        load_run_ingest(run_dir).with_context(|| format!("load run {}", run_dir.display()))?;
+    let coverage = ingest.coverage;
+    let run_id = coverage.run_id.to_string();
+    let generated_at = coverage.generated_at.to_rfc3339();
+    let modified_at = modified_time_label(run_dir);
+    let window = format!("{}..{}", coverage.window.since, coverage.window.until);
+    let gap_count = coverage_gap_count(&coverage);
+
+    Ok(RunSummary {
+        run_dir: run_dir.to_path_buf(),
+        run_id,
+        generated_at,
+        modified_at,
+        user: coverage.user,
+        window,
+        mode: coverage.mode,
+        sources: coverage.sources,
+        event_count: ingest.events.len(),
+        completeness: coverage.completeness.to_string(),
+        gap_count,
+        warnings: coverage.warnings,
+        packet_path: run_dir.join("packet.md"),
+        ledger_path: run_dir.join("ledger.events.jsonl"),
+        coverage_path: run_dir.join("coverage.manifest.json"),
+    })
+}
+
+fn discover_run_dirs(out_dir: &Path) -> Result<Vec<PathBuf>> {
+    if !out_dir.exists() {
+        anyhow::bail!("Output directory {:?} does not exist.", out_dir);
+    }
+
+    let mut runs: Vec<_> = std::fs::read_dir(out_dir)?
+        .filter_map(|entry| entry.ok())
+        .filter(|entry| entry.path().is_dir())
+        .filter(|entry| entry.path().join("ledger.events.jsonl").exists())
+        .collect();
+
+    runs.sort_by(|a, b| {
+        let a_meta = a.metadata().and_then(|meta| meta.modified()).ok();
+        let b_meta = b.metadata().and_then(|meta| meta.modified()).ok();
+        b_meta.cmp(&a_meta)
+    });
+
+    let runs: Vec<_> = runs.into_iter().map(|entry| entry.path()).collect();
+    if runs.is_empty() {
+        anyhow::bail!("No run directories found in {:?}", out_dir);
+    }
+
+    Ok(runs)
+}
+
+fn modified_time_label(path: &Path) -> String {
+    path.metadata()
+        .and_then(|meta| meta.modified())
+        .map(|time| DateTime::<Utc>::from(time).to_rfc3339())
+        .unwrap_or_else(|_| "unknown".to_string())
+}
+
+fn coverage_gap_count(coverage: &shiplog_schema::coverage::CoverageManifest) -> usize {
+    coverage.warnings.len()
+        + coverage
+            .slices
+            .iter()
+            .filter(|slice| {
+                slice.incomplete_results.unwrap_or(false) || slice.fetched < slice.total_count
+            })
+            .count()
+}
+
+fn print_runs_list(out_dir: &Path, summaries: &[RunSummary]) {
+    println!("Runs: {}", out_dir.display());
+    println!("Count: {}", summaries.len());
+
+    for summary in summaries {
+        println!("- {}", summary.run_id);
+        println!("  modified: {}", summary.modified_at);
+        println!("  sources: {}", source_list_label(&summary.sources));
+        println!("  events: {}", summary.event_count);
+        println!("  coverage: {}", summary.completeness);
+        println!("  packet: {}", summary.packet_path.display());
+        println!("  gaps: {}", summary.gap_count);
+    }
+}
+
+fn print_run_show(summary: &RunSummary) {
+    println!("Run: {}", summary.run_id);
+    println!("Directory: {}", summary.run_dir.display());
+    println!("Created: {}", summary.generated_at);
+    println!("Modified: {}", summary.modified_at);
+    println!("User: {}", summary.user);
+    println!("Window: {}", summary.window);
+    println!("Mode: {}", summary.mode);
+    println!("Sources: {}", source_list_label(&summary.sources));
+    println!("Events: {}", summary.event_count);
+    println!("Coverage: {}", summary.completeness);
+    println!("Gaps: {}", summary.gap_count);
+    println!("Packet: {}", summary.packet_path.display());
+    println!("Ledger: {}", summary.ledger_path.display());
+    println!("Coverage manifest: {}", summary.coverage_path.display());
+    if summary.warnings.is_empty() {
+        println!("Warnings: none");
+    } else {
+        println!("Warnings:");
+        for warning in &summary.warnings {
+            println!("- {warning}");
+        }
+    }
+}
+
+fn source_list_label(sources: &[String]) -> String {
+    if sources.is_empty() {
+        "-".to_string()
+    } else {
+        sources.join(", ")
+    }
 }
 
 fn find_most_recent_run(out_dir: &Path) -> Result<PathBuf> {
