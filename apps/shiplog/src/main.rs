@@ -11,7 +11,7 @@ use regex::{Regex, RegexBuilder};
 use reqwest::blocking::Client;
 use serde::Deserialize;
 use shiplog_engine::{ConflictResolution, Engine, WorkstreamSource};
-use shiplog_ids::WorkstreamId;
+use shiplog_ids::{EventId, WorkstreamId};
 use shiplog_ingest_git::LocalGitIngestor;
 use shiplog_ingest_github::GithubIngestor;
 use shiplog_ingest_gitlab::{GitlabIngestor, MrState};
@@ -21,7 +21,7 @@ use shiplog_ingest_linear::{IssueStatus as LinearIssueStatus, LinearIngestor};
 use shiplog_ingest_manual::ManualIngestor;
 use shiplog_ports::{IngestOutput, Ingestor};
 use shiplog_redact::DeterministicRedactor;
-use shiplog_render_md::MarkdownRenderer;
+use shiplog_render_md::{MarkdownRenderer, format_receipt_markdown};
 use shiplog_schema::{
     bundle::BundleProfile,
     coverage::TimeWindow,
@@ -473,6 +473,28 @@ enum WorkstreamsCommand {
         to: String,
     },
 
+    /// List curated receipt anchors for a workstream.
+    Receipts {
+        /// Output directory containing shiplog runs.
+        #[arg(long, default_value = "./out")]
+        out: PathBuf,
+        /// Run ID to inspect (uses most recent if not specified).
+        #[arg(long)]
+        run: Option<String>,
+        /// Inspect the most recent run explicitly.
+        #[arg(long)]
+        latest: bool,
+        /// Workstream title or ID.
+        #[arg(long)]
+        workstream: String,
+    },
+
+    /// Add or remove curated receipt anchors.
+    Receipt {
+        #[command(subcommand)]
+        cmd: WorkstreamReceiptCommand,
+    },
+
     /// Create an empty curated workstream.
     Create {
         /// Output directory containing shiplog runs.
@@ -534,6 +556,47 @@ enum WorkstreamsCommand {
         /// Create the target workstream if it does not exist.
         #[arg(long)]
         create: bool,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum WorkstreamReceiptCommand {
+    /// Add an assigned event as a receipt anchor for one workstream.
+    Add {
+        /// Output directory containing shiplog runs.
+        #[arg(long, default_value = "./out")]
+        out: PathBuf,
+        /// Run ID to edit (uses most recent if not specified).
+        #[arg(long)]
+        run: Option<String>,
+        /// Edit the most recent run explicitly.
+        #[arg(long)]
+        latest: bool,
+        /// Workstream title or ID.
+        #[arg(long)]
+        workstream: String,
+        /// Event ID from ledger.events.jsonl.
+        #[arg(long)]
+        event: String,
+    },
+
+    /// Remove a receipt anchor from one workstream.
+    Remove {
+        /// Output directory containing shiplog runs.
+        #[arg(long, default_value = "./out")]
+        out: PathBuf,
+        /// Run ID to edit (uses most recent if not specified).
+        #[arg(long)]
+        run: Option<String>,
+        /// Edit the most recent run explicitly.
+        #[arg(long)]
+        latest: bool,
+        /// Workstream title or ID.
+        #[arg(long)]
+        workstream: String,
+        /// Event ID from ledger.events.jsonl.
+        #[arg(long)]
+        event: String,
     },
 }
 
@@ -3437,6 +3500,104 @@ fn main() -> Result<()> {
                     println!("Created curated workstreams.yaml from suggested workstreams.");
                 }
             }
+            WorkstreamsCommand::Receipts {
+                out,
+                run,
+                latest,
+                workstream,
+            } => {
+                let run_dir = resolve_render_run_dir(&out, run, latest)?;
+                let (workstreams, source, path) = load_effective_workstreams_for_run(&run_dir)?;
+                let ledger_events = load_run_events(&run_dir)?;
+                print_workstream_receipts(
+                    &run_dir,
+                    &path,
+                    source,
+                    &workstreams,
+                    &ledger_events,
+                    &workstream,
+                )?;
+            }
+            WorkstreamsCommand::Receipt { cmd } => match cmd {
+                WorkstreamReceiptCommand::Add {
+                    out,
+                    run,
+                    latest,
+                    workstream,
+                    event,
+                } => {
+                    let run_dir = resolve_render_run_dir(&out, run, latest)?;
+                    let (mut workstreams, source, _) =
+                        load_effective_workstreams_for_run(&run_dir)?;
+                    let ledger_events = load_run_events(&run_dir)?;
+                    let result = add_workstream_receipt(
+                        &mut workstreams,
+                        &workstream,
+                        &event,
+                        &ledger_events,
+                    )?;
+                    let errors = validate_workstreams_against_events(&workstreams, &ledger_events);
+                    if !errors.is_empty() {
+                        for error in &errors {
+                            eprintln!("- {error}");
+                        }
+                        anyhow::bail!("{} workstream validation error(s)", errors.len());
+                    }
+
+                    write_curated_workstreams(&run_dir, &workstreams)?;
+                    println!(
+                        "Added receipt anchor {} to {}",
+                        result.event_id, result.workstream_title
+                    );
+                    println!("Receipt: {}", result.event_title);
+                    println!(
+                        "Updated: {}",
+                        shiplog_workstreams::WorkstreamManager::curated_path(&run_dir).display()
+                    );
+                    if matches!(source, WorkstreamsFileSource::Suggested) {
+                        println!("Created curated workstreams.yaml from suggested workstreams.");
+                    }
+                }
+                WorkstreamReceiptCommand::Remove {
+                    out,
+                    run,
+                    latest,
+                    workstream,
+                    event,
+                } => {
+                    let run_dir = resolve_render_run_dir(&out, run, latest)?;
+                    let (mut workstreams, source, _) =
+                        load_effective_workstreams_for_run(&run_dir)?;
+                    let ledger_events = load_run_events(&run_dir)?;
+                    let result = remove_workstream_receipt(
+                        &mut workstreams,
+                        &workstream,
+                        &event,
+                        &ledger_events,
+                    )?;
+                    let errors = validate_workstreams_against_events(&workstreams, &ledger_events);
+                    if !errors.is_empty() {
+                        for error in &errors {
+                            eprintln!("- {error}");
+                        }
+                        anyhow::bail!("{} workstream validation error(s)", errors.len());
+                    }
+
+                    write_curated_workstreams(&run_dir, &workstreams)?;
+                    println!(
+                        "Removed receipt anchor {} from {}",
+                        result.event_id, result.workstream_title
+                    );
+                    println!("Receipt: {}", result.event_title);
+                    println!(
+                        "Updated: {}",
+                        shiplog_workstreams::WorkstreamManager::curated_path(&run_dir).display()
+                    );
+                    if matches!(source, WorkstreamsFileSource::Suggested) {
+                        println!("Created curated workstreams.yaml from suggested workstreams.");
+                    }
+                }
+            },
             WorkstreamsCommand::Create {
                 out,
                 run,
@@ -4216,6 +4377,12 @@ struct MoveWorkstreamResult {
     receipt_preserved: bool,
 }
 
+struct ReceiptEditResult {
+    event_id: String,
+    event_title: String,
+    workstream_title: String,
+}
+
 struct CreateWorkstreamResult {
     id: WorkstreamId,
     title: String,
@@ -4292,6 +4459,113 @@ fn move_event_to_workstream(
         from_titles,
         to_title,
         receipt_preserved,
+    })
+}
+
+fn print_workstream_receipts(
+    run_dir: &Path,
+    path: &Path,
+    source: WorkstreamsFileSource,
+    workstreams: &WorkstreamsFile,
+    ledger_events: &[EventEnvelope],
+    workstream_selector: &str,
+) -> Result<()> {
+    let idx = find_workstream_index(workstreams, workstream_selector)?;
+    let workstream = &workstreams.workstreams[idx];
+    let by_id: HashMap<_, _> = ledger_events
+        .iter()
+        .map(|event| (event.id.to_string(), event))
+        .collect();
+
+    println!("Receipts: {} [{}]", workstream.title, workstream.id);
+    println!("Run: {}", run_dir.display());
+    println!(
+        "Workstreams: {} ({})",
+        path.display(),
+        workstream_source_label(source)
+    );
+    println!("Count: {}", workstream.receipts.len());
+
+    if workstream.receipts.is_empty() {
+        println!("- (none)");
+        return Ok(());
+    }
+
+    for receipt_id in &workstream.receipts {
+        if let Some(event) = by_id.get(&receipt_id.to_string()) {
+            println!("{}", format_receipt_markdown(event));
+        } else {
+            println!("- {} (missing from ledger.events.jsonl)", receipt_id);
+        }
+    }
+
+    Ok(())
+}
+
+fn add_workstream_receipt(
+    workstreams: &mut WorkstreamsFile,
+    workstream_selector: &str,
+    event_selector: &str,
+    ledger_events: &[EventEnvelope],
+) -> Result<ReceiptEditResult> {
+    let idx = find_workstream_index(workstreams, workstream_selector)?;
+    let event = find_ledger_event(ledger_events, event_selector)?;
+    let event_id = event.id.clone();
+    let event_key = event.id.to_string();
+    let event_title = event_title(event).to_string();
+    let workstream = &mut workstreams.workstreams[idx];
+
+    if !contains_event_id(&workstream.events, &event_key) {
+        anyhow::bail!(
+            "event {event_key:?} is not assigned to workstream {:?}; use `shiplog workstreams move` first",
+            workstream.title
+        );
+    }
+    if contains_event_id(&workstream.receipts, &event_key) {
+        anyhow::bail!(
+            "event {event_key:?} is already a receipt anchor for workstream {:?}",
+            workstream.title
+        );
+    }
+
+    workstream.receipts.push(event_id);
+
+    Ok(ReceiptEditResult {
+        event_id: event_key,
+        event_title,
+        workstream_title: workstream.title.clone(),
+    })
+}
+
+fn remove_workstream_receipt(
+    workstreams: &mut WorkstreamsFile,
+    workstream_selector: &str,
+    event_selector: &str,
+    ledger_events: &[EventEnvelope],
+) -> Result<ReceiptEditResult> {
+    let idx = find_workstream_index(workstreams, workstream_selector)?;
+    let event = find_ledger_event(ledger_events, event_selector)?;
+    let event_key = event.id.to_string();
+    let event_title = event_title(event).to_string();
+    let workstream = &mut workstreams.workstreams[idx];
+
+    let Some(receipt_idx) = workstream
+        .receipts
+        .iter()
+        .position(|candidate| candidate.to_string() == event_key)
+    else {
+        anyhow::bail!(
+            "event {event_key:?} is not a receipt anchor for workstream {:?}",
+            workstream.title
+        );
+    };
+
+    workstream.receipts.remove(receipt_idx);
+
+    Ok(ReceiptEditResult {
+        event_id: event_key,
+        event_title,
+        workstream_title: workstream.title.clone(),
     })
 }
 
@@ -4542,6 +4816,29 @@ fn event_title(event: &EventEnvelope) -> &str {
         EventPayload::Review(payload) => &payload.pull_title,
         EventPayload::Manual(payload) => &payload.title,
     }
+}
+
+fn find_ledger_event<'a>(
+    ledger_events: &'a [EventEnvelope],
+    event_selector: &str,
+) -> Result<&'a EventEnvelope> {
+    let event_selector = event_selector.trim();
+    if event_selector.is_empty() {
+        anyhow::bail!("event selector cannot be blank");
+    }
+
+    ledger_events
+        .iter()
+        .find(|event| event.id.to_string() == event_selector)
+        .ok_or_else(|| {
+            anyhow::anyhow!("event {event_selector:?} was not found in ledger.events.jsonl")
+        })
+}
+
+fn contains_event_id(event_ids: &[EventId], event_key: &str) -> bool {
+    event_ids
+        .iter()
+        .any(|candidate| candidate.to_string() == event_key)
 }
 
 fn find_workstream_index(workstreams: &WorkstreamsFile, selector: &str) -> Result<usize> {

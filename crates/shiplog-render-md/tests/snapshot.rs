@@ -137,6 +137,48 @@ fn snapshot_receipt_truncation() {
     insta::assert_snapshot!(result);
 }
 
+#[test]
+fn curated_receipts_control_main_sections_but_appendix_keeps_all_events() {
+    let events = vec![
+        pr_event("owner/repo", 1, "Primary proof"),
+        pr_event("owner/repo", 2, "Supporting context"),
+    ];
+
+    let ws = WorkstreamFixture::new("Curated Proof")
+        .with_event(&events[0])
+        .with_event(&events[1])
+        .with_receipt(&events[0])
+        .build();
+
+    let workstreams = WorkstreamsFile {
+        version: 1,
+        generated_at: Utc.timestamp_opt(0, 0).unwrap(),
+        workstreams: vec![ws],
+    };
+    let coverage = test_coverage("testuser", Completeness::Complete);
+
+    let result = MarkdownRenderer::new()
+        .render_packet_markdown("testuser", "2025-Q1", &events, &workstreams, &coverage)
+        .unwrap();
+
+    let receipts_section = result
+        .split("## Receipts")
+        .nth(1)
+        .expect("packet should include receipts section")
+        .split("## Appendix: All Receipts")
+        .next()
+        .expect("packet should include appendix after receipts");
+    assert!(receipts_section.contains("Primary proof"));
+    assert!(!receipts_section.contains("Supporting context"));
+
+    let appendix_section = result
+        .split("## Appendix: All Receipts")
+        .nth(1)
+        .expect("packet should include appendix");
+    assert!(appendix_section.contains("Primary proof"));
+    assert!(appendix_section.contains("Supporting context"));
+}
+
 // ── Snapshot: coverage with warnings and partial completeness ───────────
 
 #[test]

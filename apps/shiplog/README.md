@@ -40,6 +40,9 @@ shiplog workstreams create --run latest --title "Platform Reliability"
 shiplog workstreams rename --run latest --from "acme/platform" --to "Platform Reliability"
 shiplog workstreams move --run latest --event <event_id> --to "Platform Reliability"
 shiplog workstreams split --run latest --from "Platform Reliability" --to "Auth Migration" --matching "auth|oauth|sso" --create
+shiplog workstreams receipts --run latest --workstream "Platform Reliability"
+shiplog workstreams receipt add --run latest --workstream "Platform Reliability" --event <event_id>
+shiplog workstreams receipt remove --run latest --workstream "Platform Reliability" --event <event_id>
 shiplog workstreams delete --run latest --workstream "old bucket" --move-to "Platform Reliability"
 shiplog workstreams validate --run latest
 
@@ -57,7 +60,7 @@ Output goes to `out/<run_id>/` containing `packet.md`, `ledger.events.jsonl`, `c
 | `collect <source>` | Fetch events from a source and generate packet artifacts |
 | `render` | Re-render packet from existing ledger and workstreams |
 | `refresh <source>` | Re-fetch events while preserving curated `workstreams.yaml` |
-| `workstreams list/validate/create/rename/move/split/delete` | Inspect, validate, and safely edit workstream curation |
+| `workstreams list/validate/create/rename/move/split/receipts/receipt/delete` | Inspect, validate, and safely edit workstream curation |
 | `import` | Import an existing run directory and re-render |
 | `run <source>` | Legacy: collect + render in one shot |
 

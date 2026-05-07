@@ -213,6 +213,8 @@ fn workstreams_help_shows_list_and_validate() {
         .stdout(predicate::str::contains("move"))
         .stdout(predicate::str::contains("create"))
         .stdout(predicate::str::contains("delete"))
+        .stdout(predicate::str::contains("receipts"))
+        .stdout(predicate::str::contains("receipt"))
         .stdout(predicate::str::contains("split"));
 }
 
@@ -1227,6 +1229,231 @@ fn workstreams_move_unknown_event_fails_without_writing_curated() {
         .stderr(predicate::str::contains(
             "was not found in ledger.events.jsonl",
         ));
+
+    assert!(!run_dir.join("workstreams.yaml").exists());
+}
+
+#[test]
+fn workstreams_receipts_lists_selected_workstream_receipts() {
+    let tmp = TempDir::new().unwrap();
+    collect_json_into(tmp.path());
+
+    shiplog_cmd()
+        .args([
+            "workstreams",
+            "receipts",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+            "--workstream",
+            "acme/platform",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Receipts: acme/platform"))
+        .stdout(predicate::str::contains("Count: 2"))
+        .stdout(predicate::str::contains(
+            "Schema hardening for audit exports",
+        ))
+        .stdout(predicate::str::contains("APPROVED"));
+}
+
+#[test]
+fn workstreams_receipt_remove_promotes_suggested_to_curated_and_keeps_assignment() {
+    let tmp = TempDir::new().unwrap();
+    let run_dir = collect_json_into(tmp.path());
+
+    shiplog_cmd()
+        .args([
+            "workstreams",
+            "receipt",
+            "remove",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+            "--workstream",
+            "acme/platform",
+            "--event",
+            "fixture_pr_acme_platform_13",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "Removed receipt anchor fixture_pr_acme_platform_13 from acme/platform",
+        ))
+        .stdout(predicate::str::contains("Created curated workstreams.yaml"));
+
+    assert!(run_dir.join("workstreams.suggested.yaml").exists());
+    let curated = load_curated_workstreams(&run_dir);
+    let platform = curated
+        .workstreams
+        .iter()
+        .find(|workstream| workstream.title == "acme/platform")
+        .expect("platform workstream should exist");
+    assert!(
+        platform
+            .events
+            .iter()
+            .any(|event_id| event_id.to_string() == "fixture_pr_acme_platform_13")
+    );
+    assert!(
+        platform
+            .receipts
+            .iter()
+            .all(|event_id| event_id.to_string() != "fixture_pr_acme_platform_13")
+    );
+}
+
+#[test]
+fn workstreams_receipt_add_promotes_suggested_to_curated_and_validates() {
+    let tmp = TempDir::new().unwrap();
+    let run_dir = collect_json_into(tmp.path());
+    std::fs::write(
+        run_dir.join("workstreams.suggested.yaml"),
+        r#"version: 1
+generated_at: "2026-01-01T00:00:00Z"
+workstreams:
+  - id: "repo-acme-platform"
+    title: "acme/platform"
+    summary: null
+    tags:
+      - platform
+    stats:
+      pull_requests: 1
+      reviews: 1
+      manual_events: 0
+    events:
+      - "fixture_pr_acme_platform_13"
+      - "fixture_review_acme_platform_77_1"
+    receipts:
+      - "fixture_review_acme_platform_77_1"
+"#,
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .args([
+            "workstreams",
+            "receipt",
+            "add",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+            "--workstream",
+            "acme/platform",
+            "--event",
+            "fixture_pr_acme_platform_13",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "Added receipt anchor fixture_pr_acme_platform_13 to acme/platform",
+        ))
+        .stdout(predicate::str::contains("Created curated workstreams.yaml"));
+
+    let curated = load_curated_workstreams(&run_dir);
+    let platform = curated
+        .workstreams
+        .iter()
+        .find(|workstream| workstream.title == "acme/platform")
+        .expect("platform workstream should exist");
+    assert!(
+        platform
+            .receipts
+            .iter()
+            .any(|event_id| event_id.to_string() == "fixture_pr_acme_platform_13")
+    );
+
+    shiplog_cmd()
+        .args([
+            "workstreams",
+            "validate",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+        ])
+        .assert()
+        .success();
+}
+
+#[test]
+fn workstreams_receipt_add_rejects_event_not_in_workstream_without_writing() {
+    let tmp = TempDir::new().unwrap();
+    let run_dir = collect_json_into(tmp.path());
+
+    shiplog_cmd()
+        .args([
+            "workstreams",
+            "receipt",
+            "add",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+            "--workstream",
+            "acme/platform",
+            "--event",
+            "fixture_pr_acme_payments_42",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("is not assigned to workstream"));
+
+    assert!(!run_dir.join("workstreams.yaml").exists());
+}
+
+#[test]
+fn workstreams_receipt_add_rejects_duplicate_without_writing() {
+    let tmp = TempDir::new().unwrap();
+    let run_dir = collect_json_into(tmp.path());
+
+    shiplog_cmd()
+        .args([
+            "workstreams",
+            "receipt",
+            "add",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+            "--workstream",
+            "acme/platform",
+            "--event",
+            "fixture_pr_acme_platform_13",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("already a receipt anchor"));
+
+    assert!(!run_dir.join("workstreams.yaml").exists());
+}
+
+#[test]
+fn workstreams_receipt_remove_rejects_missing_receipt_without_writing() {
+    let tmp = TempDir::new().unwrap();
+    let run_dir = collect_json_into(tmp.path());
+
+    shiplog_cmd()
+        .args([
+            "workstreams",
+            "receipt",
+            "remove",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+            "--workstream",
+            "acme/platform",
+            "--event",
+            "fixture_pr_acme_payments_42",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("is not a receipt anchor"));
 
     assert!(!run_dir.join("workstreams.yaml").exists());
 }
