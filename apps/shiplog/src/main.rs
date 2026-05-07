@@ -473,6 +473,44 @@ enum WorkstreamsCommand {
         to: String,
     },
 
+    /// Create an empty curated workstream.
+    Create {
+        /// Output directory containing shiplog runs.
+        #[arg(long, default_value = "./out")]
+        out: PathBuf,
+        /// Run ID to edit (uses most recent if not specified).
+        #[arg(long)]
+        run: Option<String>,
+        /// Edit the most recent run explicitly.
+        #[arg(long)]
+        latest: bool,
+        /// New workstream title.
+        #[arg(long)]
+        title: String,
+    },
+
+    /// Delete a workstream, optionally moving its events to another workstream.
+    Delete {
+        /// Output directory containing shiplog runs.
+        #[arg(long, default_value = "./out")]
+        out: PathBuf,
+        /// Run ID to edit (uses most recent if not specified).
+        #[arg(long)]
+        run: Option<String>,
+        /// Edit the most recent run explicitly.
+        #[arg(long)]
+        latest: bool,
+        /// Workstream title or ID to delete.
+        #[arg(long)]
+        workstream: String,
+        /// Move events and receipts to this existing workstream before deleting.
+        #[arg(long)]
+        move_to: Option<String>,
+        /// Delete a non-empty workstream without preserving its event assignments.
+        #[arg(long)]
+        force: bool,
+    },
+
     /// Split matching events out of one workstream into another.
     Split {
         /// Output directory containing shiplog runs.
@@ -3399,6 +3437,82 @@ fn main() -> Result<()> {
                     println!("Created curated workstreams.yaml from suggested workstreams.");
                 }
             }
+            WorkstreamsCommand::Create {
+                out,
+                run,
+                latest,
+                title,
+            } => {
+                let run_dir = resolve_render_run_dir(&out, run, latest)?;
+                let (mut workstreams, source, _) = load_effective_workstreams_for_run(&run_dir)?;
+                let result = create_workstream(&mut workstreams, &title)?;
+                let ledger_events = load_run_events(&run_dir)?;
+                let errors = validate_workstreams_against_events(&workstreams, &ledger_events);
+                if !errors.is_empty() {
+                    for error in &errors {
+                        eprintln!("- {error}");
+                    }
+                    anyhow::bail!("{} workstream validation error(s)", errors.len());
+                }
+
+                write_curated_workstreams(&run_dir, &workstreams)?;
+                println!("Created workstream: {}", result.title);
+                println!("ID: {}", result.id);
+                println!(
+                    "Updated: {}",
+                    shiplog_workstreams::WorkstreamManager::curated_path(&run_dir).display()
+                );
+                if matches!(source, WorkstreamsFileSource::Suggested) {
+                    println!("Created curated workstreams.yaml from suggested workstreams.");
+                }
+            }
+            WorkstreamsCommand::Delete {
+                out,
+                run,
+                latest,
+                workstream,
+                move_to,
+                force,
+            } => {
+                let run_dir = resolve_render_run_dir(&out, run, latest)?;
+                let (mut workstreams, source, _) = load_effective_workstreams_for_run(&run_dir)?;
+                let ledger_events = load_run_events(&run_dir)?;
+                let result = delete_workstream(
+                    &mut workstreams,
+                    &workstream,
+                    move_to.as_deref(),
+                    force,
+                    &ledger_events,
+                )?;
+                let errors = validate_workstreams_against_events(&workstreams, &ledger_events);
+                if !errors.is_empty() {
+                    for error in &errors {
+                        eprintln!("- {error}");
+                    }
+                    anyhow::bail!("{} workstream validation error(s)", errors.len());
+                }
+
+                write_curated_workstreams(&run_dir, &workstreams)?;
+                println!("Deleted workstream: {}", result.deleted_title);
+                if let Some(target) = result.moved_to_title {
+                    println!(
+                        "Moved {} event(s) and {} receipt anchor(s) to {}.",
+                        result.event_count, result.receipt_count, target
+                    );
+                } else if result.event_count > 0 || result.receipt_count > 0 {
+                    println!(
+                        "Discarded {} event assignment(s) and {} receipt anchor(s).",
+                        result.event_count, result.receipt_count
+                    );
+                }
+                println!(
+                    "Updated: {}",
+                    shiplog_workstreams::WorkstreamManager::curated_path(&run_dir).display()
+                );
+                if matches!(source, WorkstreamsFileSource::Suggested) {
+                    println!("Created curated workstreams.yaml from suggested workstreams.");
+                }
+            }
             WorkstreamsCommand::Split {
                 out,
                 run,
@@ -4102,6 +4216,18 @@ struct MoveWorkstreamResult {
     receipt_preserved: bool,
 }
 
+struct CreateWorkstreamResult {
+    id: WorkstreamId,
+    title: String,
+}
+
+struct DeleteWorkstreamResult {
+    deleted_title: String,
+    moved_to_title: Option<String>,
+    event_count: usize,
+    receipt_count: usize,
+}
+
 struct SplitWorkstreamResult {
     event_count: usize,
     receipt_count: usize,
@@ -4167,6 +4293,99 @@ fn move_event_to_workstream(
         to_title,
         receipt_preserved,
     })
+}
+
+fn create_workstream(
+    workstreams: &mut WorkstreamsFile,
+    title: &str,
+) -> Result<CreateWorkstreamResult> {
+    let title = title.trim();
+    if title.is_empty() {
+        anyhow::bail!("workstream title cannot be blank");
+    }
+    if find_workstream_index_optional(workstreams, title)?.is_some() {
+        anyhow::bail!("a workstream already matches {title:?}");
+    }
+
+    let id = WorkstreamId::from_parts(["curated", title]);
+    workstreams.workstreams.push(Workstream {
+        id: id.clone(),
+        title: title.to_string(),
+        summary: None,
+        tags: vec![],
+        stats: WorkstreamStats::zero(),
+        events: vec![],
+        receipts: vec![],
+    });
+
+    Ok(CreateWorkstreamResult {
+        id,
+        title: title.to_string(),
+    })
+}
+
+fn delete_workstream(
+    workstreams: &mut WorkstreamsFile,
+    workstream_selector: &str,
+    move_to: Option<&str>,
+    force: bool,
+    ledger_events: &[EventEnvelope],
+) -> Result<DeleteWorkstreamResult> {
+    if force && move_to.is_some() {
+        anyhow::bail!("use either --move-to or --force, not both");
+    }
+
+    let source_idx = find_workstream_index(workstreams, workstream_selector)?;
+    let event_count = workstreams.workstreams[source_idx].events.len();
+    let receipt_count = workstreams.workstreams[source_idx].receipts.len();
+    let is_non_empty = event_count > 0 || receipt_count > 0;
+
+    if is_non_empty && move_to.is_none() && !force {
+        anyhow::bail!(
+            "workstream {:?} is not empty; use --move-to <workstream> or --force",
+            workstreams.workstreams[source_idx].title
+        );
+    }
+
+    let mut moved_to_title = None;
+    if let Some(target_selector) = move_to {
+        let target_idx = find_workstream_index(workstreams, target_selector)?;
+        if source_idx == target_idx {
+            anyhow::bail!("delete target and --move-to target must be different workstreams");
+        }
+
+        let events = workstreams.workstreams[source_idx].events.clone();
+        let receipts = workstreams.workstreams[source_idx].receipts.clone();
+        let target = &mut workstreams.workstreams[target_idx];
+        moved_to_title = Some(target.title.clone());
+        append_unique_event_ids(&mut target.events, events);
+        append_unique_event_ids(&mut target.receipts, receipts);
+    }
+
+    let deleted = workstreams.workstreams.remove(source_idx);
+    recompute_workstream_stats(workstreams, ledger_events);
+
+    Ok(DeleteWorkstreamResult {
+        deleted_title: deleted.title,
+        moved_to_title,
+        event_count,
+        receipt_count,
+    })
+}
+
+fn append_unique_event_ids(
+    target: &mut Vec<shiplog_ids::EventId>,
+    incoming: Vec<shiplog_ids::EventId>,
+) {
+    for event_id in incoming {
+        let event_key = event_id.to_string();
+        if !target
+            .iter()
+            .any(|candidate| candidate.to_string() == event_key)
+        {
+            target.push(event_id);
+        }
+    }
 }
 
 fn split_workstream(
