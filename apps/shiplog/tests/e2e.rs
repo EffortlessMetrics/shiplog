@@ -40,6 +40,7 @@ fn collect_help_lists_sources() {
     assert!(out.status.success());
     let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(stdout.contains("github"), "expected github source");
+    assert!(stdout.contains("gitlab"), "expected gitlab source");
     assert!(stdout.contains("json"), "expected json source");
 }
 

@@ -9,6 +9,7 @@ use clap::{Parser, Subcommand};
 use shiplog_engine::{Engine, WorkstreamSource};
 use shiplog_ingest_git::LocalGitIngestor;
 use shiplog_ingest_github::GithubIngestor;
+use shiplog_ingest_gitlab::{GitlabIngestor, MrState};
 use shiplog_ingest_json::JsonIngestor;
 use shiplog_ingest_manual::ManualIngestor;
 use shiplog_ports::Ingestor;
@@ -234,6 +235,40 @@ enum Source {
         no_cache: bool,
     },
 
+    /// Ingest from GitLab merge requests and review notes.
+    Gitlab {
+        /// GitLab username to report on.
+        #[arg(long)]
+        user: String,
+        /// Start date (inclusive), YYYY-MM-DD
+        #[arg(long)]
+        since: NaiveDate,
+        /// End date (exclusive), YYYY-MM-DD
+        #[arg(long)]
+        until: NaiveDate,
+        /// Merge request state: opened, merged, closed, or all.
+        #[arg(long, default_value = "merged")]
+        state: String,
+        /// GitLab instance hostname or URL.
+        #[arg(long, default_value = "gitlab.com")]
+        instance: String,
+        /// Include review activity from merge request notes (best-effort).
+        #[arg(long)]
+        include_reviews: bool,
+        /// Milliseconds to sleep between requests.
+        #[arg(long, default_value_t = 0)]
+        throttle_ms: u64,
+        /// GitLab token (or set GITLAB_TOKEN).
+        #[arg(long)]
+        token: Option<String>,
+        /// Override GitLab API cache directory (defaults to `<out>/.cache`).
+        #[arg(long)]
+        cache_dir: Option<PathBuf>,
+        /// Disable GitLab API caching.
+        #[arg(long)]
+        no_cache: bool,
+    },
+
     /// Ingest from JSONL events + a coverage manifest.
     Json {
         #[arg(long)]
@@ -406,6 +441,43 @@ fn make_github_ingestor(
     Ok(ing)
 }
 
+#[allow(clippy::too_many_arguments)]
+fn make_gitlab_ingestor(
+    user: &str,
+    since: NaiveDate,
+    until: NaiveDate,
+    state: &str,
+    instance: &str,
+    include_reviews: bool,
+    throttle_ms: u64,
+    token: Option<String>,
+    cache_dir: Option<PathBuf>,
+) -> Result<GitlabIngestor> {
+    let token = token.or_else(|| std::env::var("GITLAB_TOKEN").ok());
+    let state = state
+        .parse::<MrState>()
+        .with_context(|| format!("parse GitLab MR state {state:?}"))?;
+
+    let mut ing = GitlabIngestor::new(user.to_string(), since, until)
+        .with_state(state)
+        .with_include_reviews(include_reviews)
+        .with_throttle(throttle_ms)
+        .with_instance(instance.to_string())
+        .context("configure GitLab instance")?;
+
+    if let Some(token) = token {
+        ing = ing.with_token(token).context("configure GitLab token")?;
+    }
+
+    if let Some(cache_dir) = cache_dir {
+        ing = ing
+            .with_cache(cache_dir)
+            .context("configure GitLab API cache")?;
+    }
+
+    Ok(ing)
+}
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
@@ -455,6 +527,68 @@ fn main() -> Result<()> {
                         cache_dir,
                     )
                     .context("create GitHub ingestor")?;
+                    let ingest = ing.ingest().context("ingest events")?;
+                    let run_id = ingest.coverage.run_id.to_string();
+                    let run_dir = out.join(&run_id);
+
+                    let window_label = format!("{}..{}", since, until);
+
+                    // Check if user has curated workstreams and warn
+                    if !regen && shiplog_workstreams::WorkstreamManager::has_curated(&run_dir) {
+                        eprintln!("Note: Using existing workstreams.yaml (user-curated).");
+                        eprintln!("      Use --regen to regenerate suggestions.");
+                    }
+
+                    // If --regen, delete existing suggested workstreams so the engine regenerates them
+                    if regen {
+                        let suggested =
+                            shiplog_workstreams::WorkstreamManager::suggested_path(&run_dir);
+                        if suggested.exists() {
+                            std::fs::remove_file(&suggested)
+                                .with_context(|| format!("remove {:?} for --regen", suggested))?;
+                        }
+                    }
+
+                    let cache_path = DeterministicRedactor::cache_path(&run_dir);
+                    let _ = redactor.load_cache(&cache_path);
+
+                    let (outputs, ws_source) = engine
+                        .run(ingest, &user, &window_label, &run_dir, zip, &bundle_profile)
+                        .context("run engine pipeline")?;
+
+                    redactor
+                        .save_cache(&cache_path)
+                        .with_context(|| format!("save redaction cache to {cache_path:?}"))?;
+
+                    println!("Collected and wrote:");
+                    print_outputs(&outputs, ws_source);
+                }
+
+                Source::Gitlab {
+                    user,
+                    since,
+                    until,
+                    state,
+                    instance,
+                    include_reviews,
+                    throttle_ms,
+                    token,
+                    cache_dir,
+                    no_cache,
+                } => {
+                    let cache_dir = resolve_cache_dir(&out, cache_dir, no_cache);
+                    let ing = make_gitlab_ingestor(
+                        &user,
+                        since,
+                        until,
+                        &state,
+                        &instance,
+                        include_reviews,
+                        throttle_ms,
+                        token,
+                        cache_dir,
+                    )
+                    .context("create GitLab ingestor")?;
                     let ingest = ing.ingest().context("ingest events")?;
                     let run_id = ingest.coverage.run_id.to_string();
                     let run_dir = out.join(&run_id);
@@ -776,6 +910,61 @@ fn main() -> Result<()> {
                     print_outputs_simple(&outputs);
                 }
 
+                Source::Gitlab {
+                    user,
+                    since,
+                    until,
+                    state,
+                    instance,
+                    include_reviews,
+                    throttle_ms,
+                    token,
+                    cache_dir,
+                    no_cache,
+                } => {
+                    let cache_root = run_dir
+                        .parent()
+                        .map(|p| p.to_path_buf())
+                        .unwrap_or_else(|| out.clone());
+                    let cache_dir = resolve_cache_dir(&cache_root, cache_dir, no_cache);
+                    let ing = make_gitlab_ingestor(
+                        &user,
+                        since,
+                        until,
+                        &state,
+                        &instance,
+                        include_reviews,
+                        throttle_ms,
+                        token,
+                        cache_dir,
+                    )
+                    .context("create GitLab ingestor")?;
+                    let ingest = ing.ingest().context("ingest events")?;
+
+                    let window_label = format!("{}..{}", since, until);
+
+                    if !shiplog_workstreams::WorkstreamManager::has_curated(&run_dir)
+                        && !shiplog_workstreams::WorkstreamManager::suggested_path(&run_dir)
+                            .exists()
+                    {
+                        anyhow::bail!(
+                            "No workstreams found in {:?}. Run `shiplog collect` first.",
+                            run_dir
+                        );
+                    }
+
+                    let outputs = engine
+                        .refresh(ingest, &user, &window_label, &run_dir, zip, &bundle_profile)
+                        .context("refresh engine pipeline")?;
+
+                    redactor
+                        .save_cache(&cache_path)
+                        .with_context(|| format!("save redaction cache to {cache_path:?}"))?;
+
+                    println!("Refreshed while preserving workstream curation:");
+                    print_outputs_simple(&outputs);
+                }
+
                 Source::Json {
                     events,
                     coverage,
@@ -994,6 +1183,51 @@ fn main() -> Result<()> {
                     print_outputs(&outputs, ws_source);
                 }
 
+                Source::Gitlab {
+                    user,
+                    since,
+                    until,
+                    state,
+                    instance,
+                    include_reviews,
+                    throttle_ms,
+                    token,
+                    cache_dir,
+                    no_cache,
+                } => {
+                    let cache_dir = resolve_cache_dir(&out, cache_dir, no_cache);
+                    let ing = make_gitlab_ingestor(
+                        &user,
+                        since,
+                        until,
+                        &state,
+                        &instance,
+                        include_reviews,
+                        throttle_ms,
+                        token,
+                        cache_dir,
+                    )
+                    .context("create GitLab ingestor")?;
+                    let ingest = ing.ingest().context("ingest events")?;
+                    let run_id = ingest.coverage.run_id.to_string();
+                    let run_dir = out.join(&run_id);
+
+                    let cache_path = DeterministicRedactor::cache_path(&run_dir);
+                    let _ = redactor.load_cache(&cache_path);
+
+                    let window_label = format!("{}..{}", since, until);
+                    let (outputs, ws_source) = engine
+                        .run(ingest, &user, &window_label, &run_dir, zip, &bundle_profile)
+                        .context("run engine pipeline")?;
+
+                    redactor
+                        .save_cache(&cache_path)
+                        .with_context(|| format!("save redaction cache to {cache_path:?}"))?;
+
+                    println!("Wrote:");
+                    print_outputs(&outputs, ws_source);
+                }
+
                 Source::Json {
                     events,
                     coverage,
@@ -1136,5 +1370,60 @@ mod tests {
         let explicit = PathBuf::from("D:/cache-root");
         let resolved = resolve_cache_dir(out_root, Some(explicit), true);
         assert_eq!(resolved, None);
+    }
+
+    #[test]
+    fn make_gitlab_ingestor_configures_cli_options() {
+        let since = NaiveDate::from_ymd_opt(2025, 1, 1).unwrap();
+        let until = NaiveDate::from_ymd_opt(2025, 2, 1).unwrap();
+        let cache_dir = tempfile::tempdir().unwrap();
+
+        let ing = make_gitlab_ingestor(
+            "alice",
+            since,
+            until,
+            "closed",
+            "https://gitlab.example.com",
+            true,
+            25,
+            Some("glpat-token".to_string()),
+            Some(cache_dir.path().to_path_buf()),
+        )
+        .unwrap();
+
+        assert_eq!(ing.user, "alice");
+        assert_eq!(ing.since, since);
+        assert_eq!(ing.until, until);
+        assert_eq!(ing.state, MrState::Closed);
+        assert_eq!(ing.instance, "gitlab.example.com");
+        assert!(ing.include_reviews);
+        assert_eq!(ing.throttle_ms, 25);
+        assert_eq!(ing.token.as_deref(), Some("glpat-token"));
+        assert!(ing.cache.is_some());
+        assert!(cache_dir.path().join("gitlab-api-cache.db").exists());
+    }
+
+    #[test]
+    fn make_gitlab_ingestor_rejects_invalid_state() {
+        let since = NaiveDate::from_ymd_opt(2025, 1, 1).unwrap();
+        let until = NaiveDate::from_ymd_opt(2025, 2, 1).unwrap();
+
+        let err = make_gitlab_ingestor(
+            "alice",
+            since,
+            until,
+            "invalid",
+            "gitlab.com",
+            false,
+            0,
+            Some("glpat-token".to_string()),
+            None,
+        )
+        .unwrap_err();
+
+        assert!(
+            err.to_string().contains("parse GitLab MR state"),
+            "unexpected error: {err:?}"
+        );
     }
 }
