@@ -90,8 +90,10 @@ Use `shiplog init --source github --source jira` to scaffold a narrower source
 set, `--dry-run` to preview, and `--force` to overwrite existing scaffold files.
 Use `shiplog config validate` for a token-free config and local path check,
 and `shiplog config explain` to see resolved defaults and enabled source
-settings. `shiplog doctor` adds token, output, identity, and safety checks
-before a collection run.
+settings. New configs include `[shiplog] config_version = 1`; run
+`shiplog config migrate` on older configs to add that metadata without changing
+source settings. `shiplog doctor` adds token, output, identity, and safety
+checks before a collection run.
 
 ### 1. Collect events from GitHub
 
@@ -189,7 +191,7 @@ out/<run_id>/
 |---------|-------------|
 | `init` | Create `shiplog.toml` and `manual_events.yaml` scaffold files |
 | `doctor` | Check local config, enabled sources, token env vars, and output safety |
-| `config validate/explain` | Validate `shiplog.toml` and print resolved defaults/source settings |
+| `config validate/explain/migrate` | Validate `shiplog.toml`, print resolved settings, or add version metadata |
 | `collect <source>` | Fetch events from a source and generate packet artifacts |
 | `collect multi` | Collect enabled sources from `shiplog.toml` into one merged packet |
 | `render` | Re-render packet from existing ledger and workstreams |
