@@ -37,8 +37,20 @@ _PRs: 1, Reviews: 0, Manual: 0_
 
 - [PR] Some work (2025-06-01) — [acme/widgets](https://github.com/acme/widgets/pull/1)
 
-## Coverage
+## Coverage and Limits
 
+Included:
+- Sources: github
+- Query slices: 2 slices, fetched 130 of 230 reported results
+
+Known gaps:
+- Overall completeness is Partial
+- API rate limit hit during ingestion
+- Some repositories may be missing
+- 1 query slice reported incomplete results
+- 1 query slice fetched fewer results than reported
+
+Details:
 - **Date window:** 2025-01-01 to 2025-04-01
 - **Mode:** merged
 - **Sources:** github

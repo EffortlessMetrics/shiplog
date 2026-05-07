@@ -1,6 +1,5 @@
 ---
 source: crates/shiplog-render-md/tests/snapshot.rs
-assertion_line: 300
 expression: result
 ---
 # Summary
@@ -38,8 +37,16 @@ _PRs: 1, Reviews: 1, Manual: 1_
 - [Review] approved (1970-01-01) — [owner/repo](https://github.com/owner/repo/pull/42)
 - [🚨] Production outage resolution (1970-01-01)
 
-## Coverage
+## Coverage and Limits
 
+Included:
+- Sources: github
+- Fetched events: not reported by query slices
+
+Known gaps:
+- None recorded
+
+Details:
 - **Date window:** 2025-01-01 to 2025-04-01
 - **Mode:** merged
 - **Sources:** github

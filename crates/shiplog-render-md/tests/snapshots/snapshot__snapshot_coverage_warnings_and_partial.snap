@@ -1,6 +1,5 @@
 ---
 source: crates/shiplog-render-md/tests/snapshot.rs
-assertion_line: 198
 expression: result
 ---
 # Summary
@@ -38,8 +37,20 @@ _PRs: 1, Reviews: 0, Manual: 0_
 
 - [PR] First PR (1970-01-01) — [owner/repo](https://github.com/owner/repo/pull/1)
 
-## Coverage
+## Coverage and Limits
 
+Included:
+- Sources: github
+- Query slices: 2 slices, fetched 130 of 230 reported results
+
+Known gaps:
+- Overall completeness is Partial
+- API rate limit hit during ingestion
+- Some repositories may be missing
+- 1 query slice reported incomplete results
+- 1 query slice fetched fewer results than reported
+
+Details:
 - **Date window:** 2025-01-01 to 2025-04-01
 - **Mode:** merged
 - **Sources:** github

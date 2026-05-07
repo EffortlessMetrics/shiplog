@@ -287,7 +287,90 @@ fn render_receipts(out: &mut String, events: &[EventEnvelope], workstreams: &Wor
 }
 
 fn render_coverage(out: &mut String, coverage: &CoverageManifest) {
-    out.push_str("## Coverage\n\n");
+    out.push_str("## Coverage and Limits\n\n");
+
+    out.push_str("Included:\n");
+    if coverage.sources.is_empty() {
+        out.push_str("- Sources: none recorded\n");
+    } else {
+        out.push_str(&format!("- Sources: {}\n", coverage.sources.join(", ")));
+    }
+
+    if coverage.slices.is_empty() {
+        out.push_str("- Fetched events: not reported by query slices\n");
+    } else {
+        let fetched: u64 = coverage.slices.iter().map(|slice| slice.fetched).sum();
+        let total: u64 = coverage.slices.iter().map(|slice| slice.total_count).sum();
+        let slice_label = if coverage.slices.len() == 1 {
+            "slice"
+        } else {
+            "slices"
+        };
+        out.push_str(&format!(
+            "- Query slices: {} {}, fetched {} of {} reported results\n",
+            coverage.slices.len(),
+            slice_label,
+            fetched,
+            total
+        ));
+    }
+    out.push('\n');
+
+    out.push_str("Known gaps:\n");
+    let mut has_gap = false;
+    if !matches!(
+        coverage.completeness,
+        shiplog_schema::coverage::Completeness::Complete
+    ) {
+        has_gap = true;
+        out.push_str(&format!(
+            "- Overall completeness is {}\n",
+            coverage.completeness
+        ));
+    }
+    for warning in &coverage.warnings {
+        has_gap = true;
+        out.push_str(&format!("- {}\n", warning));
+    }
+
+    let incomplete_count = coverage
+        .slices
+        .iter()
+        .filter(|slice| slice.incomplete_results.unwrap_or(false))
+        .count();
+    if incomplete_count > 0 {
+        has_gap = true;
+        let slice_label = if incomplete_count == 1 {
+            "slice"
+        } else {
+            "slices"
+        };
+        out.push_str(&format!(
+            "- {} query {} reported incomplete results\n",
+            incomplete_count, slice_label
+        ));
+    }
+
+    let capped_count = coverage
+        .slices
+        .iter()
+        .filter(|slice| slice.total_count > slice.fetched)
+        .count();
+    if capped_count > 0 {
+        has_gap = true;
+        let slice_label = if capped_count == 1 { "slice" } else { "slices" };
+        out.push_str(&format!(
+            "- {} query {} fetched fewer results than reported\n",
+            capped_count, slice_label
+        ));
+    }
+
+    if !has_gap {
+        out.push_str("- None recorded\n");
+    }
+    out.push('\n');
+
+    out.push_str("Details:\n");
 
     // Date window
     out.push_str(&format!(
@@ -895,6 +978,16 @@ mod tests {
     }
 
     #[test]
+    fn coverage_summary_complete_lists_no_known_gaps() {
+        let coverage = make_coverage(vec![], vec![]);
+        let mut out = String::new();
+        render_coverage(&mut out, &coverage);
+        assert!(out.contains("## Coverage and Limits"));
+        assert!(out.contains("Included:\n- Sources: github\n"));
+        assert!(out.contains("Known gaps:\n- None recorded\n"));
+    }
+
+    #[test]
     fn coverage_with_capped_slices_shows_slicing_applied() {
         // total_count > fetched → should show "Slicing applied"
         let coverage = make_coverage(
@@ -915,6 +1008,33 @@ mod tests {
         render_coverage(&mut out, &coverage);
         assert!(out.contains("Slicing applied"));
         assert!(out.contains("fetched 50/100"));
+    }
+
+    #[test]
+    fn coverage_summary_partial_lists_warnings_and_slice_limits() {
+        let mut coverage = make_coverage(
+            vec![CoverageSlice {
+                window: TimeWindow {
+                    since: NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
+                    until: NaiveDate::from_ymd_opt(2024, 12, 31).unwrap(),
+                },
+                query: "test".into(),
+                total_count: 100,
+                fetched: 50,
+                incomplete_results: Some(true),
+                notes: vec![],
+            }],
+            vec!["API returned partial results".into()],
+        );
+        coverage.completeness = Completeness::Partial;
+
+        let mut out = String::new();
+        render_coverage(&mut out, &coverage);
+        assert!(out.contains("- Query slices: 1 slice, fetched 50 of 100 reported results"));
+        assert!(out.contains("- Overall completeness is Partial"));
+        assert!(out.contains("- API returned partial results"));
+        assert!(out.contains("- 1 query slice reported incomplete results"));
+        assert!(out.contains("- 1 query slice fetched fewer results than reported"));
     }
 
     #[test]

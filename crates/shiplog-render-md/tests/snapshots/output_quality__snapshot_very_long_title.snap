@@ -1,6 +1,5 @@
 ---
 source: crates/shiplog-render-md/tests/output_quality.rs
-assertion_line: 328
 expression: md
 ---
 # Summary
@@ -34,8 +33,16 @@ _PRs: 1, Reviews: 0, Manual: 0_
 
 - [PR] AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA (1970-01-01) — [acme/repo](https://github.com/acme/repo/pull/1)
 
-## Coverage
+## Coverage and Limits
 
+Included:
+- Sources: github
+- Fetched events: not reported by query slices
+
+Known gaps:
+- None recorded
+
+Details:
 - **Date window:** 2025-01-01 to 2025-04-01
 - **Mode:** merged
 - **Sources:** github
