@@ -26,8 +26,7 @@ cargo install shiplog --features llm
 # 1. Collect events from GitHub
 shiplog collect github \
   --user your-username \
-  --since 2025-07-01 \
-  --until 2026-01-01 \
+  --last-6-months \
   --mode merged \
   --out ./out
 
@@ -37,7 +36,7 @@ shiplog collect github \
 cp out/<run_id>/workstreams.suggested.yaml out/<run_id>/workstreams.yaml
 
 # 3. Re-render the packet with your curated workstreams
-shiplog render --run <run_id>
+shiplog render --latest
 ```
 
 Output goes to `out/<run_id>/` containing `packet.md`, `ledger.events.jsonl`, `coverage.manifest.json`, and optional redacted profiles.
@@ -51,6 +50,10 @@ Output goes to `out/<run_id>/` containing `packet.md`, `ledger.events.jsonl`, `c
 | `refresh <source>` | Re-fetch events while preserving curated `workstreams.yaml` |
 | `import` | Import an existing run directory and re-render |
 | `run <source>` | Legacy: collect + render in one shot |
+
+Date-based sources accept `--since/--until`, `--last-6-months`, `--last-quarter`, or `--year <YYYY>`. If omitted, shiplog uses the last six months.
+
+Use `shiplog render --latest` or `--run latest` to re-render the most recent run. `shiplog refresh --run-dir latest` refreshes that run while preserving curation.
 
 ## Sources
 
@@ -78,7 +81,7 @@ Output goes to `out/<run_id>/` containing `packet.md`, `ledger.events.jsonl`, `c
 Provide a key to generate redacted packets:
 
 ```bash
-shiplog render --run <run_id> --redact-key my-stable-secret
+shiplog render --latest --redact-key my-stable-secret
 ```
 
 This produces `profiles/manager/packet.md` (context preserved, details stripped) and `profiles/public/packet.md` (repos and workstreams aliased, sensitive fields removed).
