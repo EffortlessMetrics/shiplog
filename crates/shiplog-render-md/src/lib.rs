@@ -7,13 +7,15 @@ use anyhow::Result;
 use shiplog_ports::Renderer;
 use shiplog_schema::coverage::CoverageManifest;
 use shiplog_schema::event::{EventEnvelope, EventKind};
-use shiplog_schema::workstream::WorkstreamsFile;
+use shiplog_schema::workstream::{Workstream, WorkstreamsFile};
 use shiplog_workstreams::WORKSTREAM_RECEIPT_RENDER_LIMIT;
 use std::collections::HashMap;
 
 pub mod receipt;
 
 pub use receipt::{format_receipt_markdown, manual_type_emoji};
+
+const WORKSTREAM_EVIDENCE_ANCHOR_LIMIT: usize = 3;
 
 /// Section ordering configuration
 ///
@@ -210,7 +212,7 @@ fn render_workstreams(out: &mut String, events: &[EventEnvelope], workstreams: &
         return;
     }
 
-    let _by_id: HashMap<String, &EventEnvelope> =
+    let by_id: HashMap<String, &EventEnvelope> =
         events.iter().map(|e| (e.id.0.clone(), e)).collect();
 
     for ws in &workstreams.workstreams {
@@ -221,11 +223,8 @@ fn render_workstreams(out: &mut String, events: &[EventEnvelope], workstreams: &
             out.push_str("\n\n");
         }
 
-        out.push_str("**Claim scaffolds**\n\n");
-        out.push_str("- Problem: _fill_\n");
-        out.push_str("- What I shipped: _fill_\n");
-        out.push_str("- Why it mattered: _fill_\n");
-        out.push_str("- Result: _fill_\n\n");
+        render_evidence_anchors(out, &by_id, ws);
+        render_claim_prompts(out);
 
         // Stats
         out.push_str(&format!(
@@ -233,6 +232,47 @@ fn render_workstreams(out: &mut String, events: &[EventEnvelope], workstreams: &
             ws.stats.pull_requests, ws.stats.reviews, ws.stats.manual_events
         ));
     }
+}
+
+fn render_evidence_anchors(
+    out: &mut String,
+    by_id: &HashMap<String, &EventEnvelope>,
+    workstream: &Workstream,
+) {
+    out.push_str("**Evidence anchors**\n\n");
+
+    let available: Vec<_> = workstream
+        .receipts
+        .iter()
+        .filter_map(|id| by_id.get(&id.0).copied())
+        .collect();
+
+    if available.is_empty() {
+        out.push_str("- (none)\n\n");
+        return;
+    }
+
+    for event in available.iter().take(WORKSTREAM_EVIDENCE_ANCHOR_LIMIT) {
+        out.push_str(&format!("{}\n", format_receipt_markdown(event)));
+    }
+
+    let remaining = available
+        .len()
+        .saturating_sub(WORKSTREAM_EVIDENCE_ANCHOR_LIMIT);
+    if remaining > 0 {
+        out.push_str(&format!(
+            "- ... and {remaining} more in [Receipts](#receipts)\n"
+        ));
+    }
+    out.push('\n');
+}
+
+fn render_claim_prompts(out: &mut String) {
+    out.push_str("**Suggested claim prompts**\n\n");
+    out.push_str("- What changed for users, operators, or maintainers?\n");
+    out.push_str("- Which risk, delay, or repeated work did this reduce?\n");
+    out.push_str("- Which evidence anchor best proves the change?\n");
+    out.push_str("- What follow-up or gap should a reviewer know about?\n\n");
 }
 
 fn render_receipts(out: &mut String, events: &[EventEnvelope], workstreams: &WorkstreamsFile) {

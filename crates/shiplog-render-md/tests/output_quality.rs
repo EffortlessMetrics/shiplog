@@ -480,10 +480,10 @@ fn snapshot_multiple_workstreams_with_mixed_stats() {
     insta::assert_snapshot!(md);
 }
 
-// ── Claim scaffold structure ────────────────────────────────────────────
+// ── Claim prompt structure ──────────────────────────────────────────────
 
 #[test]
-fn claim_scaffolds_present_for_each_workstream() {
+fn evidence_anchors_and_claim_prompts_present_for_each_workstream() {
     let events = vec![
         pr_event("acme/repo", 1, "PR A"),
         pr_event("acme/repo", 2, "PR B"),
@@ -503,20 +503,29 @@ fn claim_scaffolds_present_for_each_workstream() {
     };
     let md = render(&events, &workstreams, &deterministic_coverage());
 
-    let scaffolds: Vec<_> = md.matches("**Claim scaffolds**").collect();
+    let anchors: Vec<_> = md.matches("**Evidence anchors**").collect();
     assert_eq!(
-        scaffolds.len(),
+        anchors.len(),
         2,
-        "Each workstream should have a claim scaffold block"
+        "Each workstream should have an evidence anchor block"
+    );
+    assert!(md.contains("[PR] PR A"), "Missing first evidence anchor");
+    assert!(md.contains("[PR] PR B"), "Missing second evidence anchor");
+
+    let prompts: Vec<_> = md.matches("**Suggested claim prompts**").collect();
+    assert_eq!(
+        prompts.len(),
+        2,
+        "Each workstream should have claim prompts"
     );
 
-    for field in &[
-        "Problem: _fill_",
-        "What I shipped: _fill_",
-        "Why it mattered: _fill_",
-        "Result: _fill_",
+    for prompt in &[
+        "What changed for users, operators, or maintainers?",
+        "Which risk, delay, or repeated work did this reduce?",
+        "Which evidence anchor best proves the change?",
+        "What follow-up or gap should a reviewer know about?",
     ] {
-        assert!(md.contains(field), "Missing claim field: {field}");
+        assert!(md.contains(prompt), "Missing claim prompt: {prompt}");
     }
 }
 

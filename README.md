@@ -18,7 +18,7 @@ Performance reviews ask "what did you ship?" shiplog answers that question with 
 
 **Safe sharing.** Three deterministic redaction profiles (internal, manager, public) let you share packets at the right level of detail. Same key + same input = same aliases across runs, powered by HMAC-SHA256.
 
-shiplog is not an analytics dashboard. It is not AI-generated narrative. It produces evidence you curate and a packet you can defend.
+shiplog is not an analytics dashboard. It is not AI-generated narrative. It produces evidence you curate, evidence anchors you can cite, and claim prompts you answer in your own voice.
 
 ## Who is this for?
 
@@ -30,6 +30,7 @@ shiplog is not an analytics dashboard. It is not AI-generated narrative. It prod
 
 - 🔍 **Multi-source ingestion** — GitHub API, GitLab API, Jira API, Linear API, local git commits, canonical JSONL, and manual YAML events
 - 📊 **Automatic workstream clustering** — repo-based by default, optional LLM-assisted semantic grouping
+- ✍️ **Human-authored review scaffolds** — per-workstream evidence anchors and claim prompts without generated narrative
 - 🔒 **Deterministic HMAC-SHA256 redaction** — three profiles (internal / manager / public) with stable aliases
 - ✅ **Coverage-first design** — every claim backed by receipts; gaps explicitly flagged in the coverage manifest
 - 📦 **Zip bundling with checksums** — SHA256 manifest for integrity verification

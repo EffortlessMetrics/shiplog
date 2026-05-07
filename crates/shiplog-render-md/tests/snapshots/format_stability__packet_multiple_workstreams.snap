@@ -20,12 +20,17 @@ expression: result
 
 Widget improvements
 
-**Claim scaffolds**
+**Evidence anchors**
 
-- Problem: _fill_
-- What I shipped: _fill_
-- Why it mattered: _fill_
-- Result: _fill_
+- [PR] Add widget caching (2025-06-01) — [acme/widgets](https://github.com/acme/widgets/pull/10)
+- [PR] Fix widget rendering (2025-06-01) — [acme/widgets](https://github.com/acme/widgets/pull/11)
+
+**Suggested claim prompts**
+
+- What changed for users, operators, or maintainers?
+- Which risk, delay, or repeated work did this reduce?
+- Which evidence anchor best proves the change?
+- What follow-up or gap should a reviewer know about?
 
 _PRs: 2, Reviews: 0, Manual: 0_
 
@@ -33,12 +38,17 @@ _PRs: 2, Reviews: 0, Manual: 0_
 
 CI/CD and observability
 
-**Claim scaffolds**
+**Evidence anchors**
 
-- Problem: _fill_
-- What I shipped: _fill_
-- Why it mattered: _fill_
-- Result: _fill_
+- [PR] Setup CI pipeline (2025-06-01) — [acme/infra](https://github.com/acme/infra/pull/5)
+- [PR] Add monitoring dashboards (2025-06-01) — [acme/infra](https://github.com/acme/infra/pull/6)
+
+**Suggested claim prompts**
+
+- What changed for users, operators, or maintainers?
+- Which risk, delay, or repeated work did this reduce?
+- Which evidence anchor best proves the change?
+- What follow-up or gap should a reviewer know about?
 
 _PRs: 2, Reviews: 0, Manual: 0_
 

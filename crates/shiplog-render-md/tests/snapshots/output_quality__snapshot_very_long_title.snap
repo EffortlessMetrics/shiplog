@@ -18,12 +18,16 @@ expression: md
 
 ### Long Title Test
 
-**Claim scaffolds**
+**Evidence anchors**
 
-- Problem: _fill_
-- What I shipped: _fill_
-- Why it mattered: _fill_
-- Result: _fill_
+- [PR] AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA (1970-01-01) — [acme/repo](https://github.com/acme/repo/pull/1)
+
+**Suggested claim prompts**
+
+- What changed for users, operators, or maintainers?
+- Which risk, delay, or repeated work did this reduce?
+- Which evidence anchor best proves the change?
+- What follow-up or gap should a reviewer know about?
 
 _PRs: 1, Reviews: 0, Manual: 0_
 
