@@ -83,6 +83,7 @@ jobs:
 
           cargo llvm-cov nextest \
             --workspace \
+            --exclude shiplog-testkit \
             --locked \
             --all-features \
             --no-report
