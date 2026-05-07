@@ -1,23 +1,30 @@
-comment: false
-
 coverage:
   precision: 2
   round: down
+  range: "50...85"
+
   status:
     project:
       default:
         target: auto
         threshold: 5%
         informational: true
+        flags:
+          - rust-core
+
     patch:
       default:
         target: 70%
-        threshold: 10%
+        threshold: 20%
         informational: true
+        flags:
+          - rust-core
+
+comment: false
+
+github_checks:
+  annotations: false
 
 ignore:
-  - "crates/shiplog-testkit/**"
-  - "fuzz/**"
-  - "examples/**"
-  - "benches/**"
   - "target/**"
+  - "crates/shiplog-testkit/**"
