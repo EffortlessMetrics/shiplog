@@ -168,6 +168,7 @@ fn help_shows_all_subcommands() {
         .assert()
         .success()
         .stdout(predicate::str::contains("init"))
+        .stdout(predicate::str::contains("doctor"))
         .stdout(predicate::str::contains("collect"))
         .stdout(predicate::str::contains("render"))
         .stdout(predicate::str::contains("refresh"))
@@ -186,6 +187,16 @@ fn init_help_shows_options() {
         .stdout(predicate::str::contains("--source"))
         .stdout(predicate::str::contains("--dry-run"))
         .stdout(predicate::str::contains("--force"));
+}
+
+#[test]
+fn doctor_help_shows_options() {
+    shiplog_cmd()
+        .args(["doctor", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--config"))
+        .stdout(predicate::str::contains("--source"));
 }
 
 #[test]
@@ -300,6 +311,110 @@ fn init_force_overwrites_existing_files() {
     assert!(config.contains("[sources.linear]\nenabled = true"));
     assert!(config.contains("[sources.github]\nenabled = false"));
     assert!(config.contains("[sources.manual]\nenabled = false"));
+}
+
+#[test]
+fn doctor_reports_missing_config_actionably() {
+    let tmp = TempDir::new().unwrap();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["doctor"])
+        .assert()
+        .failure()
+        .stdout(predicate::str::contains("Config: error"))
+        .stdout(predicate::str::contains("run `shiplog init` first"));
+}
+
+#[test]
+fn doctor_checks_init_defaults_without_collecting() {
+    let tmp = TempDir::new().unwrap();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["init"])
+        .assert()
+        .success();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .args(["doctor"])
+        .assert()
+        .failure()
+        .stdout(predicate::str::contains("Config: ok"))
+        .stdout(predicate::str::contains("Window: ok"))
+        .stdout(predicate::str::contains("Redaction: ok"))
+        .stdout(predicate::str::contains(
+            "GitHub: error, missing GITHUB_TOKEN",
+        ))
+        .stdout(predicate::str::contains("Manual: ok"));
+}
+
+#[test]
+fn doctor_accepts_fixture_safe_sources() {
+    let tmp = TempDir::new().unwrap();
+    let fixtures = fixture_dir();
+    std::fs::copy(
+        fixtures.join("ledger.events.jsonl"),
+        tmp.path().join("ledger.events.jsonl"),
+    )
+    .unwrap();
+    std::fs::copy(
+        fixtures.join("coverage.manifest.json"),
+        tmp.path().join("coverage.manifest.json"),
+    )
+    .unwrap();
+    write_manual_events(&tmp.path().join("manual_events.yaml"));
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[defaults]
+out = "./out"
+window = "last-6-months"
+profile = "internal"
+
+[sources.json]
+enabled = true
+events = "./ledger.events.jsonl"
+coverage = "./coverage.manifest.json"
+
+[sources.manual]
+enabled = true
+events = "./manual_events.yaml"
+"#,
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["doctor"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Config: ok"))
+        .stdout(predicate::str::contains("JSON: ok"))
+        .stdout(predicate::str::contains("Manual: ok"))
+        .stdout(predicate::str::contains("Redaction: ok"));
+}
+
+#[test]
+fn doctor_requires_redaction_key_for_share_profile_defaults() {
+    let tmp = TempDir::new().unwrap();
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[defaults]
+profile = "manager"
+"#,
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args(["doctor"])
+        .assert()
+        .failure()
+        .stdout(predicate::str::contains("Redaction: error"))
+        .stdout(predicate::str::contains("SHIPLOG_REDACT_KEY"));
 }
 
 // ── 3. collect --help shows collect-specific options ───────────────────────
