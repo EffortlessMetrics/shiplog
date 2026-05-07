@@ -65,6 +65,7 @@ Output goes to `out/<run_id>/` containing `packet.md`, `ledger.events.jsonl`, `c
 | `init` | Create `shiplog.toml` and `manual_events.yaml` scaffold files |
 | `doctor` | Check local config, enabled sources, token env vars, and output safety |
 | `config validate/explain/migrate` | Validate `shiplog.toml`, print resolved settings, or add version metadata |
+| `cache stats/inspect/clean` | Inspect and safely clean source API cache databases |
 | `collect <source>` | Fetch events from a source and generate packet artifacts |
 | `collect multi` | Collect enabled sources from `shiplog.toml` into one merged packet |
 | `render` | Re-render packet from existing ledger and workstreams |
@@ -96,6 +97,19 @@ shiplog config explain --config examples/configs/local-git-json-manual.toml
 
 Use `shiplog doctor` before collection to check tokens, output safety,
 identity, and source setup.
+
+Use cache commands to inspect or clean source API cache databases without
+touching packet outputs:
+
+```bash
+shiplog cache stats --out ./out
+shiplog cache inspect --out ./out --source github
+shiplog cache clean --out ./out --source github
+shiplog cache clean --out ./out --source jira --older-than 30d --dry-run
+```
+
+`cache clean` removes expired entries by default. `--all` requires `--yes` and
+only clears known source cache databases, not packets, ledgers, or workstreams.
 
 GitHub and GitLab accept `--me` to infer the source user from `--token`,
 `GITHUB_TOKEN`, or `GITLAB_TOKEN`; use `--user <login>` to pin the identity

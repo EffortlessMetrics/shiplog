@@ -1,8 +1,8 @@
 //! SQLite-backed implementation of `ApiCache` for shiplog API responses.
 
 use anyhow::{Context, Result};
-use chrono::Duration;
-use rusqlite::{Connection, OptionalExtension, params};
+use chrono::{DateTime, Duration, Utc};
+use rusqlite::{Connection, OpenFlags, OptionalExtension, params};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use std::path::Path;
@@ -17,6 +17,14 @@ pub struct ApiCache {
     default_ttl: Duration,
     #[allow(dead_code)]
     max_size_bytes: Option<u64>,
+}
+
+/// Detailed cache inspection data for CLI and diagnostics.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CacheInspection {
+    pub stats: CacheStats,
+    pub oldest_cached_at: Option<String>,
+    pub newest_cached_at: Option<String>,
 }
 
 impl ApiCache {
@@ -38,6 +46,18 @@ impl ApiCache {
             "CREATE INDEX IF NOT EXISTS idx_expires ON cache_entries(expires_at)",
             [],
         )?;
+
+        Ok(Self {
+            conn,
+            default_ttl: Duration::hours(24),
+            max_size_bytes: None,
+        })
+    }
+
+    /// Open an existing cache in read-only mode without initializing schema.
+    pub fn open_read_only(path: impl AsRef<Path>) -> Result<Self> {
+        let conn = Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_ONLY)
+            .context("open cache database read-only")?;
 
         Ok(Self {
             conn,
@@ -151,6 +171,27 @@ impl ApiCache {
         Ok(deleted)
     }
 
+    /// Count entries cached before the given cutoff.
+    pub fn count_older_than(&self, cutoff: DateTime<Utc>) -> Result<usize> {
+        let cutoff = cutoff.to_rfc3339();
+        let count: i64 = self.conn.query_row(
+            "SELECT COUNT(*) FROM cache_entries WHERE cached_at < ?1",
+            params![cutoff],
+            |row| row.get(0),
+        )?;
+        Ok(count.max(0) as usize)
+    }
+
+    /// Remove entries cached before the given cutoff.
+    pub fn cleanup_older_than(&self, cutoff: DateTime<Utc>) -> Result<usize> {
+        let cutoff = cutoff.to_rfc3339();
+        let deleted = self.conn.execute(
+            "DELETE FROM cache_entries WHERE cached_at < ?1",
+            params![cutoff],
+        )?;
+        Ok(deleted)
+    }
+
     /// Clear all entries from the cache.
     pub fn clear(&self) -> Result<()> {
         self.conn.execute("DELETE FROM cache_entries", [])?;
@@ -178,6 +219,26 @@ impl ApiCache {
                 })?;
 
         Ok(CacheStats::from_raw_counts(total, expired, size_bytes))
+    }
+
+    /// Inspect cache statistics and entry timestamp bounds.
+    pub fn inspect(&self) -> Result<CacheInspection> {
+        let stats = self.stats()?;
+        let oldest_cached_at =
+            self.conn
+                .query_row("SELECT MIN(cached_at) FROM cache_entries", [], |row| {
+                    row.get::<_, Option<String>>(0)
+                })?;
+        let newest_cached_at =
+            self.conn
+                .query_row("SELECT MAX(cached_at) FROM cache_entries", [], |row| {
+                    row.get::<_, Option<String>>(0)
+                })?;
+        Ok(CacheInspection {
+            stats,
+            oldest_cached_at,
+            newest_cached_at,
+        })
     }
 }
 
@@ -251,6 +312,19 @@ mod tests {
     }
 
     #[test]
+    fn cache_inspect_reports_timestamp_bounds() {
+        let cache = ApiCache::open_in_memory().unwrap();
+
+        cache.set("key1", &"one").unwrap();
+        cache.set("key2", &"two").unwrap();
+
+        let inspection = cache.inspect().unwrap();
+        assert_eq!(inspection.stats.total_entries, 2);
+        assert!(inspection.oldest_cached_at.is_some());
+        assert!(inspection.newest_cached_at.is_some());
+    }
+
+    #[test]
     fn cache_cleanup() {
         let cache = ApiCache::open_in_memory().unwrap();
 
@@ -286,6 +360,19 @@ mod tests {
 
         let stats = cache.stats().unwrap();
         assert_eq!(stats.total_entries, 0);
+    }
+
+    #[test]
+    fn cache_cleanup_older_than_removes_matching_entries() {
+        let cache = ApiCache::open_in_memory().unwrap();
+
+        cache.set("old1", &"one").unwrap();
+        cache.set("old2", &"two").unwrap();
+
+        let cutoff = Utc::now() + Duration::seconds(1);
+        assert_eq!(cache.count_older_than(cutoff).unwrap(), 2);
+        assert_eq!(cache.cleanup_older_than(cutoff).unwrap(), 2);
+        assert!(cache.stats().unwrap().is_empty());
     }
 
     #[test]

@@ -2239,6 +2239,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml_ng",
+ "shiplog-cache",
  "shiplog-cluster-llm",
  "shiplog-engine",
  "shiplog-ids",

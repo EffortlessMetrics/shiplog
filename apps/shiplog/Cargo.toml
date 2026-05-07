@@ -33,6 +33,7 @@ shiplog-ingest-jira = { path = "../../crates/shiplog-ingest-jira", version = "0.
 shiplog-ingest-linear = { path = "../../crates/shiplog-ingest-linear", version = "0.3.0" }
 shiplog-ingest-json = { path = "../../crates/shiplog-ingest-json", version = "0.2.1" }
 shiplog-ingest-manual = { path = "../../crates/shiplog-ingest-manual", version = "0.2.1" }
+shiplog-cache = { path = "../../crates/shiplog-cache", version = "0.2.1" }
 shiplog-render-md = { path = "../../crates/shiplog-render-md", version = "0.2.1" }
 shiplog-workstreams = { path = "../../crates/shiplog-workstreams", version = "0.2.1" }
 shiplog-redact = { path = "../../crates/shiplog-redact", version = "0.2.1" }
