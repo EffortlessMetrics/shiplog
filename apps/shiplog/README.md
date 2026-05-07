@@ -48,11 +48,12 @@ shiplog workstreams validate --run latest
 
 # 3. Re-render the packet with your curated workstreams
 shiplog render --latest
+shiplog render --latest --receipt-limit 3 --appendix summary
 shiplog render --latest --mode scaffold
 shiplog render --latest --mode receipts
 ```
 
-Output goes to `out/<run_id>/` containing `packet.md`, `ledger.events.jsonl`, `coverage.manifest.json`, and optional redacted profiles. Use `--mode packet` for the default packet, `--mode scaffold` for prompts and evidence anchors, or `--mode receipts` for a dense audit view.
+Output goes to `out/<run_id>/` containing `packet.md`, `ledger.events.jsonl`, `coverage.manifest.json`, and optional redacted profiles. Use `--mode packet` for the default packet, `--mode scaffold` for prompts and evidence anchors, or `--mode receipts` for a dense audit view. Use `--receipt-limit <N>` to cap main-section receipts and `--appendix full|summary|none` to control appendix density; `--receipt-limit 0` shows no main-section receipts.
 
 ## Commands
 

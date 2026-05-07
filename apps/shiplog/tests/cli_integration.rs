@@ -581,6 +581,8 @@ fn render_help_shows_render_options() {
         .stdout(predicate::str::contains("--latest"))
         .stdout(predicate::str::contains("--user"))
         .stdout(predicate::str::contains("--mode"))
+        .stdout(predicate::str::contains("--receipt-limit"))
+        .stdout(predicate::str::contains("--appendix"))
         .stdout(predicate::str::contains("--redact-key"));
 }
 
@@ -2130,6 +2132,118 @@ fn render_receipts_mode_writes_audit_focused_packet() {
         !packet.contains("**Suggested claim prompts**"),
         "receipts mode should omit writing prompts"
     );
+}
+
+#[test]
+fn render_receipt_limit_summary_appendix_preserves_canonical_files() {
+    let tmp = TempDir::new().unwrap();
+    let run_dir = collect_json_into(tmp.path());
+    let ledger_before = std::fs::read_to_string(run_dir.join("ledger.events.jsonl")).unwrap();
+    let coverage_before = std::fs::read_to_string(run_dir.join("coverage.manifest.json")).unwrap();
+
+    shiplog_cmd()
+        .args([
+            "render",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+            "--mode",
+            "packet",
+            "--receipt-limit",
+            "1",
+            "--appendix",
+            "summary",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Rendered"));
+
+    let packet = std::fs::read_to_string(run_dir.join("packet.md")).unwrap();
+    assert!(packet.contains("\n## Receipts\n"));
+    assert!(packet.contains("... and"));
+    assert!(packet.contains("## Appendix: Receipt Summary"));
+    assert!(!packet.contains("## Appendix: All Receipts"));
+    assert!(packet.contains("- Assigned events:"));
+    assert!(packet.contains("- Curated receipt anchors:"));
+    assert_eq!(
+        ledger_before,
+        std::fs::read_to_string(run_dir.join("ledger.events.jsonl")).unwrap()
+    );
+    assert_eq!(
+        coverage_before,
+        std::fs::read_to_string(run_dir.join("coverage.manifest.json")).unwrap()
+    );
+}
+
+#[test]
+fn render_receipt_limit_zero_appendix_none_keeps_omission_notice() {
+    let tmp = TempDir::new().unwrap();
+    let run_dir = collect_json_into(tmp.path());
+    let ledger_before = std::fs::read_to_string(run_dir.join("ledger.events.jsonl")).unwrap();
+    let coverage_before = std::fs::read_to_string(run_dir.join("coverage.manifest.json")).unwrap();
+
+    shiplog_cmd()
+        .args([
+            "render",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+            "--mode",
+            "packet",
+            "--receipt-limit",
+            "0",
+            "--appendix",
+            "none",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Rendered"));
+
+    let packet = std::fs::read_to_string(run_dir.join("packet.md")).unwrap();
+    assert!(packet.contains("\n## Receipts\n"));
+    assert!(packet.contains("- (none)"));
+    assert!(packet.contains("omitted by appendix settings"));
+    assert!(!packet.contains("## Appendix:"));
+    assert_eq!(
+        ledger_before,
+        std::fs::read_to_string(run_dir.join("ledger.events.jsonl")).unwrap()
+    );
+    assert_eq!(
+        coverage_before,
+        std::fs::read_to_string(run_dir.join("coverage.manifest.json")).unwrap()
+    );
+}
+
+#[test]
+fn render_receipts_mode_honors_receipt_controls() {
+    let tmp = TempDir::new().unwrap();
+    let run_dir = collect_json_into(tmp.path());
+
+    shiplog_cmd()
+        .args([
+            "render",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+            "--mode",
+            "receipts",
+            "--receipt-limit",
+            "1",
+            "--appendix",
+            "full",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Rendered"));
+
+    let packet = std::fs::read_to_string(run_dir.join("packet.md")).unwrap();
+    assert!(packet.contains("\n## Receipts\n"));
+    assert!(packet.contains("... and"));
+    assert!(packet.contains("## Appendix: All Receipts"));
+    assert!(!packet.contains("**Suggested claim prompts**"));
 }
 
 #[test]

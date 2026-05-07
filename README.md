@@ -144,6 +144,7 @@ If you prefer direct YAML editing, copy `workstreams.suggested.yaml` to
 
 ```bash
 shiplog render --latest
+shiplog render --latest --receipt-limit 3 --appendix summary
 shiplog render --latest --mode scaffold
 shiplog render --latest --mode receipts
 shiplog open packet --latest
@@ -155,6 +156,9 @@ generate manager and public profile packets. On remote shells, add
 `--print-path` to print the artifact path without launching an editor. Use
 `--mode packet` for the default review packet, `--mode scaffold` for prompts
 and evidence anchors, or `--mode receipts` for a dense audit view.
+`--receipt-limit <N>` caps curated receipts shown in the main receipts section;
+`--receipt-limit 0` shows none there and leaves the detail to the appendix
+setting. `--appendix full|summary|none` controls appendix density.
 
 ## Output layout
 

@@ -21,14 +21,16 @@ use shiplog_ingest_linear::{IssueStatus as LinearIssueStatus, LinearIngestor};
 use shiplog_ingest_manual::ManualIngestor;
 use shiplog_ports::{IngestOutput, Ingestor, Renderer};
 use shiplog_redact::DeterministicRedactor;
-use shiplog_render_md::{MarkdownRenderer, format_receipt_markdown};
+use shiplog_render_md::{
+    AppendixMode, MarkdownRenderOptions, MarkdownRenderer, format_receipt_markdown,
+};
 use shiplog_schema::{
     bundle::BundleProfile,
     coverage::TimeWindow,
     event::{EventEnvelope, EventPayload},
     workstream::{Workstream, WorkstreamStats, WorkstreamsFile},
 };
-use shiplog_workstreams::RepoClusterer;
+use shiplog_workstreams::{RepoClusterer, WORKSTREAM_RECEIPT_RENDER_LIMIT};
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
@@ -134,6 +136,12 @@ enum Command {
         /// Packet output mode.
         #[arg(long, value_enum, default_value = "packet")]
         mode: RenderPacketMode,
+        /// Maximum curated receipts to show per workstream in the main receipts section.
+        #[arg(long, default_value_t = WORKSTREAM_RECEIPT_RENDER_LIMIT)]
+        receipt_limit: usize,
+        /// Appendix density for receipt detail.
+        #[arg(long, value_enum, default_value = "full")]
+        appendix: RenderAppendixMode,
         /// Also write a zip next to the run folder.
         #[arg(long)]
         zip: bool,
@@ -611,6 +619,26 @@ enum RenderPacketMode {
     Scaffold,
     /// Dense receipts and appendix view.
     Receipts,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
+enum RenderAppendixMode {
+    /// Render every assigned event in the appendix.
+    Full,
+    /// Render per-workstream receipt counts instead of every event.
+    Summary,
+    /// Omit the appendix.
+    None,
+}
+
+impl From<RenderAppendixMode> for AppendixMode {
+    fn from(value: RenderAppendixMode) -> Self {
+        match value {
+            RenderAppendixMode::Full => Self::Full,
+            RenderAppendixMode::Summary => Self::Summary,
+            RenderAppendixMode::None => Self::None,
+        }
+    }
 }
 
 #[derive(Subcommand, Debug, Clone)]
@@ -2235,13 +2263,15 @@ fn create_engine_with_renderer(
 
 struct ModeMarkdownRenderer {
     mode: RenderPacketMode,
+    options: MarkdownRenderOptions,
     inner: MarkdownRenderer,
 }
 
 impl ModeMarkdownRenderer {
-    fn new(mode: RenderPacketMode) -> Self {
+    fn new(mode: RenderPacketMode, options: MarkdownRenderOptions) -> Self {
         Self {
             mode,
+            options,
             inner: MarkdownRenderer::default(),
         }
     }
@@ -2257,23 +2287,29 @@ impl Renderer for ModeMarkdownRenderer {
         coverage: &shiplog_schema::coverage::CoverageManifest,
     ) -> Result<String> {
         match self.mode {
-            RenderPacketMode::Packet => {
-                self.inner
-                    .render_packet_markdown(user, window_label, events, workstreams, coverage)
-            }
-            RenderPacketMode::Scaffold => self.inner.render_scaffold_markdown(
+            RenderPacketMode::Packet => self.inner.render_packet_markdown_with_options(
                 user,
                 window_label,
                 events,
                 workstreams,
                 coverage,
+                self.options,
             ),
-            RenderPacketMode::Receipts => self.inner.render_receipts_markdown(
+            RenderPacketMode::Scaffold => self.inner.render_scaffold_markdown_with_options(
                 user,
                 window_label,
                 events,
                 workstreams,
                 coverage,
+                self.options,
+            ),
+            RenderPacketMode::Receipts => self.inner.render_receipts_markdown_with_options(
+                user,
+                window_label,
+                events,
+                workstreams,
+                coverage,
+                self.options,
             ),
         }
     }
@@ -3051,11 +3087,19 @@ fn main() -> Result<()> {
             redact_key,
             bundle_profile,
             mode,
+            receipt_limit,
+            appendix,
             zip,
         } => {
             let redaction_key = RedactionKey::resolve(redact_key, &bundle_profile)?;
             let clusterer: Box<dyn shiplog_ports::WorkstreamClusterer> = Box::new(RepoClusterer);
-            let renderer = Box::new(ModeMarkdownRenderer::new(mode));
+            let renderer = Box::new(ModeMarkdownRenderer::new(
+                mode,
+                MarkdownRenderOptions {
+                    receipt_limit,
+                    appendix_mode: appendix.into(),
+                },
+            ));
             let (engine, redactor) =
                 create_engine_with_renderer(redaction_key.engine_key(), clusterer, renderer);
             let engine = engine.with_profile_rendering(redaction_key.render_profiles());

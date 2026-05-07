@@ -1,7 +1,7 @@
 use chrono::{NaiveDate, TimeZone, Utc};
 use shiplog_ids::{EventId, RunId, WorkstreamId};
 use shiplog_ports::Renderer;
-use shiplog_render_md::MarkdownRenderer;
+use shiplog_render_md::{AppendixMode, MarkdownRenderOptions, MarkdownRenderer};
 use shiplog_schema::{
     coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow},
     event::*,
@@ -177,6 +177,223 @@ fn curated_receipts_control_main_sections_but_appendix_keeps_all_events() {
         .expect("packet should include appendix");
     assert!(appendix_section.contains("Primary proof"));
     assert!(appendix_section.contains("Supporting context"));
+}
+
+#[test]
+fn receipt_limit_controls_main_receipts() {
+    let events: Vec<_> = (0..4)
+        .map(|i| pr_event("owner/repo", i + 1, &format!("PR #{}", i + 1)))
+        .collect();
+
+    let mut ws_builder = WorkstreamFixture::new("Dense Workstream");
+    for ev in &events {
+        ws_builder = ws_builder.with_event(ev).with_receipt(ev);
+    }
+    let ws = ws_builder.build();
+    let workstreams = WorkstreamsFile {
+        version: 1,
+        generated_at: Utc.timestamp_opt(0, 0).unwrap(),
+        workstreams: vec![ws],
+    };
+    let coverage = test_coverage("testuser", Completeness::Complete);
+
+    let result = MarkdownRenderer::new()
+        .render_packet_markdown_with_options(
+            "testuser",
+            "2025-Q1",
+            &events,
+            &workstreams,
+            &coverage,
+            MarkdownRenderOptions {
+                receipt_limit: 1,
+                appendix_mode: AppendixMode::Full,
+            },
+        )
+        .unwrap();
+
+    let receipts_section = result
+        .split("## Receipts")
+        .nth(1)
+        .expect("packet should include receipts section")
+        .split("## Coverage and Limits")
+        .next()
+        .expect("packet should include coverage after receipts");
+    assert!(receipts_section.contains("PR #1"));
+    assert!(!receipts_section.contains("PR #2"));
+    assert!(receipts_section.contains("... and 3 more in [Appendix]"));
+
+    let appendix_section = result
+        .split("## Appendix: All Receipts")
+        .nth(1)
+        .expect("packet should include full appendix");
+    assert!(appendix_section.contains("PR #2"));
+    assert!(appendix_section.contains("PR #4"));
+}
+
+#[test]
+fn appendix_summary_lists_counts() {
+    let events: Vec<_> = (0..3)
+        .map(|i| pr_event("owner/repo", i + 1, &format!("PR #{}", i + 1)))
+        .collect();
+
+    let mut ws_builder = WorkstreamFixture::new("Dense Workstream");
+    for ev in &events {
+        ws_builder = ws_builder.with_event(ev).with_receipt(ev);
+    }
+    let ws = ws_builder.build();
+    let workstreams = WorkstreamsFile {
+        version: 1,
+        generated_at: Utc.timestamp_opt(0, 0).unwrap(),
+        workstreams: vec![ws],
+    };
+    let coverage = test_coverage("testuser", Completeness::Complete);
+
+    let result = MarkdownRenderer::new()
+        .render_packet_markdown_with_options(
+            "testuser",
+            "2025-Q1",
+            &events,
+            &workstreams,
+            &coverage,
+            MarkdownRenderOptions {
+                receipt_limit: 1,
+                appendix_mode: AppendixMode::Summary,
+            },
+        )
+        .unwrap();
+
+    assert!(!result.contains("## Appendix: All Receipts"));
+    let appendix_section = result
+        .split("## Appendix: Receipt Summary")
+        .nth(1)
+        .expect("packet should include receipt summary appendix");
+    assert!(appendix_section.contains("- Assigned events: 3"));
+    assert!(appendix_section.contains("- Curated receipt anchors: 3"));
+    assert!(!appendix_section.contains("PR #2"));
+}
+
+#[test]
+fn appendix_none_omits_appendix() {
+    let events: Vec<_> = (0..3)
+        .map(|i| pr_event("owner/repo", i + 1, &format!("PR #{}", i + 1)))
+        .collect();
+
+    let mut ws_builder = WorkstreamFixture::new("Dense Workstream");
+    for ev in &events {
+        ws_builder = ws_builder.with_event(ev).with_receipt(ev);
+    }
+    let ws = ws_builder.build();
+    let workstreams = WorkstreamsFile {
+        version: 1,
+        generated_at: Utc.timestamp_opt(0, 0).unwrap(),
+        workstreams: vec![ws],
+    };
+    let coverage = test_coverage("testuser", Completeness::Complete);
+
+    let result = MarkdownRenderer::new()
+        .render_packet_markdown_with_options(
+            "testuser",
+            "2025-Q1",
+            &events,
+            &workstreams,
+            &coverage,
+            MarkdownRenderOptions {
+                receipt_limit: 1,
+                appendix_mode: AppendixMode::None,
+            },
+        )
+        .unwrap();
+
+    assert!(!result.contains("## Appendix:"));
+    assert!(result.contains("... and 2 more omitted by appendix settings"));
+}
+
+#[test]
+fn receipt_limit_zero_moves_all_receipts_to_full_appendix() {
+    let events: Vec<_> = (0..3)
+        .map(|i| pr_event("owner/repo", i + 1, &format!("PR #{}", i + 1)))
+        .collect();
+
+    let mut ws_builder = WorkstreamFixture::new("Dense Workstream");
+    for ev in &events {
+        ws_builder = ws_builder.with_event(ev).with_receipt(ev);
+    }
+    let ws = ws_builder.build();
+    let workstreams = WorkstreamsFile {
+        version: 1,
+        generated_at: Utc.timestamp_opt(0, 0).unwrap(),
+        workstreams: vec![ws],
+    };
+    let coverage = test_coverage("testuser", Completeness::Complete);
+
+    let result = MarkdownRenderer::new()
+        .render_packet_markdown_with_options(
+            "testuser",
+            "2025-Q1",
+            &events,
+            &workstreams,
+            &coverage,
+            MarkdownRenderOptions {
+                receipt_limit: 0,
+                appendix_mode: AppendixMode::Full,
+            },
+        )
+        .unwrap();
+
+    let receipts_section = result
+        .split("## Receipts")
+        .nth(1)
+        .expect("packet should include receipts section")
+        .split("## Coverage and Limits")
+        .next()
+        .expect("packet should include coverage after receipts");
+    assert!(receipts_section.contains("- (none)"));
+    assert!(!receipts_section.contains("PR #1"));
+    assert!(receipts_section.contains("... and 3 more in [Appendix]"));
+
+    let appendix_section = result
+        .split("## Appendix: All Receipts")
+        .nth(1)
+        .expect("packet should include full appendix");
+    assert!(appendix_section.contains("PR #1"));
+    assert!(appendix_section.contains("PR #3"));
+}
+
+#[test]
+fn receipts_mode_honors_appendix_options() {
+    let events: Vec<_> = (0..3)
+        .map(|i| pr_event("owner/repo", i + 1, &format!("PR #{}", i + 1)))
+        .collect();
+
+    let mut ws_builder = WorkstreamFixture::new("Dense Workstream");
+    for ev in &events {
+        ws_builder = ws_builder.with_event(ev).with_receipt(ev);
+    }
+    let ws = ws_builder.build();
+    let workstreams = WorkstreamsFile {
+        version: 1,
+        generated_at: Utc.timestamp_opt(0, 0).unwrap(),
+        workstreams: vec![ws],
+    };
+    let coverage = test_coverage("testuser", Completeness::Complete);
+
+    let result = MarkdownRenderer::new()
+        .render_receipts_markdown_with_options(
+            "testuser",
+            "2025-Q1",
+            &events,
+            &workstreams,
+            &coverage,
+            MarkdownRenderOptions {
+                receipt_limit: 1,
+                appendix_mode: AppendixMode::None,
+            },
+        )
+        .unwrap();
+
+    assert!(result.contains("\n## Receipts\n"));
+    assert!(!result.contains("## Appendix:"));
+    assert!(result.contains("... and 2 more omitted by appendix settings"));
 }
 
 #[test]
