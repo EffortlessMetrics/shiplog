@@ -200,6 +200,7 @@ out/<run_id>/
 | `init` | Create `shiplog.toml` and `manual_events.yaml` scaffold files |
 | `doctor` | Check local config, enabled sources, token env vars, and output safety |
 | `config validate/explain/migrate` | Validate `shiplog.toml`, print resolved settings, or add version metadata |
+| `cache stats/inspect/clean` | Inspect and safely clean source API cache databases |
 | `collect <source>` | Fetch events from a source and generate packet artifacts |
 | `collect multi` | Collect enabled sources from `shiplog.toml` into one merged packet |
 | `render` | Re-render packet from existing ledger and workstreams |
@@ -254,6 +255,12 @@ shiplog collect multi \
 # Check a fixture-safe example config without source tokens
 shiplog config validate --config examples/configs/local-git-json-manual.toml
 shiplog config explain --config examples/configs/local-git-json-manual.toml
+
+# Inspect source API caches without touching packet outputs
+shiplog cache stats --out ./out
+shiplog cache inspect --out ./out --source github
+shiplog cache clean --out ./out --source github
+shiplog cache clean --out ./out --source jira --older-than 30d --dry-run
 
 # Refresh receipts while keeping curated workstreams
 shiplog refresh github \
@@ -323,6 +330,13 @@ shiplog merge \
   --out ./out \
   --conflict prefer-most-recent
 ```
+
+`shiplog cache` commands operate only on known source API databases under
+`<out>/.cache` or `--cache-dir`: `github-api-cache.db`, `gitlab-api-cache.db`,
+`jira-api-cache.db`, and `linear-api-cache.db`. `cache clean` removes expired
+entries by default, `--older-than 30d` removes older entries, and `--all`
+requires `--yes`. It does not delete packet artifacts, ledgers, coverage
+manifests, bundles, or workstream files.
 
 ## Redaction and profiles
 

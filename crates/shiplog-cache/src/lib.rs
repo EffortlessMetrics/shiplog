@@ -10,5 +10,5 @@ mod sqlite;
 mod stats;
 
 pub use key::CacheKey;
-pub use sqlite::ApiCache;
+pub use sqlite::{ApiCache, CacheInspection};
 pub use stats::{BYTES_PER_MEGABYTE, CacheStats};

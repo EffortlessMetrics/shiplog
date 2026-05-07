@@ -1,7 +1,9 @@
 //! Comprehensive CLI integration tests using `assert_cmd` and `predicates`.
 
 use assert_cmd::Command;
+use chrono::Duration;
 use predicates::prelude::*;
+use shiplog_cache::ApiCache;
 use shiplog_schema::workstream::WorkstreamsFile;
 use std::path::{Path, PathBuf};
 use std::process::Command as StdCommand;
@@ -21,6 +23,23 @@ fn repo_root() -> PathBuf {
 
 fn example_config(name: &str) -> PathBuf {
     repo_root().join("examples/configs").join(name)
+}
+
+fn seed_github_cache(cache_dir: &Path) -> PathBuf {
+    std::fs::create_dir_all(cache_dir).unwrap();
+    let path = cache_dir.join("github-api-cache.db");
+    let cache = ApiCache::open(&path).unwrap();
+    cache
+        .set("fresh", &serde_json::json!({ "ok": true }))
+        .unwrap();
+    cache
+        .set_with_ttl(
+            "expired",
+            &serde_json::json!({ "expired": true }),
+            Duration::seconds(-1),
+        )
+        .unwrap();
+    path
 }
 
 /// Run `collect json` into `tmp` and return the run directory path.
@@ -176,6 +195,7 @@ fn help_shows_all_subcommands() {
         .stdout(predicate::str::contains("init"))
         .stdout(predicate::str::contains("doctor"))
         .stdout(predicate::str::contains("config"))
+        .stdout(predicate::str::contains("cache"))
         .stdout(predicate::str::contains("collect"))
         .stdout(predicate::str::contains("render"))
         .stdout(predicate::str::contains("refresh"))
@@ -236,6 +256,34 @@ fn config_help_shows_validate_explain_and_migrate() {
         .success()
         .stdout(predicate::str::contains("--config"))
         .stdout(predicate::str::contains("--dry-run"));
+}
+
+#[test]
+fn cache_help_shows_stats_inspect_and_clean() {
+    shiplog_cmd()
+        .args(["cache", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("stats"))
+        .stdout(predicate::str::contains("inspect"))
+        .stdout(predicate::str::contains("clean"));
+
+    shiplog_cmd()
+        .args(["cache", "stats", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--out"))
+        .stdout(predicate::str::contains("--cache-dir"))
+        .stdout(predicate::str::contains("--source"));
+
+    shiplog_cmd()
+        .args(["cache", "clean", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--older-than"))
+        .stdout(predicate::str::contains("--all"))
+        .stdout(predicate::str::contains("--dry-run"))
+        .stdout(predicate::str::contains("--yes"));
 }
 
 #[test]
@@ -1115,6 +1163,234 @@ fn render_help_shows_render_options() {
         .stdout(predicate::str::contains("--receipt-limit"))
         .stdout(predicate::str::contains("--appendix"))
         .stdout(predicate::str::contains("--redact-key"));
+}
+
+#[test]
+fn cache_stats_and_inspect_report_existing_cache_without_tokens() {
+    let tmp = TempDir::new().unwrap();
+    let cache_dir = tmp.path().join(".cache");
+    let cache_path = seed_github_cache(&cache_dir);
+
+    shiplog_cmd()
+        .args([
+            "cache",
+            "stats",
+            "--cache-dir",
+            cache_dir.to_str().unwrap(),
+            "--source",
+            "github",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Cache root:"))
+        .stdout(predicate::str::contains("github:"))
+        .stdout(predicate::str::contains(cache_path.display().to_string()))
+        .stdout(predicate::str::contains(
+            "entries: total 2, valid 1, expired 1",
+        ));
+
+    shiplog_cmd()
+        .args([
+            "cache",
+            "inspect",
+            "--cache-dir",
+            cache_dir.to_str().unwrap(),
+            "--source",
+            "github",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("oldest:"))
+        .stdout(predicate::str::contains("newest:"));
+}
+
+#[test]
+fn cache_stats_does_not_create_missing_databases() {
+    let tmp = TempDir::new().unwrap();
+    let cache_dir = tmp.path().join(".cache");
+    std::fs::create_dir_all(&cache_dir).unwrap();
+    let missing = cache_dir.join("gitlab-api-cache.db");
+
+    shiplog_cmd()
+        .args([
+            "cache",
+            "stats",
+            "--cache-dir",
+            cache_dir.to_str().unwrap(),
+            "--source",
+            "gitlab",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("gitlab: missing"))
+        .stdout(predicate::str::contains("No cache databases found"));
+
+    assert!(
+        !missing.exists(),
+        "stats should not create a missing cache database"
+    );
+}
+
+#[test]
+fn cache_stats_and_inspect_do_not_initialize_existing_empty_file() {
+    let tmp = TempDir::new().unwrap();
+    let cache_dir = tmp.path().join(".cache");
+    std::fs::create_dir_all(&cache_dir).unwrap();
+    let empty_cache = cache_dir.join("github-api-cache.db");
+    std::fs::File::create(&empty_cache).unwrap();
+    assert_eq!(std::fs::metadata(&empty_cache).unwrap().len(), 0);
+
+    shiplog_cmd()
+        .args([
+            "cache",
+            "stats",
+            "--cache-dir",
+            cache_dir.to_str().unwrap(),
+            "--source",
+            "github",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("cache_entries"));
+    assert_eq!(
+        std::fs::metadata(&empty_cache).unwrap().len(),
+        0,
+        "stats should not initialize an existing empty cache file"
+    );
+
+    shiplog_cmd()
+        .args([
+            "cache",
+            "inspect",
+            "--cache-dir",
+            cache_dir.to_str().unwrap(),
+            "--source",
+            "github",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("cache_entries"));
+    assert_eq!(
+        std::fs::metadata(&empty_cache).unwrap().len(),
+        0,
+        "inspect should not initialize an existing empty cache file"
+    );
+}
+
+#[test]
+fn cache_clean_expired_removes_only_expired_entries() {
+    let tmp = TempDir::new().unwrap();
+    let cache_dir = tmp.path().join(".cache");
+    let cache_path = seed_github_cache(&cache_dir);
+
+    shiplog_cmd()
+        .args([
+            "cache",
+            "clean",
+            "--cache-dir",
+            cache_dir.to_str().unwrap(),
+            "--source",
+            "github",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("github: removed 1 entries"));
+
+    let cache = ApiCache::open(cache_path).unwrap();
+    let stats = cache.stats().unwrap();
+    assert_eq!(stats.total_entries, 1);
+    assert_eq!(stats.valid_entries, 1);
+    assert_eq!(stats.expired_entries, 0);
+}
+
+#[test]
+fn cache_clean_older_than_dry_run_reports_without_mutating() {
+    let tmp = TempDir::new().unwrap();
+    let cache_dir = tmp.path().join(".cache");
+    let cache_path = seed_github_cache(&cache_dir);
+
+    shiplog_cmd()
+        .args([
+            "cache",
+            "clean",
+            "--cache-dir",
+            cache_dir.to_str().unwrap(),
+            "--source",
+            "github",
+            "--older-than",
+            "0m",
+            "--dry-run",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("github: would remove 2 entries"));
+
+    let cache = ApiCache::open(cache_path).unwrap();
+    assert_eq!(cache.stats().unwrap().total_entries, 2);
+}
+
+#[test]
+fn cache_clean_all_requires_yes_and_preserves_unrelated_files() {
+    let tmp = TempDir::new().unwrap();
+    let cache_dir = tmp.path().join(".cache");
+    let cache_path = seed_github_cache(&cache_dir);
+    let unrelated = cache_dir.join("notes.txt");
+    std::fs::write(&unrelated, "not a cache database").unwrap();
+
+    shiplog_cmd()
+        .args([
+            "cache",
+            "clean",
+            "--cache-dir",
+            cache_dir.to_str().unwrap(),
+            "--source",
+            "github",
+            "--all",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("cache clean --all requires --yes"));
+
+    assert_eq!(
+        ApiCache::open(&cache_path)
+            .unwrap()
+            .stats()
+            .unwrap()
+            .total_entries,
+        2
+    );
+
+    shiplog_cmd()
+        .args([
+            "cache",
+            "clean",
+            "--cache-dir",
+            cache_dir.to_str().unwrap(),
+            "--source",
+            "github",
+            "--all",
+            "--yes",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("github: removed 2 entries"));
+
+    assert!(
+        cache_path.exists(),
+        "clean should not delete cache database files"
+    );
+    assert!(
+        unrelated.exists(),
+        "clean should not delete unrelated files"
+    );
+    assert_eq!(
+        ApiCache::open(cache_path)
+            .unwrap()
+            .stats()
+            .unwrap()
+            .total_entries,
+        0
+    );
 }
 
 // ── 5. collect json with sample fixture data ───────────────────────────────
