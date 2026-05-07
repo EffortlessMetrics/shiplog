@@ -23,7 +23,7 @@ Rules governing Droid code review automation for shiplog.
 
 - Source: `FACTORY_API_KEY` GitHub secret
 - Required for all Droid runs
-- Must be present; runs skip if unavailable
+- Must be present with `MINIMAX_API_KEY`; runs skip if either secret is unavailable
 
 ## Workflow Guards
 

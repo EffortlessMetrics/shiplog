@@ -56,6 +56,7 @@ Droid auto-reviews all non-draft PRs from the same repository.
 - Permissions: `contents: write` (for review publication)
 - Model: `custom:MiniMax-M2.7-0`
 - Depth: `shallow`
+- Secrets: `FACTORY_API_KEY` and `MINIMAX_API_KEY`; runs skip if either is unavailable
 - No raw debug artifacts uploaded
 
 ### Manual @droid Commands
@@ -71,6 +72,7 @@ Trusted actors (OWNER, MEMBER, COLLABORATOR) can invoke Droid manually:
 - Permissions: `contents: read` (manual requests are read-only)
 - Model: `custom:MiniMax-M2.7-0`
 - Depth: `shallow`
+- Secrets: `FACTORY_API_KEY` and `MINIMAX_API_KEY`; runs skip if either is unavailable
 
 ### Scheduled Security Scan
 
@@ -80,6 +82,7 @@ Weekly Monday 08:00 UTC full repository security scan.
 - Permissions: `contents: write` (for scan report publication)
 - Model: `custom:MiniMax-M2.7-0`
 - Threshold: Medium
+- Secrets: `FACTORY_API_KEY` and `MINIMAX_API_KEY`; runs skip if either is unavailable
 - Critical issues block; High issues reported only
 
 ## References

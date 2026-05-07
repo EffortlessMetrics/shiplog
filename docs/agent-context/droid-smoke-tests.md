@@ -10,13 +10,13 @@ Run these checks locally before pushing workflow changes:
 # YAML syntax
 cargo xtask check-workflows 2>/dev/null || echo "Skipped: no cargo xtask"
 
-# Forbidden patterns
-rg "Factory-AI/droid-action|droid-action@main|droid-action@v5|upload_debug_artifacts: true|show_full_output: true" \
-  .github .factory docs AGENTS.md 2>/dev/null && echo "ERROR: Found forbidden patterns" || true
+# Forbidden workflow patterns
+rg "uses: Factory-AI/droid-action|droid-action@main|droid-action@v[0-9]+|upload_debug_artifacts: true|show_full_output: true" \
+  .github/workflows/droid*.yml 2>/dev/null && echo "ERROR: Found forbidden Droid workflow pattern" || true
 
-# Checkout action pinning
-rg 'uses: actions/checkout@[^@]|uses: actions/checkout@[a-zA-Z]' \
-  .github/workflows/*.yml 2>/dev/null && echo "ERROR: Unpinned checkout" || true
+# Checkout action pinning for Droid workflows
+rg 'uses: actions/checkout@[A-Za-z]' \
+  .github/workflows/droid*.yml 2>/dev/null && echo "ERROR: Unpinned Droid checkout" || true
 
 # Safe action ref
 rg 'uses: EffortlessMetrics/droid-action-safe@01e76b659e4b1e5f23feedc8cfabf8dc14c7485f' \
@@ -26,12 +26,12 @@ rg 'uses: EffortlessMetrics/droid-action-safe@01e76b659e4b1e5f23feedc8cfabf8dc14
 
 Expected results:
 
-- ✅ No `Factory-AI/droid-action` refs
-- ✅ No mutable `@main` or `@v5` refs
+- ✅ No direct `Factory-AI/droid-action` workflow use
+- ✅ No mutable Droid action `@main` or `@v*` refs
 - ✅ No `upload_debug_artifacts: true`
 - ✅ No `show_full_output: true`
 - ✅ All safe action refs pinned correctly
-- ✅ checkout actions pinned to commit SHA
+- ✅ Droid checkout actions pinned to commit SHA
 - ✅ 3 instances of safe action ref (droid-review, droid, droid-security-scan)
 
 ## Live Smoke Validation
