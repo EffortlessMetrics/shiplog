@@ -18,11 +18,12 @@ use shiplog_ingest_jira::JiraIngestor;
 use chrono::NaiveDate;
 
 let ingestor = JiraIngestor::new(
-    "alice".to_string(),
+    "712020:account-id".to_string(),
     NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
     NaiveDate::from_ymd_opt(2025, 1, 31).unwrap(),
 )
 .with_token("your-jira-token".to_string())?
+.with_auth_user("alice@example.com".to_string())?
 .with_instance("your-company.atlassian.net".to_string())?;
 
 let output = ingestor.ingest()?;
@@ -30,7 +31,8 @@ let output = ingestor.ingest()?;
 
 ## Configuration
 
-- `user`: Jira username or email to collect issues for
+- `user`: Jira assignee JQL value to collect issues for; on Jira Cloud this is often an account ID
+- `auth_user`: Optional Jira Basic Auth username/email when it differs from `user`
 - `since`: Start date for collection
 - `until`: End date for collection
 - `token`: Jira API token (required)

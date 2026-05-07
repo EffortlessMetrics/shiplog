@@ -25,6 +25,7 @@ fn new_ingestor_has_correct_defaults() {
     assert_eq!(ing.status, IssueStatus::Done);
     assert_eq!(ing.throttle_ms, 0);
     assert!(ing.token.is_none());
+    assert!(ing.auth_user.is_none());
     assert_eq!(ing.instance, "jira.atlassian.com");
     assert!(ing.cache.is_none());
 }
@@ -48,6 +49,22 @@ fn with_token_whitespace_only_is_accepted() {
     // The API only checks for empty, not whitespace-only
     let ing = make_ingestor().with_token("  ".into()).unwrap();
     assert_eq!(ing.token.as_deref(), Some("  "));
+}
+
+// ── with_auth_user ──────────────────────────────────────────────────────────
+
+#[test]
+fn with_auth_user_valid() {
+    let ing = make_ingestor()
+        .with_auth_user("alice@example.com".into())
+        .unwrap();
+    assert_eq!(ing.auth_user.as_deref(), Some("alice@example.com"));
+}
+
+#[test]
+fn with_auth_user_empty_fails() {
+    let err = make_ingestor().with_auth_user("".into()).unwrap_err();
+    assert!(err.to_string().contains("cannot be empty"));
 }
 
 // ── with_instance ───────────────────────────────────────────────────────────
@@ -184,7 +201,10 @@ fn issue_status_from_str_aliases() {
         IssueStatus::from_str("resolved").unwrap(),
         IssueStatus::Done
     );
-    assert_eq!(IssueStatus::from_str("closed").unwrap(), IssueStatus::Done);
+    assert_eq!(
+        IssueStatus::from_str("closed").unwrap(),
+        IssueStatus::Closed
+    );
 }
 
 #[test]
@@ -246,6 +266,8 @@ fn builder_chain_full() {
     )
     .with_token("tok123".into())
     .unwrap()
+    .with_auth_user("bob@example.com".into())
+    .unwrap()
     .with_instance("https://bob.atlassian.net".into())
     .unwrap()
     .with_status(IssueStatus::Open)
@@ -255,6 +277,7 @@ fn builder_chain_full() {
 
     assert_eq!(ing.user, "bob");
     assert_eq!(ing.token.as_deref(), Some("tok123"));
+    assert_eq!(ing.auth_user.as_deref(), Some("bob@example.com"));
     assert_eq!(ing.instance, "bob.atlassian.net");
     assert_eq!(ing.status, IssueStatus::Open);
     assert_eq!(ing.throttle_ms, 100);
