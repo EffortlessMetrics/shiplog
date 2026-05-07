@@ -43,8 +43,11 @@ _PRs: 1, Reviews: 0, Manual: 0_
 ## Coverage and Limits
 
 Included:
-- Sources: github
+- GitHub: 1 event
 - Query slices: 1 slice, fetched 50 of 100 reported results
+
+Skipped:
+- None recorded
 
 Known gaps:
 - Overall completeness is Partial

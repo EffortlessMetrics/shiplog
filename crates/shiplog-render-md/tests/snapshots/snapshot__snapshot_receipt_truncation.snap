@@ -50,8 +50,11 @@ _PRs: 8, Reviews: 0, Manual: 0_
 ## Coverage and Limits
 
 Included:
-- Sources: github
+- GitHub: 8 events
 - Fetched events: not reported by query slices
+
+Skipped:
+- None recorded
 
 Known gaps:
 - None recorded

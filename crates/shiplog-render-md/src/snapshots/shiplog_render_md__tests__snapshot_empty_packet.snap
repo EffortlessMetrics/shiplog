@@ -25,8 +25,11 @@ _No workstreams, no receipts_
 ## Coverage and Limits
 
 Included:
-- Sources: none recorded
+- No completed sources recorded
 - Fetched events: not reported by query slices
+
+Skipped:
+- None recorded
 
 Known gaps:
 - None recorded
@@ -34,7 +37,7 @@ Known gaps:
 Details:
 - **Date window:** 2024-01-01 to 2024-12-31
 - **Mode:** test
-- **Sources:** 
+- **Sources:** none recorded
 - **Completeness:** Complete
 
 ## Appendix: All Receipts

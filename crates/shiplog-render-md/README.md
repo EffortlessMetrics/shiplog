@@ -9,6 +9,8 @@ Markdown packet renderer for canonical shiplog data.
 ## Output behavior
 
 - Includes coverage summary, completeness, sources, and warnings.
+- Separates completed sources, skipped configured sources, and known gaps in the
+  packet coverage block.
 - Renders workstream sections with claim scaffolds and receipt lists.
 - Truncates long receipt lists in the main section and emits a configurable appendix.
 - Includes artifact references (`ledger.events.jsonl`, `coverage.manifest.json`, etc.).

@@ -826,6 +826,21 @@ user = "octo"
         packet.contains("Manual incident follow-up"),
         "configured multi packet should include successful source evidence"
     );
+    assert!(
+        packet.contains("Skipped:\n- JSON:"),
+        "configured multi packet should list skipped sources in the packet coverage summary"
+    );
+    assert!(
+        !packet
+            .split("Included:")
+            .nth(1)
+            .unwrap()
+            .split("Skipped:")
+            .next()
+            .unwrap()
+            .contains("JSON"),
+        "configured multi packet should not list skipped sources as included"
+    );
 
     let coverage = std::fs::read_to_string(run_dir.join("coverage.manifest.json")).unwrap();
     assert!(
