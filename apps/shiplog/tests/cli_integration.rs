@@ -174,6 +174,7 @@ fn help_shows_all_subcommands() {
         .stdout(predicate::str::contains("refresh"))
         .stdout(predicate::str::contains("workstreams"))
         .stdout(predicate::str::contains("runs"))
+        .stdout(predicate::str::contains("open"))
         .stdout(predicate::str::contains("merge"))
         .stdout(predicate::str::contains("import"))
         .stdout(predicate::str::contains("run"));
@@ -220,6 +221,28 @@ fn runs_help_shows_list_and_show() {
         .success()
         .stdout(predicate::str::contains("list"))
         .stdout(predicate::str::contains("show"));
+}
+
+#[test]
+fn open_help_shows_artifact_targets() {
+    shiplog_cmd()
+        .args(["open", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("packet"))
+        .stdout(predicate::str::contains("workstreams"))
+        .stdout(predicate::str::contains("out"));
+}
+
+#[test]
+fn open_packet_help_shows_run_and_print_options() {
+    shiplog_cmd()
+        .args(["open", "packet", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--latest"))
+        .stdout(predicate::str::contains("--run"))
+        .stdout(predicate::str::contains("--print-path"));
 }
 
 #[test]
@@ -959,6 +982,65 @@ fn runs_show_latest_shows_run_details() {
         .stdout(predicate::str::contains("Events: 3"))
         .stdout(predicate::str::contains("Gaps: 0"))
         .stdout(predicate::str::contains("Warnings: none"));
+}
+
+#[test]
+fn open_packet_latest_prints_packet_path_when_forced() {
+    let tmp = TempDir::new().unwrap();
+    collect_json_into(tmp.path());
+
+    shiplog_cmd()
+        .args([
+            "open",
+            "packet",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--latest",
+            "--print-path",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("run_fixture"))
+        .stdout(predicate::str::contains("packet.md"));
+}
+
+#[test]
+fn open_workstreams_latest_prints_effective_workstreams_path_when_forced() {
+    let tmp = TempDir::new().unwrap();
+    collect_json_into(tmp.path());
+
+    shiplog_cmd()
+        .args([
+            "open",
+            "workstreams",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--latest",
+            "--print-path",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("run_fixture"))
+        .stdout(predicate::str::contains("workstreams.suggested.yaml"));
+}
+
+#[test]
+fn open_out_latest_prints_run_directory_when_forced() {
+    let tmp = TempDir::new().unwrap();
+    collect_json_into(tmp.path());
+
+    shiplog_cmd()
+        .args([
+            "open",
+            "out",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--latest",
+            "--print-path",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("run_fixture"));
 }
 
 #[test]
