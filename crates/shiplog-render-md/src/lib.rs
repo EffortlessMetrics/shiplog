@@ -181,7 +181,7 @@ impl MarkdownRenderer {
         _options: MarkdownRenderOptions,
     ) -> Result<String> {
         let mut out = String::new();
-        render_coverage(&mut out, coverage);
+        render_coverage(&mut out, coverage, events);
         render_summary(&mut out, user, window_label, events, workstreams, coverage);
         render_workstreams(&mut out, events, workstreams);
         render_file_artifacts(&mut out);
@@ -219,7 +219,7 @@ impl MarkdownRenderer {
     ) -> Result<String> {
         let mut out = String::new();
         render_summary(&mut out, user, window_label, events, workstreams, coverage);
-        render_coverage(&mut out, coverage);
+        render_coverage(&mut out, coverage, events);
         render_receipts(&mut out, events, workstreams, options);
         render_appendix(&mut out, events, workstreams, options.appendix_mode);
         render_file_artifacts(&mut out);
@@ -244,10 +244,10 @@ impl MarkdownRenderer {
                 render_summary(&mut out, user, window_label, events, workstreams, coverage);
                 render_workstreams(&mut out, events, workstreams);
                 render_receipts(&mut out, events, workstreams, options);
-                render_coverage(&mut out, coverage);
+                render_coverage(&mut out, coverage, events);
             }
             SectionOrder::CoverageFirst => {
-                render_coverage(&mut out, coverage);
+                render_coverage(&mut out, coverage, events);
                 render_summary(&mut out, user, window_label, events, workstreams, coverage);
                 render_workstreams(&mut out, events, workstreams);
                 render_receipts(&mut out, events, workstreams, options);
@@ -470,14 +470,25 @@ fn appendix_receipt_note(count: usize, mode: AppendixMode) -> String {
     }
 }
 
-fn render_coverage(out: &mut String, coverage: &CoverageManifest) {
+fn render_coverage(out: &mut String, coverage: &CoverageManifest, events: &[EventEnvelope]) {
     out.push_str("## Coverage and Limits\n\n");
 
     out.push_str("Included:\n");
-    if coverage.sources.is_empty() {
-        out.push_str("- Sources: none recorded\n");
+    let skipped_sources = skipped_source_warnings(&coverage.warnings);
+    let included_sources = included_source_summary(coverage, events, &skipped_sources);
+    if included_sources.is_empty() {
+        out.push_str("- No completed sources recorded\n");
     } else {
-        out.push_str(&format!("- Sources: {}\n", coverage.sources.join(", ")));
+        for source in &included_sources {
+            let count = source_event_count(events, source);
+            let noun = if count == 1 { "event" } else { "events" };
+            out.push_str(&format!(
+                "- {}: {} {}\n",
+                display_source_label(source),
+                count,
+                noun
+            ));
+        }
     }
 
     if coverage.slices.is_empty() {
@@ -500,6 +511,20 @@ fn render_coverage(out: &mut String, coverage: &CoverageManifest) {
     }
     out.push('\n');
 
+    out.push_str("Skipped:\n");
+    if skipped_sources.is_empty() {
+        out.push_str("- None recorded\n");
+    } else {
+        for skipped in &skipped_sources {
+            out.push_str(&format!(
+                "- {}: {}\n",
+                display_source_label(skipped.source),
+                skipped.reason
+            ));
+        }
+    }
+    out.push('\n');
+
     out.push_str("Known gaps:\n");
     let mut has_gap = false;
     if !matches!(
@@ -513,8 +538,19 @@ fn render_coverage(out: &mut String, coverage: &CoverageManifest) {
         ));
     }
     for warning in &coverage.warnings {
+        if skipped_source_warning(warning).is_none() {
+            has_gap = true;
+            out.push_str(&format!("- {}\n", warning));
+        }
+    }
+
+    if source_present(&coverage.sources, "manual")
+        || events
+            .iter()
+            .any(|event| source_matches(event.source.system.as_str(), "manual"))
+    {
         has_gap = true;
-        out.push_str(&format!("- {}\n", warning));
+        out.push_str("- Manual events are user-provided\n");
     }
 
     let incomplete_count = coverage
@@ -566,7 +602,12 @@ fn render_coverage(out: &mut String, coverage: &CoverageManifest) {
     out.push_str(&format!("- **Mode:** {}\n", coverage.mode));
 
     // Sources
-    out.push_str(&format!("- **Sources:** {}\n", coverage.sources.join(", ")));
+    let source_details = if coverage.sources.is_empty() {
+        "none recorded".to_string()
+    } else {
+        coverage.sources.join(", ")
+    };
+    out.push_str(&format!("- **Sources:** {}\n", source_details));
 
     // Completeness
     out.push_str(&format!(
@@ -616,6 +657,112 @@ fn render_coverage(out: &mut String, coverage: &CoverageManifest) {
         }
     }
     out.push('\n');
+}
+
+#[derive(Clone, Copy, Debug)]
+struct SkippedSource<'a> {
+    source: &'a str,
+    reason: &'a str,
+}
+
+fn skipped_source_warnings(warnings: &[String]) -> Vec<SkippedSource<'_>> {
+    warnings
+        .iter()
+        .filter_map(|warning| skipped_source_warning(warning))
+        .collect()
+}
+
+fn skipped_source_warning(warning: &str) -> Option<SkippedSource<'_>> {
+    const PREFIX: &str = "Configured source ";
+    const INFIX: &str = " was skipped: ";
+
+    let rest = warning.strip_prefix(PREFIX)?;
+    let (source, reason) = rest.split_once(INFIX)?;
+    Some(SkippedSource { source, reason })
+}
+
+fn included_source_summary(
+    coverage: &CoverageManifest,
+    events: &[EventEnvelope],
+    skipped_sources: &[SkippedSource<'_>],
+) -> Vec<String> {
+    let mut sources = Vec::new();
+    for source in &coverage.sources {
+        push_manifest_source(&mut sources, source, skipped_sources);
+    }
+    for event in events {
+        push_source(&mut sources, event.source.system.as_str());
+    }
+    sources
+}
+
+fn push_manifest_source(
+    sources: &mut Vec<String>,
+    candidate: &str,
+    skipped_sources: &[SkippedSource<'_>],
+) {
+    if skipped_sources
+        .iter()
+        .any(|skipped| source_matches(skipped.source, candidate))
+    {
+        return;
+    }
+
+    push_source(sources, candidate);
+}
+
+fn push_source(sources: &mut Vec<String>, candidate: &str) {
+    if sources
+        .iter()
+        .any(|source| source_matches(source, candidate))
+    {
+        return;
+    }
+
+    sources.push(candidate.to_string());
+}
+
+fn source_event_count(events: &[EventEnvelope], source: &str) -> usize {
+    events
+        .iter()
+        .filter(|event| source_matches(event.source.system.as_str(), source))
+        .count()
+}
+
+fn source_present(sources: &[String], needle: &str) -> bool {
+    sources.iter().any(|source| source_matches(source, needle))
+}
+
+fn source_matches(left: &str, right: &str) -> bool {
+    canonical_source_key(left) == canonical_source_key(right)
+}
+
+fn canonical_source_key(source: &str) -> String {
+    let key = source.trim().to_lowercase();
+
+    match key.as_str() {
+        "json" | "json_import" | "json import" | "json-import" => "json_import".to_string(),
+        "git" | "local_git" | "local git" | "local-git" => "local_git".to_string(),
+        _ => key,
+    }
+}
+
+fn display_source_label(source: &str) -> String {
+    if source.eq_ignore_ascii_case("json") {
+        return "JSON".to_string();
+    }
+
+    match canonical_source_key(source).as_str() {
+        "github" => "GitHub".to_string(),
+        "gitlab" => "GitLab".to_string(),
+        "jira" => "Jira".to_string(),
+        "linear" => "Linear".to_string(),
+        "json_import" => "JSON import".to_string(),
+        "local_git" => "Local git".to_string(),
+        "manual" => "Manual".to_string(),
+        "unknown" => "Unknown".to_string(),
+        _ => source.to_string(),
+    }
 }
 
 fn render_appendix(
@@ -1166,7 +1313,7 @@ mod tests {
             vec![],
         );
         let mut out = String::new();
-        render_coverage(&mut out, &coverage);
+        render_coverage(&mut out, &coverage, &[]);
         assert!(!out.contains("incomplete results"));
     }
 
@@ -1189,7 +1336,7 @@ mod tests {
             vec![],
         );
         let mut out = String::new();
-        render_coverage(&mut out, &coverage);
+        render_coverage(&mut out, &coverage, &[]);
         assert!(!out.contains("Slicing applied"));
     }
 
@@ -1197,10 +1344,130 @@ mod tests {
     fn coverage_summary_complete_lists_no_known_gaps() {
         let coverage = make_coverage(vec![], vec![]);
         let mut out = String::new();
-        render_coverage(&mut out, &coverage);
+        render_coverage(&mut out, &coverage, &[]);
         assert!(out.contains("## Coverage and Limits"));
-        assert!(out.contains("Included:\n- Sources: github\n"));
+        assert!(out.contains("Included:\n- GitHub: 0 events\n"));
+        assert!(out.contains("Skipped:\n- None recorded\n"));
         assert!(out.contains("Known gaps:\n- None recorded\n"));
+    }
+
+    #[test]
+    fn coverage_summary_lists_source_event_counts_and_manual_gap() {
+        let events = vec![
+            create_test_pr("1", 1, "Ship API"),
+            create_test_manual("2", ManualEventType::Incident, "Incident follow-up"),
+        ];
+        let mut coverage = make_coverage(vec![], vec![]);
+        coverage.sources = vec!["github".into(), "manual".into()];
+
+        let mut out = String::new();
+        render_coverage(&mut out, &coverage, &events);
+
+        assert!(out.contains("Included:\n- GitHub: 1 event\n- Manual: 1 event\n"));
+        assert!(out.contains("Skipped:\n- None recorded\n"));
+        assert!(out.contains("Known gaps:\n- Manual events are user-provided\n"));
+    }
+
+    #[test]
+    fn coverage_summary_includes_event_provenance_not_only_manifest_sources() {
+        let events = vec![
+            create_test_pr("1", 1, "Ship API"),
+            create_test_manual("2", ManualEventType::Incident, "Incident follow-up"),
+        ];
+        let mut coverage = make_coverage(vec![], vec![]);
+        coverage.sources = vec!["github".into()];
+
+        let mut out = String::new();
+        render_coverage(&mut out, &coverage, &events);
+
+        assert!(out.contains("Included:\n- GitHub: 1 event\n- Manual: 1 event\n"));
+        assert!(out.contains("Known gaps:\n- Manual events are user-provided\n"));
+    }
+
+    #[test]
+    fn coverage_summary_lists_skipped_configured_sources() {
+        let events = vec![create_test_manual(
+            "manual-1",
+            ManualEventType::Note,
+            "Manual note",
+        )];
+        let mut coverage = make_coverage(
+            vec![],
+            vec!["Configured source json was skipped: missing coverage".into()],
+        );
+        coverage.sources = vec!["json".into(), "manual".into()];
+        coverage.completeness = Completeness::Partial;
+
+        let mut out = String::new();
+        render_coverage(&mut out, &coverage, &events);
+
+        assert!(out.contains("Included:\n- Manual: 1 event\n"));
+        let included = out
+            .split("Included:")
+            .nth(1)
+            .expect("coverage should include Included block")
+            .split("Skipped:")
+            .next()
+            .expect("coverage should include Skipped after Included");
+        assert!(!included.contains("JSON"));
+        assert!(out.contains("Skipped:\n- JSON: missing coverage\n"));
+        let known_gaps = out
+            .split("Known gaps:")
+            .nth(1)
+            .expect("coverage should include Known gaps block")
+            .split("Details:")
+            .next()
+            .expect("coverage should include Details after Known gaps");
+        assert!(known_gaps.contains("- Overall completeness is Partial"));
+        assert!(!known_gaps.contains("Configured source json was skipped"));
+    }
+
+    #[test]
+    fn coverage_summary_keeps_event_provenance_when_configured_source_skipped() {
+        let events = vec![create_test_pr("1", 1, "Imported GitHub evidence")];
+        let mut coverage = make_coverage(
+            vec![],
+            vec!["Configured source github was skipped: token missing".into()],
+        );
+        coverage.sources = vec!["github".into(), "json".into()];
+        coverage.completeness = Completeness::Partial;
+
+        let mut out = String::new();
+        render_coverage(&mut out, &coverage, &events);
+
+        let included = out
+            .split("Included:")
+            .nth(1)
+            .expect("coverage should include Included block")
+            .split("Skipped:")
+            .next()
+            .expect("coverage should include Skipped after Included");
+        assert!(included.contains("- GitHub: 1 event\n"));
+        assert!(out.contains("Skipped:\n- GitHub: token missing\n"));
+    }
+
+    #[test]
+    fn coverage_summary_does_not_collapse_distinct_custom_sources() {
+        let mut custom_slash = create_test_manual("1", ManualEventType::Note, "Slash source");
+        custom_slash.source.system = SourceSystem::Other("custom/system".into());
+        let mut custom_dash = create_test_manual("2", ManualEventType::Note, "Dash source");
+        custom_dash.source.system = SourceSystem::Other("custom-system".into());
+        let mut custom_unicode = create_test_manual("3", ManualEventType::Note, "Unicode source");
+        custom_unicode.source.system = SourceSystem::Other("日本語ソース".into());
+        let events = vec![custom_slash, custom_dash, custom_unicode];
+        let mut coverage = make_coverage(vec![], vec![]);
+        coverage.sources = vec![
+            "custom/system".into(),
+            "custom-system".into(),
+            "日本語ソース".into(),
+        ];
+
+        let mut out = String::new();
+        render_coverage(&mut out, &coverage, &events);
+
+        assert!(out.contains("- custom/system: 1 event\n"));
+        assert!(out.contains("- custom-system: 1 event\n"));
+        assert!(out.contains("- 日本語ソース: 1 event\n"));
     }
 
     #[test]
@@ -1221,7 +1488,7 @@ mod tests {
             vec![],
         );
         let mut out = String::new();
-        render_coverage(&mut out, &coverage);
+        render_coverage(&mut out, &coverage, &[]);
         assert!(out.contains("Slicing applied"));
         assert!(out.contains("fetched 50/100"));
     }
@@ -1245,7 +1512,7 @@ mod tests {
         coverage.completeness = Completeness::Partial;
 
         let mut out = String::new();
-        render_coverage(&mut out, &coverage);
+        render_coverage(&mut out, &coverage, &[]);
         assert!(out.contains("- Query slices: 1 slice, fetched 50 of 100 reported results"));
         assert!(out.contains("- Overall completeness is Partial"));
         assert!(out.contains("- API returned partial results"));
@@ -1272,7 +1539,7 @@ mod tests {
             .collect();
         let coverage = make_coverage(slices, vec![]);
         let mut out = String::new();
-        render_coverage(&mut out, &coverage);
+        render_coverage(&mut out, &coverage, &[]);
         assert!(out.contains("... and 2 more"));
     }
 
@@ -1295,7 +1562,7 @@ mod tests {
             .collect();
         let coverage = make_coverage(slices, vec![]);
         let mut out = String::new();
-        render_coverage(&mut out, &coverage);
+        render_coverage(&mut out, &coverage, &[]);
         assert!(out.contains("Slicing applied"));
         assert!(!out.contains("... and"));
     }
@@ -1306,7 +1573,7 @@ mod tests {
         // Strengthens > → >= mutation coverage on partial_count and capped checks.
         let coverage = make_coverage(vec![], vec![]);
         let mut out = String::new();
-        render_coverage(&mut out, &coverage);
+        render_coverage(&mut out, &coverage, &[]);
         assert!(!out.contains("incomplete results"));
         assert!(!out.contains("Slicing applied"));
         assert!(!out.contains("Query slices"));
@@ -1331,7 +1598,7 @@ mod tests {
             vec![],
         );
         let mut out = String::new();
-        render_coverage(&mut out, &coverage);
+        render_coverage(&mut out, &coverage, &[]);
         assert!(!out.contains("incomplete results"));
     }
 

@@ -46,11 +46,15 @@ _PRs: 1, Reviews: 1, Manual: 1_
 ## Coverage and Limits
 
 Included:
-- Sources: github
+- GitHub: 2 events
+- Manual: 1 event
 - Fetched events: not reported by query slices
 
-Known gaps:
+Skipped:
 - None recorded
+
+Known gaps:
+- Manual events are user-provided
 
 Details:
 - **Date window:** 2025-01-01 to 2025-04-01

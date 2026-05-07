@@ -5,8 +5,11 @@ expression: result
 ## Coverage and Limits
 
 Included:
-- Sources: github
+- GitHub: 1 event
 - Fetched events: not reported by query slices
+
+Skipped:
+- None recorded
 
 Known gaps:
 - None recorded
