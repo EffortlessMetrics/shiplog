@@ -23,6 +23,9 @@ cargo install shiplog --features llm
 ## Quick start
 
 ```bash
+# 0. Initialize local files
+shiplog init
+
 # 1. Collect events from GitHub
 shiplog collect github \
   --user your-username \
@@ -45,6 +48,7 @@ Output goes to `out/<run_id>/` containing `packet.md`, `ledger.events.jsonl`, `c
 
 | Command | Description |
 |---------|-------------|
+| `init` | Create `shiplog.toml` and `manual_events.yaml` scaffold files |
 | `collect <source>` | Fetch events from a source and generate packet artifacts |
 | `render` | Re-render packet from existing ledger and workstreams |
 | `refresh <source>` | Re-fetch events while preserving curated `workstreams.yaml` |
@@ -54,6 +58,9 @@ Output goes to `out/<run_id>/` containing `packet.md`, `ledger.events.jsonl`, `c
 Date-based sources accept `--since/--until`, `--last-6-months`, `--last-quarter`, or `--year <YYYY>`. If omitted, shiplog uses the last six months.
 
 Use `shiplog render --latest` or `--run latest` to re-render the most recent run. `shiplog refresh --run-dir latest` refreshes that run while preserving curation.
+
+Use `shiplog init --source github --source jira --dry-run` to preview a
+source-specific scaffold without writing files.
 
 ## Sources
 

@@ -5,7 +5,7 @@
 
 use anyhow::{Context, Result};
 use chrono::{Datelike, Months, NaiveDate, Utc};
-use clap::{Args, Parser, Subcommand};
+use clap::{Args, Parser, Subcommand, ValueEnum};
 use shiplog_engine::{Engine, WorkstreamSource};
 use shiplog_ingest_git::LocalGitIngestor;
 use shiplog_ingest_github::GithubIngestor;
@@ -31,6 +31,19 @@ struct Cli {
 
 #[derive(Subcommand, Debug)]
 enum Command {
+    /// Create a local shiplog.toml and manual_events.yaml scaffold.
+    Init {
+        /// Sources to enable in the generated config.
+        #[arg(long = "source", value_enum)]
+        sources: Vec<InitSource>,
+        /// Print generated files instead of writing them.
+        #[arg(long)]
+        dry_run: bool,
+        /// Overwrite existing shiplog.toml or manual_events.yaml.
+        #[arg(long)]
+        force: bool,
+    },
+
     /// Collect events from a source and generate workstream suggestions.
     ///
     /// This creates `workstreams.suggested.yaml` which you can rename to
@@ -199,6 +212,17 @@ enum Command {
         #[arg(long)]
         llm_api_key: Option<String>,
     },
+}
+
+#[derive(ValueEnum, Debug, Clone, Copy, PartialEq, Eq)]
+enum InitSource {
+    Github,
+    Gitlab,
+    Jira,
+    Linear,
+    Git,
+    Json,
+    Manual,
 }
 
 #[derive(Subcommand, Debug, Clone)]
@@ -399,6 +423,9 @@ enum WindowLabel {
     Year(i32),
 }
 
+const CONFIG_FILENAME: &str = "shiplog.toml";
+const MANUAL_EVENTS_FILENAME: &str = "manual_events.yaml";
+
 fn get_redact_key(redact_key: Option<String>) -> String {
     redact_key
         .or_else(|| std::env::var("SHIPLOG_REDACT_KEY").ok())
@@ -494,6 +521,218 @@ fn quarter_start(year: i32, month: u32) -> Result<NaiveDate> {
     };
     NaiveDate::from_ymd_opt(year, start_month, 1)
         .ok_or_else(|| anyhow::anyhow!("invalid quarter start for {year}-{start_month:02}"))
+}
+
+fn run_init(sources: Vec<InitSource>, dry_run: bool, force: bool) -> Result<()> {
+    let selected = selected_init_sources(&sources);
+    let config = render_init_config(&selected);
+    let manual_events = render_manual_events_template();
+
+    if dry_run {
+        println!("Would write {CONFIG_FILENAME}:\n\n{config}");
+        println!("Would write {MANUAL_EVENTS_FILENAME}:\n\n{manual_events}");
+        return Ok(());
+    }
+
+    let config_path = Path::new(CONFIG_FILENAME);
+    let manual_events_path = Path::new(MANUAL_EVENTS_FILENAME);
+    ensure_init_files_available(&[config_path, manual_events_path], force)?;
+
+    write_init_file(config_path, &config)?;
+    write_init_file(manual_events_path, &manual_events)?;
+
+    println!("Initialized shiplog:");
+    println!("  {CONFIG_FILENAME}");
+    println!("  {MANUAL_EVENTS_FILENAME}");
+    println!();
+    println!("Next:");
+    println!("  edit {CONFIG_FILENAME}");
+    for env_var in init_env_vars(&selected) {
+        println!("  export {env_var}=...");
+    }
+    println!("  {}", init_next_command(&selected));
+
+    Ok(())
+}
+
+fn selected_init_sources(sources: &[InitSource]) -> Vec<InitSource> {
+    if sources.is_empty() {
+        return vec![InitSource::Github, InitSource::Manual];
+    }
+
+    let mut selected = Vec::new();
+    for source in sources {
+        if !selected.contains(source) {
+            selected.push(*source);
+        }
+    }
+    selected
+}
+
+fn init_source_enabled(selected: &[InitSource], source: InitSource) -> bool {
+    selected.contains(&source)
+}
+
+fn init_env_vars(selected: &[InitSource]) -> Vec<&'static str> {
+    let mut vars = Vec::new();
+    if init_source_enabled(selected, InitSource::Github) {
+        vars.push("GITHUB_TOKEN");
+    }
+    if init_source_enabled(selected, InitSource::Gitlab) {
+        vars.push("GITLAB_TOKEN");
+    }
+    if init_source_enabled(selected, InitSource::Jira) {
+        vars.push("JIRA_TOKEN");
+    }
+    if init_source_enabled(selected, InitSource::Linear) {
+        vars.push("LINEAR_API_KEY");
+    }
+    vars
+}
+
+fn init_next_command(selected: &[InitSource]) -> &'static str {
+    if init_source_enabled(selected, InitSource::Github) {
+        "shiplog collect github --user <github-user> --last-6-months"
+    } else if init_source_enabled(selected, InitSource::Gitlab) {
+        "shiplog collect gitlab --user <gitlab-user> --last-6-months"
+    } else if init_source_enabled(selected, InitSource::Jira) {
+        "shiplog collect jira --user <account-id-or-email> --auth-user <email> --last-6-months"
+    } else if init_source_enabled(selected, InitSource::Linear) {
+        "shiplog collect linear --user-id <linear-user-id> --last-6-months"
+    } else if init_source_enabled(selected, InitSource::Git) {
+        "shiplog collect git --repo . --last-6-months"
+    } else if init_source_enabled(selected, InitSource::Json) {
+        "shiplog collect json --events <events.jsonl> --coverage <coverage.manifest.json>"
+    } else {
+        "shiplog collect manual --events manual_events.yaml --user <label> --last-6-months"
+    }
+}
+
+fn ensure_init_files_available(paths: &[&Path], force: bool) -> Result<()> {
+    if force {
+        return Ok(());
+    }
+
+    for path in paths {
+        if path.exists() {
+            anyhow::bail!(
+                "{} already exists; use --force to overwrite",
+                path.display()
+            );
+        }
+    }
+
+    Ok(())
+}
+
+fn write_init_file(path: &Path, contents: &str) -> Result<()> {
+    if let Some(parent) = path
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+    {
+        std::fs::create_dir_all(parent).with_context(|| format!("create {}", parent.display()))?;
+    }
+
+    std::fs::write(path, contents).with_context(|| format!("write {}", path.display()))
+}
+
+fn render_init_config(selected: &[InitSource]) -> String {
+    let github = init_source_enabled(selected, InitSource::Github);
+    let gitlab = init_source_enabled(selected, InitSource::Gitlab);
+    let jira = init_source_enabled(selected, InitSource::Jira);
+    let linear = init_source_enabled(selected, InitSource::Linear);
+    let git = init_source_enabled(selected, InitSource::Git);
+    let json = init_source_enabled(selected, InitSource::Json);
+    let manual = init_source_enabled(selected, InitSource::Manual);
+
+    format!(
+        r#"# shiplog local configuration.
+# Tokens stay in environment variables:
+# GITHUB_TOKEN, GITLAB_TOKEN, JIRA_TOKEN, LINEAR_API_KEY, SHIPLOG_REDACT_KEY.
+
+[defaults]
+out = "./out"
+window = "last-6-months"
+profile = "internal"
+include_reviews = true
+
+[user]
+label = "Your Name"
+
+[sources.github]
+enabled = {github}
+user = "your-github-username"
+mode = "merged"
+include_reviews = true
+
+[sources.gitlab]
+enabled = {gitlab}
+user = "your-gitlab-username"
+instance = "gitlab.com"
+state = "merged"
+include_reviews = true
+
+[sources.jira]
+enabled = {jira}
+user = "your-jira-account-id-or-email"
+auth_user_env = "JIRA_AUTH_USER"
+instance = "company.atlassian.net"
+status = "done"
+
+[sources.linear]
+enabled = {linear}
+user_id = "your-linear-user-id"
+status = "done"
+project = ""
+
+[sources.git]
+enabled = {git}
+repo = "."
+author = ""
+include_merges = false
+
+[sources.json]
+enabled = {json}
+events = "./ledger.events.jsonl"
+coverage = "./coverage.manifest.json"
+
+[sources.manual]
+enabled = {manual}
+events = "./manual_events.yaml"
+user = "Your Name"
+
+[redaction]
+key_env = "SHIPLOG_REDACT_KEY"
+"#
+    )
+}
+
+fn render_manual_events_template() -> String {
+    let generated_at = Utc::now().to_rfc3339();
+    format!(
+        r#"# Manual evidence entries for shiplog.
+# Add events for work that is not visible in code-hosting or issue systems.
+# Keep entries factual and receipt-oriented.
+#
+# Example:
+# events:
+#   - id: manual-2026-01-15-incident-follow-up
+#     type: Note
+#     date: "2026-01-15"
+#     title: "Incident follow-up"
+#     description: "Summarize the work, not the performance narrative."
+#     workstream: "platform reliability"
+#     tags: ["review-cycle"]
+#     receipts:
+#       - label: "runbook"
+#         url: "https://example.com/runbook"
+#     impact: "Reduced operational risk."
+
+version: 1
+generated_at: "{generated_at}"
+events: []
+"#
+    )
 }
 
 fn create_engine(
@@ -748,6 +987,14 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.cmd {
+        Command::Init {
+            sources,
+            dry_run,
+            force,
+        } => {
+            run_init(sources, dry_run, force)?;
+        }
+
         Command::Collect {
             source,
             out,

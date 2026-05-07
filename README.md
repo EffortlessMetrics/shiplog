@@ -75,6 +75,16 @@ cargo run -p shiplog -- <subcommand>
 
 shiplog follows a **collect → curate → render** workflow. You fetch raw events once, organize them into workstreams, then re-render as many times as you like without hitting the API again.
 
+### 0. Initialize local files
+
+```bash
+shiplog init
+```
+
+This writes `shiplog.toml` and `manual_events.yaml` in the current directory.
+Use `shiplog init --source github --source jira` to scaffold a narrower source
+set, `--dry-run` to preview, and `--force` to overwrite existing scaffold files.
+
 ### 1. Collect events from GitHub
 
 ```bash
@@ -125,6 +135,7 @@ out/<run_id>/
 
 | Command | Description |
 |---------|-------------|
+| `init` | Create `shiplog.toml` and `manual_events.yaml` scaffold files |
 | `collect <source>` | Fetch events from a source and generate packet artifacts |
 | `render` | Re-render packet from existing ledger and workstreams |
 | `refresh <source>` | Re-fetch events while preserving curated `workstreams.yaml` |
