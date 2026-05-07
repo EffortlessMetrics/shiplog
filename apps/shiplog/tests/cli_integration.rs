@@ -122,6 +122,7 @@ fn help_shows_all_subcommands() {
         .stdout(predicate::str::contains("collect"))
         .stdout(predicate::str::contains("render"))
         .stdout(predicate::str::contains("refresh"))
+        .stdout(predicate::str::contains("workstreams"))
         .stdout(predicate::str::contains("import"))
         .stdout(predicate::str::contains("run"));
 }
@@ -135,6 +136,16 @@ fn init_help_shows_options() {
         .stdout(predicate::str::contains("--source"))
         .stdout(predicate::str::contains("--dry-run"))
         .stdout(predicate::str::contains("--force"));
+}
+
+#[test]
+fn workstreams_help_shows_list_and_validate() {
+    shiplog_cmd()
+        .args(["workstreams", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("list"))
+        .stdout(predicate::str::contains("validate"));
 }
 
 #[test]
@@ -407,6 +418,79 @@ fn collect_json_packet_contains_expected_content() {
         packet.contains("acme/payments") || packet.contains("acme/platform"),
         "packet.md should reference fixture repos"
     );
+}
+
+#[test]
+fn workstreams_list_shows_latest_run_workstreams() {
+    let tmp = TempDir::new().unwrap();
+    collect_json_into(tmp.path());
+
+    shiplog_cmd()
+        .args(["workstreams", "list", "--out", tmp.path().to_str().unwrap()])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Workstreams:"))
+        .stdout(predicate::str::contains("suggested workstreams"))
+        .stdout(predicate::str::contains("Count:"))
+        .stdout(predicate::str::contains("acme/platform"))
+        .stdout(predicate::str::contains("events="));
+}
+
+#[test]
+fn workstreams_validate_accepts_latest_run_workstreams() {
+    let tmp = TempDir::new().unwrap();
+    collect_json_into(tmp.path());
+
+    shiplog_cmd()
+        .args([
+            "workstreams",
+            "validate",
+            "--out",
+            tmp.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Workstreams valid:"))
+        .stdout(predicate::str::contains("assigned events"));
+}
+
+#[test]
+fn workstreams_validate_rejects_blank_title() {
+    let tmp = TempDir::new().unwrap();
+    let run_dir = collect_json_into(tmp.path());
+    std::fs::write(
+        run_dir.join("workstreams.yaml"),
+        r#"version: 1
+generated_at: "2026-01-01T00:00:00Z"
+workstreams:
+  - id: "blank-title"
+    title: ""
+    summary: null
+    tags: []
+    stats:
+      pull_requests: 1
+      reviews: 0
+      manual_events: 0
+    events:
+      - "fixture_pr_acme_payments_42"
+    receipts:
+      - "fixture_pr_acme_payments_42"
+"#,
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .args([
+            "workstreams",
+            "validate",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("blank title"));
 }
 
 #[test]
