@@ -64,7 +64,7 @@ Output goes to `out/<run_id>/` containing `packet.md`, `ledger.events.jsonl`, `c
 |---------|-------------|
 | `init` | Create `shiplog.toml` and `manual_events.yaml` scaffold files |
 | `doctor` | Check local config, enabled sources, token env vars, and output safety |
-| `config validate/explain` | Validate `shiplog.toml` and print resolved defaults/source settings |
+| `config validate/explain/migrate` | Validate `shiplog.toml`, print resolved settings, or add version metadata |
 | `collect <source>` | Fetch events from a source and generate packet artifacts |
 | `collect multi` | Collect enabled sources from `shiplog.toml` into one merged packet |
 | `render` | Re-render packet from existing ledger and workstreams |
@@ -84,8 +84,9 @@ Use `shiplog init --source github --source jira --dry-run` to preview a
 source-specific scaffold without writing files.
 Use `shiplog config validate` for a token-free config and local path check,
 `shiplog config explain` to print resolved defaults and enabled source
-settings, and `shiplog doctor` before collection to check tokens, output
-safety, identity, and source setup.
+settings, and `shiplog config migrate` to add `[shiplog] config_version = 1`
+to older configs without changing source settings. Use `shiplog doctor` before
+collection to check tokens, output safety, identity, and source setup.
 
 GitHub and GitLab accept `--me` to infer the source user from `--token`,
 `GITHUB_TOKEN`, or `GITLAB_TOKEN`; use `--user <login>` to pin the identity

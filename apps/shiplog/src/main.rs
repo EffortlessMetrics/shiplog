@@ -324,6 +324,16 @@ enum ConfigCommand {
         #[arg(long, default_value = CONFIG_FILENAME)]
         config: PathBuf,
     },
+
+    /// Add missing version metadata to shiplog.toml.
+    Migrate {
+        /// Path to shiplog.toml.
+        #[arg(long, default_value = CONFIG_FILENAME)]
+        config: PathBuf,
+        /// Print the migration action without writing.
+        #[arg(long)]
+        dry_run: bool,
+    },
 }
 
 #[derive(ValueEnum, Debug, Clone, Copy, PartialEq, Eq)]
@@ -888,14 +898,22 @@ enum WindowLabel {
 
 const CONFIG_FILENAME: &str = "shiplog.toml";
 const MANUAL_EVENTS_FILENAME: &str = "manual_events.yaml";
+const CURRENT_CONFIG_VERSION: i64 = 1;
 
 #[derive(Deserialize, Debug, Default)]
 #[serde(default)]
 struct ShiplogConfig {
+    shiplog: ConfigMetadata,
     defaults: ConfigDefaults,
     user: ConfigUser,
     sources: ConfigSources,
     redaction: ConfigRedaction,
+}
+
+#[derive(Deserialize, Debug, Default)]
+#[serde(default)]
+struct ConfigMetadata {
+    config_version: Option<i64>,
 }
 
 #[derive(Deserialize, Debug, Default)]
@@ -1258,6 +1276,9 @@ fn render_init_config(selected: &[InitSource]) -> String {
 # Tokens stay in environment variables:
 # GITHUB_TOKEN, GITLAB_TOKEN, JIRA_TOKEN, LINEAR_API_KEY, SHIPLOG_REDACT_KEY.
 
+[shiplog]
+config_version = 1
+
 [defaults]
 out = "./out"
 window = "last-6-months"
@@ -1402,6 +1423,10 @@ fn run_doctor(config_path: &Path, sources: &[InitSource]) -> Result<()> {
     };
 
     let base_dir = config_base_dir(config_path);
+    doctor_config_version(&mut report, &config);
+    if report.errors > 0 {
+        anyhow::bail!("doctor found {} issue(s)", report.errors);
+    }
     doctor_defaults(&mut report, &config, &base_dir);
     doctor_sources(&mut report, &config, &base_dir, sources);
 
@@ -1412,10 +1437,28 @@ fn run_doctor(config_path: &Path, sources: &[InitSource]) -> Result<()> {
     Ok(())
 }
 
+fn doctor_config_version(report: &mut DoctorReport, config: &ShiplogConfig) {
+    match config_version_state(config) {
+        Ok(version) => report.ok("Config version", version.label()),
+        Err(err) => report.error("Config version", err.to_string()),
+    }
+}
+
 #[derive(Debug)]
 struct ConfigIssue {
     label: &'static str,
     detail: String,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct ConfigVersionState {
+    version: i64,
+    explicit: bool,
+}
+
+enum ConfigMigration {
+    Current(ConfigVersionState),
+    AddVersion { text: String },
 }
 
 fn config_issue(label: &'static str, detail: impl Into<String>) -> ConfigIssue {
@@ -1458,6 +1501,32 @@ fn run_config_explain(config_path: &Path) -> Result<()> {
     print_config_explanation(config_path, &config, &base_dir)
 }
 
+fn run_config_migrate(config_path: &Path, dry_run: bool) -> Result<()> {
+    let text = read_config_for_command(config_path)?;
+    let migration = plan_config_migration(config_path, &text)?;
+
+    println!("Config: ok, {}", config_path.display());
+    match migration {
+        ConfigMigration::Current(version) => {
+            println!("Migration: already current ({})", version.label());
+            Ok(())
+        }
+        ConfigMigration::AddVersion { text } => {
+            if dry_run {
+                println!(
+                    "Migration: would add [shiplog] config_version = {CURRENT_CONFIG_VERSION}"
+                );
+            } else {
+                std::fs::write(config_path, text)
+                    .with_context(|| format!("write {}", config_path.display()))?;
+                println!("Migration: added [shiplog] config_version = {CURRENT_CONFIG_VERSION}");
+                println!("Config migrated");
+            }
+            Ok(())
+        }
+    }
+}
+
 fn load_config_for_command(config_path: &Path) -> Result<ShiplogConfig> {
     if !config_path.exists() {
         anyhow::bail!(
@@ -1468,9 +1537,22 @@ fn load_config_for_command(config_path: &Path) -> Result<ShiplogConfig> {
     load_shiplog_config(config_path)
 }
 
+fn read_config_for_command(config_path: &Path) -> Result<String> {
+    if !config_path.exists() {
+        anyhow::bail!(
+            "{} not found; run `shiplog init` first",
+            config_path.display()
+        );
+    }
+    std::fs::read_to_string(config_path).with_context(|| format!("read {}", config_path.display()))
+}
+
 fn validate_shiplog_config(config: &ShiplogConfig, base_dir: &Path) -> Vec<ConfigIssue> {
     let mut issues = Vec::new();
 
+    if let Err(err) = config_version_state(config) {
+        issues.push(config_issue("Version", err.to_string()));
+    }
     if let Err(err) = resolve_multi_window(DateArgs::default(), config) {
         issues.push(config_issue("Window", err.to_string()));
     }
@@ -1496,6 +1578,90 @@ fn validate_shiplog_config(config: &ShiplogConfig, base_dir: &Path) -> Vec<Confi
     validate_config_manual(config, base_dir, &mut issues);
 
     issues
+}
+
+impl ConfigVersionState {
+    fn label(self) -> String {
+        if self.explicit {
+            self.version.to_string()
+        } else {
+            format!("{} (implicit)", self.version)
+        }
+    }
+}
+
+fn config_version_state(config: &ShiplogConfig) -> Result<ConfigVersionState> {
+    match config.shiplog.config_version {
+        Some(CURRENT_CONFIG_VERSION) => Ok(ConfigVersionState {
+            version: CURRENT_CONFIG_VERSION,
+            explicit: true,
+        }),
+        Some(version) => anyhow::bail!(
+            "unsupported config_version {version}; expected {CURRENT_CONFIG_VERSION}; run `shiplog config migrate` or update shiplog"
+        ),
+        None => Ok(ConfigVersionState {
+            version: CURRENT_CONFIG_VERSION,
+            explicit: false,
+        }),
+    }
+}
+
+fn ensure_supported_config_version(config: &ShiplogConfig) -> Result<()> {
+    config_version_state(config).map(|_| ())
+}
+
+fn plan_config_migration(config_path: &Path, text: &str) -> Result<ConfigMigration> {
+    let config = load_shiplog_config(config_path)?;
+    let version = config_version_state(&config)?;
+    if version.explicit {
+        return Ok(ConfigMigration::Current(version));
+    }
+
+    Ok(ConfigMigration::AddVersion {
+        text: add_config_version_to_text(text)?,
+    })
+}
+
+fn add_config_version_to_text(text: &str) -> Result<String> {
+    let has_shiplog_header = text.lines().any(is_shiplog_table_header);
+    if !has_shiplog_header {
+        let parsed: toml::Table = toml::from_str(text).context("parse shiplog.toml")?;
+        if parsed.contains_key("shiplog") {
+            anyhow::bail!(
+                "found a shiplog table but could not locate a [shiplog] header; add config_version manually"
+            );
+        }
+    }
+    if !has_shiplog_header {
+        return Ok(format!(
+            "[shiplog]\nconfig_version = {CURRENT_CONFIG_VERSION}\n\n{text}"
+        ));
+    }
+
+    let mut migrated = String::with_capacity(text.len() + 32);
+    let mut inserted = false;
+    for line in text.split_inclusive('\n') {
+        migrated.push_str(line);
+        if !inserted && is_shiplog_table_header(line) {
+            migrated.push_str(&format!("config_version = {CURRENT_CONFIG_VERSION}\n"));
+            inserted = true;
+        }
+    }
+    if !inserted && is_shiplog_table_header(text) {
+        migrated.push_str(&format!("\nconfig_version = {CURRENT_CONFIG_VERSION}\n"));
+        inserted = true;
+    }
+    if !inserted {
+        anyhow::bail!(
+            "found a shiplog table but could not locate a [shiplog] header; add config_version manually"
+        );
+    }
+    Ok(migrated)
+}
+
+fn is_shiplog_table_header(line: &str) -> bool {
+    let before_comment = line.split('#').next().unwrap_or("").trim();
+    before_comment == "[shiplog]"
 }
 
 fn validate_config_output_path(out: &Path) -> Result<()> {
@@ -1698,9 +1864,11 @@ fn validate_config_user_or_me(
 }
 
 fn print_config_validation_summary(config: &ShiplogConfig, base_dir: &Path) -> Result<()> {
+    let version = config_version_state(config)?;
     let window = resolve_multi_window(DateArgs::default(), config)?;
     let out = config_default_out(config, base_dir);
     let profile = doctor_config_profile(config.defaults.profile.as_deref())?;
+    println!("Version: ok, {}", version.label());
     println!("Window: ok, {}", window.window_label());
     println!("Output: ok, {}", out.display());
     println!("Profile: ok, {}", profile.as_str());
@@ -1716,6 +1884,7 @@ fn print_config_explanation(
     config: &ShiplogConfig,
     base_dir: &Path,
 ) -> Result<()> {
+    let version = config_version_state(config)?;
     let window = resolve_multi_window(DateArgs::default(), config)?;
     let out = config_default_out(config, base_dir);
     let profile = doctor_config_profile(config.defaults.profile.as_deref())?;
@@ -1731,6 +1900,8 @@ fn print_config_explanation(
     let include_reviews = config.defaults.include_reviews.unwrap_or(false);
 
     println!("Config: {}", config_path.display());
+    println!("Config metadata:");
+    println!("- config_version: {}", version.label());
     println!("Resolved defaults:");
     println!(
         "- window: {} -> {}..{}",
@@ -3162,6 +3333,9 @@ fn main() -> Result<()> {
             ConfigCommand::Explain { config } => {
                 run_config_explain(&config)?;
             }
+            ConfigCommand::Migrate { config, dry_run } => {
+                run_config_migrate(&config, dry_run)?;
+            }
         },
 
         Command::Collect {
@@ -3183,6 +3357,7 @@ fn main() -> Result<()> {
                     conflict,
                 } => {
                     let config_model = load_shiplog_config(&config)?;
+                    ensure_supported_config_version(&config_model)?;
                     let base_dir = config_base_dir(&config);
                     let out = out
                         .clone()

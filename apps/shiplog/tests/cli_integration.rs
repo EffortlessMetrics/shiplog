@@ -203,13 +203,14 @@ fn doctor_help_shows_options() {
 }
 
 #[test]
-fn config_help_shows_validate_and_explain() {
+fn config_help_shows_validate_explain_and_migrate() {
     shiplog_cmd()
         .args(["config", "--help"])
         .assert()
         .success()
         .stdout(predicate::str::contains("validate"))
-        .stdout(predicate::str::contains("explain"));
+        .stdout(predicate::str::contains("explain"))
+        .stdout(predicate::str::contains("migrate"));
 
     shiplog_cmd()
         .args(["config", "validate", "--help"])
@@ -222,6 +223,13 @@ fn config_help_shows_validate_and_explain() {
         .assert()
         .success()
         .stdout(predicate::str::contains("--config"));
+
+    shiplog_cmd()
+        .args(["config", "migrate", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--config"))
+        .stdout(predicate::str::contains("--dry-run"));
 }
 
 #[test]
@@ -298,6 +306,7 @@ fn init_creates_config_and_manual_events() {
         .stdout(predicate::str::contains("shiplog collect multi"));
 
     let config = std::fs::read_to_string(tmp.path().join("shiplog.toml")).unwrap();
+    assert!(config.contains("[shiplog]\nconfig_version = 1"));
     assert!(config.contains("[sources.github]"));
     assert!(config.contains("enabled = true"));
     assert!(config.contains("me = true"));
@@ -319,6 +328,8 @@ fn init_dry_run_does_not_write_files() {
         .assert()
         .success()
         .stdout(predicate::str::contains("Would write shiplog.toml"))
+        .stdout(predicate::str::contains("[shiplog]"))
+        .stdout(predicate::str::contains("config_version = 1"))
         .stdout(predicate::str::contains("JIRA_TOKEN"));
 
     assert!(!tmp.path().join("shiplog.toml").exists());
@@ -548,6 +559,94 @@ fn config_validate_does_not_require_source_tokens() {
 }
 
 #[test]
+fn legacy_config_without_version_remains_supported() {
+    let tmp = TempDir::new().unwrap();
+    write_manual_events(&tmp.path().join("manual_events.yaml"));
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[defaults]
+window = "year:2025"
+
+[sources.manual]
+enabled = true
+events = "./manual_events.yaml"
+user = "octo"
+"#,
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["config", "validate"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Version: ok, 1 (implicit)"));
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["doctor"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Config version: ok, 1 (implicit)"));
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["collect", "multi"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("- manual: success"));
+
+    let run_dir = first_run_dir(&tmp.path().join("out"));
+    assert!(run_dir.join("packet.md").exists(), "missing packet");
+}
+
+#[test]
+fn unsupported_config_version_fails_before_collection_side_effects() {
+    let tmp = TempDir::new().unwrap();
+    write_manual_events(&tmp.path().join("manual_events.yaml"));
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[shiplog]
+config_version = 2
+
+[sources.manual]
+enabled = true
+events = "./manual_events.yaml"
+user = "octo"
+"#,
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["config", "validate"])
+        .assert()
+        .failure()
+        .stdout(predicate::str::contains("Version: error"))
+        .stdout(predicate::str::contains("unsupported config_version 2"));
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["doctor"])
+        .assert()
+        .failure()
+        .stdout(predicate::str::contains("Config version: error"))
+        .stdout(predicate::str::contains("unsupported config_version 2"));
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["collect", "multi"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("unsupported config_version 2"));
+
+    assert!(
+        !tmp.path().join("out").exists(),
+        "unsupported config version should fail before writing outputs"
+    );
+}
+
+#[test]
 fn config_validate_reports_missing_config_actionably() {
     let tmp = TempDir::new().unwrap();
 
@@ -628,6 +727,149 @@ events = "./manual_events.yaml"
 }
 
 #[test]
+fn config_migrate_dry_run_leaves_legacy_config_unchanged() {
+    let tmp = TempDir::new().unwrap();
+    let config_path = tmp.path().join("shiplog.toml");
+    let original = r#"[sources.manual]
+enabled = true
+events = "./manual_events.yaml"
+"#;
+    std::fs::write(&config_path, original).unwrap();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["config", "migrate", "--dry-run"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "would add [shiplog] config_version = 1",
+        ));
+
+    let after = std::fs::read_to_string(config_path).unwrap();
+    assert_eq!(after, original);
+}
+
+#[test]
+fn config_migrate_requires_existing_config_even_for_dry_run() {
+    let tmp = TempDir::new().unwrap();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["config", "migrate", "--dry-run"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("run `shiplog init` first"));
+
+    assert!(!tmp.path().join("shiplog.toml").exists());
+}
+
+#[test]
+fn config_migrate_adds_explicit_version_to_legacy_config() {
+    let tmp = TempDir::new().unwrap();
+    write_manual_events(&tmp.path().join("manual_events.yaml"));
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[sources.manual]
+enabled = true
+events = "./manual_events.yaml"
+"#,
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["config", "migrate"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "added [shiplog] config_version = 1",
+        ))
+        .stdout(predicate::str::contains("Config migrated"));
+
+    let config = std::fs::read_to_string(tmp.path().join("shiplog.toml")).unwrap();
+    assert!(config.starts_with("[shiplog]\nconfig_version = 1\n\n"));
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["config", "validate"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Version: ok, 1"));
+}
+
+#[test]
+fn config_migrate_inserts_version_into_existing_shiplog_table() {
+    let tmp = TempDir::new().unwrap();
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[shiplog]
+# local config metadata
+schema_note = "keep this"
+
+[sources.manual]
+enabled = false
+"#,
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["config", "migrate"])
+        .assert()
+        .success();
+
+    let config = std::fs::read_to_string(tmp.path().join("shiplog.toml")).unwrap();
+    assert_eq!(config.matches("[shiplog]").count(), 1);
+    assert!(config.contains("[shiplog]\nconfig_version = 1\n# local config metadata"));
+    assert!(config.contains("schema_note = \"keep this\""));
+}
+
+#[test]
+fn config_migrate_current_config_is_noop() {
+    let tmp = TempDir::new().unwrap();
+    let original = r#"[shiplog]
+config_version = 1
+
+[sources.manual]
+enabled = false
+"#;
+    std::fs::write(tmp.path().join("shiplog.toml"), original).unwrap();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["config", "migrate"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("already current"));
+
+    let after = std::fs::read_to_string(tmp.path().join("shiplog.toml")).unwrap();
+    assert_eq!(after, original);
+}
+
+#[test]
+fn config_migrate_unsupported_version_fails_without_writing() {
+    let tmp = TempDir::new().unwrap();
+    let original = r#"[shiplog]
+config_version = 2
+
+[sources.manual]
+enabled = false
+"#;
+    let config_path = tmp.path().join("shiplog.toml");
+    std::fs::write(&config_path, original).unwrap();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["config", "migrate"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("unsupported config_version 2"));
+
+    let after = std::fs::read_to_string(config_path).unwrap();
+    assert_eq!(after, original);
+}
+
+#[test]
 fn config_explain_prints_effective_defaults_and_sources() {
     let tmp = TempDir::new().unwrap();
     let fixtures = fixture_dir();
@@ -670,6 +912,8 @@ events = "./manual_events.yaml"
         .args(["config", "explain"])
         .assert()
         .success()
+        .stdout(predicate::str::contains("Config metadata:"))
+        .stdout(predicate::str::contains("- config_version: 1 (implicit)"))
         .stdout(predicate::str::contains("Resolved defaults:"))
         .stdout(predicate::str::contains(
             "- window: year:2025 -> 2025-01-01..2026-01-01",
