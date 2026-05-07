@@ -1,32 +1,33 @@
-name: Droid Auto Review
+name: Droid Security Scan
 
 on:
-  pull_request:
-    types: [opened, synchronize, ready_for_review, reopened]
+  workflow_dispatch:
+  schedule:
+    - cron: "0 8 * * 1"
 
 concurrency:
-  group: droid-review-${{ github.repository }}-${{ github.event.pull_request.number }}
+  group: droid-security-scan-${{ github.repository }}
   cancel-in-progress: false
 
 jobs:
-  droid-review:
-    if: |
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      !contains(github.event.pull_request.title, '[skip-review]')
+  droid-security-scan:
     runs-on: ubuntu-latest
+
+    env:
+      MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
+      FACTORY_API_KEY: ${{ secrets.FACTORY_API_KEY }}
+
     permissions:
       contents: write
       pull-requests: write
       issues: write
       id-token: write
       actions: read
-    env:
-      MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
-      FACTORY_API_KEY: ${{ secrets.FACTORY_API_KEY }}
+
     steps:
       - name: Skip when Droid secrets are unavailable
         if: env.FACTORY_API_KEY == '' || env.MINIMAX_API_KEY == ''
-        run: echo "FACTORY_API_KEY or MINIMAX_API_KEY is not configured; skipping Droid auto review."
+        run: echo "FACTORY_API_KEY or MINIMAX_API_KEY is not configured; skipping Droid security scan."
 
       - name: Checkout repository
         if: env.FACTORY_API_KEY != '' && env.MINIMAX_API_KEY != ''
@@ -58,24 +59,17 @@ jobs:
           }
           JSON
 
-      - name: Run Droid Auto Review with MiniMax M2.7 BYOK
+      - name: Run Droid scheduled security scan
         if: env.FACTORY_API_KEY != '' && env.MINIMAX_API_KEY != ''
         continue-on-error: true
         uses: EffortlessMetrics/droid-action-safe@01e76b659e4b1e5f23feedc8cfabf8dc14c7485f # safe pinned Droid action; raw debug artifact upload disabled
         with:
           factory_api_key: ${{ env.FACTORY_API_KEY }}
           upload_debug_artifacts: false
-
-          automatic_review: true
-          automatic_security_review: true
-
-          review_depth: shallow
-          review_model: "custom:MiniMax-M2.7-0"
+          security_scan_schedule: true
+          security_scan_days: 7
           security_model: "custom:MiniMax-M2.7-0"
-
-          security_severity_threshold: high
+          security_severity_threshold: medium
           security_block_on_critical: true
           security_block_on_high: false
-
-          include_suggestions: true
           show_full_output: false
