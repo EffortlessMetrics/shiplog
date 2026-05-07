@@ -1,0 +1,38 @@
+[shiplog]
+config_version = 1
+
+[defaults]
+window = "last-6-months"
+profile = "internal"
+include_reviews = true
+
+[user]
+label = "Your Name"
+
+[sources.github]
+enabled = true
+user = "your-github-login"
+mode = "merged"
+include_reviews = true
+
+[sources.gitlab]
+enabled = true
+user = "your-gitlab-username"
+instance = "gitlab.com"
+state = "merged"
+include_reviews = true
+
+[sources.jira]
+enabled = true
+user = "712020:your-account-id"
+auth_user_env = "JIRA_AUTH_USER"
+instance = "company.atlassian.net"
+status = "done"
+
+[sources.manual]
+enabled = true
+events = "./manual-events.yaml"
+user = "Your Name"
+
+[redaction]
+key_env = "SHIPLOG_REDACT_KEY"

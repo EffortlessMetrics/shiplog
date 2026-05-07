@@ -1,0 +1,23 @@
+[shiplog]
+config_version = 1
+
+[defaults]
+window = "year:2025"
+profile = "public"
+include_reviews = false
+
+[user]
+label = "Your Public Name"
+
+[sources.json]
+enabled = true
+events = "../fixture/ledger.events.jsonl"
+coverage = "../fixture/coverage.manifest.json"
+
+[sources.manual]
+enabled = true
+events = "./manual-events.yaml"
+user = "Your Public Name"
+
+[redaction]
+key_env = "SHIPLOG_REDACT_KEY"

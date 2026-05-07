@@ -85,8 +85,17 @@ source-specific scaffold without writing files.
 Use `shiplog config validate` for a token-free config and local path check,
 `shiplog config explain` to print resolved defaults and enabled source
 settings, and `shiplog config migrate` to add `[shiplog] config_version = 1`
-to older configs without changing source settings. Use `shiplog doctor` before
-collection to check tokens, output safety, identity, and source setup.
+to older configs without changing source settings. Copy-adaptable configs live
+in the repository `examples/configs/` directory; from the repository root, the
+local fixture config can be checked with:
+
+```bash
+shiplog config validate --config examples/configs/local-git-json-manual.toml
+shiplog config explain --config examples/configs/local-git-json-manual.toml
+```
+
+Use `shiplog doctor` before collection to check tokens, output safety,
+identity, and source setup.
 
 GitHub and GitLab accept `--me` to infer the source user from `--token`,
 `GITHUB_TOKEN`, or `GITLAB_TOKEN`; use `--user <login>` to pin the identity

@@ -1,0 +1,29 @@
+[shiplog]
+config_version = 1
+
+[defaults]
+window = "year:2025"
+profile = "internal"
+include_reviews = false
+
+[user]
+label = "Fixture User"
+
+[sources.git]
+enabled = true
+repo = "../.."
+author = "shiplog@example.com"
+include_merges = false
+
+[sources.json]
+enabled = true
+events = "../fixture/ledger.events.jsonl"
+coverage = "../fixture/coverage.manifest.json"
+
+[sources.manual]
+enabled = true
+events = "./manual-events.yaml"
+user = "Fixture User"
+
+[redaction]
+key_env = "SHIPLOG_REDACT_KEY"

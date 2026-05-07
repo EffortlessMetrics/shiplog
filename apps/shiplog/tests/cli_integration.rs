@@ -12,9 +12,15 @@ fn shiplog_cmd() -> Command {
 }
 
 fn fixture_dir() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../..")
-        .join("examples/fixture")
+    repo_root().join("examples/fixture")
+}
+
+fn repo_root() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
+}
+
+fn example_config(name: &str) -> PathBuf {
+    repo_root().join("examples/configs").join(name)
 }
 
 /// Run `collect json` into `tmp` and return the run directory path.
@@ -537,6 +543,61 @@ events = "./manual_events.yaml"
         .stdout(predicate::str::contains("Window: ok, 2025"))
         .stdout(predicate::str::contains("Sources: ok, json, manual"))
         .stdout(predicate::str::contains("Config valid"));
+}
+
+#[test]
+fn example_configs_validate_without_source_tokens() {
+    for name in [
+        "github-only.toml",
+        "github-gitlab-jira-manual.toml",
+        "local-git-json-manual.toml",
+        "public-portfolio.toml",
+    ] {
+        shiplog_cmd()
+            .current_dir(repo_root())
+            .env_remove("GITHUB_TOKEN")
+            .env_remove("GITLAB_TOKEN")
+            .env_remove("JIRA_TOKEN")
+            .env_remove("LINEAR_API_KEY")
+            .env_remove("SHIPLOG_REDACT_KEY")
+            .args([
+                "config",
+                "validate",
+                "--config",
+                example_config(name).to_str().unwrap(),
+            ])
+            .assert()
+            .success()
+            .stdout(predicate::str::contains("Version: ok, 1"))
+            .stdout(predicate::str::contains("Config valid"));
+    }
+}
+
+#[test]
+fn local_example_config_explains_fixture_sources() {
+    shiplog_cmd()
+        .current_dir(repo_root())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args([
+            "config",
+            "explain",
+            "--config",
+            example_config("local-git-json-manual.toml")
+                .to_str()
+                .unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Config metadata:"))
+        .stdout(predicate::str::contains("- config_version: 1"))
+        .stdout(predicate::str::contains("Enabled sources:"))
+        .stdout(predicate::str::contains("- git: repo"))
+        .stdout(predicate::str::contains("- json: events"))
+        .stdout(predicate::str::contains("ledger.events.jsonl"))
+        .stdout(predicate::str::contains("- manual: events"));
 }
 
 #[test]
