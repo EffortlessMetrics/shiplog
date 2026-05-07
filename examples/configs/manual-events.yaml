@@ -1,0 +1,15 @@
+version: 1
+generated_at: 2026-01-01T00:00:00Z
+events:
+  - id: review-cycle-support
+    type: Note
+    date: 2025-02-15
+    title: Review-cycle support work
+    description: Captured work that did not have a source-system receipt.
+    workstream: Review Readiness
+    tags:
+      - review
+    receipts:
+      - label: planning note
+        url: https://example.invalid/review-cycle-support
+    impact: Preserved non-code evidence for the review packet.

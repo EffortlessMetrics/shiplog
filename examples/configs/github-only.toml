@@ -1,0 +1,19 @@
+[shiplog]
+config_version = 1
+
+[defaults]
+window = "last-6-months"
+profile = "internal"
+include_reviews = true
+
+[user]
+label = "Your Name"
+
+[sources.github]
+enabled = true
+user = "your-github-login"
+mode = "merged"
+include_reviews = true
+
+[redaction]
+key_env = "SHIPLOG_REDACT_KEY"

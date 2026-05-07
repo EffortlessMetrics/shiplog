@@ -92,8 +92,16 @@ Use `shiplog config validate` for a token-free config and local path check,
 and `shiplog config explain` to see resolved defaults and enabled source
 settings. New configs include `[shiplog] config_version = 1`; run
 `shiplog config migrate` on older configs to add that metadata without changing
-source settings. `shiplog doctor` adds token, output, identity, and safety
-checks before a collection run.
+source settings. Copy-adaptable configs live in `examples/configs/`, including
+a fixture-safe local config that can be checked with:
+
+```bash
+shiplog config validate --config examples/configs/local-git-json-manual.toml
+shiplog config explain --config examples/configs/local-git-json-manual.toml
+```
+
+`shiplog doctor` adds token, output, identity, and safety checks before a
+collection run.
 
 ### 1. Collect events from GitHub
 
@@ -242,6 +250,10 @@ identity explicitly.
 shiplog collect multi \
   --config shiplog.toml \
   --last-6-months
+
+# Check a fixture-safe example config without source tokens
+shiplog config validate --config examples/configs/local-git-json-manual.toml
+shiplog config explain --config examples/configs/local-git-json-manual.toml
 
 # Refresh receipts while keeping curated workstreams
 shiplog refresh github \
