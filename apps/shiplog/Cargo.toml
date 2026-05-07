@@ -23,6 +23,7 @@ clap.workspace = true
 chrono.workspace = true
 reqwest.workspace = true
 serde.workspace = true
+toml.workspace = true
 shiplog-engine = { path = "../../crates/shiplog-engine", version = "0.2.1" }
 shiplog-ingest-github = { path = "../../crates/shiplog-ingest-github", version = "0.2.1" }
 shiplog-ingest-git = { path = "../../crates/shiplog-ingest-git", version = "0.2.1" }

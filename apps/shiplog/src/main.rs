@@ -21,6 +21,7 @@ use shiplog_redact::DeterministicRedactor;
 use shiplog_render_md::MarkdownRenderer;
 use shiplog_schema::{
     bundle::BundleProfile,
+    coverage::TimeWindow,
     event::EventEnvelope,
     workstream::{WorkstreamStats, WorkstreamsFile},
 };
@@ -57,7 +58,7 @@ enum Command {
     /// `workstreams.yaml` and edit to curate your narrative.
     Collect {
         #[command(subcommand)]
-        source: Source,
+        source: CollectSource,
         /// Output directory (a run folder will be created inside).
         #[arg(long, default_value = "./out")]
         out: PathBuf,
@@ -375,6 +376,24 @@ enum WorkstreamsCommand {
 }
 
 #[derive(Subcommand, Debug, Clone)]
+enum CollectSource {
+    /// Collect all enabled sources from shiplog.toml and render one merged packet.
+    Multi {
+        /// Path to shiplog.toml.
+        #[arg(long, default_value = CONFIG_FILENAME)]
+        config: PathBuf,
+        #[command(flatten)]
+        window: DateArgs,
+        /// Duplicate event conflict policy.
+        #[arg(long, value_enum, default_value = "prefer-most-recent")]
+        conflict: MergeConflict,
+    },
+
+    #[command(flatten)]
+    Source(Source),
+}
+
+#[derive(Subcommand, Debug, Clone)]
 enum Source {
     /// Ingest from GitHub (public + authenticated private).
     Github {
@@ -544,7 +563,7 @@ enum Source {
     },
 }
 
-#[derive(Args, Debug, Clone)]
+#[derive(Args, Debug, Clone, Default)]
 struct DateArgs {
     /// Start date (inclusive), YYYY-MM-DD.
     #[arg(long)]
@@ -580,6 +599,131 @@ enum WindowLabel {
 
 const CONFIG_FILENAME: &str = "shiplog.toml";
 const MANUAL_EVENTS_FILENAME: &str = "manual_events.yaml";
+
+#[derive(Deserialize, Debug, Default)]
+#[serde(default)]
+struct ShiplogConfig {
+    defaults: ConfigDefaults,
+    user: ConfigUser,
+    sources: ConfigSources,
+}
+
+#[derive(Deserialize, Debug, Default)]
+#[serde(default)]
+struct ConfigDefaults {
+    window: Option<String>,
+    include_reviews: Option<bool>,
+}
+
+#[derive(Deserialize, Debug, Default)]
+#[serde(default)]
+struct ConfigUser {
+    label: Option<String>,
+}
+
+#[derive(Deserialize, Debug, Default)]
+#[serde(default)]
+struct ConfigSources {
+    github: Option<ConfigGithubSource>,
+    gitlab: Option<ConfigGitlabSource>,
+    jira: Option<ConfigJiraSource>,
+    linear: Option<ConfigLinearSource>,
+    git: Option<ConfigGitSource>,
+    json: Option<ConfigJsonSource>,
+    manual: Option<ConfigManualSource>,
+}
+
+#[derive(Deserialize, Debug, Default)]
+#[serde(default)]
+struct ConfigGithubSource {
+    enabled: bool,
+    user: Option<String>,
+    me: bool,
+    mode: Option<String>,
+    include_reviews: Option<bool>,
+    no_details: bool,
+    throttle_ms: u64,
+    api_base: Option<String>,
+    cache_dir: Option<PathBuf>,
+    no_cache: bool,
+}
+
+#[derive(Deserialize, Debug, Default)]
+#[serde(default)]
+struct ConfigGitlabSource {
+    enabled: bool,
+    user: Option<String>,
+    me: bool,
+    instance: Option<String>,
+    state: Option<String>,
+    include_reviews: Option<bool>,
+    throttle_ms: u64,
+    cache_dir: Option<PathBuf>,
+    no_cache: bool,
+}
+
+#[derive(Deserialize, Debug, Default)]
+#[serde(default)]
+struct ConfigJiraSource {
+    enabled: bool,
+    user: Option<String>,
+    auth_user: Option<String>,
+    auth_user_env: Option<String>,
+    instance: Option<String>,
+    status: Option<String>,
+    throttle_ms: u64,
+    cache_dir: Option<PathBuf>,
+    no_cache: bool,
+}
+
+#[derive(Deserialize, Debug, Default)]
+#[serde(default)]
+struct ConfigLinearSource {
+    enabled: bool,
+    user_id: Option<String>,
+    status: Option<String>,
+    project: Option<String>,
+    throttle_ms: u64,
+    cache_dir: Option<PathBuf>,
+    no_cache: bool,
+}
+
+#[derive(Deserialize, Debug, Default)]
+#[serde(default)]
+struct ConfigGitSource {
+    enabled: bool,
+    repo: Option<PathBuf>,
+    author: Option<String>,
+    include_merges: bool,
+}
+
+#[derive(Deserialize, Debug, Default)]
+#[serde(default)]
+struct ConfigJsonSource {
+    enabled: bool,
+    events: Option<PathBuf>,
+    coverage: Option<PathBuf>,
+}
+
+#[derive(Deserialize, Debug, Default)]
+#[serde(default)]
+struct ConfigManualSource {
+    enabled: bool,
+    events: Option<PathBuf>,
+    user: Option<String>,
+}
+
+#[derive(Debug)]
+struct ConfiguredSourceFailure {
+    name: String,
+    error: String,
+}
+
+#[derive(Debug)]
+struct ConfiguredSourceOutputs {
+    successes: Vec<(String, IngestOutput)>,
+    failures: Vec<ConfiguredSourceFailure>,
+}
 
 #[derive(Debug, Clone)]
 struct RedactionKey {
@@ -762,22 +906,8 @@ fn init_env_vars(selected: &[InitSource]) -> Vec<&'static str> {
     vars
 }
 
-fn init_next_command(selected: &[InitSource]) -> &'static str {
-    if init_source_enabled(selected, InitSource::Github) {
-        "shiplog collect github --me --last-6-months"
-    } else if init_source_enabled(selected, InitSource::Gitlab) {
-        "shiplog collect gitlab --me --last-6-months"
-    } else if init_source_enabled(selected, InitSource::Jira) {
-        "shiplog collect jira --user <account-id-or-email> --auth-user <email> --last-6-months"
-    } else if init_source_enabled(selected, InitSource::Linear) {
-        "shiplog collect linear --user-id <linear-user-id> --last-6-months"
-    } else if init_source_enabled(selected, InitSource::Git) {
-        "shiplog collect git --repo . --last-6-months"
-    } else if init_source_enabled(selected, InitSource::Json) {
-        "shiplog collect json --events <events.jsonl> --coverage <coverage.manifest.json>"
-    } else {
-        "shiplog collect manual --events manual_events.yaml --user <label> --last-6-months"
-    }
+fn init_next_command(_selected: &[InitSource]) -> &'static str {
+    "shiplog collect multi --last-6-months"
 }
 
 fn ensure_init_files_available(paths: &[&Path], force: bool) -> Result<()> {
@@ -833,13 +963,15 @@ label = "Your Name"
 
 [sources.github]
 enabled = {github}
-user = "your-github-username"
+user = ""
+me = {github}
 mode = "merged"
 include_reviews = true
 
 [sources.gitlab]
 enabled = {gitlab}
-user = "your-gitlab-username"
+user = ""
+me = {gitlab}
 instance = "gitlab.com"
 state = "merged"
 include_reviews = true
@@ -905,6 +1037,358 @@ generated_at: "{generated_at}"
 events: []
 "#
     )
+}
+
+fn load_shiplog_config(config_path: &Path) -> Result<ShiplogConfig> {
+    let text = std::fs::read_to_string(config_path)
+        .with_context(|| format!("read {}", config_path.display()))?;
+    toml::from_str(&text).with_context(|| format!("parse {}", config_path.display()))
+}
+
+fn resolve_multi_window(args: DateArgs, config: &ShiplogConfig) -> Result<ResolvedWindow> {
+    if date_args_has_any(&args) {
+        return resolve_date_window(args);
+    }
+
+    if let Some(window) = non_empty_string(config.defaults.window.as_deref()) {
+        return resolve_date_window(date_args_from_config_window(&window)?);
+    }
+
+    resolve_date_window(DateArgs::default())
+}
+
+fn date_args_has_any(args: &DateArgs) -> bool {
+    args.since.is_some()
+        || args.until.is_some()
+        || args.last_6_months
+        || args.last_quarter
+        || args.year.is_some()
+}
+
+fn date_args_from_config_window(window: &str) -> Result<DateArgs> {
+    let value = window.trim();
+    if value.eq_ignore_ascii_case("last-6-months") {
+        return Ok(DateArgs {
+            last_6_months: true,
+            ..DateArgs::default()
+        });
+    }
+    if value.eq_ignore_ascii_case("last-quarter") {
+        return Ok(DateArgs {
+            last_quarter: true,
+            ..DateArgs::default()
+        });
+    }
+
+    let year = value
+        .strip_prefix("year:")
+        .or_else(|| value.strip_prefix("year="))
+        .unwrap_or(value);
+    if year.len() == 4 && year.chars().all(|c| c.is_ascii_digit()) {
+        let year = year
+            .parse::<i32>()
+            .with_context(|| format!("parse configured window year {year:?}"))?;
+        return Ok(DateArgs {
+            year: Some(year),
+            ..DateArgs::default()
+        });
+    }
+
+    anyhow::bail!(
+        "unsupported configured window {window:?}; use last-6-months, last-quarter, or year:YYYY"
+    )
+}
+
+fn non_empty_string(value: Option<&str>) -> Option<String> {
+    value
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToOwned::to_owned)
+}
+
+fn required_config_string(source: &str, field: &str, value: Option<&str>) -> Result<String> {
+    non_empty_string(value)
+        .ok_or_else(|| anyhow::anyhow!("{source} is enabled but sources.{source}.{field} is empty"))
+}
+
+fn optional_config_string(value: Option<&str>) -> Option<String> {
+    non_empty_string(value)
+}
+
+fn required_config_path(
+    base_dir: &Path,
+    source: &str,
+    field: &str,
+    value: Option<&PathBuf>,
+) -> Result<PathBuf> {
+    let path = value
+        .filter(|path| !path.as_os_str().is_empty())
+        .ok_or_else(|| {
+            anyhow::anyhow!("{source} is enabled but sources.{source}.{field} is empty")
+        })?;
+    Ok(resolve_config_path(base_dir, path))
+}
+
+fn optional_config_path(base_dir: &Path, value: Option<&PathBuf>) -> Option<PathBuf> {
+    value
+        .filter(|path| !path.as_os_str().is_empty())
+        .map(|path| resolve_config_path(base_dir, path))
+}
+
+fn resolve_config_path(base_dir: &Path, path: &Path) -> PathBuf {
+    if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        base_dir.join(path)
+    }
+}
+
+fn config_base_dir(config_path: &Path) -> PathBuf {
+    config_path
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."))
+        .to_path_buf()
+}
+
+fn resolve_config_cache_dir(
+    base_dir: &Path,
+    out_root: &Path,
+    explicit_cache_dir: Option<&PathBuf>,
+    no_cache: bool,
+) -> Option<PathBuf> {
+    if no_cache {
+        None
+    } else {
+        optional_config_path(base_dir, explicit_cache_dir).or_else(|| Some(out_root.join(".cache")))
+    }
+}
+
+fn push_configured_source_result(
+    successes: &mut Vec<(String, IngestOutput)>,
+    failures: &mut Vec<ConfiguredSourceFailure>,
+    name: &str,
+    result: Result<IngestOutput>,
+) {
+    match result {
+        Ok(ingest) => successes.push((name.to_string(), ingest)),
+        Err(err) => failures.push(ConfiguredSourceFailure {
+            name: name.to_string(),
+            error: err.to_string(),
+        }),
+    }
+}
+
+fn collect_configured_sources(
+    config_path: &Path,
+    config: &ShiplogConfig,
+    window: ResolvedWindow,
+    out_root: &Path,
+) -> Result<ConfiguredSourceOutputs> {
+    let base_dir = config_base_dir(config_path);
+    let default_include_reviews = config.defaults.include_reviews.unwrap_or(false);
+    let mut successes = Vec::new();
+    let mut failures = Vec::new();
+
+    if let Some(source) = config
+        .sources
+        .github
+        .as_ref()
+        .filter(|source| source.enabled)
+    {
+        let api_base = optional_config_string(source.api_base.as_deref())
+            .unwrap_or_else(|| "https://api.github.com".to_string());
+        let user = resolve_user_or_me(
+            "GitHub",
+            optional_config_string(source.user.as_deref()),
+            source.me,
+            || discover_github_user(&api_base, None),
+        )?;
+        let cache_dir = resolve_config_cache_dir(
+            &base_dir,
+            out_root,
+            source.cache_dir.as_ref(),
+            source.no_cache,
+        );
+        let ing = make_github_ingestor(
+            &user,
+            window.since,
+            window.until,
+            source.mode.as_deref().unwrap_or("merged"),
+            source.include_reviews.unwrap_or(default_include_reviews),
+            source.no_details,
+            source.throttle_ms,
+            None,
+            &api_base,
+            cache_dir,
+        )
+        .context("create configured GitHub ingestor")
+        .and_then(|ing| ing.ingest().context("collect configured GitHub source"));
+        push_configured_source_result(&mut successes, &mut failures, "github", ing);
+    }
+
+    if let Some(source) = config
+        .sources
+        .gitlab
+        .as_ref()
+        .filter(|source| source.enabled)
+    {
+        let instance = optional_config_string(source.instance.as_deref())
+            .unwrap_or_else(|| "gitlab.com".to_string());
+        let user = resolve_user_or_me(
+            "GitLab",
+            optional_config_string(source.user.as_deref()),
+            source.me,
+            || discover_gitlab_user(&instance, None),
+        )?;
+        let cache_dir = resolve_config_cache_dir(
+            &base_dir,
+            out_root,
+            source.cache_dir.as_ref(),
+            source.no_cache,
+        );
+        let ing = make_gitlab_ingestor(
+            &user,
+            window.since,
+            window.until,
+            source.state.as_deref().unwrap_or("merged"),
+            &instance,
+            source.include_reviews.unwrap_or(default_include_reviews),
+            source.throttle_ms,
+            None,
+            cache_dir,
+        )
+        .context("create configured GitLab ingestor")
+        .and_then(|ing| ing.ingest().context("collect configured GitLab source"));
+        push_configured_source_result(&mut successes, &mut failures, "gitlab", ing);
+    }
+
+    if let Some(source) = config.sources.jira.as_ref().filter(|source| source.enabled) {
+        let user = required_config_string("jira", "user", source.user.as_deref())?;
+        let instance = required_config_string("jira", "instance", source.instance.as_deref())?;
+        let auth_user = optional_config_string(source.auth_user.as_deref()).or_else(|| {
+            source
+                .auth_user_env
+                .as_deref()
+                .and_then(|env_var| non_empty_string(Some(env_var)))
+                .and_then(|env_var| std::env::var(env_var).ok())
+        });
+        let cache_dir = resolve_config_cache_dir(
+            &base_dir,
+            out_root,
+            source.cache_dir.as_ref(),
+            source.no_cache,
+        );
+        let ing = make_jira_ingestor(
+            &user,
+            auth_user,
+            window.since,
+            window.until,
+            source.status.as_deref().unwrap_or("done"),
+            &instance,
+            source.throttle_ms,
+            None,
+            cache_dir,
+        )
+        .context("create configured Jira ingestor")
+        .and_then(|ing| ing.ingest().context("collect configured Jira source"));
+        push_configured_source_result(&mut successes, &mut failures, "jira", ing);
+    }
+
+    if let Some(source) = config
+        .sources
+        .linear
+        .as_ref()
+        .filter(|source| source.enabled)
+    {
+        let user_id = required_config_string("linear", "user_id", source.user_id.as_deref())?;
+        let project = optional_config_string(source.project.as_deref());
+        let cache_dir = resolve_config_cache_dir(
+            &base_dir,
+            out_root,
+            source.cache_dir.as_ref(),
+            source.no_cache,
+        );
+        let ing = make_linear_ingestor(
+            &user_id,
+            window.since,
+            window.until,
+            source.status.as_deref().unwrap_or("done"),
+            project,
+            source.throttle_ms,
+            None,
+            cache_dir,
+        )
+        .context("create configured Linear ingestor")
+        .and_then(|ing| ing.ingest().context("collect configured Linear source"));
+        push_configured_source_result(&mut successes, &mut failures, "linear", ing);
+    }
+
+    if let Some(source) = config.sources.git.as_ref().filter(|source| source.enabled) {
+        let repo = required_config_path(&base_dir, "git", "repo", source.repo.as_ref())?;
+        let result = make_git_ingestor(
+            &repo,
+            window.since,
+            window.until,
+            optional_config_string(source.author.as_deref()),
+            source.include_merges,
+        )
+        .ingest()
+        .context("collect configured git source");
+        push_configured_source_result(&mut successes, &mut failures, "git", result);
+    }
+
+    if let Some(source) = config.sources.json.as_ref().filter(|source| source.enabled) {
+        let events = required_config_path(&base_dir, "json", "events", source.events.as_ref())?;
+        let coverage =
+            required_config_path(&base_dir, "json", "coverage", source.coverage.as_ref())?;
+        let ing = JsonIngestor {
+            events_path: events,
+            coverage_path: coverage,
+        };
+        let result = ing.ingest().context("collect configured JSON source");
+        push_configured_source_result(&mut successes, &mut failures, "json", result);
+    }
+
+    if let Some(source) = config
+        .sources
+        .manual
+        .as_ref()
+        .filter(|source| source.enabled)
+    {
+        let events = required_config_path(&base_dir, "manual", "events", source.events.as_ref())?;
+        let user = optional_config_string(source.user.as_deref())
+            .or_else(|| optional_config_string(config.user.label.as_deref()))
+            .unwrap_or_else(|| "user".to_string());
+        let ing = ManualIngestor::new(&events, user, window.since, window.until);
+        let result = ing.ingest().context("collect configured manual source");
+        push_configured_source_result(&mut successes, &mut failures, "manual", result);
+    }
+
+    if successes.is_empty() && failures.is_empty() {
+        anyhow::bail!(
+            "No enabled sources found in {}; enable at least one [sources.<name>] section",
+            config_path.display()
+        );
+    }
+
+    if successes.is_empty() {
+        let failed = failures
+            .iter()
+            .map(|failure| format!("{}: {}", failure.name, failure.error))
+            .collect::<Vec<_>>()
+            .join("; ");
+        anyhow::bail!("No configured sources collected successfully: {failed}");
+    }
+
+    Ok(ConfiguredSourceOutputs {
+        successes,
+        failures,
+    })
+}
+
+fn config_user_label(config: &ShiplogConfig) -> Option<String> {
+    optional_config_string(config.user.label.as_deref())
 }
 
 fn resolve_user_or_me(
@@ -1305,6 +1789,96 @@ fn main() -> Result<()> {
                 build_clusterer(llm_cluster, &llm_api_endpoint, &llm_model, llm_api_key);
             let (engine, redactor) = create_engine(redaction_key.engine_key(), clusterer);
             let engine = engine.with_profile_rendering(redaction_key.render_profiles());
+
+            let source = match source {
+                CollectSource::Multi {
+                    config,
+                    window,
+                    conflict,
+                } => {
+                    let config_model = load_shiplog_config(&config)?;
+                    let window = resolve_multi_window(window, &config_model)?;
+                    let configured =
+                        collect_configured_sources(&config, &config_model, window, &out)?;
+                    let ingest_outputs = configured
+                        .successes
+                        .iter()
+                        .map(|(_, ingest)| ingest.clone())
+                        .collect::<Vec<_>>();
+
+                    let mut merged = engine
+                        .merge(ingest_outputs, conflict.into())
+                        .context("merge configured source outputs")?;
+                    let merge_user = config_user_label(&config_model)
+                        .unwrap_or_else(|| merged.coverage.user.clone());
+                    let window_label = window.window_label();
+                    merged.coverage.user = merge_user.clone();
+                    merged.coverage.window = TimeWindow {
+                        since: window.since,
+                        until: window.until,
+                    };
+                    if !configured.failures.is_empty() {
+                        for failure in &configured.failures {
+                            if !merged.coverage.sources.contains(&failure.name) {
+                                merged.coverage.sources.push(failure.name.clone());
+                            }
+                            merged.coverage.warnings.push(format!(
+                                "Configured source {} was skipped: {}",
+                                failure.name, failure.error
+                            ));
+                        }
+                        merged.coverage.sources.sort();
+                        merged.coverage.sources.dedup();
+                        merged.coverage.completeness =
+                            shiplog_schema::coverage::Completeness::Partial;
+                    }
+
+                    let run_id = merged.coverage.run_id.to_string();
+                    let run_dir = out.join(&run_id);
+
+                    if regen {
+                        let suggested =
+                            shiplog_workstreams::WorkstreamManager::suggested_path(&run_dir);
+                        if suggested.exists() {
+                            std::fs::remove_file(&suggested)
+                                .with_context(|| format!("remove {:?} for --regen", suggested))?;
+                        }
+                    }
+
+                    let cache_path = DeterministicRedactor::cache_path(&run_dir);
+                    let _ = redactor.load_cache(&cache_path);
+
+                    let (outputs, ws_source) = engine
+                        .run(
+                            merged,
+                            &merge_user,
+                            &window_label,
+                            &run_dir,
+                            zip,
+                            &bundle_profile,
+                        )
+                        .context("run configured multi-source pipeline")?;
+
+                    redactor
+                        .save_cache(&cache_path)
+                        .with_context(|| format!("save redaction cache to {cache_path:?}"))?;
+
+                    println!("Collected configured sources:");
+                    for (name, ingest) in &configured.successes {
+                        println!("- {name}: success, {} events", ingest.events.len());
+                    }
+                    for failure in &configured.failures {
+                        println!("- {}: skipped, {}", failure.name, failure.error);
+                    }
+                    println!("Merged and wrote:");
+                    println!("- inputs: {}", configured.successes.len());
+                    println!("- conflict: {}", conflict.as_str());
+                    print_outputs(&outputs, ws_source);
+                    return Ok(());
+                }
+
+                CollectSource::Source(source) => source,
+            };
 
             match source {
                 Source::Github {
