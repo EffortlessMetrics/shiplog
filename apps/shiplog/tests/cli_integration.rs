@@ -362,7 +362,8 @@ fn collect_json_produces_all_outputs() {
     let tmp = TempDir::new().unwrap();
     let fixtures = fixture_dir();
 
-    shiplog_cmd()
+    let mut cmd = shiplog_cmd();
+    cmd.env_remove("SHIPLOG_REDACT_KEY")
         .args([
             "collect",
             "--out",
@@ -394,6 +395,40 @@ fn collect_json_produces_all_outputs() {
         run_dir.join("bundle.manifest.json").exists(),
         "missing bundle.manifest.json"
     );
+    assert!(
+        !run_dir.join("profiles/manager/packet.md").exists(),
+        "manager profile should require an explicit redaction key"
+    );
+    assert!(
+        !run_dir.join("profiles/public/packet.md").exists(),
+        "public profile should require an explicit redaction key"
+    );
+}
+
+#[test]
+fn collect_json_public_profile_without_key_fails_closed() {
+    let tmp = TempDir::new().unwrap();
+    let fixtures = fixture_dir();
+
+    let mut cmd = shiplog_cmd();
+    cmd.env_remove("SHIPLOG_REDACT_KEY")
+        .args([
+            "collect",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--bundle-profile",
+            "public",
+            "json",
+            "--events",
+            fixtures.join("ledger.events.jsonl").to_str().unwrap(),
+            "--coverage",
+            fixtures.join("coverage.manifest.json").to_str().unwrap(),
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "public profile requires --redact-key or SHIPLOG_REDACT_KEY",
+        ));
 }
 
 #[test]
@@ -779,6 +814,58 @@ fn render_on_collected_directory() {
     assert!(
         tmp.path().join("run_fixture/packet.md").exists(),
         "packet.md should exist after render"
+    );
+}
+
+#[test]
+fn render_public_profile_without_key_fails_closed() {
+    let tmp = TempDir::new().unwrap();
+    collect_json_into(tmp.path());
+
+    let mut cmd = shiplog_cmd();
+    cmd.env_remove("SHIPLOG_REDACT_KEY")
+        .args([
+            "render",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+            "--bundle-profile",
+            "public",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "public profile requires --redact-key or SHIPLOG_REDACT_KEY",
+        ));
+}
+
+#[test]
+fn render_public_profile_with_key_writes_public_packet() {
+    let tmp = TempDir::new().unwrap();
+    collect_json_into(tmp.path());
+
+    shiplog_cmd()
+        .args([
+            "render",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+            "--bundle-profile",
+            "public",
+            "--redact-key",
+            "stable-test-key",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Rendered"));
+
+    assert!(
+        tmp.path()
+            .join("run_fixture/profiles/public/packet.md")
+            .exists(),
+        "public packet should be written when a redaction key is provided"
     );
 }
 

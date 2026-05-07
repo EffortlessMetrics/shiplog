@@ -30,6 +30,8 @@ pub struct Engine<'a> {
     pub clusterer: &'a dyn WorkstreamClusterer,
     /// The redactor used to produce manager/public profiles.
     pub redactor: &'a dyn Redactor,
+    /// Whether manager/public profile packets should be rendered.
+    pub render_profiles: bool,
 }
 
 /// Paths to every artifact produced by a pipeline run.
@@ -72,6 +74,19 @@ impl std::fmt::Display for WorkstreamSource {
     }
 }
 
+fn ensure_bundle_profile_available(
+    bundle_profile: &BundleProfile,
+    render_profiles: bool,
+) -> Result<()> {
+    if !render_profiles && !matches!(bundle_profile, BundleProfile::Internal) {
+        anyhow::bail!(
+            "{} bundle profile requires manager/public profile rendering",
+            bundle_profile
+        );
+    }
+    Ok(())
+}
+
 impl<'a> Engine<'a> {
     /// Create a new engine with the given renderer, clusterer, and redactor.
     ///
@@ -97,7 +112,17 @@ impl<'a> Engine<'a> {
             renderer,
             clusterer,
             redactor,
+            render_profiles: true,
         }
+    }
+
+    /// Return an engine configured to render or skip manager/public profile packets.
+    ///
+    /// Profile rendering is enabled by default. Disable it for internal-only
+    /// outputs when no real redaction key is available.
+    pub fn with_profile_rendering(mut self, render_profiles: bool) -> Self {
+        self.render_profiles = render_profiles;
+        self
     }
 
     /// Run the full pipeline: ingest → cluster → render.
@@ -140,6 +165,34 @@ impl<'a> Engine<'a> {
         zip: bool,
         bundle_profile: &BundleProfile,
     ) -> Result<(RunOutputs, WorkstreamSource)> {
+        self.run_with_profile_rendering(
+            ingest,
+            user,
+            window_label,
+            out_dir,
+            zip,
+            bundle_profile,
+            self.render_profiles,
+        )
+    }
+
+    /// Run the full pipeline with explicit control over manager/public profile rendering.
+    ///
+    /// Set `render_profiles` to `false` for internal-only outputs when no real
+    /// redaction key is available. Manager and public bundle profiles require
+    /// profile rendering because those bundles include redacted packet paths.
+    #[allow(clippy::too_many_arguments)]
+    pub fn run_with_profile_rendering(
+        &self,
+        ingest: IngestOutput,
+        user: &str,
+        window_label: &str,
+        out_dir: &Path,
+        zip: bool,
+        bundle_profile: &BundleProfile,
+        render_profiles: bool,
+    ) -> Result<(RunOutputs, WorkstreamSource)> {
+        ensure_bundle_profile_available(bundle_profile, render_profiles)?;
         std::fs::create_dir_all(out_dir).with_context(|| format!("create {out_dir:?}"))?;
 
         let events = ingest.events;
@@ -175,27 +228,15 @@ impl<'a> Engine<'a> {
         std::fs::write(&packet_path, &packet)
             .with_context(|| format!("write packet to {packet_path:?}"))?;
 
-        // Render profiles
-        self.render_profile(
-            "manager",
+        self.render_profiles_if_requested(
+            render_profiles,
             user,
             window_label,
             out_dir,
             &events,
             &workstreams,
             &coverage,
-        )
-        .context("render manager profile")?;
-        self.render_profile(
-            "public",
-            user,
-            window_label,
-            out_dir,
-            &events,
-            &workstreams,
-            &coverage,
-        )
-        .context("render public profile")?;
+        )?;
 
         // Bundle manifest + zip
         let run_id = &coverage.run_id;
@@ -289,6 +330,36 @@ impl<'a> Engine<'a> {
         workstreams: Option<WorkstreamsFile>,
         bundle_profile: &BundleProfile,
     ) -> Result<(RunOutputs, WorkstreamSource)> {
+        self.import_with_profile_rendering(
+            ingest,
+            user,
+            window_label,
+            out_dir,
+            zip,
+            workstreams,
+            bundle_profile,
+            self.render_profiles,
+        )
+    }
+
+    /// Import a pre-built ledger with explicit control over manager/public profile rendering.
+    ///
+    /// Set `render_profiles` to `false` for internal-only outputs when no real
+    /// redaction key is available. Manager and public bundle profiles require
+    /// profile rendering because those bundles include redacted packet paths.
+    #[allow(clippy::too_many_arguments)]
+    pub fn import_with_profile_rendering(
+        &self,
+        ingest: IngestOutput,
+        user: &str,
+        window_label: &str,
+        out_dir: &Path,
+        zip: bool,
+        workstreams: Option<WorkstreamsFile>,
+        bundle_profile: &BundleProfile,
+        render_profiles: bool,
+    ) -> Result<(RunOutputs, WorkstreamSource)> {
+        ensure_bundle_profile_available(bundle_profile, render_profiles)?;
         std::fs::create_dir_all(out_dir).with_context(|| format!("create {out_dir:?}"))?;
 
         let events = ingest.events;
@@ -330,27 +401,15 @@ impl<'a> Engine<'a> {
         std::fs::write(&packet_path, &packet)
             .with_context(|| format!("write packet to {packet_path:?}"))?;
 
-        // Render profiles
-        self.render_profile(
-            "manager",
+        self.render_profiles_if_requested(
+            render_profiles,
             user,
             window_label,
             out_dir,
             &events,
             &ws,
             &coverage,
-        )
-        .context("render manager profile")?;
-        self.render_profile(
-            "public",
-            user,
-            window_label,
-            out_dir,
-            &events,
-            &ws,
-            &coverage,
-        )
-        .context("render public profile")?;
+        )?;
 
         // Bundle manifest + zip
         let run_id = &coverage.run_id;
@@ -418,6 +477,34 @@ impl<'a> Engine<'a> {
         zip: bool,
         bundle_profile: &BundleProfile,
     ) -> Result<RunOutputs> {
+        self.refresh_with_profile_rendering(
+            ingest,
+            user,
+            window_label,
+            out_dir,
+            zip,
+            bundle_profile,
+            self.render_profiles,
+        )
+    }
+
+    /// Refresh receipts and stats with explicit control over manager/public profile rendering.
+    ///
+    /// Set `render_profiles` to `false` for internal-only outputs when no real
+    /// redaction key is available. Manager and public bundle profiles require
+    /// profile rendering because those bundles include redacted packet paths.
+    #[allow(clippy::too_many_arguments)]
+    pub fn refresh_with_profile_rendering(
+        &self,
+        ingest: IngestOutput,
+        user: &str,
+        window_label: &str,
+        out_dir: &Path,
+        zip: bool,
+        bundle_profile: &BundleProfile,
+        render_profiles: bool,
+    ) -> Result<RunOutputs> {
+        ensure_bundle_profile_available(bundle_profile, render_profiles)?;
         std::fs::create_dir_all(out_dir).with_context(|| format!("create {out_dir:?}"))?;
 
         let events = ingest.events;
@@ -470,27 +557,15 @@ impl<'a> Engine<'a> {
         std::fs::write(&packet_path, &packet)
             .with_context(|| format!("write packet to {packet_path:?}"))?;
 
-        // Render profiles
-        self.render_profile(
-            "manager",
+        self.render_profiles_if_requested(
+            render_profiles,
             user,
             window_label,
             out_dir,
             &events,
             &workstreams,
             &coverage,
-        )
-        .context("render manager profile")?;
-        self.render_profile(
-            "public",
-            user,
-            window_label,
-            out_dir,
-            &events,
-            &workstreams,
-            &coverage,
-        )
-        .context("render public profile")?;
+        )?;
 
         // Bundle manifest + zip
         let run_id = &coverage.run_id;
@@ -513,6 +588,44 @@ impl<'a> Engine<'a> {
             bundle_manifest_json: paths.bundle_manifest(),
             zip_path,
         })
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn render_profiles_if_requested(
+        &self,
+        render_profiles: bool,
+        user: &str,
+        window_label: &str,
+        out_dir: &Path,
+        events: &[EventEnvelope],
+        workstreams: &WorkstreamsFile,
+        coverage: &CoverageManifest,
+    ) -> Result<()> {
+        if !render_profiles {
+            return Ok(());
+        }
+
+        self.render_profile(
+            "manager",
+            user,
+            window_label,
+            out_dir,
+            events,
+            workstreams,
+            coverage,
+        )
+        .context("render manager profile")?;
+        self.render_profile(
+            "public",
+            user,
+            window_label,
+            out_dir,
+            events,
+            workstreams,
+            coverage,
+        )
+        .context("render public profile")?;
+        Ok(())
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -759,6 +872,69 @@ mod tests {
         assert!(
             outputs.zip_path.as_ref().unwrap().exists(),
             "zip file missing"
+        );
+    }
+
+    #[test]
+    fn run_with_profile_rendering_disabled_skips_share_profiles() {
+        let dir = tempfile::tempdir().unwrap();
+        let out_dir = dir.path().join("test_run_internal_only");
+
+        let engine = test_engine().with_profile_rendering(false);
+        let ingest = test_ingest();
+
+        engine
+            .run(
+                ingest,
+                "tester",
+                "2025-01-01..2025-02-01",
+                &out_dir,
+                false,
+                &BundleProfile::Internal,
+            )
+            .unwrap();
+
+        assert!(
+            !out_dir
+                .join(DIR_PROFILES)
+                .join(PROFILE_MANAGER)
+                .join(FILE_PACKET_MD)
+                .exists(),
+            "manager profile should not be written"
+        );
+        assert!(
+            !out_dir
+                .join(DIR_PROFILES)
+                .join(PROFILE_PUBLIC)
+                .join(FILE_PACKET_MD)
+                .exists(),
+            "public profile should not be written"
+        );
+    }
+
+    #[test]
+    fn manager_bundle_requires_profile_rendering() {
+        let dir = tempfile::tempdir().unwrap();
+        let out_dir = dir.path().join("test_run_manager_without_profiles");
+
+        let engine = test_engine().with_profile_rendering(false);
+        let ingest = test_ingest();
+
+        let err = engine
+            .run(
+                ingest,
+                "tester",
+                "2025-01-01..2025-02-01",
+                &out_dir,
+                false,
+                &BundleProfile::Manager,
+            )
+            .unwrap_err();
+
+        assert!(
+            format!("{err:#}")
+                .contains("manager bundle profile requires manager/public profile rendering"),
+            "unexpected error: {err:#}"
         );
     }
 

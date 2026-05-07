@@ -131,7 +131,7 @@ out/<run_id>/
   ledger.events.jsonl             # Canonical, append-only event log
   coverage.manifest.json          # What was queried, completeness, gaps
   bundle.manifest.json            # File checksums for integrity verification
-  profiles/
+  profiles/                       # Only written when a redaction key is provided
     manager/packet.md             # Redacted: keeps context, strips sensitive details
     public/packet.md              # Redacted: aliases repos/workstreams, strips fields
 ```
@@ -245,6 +245,9 @@ shiplog collect manual \
 ```
 
 ## Redaction and profiles
+
+Internal packets do not require a redaction key. Manager and public packets fail
+closed unless you provide `--redact-key` or set `SHIPLOG_REDACT_KEY`.
 
 Generate redacted packets by providing a key:
 
