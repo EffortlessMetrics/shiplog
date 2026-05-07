@@ -20,12 +20,18 @@ expression: result
 
 Cross-cutting work
 
-**Claim scaffolds**
+**Evidence anchors**
 
-- Problem: _fill_
-- What I shipped: _fill_
-- Why it mattered: _fill_
-- Result: _fill_
+- [PR] Implement feature X (1970-01-01) — [owner/repo](https://github.com/owner/repo/pull/42)
+- [Review] approved (1970-01-01) — [owner/repo](https://github.com/owner/repo/pull/42)
+- [🚨] Production outage resolution (1970-01-01)
+
+**Suggested claim prompts**
+
+- What changed for users, operators, or maintainers?
+- Which risk, delay, or repeated work did this reduce?
+- Which evidence anchor best proves the change?
+- What follow-up or gap should a reviewer know about?
 
 _PRs: 1, Reviews: 1, Manual: 1_
 

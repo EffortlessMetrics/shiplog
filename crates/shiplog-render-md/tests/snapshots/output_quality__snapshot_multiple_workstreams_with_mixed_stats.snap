@@ -20,12 +20,18 @@ expression: md
 
 Backend API improvements
 
-**Claim scaffolds**
+**Evidence anchors**
 
-- Problem: _fill_
-- What I shipped: _fill_
-- Why it mattered: _fill_
-- Result: _fill_
+- [PR] API auth endpoint (1970-01-01) — [acme/api](https://github.com/acme/api/pull/1)
+- [PR] API rate limiting (1970-01-01) — [acme/api](https://github.com/acme/api/pull/2)
+- [Review] approved (1970-01-01) — [acme/api](https://github.com/acme/api/pull/1)
+
+**Suggested claim prompts**
+
+- What changed for users, operators, or maintainers?
+- Which risk, delay, or repeated work did this reduce?
+- Which evidence anchor best proves the change?
+- What follow-up or gap should a reviewer know about?
 
 _PRs: 2, Reviews: 1, Manual: 0_
 
@@ -33,12 +39,16 @@ _PRs: 2, Reviews: 1, Manual: 0_
 
 Dashboard improvements
 
-**Claim scaffolds**
+**Evidence anchors**
 
-- Problem: _fill_
-- What I shipped: _fill_
-- Why it mattered: _fill_
-- Result: _fill_
+- [PR] Dashboard redesign (1970-01-01) — [acme/web](https://github.com/acme/web/pull/3)
+
+**Suggested claim prompts**
+
+- What changed for users, operators, or maintainers?
+- Which risk, delay, or repeated work did this reduce?
+- Which evidence anchor best proves the change?
+- What follow-up or gap should a reviewer know about?
 
 _PRs: 1, Reviews: 0, Manual: 0_
 
