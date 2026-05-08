@@ -1417,6 +1417,248 @@ mod tests {
         assert!(review.submitted_at.is_none());
     }
 
+    #[test]
+    fn recorded_github_search_payload_deserializes_and_converts() {
+        let search_payload = serde_json::json!({
+            "total_count": 1,
+            "incomplete_results": false,
+            "items": [
+                {
+                    "url": "https://api.github.com/repos/octocat/Hello-World/issues/1347",
+                    "repository_url": "https://api.github.com/repos/octocat/Hello-World",
+                    "labels_url": "https://api.github.com/repos/octocat/Hello-World/issues/1347/labels{/name}",
+                    "comments_url": "https://api.github.com/repos/octocat/Hello-World/issues/1347/comments",
+                    "events_url": "https://api.github.com/repos/octocat/Hello-World/issues/1347/events",
+                    "html_url": "https://github.com/octocat/Hello-World/pull/1347",
+                    "id": 1000001347,
+                    "node_id": "PR_kwDOABCD",
+                    "number": 1347,
+                    "state": "closed",
+                    "title": "Reduce deploy rollback toil",
+                    "user": {
+                        "login": "alice",
+                        "id": 100,
+                        "node_id": "MDQ6VXNlcjEwMA==",
+                        "avatar_url": "https://github.com/images/error/alice_happy.gif",
+                        "gravatar_id": "",
+                        "url": "https://api.github.com/users/alice",
+                        "html_url": "https://github.com/alice",
+                        "type": "User",
+                        "site_admin": false
+                    },
+                    "labels": [
+                        {
+                            "id": 208045946,
+                            "node_id": "MDU6TGFiZWwyMDgwNDU5NDY=",
+                            "url": "https://api.github.com/repos/octocat/Hello-World/labels/reliability",
+                            "name": "reliability",
+                            "description": "Reliability work",
+                            "color": "0e8a16",
+                            "default": false
+                        }
+                    ],
+                    "pull_request": {
+                        "url": "https://api.github.com/repos/octocat/Hello-World/pulls/1347",
+                        "html_url": "https://github.com/octocat/Hello-World/pull/1347",
+                        "diff_url": "https://github.com/octocat/Hello-World/pull/1347.diff",
+                        "patch_url": "https://github.com/octocat/Hello-World/pull/1347.patch"
+                    },
+                    "closed_at": "2025-01-18T16:00:00Z",
+                    "created_at": "2025-01-10T09:00:00Z",
+                    "updated_at": "2025-01-18T16:00:00Z",
+                    "author_association": "MEMBER",
+                    "score": 1.0
+                }
+            ]
+        });
+        let details_payload = serde_json::json!({
+            "url": "https://api.github.com/repos/octocat/Hello-World/pulls/1347",
+            "id": 2000001347,
+            "node_id": "PR_kwDOABCD",
+            "html_url": "https://github.com/octocat/Hello-World/pull/1347",
+            "diff_url": "https://github.com/octocat/Hello-World/pull/1347.diff",
+            "patch_url": "https://github.com/octocat/Hello-World/pull/1347.patch",
+            "issue_url": "https://api.github.com/repos/octocat/Hello-World/issues/1347",
+            "number": 1347,
+            "state": "closed",
+            "locked": false,
+            "title": "Reduce deploy rollback toil",
+            "user": { "login": "alice", "id": 100 },
+            "body": "Add preflight checks and rollback runbook links.",
+            "created_at": "2025-01-10T09:00:00Z",
+            "updated_at": "2025-01-18T16:00:00Z",
+            "closed_at": "2025-01-18T16:00:00Z",
+            "merged_at": "2025-01-18T16:00:00Z",
+            "merge_commit_sha": "ecdd80bb57125d7ba9641ffaa4d7d2c19d3f3091",
+            "assignee": null,
+            "assignees": [],
+            "requested_reviewers": [],
+            "requested_teams": [],
+            "labels": [],
+            "head": {
+                "label": "alice:rollback-preflight",
+                "ref": "rollback-preflight",
+                "sha": "bbcd538c8e72b8c175046e27cc8f907076331401",
+                "user": { "login": "alice", "id": 100 },
+                "repo": {
+                    "id": 1296269,
+                    "name": "Hello-World",
+                    "full_name": "octocat/Hello-World",
+                    "private": false,
+                    "html_url": "https://github.com/octocat/Hello-World"
+                }
+            },
+            "base": {
+                "label": "octocat:main",
+                "ref": "main",
+                "sha": "bbcd538c8e72b8c175046e27cc8f907076331402",
+                "user": { "login": "octocat", "id": 1 },
+                "repo": {
+                    "id": 1296269,
+                    "name": "Hello-World",
+                    "full_name": "octocat/Hello-World",
+                    "private": true,
+                    "html_url": "https://github.com/octocat/Hello-World"
+                }
+            },
+            "draft": false,
+            "merged": true,
+            "mergeable": true,
+            "rebaseable": true,
+            "mergeable_state": "clean",
+            "merged_by": { "login": "octocat", "id": 1 },
+            "comments": 2,
+            "review_comments": 1,
+            "commits": 3,
+            "additions": 144,
+            "deletions": 18,
+            "changed_files": 6
+        });
+        let reviews_payload = serde_json::json!([
+            {
+                "id": 99001,
+                "node_id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3OTkwMDE=",
+                "user": {
+                    "login": "alice",
+                    "id": 100,
+                    "node_id": "MDQ6VXNlcjEwMA==",
+                    "avatar_url": "https://github.com/images/error/alice_happy.gif",
+                    "gravatar_id": "",
+                    "url": "https://api.github.com/users/alice",
+                    "html_url": "https://github.com/alice",
+                    "type": "User",
+                    "site_admin": false
+                },
+                "body": "Verified the rollback path.",
+                "state": "APPROVED",
+                "html_url": "https://github.com/octocat/Hello-World/pull/1347#pullrequestreview-99001",
+                "pull_request_url": "https://api.github.com/repos/octocat/Hello-World/pulls/1347",
+                "_links": {
+                    "html": { "href": "https://github.com/octocat/Hello-World/pull/1347#pullrequestreview-99001" },
+                    "pull_request": { "href": "https://api.github.com/repos/octocat/Hello-World/pulls/1347" }
+                },
+                "submitted_at": "2025-01-18T15:30:00Z",
+                "commit_id": "ecdd80bb57125d7ba9641ffaa4d7d2c19d3f3091",
+                "author_association": "MEMBER"
+            },
+            {
+                "id": 99002,
+                "user": { "login": "bob" },
+                "state": "COMMENTED",
+                "submitted_at": "2025-01-18T15:45:00Z"
+            },
+            {
+                "id": 99003,
+                "user": { "login": "alice" },
+                "state": "PENDING",
+                "submitted_at": null
+            }
+        ]);
+
+        let search: SearchResponse<SearchIssueItem> =
+            serde_json::from_value(search_payload.clone()).unwrap();
+        assert_eq!(search.total_count, 1);
+        assert!(!search.incomplete_results);
+        assert_eq!(
+            search.items[0].repository_url,
+            "https://api.github.com/repos/octocat/Hello-World"
+        );
+        let pr_url = search.items[0].pull_request.as_ref().unwrap().url.clone();
+
+        let details: PullRequestDetails = serde_json::from_value(details_payload).unwrap();
+        assert_eq!(details.additions, 144);
+        assert_eq!(details.deletions, 18);
+        assert_eq!(details.changed_files, 6);
+        assert!(details.base.repo.private_field);
+
+        let mut ing = make_ingestor("alice").with_in_memory_cache().unwrap();
+        ing.mode = "merged".to_string();
+        ing.cache
+            .as_ref()
+            .unwrap()
+            .set(&CacheKey::pr_details(&pr_url), &details)
+            .unwrap();
+
+        let client = Client::new();
+        let pr_events = ing.items_to_pr_events(&client, search.items).unwrap();
+        assert_eq!(pr_events.len(), 1);
+        let pr_event = &pr_events[0];
+        assert_eq!(pr_event.kind, EventKind::PullRequest);
+        assert_eq!(pr_event.actor.login, "alice");
+        assert_eq!(pr_event.repo.full_name, "octocat/Hello-World");
+        assert_eq!(pr_event.repo.visibility, RepoVisibility::Private);
+        assert_eq!(pr_event.source.system, SourceSystem::Github);
+        assert_eq!(pr_event.source.url.as_deref(), Some(pr_url.as_str()));
+        assert_eq!(pr_event.source.opaque_id.as_deref(), Some("1000001347"));
+
+        if let EventPayload::PullRequest(pr) = &pr_event.payload {
+            assert_eq!(pr.number, 1347);
+            assert_eq!(pr.title, "Reduce deploy rollback toil");
+            assert_eq!(pr.state, PullRequestState::Merged);
+            assert_eq!(
+                pr.merged_at,
+                Some("2025-01-18T16:00:00Z".parse::<DateTime<Utc>>().unwrap())
+            );
+            assert_eq!(pr.additions, Some(144));
+            assert_eq!(pr.deletions, Some(18));
+            assert_eq!(pr.changed_files, Some(6));
+        } else {
+            panic!("expected PullRequest payload");
+        }
+
+        let reviews: Vec<PullRequestReview> = serde_json::from_value(reviews_payload).unwrap();
+        ing.cache
+            .as_ref()
+            .unwrap()
+            .set(&CacheKey::pr_reviews(&pr_url, 1), &reviews)
+            .unwrap();
+        let review_search: SearchResponse<SearchIssueItem> =
+            serde_json::from_value(search_payload).unwrap();
+
+        let review_events = ing
+            .items_to_review_events(&client, review_search.items)
+            .unwrap();
+        assert_eq!(review_events.len(), 1);
+        let review_event = &review_events[0];
+        assert_eq!(review_event.kind, EventKind::Review);
+        assert_eq!(review_event.actor.login, "alice");
+        assert_eq!(review_event.repo.full_name, "octocat/Hello-World");
+        assert_eq!(review_event.source.url.as_deref(), Some(pr_url.as_str()));
+        assert_eq!(review_event.source.opaque_id.as_deref(), Some("99001"));
+
+        if let EventPayload::Review(review) = &review_event.payload {
+            assert_eq!(review.pull_number, 1347);
+            assert_eq!(review.pull_title, "Reduce deploy rollback toil");
+            assert_eq!(review.state, "APPROVED");
+            assert_eq!(
+                review.submitted_at,
+                "2025-01-18T15:30:00Z".parse::<DateTime<Utc>>().unwrap()
+            );
+        } else {
+            panic!("expected Review payload");
+        }
+    }
+
     // -- items_to_pr_events (no network, fetch_details=false) --
 
     #[test]
