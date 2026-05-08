@@ -116,6 +116,15 @@ fn documented_help_commands_stay_available() {
         .args(["review", "--help"])
         .assert()
         .success()
+        .stdout(predicate::str::contains("weekly"))
+        .stdout(predicate::str::contains("--latest"))
+        .stdout(predicate::str::contains("--run"))
+        .stdout(predicate::str::contains("--strict"));
+
+    shiplog_cmd()
+        .args(["review", "weekly", "--help"])
+        .assert()
+        .success()
         .stdout(predicate::str::contains("--latest"))
         .stdout(predicate::str::contains("--run"))
         .stdout(predicate::str::contains("--strict"));
@@ -310,6 +319,20 @@ fn review_cycle_fixture_commands_execute_without_network() {
         .success()
         .stdout(predicate::str::contains("Compare:"))
         .stdout(predicate::str::contains("Events:"));
+
+    shiplog_cmd()
+        .args([
+            "review",
+            "weekly",
+            "--out",
+            out.to_str().unwrap(),
+            "--latest",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Weekly review:"))
+        .stdout(predicate::str::contains("New evidence:"))
+        .stdout(predicate::str::contains("Evidence debt:"));
 
     shiplog_cmd()
         .args([

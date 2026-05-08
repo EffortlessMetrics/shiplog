@@ -137,6 +137,10 @@ For repeat review cycles, compare a prior run with the latest one:
 shiplog runs compare --from review-2025-h2 --to latest
 ```
 
+For weekly upkeep, use `shiplog review weekly` after a refresh or collection
+run. It is read-only and highlights the latest evidence counts, source gaps,
+evidence debt, and next commands before you render a packet.
+
 For a single-source run, call the source directly:
 
 ```bash
@@ -242,7 +246,7 @@ out/<run_id>/
 | `refresh <source>` | Re-fetch events while preserving curated `workstreams.yaml` |
 | `workstreams list/validate/create/rename/move/split/receipts/receipt/delete` | Inspect, validate, and safely edit workstream curation |
 | `runs list/show/compare` | Discover runs, inspect their artifacts, and compare source/workstream changes |
-| `review` | Inspect a run for skipped sources, weak curation, evidence debt, and next steps |
+| `review` / `review weekly` | Inspect a run for skipped sources, weak curation, evidence debt, and next steps |
 | `open packet/workstreams/out` | Open run artifacts, or print their paths when opening is unavailable |
 | `merge` | Merge existing run directories into one packet |
 | `import` | Import an existing run directory and re-render |
