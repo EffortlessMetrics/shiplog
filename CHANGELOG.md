@@ -41,6 +41,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Testing
 
+- Added recorded-style GitLab provider payload tests for merge request and
+  review-note parsing and event conversion.
 - Added recorded-style Jira and Linear provider payload tests for adapter
   parsing and event conversion.
 - Added a documented Codecov baseline and first informational project coverage

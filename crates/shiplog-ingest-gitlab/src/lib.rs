@@ -305,7 +305,7 @@ impl GitlabIngestor {
             params.push(("created_after", start));
             params.push(("created_before", end));
 
-            let page_mrs: Vec<GitlabMergeRequest> = match self.get_json(client, &url, &params) {
+            let mut page_mrs: Vec<GitlabMergeRequest> = match self.get_json(client, &url, &params) {
                 Ok(mrs) => mrs,
                 Err(e) => {
                     // Skip projects we can't access (e.g., private projects)
@@ -317,6 +317,10 @@ impl GitlabIngestor {
             };
 
             let mr_count = page_mrs.len() as u64;
+            for mr in &mut page_mrs {
+                mr.project_path = Some(project.path_with_namespace.clone());
+                mr.project_public = Some(project.public);
+            }
             slices.push(CoverageSlice {
                 window: TimeWindow {
                     since: self.since,
@@ -407,11 +411,12 @@ impl GitlabIngestor {
                 "closed" => PullRequestState::Closed,
                 _ => PullRequestState::Unknown,
             };
+            let project_path = mr.project_path()?;
+            let project_public = mr.project_public();
 
-            let mr_url = format!(
-                "{}/{}/-/merge_requests/{}",
-                html_base, mr.project.path_with_namespace, mr.iid
-            );
+            let mr_url = mr.web_url.clone().unwrap_or_else(|| {
+                format!("{}/{}/-/merge_requests/{}", html_base, project_path, mr.iid)
+            });
 
             let event = EventEnvelope {
                 id: EventId::from_parts(["gitlab", "mr", &mr.id.to_string()]),
@@ -422,9 +427,9 @@ impl GitlabIngestor {
                     id: Some(mr.author.id),
                 },
                 repo: RepoRef {
-                    full_name: mr.project.path_with_namespace.clone(),
-                    html_url: Some(format!("{}/{}", html_base, mr.project.path_with_namespace)),
-                    visibility: if mr.project.public {
+                    full_name: project_path.clone(),
+                    html_url: Some(format!("{}/{}", html_base, project_path)),
+                    visibility: if project_public {
                         RepoVisibility::Public
                     } else {
                         RepoVisibility::Private
@@ -476,10 +481,15 @@ impl GitlabIngestor {
                 continue;
             }
 
-            let mr_url = format!(
-                "{}/{}/-/merge_requests/{}#note_{}",
-                html_base, mr.project.path_with_namespace, mr.iid, note.id
-            );
+            let project_path = mr.project_path()?;
+            let project_public = mr.project_public();
+            let mr_url = match &mr.web_url {
+                Some(url) => format!("{}#note_{}", url, note.id),
+                None => format!(
+                    "{}/{}/-/merge_requests/{}#note_{}",
+                    html_base, project_path, mr.iid, note.id
+                ),
+            };
 
             let event = EventEnvelope {
                 id: EventId::from_parts(["gitlab", "review", &note.id.to_string()]),
@@ -490,9 +500,9 @@ impl GitlabIngestor {
                     id: Some(note.author.id),
                 },
                 repo: RepoRef {
-                    full_name: mr.project.path_with_namespace.clone(),
-                    html_url: Some(format!("{}/{}", html_base, mr.project.path_with_namespace)),
-                    visibility: if mr.project.public {
+                    full_name: project_path.clone(),
+                    html_url: Some(format!("{}/{}", html_base, project_path)),
+                    visibility: if project_public {
                         RepoVisibility::Public
                     } else {
                         RepoVisibility::Private
@@ -638,7 +648,42 @@ struct GitlabMergeRequest {
     changed_files: Option<u64>,
     labels: Vec<String>,
     author: GitlabAuthor,
-    project: GitlabProjectInfo,
+    web_url: Option<String>,
+    #[serde(default)]
+    project: Option<GitlabProjectInfo>,
+    #[serde(skip)]
+    project_path: Option<String>,
+    #[serde(skip)]
+    project_public: Option<bool>,
+}
+
+impl GitlabMergeRequest {
+    fn project_path(&self) -> Result<String> {
+        if let Some(path) = &self.project_path {
+            return Ok(path.clone());
+        }
+
+        if let Some(project) = &self.project {
+            return Ok(project.path_with_namespace.clone());
+        }
+
+        if let Some(web_url) = &self.web_url
+            && let Some(path) = project_path_from_mr_web_url(web_url)
+        {
+            return Ok(path);
+        }
+
+        Err(anyhow!(
+            "GitLab MR {} is missing project path context",
+            self.id
+        ))
+    }
+
+    fn project_public(&self) -> bool {
+        self.project_public
+            .or_else(|| self.project.as_ref().map(|project| project.public))
+            .unwrap_or(false)
+    }
 }
 
 #[derive(Debug, Deserialize, serde::Serialize)]
@@ -672,6 +717,25 @@ fn build_url_with_params(base: &str, params: &[(&str, String)]) -> Result<url::U
         }
     }
     Ok(url)
+}
+
+fn project_path_from_mr_web_url(web_url: &str) -> Option<String> {
+    let url = url::Url::parse(web_url).ok()?;
+    let segments: Vec<_> = url.path_segments()?.collect();
+    let marker = segments
+        .windows(2)
+        .position(|pair| pair[0] == "-" && pair[1] == "merge_requests")
+        .or_else(|| {
+            segments
+                .iter()
+                .position(|segment| *segment == "merge_requests")
+        })?;
+
+    if marker == 0 {
+        return None;
+    }
+
+    Some(segments[..marker].join("/"))
 }
 
 #[cfg(test)]
@@ -979,7 +1043,7 @@ mod tests {
         assert_eq!(mr.changed_files, Some(5));
         assert_eq!(mr.labels, vec!["backend", "feature"]);
         assert_eq!(mr.author.username, "alice");
-        assert_eq!(mr.project.path_with_namespace, "org/repo");
+        assert_eq!(mr.project.as_ref().unwrap().path_with_namespace, "org/repo");
         assert!(mr.merged_at.is_some());
         assert!(mr.closed_at.is_none());
     }
@@ -1036,6 +1100,166 @@ mod tests {
         let author: GitlabAuthor = serde_json::from_str(json).unwrap();
         assert_eq!(author.id, 5);
         assert_eq!(author.username, "charlie");
+    }
+
+    #[test]
+    fn recorded_gitlab_merge_request_payload_deserializes_and_converts() {
+        let mr_payload = serde_json::json!({
+            "id": 424242,
+            "iid": 42,
+            "project_id": 3001,
+            "title": "Reduce deploy rollback toil",
+            "description": "Add preflight checks and rollback runbook links.",
+            "state": "merged",
+            "created_at": "2025-03-10T15:30:00Z",
+            "updated_at": "2025-03-12T17:45:00Z",
+            "merged_at": "2025-03-12T17:45:00Z",
+            "closed_at": null,
+            "target_branch": "main",
+            "source_branch": "rollback-preflight",
+            "labels": ["reliability", "deploys"],
+            "author": {
+                "id": 100,
+                "name": "Alice Example",
+                "username": "alice",
+                "state": "active",
+                "avatar_url": null,
+                "web_url": "https://gitlab.example.com/alice"
+            },
+            "reviewers": [{
+                "id": 101,
+                "name": "Bob Reviewer",
+                "username": "bob",
+                "state": "active",
+                "avatar_url": null,
+                "web_url": "https://gitlab.example.com/bob"
+            }],
+            "source_project_id": 3001,
+            "target_project_id": 3001,
+            "references": {
+                "short": "!42",
+                "relative": "reliability!42",
+                "full": "platform/reliability!42"
+            },
+            "web_url": "https://gitlab.example.com/platform/reliability/-/merge_requests/42",
+            "user_notes_count": 3,
+            "changes_count": "8",
+            "time_stats": {
+                "time_estimate": 0,
+                "total_time_spent": 0,
+                "human_time_estimate": null,
+                "human_total_time_spent": null
+            }
+        });
+
+        let mr: GitlabMergeRequest = serde_json::from_value(mr_payload.clone()).unwrap();
+        assert_eq!(mr.id, 424242);
+        assert_eq!(mr.project_id, 3001);
+        assert!(mr.project.is_none());
+        assert_eq!(mr.project_path().unwrap(), "platform/reliability");
+        assert!(!mr.project_public());
+        assert_eq!(
+            mr.web_url.as_deref(),
+            Some("https://gitlab.example.com/platform/reliability/-/merge_requests/42")
+        );
+
+        let mut ing = default_ingestor();
+        ing.instance = "gitlab.example.com".to_string();
+
+        let events = ing
+            .mrs_to_events(vec![serde_json::from_value(mr_payload).unwrap()])
+            .unwrap();
+        assert_eq!(events.len(), 1);
+        let event = &events[0];
+        assert_eq!(event.kind, EventKind::PullRequest);
+        assert_eq!(event.actor.login, "alice");
+        assert_eq!(event.actor.id, Some(100));
+        assert_eq!(event.repo.full_name, "platform/reliability");
+        assert_eq!(event.repo.visibility, RepoVisibility::Private);
+        assert_eq!(
+            event.source.system,
+            SourceSystem::Other("gitlab".to_string())
+        );
+        assert_eq!(
+            event.source.url.as_deref(),
+            Some("https://gitlab.example.com/platform/reliability/-/merge_requests/42")
+        );
+        assert_eq!(event.source.opaque_id.as_deref(), Some("424242"));
+        assert_eq!(event.tags, vec!["reliability", "deploys"]);
+
+        if let EventPayload::PullRequest(pr) = &event.payload {
+            assert_eq!(pr.number, 42);
+            assert_eq!(pr.title, "Reduce deploy rollback toil");
+            assert_eq!(pr.state, PullRequestState::Merged);
+            assert_eq!(
+                pr.merged_at,
+                Some("2025-03-12T17:45:00Z".parse::<DateTime<Utc>>().unwrap())
+            );
+            assert_eq!(pr.additions, None);
+            assert_eq!(pr.deletions, None);
+            assert_eq!(pr.changed_files, None);
+        } else {
+            panic!("Expected PullRequest payload");
+        }
+
+        let notes_payload = serde_json::json!([
+            {
+                "id": 9001,
+                "type": null,
+                "body": "LGTM, the rollback path is clear.",
+                "attachment": null,
+                "author": {
+                    "id": 101,
+                    "name": "Bob Reviewer",
+                    "username": "bob",
+                    "state": "active",
+                    "avatar_url": null,
+                    "web_url": "https://gitlab.example.com/bob"
+                },
+                "created_at": "2025-03-12T16:30:00Z",
+                "updated_at": "2025-03-12T16:30:00Z",
+                "system": false,
+                "noteable_id": 424242,
+                "noteable_type": "MergeRequest",
+                "project_id": 3001,
+                "resolvable": false,
+                "confidential": false,
+                "internal": false,
+                "noteable_iid": 42
+            },
+            {
+                "id": 9002,
+                "body": "approved this merge request",
+                "author": { "id": 102, "username": "gitlab-bot" },
+                "created_at": "2025-03-12T16:35:00Z",
+                "system": true
+            },
+            {
+                "id": 9003,
+                "body": "Addressed follow-up.",
+                "author": { "id": 100, "username": "alice" },
+                "created_at": "2025-03-12T16:40:00Z",
+                "system": false
+            }
+        ]);
+        let notes: Vec<GitlabNote> = serde_json::from_value(notes_payload).unwrap();
+        let review_events = ing.notes_to_review_events(notes, &mr).unwrap();
+        assert_eq!(review_events.len(), 1);
+        let review = &review_events[0];
+        assert_eq!(review.kind, EventKind::Review);
+        assert_eq!(review.actor.login, "bob");
+        assert_eq!(review.repo.full_name, "platform/reliability");
+        assert_eq!(
+            review.source.url.as_deref(),
+            Some("https://gitlab.example.com/platform/reliability/-/merge_requests/42#note_9001")
+        );
+        if let EventPayload::Review(payload) = &review.payload {
+            assert_eq!(payload.pull_number, 42);
+            assert_eq!(payload.pull_title, "Reduce deploy rollback toil");
+            assert_eq!(payload.state, "approved");
+        } else {
+            panic!("Expected Review payload");
+        }
     }
 
     // ── mrs_to_events conversion tests ──────────────────────────────────
@@ -1263,6 +1487,25 @@ mod tests {
         .unwrap();
         let pairs: Vec<_> = url.query_pairs().collect();
         assert_eq!(pairs[0].1, "hello world & more");
+    }
+
+    #[test]
+    fn project_path_from_mr_web_url_accepts_gitlab_url_forms() {
+        assert_eq!(
+            project_path_from_mr_web_url(
+                "https://gitlab.example.com/platform/reliability/-/merge_requests/42"
+            )
+            .as_deref(),
+            Some("platform/reliability")
+        );
+        assert_eq!(
+            project_path_from_mr_web_url(
+                "https://gitlab.example.com/platform/reliability/merge_requests/42"
+            )
+            .as_deref(),
+            Some("platform/reliability")
+        );
+        assert_eq!(project_path_from_mr_web_url("not-a-url"), None);
     }
 
     #[test]
