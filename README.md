@@ -96,7 +96,8 @@ Use this when you need a packet now. It uses `shiplog.toml` if present, creates
 a minimal starter config if missing, skips unusable sources without hiding them,
 and writes the packet, ledger, coverage manifest, workstream file, and bundle
 manifest as soon as at least one source succeeds. Add `--source github --source
-jira` to limit the intake or `--no-open` to print paths only.
+jira` to limit the intake, `--explain` to print source decisions, or
+`--no-open` to print paths only.
 
 ### 1. Initialize local files
 

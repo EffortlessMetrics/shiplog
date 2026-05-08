@@ -1168,6 +1168,9 @@ struct IntakeArgs {
     /// Do not launch the packet after intake; print paths only.
     #[arg(long)]
     no_open: bool,
+    /// Explain why intake used or skipped each source.
+    #[arg(long)]
+    explain: bool,
     /// Duplicate event conflict policy.
     #[arg(long, value_enum, default_value = "prefer-most-recent")]
     conflict: MergeConflict,
@@ -1327,6 +1330,25 @@ struct ConfigRedaction {
 struct ConfiguredSourceFailure {
     name: String,
     error: String,
+}
+
+#[derive(Debug, Default)]
+struct IntakeSourcePlan {
+    failures: Vec<ConfiguredSourceFailure>,
+    explanations: Vec<IntakeSourceExplanation>,
+}
+
+#[derive(Debug)]
+struct IntakeSourceExplanation {
+    name: String,
+    decision: IntakeSourceDecision,
+    reason: String,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum IntakeSourceDecision {
+    Included,
+    Skipped,
 }
 
 #[derive(Debug)]
@@ -1498,7 +1520,7 @@ fn run_init(sources: Vec<InitSource>, dry_run: bool, force: bool) -> Result<()> 
 }
 
 fn run_intake(args: IntakeArgs) -> Result<()> {
-    let created_config = ensure_intake_config(&args.config, &args.sources)?;
+    let config_setup = ensure_intake_config(&args.config, &args.sources)?;
     let mut config_model = load_shiplog_config(&args.config)?;
     ensure_supported_config_version(&config_model)?;
 
@@ -1518,7 +1540,11 @@ fn run_intake(args: IntakeArgs) -> Result<()> {
         &config_redaction_key_env(&config_model),
     )?;
     let explicit_sources = dedupe_sources(&args.sources);
-    let mut skipped = prepare_intake_sources(&args.config, &mut config_model, &explicit_sources)?;
+    let mut intake_plan =
+        prepare_intake_sources(&args.config, &mut config_model, &explicit_sources)?;
+    intake_plan
+        .explanations
+        .splice(0..0, config_setup.source_explanations);
     let window = resolve_multi_window(args.window.clone(), &config_model)?;
     let mut configured = collect_configured_sources(&args.config, &config_model, window, &out)
         .with_context(|| {
@@ -1527,8 +1553,8 @@ fn run_intake(args: IntakeArgs) -> Result<()> {
                 args.config.display()
             )
         })?;
-    skipped.append(&mut configured.failures);
-    configured.failures = skipped;
+    intake_plan.failures.append(&mut configured.failures);
+    configured.failures = intake_plan.failures;
 
     let clusterer = build_clusterer(false, "", "", None);
     let (engine, redactor) = create_engine(redaction_key.engine_key(), clusterer, &bundle_profile);
@@ -1547,7 +1573,7 @@ fn run_intake(args: IntakeArgs) -> Result<()> {
     )?;
 
     println!("Review intake complete.");
-    if created_config {
+    if config_setup.created {
         println!("Config: created {}", args.config.display());
     } else {
         println!("Config: {}", args.config.display());
@@ -1577,6 +1603,10 @@ fn run_intake(args: IntakeArgs) -> Result<()> {
             );
         }
     }
+    if args.explain {
+        println!();
+        print_intake_explanations(&intake_plan.explanations);
+    }
     println!();
 
     println!("Artifacts:");
@@ -1600,12 +1630,22 @@ fn run_intake(args: IntakeArgs) -> Result<()> {
     Ok(())
 }
 
-fn ensure_intake_config(config_path: &Path, requested_sources: &[InitSource]) -> Result<bool> {
+#[derive(Debug, Default)]
+struct IntakeConfigSetup {
+    created: bool,
+    source_explanations: Vec<IntakeSourceExplanation>,
+}
+
+fn ensure_intake_config(
+    config_path: &Path,
+    requested_sources: &[InitSource],
+) -> Result<IntakeConfigSetup> {
     if config_path.exists() {
-        return Ok(false);
+        return Ok(IntakeConfigSetup::default());
     }
 
     let selected = selected_intake_sources(requested_sources);
+    let source_explanations = intake_autodetect_explanations(requested_sources, &selected);
     let config = render_init_config(&selected);
     write_init_file(config_path, &config)?;
 
@@ -1616,7 +1656,10 @@ fn ensure_intake_config(config_path: &Path, requested_sources: &[InitSource]) ->
         }
     }
 
-    Ok(true)
+    Ok(IntakeConfigSetup {
+        created: true,
+        source_explanations,
+    })
 }
 
 fn selected_intake_sources(requested_sources: &[InitSource]) -> Vec<InitSource> {
@@ -1651,13 +1694,74 @@ fn dedupe_sources(sources: &[InitSource]) -> Vec<InitSource> {
     selected
 }
 
+fn intake_autodetect_explanations(
+    requested_sources: &[InitSource],
+    selected: &[InitSource],
+) -> Vec<IntakeSourceExplanation> {
+    if !requested_sources.is_empty() {
+        return Vec::new();
+    }
+
+    let mut explanations = Vec::new();
+    if !init_source_enabled(selected, InitSource::Github) {
+        push_intake_explanation(
+            &mut explanations,
+            "github",
+            IntakeSourceDecision::Skipped,
+            "GITHUB_TOKEN not found",
+        );
+    }
+    if !init_source_enabled(selected, InitSource::Gitlab) {
+        push_intake_explanation(
+            &mut explanations,
+            "gitlab",
+            IntakeSourceDecision::Skipped,
+            "GITLAB_TOKEN not found",
+        );
+    }
+    if !init_source_enabled(selected, InitSource::Jira) {
+        push_intake_explanation(
+            &mut explanations,
+            "jira",
+            IntakeSourceDecision::Skipped,
+            "JIRA_TOKEN not found or Jira source config missing",
+        );
+    }
+    if !init_source_enabled(selected, InitSource::Linear) {
+        push_intake_explanation(
+            &mut explanations,
+            "linear",
+            IntakeSourceDecision::Skipped,
+            "LINEAR_API_KEY not found or Linear source config missing",
+        );
+    }
+    if !init_source_enabled(selected, InitSource::Git) {
+        push_intake_explanation(
+            &mut explanations,
+            "git",
+            IntakeSourceDecision::Skipped,
+            "current directory is not a git repo",
+        );
+    }
+    if !init_source_enabled(selected, InitSource::Json) {
+        push_intake_explanation(
+            &mut explanations,
+            "json",
+            IntakeSourceDecision::Skipped,
+            "ledger.events.jsonl and coverage.manifest.json not found",
+        );
+    }
+
+    explanations
+}
+
 fn prepare_intake_sources(
     config_path: &Path,
     config: &mut ShiplogConfig,
     explicit_sources: &[InitSource],
-) -> Result<Vec<ConfiguredSourceFailure>> {
+) -> Result<IntakeSourcePlan> {
     let base_dir = config_base_dir(config_path);
-    let mut failures = Vec::new();
+    let mut plan = IntakeSourcePlan::default();
 
     if let Some(source) = config.sources.github.as_mut() {
         if !intake_source_in_scope(explicit_sources, InitSource::Github) {
@@ -1665,29 +1769,36 @@ fn prepare_intake_sources(
         } else if source.enabled {
             if optional_config_string(source.user.as_deref()).is_some() && source.me {
                 source.enabled = false;
-                push_intake_skip(&mut failures, "github", "configured both user and me");
+                push_intake_skip(&mut plan, "github", "configured both user and me");
             } else if !env_var_present("GITHUB_TOKEN") {
                 source.enabled = false;
-                push_intake_skip(&mut failures, "github", "missing GITHUB_TOKEN");
+                push_intake_skip(&mut plan, "github", "missing GITHUB_TOKEN");
             } else if source.me {
                 let api_base = optional_config_string(source.api_base.as_deref())
                     .unwrap_or_else(|| "https://api.github.com".to_string());
                 match discover_github_user(&api_base, None) {
                     Ok(user) => {
+                        push_intake_include(
+                            &mut plan,
+                            "github",
+                            format!("GITHUB_TOKEN found; --me resolved as {user}"),
+                        );
                         source.user = Some(user);
                         source.me = false;
                     }
                     Err(err) => {
                         source.enabled = false;
-                        push_intake_skip(&mut failures, "github", err.to_string());
+                        push_intake_skip(&mut plan, "github", err.to_string());
                     }
                 }
             } else if optional_config_string(source.user.as_deref()).is_none() && !source.me {
                 source.enabled = false;
-                push_intake_skip(
-                    &mut failures,
+                push_intake_skip(&mut plan, "github", "set sources.github.user or me = true");
+            } else if let Some(user) = optional_config_string(source.user.as_deref()) {
+                push_intake_include(
+                    &mut plan,
                     "github",
-                    "set sources.github.user or me = true",
+                    format!("GITHUB_TOKEN found; user configured as {user}"),
                 );
             }
         }
@@ -1699,29 +1810,36 @@ fn prepare_intake_sources(
         } else if source.enabled {
             if optional_config_string(source.user.as_deref()).is_some() && source.me {
                 source.enabled = false;
-                push_intake_skip(&mut failures, "gitlab", "configured both user and me");
+                push_intake_skip(&mut plan, "gitlab", "configured both user and me");
             } else if !env_var_present("GITLAB_TOKEN") {
                 source.enabled = false;
-                push_intake_skip(&mut failures, "gitlab", "missing GITLAB_TOKEN");
+                push_intake_skip(&mut plan, "gitlab", "missing GITLAB_TOKEN");
             } else if source.me {
                 let instance = optional_config_string(source.instance.as_deref())
                     .unwrap_or_else(|| "gitlab.com".to_string());
                 match discover_gitlab_user(&instance, None) {
                     Ok(user) => {
+                        push_intake_include(
+                            &mut plan,
+                            "gitlab",
+                            format!("GITLAB_TOKEN found; --me resolved as {user}"),
+                        );
                         source.user = Some(user);
                         source.me = false;
                     }
                     Err(err) => {
                         source.enabled = false;
-                        push_intake_skip(&mut failures, "gitlab", err.to_string());
+                        push_intake_skip(&mut plan, "gitlab", err.to_string());
                     }
                 }
             } else if optional_config_string(source.user.as_deref()).is_none() && !source.me {
                 source.enabled = false;
-                push_intake_skip(
-                    &mut failures,
+                push_intake_skip(&mut plan, "gitlab", "set sources.gitlab.user or me = true");
+            } else if let Some(user) = optional_config_string(source.user.as_deref()) {
+                push_intake_include(
+                    &mut plan,
                     "gitlab",
-                    "set sources.gitlab.user or me = true",
+                    format!("GITLAB_TOKEN found; user configured as {user}"),
                 );
             }
         }
@@ -1735,13 +1853,19 @@ fn prepare_intake_sources(
             let instance = optional_config_string(source.instance.as_deref());
             if !env_var_present("JIRA_TOKEN") {
                 source.enabled = false;
-                push_intake_skip(&mut failures, "jira", "missing JIRA_TOKEN");
+                push_intake_skip(&mut plan, "jira", "missing JIRA_TOKEN");
             } else if user.as_deref().is_none_or(is_unfilled_placeholder) {
                 source.enabled = false;
-                push_intake_skip(&mut failures, "jira", "set sources.jira.user");
+                push_intake_skip(&mut plan, "jira", "set sources.jira.user");
             } else if instance.as_deref().is_none_or(is_unfilled_placeholder) {
                 source.enabled = false;
-                push_intake_skip(&mut failures, "jira", "set sources.jira.instance");
+                push_intake_skip(&mut plan, "jira", "set sources.jira.instance");
+            } else {
+                push_intake_include(
+                    &mut plan,
+                    "jira",
+                    "JIRA_TOKEN found; assignee and instance configured",
+                );
             }
         }
     }
@@ -1753,10 +1877,16 @@ fn prepare_intake_sources(
             let user_id = optional_config_string(source.user_id.as_deref());
             if !env_var_present("LINEAR_API_KEY") {
                 source.enabled = false;
-                push_intake_skip(&mut failures, "linear", "missing LINEAR_API_KEY");
+                push_intake_skip(&mut plan, "linear", "missing LINEAR_API_KEY");
             } else if user_id.as_deref().is_none_or(is_unfilled_placeholder) {
                 source.enabled = false;
-                push_intake_skip(&mut failures, "linear", "set sources.linear.user_id");
+                push_intake_skip(&mut plan, "linear", "set sources.linear.user_id");
+            } else {
+                push_intake_include(
+                    &mut plan,
+                    "linear",
+                    "LINEAR_API_KEY found; user id configured",
+                );
             }
         }
     }
@@ -1771,18 +1901,20 @@ fn prepare_intake_sources(
                 .filter(|path| !path.as_os_str().is_empty())
                 .map(|path| resolve_config_path(&base_dir, path))
             {
-                Some(repo) if repo.exists() => {}
+                Some(repo) if repo.exists() => {
+                    push_intake_include(&mut plan, "git", format!("repo {} found", repo.display()));
+                }
                 Some(repo) => {
                     source.enabled = false;
                     push_intake_skip(
-                        &mut failures,
+                        &mut plan,
                         "git",
                         format!("repo {} not found", repo.display()),
                     );
                 }
                 None => {
                     source.enabled = false;
-                    push_intake_skip(&mut failures, "git", "set sources.git.repo");
+                    push_intake_skip(&mut plan, "git", "set sources.git.repo");
                 }
             }
         }
@@ -1803,11 +1935,13 @@ fn prepare_intake_sources(
                 .filter(|path| !path.as_os_str().is_empty())
                 .map(|path| resolve_config_path(&base_dir, path));
             match (events, coverage) {
-                (Some(events), Some(coverage)) if events.exists() && coverage.exists() => {}
+                (Some(events), Some(coverage)) if events.exists() && coverage.exists() => {
+                    push_intake_include(&mut plan, "json", "events and coverage files found");
+                }
                 (Some(events), Some(coverage)) => {
                     source.enabled = false;
                     push_intake_skip(
-                        &mut failures,
+                        &mut plan,
                         "json",
                         format!("missing {} or {}", events.display(), coverage.display()),
                     );
@@ -1815,7 +1949,7 @@ fn prepare_intake_sources(
                 _ => {
                     source.enabled = false;
                     push_intake_skip(
-                        &mut failures,
+                        &mut plan,
                         "json",
                         "set sources.json.events and sources.json.coverage",
                     );
@@ -1840,28 +1974,80 @@ fn prepare_intake_sources(
                 .as_ref()
                 .map(|path| resolve_config_path(&base_dir, path))
                 .expect("manual events path set above");
+            let existed = events.exists();
             if !events.exists() {
                 write_init_file(&events, &render_manual_events_template())?;
+            }
+            if existed {
+                push_intake_include(&mut plan, "manual", "manual_events.yaml found");
+            } else {
+                push_intake_include(&mut plan, "manual", "manual_events.yaml created");
             }
         }
     }
 
-    Ok(failures)
+    Ok(plan)
 }
 
 fn intake_source_in_scope(explicit_sources: &[InitSource], source: InitSource) -> bool {
     explicit_sources.is_empty() || explicit_sources.contains(&source)
 }
 
-fn push_intake_skip(
-    failures: &mut Vec<ConfiguredSourceFailure>,
-    name: &str,
-    error: impl Into<String>,
-) {
-    failures.push(ConfiguredSourceFailure {
+fn push_intake_include(plan: &mut IntakeSourcePlan, name: &str, reason: impl Into<String>) {
+    push_intake_explanation(
+        &mut plan.explanations,
+        name,
+        IntakeSourceDecision::Included,
+        reason,
+    );
+}
+
+fn push_intake_skip(plan: &mut IntakeSourcePlan, name: &str, error: impl Into<String>) {
+    let error = error.into();
+    plan.failures.push(ConfiguredSourceFailure {
         name: name.to_string(),
-        error: error.into(),
+        error: error.clone(),
     });
+    push_intake_explanation(
+        &mut plan.explanations,
+        name,
+        IntakeSourceDecision::Skipped,
+        error,
+    );
+}
+
+fn push_intake_explanation(
+    explanations: &mut Vec<IntakeSourceExplanation>,
+    name: &str,
+    decision: IntakeSourceDecision,
+    reason: impl Into<String>,
+) {
+    explanations.push(IntakeSourceExplanation {
+        name: name.to_string(),
+        decision,
+        reason: reason.into(),
+    });
+}
+
+fn print_intake_explanations(explanations: &[IntakeSourceExplanation]) {
+    println!("Source decisions:");
+    if explanations.is_empty() {
+        println!("- None");
+        return;
+    }
+
+    for explanation in explanations {
+        let decision = match explanation.decision {
+            IntakeSourceDecision::Included => "included",
+            IntakeSourceDecision::Skipped => "skipped",
+        };
+        println!(
+            "- {}: {}, {}",
+            display_source_label(&explanation.name),
+            decision,
+            explanation.reason
+        );
+    }
 }
 
 fn is_unfilled_placeholder(value: &str) -> bool {

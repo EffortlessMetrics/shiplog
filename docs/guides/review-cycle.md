@@ -25,6 +25,15 @@ shiplog intake --last-6-months
 shiplog open packet --latest
 ```
 
+If setup is unclear, add `--explain`:
+
+```bash
+shiplog intake --last-6-months --explain
+```
+
+That prints why each source was included or skipped, such as a missing token,
+missing local git repo, or fixture files that were found.
+
 For a more deliberate setup pass, initialize local scaffolding, check setup,
 then collect enabled sources from `shiplog.toml`:
 
