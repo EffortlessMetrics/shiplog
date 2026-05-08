@@ -111,7 +111,9 @@ worked, what needs attention, and the next commands to run.
 `--explain` prints source decisions and setup repair hints. Add
 `--source github --source jira` to limit the intake, or `--no-open` to print
 paths only. When sources are skipped, intake groups repair commands by source
-and writes the same rerun guidance to `intake.report.md`.
+and writes the same rerun guidance to `intake.report.md`. Re-running intake
+creates a new run and reuses the latest prior `workstreams.yaml` when one
+exists, without overwriting that earlier curation or `manual_events.yaml`.
 
 ### 1. Initialize local files
 

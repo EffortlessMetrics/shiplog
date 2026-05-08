@@ -37,7 +37,9 @@ That prints why each source was included or skipped, such as a missing token,
 missing local git repo, or fixture files that were found, and includes repair
 hints without printing token values. Skipped sources are also grouped under
 `Repair sources` in the terminal output and in `intake.report.md` so you can
-fix one source and rerun intake.
+fix one source and rerun intake. A rerun creates a new run directory and reuses
+the latest prior `workstreams.yaml` when one exists, leaving the earlier run
+and `manual_events.yaml` untouched.
 
 For a more deliberate setup pass, initialize local scaffolding, check setup,
 then collect enabled sources from `shiplog.toml`:

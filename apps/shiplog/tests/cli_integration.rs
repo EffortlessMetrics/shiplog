@@ -492,6 +492,16 @@ fn first_run_dir(out: &Path) -> PathBuf {
         .expect("expected a shiplog run directory")
 }
 
+fn all_run_dirs(out: &Path) -> Vec<PathBuf> {
+    let mut runs: Vec<_> = std::fs::read_dir(out)
+        .unwrap()
+        .filter_map(|entry| entry.ok().map(|entry| entry.path()))
+        .filter(|path| path.join("ledger.events.jsonl").exists())
+        .collect();
+    runs.sort();
+    runs
+}
+
 // ── 1. --version flag ──────────────────────────────────────────────────────
 
 #[test]
@@ -3434,6 +3444,123 @@ status = "done"
     assert!(
         coverage.contains("\"Partial\""),
         "intake coverage should mark partial source collection"
+    );
+}
+
+#[test]
+fn intake_rerun_reuses_prior_curation_without_overwriting_manual_events() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+    let manual_events = tmp.path().join("manual_events.yaml");
+    let config_path = tmp.path().join("shiplog.toml");
+    write_manual_events(&manual_events);
+
+    std::fs::write(
+        &config_path,
+        r#"[defaults]
+window = "year:2025"
+
+[user]
+label = "octo"
+
+[sources.manual]
+enabled = true
+events = "./manual_events.yaml"
+user = "octo"
+"#,
+    )
+    .unwrap();
+
+    let out_arg = out.to_str().unwrap().to_string();
+    let config_arg = config_path.to_str().unwrap().to_string();
+    let intake_args = [
+        "intake",
+        "--out",
+        out_arg.as_str(),
+        "--config",
+        config_arg.as_str(),
+        "--year",
+        "2025",
+        "--no-open",
+    ];
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args(intake_args)
+        .assert()
+        .success();
+
+    let first_run = first_run_dir(&out);
+    let suggested_text =
+        std::fs::read_to_string(first_run.join("workstreams.suggested.yaml")).unwrap();
+    let mut curated: WorkstreamsFile = serde_yaml::from_str(&suggested_text).unwrap();
+    curated.workstreams[0].title = "Curated Reliability".to_string();
+    std::fs::write(
+        first_run.join("workstreams.yaml"),
+        serde_yaml::to_string(&curated).unwrap(),
+    )
+    .unwrap();
+    let first_curated_before = std::fs::read_to_string(first_run.join("workstreams.yaml")).unwrap();
+    let manual_before = std::fs::read_to_string(&manual_events).unwrap();
+
+    let assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args(intake_args)
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Curation:"))
+        .stdout(predicate::str::contains("Prior workstream curation reused"));
+    let stdout = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
+    assert!(stdout.contains("workstreams.yaml"));
+
+    let runs = all_run_dirs(&out);
+    assert_eq!(runs.len(), 2, "intake rerun should create a new run");
+    let second_run = runs
+        .into_iter()
+        .find(|run| run != &first_run)
+        .expect("expected a second intake run");
+
+    assert_eq!(
+        std::fs::read_to_string(first_run.join("workstreams.yaml")).unwrap(),
+        first_curated_before,
+        "intake rerun should not overwrite prior curated workstreams"
+    );
+    assert_eq!(
+        std::fs::read_to_string(second_run.join("workstreams.yaml")).unwrap(),
+        first_curated_before,
+        "intake rerun should copy prior curated workstreams into the new run"
+    );
+    assert_eq!(
+        std::fs::read_to_string(&manual_events).unwrap(),
+        manual_before,
+        "intake rerun should not rewrite manual_events.yaml"
+    );
+
+    let report_md = std::fs::read_to_string(second_run.join("intake.report.md")).unwrap();
+    assert!(report_md.contains("## Curation Notes"));
+    assert!(report_md.contains("Prior workstream curation reused"));
+
+    let report_json: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(second_run.join("intake.report.json")).unwrap(),
+    )
+    .unwrap();
+    assert!(
+        report_json["curation_notes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|note| note
+                .as_str()
+                .unwrap()
+                .contains("Prior workstream curation reused"))
     );
 }
 
