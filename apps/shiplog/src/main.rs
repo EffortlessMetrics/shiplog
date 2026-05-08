@@ -397,6 +397,9 @@ enum ReviewCommand {
         /// Review the most recent run explicitly.
         #[arg(long)]
         latest: bool,
+        /// Print only runnable command lines.
+        #[arg(long)]
+        commands_only: bool,
     },
 }
 
@@ -7422,9 +7425,14 @@ fn main() -> Result<()> {
                 let run_dir = resolve_render_run_dir(&out, run, latest)?;
                 print_weekly_review(&run_dir, strict)?;
             }
-            Some(ReviewCommand::Fixups { out, run, latest }) => {
+            Some(ReviewCommand::Fixups {
+                out,
+                run,
+                latest,
+                commands_only,
+            }) => {
                 let run_dir = resolve_render_run_dir(&out, run, latest)?;
-                print_review_fixups(&run_dir, &out)?;
+                print_review_fixups(&run_dir, &out, commands_only)?;
             }
             None => {
                 let run_dir = resolve_render_run_dir(&options.out, options.run, options.latest)?;
@@ -9374,7 +9382,7 @@ fn print_review(run_dir: &Path, strict: bool) -> Result<()> {
     Ok(())
 }
 
-fn print_review_fixups(run_dir: &Path, out_dir: &Path) -> Result<()> {
+fn print_review_fixups(run_dir: &Path, out_dir: &Path, commands_only: bool) -> Result<()> {
     let ingest =
         load_run_ingest(run_dir).with_context(|| format!("load run {}", run_dir.display()))?;
     let coverage = ingest.coverage;
@@ -9417,6 +9425,19 @@ fn print_review_fixups(run_dir: &Path, out_dir: &Path) -> Result<()> {
         &broad_workstreams,
         &manual_context_workstreams,
     );
+    if commands_only {
+        if fixups.is_empty() {
+            println!(
+                "shiplog render --out {} --run {run_id} --mode scaffold",
+                quote_cli_value(&out_dir.display().to_string())
+            );
+        } else {
+            for fixup in fixups.iter().take(5) {
+                println!("{}", fixup.command);
+            }
+        }
+        return Ok(());
+    }
 
     println!("Review fixups: {run_id}");
     println!("Directory: {}", run_dir.display());

@@ -157,6 +157,14 @@ fn documented_help_commands_stay_available() {
         .stdout(predicate::str::contains("--strict"));
 
     shiplog_cmd()
+        .args(["review", "fixups", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--latest"))
+        .stdout(predicate::str::contains("--run"))
+        .stdout(predicate::str::contains("--commands-only"));
+
+    shiplog_cmd()
         .args(["workstreams", "--help"])
         .assert()
         .success()

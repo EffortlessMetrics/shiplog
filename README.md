@@ -173,6 +173,7 @@ run. It is read-only and highlights the latest evidence counts, source gaps,
 evidence debt, and next commands before you render a packet.
 Use `shiplog review fixups --latest` when you want only the highest-value
 curation actions as runnable commands.
+Add `--commands-only` when you want just the command lines for copy/paste.
 
 For a single-source run, call the source directly:
 
@@ -226,7 +227,8 @@ workstream has implementation receipts but no manual outcome note.
 `--receipt` values replace those lists for the selected entry.
 `shiplog review fixups` narrows the output to the top read-only curation
 actions: add context, inspect receipt anchors, split broad buckets, validate
-workstreams, or repair skipped sources.
+workstreams, or repair skipped sources. Use `--commands-only` for a terse
+copy-friendly list.
 
 If you prefer direct YAML editing, copy `workstreams.suggested.yaml` to
 `workstreams.yaml` and edit that file.

@@ -752,7 +752,8 @@ fn review_fixups_help_shows_run_options() {
         .success()
         .stdout(predicate::str::contains("--out"))
         .stdout(predicate::str::contains("--latest"))
-        .stdout(predicate::str::contains("--run"));
+        .stdout(predicate::str::contains("--run"))
+        .stdout(predicate::str::contains("--commands-only"));
 }
 
 #[test]
@@ -4101,6 +4102,35 @@ fn review_fixups_ranks_curation_actions_without_writing_artifacts() {
     assert!(stdout.contains("shiplog review --out"));
     assert!(stdout.contains("shiplog render --out"));
     assert!(stdout.contains("--mode scaffold"));
+
+    let commands_assert = shiplog_cmd()
+        .args([
+            "review",
+            "fixups",
+            "--out",
+            out.to_str().unwrap(),
+            "--latest",
+            "--commands-only",
+        ])
+        .assert()
+        .success();
+    let commands_stdout = String::from_utf8(commands_assert.get_output().stdout.clone()).unwrap();
+    assert!(!commands_stdout.contains("Review fixups:"));
+    assert!(!commands_stdout.contains("Top fixups:"));
+    assert!(!commands_stdout.contains("Next:"));
+    let commands: Vec<_> = commands_stdout
+        .lines()
+        .filter(|line| !line.trim().is_empty())
+        .collect();
+    assert_eq!(
+        commands.len(),
+        3,
+        "commands-only should print just the ranked fixup commands"
+    );
+    assert!(commands[0].starts_with("shiplog journal add --date"));
+    assert!(commands[1].starts_with("shiplog workstreams receipts --out"));
+    assert!(commands[2].starts_with("shiplog workstreams split --out"));
+    assert!(commands.iter().all(|line| line.starts_with("shiplog ")));
 
     assert_eq!(
         packet_before,
