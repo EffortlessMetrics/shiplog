@@ -3371,12 +3371,20 @@ status = "done"
         .stdout(predicate::str::contains(
             "- Linear skipped: missing LINEAR_API_KEY",
         ))
+        .stdout(predicate::str::contains("Repair sources:"))
+        .stdout(predicate::str::contains("export JIRA_TOKEN=..."))
+        .stdout(predicate::str::contains(
+            "shiplog identify jira --auth-user <email>",
+        ))
+        .stdout(predicate::str::contains("export LINEAR_API_KEY=..."))
+        .stdout(predicate::str::contains("shiplog identify linear"))
         .stdout(predicate::str::contains("shiplog doctor --config"));
 
     let run_dir = first_run_dir(&out);
     let coverage = std::fs::read_to_string(run_dir.join("coverage.manifest.json")).unwrap();
     let report_md = std::fs::read_to_string(run_dir.join("intake.report.md")).unwrap();
     assert!(report_md.contains("## Skipped Sources"));
+    assert!(report_md.contains("## Repair Sources"));
     assert!(report_md.contains("- Jira: missing JIRA_TOKEN"));
     assert!(report_md.contains("- Linear: missing LINEAR_API_KEY"));
     assert!(report_md.contains("export JIRA_TOKEN=..."));
@@ -3389,6 +3397,7 @@ status = "done"
             .unwrap();
     assert_eq!(report_json["readiness"], "Needs curation");
     assert_eq!(report_json["skipped_sources"].as_array().unwrap().len(), 2);
+    assert_eq!(report_json["repair_sources"].as_array().unwrap().len(), 2);
     assert!(
         report_json["source_decisions"]
             .as_array()
@@ -3400,6 +3409,18 @@ status = "done"
                     .unwrap()
                     .iter()
                     .any(|line| line.as_str().unwrap().contains("JIRA_TOKEN")))
+    );
+    assert!(
+        report_json["repair_sources"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|repair| repair["source"] == "Jira"
+                && repair["commands"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .any(|line| line.as_str().unwrap().contains("shiplog identify jira")))
     );
 
     assert!(
