@@ -182,6 +182,12 @@ enum Command {
         zip: bool,
     },
 
+    /// Render a manager- or public-safe share packet.
+    Share {
+        #[command(subcommand)]
+        cmd: ShareCommand,
+    },
+
     /// Refresh event data while preserving workstream curation.
     ///
     /// This re-fetches events from the source and updates receipts/stats,
@@ -953,6 +959,33 @@ impl From<RenderAppendixMode> for AppendixMode {
     }
 }
 
+#[derive(Subcommand, Debug)]
+enum ShareCommand {
+    /// Render the manager-safe packet profile.
+    Manager(ShareOptions),
+    /// Render the public-safe packet profile.
+    Public(ShareOptions),
+}
+
+#[derive(Args, Debug)]
+struct ShareOptions {
+    /// Output directory containing run folders.
+    #[arg(long, default_value = "./out")]
+    out: PathBuf,
+    /// Run ID to share (uses most recent if not specified).
+    #[arg(long)]
+    run: Option<String>,
+    /// Share the most recent run explicitly.
+    #[arg(long)]
+    latest: bool,
+    /// Redaction key. If omitted, SHIPLOG_REDACT_KEY is used.
+    #[arg(long)]
+    redact_key: Option<String>,
+    /// Also write a zip next to the run folder.
+    #[arg(long)]
+    zip: bool,
+}
+
 #[derive(Subcommand, Debug, Clone)]
 enum CollectSource {
     /// Collect all enabled sources from shiplog.toml and render one merged packet.
@@ -1393,6 +1426,18 @@ impl RedactionKey {
         Self::resolve_with_env(redact_key, bundle_profile, "SHIPLOG_REDACT_KEY")
     }
 
+    fn resolve_for_share(
+        redact_key: Option<String>,
+        bundle_profile: &BundleProfile,
+    ) -> Result<Self> {
+        let key_env = "SHIPLOG_REDACT_KEY";
+        let key = redact_key.or_else(|| std::env::var(key_env).ok());
+        if key.is_none() {
+            anyhow::bail!(share_command_key_error(bundle_profile, key_env));
+        }
+        Ok(Self { key })
+    }
+
     fn resolve_with_env(
         redact_key: Option<String>,
         bundle_profile: &BundleProfile,
@@ -1421,6 +1466,16 @@ fn share_profile_key_error(bundle_profile: &BundleProfile, key_env: &str) -> Str
            export {key_env}=replace-with-a-stable-secret\n\
            rerun this command with --bundle-profile {bundle_profile}\n\
          For an internal-only packet, use --bundle-profile internal."
+    )
+}
+
+fn share_command_key_error(bundle_profile: &BundleProfile, key_env: &str) -> String {
+    format!(
+        "{bundle_profile} share requires --redact-key or {key_env}.\n\
+         Try:\n\
+           export {key_env}=replace-with-a-stable-secret\n\
+           shiplog share {bundle_profile} --latest\n\
+         For an internal-only packet, use `shiplog render --bundle-profile internal`."
     )
 }
 
@@ -4777,6 +4832,20 @@ fn cli_packet_renderer() -> MarkdownRenderer {
 const MANAGER_RECEIPT_RENDER_LIMIT: usize = 3;
 const PUBLIC_RECEIPT_RENDER_LIMIT: usize = 1;
 
+struct RenderExistingArgs<'a> {
+    out: &'a Path,
+    run: Option<String>,
+    latest: bool,
+    user: Option<&'a str>,
+    window_label: Option<&'a str>,
+    redaction_key: RedactionKey,
+    bundle_profile: BundleProfile,
+    mode: RenderPacketMode,
+    receipt_limit: Option<usize>,
+    appendix: Option<RenderAppendixMode>,
+    zip: bool,
+}
+
 fn cli_render_options(
     mode: RenderPacketMode,
     receipt_limit: Option<usize>,
@@ -4815,6 +4884,69 @@ fn default_appendix_for_profile(
         RenderPacketMode::Scaffold => RenderAppendixMode::None,
         RenderPacketMode::Receipts => RenderAppendixMode::Full,
     }
+}
+
+fn render_existing_run(args: RenderExistingArgs<'_>) -> Result<shiplog_engine::RunOutputs> {
+    let clusterer: Box<dyn shiplog_ports::WorkstreamClusterer> = Box::new(RepoClusterer);
+    let renderer = Box::new(ModeMarkdownRenderer::new(
+        args.mode,
+        cli_render_options(
+            args.mode,
+            args.receipt_limit,
+            args.appendix,
+            &args.bundle_profile,
+        ),
+    ));
+    let (engine, redactor) =
+        create_engine_with_renderer(args.redaction_key.engine_key(), clusterer, renderer);
+    let engine = engine.with_profile_rendering(args.redaction_key.render_profiles());
+
+    let run_dir = resolve_render_run_dir(args.out, args.run, args.latest)?;
+    let events_path = run_dir.join("ledger.events.jsonl");
+    let coverage_path = run_dir.join("coverage.manifest.json");
+
+    if !events_path.exists() {
+        anyhow::bail!(
+            "No ledger.events.jsonl found in {:?}. Run `shiplog collect` first.",
+            run_dir
+        );
+    }
+
+    let ing = JsonIngestor {
+        events_path,
+        coverage_path,
+    };
+    let ingest = ing.ingest().context("ingest events")?;
+    let render_user = args
+        .user
+        .map(str::to_string)
+        .unwrap_or_else(|| ingest.coverage.user.clone());
+    let render_window_label = args.window_label.map(str::to_string).unwrap_or_else(|| {
+        format!(
+            "{}..{}",
+            ingest.coverage.window.since, ingest.coverage.window.until
+        )
+    });
+
+    let cache_path = DeterministicRedactor::cache_path(&run_dir);
+    let _ = redactor.load_cache(&cache_path);
+
+    let outputs = engine
+        .refresh(
+            ingest,
+            &render_user,
+            &render_window_label,
+            &run_dir,
+            args.zip,
+            &args.bundle_profile,
+        )
+        .context("refresh engine pipeline")?;
+
+    redactor
+        .save_cache(&cache_path)
+        .with_context(|| format!("save redaction cache to {cache_path:?}"))?;
+
+    Ok(outputs)
 }
 
 impl Renderer for ModeMarkdownRenderer {
@@ -5857,49 +5989,64 @@ fn main() -> Result<()> {
             zip,
         } => {
             let redaction_key = RedactionKey::resolve(redact_key, &bundle_profile)?;
-            let clusterer: Box<dyn shiplog_ports::WorkstreamClusterer> = Box::new(RepoClusterer);
-            let renderer = Box::new(ModeMarkdownRenderer::new(
+            let outputs = render_existing_run(RenderExistingArgs {
+                out: &out,
+                run,
+                latest,
+                user: Some(&user),
+                window_label: Some(&window_label),
+                redaction_key,
+                bundle_profile: bundle_profile.clone(),
                 mode,
-                cli_render_options(mode, receipt_limit, appendix, &bundle_profile),
-            ));
-            let (engine, redactor) =
-                create_engine_with_renderer(redaction_key.engine_key(), clusterer, renderer);
-            let engine = engine.with_profile_rendering(redaction_key.render_profiles());
-
-            // Determine which run to render
-            let run_dir = resolve_render_run_dir(&out, run, latest)?;
-
-            // Read existing events and coverage
-            let events_path = run_dir.join("ledger.events.jsonl");
-            let coverage_path = run_dir.join("coverage.manifest.json");
-
-            if !events_path.exists() {
-                anyhow::bail!(
-                    "No ledger.events.jsonl found in {:?}. Run `shiplog collect` first.",
-                    run_dir
-                );
-            }
-
-            let ing = JsonIngestor {
-                events_path,
-                coverage_path,
-            };
-            let ingest = ing.ingest().context("ingest events")?;
-
-            let cache_path = DeterministicRedactor::cache_path(&run_dir);
-            let _ = redactor.load_cache(&cache_path);
-
-            let outputs = engine
-                .refresh(ingest, &user, &window_label, &run_dir, zip, &bundle_profile)
-                .context("refresh engine pipeline")?;
-
-            redactor
-                .save_cache(&cache_path)
-                .with_context(|| format!("save redaction cache to {cache_path:?}"))?;
+                receipt_limit,
+                appendix,
+                zip,
+            })?;
 
             println!("Rendered from existing events:");
             print_outputs(&outputs, WorkstreamSource::Curated);
         }
+
+        Command::Share { cmd } => match cmd {
+            ShareCommand::Manager(options) => {
+                let bundle_profile = BundleProfile::Manager;
+                let redaction_key =
+                    RedactionKey::resolve_for_share(options.redact_key, &bundle_profile)?;
+                let outputs = render_existing_run(RenderExistingArgs {
+                    out: &options.out,
+                    run: options.run,
+                    latest: options.latest,
+                    user: None,
+                    window_label: None,
+                    redaction_key,
+                    bundle_profile,
+                    mode: RenderPacketMode::Packet,
+                    receipt_limit: None,
+                    appendix: None,
+                    zip: options.zip,
+                })?;
+                print_share_outputs(&outputs, &BundleProfile::Manager);
+            }
+            ShareCommand::Public(options) => {
+                let bundle_profile = BundleProfile::Public;
+                let redaction_key =
+                    RedactionKey::resolve_for_share(options.redact_key, &bundle_profile)?;
+                let outputs = render_existing_run(RenderExistingArgs {
+                    out: &options.out,
+                    run: options.run,
+                    latest: options.latest,
+                    user: None,
+                    window_label: None,
+                    redaction_key,
+                    bundle_profile,
+                    mode: RenderPacketMode::Packet,
+                    receipt_limit: None,
+                    appendix: None,
+                    zip: options.zip,
+                })?;
+                print_share_outputs(&outputs, &BundleProfile::Public);
+            }
+        },
 
         Command::Refresh {
             source,
@@ -7181,6 +7328,21 @@ fn print_outputs_simple(outputs: &shiplog_engine::RunOutputs) {
     println!("- {}", outputs.packet_md.display());
     println!("- {}", outputs.workstreams_yaml.display());
     println!("- {}", outputs.ledger_events_jsonl.display());
+    println!("- {}", outputs.coverage_manifest_json.display());
+    println!("- {}", outputs.bundle_manifest_json.display());
+    if let Some(ref z) = outputs.zip_path {
+        println!("- {}", z.display());
+    }
+}
+
+fn print_share_outputs(outputs: &shiplog_engine::RunOutputs, bundle_profile: &BundleProfile) {
+    let profile_packet = outputs
+        .out_dir
+        .join("profiles")
+        .join(bundle_profile.as_str())
+        .join("packet.md");
+    println!("Wrote {bundle_profile} share output:");
+    println!("- {}", profile_packet.display());
     println!("- {}", outputs.coverage_manifest_json.display());
     println!("- {}", outputs.bundle_manifest_json.display());
     if let Some(ref z) = outputs.zip_path {

@@ -490,6 +490,7 @@ fn help_shows_all_subcommands() {
         .stdout(predicate::str::contains("journal"))
         .stdout(predicate::str::contains("collect"))
         .stdout(predicate::str::contains("render"))
+        .stdout(predicate::str::contains("share"))
         .stdout(predicate::str::contains("refresh"))
         .stdout(predicate::str::contains("workstreams"))
         .stdout(predicate::str::contains("runs"))
@@ -700,6 +701,26 @@ fn review_fixups_help_shows_run_options() {
         .stdout(predicate::str::contains("--out"))
         .stdout(predicate::str::contains("--latest"))
         .stdout(predicate::str::contains("--run"));
+}
+
+#[test]
+fn share_help_shows_profiles_and_safety_options() {
+    shiplog_cmd()
+        .args(["share", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("manager"))
+        .stdout(predicate::str::contains("public"));
+
+    shiplog_cmd()
+        .args(["share", "manager", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--out"))
+        .stdout(predicate::str::contains("--latest"))
+        .stdout(predicate::str::contains("--run"))
+        .stdout(predicate::str::contains("--redact-key"))
+        .stdout(predicate::str::contains("--zip"));
 }
 
 #[test]
@@ -4806,6 +4827,113 @@ fn render_public_profile_with_key_writes_public_packet() {
     assert!(
         !public_packet.contains("## Appendix:"),
         "public profile should omit the receipt appendix by default"
+    );
+}
+
+#[test]
+fn share_manager_without_key_fails_closed() {
+    let tmp = TempDir::new().unwrap();
+    collect_json_into(tmp.path());
+
+    let mut cmd = shiplog_cmd();
+    cmd.env_remove("SHIPLOG_REDACT_KEY")
+        .args([
+            "share",
+            "manager",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+        ])
+        .assert()
+        .failure()
+        .stderr(
+            predicate::str::contains("manager share requires --redact-key or SHIPLOG_REDACT_KEY")
+                .and(predicate::str::contains("Try:"))
+                .and(predicate::str::contains(
+                    "export SHIPLOG_REDACT_KEY=replace-with-a-stable-secret",
+                ))
+                .and(predicate::str::contains("shiplog share manager --latest")),
+        );
+
+    assert!(
+        !tmp.path()
+            .join("run_fixture/profiles/manager/packet.md")
+            .exists(),
+        "manager share packet should not be written without a redaction key"
+    );
+}
+
+#[test]
+fn share_manager_uses_env_key_without_printing_secret() {
+    let tmp = TempDir::new().unwrap();
+    collect_json_into(tmp.path());
+
+    let assert = shiplog_cmd()
+        .env("SHIPLOG_REDACT_KEY", "stable-env-key")
+        .args([
+            "share",
+            "manager",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+        ])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
+
+    assert!(stdout.contains("Wrote manager share output:"));
+    assert!(stdout.contains("profiles"));
+    assert!(stdout.contains("manager"));
+    assert!(!stdout.contains("stable-env-key"));
+    assert!(
+        tmp.path()
+            .join("run_fixture/profiles/manager/packet.md")
+            .exists(),
+        "manager share packet should be written with SHIPLOG_REDACT_KEY"
+    );
+    let manager_packet =
+        std::fs::read_to_string(tmp.path().join("run_fixture/profiles/manager/packet.md")).unwrap();
+    assert!(
+        manager_packet.contains("**Window:** 2025-01-01..2025-04-01"),
+        "share should derive the render window from coverage"
+    );
+}
+
+#[test]
+fn share_public_with_explicit_key_can_write_zip() {
+    let tmp = TempDir::new().unwrap();
+    collect_json_into(tmp.path());
+
+    let assert = shiplog_cmd()
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args([
+            "share",
+            "public",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+            "--redact-key",
+            "stable-test-key",
+            "--zip",
+        ])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
+
+    assert!(stdout.contains("Wrote public share output:"));
+    assert!(!stdout.contains("stable-test-key"));
+    assert!(
+        tmp.path()
+            .join("run_fixture/profiles/public/packet.md")
+            .exists(),
+        "public share packet should be written with an explicit key"
+    );
+    assert!(
+        tmp.path().join("run_fixture.public.zip").exists(),
+        "public share zip should be written when --zip is set"
     );
 }
 

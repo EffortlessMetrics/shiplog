@@ -96,6 +96,7 @@ Rendering and sharing:
 - `shiplog render --receipt-limit <N>`
 - `shiplog render --appendix full|summary|none`
 - `shiplog render --bundle-profile manager|public`
+- `shiplog share manager|public`
 
 Default CLI packets open with `Coverage and Limits`, then summary,
 workstreams, receipts, and file artifacts. Internal and manager selected-profile
