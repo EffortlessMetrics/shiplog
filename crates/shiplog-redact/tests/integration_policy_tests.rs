@@ -42,7 +42,7 @@ fn sample_events() -> Vec<EventEnvelope> {
             source: SourceRef {
                 system: SourceSystem::Github,
                 url: Some("https://api.github.com/repos/acme/private-repo/pulls/1".into()),
-                opaque_id: None,
+                opaque_id: Some("github-pr-node-id".into()),
             },
         },
         EventEnvelope {
@@ -74,7 +74,7 @@ fn sample_events() -> Vec<EventEnvelope> {
             source: SourceRef {
                 system: SourceSystem::Manual,
                 url: Some("https://internal/api/incidents/1".into()),
-                opaque_id: None,
+                opaque_id: Some("manual-incident-1".into()),
             },
         },
     ]
@@ -155,6 +155,8 @@ fn redactor_event_profiles_apply_facade_contract() {
     assert!(public[0].repo.html_url.is_none());
     assert!(public[0].links.is_empty());
     assert!(public[0].source.url.is_none());
+    assert!(public[0].source.opaque_id.is_none());
+    assert!(public[1].source.opaque_id.is_none());
     match &public[0].payload {
         EventPayload::PullRequest(pr) => {
             assert_eq!(pr.title, "[redacted]");

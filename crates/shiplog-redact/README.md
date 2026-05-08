@@ -6,7 +6,7 @@ Deterministic structural redaction for shiplog events and workstreams.
 
 - `internal`: full fidelity.
 - `manager`: keeps titles/context, strips sensitive detail fields.
-- `public`: aliases repo/workstream names and strips sensitive fields/links.
+- `public`: aliases repo/workstream names and strips sensitive fields, links, and source IDs.
 
 ## Key type
 

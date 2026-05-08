@@ -161,7 +161,7 @@ pub struct SourceRef {
     pub system: SourceSystem,
     /// A stable URL when available. May be stripped during redaction.
     pub url: Option<String>,
-    /// Provider specific opaque id (GitHub node_id, etc.).
+    /// Provider specific opaque id (GitHub node_id, etc.). May be stripped during redaction.
     pub opaque_id: Option<String>,
 }
 

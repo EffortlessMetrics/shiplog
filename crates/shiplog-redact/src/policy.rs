@@ -48,6 +48,7 @@ pub(crate) fn redact_event_with_aliases<A: AliasResolver + ?Sized>(
 
             event.links.clear();
             event.source.url = None;
+            event.source.opaque_id = None;
             event
         }
     }
@@ -59,14 +60,11 @@ pub(crate) fn redact_events_with_aliases<A: AliasResolver + ?Sized>(
     profile: RedactionProfile,
     aliases: &A,
 ) -> Vec<EventEnvelope> {
-    match profile {
-        RedactionProfile::Internal => events.to_vec(),
-        _ => events
-            .iter()
-            .cloned()
-            .map(|event| redact_event_with_aliases(event, profile, aliases))
-            .collect(),
-    }
+    events
+        .iter()
+        .cloned()
+        .map(|event| redact_event_with_aliases(event, profile, aliases))
+        .collect()
 }
 
 /// Redact a single workstream for the selected profile.
@@ -96,17 +94,14 @@ pub(crate) fn redact_workstreams_with_aliases<A: AliasResolver + ?Sized>(
     profile: RedactionProfile,
     aliases: &A,
 ) -> WorkstreamsFile {
-    match profile {
-        RedactionProfile::Internal => workstreams.clone(),
-        _ => WorkstreamsFile {
-            workstreams: workstreams
-                .workstreams
-                .iter()
-                .cloned()
-                .map(|workstream| redact_workstream_with_aliases(workstream, profile, aliases))
-                .collect(),
-            ..workstreams.clone()
-        },
+    WorkstreamsFile {
+        workstreams: workstreams
+            .workstreams
+            .iter()
+            .cloned()
+            .map(|workstream| redact_workstream_with_aliases(workstream, profile, aliases))
+            .collect(),
+        ..workstreams.clone()
     }
 }
 
@@ -161,7 +156,7 @@ mod tests {
             source: SourceRef {
                 system: SourceSystem::Github,
                 url: Some("https://api.github.com/repos/org/repo/pulls/1".into()),
-                opaque_id: None,
+                opaque_id: Some("github-pr-node-id".into()),
             },
         }
     }
@@ -197,6 +192,7 @@ mod tests {
 
         assert!(out.links.is_empty());
         assert!(out.source.url.is_none());
+        assert!(out.source.opaque_id.is_none());
         assert_ne!(out.repo.full_name, "org/repo");
 
         match out.payload {

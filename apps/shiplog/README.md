@@ -131,7 +131,7 @@ explicitly.
 
 - **Receipts-first.** Every claim traces to fetched evidence. Missing data is explicitly flagged, never silently omitted.
 - **Coverage tracking.** A coverage manifest documents API query windows, pagination limits, and gaps.
-- **Deterministic redaction.** Three profiles (internal/manager/public) with HMAC-SHA256 aliasing. Same key = same aliases across runs.
+- **Deterministic redaction.** Three profiles (internal/manager/public) with keyed SHA-256 aliasing. Same key = same aliases across runs.
 - **User-owned workstreams.** Auto-generated suggestions in `workstreams.suggested.yaml`; your curated `workstreams.yaml` is never overwritten.
 - **SQLite API cache.** GitHub, GitLab, Jira, and Linear API responses are cached locally to avoid redundant requests on re-runs.
 - **Zip bundles.** Package output as a zip archive with SHA256 checksum manifests using `--zip`.

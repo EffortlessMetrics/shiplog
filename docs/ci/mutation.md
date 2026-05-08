@@ -32,6 +32,7 @@ Recorded Tier 1 baselines:
 | `shiplog-ids` | `e6166e5` | 8 | 5 | 0 | 3 | clean baseline |
 | `shiplog-ports` | `74d095d` | 0 | 0 | 0 | 0 | no mutation targets |
 | `shiplog-schema` | `77dc752` | 33 | 27 | 0 | 6 | clean baseline |
+| `shiplog-redact` | `812c45b` + policy cleanup | 35 | 26 | 0 | 9 | clean baseline |
 
 The local PowerShell receipts used:
 
@@ -41,6 +42,7 @@ cargo mutants -p shiplog-coverage --timeout 600 --copy-target=false --output tar
 cargo mutants -p shiplog-ids --timeout 600 --copy-target=false --output target/mutants/shiplog-ids-baseline
 cargo mutants -p shiplog-ports --timeout 600 --copy-target=false --output target/mutants/shiplog-ports-baseline
 cargo mutants -p shiplog-schema --timeout 600 --copy-target=false --output target/mutants/shiplog-schema-baseline
+cargo mutants -p shiplog-redact --timeout 600 --copy-target=false --output target/mutants/shiplog-redact-baseline-public-source
 ```
 
 `cargo-mutants` reported:
@@ -58,10 +60,19 @@ WARN No mutants found under the active filters
 
 shiplog-schema:
 33 mutants tested in 4m: 27 caught, 6 unviable
+
+shiplog-redact:
+35 mutants tested in 2m: 26 caught, 9 unviable
 ```
 
-The generated `missed.txt` files were empty, so there were no surviving mutants
-for these crates in the baseline runs.
+The generated `missed.txt` files for `shiplog-coverage`, `shiplog-ids`,
+`shiplog-schema`, and `shiplog-redact` were empty, so there were no surviving
+mutants for these crates in the baseline runs.
+
+The first `shiplog-redact` scan found two equivalent survivors in batch-level
+`Internal` fast paths. The policy cleanup in this baseline removes those
+duplicate fast paths so profile semantics live at the single-event and
+single-workstream policy boundary; the clean rerun is the recorded baseline.
 
 `shiplog-ports` is a trait contract crate. The current cargo-mutants scan found
 no mutable implementation targets; its behavior remains covered by trait-object,
@@ -72,7 +83,6 @@ error-path, and composition tests rather than mutation survivor counts.
 Record the remaining Tier 1 crates one at a time before enforcing mutation
 thresholds:
 
-- `shiplog-redact`
 - `shiplog-bundle`
 
 Keep each baseline as evidence, not a PR gate, until repeated scheduled runs

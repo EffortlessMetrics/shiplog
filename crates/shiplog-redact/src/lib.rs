@@ -66,7 +66,7 @@ pub struct DeterministicRedactor {
 }
 
 impl DeterministicRedactor {
-    /// Create a new redactor with the given HMAC key.
+    /// Create a new redactor with the given redaction key.
     ///
     /// The same key always produces the same aliases, making redaction
     /// deterministic across runs.

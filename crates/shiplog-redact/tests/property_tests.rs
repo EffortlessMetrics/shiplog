@@ -25,9 +25,10 @@ proptest! {
         prop_assert_eq!(events.len(), redacted.len());
 
         for (orig, red) in events.iter().zip(redacted.iter()) {
-            // Links and source URLs are always stripped in public mode.
+            // Links and source identifiers are always stripped in public mode.
             prop_assert!(red.links.is_empty());
             prop_assert!(red.source.url.is_none());
+            prop_assert!(red.source.opaque_id.is_none());
 
             // Repo name should be aliased.
             prop_assert_ne!(&red.repo.full_name, &orig.repo.full_name);
@@ -152,6 +153,7 @@ proptest! {
         for red in &twice {
             prop_assert!(red.links.is_empty());
             prop_assert!(red.source.url.is_none());
+            prop_assert!(red.source.opaque_id.is_none());
             match &red.payload {
                 EventPayload::PullRequest(pr) => {
                     prop_assert_eq!(&pr.title, "[redacted]");
