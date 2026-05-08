@@ -35,7 +35,7 @@ use shiplog_schema::{
     workstream::{Workstream, WorkstreamStats, WorkstreamsFile},
 };
 use shiplog_workstreams::{RepoClusterer, WORKSTREAM_RECEIPT_RENDER_LIMIT};
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 #[derive(Parser, Debug)]
@@ -620,6 +620,19 @@ enum RunsCommand {
         /// Inspect the most recent run explicitly.
         #[arg(long)]
         latest: bool,
+    },
+
+    /// Compare two existing runs.
+    Compare {
+        /// Output directory containing shiplog runs.
+        #[arg(long, default_value = "./out")]
+        out: PathBuf,
+        /// Earlier run ID to compare from. Use "latest" for the most recent run.
+        #[arg(long)]
+        from: String,
+        /// Later run ID to compare to. Use "latest" for the most recent run.
+        #[arg(long)]
+        to: String,
     },
 }
 
@@ -5579,6 +5592,12 @@ fn main() -> Result<()> {
                 let summary = load_run_summary(&run_dir)?;
                 print_run_show(&summary);
             }
+            RunsCommand::Compare { out, from, to } => {
+                let from_dir = resolve_run_selector(&out, &from)?;
+                let to_dir = resolve_run_selector(&out, &to)?;
+                let comparison = compare_runs(&from_dir, &to_dir)?;
+                print_run_compare(&comparison);
+            }
         },
         Command::Review {
             out,
@@ -6916,6 +6935,25 @@ struct RunSummary {
     coverage_path: PathBuf,
 }
 
+struct RunCompareData {
+    summary: RunSummary,
+    events: Vec<EventEnvelope>,
+    workstreams: WorkstreamsFile,
+}
+
+struct RunComparison {
+    from: RunCompareData,
+    to: RunCompareData,
+    added_sources: Vec<String>,
+    removed_sources: Vec<String>,
+    continued_sources: Vec<String>,
+    added_workstreams: Vec<String>,
+    removed_workstreams: Vec<String>,
+    continued_workstreams: Vec<String>,
+    expanded_workstreams: Vec<(String, isize)>,
+    contracted_workstreams: Vec<(String, isize)>,
+}
+
 fn load_run_summaries(out_dir: &Path) -> Result<Vec<RunSummary>> {
     discover_run_dirs(out_dir)?
         .iter()
@@ -7032,6 +7070,190 @@ fn print_run_show(summary: &RunSummary) {
         for warning in &summary.warnings {
             println!("- {warning}");
         }
+    }
+}
+
+fn resolve_run_selector(out_dir: &Path, selector: &str) -> Result<PathBuf> {
+    resolve_render_run_dir(out_dir, Some(selector.to_string()), false)
+}
+
+fn compare_runs(from_dir: &Path, to_dir: &Path) -> Result<RunComparison> {
+    let from = load_run_compare_data(from_dir)?;
+    let to = load_run_compare_data(to_dir)?;
+
+    let from_sources = source_set(&from.summary.sources, &from.events);
+    let to_sources = source_set(&to.summary.sources, &to.events);
+    let from_workstreams = workstream_event_counts(&from.workstreams);
+    let to_workstreams = workstream_event_counts(&to.workstreams);
+    let from_workstream_titles = from_workstreams.keys().cloned().collect::<BTreeSet<_>>();
+    let to_workstream_titles = to_workstreams.keys().cloned().collect::<BTreeSet<_>>();
+
+    let mut expanded_workstreams = Vec::new();
+    let mut contracted_workstreams = Vec::new();
+    for title in from_workstream_titles.intersection(&to_workstream_titles) {
+        let from_count = *from_workstreams.get(title).unwrap_or(&0);
+        let to_count = *to_workstreams.get(title).unwrap_or(&0);
+        let delta = to_count as isize - from_count as isize;
+        if delta > 0 {
+            expanded_workstreams.push((title.clone(), delta));
+        } else if delta < 0 {
+            contracted_workstreams.push((title.clone(), delta));
+        }
+    }
+
+    Ok(RunComparison {
+        from,
+        to,
+        added_sources: display_source_set_diff(&to_sources, &from_sources),
+        removed_sources: display_source_set_diff(&from_sources, &to_sources),
+        continued_sources: display_source_set_intersection(&from_sources, &to_sources),
+        added_workstreams: set_diff(&to_workstream_titles, &from_workstream_titles),
+        removed_workstreams: set_diff(&from_workstream_titles, &to_workstream_titles),
+        continued_workstreams: set_intersection(&from_workstream_titles, &to_workstream_titles),
+        expanded_workstreams,
+        contracted_workstreams,
+    })
+}
+
+fn load_run_compare_data(run_dir: &Path) -> Result<RunCompareData> {
+    let summary = load_run_summary(run_dir)?;
+    let ingest =
+        load_run_ingest(run_dir).with_context(|| format!("load run {}", run_dir.display()))?;
+    let workstreams = shiplog_workstreams::WorkstreamManager::try_load(run_dir)?
+        .unwrap_or_else(empty_workstreams_file);
+
+    Ok(RunCompareData {
+        summary,
+        events: ingest.events,
+        workstreams,
+    })
+}
+
+fn empty_workstreams_file() -> WorkstreamsFile {
+    WorkstreamsFile {
+        version: 1,
+        generated_at: Utc::now(),
+        workstreams: Vec::new(),
+    }
+}
+
+fn source_set(summary_sources: &[String], events: &[EventEnvelope]) -> BTreeSet<String> {
+    let mut sources = BTreeSet::new();
+    for source in summary_sources {
+        sources.insert(normalized_source_key(source));
+    }
+    for event in events {
+        sources.insert(normalized_source_key(event.source.system.as_str()));
+    }
+    sources
+}
+
+fn workstream_event_counts(workstreams: &WorkstreamsFile) -> BTreeMap<String, usize> {
+    workstreams
+        .workstreams
+        .iter()
+        .map(|workstream| (workstream.title.clone(), workstream.events.len()))
+        .collect()
+}
+
+fn display_source_set_diff(left: &BTreeSet<String>, right: &BTreeSet<String>) -> Vec<String> {
+    left.difference(right)
+        .map(|source| display_source_label(source))
+        .collect()
+}
+
+fn display_source_set_intersection(
+    left: &BTreeSet<String>,
+    right: &BTreeSet<String>,
+) -> Vec<String> {
+    left.intersection(right)
+        .map(|source| display_source_label(source))
+        .collect()
+}
+
+fn set_diff(left: &BTreeSet<String>, right: &BTreeSet<String>) -> Vec<String> {
+    left.difference(right).cloned().collect()
+}
+
+fn set_intersection(left: &BTreeSet<String>, right: &BTreeSet<String>) -> Vec<String> {
+    left.intersection(right).cloned().collect()
+}
+
+fn print_run_compare(comparison: &RunComparison) {
+    let from = &comparison.from.summary;
+    let to = &comparison.to.summary;
+    let event_delta = to.event_count as isize - from.event_count as isize;
+    let gap_delta = to.gap_count as isize - from.gap_count as isize;
+
+    println!("Compare: {} -> {}", from.run_id, to.run_id);
+    println!("From: {}", from.run_dir.display());
+    println!("To: {}", to.run_dir.display());
+    println!();
+
+    println!("Events:");
+    println!("- from: {}", from.event_count);
+    println!("- to: {}", to.event_count);
+    println!("- delta: {}", signed_count(event_delta));
+    println!();
+
+    println!("Sources:");
+    print_named_list("Added", &comparison.added_sources);
+    print_named_list("Removed", &comparison.removed_sources);
+    print_named_list("Continued", &comparison.continued_sources);
+    println!();
+
+    println!("Workstreams:");
+    print_named_list("Added", &comparison.added_workstreams);
+    print_named_list("Removed", &comparison.removed_workstreams);
+    print_named_list("Continued", &comparison.continued_workstreams);
+    print_workstream_delta_list("Expanded", &comparison.expanded_workstreams);
+    print_workstream_delta_list("Contracted", &comparison.contracted_workstreams);
+    println!();
+
+    println!("Coverage:");
+    println!("- from: {}, gaps: {}", from.completeness, from.gap_count);
+    println!("- to: {}, gaps: {}", to.completeness, to.gap_count);
+    println!("- gap delta: {}", signed_count(gap_delta));
+    if from.completeness != to.completeness {
+        println!(
+            "- completeness changed: {} -> {}",
+            from.completeness, to.completeness
+        );
+    } else {
+        println!("- completeness changed: no");
+    }
+    println!();
+
+    println!("Next:");
+    println!("1. shiplog review --run {}", to.run_id);
+    println!("2. shiplog render --run {} --mode scaffold", to.run_id);
+}
+
+fn print_named_list(label: &str, values: &[String]) {
+    if values.is_empty() {
+        println!("- {label}: None");
+    } else {
+        println!("- {label}: {}", values.join(", "));
+    }
+}
+
+fn print_workstream_delta_list(label: &str, values: &[(String, isize)]) {
+    if values.is_empty() {
+        println!("- {label}: None");
+        return;
+    }
+
+    println!("- {label}:");
+    for (title, delta) in values {
+        println!("  - {title}: {} event(s)", signed_count(*delta));
+    }
+}
+
+fn signed_count(value: isize) -> String {
+    if value > 0 {
+        format!("+{value}")
+    } else {
+        value.to_string()
     }
 }
 
