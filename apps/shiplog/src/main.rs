@@ -1382,10 +1382,7 @@ impl RedactionKey {
     ) -> Result<Self> {
         let key = redact_key.or_else(|| std::env::var(key_env).ok());
         if key.is_none() && !matches!(bundle_profile, BundleProfile::Internal) {
-            anyhow::bail!(
-                "{} profile requires --redact-key or {key_env}",
-                bundle_profile
-            );
+            anyhow::bail!(share_profile_key_error(bundle_profile, key_env));
         }
         Ok(Self { key })
     }
@@ -1397,6 +1394,16 @@ impl RedactionKey {
     fn render_profiles(&self) -> bool {
         self.key.is_some()
     }
+}
+
+fn share_profile_key_error(bundle_profile: &BundleProfile, key_env: &str) -> String {
+    format!(
+        "{bundle_profile} profile requires --redact-key or {key_env}.\n\
+         Try:\n\
+           export {key_env}=replace-with-a-stable-secret\n\
+           rerun this command with --bundle-profile {bundle_profile}\n\
+         For an internal-only packet, use --bundle-profile internal."
+    )
 }
 
 impl ResolvedWindow {

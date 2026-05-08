@@ -413,6 +413,8 @@ manifests, bundles, or workstream files.
 
 Internal packets do not require a redaction key. Manager and public packets fail
 closed unless you provide `--redact-key` or set `SHIPLOG_REDACT_KEY`.
+If a share profile is requested without a key, the CLI prints the required env
+var and the `--bundle-profile` command to rerun.
 
 Generate redacted packets by providing a key:
 
