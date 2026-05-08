@@ -379,6 +379,19 @@ enum ReviewCommand {
         #[arg(long)]
         strict: bool,
     },
+
+    /// Print the highest-value curation actions for a run.
+    Fixups {
+        /// Output directory containing run folders.
+        #[arg(long, default_value = "./out")]
+        out: PathBuf,
+        /// Run ID to review (uses most recent if not specified).
+        #[arg(long)]
+        run: Option<String>,
+        /// Review the most recent run explicitly.
+        #[arg(long)]
+        latest: bool,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -6613,6 +6626,10 @@ fn main() -> Result<()> {
                 let run_dir = resolve_render_run_dir(&out, run, latest)?;
                 print_weekly_review(&run_dir, strict)?;
             }
+            Some(ReviewCommand::Fixups { out, run, latest }) => {
+                let run_dir = resolve_render_run_dir(&out, run, latest)?;
+                print_review_fixups(&run_dir, &out)?;
+            }
             None => {
                 let run_dir = resolve_render_run_dir(&options.out, options.run, options.latest)?;
                 print_review(&run_dir, options.strict)?;
@@ -8325,6 +8342,12 @@ struct EvidenceDebt {
     next_step: Option<String>,
 }
 
+struct ReviewFixup {
+    title: String,
+    detail: Option<String>,
+    command: String,
+}
+
 struct EvidenceDebtInput<'a> {
     run_id: &'a str,
     coverage: &'a CoverageManifest,
@@ -8538,6 +8561,188 @@ fn print_review(run_dir: &Path, strict: bool) -> Result<()> {
     }
 
     Ok(())
+}
+
+fn print_review_fixups(run_dir: &Path, out_dir: &Path) -> Result<()> {
+    let ingest =
+        load_run_ingest(run_dir).with_context(|| format!("load run {}", run_dir.display()))?;
+    let coverage = ingest.coverage;
+    let events = ingest.events;
+    let run_id = coverage.run_id.to_string();
+    let skipped_sources = configured_source_skips(&coverage.warnings);
+    let (workstreams, _, _) = load_effective_workstreams_for_run(run_dir)?;
+    let validation_errors = validate_workstreams_against_events(&workstreams, &events);
+    let no_receipt_workstreams: Vec<_> = workstreams
+        .workstreams
+        .iter()
+        .filter(|workstream| workstream.receipts.is_empty())
+        .collect();
+    let broad_workstreams: Vec<_> = workstreams
+        .workstreams
+        .iter()
+        .filter(|workstream| workstream.events.len() >= 10)
+        .collect();
+    let manual_event_ids: HashSet<_> = events
+        .iter()
+        .filter(|event| matches!(event.payload, EventPayload::Manual(_)))
+        .map(|event| event.id.clone())
+        .collect();
+    let manual_context_workstreams: Vec<_> = broad_workstreams
+        .iter()
+        .copied()
+        .filter(|workstream| {
+            !workstream
+                .events
+                .iter()
+                .any(|event_id| manual_event_ids.contains(event_id))
+        })
+        .collect();
+    let fixups = review_fixups(
+        &run_id,
+        out_dir,
+        &skipped_sources,
+        &validation_errors,
+        &no_receipt_workstreams,
+        &broad_workstreams,
+        &manual_context_workstreams,
+    );
+
+    println!("Review fixups: {run_id}");
+    println!("Directory: {}", run_dir.display());
+    println!();
+    println!("Top fixups:");
+
+    if fixups.is_empty() {
+        println!("- No high-value fixups found.");
+        println!();
+        println!("Next:");
+        println!(
+            "1. shiplog render --out {} --run {run_id} --mode scaffold",
+            quote_cli_value(&out_dir.display().to_string())
+        );
+        return Ok(());
+    }
+
+    for (idx, fixup) in fixups.iter().take(5).enumerate() {
+        println!("{}. {}", idx + 1, fixup.title);
+        if let Some(detail) = &fixup.detail {
+            println!("   {detail}");
+        }
+        println!("   {}", fixup.command);
+    }
+
+    if fixups.len() > 5 {
+        println!("... and {} more fixup(s).", fixups.len() - 5);
+    }
+
+    println!();
+    println!("Next:");
+    println!(
+        "1. shiplog review --out {} --run {run_id}",
+        quote_cli_value(&out_dir.display().to_string())
+    );
+    println!(
+        "2. shiplog render --out {} --run {run_id} --mode scaffold",
+        quote_cli_value(&out_dir.display().to_string())
+    );
+
+    Ok(())
+}
+
+fn review_fixups(
+    run_id: &str,
+    out_dir: &Path,
+    skipped_sources: &[ConfiguredSourceSkip],
+    validation_errors: &[String],
+    no_receipt_workstreams: &[&Workstream],
+    broad_workstreams: &[&Workstream],
+    manual_context_workstreams: &[&Workstream],
+) -> Vec<ReviewFixup> {
+    let mut fixups = Vec::new();
+    let out_arg = quote_cli_value(&out_dir.display().to_string());
+
+    if !validation_errors.is_empty() {
+        fixups.push(ReviewFixup {
+            title: "Validate workstream assignments".to_string(),
+            detail: Some(format!(
+                "{} validation issue(s) should be fixed before sharing.",
+                validation_errors.len()
+            )),
+            command: format!("shiplog workstreams validate --out {out_arg} --run {run_id}"),
+        });
+    }
+
+    if !skipped_sources.is_empty() {
+        let sources = skipped_sources
+            .iter()
+            .take(3)
+            .map(|skipped| display_source_label(&skipped.source))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let detail = if skipped_sources.len() > 3 {
+            format!(
+                "Skipped sources: {sources}; and {} more.",
+                skipped_sources.len() - 3
+            )
+        } else {
+            format!("Skipped sources: {sources}.")
+        };
+        fixups.push(ReviewFixup {
+            title: "Repair skipped source setup".to_string(),
+            detail: Some(detail),
+            command: "shiplog doctor".to_string(),
+        });
+    }
+
+    for workstream in manual_context_workstreams.iter().take(2) {
+        fixups.push(ReviewFixup {
+            title: format!(
+                "Add outcome context for {}",
+                quote_display_title(&workstream.title)
+            ),
+            detail: Some(format!(
+                "{} event(s) are grouped here, but none are manual outcome notes.",
+                workstream.events.len()
+            )),
+            command: journal_add_next_step(&workstream.title),
+        });
+    }
+
+    for workstream in no_receipt_workstreams.iter().take(2) {
+        fixups.push(ReviewFixup {
+            title: format!(
+                "Select anchor receipts for {}",
+                quote_display_title(&workstream.title)
+            ),
+            detail: Some(format!(
+                "{} event(s) are assigned, but no receipt anchors are selected.",
+                workstream.events.len()
+            )),
+            command: format!(
+                "shiplog workstreams receipts --out {out_arg} --run {run_id} --workstream {}",
+                quote_cli_value(&workstream.title)
+            ),
+        });
+    }
+
+    for workstream in broad_workstreams.iter().take(2) {
+        fixups.push(ReviewFixup {
+            title: format!(
+                "Split broad workstream {}",
+                quote_display_title(&workstream.title)
+            ),
+            detail: Some(format!(
+                "{} event(s) may be too broad for one review claim.",
+                workstream.events.len()
+            )),
+            command: format!(
+                "shiplog workstreams split --out {out_arg} --run {run_id} --from {} --to \"<new workstream>\" --matching \"<pattern>\" --create",
+                quote_cli_value(&workstream.title)
+            ),
+        });
+    }
+
+    fixups
 }
 
 fn detect_evidence_debt(input: EvidenceDebtInput<'_>) -> Vec<EvidenceDebt> {
@@ -8779,6 +8984,10 @@ fn journal_add_next_step(workstream_title: &str) -> String {
         quote_cli_value(&format!("Outcome note for {workstream_title}")),
         quote_cli_value(workstream_title)
     )
+}
+
+fn quote_display_title(value: &str) -> String {
+    format!("\"{}\"", value.replace('"', "\\\""))
 }
 
 fn quote_cli_value(value: &str) -> String {

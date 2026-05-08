@@ -137,6 +137,7 @@ For the fastest review-cycle path, collect all enabled sources from
 ```bash
 shiplog collect multi --last-6-months
 shiplog review --latest
+shiplog review fixups --latest
 shiplog runs list
 shiplog open packet --latest
 ```
@@ -158,6 +159,8 @@ shiplog runs compare --from review-2025-h2 --to latest
 For weekly upkeep, use `shiplog review weekly` after a refresh or collection
 run. It is read-only and highlights the latest evidence counts, source gaps,
 evidence debt, and next commands before you render a packet.
+Use `shiplog review fixups --latest` when you want only the highest-value
+curation actions as runnable commands.
 
 For a single-source run, call the source directly:
 
@@ -178,6 +181,7 @@ shiplog generates `workstreams.suggested.yaml` with auto-grouped workstreams bas
 ```bash
 shiplog workstreams list --run latest
 shiplog review --latest
+shiplog review fixups --latest
 shiplog workstreams create --run latest --title "Platform Reliability"
 shiplog workstreams rename --run latest --from "acme/platform" --to "Platform Reliability"
 shiplog workstreams move --run latest --event <event_id> --to "Platform Reliability"
@@ -203,6 +207,9 @@ shiplog journal add \
 
 `shiplog review` suggests a copy-paste `journal add` command when a broad
 workstream has implementation receipts but no manual outcome note.
+`shiplog review fixups` narrows the output to the top read-only curation
+actions: add context, inspect receipt anchors, split broad buckets, validate
+workstreams, or repair skipped sources.
 
 If you prefer direct YAML editing, copy `workstreams.suggested.yaml` to
 `workstreams.yaml` and edit that file.
@@ -268,7 +275,7 @@ out/<run_id>/
 | `refresh <source>` | Re-fetch events while preserving curated `workstreams.yaml` |
 | `workstreams list/validate/create/rename/move/split/receipts/receipt/delete` | Inspect, validate, and safely edit workstream curation |
 | `runs list/show/compare` | Discover runs, inspect their artifacts, and compare source/workstream changes |
-| `review` / `review weekly` | Inspect a run for skipped sources, weak curation, evidence debt, and next steps |
+| `review` / `review weekly` / `review fixups` | Inspect a run for skipped sources, weak curation, evidence debt, and next steps |
 | `open packet/workstreams/out` | Open run artifacts, or print their paths when opening is unavailable |
 | `merge` | Merge existing run directories into one packet |
 | `import` | Import an existing run directory and re-render |
