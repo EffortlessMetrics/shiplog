@@ -6,7 +6,7 @@ coverage:
   status:
     project:
       default:
-        target: auto
+        target: 80%
         threshold: 5%
         informational: true
         flags:
