@@ -98,7 +98,7 @@ and writes the packet, ledger, coverage manifest, workstream file, and bundle
 manifest as soon as at least one source succeeds. It ends with a readiness
 summary: what worked, what needs attention, and the next commands to run. Add
 `--source github --source jira` to limit the intake, `--explain` to print source
-decisions, or `--no-open` to print paths only.
+decisions and setup repair hints, or `--no-open` to print paths only.
 
 ### 1. Initialize local files
 

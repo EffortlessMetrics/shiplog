@@ -1345,6 +1345,11 @@ struct IntakeSourceExplanation {
     reason: String,
 }
 
+struct IntakeSourceHint {
+    label: &'static str,
+    lines: Vec<String>,
+}
+
 #[derive(Debug, Clone, Copy)]
 enum IntakeSourceDecision {
     Included,
@@ -2244,7 +2249,150 @@ fn print_intake_explanations(explanations: &[IntakeSourceExplanation]) {
             decision,
             explanation.reason
         );
+        if let Some(hint) = intake_source_hint(explanation) {
+            println!("  {}:", hint.label);
+            for line in hint.lines {
+                println!("    {line}");
+            }
+        }
     }
+}
+
+fn intake_source_hint(explanation: &IntakeSourceExplanation) -> Option<IntakeSourceHint> {
+    let source = normalized_source_key(&explanation.name);
+    let reason = explanation.reason.to_ascii_lowercase();
+
+    if matches!(explanation.decision, IntakeSourceDecision::Included) {
+        return match source.as_str() {
+            "manual" => Some(IntakeSourceHint {
+                label: "Hint",
+                lines: vec![
+                    "Use `shiplog journal add` to capture missing context without editing YAML."
+                        .to_string(),
+                ],
+            }),
+            _ => None,
+        };
+    }
+
+    let mut lines = match source.as_str() {
+        "github" => github_repair_hint(&reason),
+        "gitlab" => gitlab_repair_hint(&reason),
+        "jira" => jira_repair_hint(&reason),
+        "linear" => linear_repair_hint(&reason),
+        "git" => git_repair_hint(&reason),
+        "json" => vec![
+            "Set sources.json.events and sources.json.coverage to existing fixture files."
+                .to_string(),
+            "Or disable [sources.json] if JSON import is not part of this intake.".to_string(),
+        ],
+        "manual" => vec![
+            "Run `shiplog journal add --date <YYYY-MM-DD> --title <title> --workstream <name>`."
+                .to_string(),
+            format!("Or create {MANUAL_EVENTS_FILENAME} with `shiplog init --force`."),
+        ],
+        _ => vec!["Run `shiplog doctor` to inspect source configuration.".to_string()],
+    };
+
+    if !lines
+        .iter()
+        .any(|line| line.contains("shiplog intake --last-6-months --explain"))
+    {
+        lines.push("Retry with `shiplog intake --last-6-months --explain`.".to_string());
+    }
+
+    Some(IntakeSourceHint {
+        label: "Fix",
+        lines,
+    })
+}
+
+fn github_repair_hint(reason: &str) -> Vec<String> {
+    if reason.contains("token") {
+        return vec![
+            "export GITHUB_TOKEN=...".to_string(),
+            "Use sources.github.me = true or set sources.github.user in shiplog.toml.".to_string(),
+        ];
+    }
+    if reason.contains("both user and me") {
+        return vec!["Keep either sources.github.user or sources.github.me, not both.".to_string()];
+    }
+    if reason.contains("user") || reason.contains("me = true") {
+        return vec![
+            "Set sources.github.me = true to use the authenticated user.".to_string(),
+            "Or set sources.github.user to an explicit GitHub login.".to_string(),
+        ];
+    }
+    vec![
+        "Set sources.github.user explicitly if identity discovery cannot resolve --me.".to_string(),
+    ]
+}
+
+fn gitlab_repair_hint(reason: &str) -> Vec<String> {
+    if reason.contains("token") {
+        return vec![
+            "export GITLAB_TOKEN=...".to_string(),
+            "Use sources.gitlab.me = true or set sources.gitlab.user in shiplog.toml.".to_string(),
+        ];
+    }
+    if reason.contains("both user and me") {
+        return vec!["Keep either sources.gitlab.user or sources.gitlab.me, not both.".to_string()];
+    }
+    if reason.contains("user") || reason.contains("me = true") {
+        return vec![
+            "Set sources.gitlab.me = true to use the authenticated user.".to_string(),
+            "Or set sources.gitlab.user to an explicit GitLab username.".to_string(),
+        ];
+    }
+    vec![
+        "Set sources.gitlab.user explicitly if identity discovery cannot resolve --me.".to_string(),
+    ]
+}
+
+fn jira_repair_hint(reason: &str) -> Vec<String> {
+    if reason.contains("token") {
+        return vec![
+            "export JIRA_TOKEN=...".to_string(),
+            "Run `shiplog identify jira --auth-user <email>` to confirm the authenticated account."
+                .to_string(),
+        ];
+    }
+    if reason.contains("instance") {
+        return vec![
+            "Set sources.jira.instance to your Atlassian host, such as company.atlassian.net."
+                .to_string(),
+        ];
+    }
+    vec![
+        "Set sources.jira.user to the assignee JQL value for this review packet.".to_string(),
+        "Use --auth-user only when Basic Auth uses a different email.".to_string(),
+    ]
+}
+
+fn linear_repair_hint(reason: &str) -> Vec<String> {
+    if reason.contains("token") || reason.contains("api_key") {
+        return vec![
+            "export LINEAR_API_KEY=...".to_string(),
+            "Run `shiplog identify linear` to confirm candidate user IDs.".to_string(),
+        ];
+    }
+    vec![
+        "Run `shiplog identify linear` to find the user id.".to_string(),
+        "Then set sources.linear.user_id in shiplog.toml.".to_string(),
+    ]
+}
+
+fn git_repair_hint(reason: &str) -> Vec<String> {
+    if reason.contains("not a git repo") {
+        return vec![
+            "Run intake from a git repository root.".to_string(),
+            "Or set sources.git.repo to a local repository path in shiplog.toml.".to_string(),
+        ];
+    }
+    vec![
+        "Set sources.git.repo to an existing local repository path.".to_string(),
+        "Or run intake from the repository root.".to_string(),
+    ]
 }
 
 fn is_unfilled_placeholder(value: &str) -> bool {
