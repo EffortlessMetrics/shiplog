@@ -1,5 +1,6 @@
 ---
 source: crates/shiplog-render-md/src/lib.rs
+assertion_line: 1065
 expression: result
 ---
 # Summary
@@ -8,11 +9,11 @@ expression: result
 
 **Workstreams:** 1
 
-**Events:** 1 PRs, 0 reviews, 0 manual
+**Events:** 1 PR, 0 reviews, 0 manual events
 
 **Coverage:** Partial
 
-**Sources:** github
+**Sources:** GitHub
 
 **Warnings:**
   - ⚠️ API rate limit hit
@@ -58,7 +59,7 @@ Known gaps:
 Details:
 - **Date window:** 2024-01-01 to 2024-12-31
 - **Mode:** test
-- **Sources:** github
+- **Sources:** GitHub
 - **Completeness:** Partial
 - **Query slices:** 1
   - ⚠️ 1 slices had incomplete results

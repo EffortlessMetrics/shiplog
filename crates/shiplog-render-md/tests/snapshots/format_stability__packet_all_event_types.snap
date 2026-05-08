@@ -1,5 +1,6 @@
 ---
 source: crates/shiplog-render-md/tests/format_stability.rs
+assertion_line: 189
 expression: result
 ---
 # Summary
@@ -8,11 +9,11 @@ expression: result
 
 **Workstreams:** 1
 
-**Events:** 1 PRs, 1 reviews, 1 manual
+**Events:** 1 PR, 1 review, 1 manual event
 
 **Coverage:** Complete
 
-**Sources:** github
+**Sources:** GitHub
 
 ## Workstreams
 
@@ -59,7 +60,7 @@ Known gaps:
 Details:
 - **Date window:** 2025-01-01 to 2025-04-01
 - **Mode:** merged
-- **Sources:** github
+- **Sources:** GitHub
 - **Completeness:** Complete
 
 ## Appendix: All Receipts

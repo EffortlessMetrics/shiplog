@@ -1,5 +1,6 @@
 ---
 source: crates/shiplog-render-md/src/lib.rs
+assertion_line: 1012
 expression: result
 ---
 # Summary
@@ -8,11 +9,11 @@ expression: result
 
 **Workstreams:** 1
 
-**Events:** 1 PRs, 0 reviews, 1 manual
+**Events:** 1 PR, 0 reviews, 1 manual event
 
 **Coverage:** Complete
 
-**Sources:** github, manual
+**Sources:** GitHub, Manual
 
 ## Workstreams
 
@@ -55,7 +56,7 @@ Known gaps:
 Details:
 - **Date window:** 2024-01-01 to 2024-12-31
 - **Mode:** test
-- **Sources:** github, manual
+- **Sources:** GitHub, Manual
 - **Completeness:** Complete
 
 ## Appendix: All Receipts

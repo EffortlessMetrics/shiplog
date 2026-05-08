@@ -1,5 +1,6 @@
 ---
 source: crates/shiplog-render-md/src/lib.rs
+assertion_line: 966
 expression: result
 ---
 # Summary
@@ -8,11 +9,11 @@ expression: result
 
 **Workstreams:** 0
 
-**Events:** 0 PRs, 0 reviews, 0 manual
+**Events:** 0 PRs, 0 reviews, 0 manual events
 
 **Coverage:** Complete
 
-**Sources:** 
+**Sources:** none recorded
 
 ## Workstreams
 

@@ -101,7 +101,7 @@ fn render_empty_workstreams_with_events_succeeds() {
         md.contains("No workstreams found"),
         "should note no workstreams"
     );
-    assert!(md.contains("1 PRs"), "should still count events");
+    assert!(md.contains("1 PR"), "should still count events");
 }
 
 #[test]
