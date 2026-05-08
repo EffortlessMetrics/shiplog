@@ -184,6 +184,15 @@ fn documented_help_commands_stay_available() {
         .stdout(predicate::str::contains("--tag"));
 
     shiplog_cmd()
+        .args(["journal", "edit", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--events"))
+        .stdout(predicate::str::contains("--id"))
+        .stdout(predicate::str::contains("--title"))
+        .stdout(predicate::str::contains("--impact"));
+
+    shiplog_cmd()
         .args(["cache", "--help"])
         .assert()
         .success()

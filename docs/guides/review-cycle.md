@@ -91,6 +91,8 @@ shiplog journal add \
   --workstream "Customer Reliability" \
   --date 2026-05-08
 shiplog journal list
+shiplog journal edit --id manual-2026-05-08-debugged-customer-import-failure \
+  --impact "Identified the upstream export shape before the next import window"
 ```
 
 The weekly view shows latest evidence counts, source gaps, evidence debt, and
@@ -124,6 +126,10 @@ and impact prompts while the details are still fresh.
 
 Use `shiplog journal list` to inspect manual evidence without opening YAML. Add
 `--workstream` or repeat `--tag` when you only want one slice.
+Use `shiplog journal edit` to correct a rushed title, workstream, impact note,
+tags, receipts, or date without hand-editing the file.
+When you pass `--tag` or `--receipt`, the supplied values replace that entry's
+existing tag or receipt list.
 
 When review finds a broad workstream with receipts but no manual outcome note,
 it prints a `shiplog journal add` command with the workstream already filled in.
