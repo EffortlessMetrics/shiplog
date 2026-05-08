@@ -29,6 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   instead of the manual-event input file.
 - Fixed public redaction so provider-specific source opaque IDs are stripped
   along with source URLs.
+- Fixed internal bundle zips so an archive written inside the run directory
+  cannot include itself.
 - Corrected redaction docs and package metadata to describe keyed SHA-256
   aliasing instead of HMAC.
 
@@ -48,6 +50,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   data contract.
 - Added the documented mutation baseline for the `shiplog-redact` privacy trust
   surface.
+- Added the documented mutation baseline for the `shiplog-bundle` artifact
+  integrity surface.
 
 ## [0.3.0] - 2026-05-07
 

@@ -75,6 +75,10 @@ fn zip_round_trip_internal() -> Result<()> {
         !zip_contents.contains_key(FILE_REDACTION_ALIASES_JSON),
         "redaction.aliases.json must not be in zip"
     );
+    assert!(
+        !zip_contents.contains_key("internal.zip"),
+        "zip output written inside the run directory must not include itself"
+    );
 
     Ok(())
 }
@@ -221,6 +225,40 @@ fn zip_contents_match_manifest_files() -> Result<()> {
             profile
         );
     }
+
+    Ok(())
+}
+
+#[test]
+fn zip_inside_run_dir_matches_manifest_files() -> Result<()> {
+    let dir = tempfile::tempdir()?;
+    make_test_dir(dir.path());
+
+    let run_id = RunId("inside-run-zip-test".into());
+    let manifest = write_bundle_manifest(dir.path(), &run_id, &BundleProfile::Internal)?;
+
+    let zip_path = dir.path().join("internal.zip");
+    write_zip(dir.path(), &zip_path, &BundleProfile::Internal)?;
+
+    let file = fs::File::open(&zip_path)?;
+    let archive = zip::ZipArchive::new(file)?;
+
+    let mut zip_names: Vec<String> = (0..archive.len())
+        .map(|i| archive.name_for_index(i).unwrap().to_string())
+        .collect();
+    zip_names.sort();
+
+    let mut manifest_paths: Vec<String> = manifest.files.iter().map(|f| f.path.clone()).collect();
+    manifest_paths.sort();
+
+    assert_eq!(
+        zip_names, manifest_paths,
+        "zip entries should match manifest files even when zip output is inside the run directory"
+    );
+    assert!(
+        !zip_names.contains(&"internal.zip".to_string()),
+        "zip output should never appear as a zip entry"
+    );
 
     Ok(())
 }
