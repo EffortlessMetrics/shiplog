@@ -90,6 +90,7 @@ shiplog journal add \
   --title "Debugged customer import failure" \
   --workstream "Customer Reliability" \
   --date 2026-05-08
+shiplog journal list
 ```
 
 The weekly view shows latest evidence counts, source gaps, evidence debt, and
@@ -120,6 +121,9 @@ shiplog journal add \
 
 Keep journal entries factual. Use them to capture evidence, context, receipts,
 and impact prompts while the details are still fresh.
+
+Use `shiplog journal list` to inspect manual evidence without opening YAML. Add
+`--workstream` or repeat `--tag` when you only want one slice.
 
 When review finds a broad workstream with receipts but no manual outcome note,
 it prints a `shiplog journal add` command with the workstream already filled in.

@@ -613,7 +613,8 @@ fn journal_help_shows_add_options() {
         .args(["journal", "--help"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("add"));
+        .stdout(predicate::str::contains("add"))
+        .stdout(predicate::str::contains("list"));
 
     shiplog_cmd()
         .args(["journal", "add", "--help"])
@@ -627,6 +628,14 @@ fn journal_help_shows_add_options() {
         .stdout(predicate::str::contains("--workstream"))
         .stdout(predicate::str::contains("--receipt"))
         .stdout(predicate::str::contains("--dry-run"));
+
+    shiplog_cmd()
+        .args(["journal", "list", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--events"))
+        .stdout(predicate::str::contains("--workstream"))
+        .stdout(predicate::str::contains("--tag"));
 }
 
 #[test]
@@ -855,6 +864,56 @@ fn init_force_overwrites_existing_files() {
     assert!(config.contains("[sources.manual]\nenabled = false"));
 }
 
+fn seed_journal_list_events(path: &Path) {
+    shiplog_cmd()
+        .args([
+            "journal",
+            "add",
+            "--events",
+            path.to_str().unwrap(),
+            "--id",
+            "manual-customer-import",
+            "--date",
+            "2026-05-08",
+            "--title",
+            "Debugged customer import incident",
+            "--workstream",
+            "Customer Reliability",
+            "--tag",
+            "support",
+            "--tag",
+            "review-cycle",
+            "--receipt",
+            "ticket=https://example.invalid/ticket/OPS-123",
+        ])
+        .assert()
+        .success();
+
+    shiplog_cmd()
+        .args([
+            "journal",
+            "add",
+            "--events",
+            path.to_str().unwrap(),
+            "--id",
+            "manual-architecture-review",
+            "--type",
+            "design",
+            "--start",
+            "2026-05-01",
+            "--end",
+            "2026-05-03",
+            "--title",
+            "Reviewed architecture decision",
+            "--workstream",
+            "Platform Reliability",
+            "--tag",
+            "design",
+        ])
+        .assert()
+        .success();
+}
+
 #[test]
 fn journal_add_creates_collectable_manual_event() {
     let tmp = TempDir::new().unwrap();
@@ -992,6 +1051,109 @@ fn journal_add_rejects_duplicate_manual_event_id() {
             assert.stderr(predicate::str::contains("already exists"));
         }
     }
+}
+
+#[test]
+fn journal_list_shows_entries_without_writing() {
+    let tmp = TempDir::new().unwrap();
+    let manual_events = tmp.path().join("manual_events.yaml");
+    seed_journal_list_events(&manual_events);
+    let before = std::fs::read_to_string(&manual_events).unwrap();
+
+    let assert = shiplog_cmd()
+        .args([
+            "journal",
+            "list",
+            "--events",
+            manual_events.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
+
+    assert!(stdout.contains("Manual events:"));
+    assert!(stdout.contains("Count: 2"));
+    assert!(stdout.contains("manual-architecture-review | 2026-05-01..2026-05-03 | Design | Platform Reliability | Reviewed architecture decision"));
+    assert!(stdout.contains("manual-customer-import | 2026-05-08 | Note | Customer Reliability | Debugged customer import incident"));
+    assert!(stdout.contains("tags: support, review-cycle"));
+    assert!(stdout.contains("receipts: 1"));
+
+    let after = std::fs::read_to_string(&manual_events).unwrap();
+    assert_eq!(
+        before, after,
+        "journal list should not write manual_events.yaml"
+    );
+}
+
+#[test]
+fn journal_list_filters_by_workstream_and_tag() {
+    let tmp = TempDir::new().unwrap();
+    let manual_events = tmp.path().join("manual_events.yaml");
+    seed_journal_list_events(&manual_events);
+    let before = std::fs::read_to_string(&manual_events).unwrap();
+
+    shiplog_cmd()
+        .args([
+            "journal",
+            "list",
+            "--events",
+            manual_events.to_str().unwrap(),
+            "--workstream",
+            "customer reliability",
+            "--tag",
+            "support",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Count: 1"))
+        .stdout(predicate::str::contains("manual-customer-import"))
+        .stdout(predicate::str::contains("Customer Reliability"))
+        .stdout(predicate::str::contains(
+            "Debugged customer import incident",
+        ))
+        .stdout(predicate::str::contains("manual-architecture-review").not());
+
+    shiplog_cmd()
+        .args([
+            "journal",
+            "list",
+            "--events",
+            manual_events.to_str().unwrap(),
+            "--tag",
+            "missing",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Count: 0"))
+        .stdout(predicate::str::contains("No manual events matched."));
+
+    let after = std::fs::read_to_string(&manual_events).unwrap();
+    assert_eq!(
+        before, after,
+        "journal list filters should not write manual_events.yaml"
+    );
+}
+
+#[test]
+fn journal_list_missing_file_fails_without_creating_it() {
+    let tmp = TempDir::new().unwrap();
+    let manual_events = tmp.path().join("manual_events.yaml");
+
+    shiplog_cmd()
+        .args([
+            "journal",
+            "list",
+            "--events",
+            manual_events.to_str().unwrap(),
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("No manual events file found"));
+
+    assert!(
+        !manual_events.exists(),
+        "journal list should not create a missing file"
+    );
 }
 
 #[test]

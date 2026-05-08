@@ -466,6 +466,8 @@ enum IdentifyCommand {
 enum JournalCommand {
     /// Append one manual evidence entry to manual_events.yaml.
     Add(JournalAddArgs),
+    /// List manual evidence entries without editing manual_events.yaml.
+    List(JournalListArgs),
 }
 
 #[derive(Args, Debug)]
@@ -509,6 +511,19 @@ struct JournalAddArgs {
     /// Print the entry that would be added without writing.
     #[arg(long)]
     dry_run: bool,
+}
+
+#[derive(Args, Debug)]
+struct JournalListArgs {
+    /// Manual events YAML file to inspect.
+    #[arg(long, default_value = MANUAL_EVENTS_FILENAME)]
+    events: PathBuf,
+    /// Only show entries assigned to this workstream.
+    #[arg(long)]
+    workstream: Option<String>,
+    /// Only show entries containing this tag. Repeat to require multiple tags.
+    #[arg(long = "tag")]
+    tags: Vec<String>,
 }
 
 #[derive(Clone, Copy, Debug, ValueEnum)]
@@ -2701,6 +2716,84 @@ fn run_journal_add(args: JournalAddArgs) -> Result<()> {
     Ok(())
 }
 
+fn run_journal_list(args: JournalListArgs) -> Result<()> {
+    if !args.events.exists() {
+        anyhow::bail!(
+            "No manual events file found at {:?}. Run `shiplog journal add --events {:?}` to create one.",
+            args.events,
+            args.events
+        );
+    }
+
+    let file = read_manual_events(&args.events)?;
+    if file.version != 1 {
+        anyhow::bail!(
+            "unsupported manual events version {}; expected 1",
+            file.version
+        );
+    }
+
+    let workstream_filter = args
+        .workstream
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty());
+    let tag_filters = normalize_journal_tags(args.tags)?;
+
+    let mut entries: Vec<&ManualEventEntry> = file
+        .events
+        .iter()
+        .filter(|entry| journal_entry_matches_filters(entry, workstream_filter, &tag_filters))
+        .collect();
+    entries.sort_by(|left, right| {
+        journal_date_start(&left.date)
+            .cmp(&journal_date_start(&right.date))
+            .then_with(|| left.id.cmp(&right.id))
+    });
+
+    println!("Manual events: {}", args.events.display());
+    println!("Count: {}", entries.len());
+    if entries.is_empty() {
+        println!("No manual events matched.");
+        return Ok(());
+    }
+
+    for entry in entries {
+        println!(
+            "- {} | {} | {} | {} | {}",
+            entry.id,
+            journal_date_label(&entry.date),
+            entry.event_type,
+            entry.workstream.as_deref().unwrap_or("Unassigned"),
+            entry.title
+        );
+        if !entry.tags.is_empty() {
+            println!("  tags: {}", entry.tags.join(", "));
+        }
+        println!("  receipts: {}", entry.receipts.len());
+    }
+
+    Ok(())
+}
+
+fn journal_entry_matches_filters(
+    entry: &ManualEventEntry,
+    workstream: Option<&str>,
+    tags: &[String],
+) -> bool {
+    if let Some(workstream) = workstream {
+        let Some(entry_workstream) = entry.workstream.as_deref() else {
+            return false;
+        };
+        if !entry_workstream.eq_ignore_ascii_case(workstream) {
+            return false;
+        }
+    }
+
+    tags.iter()
+        .all(|tag| entry.tags.iter().any(|entry_tag| entry_tag == tag))
+}
+
 fn resolve_journal_date(
     date: Option<NaiveDate>,
     start: Option<NaiveDate>,
@@ -2821,6 +2914,13 @@ fn print_journal_entry(label: &str, path: &Path, entry: &ManualEventEntry) {
     }
     if !entry.receipts.is_empty() {
         println!("Receipts: {}", entry.receipts.len());
+    }
+}
+
+fn journal_date_start(date: &ManualDate) -> NaiveDate {
+    match date {
+        ManualDate::Single(date) => *date,
+        ManualDate::Range { start, .. } => *start,
     }
 }
 
@@ -5476,6 +5576,7 @@ fn main() -> Result<()> {
 
         Command::Journal { cmd } => match cmd {
             JournalCommand::Add(args) => run_journal_add(args)?,
+            JournalCommand::List(args) => run_journal_list(args)?,
         },
 
         Command::Collect {
