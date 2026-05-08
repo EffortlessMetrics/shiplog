@@ -492,6 +492,7 @@ fn help_shows_all_subcommands() {
         .stdout(predicate::str::contains("refresh"))
         .stdout(predicate::str::contains("workstreams"))
         .stdout(predicate::str::contains("runs"))
+        .stdout(predicate::str::contains("review"))
         .stdout(predicate::str::contains("open"))
         .stdout(predicate::str::contains("merge"))
         .stdout(predicate::str::contains("import"))
@@ -624,6 +625,17 @@ fn open_packet_help_shows_run_and_print_options() {
         .stdout(predicate::str::contains("--latest"))
         .stdout(predicate::str::contains("--run"))
         .stdout(predicate::str::contains("--print-path"));
+}
+
+#[test]
+fn review_help_shows_run_options() {
+    shiplog_cmd()
+        .args(["review", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--out"))
+        .stdout(predicate::str::contains("--latest"))
+        .stdout(predicate::str::contains("--run"));
 }
 
 #[test]
@@ -2345,6 +2357,106 @@ fn runs_show_latest_shows_run_details() {
         .stdout(predicate::str::contains("Events: 3"))
         .stdout(predicate::str::contains("Gaps: 0"))
         .stdout(predicate::str::contains("Warnings: none"));
+}
+
+#[test]
+fn review_latest_summarizes_run_attention_items_without_writing_artifacts() {
+    let tmp = TempDir::new().unwrap();
+    let run_dir = collect_json_into(tmp.path());
+    let packet_before = std::fs::read_to_string(run_dir.join("packet.md")).unwrap();
+    let coverage_before = std::fs::read_to_string(run_dir.join("coverage.manifest.json")).unwrap();
+
+    let assert = shiplog_cmd()
+        .args(["review", "--out", tmp.path().to_str().unwrap(), "--latest"])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
+
+    assert!(stdout.contains("Run: run_fixture"));
+    assert!(stdout.contains("Coverage:"));
+    assert!(stdout.contains("- GitHub: 3 event(s)"));
+    assert!(stdout.contains("Completeness: Complete"));
+    assert!(stdout.contains("Curation:"));
+    assert!(stdout.contains("- Validation: ok"));
+    assert!(stdout.contains("Evidence gaps:"));
+    assert!(stdout.contains("- No obvious evidence debt detected."));
+    assert!(stdout.contains("Next:"));
+    assert!(stdout.contains("shiplog render --run run_fixture --mode scaffold"));
+
+    assert_eq!(
+        packet_before,
+        std::fs::read_to_string(run_dir.join("packet.md")).unwrap()
+    );
+    assert_eq!(
+        coverage_before,
+        std::fs::read_to_string(run_dir.join("coverage.manifest.json")).unwrap()
+    );
+}
+
+#[test]
+fn review_latest_surfaces_skipped_sources_and_manual_context() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+    write_manual_events(&tmp.path().join("manual_events.yaml"));
+
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[defaults]
+window = "year:2025"
+
+[sources.json]
+enabled = true
+events = "./missing-ledger.events.jsonl"
+coverage = "./missing-coverage.manifest.json"
+
+[sources.manual]
+enabled = true
+events = "./manual_events.yaml"
+user = "octo"
+"#,
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .args([
+            "collect",
+            "--out",
+            out.to_str().unwrap(),
+            "multi",
+            "--config",
+            tmp.path().join("shiplog.toml").to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    let run_dir = first_run_dir(&out);
+    let packet_before = std::fs::read_to_string(run_dir.join("packet.md")).unwrap();
+    let coverage_before = std::fs::read_to_string(run_dir.join("coverage.manifest.json")).unwrap();
+
+    let assert = shiplog_cmd()
+        .args(["review", "--out", out.to_str().unwrap(), "--latest"])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
+
+    assert!(stdout.contains("Coverage:"));
+    assert!(stdout.contains("- Manual: 1 event(s)"));
+    assert!(stdout.contains("Completeness: Partial"));
+    assert!(stdout.contains("Skipped sources:"));
+    assert!(stdout.contains("- JSON:"));
+    assert!(stdout.contains("Evidence gaps:"));
+    assert!(stdout.contains("Skipped sources need attention"));
+    assert!(stdout.contains("Manual events are user-provided"));
+    assert!(stdout.contains("shiplog doctor"));
+
+    assert_eq!(
+        packet_before,
+        std::fs::read_to_string(run_dir.join("packet.md")).unwrap()
+    );
+    assert_eq!(
+        coverage_before,
+        std::fs::read_to_string(run_dir.join("coverage.manifest.json")).unwrap()
+    );
 }
 
 #[test]

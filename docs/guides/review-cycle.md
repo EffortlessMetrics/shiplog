@@ -22,6 +22,7 @@ Start with local scaffolding, check setup, then collect enabled sources from
 shiplog init
 shiplog doctor
 shiplog collect multi --last-6-months
+shiplog review --latest
 shiplog runs list
 shiplog open packet --latest
 ```
@@ -38,6 +39,7 @@ the CLI. YAML remains the durable format, but you do not need to hand-edit it
 for common changes.
 
 ```bash
+shiplog review --latest
 shiplog workstreams list --run latest
 shiplog workstreams rename --run latest --from "acme/platform" --to "Platform Reliability"
 shiplog workstreams move --run latest --event <event_id> --to "Platform Reliability"
@@ -112,6 +114,7 @@ Use these commands when the packet looks smaller than expected:
 
 ```bash
 shiplog doctor
+shiplog review --latest
 shiplog runs show --run latest
 shiplog cache stats --out ./out
 shiplog cache inspect --out ./out --source github
@@ -133,6 +136,7 @@ shiplog config explain --config examples/configs/local-git-json-manual.toml
 shiplog doctor --config examples/configs/local-git-json-manual.toml
 shiplog collect --out ./out/docs-fixture multi --config examples/configs/local-git-json-manual.toml
 shiplog runs list --out ./out/docs-fixture
+shiplog review --out ./out/docs-fixture --latest
 shiplog workstreams list --out ./out/docs-fixture --run latest
 shiplog render --out ./out/docs-fixture --latest --mode scaffold
 shiplog open packet --out ./out/docs-fixture --latest --print-path

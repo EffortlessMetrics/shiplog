@@ -118,6 +118,7 @@ For the fastest review-cycle path, collect all enabled sources from
 
 ```bash
 shiplog collect multi --last-6-months
+shiplog review --latest
 shiplog runs list
 shiplog open packet --latest
 ```
@@ -148,6 +149,7 @@ shiplog generates `workstreams.suggested.yaml` with auto-grouped workstreams bas
 
 ```bash
 shiplog workstreams list --run latest
+shiplog review --latest
 shiplog workstreams create --run latest --title "Platform Reliability"
 shiplog workstreams rename --run latest --from "acme/platform" --to "Platform Reliability"
 shiplog workstreams move --run latest --event <event_id> --to "Platform Reliability"
@@ -218,6 +220,7 @@ out/<run_id>/
 | `refresh <source>` | Re-fetch events while preserving curated `workstreams.yaml` |
 | `workstreams list/validate/create/rename/move/split/receipts/receipt/delete` | Inspect, validate, and safely edit workstream curation |
 | `runs list/show` | Discover runs and inspect their sources, event counts, coverage, and artifact paths |
+| `review` | Inspect a run for skipped sources, weak curation, evidence gaps, and next steps |
 | `open packet/workstreams/out` | Open run artifacts, or print their paths when opening is unavailable |
 | `merge` | Merge existing run directories into one packet |
 | `import` | Import an existing run directory and re-render |

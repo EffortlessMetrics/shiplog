@@ -1,8 +1,8 @@
 //! `shiplog` CLI entrypoint.
 //!
 //! Exposes `init`, `doctor`, `config`, `collect`, `render`, `refresh`,
-//! `workstreams`, `runs`, `open`, `merge`, `import`, and `run` commands over
-//! the workspace engine and adapter crates.
+//! `workstreams`, `runs`, `review`, `open`, `merge`, `import`, and `run`
+//! commands over the workspace engine and adapter crates.
 
 use anyhow::{Context, Result};
 use chrono::{DateTime, Datelike, Duration, Months, NaiveDate, Utc};
@@ -203,6 +203,19 @@ enum Command {
     Runs {
         #[command(subcommand)]
         cmd: RunsCommand,
+    },
+
+    /// Inspect a run and suggest review-prep next steps.
+    Review {
+        /// Output directory containing run folders.
+        #[arg(long, default_value = "./out")]
+        out: PathBuf,
+        /// Run ID to review (uses most recent if not specified).
+        #[arg(long)]
+        run: Option<String>,
+        /// Review the most recent run explicitly.
+        #[arg(long)]
+        latest: bool,
     },
 
     /// Open generated artifacts for a run, or print their paths when unavailable.
@@ -5259,6 +5272,10 @@ fn main() -> Result<()> {
                 print_run_show(&summary);
             }
         },
+        Command::Review { out, run, latest } => {
+            let run_dir = resolve_render_run_dir(&out, run, latest)?;
+            print_review(&run_dir)?;
+        }
         Command::Open { cmd } => match cmd {
             OpenCommand::Packet {
                 out,
@@ -6699,6 +6716,299 @@ fn print_run_show(summary: &RunSummary) {
         for warning in &summary.warnings {
             println!("- {warning}");
         }
+    }
+}
+
+struct ConfiguredSourceSkip {
+    source: String,
+    reason: String,
+}
+
+fn print_review(run_dir: &Path) -> Result<()> {
+    let ingest =
+        load_run_ingest(run_dir).with_context(|| format!("load run {}", run_dir.display()))?;
+    let coverage = ingest.coverage;
+    let events = ingest.events;
+    let run_id = coverage.run_id.to_string();
+    let skipped_sources = configured_source_skips(&coverage.warnings);
+    let (workstreams, source, path) = load_effective_workstreams_for_run(run_dir)?;
+    let validation_errors = validate_workstreams_against_events(&workstreams, &events);
+    let no_receipt_workstreams: Vec<_> = workstreams
+        .workstreams
+        .iter()
+        .filter(|workstream| workstream.receipts.is_empty())
+        .collect();
+    let broad_workstreams: Vec<_> = workstreams
+        .workstreams
+        .iter()
+        .filter(|workstream| workstream.events.len() >= 10)
+        .collect();
+    let manual_events = events
+        .iter()
+        .filter(|event| matches!(event.payload, EventPayload::Manual(_)))
+        .count();
+
+    println!("Run: {run_id}");
+    println!("Directory: {}", run_dir.display());
+    println!(
+        "Window: {}..{}",
+        coverage.window.since, coverage.window.until
+    );
+    println!("User: {}", coverage.user);
+    println!();
+
+    println!("Coverage:");
+    let counts = review_source_event_counts(&coverage.sources, &events, &skipped_sources);
+    if counts.is_empty() {
+        println!("- No included source events");
+    } else {
+        for (source, count) in counts {
+            println!("- {}: {} event(s)", display_source_label(&source), count);
+        }
+    }
+    println!("Completeness: {}", coverage.completeness);
+    println!("Gaps: {}", coverage_gap_count(&coverage));
+    if !skipped_sources.is_empty() {
+        println!("Skipped sources:");
+        for skipped in &skipped_sources {
+            println!(
+                "- {}: {}",
+                display_source_label(&skipped.source),
+                skipped.reason
+            );
+        }
+    }
+    println!();
+
+    println!("Curation:");
+    println!(
+        "- Workstreams: {} ({})",
+        workstreams.workstreams.len(),
+        workstream_source_label(source)
+    );
+    println!("- Workstreams file: {}", path.display());
+    println!(
+        "- Workstreams with no selected receipts: {}",
+        no_receipt_workstreams.len()
+    );
+    println!("- Workstreams with 10+ events: {}", broad_workstreams.len());
+    if validation_errors.is_empty() {
+        println!("- Validation: ok");
+    } else {
+        println!("- Validation: {} issue(s)", validation_errors.len());
+        for error in validation_errors.iter().take(5) {
+            println!("  - {error}");
+        }
+        if validation_errors.len() > 5 {
+            println!("  - ... and {} more", validation_errors.len() - 5);
+        }
+    }
+    println!();
+
+    println!("Evidence gaps:");
+    let mut gap_count = 0usize;
+    if !skipped_sources.is_empty() {
+        gap_count += 1;
+        println!("- Skipped sources need attention before this packet is complete.");
+    }
+    if coverage.completeness != shiplog_schema::coverage::Completeness::Complete {
+        gap_count += 1;
+        println!(
+            "- Coverage is {}; inspect coverage.manifest.json before making strong claims.",
+            coverage.completeness
+        );
+    }
+    for warning in coverage
+        .warnings
+        .iter()
+        .filter(|warning| configured_source_skip(warning).is_none())
+    {
+        gap_count += 1;
+        println!("- {warning}");
+    }
+    for slice in coverage.slices.iter().filter(|slice| {
+        slice.incomplete_results.unwrap_or(false) || slice.fetched < slice.total_count
+    }) {
+        gap_count += 1;
+        println!(
+            "- Query {:?} fetched {}/{} result(s).",
+            slice.query, slice.fetched, slice.total_count
+        );
+    }
+    if manual_events > 0 {
+        gap_count += 1;
+        println!("- Manual events are user-provided; keep context current before sharing.");
+    }
+    if !no_receipt_workstreams.is_empty() {
+        gap_count += 1;
+        println!(
+            "- {} workstream(s) have no selected receipt anchors.",
+            no_receipt_workstreams.len()
+        );
+    }
+    if !broad_workstreams.is_empty() {
+        gap_count += 1;
+        println!(
+            "- {} workstream(s) have 10+ events; consider splitting broad buckets.",
+            broad_workstreams.len()
+        );
+    }
+    if !validation_errors.is_empty() {
+        gap_count += 1;
+        println!("- Workstream validation needs attention before rendering.");
+    }
+    if gap_count == 0 {
+        println!("- No obvious evidence debt detected.");
+    }
+    println!();
+
+    print_review_next_steps(
+        &run_id,
+        !validation_errors.is_empty(),
+        no_receipt_workstreams
+            .first()
+            .map(|workstream| workstream.title.as_str()),
+        broad_workstreams
+            .first()
+            .map(|workstream| workstream.title.as_str()),
+        !skipped_sources.is_empty(),
+    );
+
+    Ok(())
+}
+
+fn print_review_next_steps(
+    run_id: &str,
+    has_validation_errors: bool,
+    first_no_receipt_workstream: Option<&str>,
+    first_broad_workstream: Option<&str>,
+    has_skipped_sources: bool,
+) {
+    println!("Next:");
+    let mut step = 1usize;
+
+    if has_validation_errors {
+        println!("{step}. shiplog workstreams validate --run {run_id}");
+        step += 1;
+    }
+    if let Some(title) = first_no_receipt_workstream {
+        println!(
+            "{step}. shiplog workstreams receipts --run {run_id} --workstream {}",
+            quote_cli_value(title)
+        );
+        step += 1;
+    }
+    if let Some(title) = first_broad_workstream {
+        println!(
+            "{step}. shiplog workstreams split --run {run_id} --from {} --to \"<new workstream>\" --matching \"<pattern>\" --create",
+            quote_cli_value(title)
+        );
+        step += 1;
+    }
+    if has_skipped_sources {
+        println!("{step}. shiplog doctor");
+        step += 1;
+    }
+
+    println!("{step}. shiplog render --run {run_id} --mode scaffold");
+}
+
+fn quote_cli_value(value: &str) -> String {
+    format!("\"{}\"", value.replace('"', "\\\""))
+}
+
+fn review_source_event_counts(
+    manifest_sources: &[String],
+    events: &[EventEnvelope],
+    skipped_sources: &[ConfiguredSourceSkip],
+) -> Vec<(String, usize)> {
+    let mut ordered_sources = Vec::new();
+    for source in manifest_sources {
+        if !skipped_sources
+            .iter()
+            .any(|skipped| sources_match(&skipped.source, source))
+        {
+            push_review_source(&mut ordered_sources, source);
+        }
+    }
+    for event in events {
+        push_review_source(&mut ordered_sources, event.source.system.as_str());
+    }
+
+    ordered_sources
+        .into_iter()
+        .filter_map(|source| {
+            let count = source_event_count_for_review(events, &source);
+            (count > 0).then_some((source, count))
+        })
+        .collect()
+}
+
+fn push_review_source(sources: &mut Vec<String>, candidate: &str) {
+    if sources
+        .iter()
+        .any(|source| sources_match(source, candidate))
+    {
+        return;
+    }
+
+    sources.push(candidate.to_string());
+}
+
+fn source_event_count_for_review(events: &[EventEnvelope], source: &str) -> usize {
+    events
+        .iter()
+        .filter(|event| sources_match(event.source.system.as_str(), source))
+        .count()
+}
+
+fn configured_source_skips(warnings: &[String]) -> Vec<ConfiguredSourceSkip> {
+    warnings
+        .iter()
+        .filter_map(|warning| configured_source_skip(warning))
+        .collect()
+}
+
+fn configured_source_skip(warning: &str) -> Option<ConfiguredSourceSkip> {
+    const PREFIX: &str = "Configured source ";
+    const INFIX: &str = " was skipped: ";
+
+    let rest = warning.strip_prefix(PREFIX)?;
+    let (source, reason) = rest.split_once(INFIX)?;
+    Some(ConfiguredSourceSkip {
+        source: source.to_string(),
+        reason: reason.to_string(),
+    })
+}
+
+fn sources_match(left: &str, right: &str) -> bool {
+    normalized_source_key(left) == normalized_source_key(right)
+}
+
+fn normalized_source_key(source: &str) -> String {
+    match source
+        .trim()
+        .to_ascii_lowercase()
+        .replace('-', "_")
+        .as_str()
+    {
+        "json_import" | "jsonimport" => "json".to_string(),
+        "local_git" | "localgit" => "git".to_string(),
+        other => other.to_string(),
+    }
+}
+
+fn display_source_label(source: &str) -> String {
+    match normalized_source_key(source).as_str() {
+        "github" => "GitHub".to_string(),
+        "gitlab" => "GitLab".to_string(),
+        "jira" => "Jira".to_string(),
+        "linear" => "Linear".to_string(),
+        "manual" => "Manual".to_string(),
+        "json" => "JSON".to_string(),
+        "git" => "Local git".to_string(),
+        "unknown" => "Unknown".to_string(),
+        other => other.to_string(),
     }
 }
 
