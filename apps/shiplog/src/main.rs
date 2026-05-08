@@ -1478,6 +1478,7 @@ struct IntakeReport {
     included_sources: Vec<IntakeReportIncludedSource>,
     skipped_sources: Vec<IntakeReportSkippedSource>,
     source_decisions: Vec<IntakeReportSourceDecision>,
+    repair_sources: Vec<IntakeReportRepairSource>,
     good: Vec<String>,
     needs_attention: Vec<String>,
     evidence_debt: Vec<IntakeReportEvidenceDebt>,
@@ -1514,6 +1515,13 @@ struct IntakeReportSourceDecision {
     reason: String,
     hint_label: Option<String>,
     hint_lines: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct IntakeReportRepairSource {
+    source: String,
+    reason: String,
+    commands: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -2073,6 +2081,7 @@ fn build_intake_report(
             })
             .collect(),
         source_decisions: intake_source_decision_reports(explanations),
+        repair_sources: intake_repair_source_reports(explanations),
         good,
         needs_attention: attention,
         evidence_debt: evidence_debt
@@ -2124,6 +2133,16 @@ fn print_intake_readiness_report(report: &IntakeReport) {
     } else {
         for item in &report.needs_attention {
             println!("- {item}");
+        }
+    }
+    if !report.repair_sources.is_empty() {
+        println!();
+        println!("Repair sources:");
+        for repair in &report.repair_sources {
+            println!("- {}: {}", repair.source, repair.reason);
+            for command in &repair.commands {
+                println!("  {command}");
+            }
         }
     }
     println!();
@@ -2191,6 +2210,19 @@ fn render_intake_report_markdown(report: &IntakeReport) -> String {
                 for line in &decision.hint_lines {
                     out.push_str(&format!("    - {line}\n"));
                 }
+            }
+        }
+    }
+    out.push('\n');
+
+    out.push_str("## Repair Sources\n\n");
+    if report.repair_sources.is_empty() {
+        out.push_str("- None\n");
+    } else {
+        for repair in &report.repair_sources {
+            out.push_str(&format!("- {}: {}\n", repair.source, repair.reason));
+            for command in &repair.commands {
+                out.push_str(&format!("  - {command}\n"));
             }
         }
     }
@@ -2297,6 +2329,23 @@ fn intake_source_decision_reports(
                 hint_label,
                 hint_lines,
             }
+        })
+        .collect()
+}
+
+fn intake_repair_source_reports(
+    explanations: &[IntakeSourceExplanation],
+) -> Vec<IntakeReportRepairSource> {
+    explanations
+        .iter()
+        .filter(|explanation| matches!(explanation.decision, IntakeSourceDecision::Skipped))
+        .filter_map(|explanation| {
+            let hint = intake_source_hint(explanation)?;
+            Some(IntakeReportRepairSource {
+                source: display_source_label(&explanation.name),
+                reason: explanation.reason.clone(),
+                commands: hint.lines,
+            })
         })
         .collect()
 }

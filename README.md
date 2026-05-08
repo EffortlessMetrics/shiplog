@@ -110,7 +110,8 @@ reopen after the terminal scrolls away. It ends with a readiness summary: what
 worked, what needs attention, and the next commands to run.
 `--explain` prints source decisions and setup repair hints. Add
 `--source github --source jira` to limit the intake, or `--no-open` to print
-paths only.
+paths only. When sources are skipped, intake groups repair commands by source
+and writes the same rerun guidance to `intake.report.md`.
 
 ### 1. Initialize local files
 

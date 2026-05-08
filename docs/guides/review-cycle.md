@@ -35,7 +35,9 @@ shiplog intake --last-6-months --explain
 
 That prints why each source was included or skipped, such as a missing token,
 missing local git repo, or fixture files that were found, and includes repair
-hints without printing token values.
+hints without printing token values. Skipped sources are also grouped under
+`Repair sources` in the terminal output and in `intake.report.md` so you can
+fix one source and rerun intake.
 
 For a more deliberate setup pass, initialize local scaffolding, check setup,
 then collect enabled sources from `shiplog.toml`:
