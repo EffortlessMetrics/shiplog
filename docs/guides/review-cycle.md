@@ -18,7 +18,8 @@ workstream files, and optional share bundles.
 When the review form is already open, use intake first. It creates starter local
 files if needed, collects whatever configured sources are usable, records skipped
 sources as coverage warnings, renders the packet, and prints the review next
-steps:
+steps. It also prints a readiness summary with good signals, attention items,
+and copy-ready next commands:
 
 ```bash
 shiplog intake --last-6-months

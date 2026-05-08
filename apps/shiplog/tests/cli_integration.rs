@@ -2502,6 +2502,12 @@ user = "octo"
         .stdout(predicate::str::contains("- Manual: success"))
         .stdout(predicate::str::contains("Evidence debt:"))
         .stdout(predicate::str::contains("Next:"))
+        .stdout(predicate::str::contains("Intake readiness:"))
+        .stdout(predicate::str::contains("Packet readiness: Needs curation"))
+        .stdout(predicate::str::contains("- Packet rendered"))
+        .stdout(predicate::str::contains("- Review inspection completed"))
+        .stdout(predicate::str::contains("shiplog render --out"))
+        .stdout(predicate::str::contains("--bundle-profile manager"))
         .stdout(predicate::str::contains("Open later:"));
 
     let run_dir = first_run_dir(&out);
@@ -2549,6 +2555,11 @@ fn intake_creates_minimal_config_and_manual_rescue_packet() {
         .stdout(predicate::str::contains("Config: created"))
         .stdout(predicate::str::contains("- Manual: success, 0 events"))
         .stdout(predicate::str::contains("Packet:"))
+        .stdout(predicate::str::contains("Intake readiness:"))
+        .stdout(predicate::str::contains("Packet readiness: Needs evidence"))
+        .stdout(predicate::str::contains(
+            "No events collected; add manual evidence or enable a source.",
+        ))
         .stdout(predicate::str::contains("Open later:"));
 
     assert!(
@@ -2656,7 +2667,16 @@ status = "done"
         .stdout(predicate::str::contains("- JSON: success"))
         .stdout(predicate::str::contains("- Jira: missing JIRA_TOKEN"))
         .stdout(predicate::str::contains("- Linear: missing LINEAR_API_KEY"))
-        .stdout(predicate::str::contains("Skipped sources:"));
+        .stdout(predicate::str::contains("Skipped sources:"))
+        .stdout(predicate::str::contains("Intake readiness:"))
+        .stdout(predicate::str::contains("Packet readiness: Needs curation"))
+        .stdout(predicate::str::contains(
+            "- Jira skipped: missing JIRA_TOKEN",
+        ))
+        .stdout(predicate::str::contains(
+            "- Linear skipped: missing LINEAR_API_KEY",
+        ))
+        .stdout(predicate::str::contains("shiplog doctor --config"));
 
     let run_dir = first_run_dir(&out);
     let coverage = std::fs::read_to_string(run_dir.join("coverage.manifest.json")).unwrap();

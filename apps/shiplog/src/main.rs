@@ -1620,6 +1620,8 @@ fn run_intake(args: IntakeArgs) -> Result<()> {
     print_outputs(&result.outputs, result.ws_source.clone());
     println!();
     print_review(&result.outputs.out_dir, false)?;
+    println!();
+    print_intake_readiness_summary(&result, &out, &args.config)?;
 
     if args.no_open {
         println!();
@@ -1635,6 +1637,194 @@ fn run_intake(args: IntakeArgs) -> Result<()> {
     }
 
     Ok(())
+}
+
+fn print_intake_readiness_summary(
+    result: &ConfiguredRunResult,
+    out_dir: &Path,
+    config_path: &Path,
+) -> Result<()> {
+    let ingest = load_run_ingest(&result.outputs.out_dir)
+        .with_context(|| format!("load intake run {}", result.outputs.out_dir.display()))?;
+    let coverage = ingest.coverage;
+    let events = ingest.events;
+    let (workstreams, _, _) = load_effective_workstreams_for_run(&result.outputs.out_dir)?;
+    let validation_errors = validate_workstreams_against_events(&workstreams, &events);
+    let no_receipt_workstreams: Vec<_> = workstreams
+        .workstreams
+        .iter()
+        .filter(|workstream| workstream.receipts.is_empty())
+        .collect();
+    let broad_workstreams: Vec<_> = workstreams
+        .workstreams
+        .iter()
+        .filter(|workstream| workstream.events.len() >= 10)
+        .collect();
+    let manual_event_ids: HashSet<_> = events
+        .iter()
+        .filter(|event| matches!(event.payload, EventPayload::Manual(_)))
+        .map(|event| event.id.clone())
+        .collect();
+    let manual_context_workstreams: Vec<_> = broad_workstreams
+        .iter()
+        .copied()
+        .filter(|workstream| {
+            !workstream
+                .events
+                .iter()
+                .any(|event_id| manual_event_ids.contains(event_id))
+        })
+        .collect();
+
+    let mut good = Vec::new();
+    for (name, ingest) in &result.configured.successes {
+        good.push(format!(
+            "{} collected {}",
+            display_source_label(name),
+            event_count_phrase(ingest.events.len())
+        ));
+    }
+    good.push("Packet rendered".to_string());
+    good.push("Evidence ledger written".to_string());
+    good.push("Coverage manifest written".to_string());
+    good.push("Review inspection completed".to_string());
+
+    let mut attention = Vec::new();
+    for failure in &result.configured.failures {
+        attention.push(format!(
+            "{} skipped: {}",
+            display_source_label(&failure.name),
+            failure.error
+        ));
+    }
+    if coverage.completeness != shiplog_schema::coverage::Completeness::Complete {
+        attention.push(format!(
+            "Coverage is {}; skipped or incomplete sources are recorded.",
+            coverage.completeness
+        ));
+    }
+    let gap_count = coverage_gap_count(&coverage);
+    if gap_count > 0 {
+        attention.push(format!("{gap_count} coverage gap(s) should be reviewed."));
+    }
+    if events.is_empty() {
+        attention.push("No events collected; add manual evidence or enable a source.".to_string());
+    }
+    if !validation_errors.is_empty() {
+        attention.push(format!(
+            "{} workstream validation issue(s) need repair.",
+            validation_errors.len()
+        ));
+    }
+    if !no_receipt_workstreams.is_empty() {
+        attention.push(format!(
+            "{} workstream(s) have no selected receipts.",
+            no_receipt_workstreams.len()
+        ));
+    }
+    if !broad_workstreams.is_empty() {
+        attention.push(format!(
+            "{} broad workstream(s) may need splitting.",
+            broad_workstreams.len()
+        ));
+    }
+    if !manual_context_workstreams.is_empty() {
+        attention.push(format!(
+            "{} broad workstream(s) need outcome context.",
+            manual_context_workstreams.len()
+        ));
+    }
+
+    let readiness = if !validation_errors.is_empty() {
+        "Needs repair"
+    } else if events.is_empty() {
+        "Needs evidence"
+    } else if attention.is_empty() {
+        "Ready for review"
+    } else {
+        "Needs curation"
+    };
+
+    println!("Intake readiness:");
+    println!("Packet readiness: {readiness}");
+    println!();
+    println!("Good:");
+    for item in &good {
+        println!("- {item}");
+    }
+    println!();
+    println!("Needs attention:");
+    if attention.is_empty() {
+        println!("- None");
+    } else {
+        for item in &attention {
+            println!("- {item}");
+        }
+    }
+    println!();
+    println!("Next:");
+    for (idx, command) in intake_readiness_next_steps(
+        &result.run_id,
+        out_dir,
+        config_path,
+        &result.configured.failures,
+        no_receipt_workstreams
+            .first()
+            .map(|workstream| workstream.title.as_str()),
+        broad_workstreams
+            .first()
+            .map(|workstream| workstream.title.as_str()),
+        manual_context_workstreams
+            .first()
+            .map(|workstream| workstream.title.as_str()),
+    )
+    .iter()
+    .enumerate()
+    {
+        println!("{}. {}", idx + 1, command);
+    }
+
+    Ok(())
+}
+
+fn intake_readiness_next_steps(
+    run_id: &str,
+    out_dir: &Path,
+    config_path: &Path,
+    failures: &[ConfiguredSourceFailure],
+    first_no_receipt_workstream: Option<&str>,
+    first_broad_workstream: Option<&str>,
+    first_manual_context_workstream: Option<&str>,
+) -> Vec<String> {
+    let out_arg = quote_cli_value(&out_dir.display().to_string());
+    let mut steps = Vec::new();
+
+    if let Some(title) = first_manual_context_workstream {
+        steps.push(journal_add_next_step(title));
+    }
+    if let Some(title) = first_no_receipt_workstream {
+        steps.push(format!(
+            "shiplog workstreams receipts --out {out_arg} --run {run_id} --workstream {}",
+            quote_cli_value(title)
+        ));
+    }
+    if let Some(title) = first_broad_workstream {
+        steps.push(format!(
+            "shiplog workstreams split --out {out_arg} --run {run_id} --from {} --to \"<new workstream>\" --matching \"<pattern>\" --create",
+            quote_cli_value(title)
+        ));
+    }
+    if !failures.is_empty() {
+        steps.push(format!(
+            "shiplog doctor --config {}",
+            quote_cli_value(&config_path.display().to_string())
+        ));
+    }
+    steps.push(format!(
+        "shiplog render --out {out_arg} --run {run_id} --bundle-profile manager"
+    ));
+
+    steps
 }
 
 #[derive(Debug, Default)]
