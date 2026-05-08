@@ -113,6 +113,9 @@ shiplog journal add \
 Keep journal entries factual. Use them to capture evidence, context, receipts,
 and impact prompts while the details are still fresh.
 
+When review finds a broad workstream with receipts but no manual outcome note,
+it prints a `shiplog journal add` command with the workstream already filled in.
+
 ## Manager-safe packet
 
 The internal profile can render without a redaction key. Manager and public

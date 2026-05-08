@@ -3136,6 +3136,84 @@ user = "octo"
 }
 
 #[test]
+fn review_suggests_journal_add_for_broad_workstream_without_manual_context() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+    let events_path = tmp.path().join("ledger.events.jsonl");
+    let coverage_path = tmp.path().join("coverage.manifest.json");
+    let events: Vec<_> = (0..10)
+        .map(|idx| {
+            fixture_pr_event(
+                SourceSystem::Github,
+                "acme/platform",
+                200 + idx as u64,
+                &format!("Platform reliability fix {}", idx + 1),
+                2 + idx,
+            )
+        })
+        .collect();
+    let coverage = CoverageManifest {
+        run_id: RunId("run_broad_code".into()),
+        generated_at: fixture_time(20),
+        user: "octo".into(),
+        window: fixture_window(),
+        mode: "fixture".into(),
+        sources: vec!["github".into()],
+        slices: vec![CoverageSlice {
+            window: fixture_window(),
+            query: "github fixture".into(),
+            total_count: events.len() as u64,
+            fetched: events.len() as u64,
+            incomplete_results: Some(false),
+            notes: vec!["fixture".into()],
+        }],
+        warnings: vec![],
+        completeness: Completeness::Complete,
+    };
+    write_events_jsonl(&events_path, &events);
+    write_coverage_manifest(&coverage_path, &coverage);
+
+    shiplog_cmd()
+        .args([
+            "collect",
+            "--out",
+            out.to_str().unwrap(),
+            "json",
+            "--events",
+            events_path.to_str().unwrap(),
+            "--coverage",
+            coverage_path.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    let run_dir = out.join("run_broad_code");
+    let packet_before = std::fs::read_to_string(run_dir.join("packet.md")).unwrap();
+    let coverage_before = std::fs::read_to_string(run_dir.join("coverage.manifest.json")).unwrap();
+
+    let assert = shiplog_cmd()
+        .args(["review", "--out", out.to_str().unwrap(), "--latest"])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
+
+    assert!(stdout.contains("[info] manual-context"));
+    assert!(stdout.contains("broad workstream(s) have no manual outcome note"));
+    assert!(stdout.contains("shiplog journal add --date"));
+    assert!(stdout.contains("--title \"Outcome note for acme/platform\""));
+    assert!(stdout.contains("--workstream \"acme/platform\""));
+
+    assert_eq!(
+        packet_before,
+        std::fs::read_to_string(run_dir.join("packet.md")).unwrap()
+    );
+    assert_eq!(
+        coverage_before,
+        std::fs::read_to_string(run_dir.join("coverage.manifest.json")).unwrap()
+    );
+}
+
+#[test]
 fn review_strict_fails_when_evidence_debt_exists_without_writing_artifacts() {
     let tmp = TempDir::new().unwrap();
     let out = tmp.path().join("out");

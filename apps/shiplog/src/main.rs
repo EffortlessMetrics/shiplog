@@ -7989,6 +7989,7 @@ struct EvidenceDebtInput<'a> {
     validation_errors: &'a [String],
     no_receipt_workstreams: &'a [&'a Workstream],
     broad_workstreams: &'a [&'a Workstream],
+    manual_context_workstreams: &'a [&'a Workstream],
     manual_events: usize,
 }
 
@@ -8081,6 +8082,21 @@ fn print_review(run_dir: &Path, strict: bool) -> Result<()> {
         .iter()
         .filter(|event| matches!(event.payload, EventPayload::Manual(_)))
         .count();
+    let manual_event_ids: HashSet<_> = events
+        .iter()
+        .filter(|event| matches!(event.payload, EventPayload::Manual(_)))
+        .map(|event| event.id.clone())
+        .collect();
+    let manual_context_workstreams: Vec<_> = broad_workstreams
+        .iter()
+        .copied()
+        .filter(|workstream| {
+            !workstream
+                .events
+                .iter()
+                .any(|event_id| manual_event_ids.contains(event_id))
+        })
+        .collect();
     let evidence_debt = detect_evidence_debt(EvidenceDebtInput {
         run_id: &run_id,
         coverage: &coverage,
@@ -8090,6 +8106,7 @@ fn print_review(run_dir: &Path, strict: bool) -> Result<()> {
         validation_errors: &validation_errors,
         no_receipt_workstreams: &no_receipt_workstreams,
         broad_workstreams: &broad_workstreams,
+        manual_context_workstreams: &manual_context_workstreams,
         manual_events,
     });
 
@@ -8160,6 +8177,9 @@ fn print_review(run_dir: &Path, strict: bool) -> Result<()> {
             .first()
             .map(|workstream| workstream.title.as_str()),
         broad_workstreams
+            .first()
+            .map(|workstream| workstream.title.as_str()),
+        manual_context_workstreams
             .first()
             .map(|workstream| workstream.title.as_str()),
         !skipped_sources.is_empty(),
@@ -8239,6 +8259,22 @@ fn detect_evidence_debt(input: EvidenceDebtInput<'_>) -> Vec<EvidenceDebt> {
             EvidenceDebtKind::ManualContext,
             "Manual events are user-provided; keep context current before sharing.",
         ));
+    }
+
+    if !input.manual_context_workstreams.is_empty() {
+        let first = input.manual_context_workstreams[0];
+        debt.push(
+            EvidenceDebt::new(
+                EvidenceDebtSeverity::Info,
+                EvidenceDebtKind::ManualContext,
+                format!(
+                    "{} broad workstream(s) have no manual outcome note.",
+                    input.manual_context_workstreams.len()
+                ),
+            )
+            .detail(workstream_title_sample(input.manual_context_workstreams))
+            .next_step(journal_add_next_step(&first.title)),
+        );
     }
 
     if !input.no_receipt_workstreams.is_empty() {
@@ -8355,6 +8391,7 @@ fn print_review_next_steps(
     has_validation_errors: bool,
     first_no_receipt_workstream: Option<&str>,
     first_broad_workstream: Option<&str>,
+    first_manual_context_workstream: Option<&str>,
     has_skipped_sources: bool,
 ) {
     println!("Next:");
@@ -8378,12 +8415,25 @@ fn print_review_next_steps(
         );
         step += 1;
     }
+    if let Some(title) = first_manual_context_workstream {
+        println!("{step}. {}", journal_add_next_step(title));
+        step += 1;
+    }
     if has_skipped_sources {
         println!("{step}. shiplog doctor");
         step += 1;
     }
 
     println!("{step}. shiplog render --run {run_id} --mode scaffold");
+}
+
+fn journal_add_next_step(workstream_title: &str) -> String {
+    format!(
+        "shiplog journal add --date {} --title {} --workstream {}",
+        Utc::now().date_naive(),
+        quote_cli_value(&format!("Outcome note for {workstream_title}")),
+        quote_cli_value(workstream_title)
+    )
 }
 
 fn quote_cli_value(value: &str) -> String {
