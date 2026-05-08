@@ -1,9 +1,16 @@
 //! Comprehensive CLI integration tests using `assert_cmd` and `predicates`.
 
 use assert_cmd::Command;
-use chrono::Duration;
+use chrono::{Duration, NaiveDate, TimeZone, Utc};
 use predicates::prelude::*;
 use shiplog_cache::ApiCache;
+use shiplog_ids::{EventId, RunId};
+use shiplog_schema::coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow};
+use shiplog_schema::event::{
+    Actor, EventEnvelope, EventKind, EventPayload, Link, ManualEvent, ManualEventType,
+    PullRequestEvent, PullRequestState, RepoRef, RepoVisibility, ReviewEvent, SourceRef,
+    SourceSystem,
+};
 use shiplog_schema::workstream::WorkstreamsFile;
 use std::path::{Path, PathBuf};
 use std::process::Command as StdCommand;
@@ -139,6 +146,258 @@ events:
 "#,
     )
     .unwrap();
+}
+
+fn fixture_time(day: u32) -> chrono::DateTime<Utc> {
+    Utc.with_ymd_and_hms(2025, 2, day, 12, 0, 0).unwrap()
+}
+
+fn fixture_window() -> TimeWindow {
+    TimeWindow {
+        since: NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
+        until: NaiveDate::from_ymd_opt(2025, 4, 1).unwrap(),
+    }
+}
+
+fn fixture_repo(full_name: &str) -> RepoRef {
+    RepoRef {
+        full_name: full_name.into(),
+        html_url: Some(format!("https://example.invalid/{full_name}")),
+        visibility: RepoVisibility::Private,
+    }
+}
+
+fn fixture_actor() -> Actor {
+    Actor {
+        login: "octo".into(),
+        id: Some(42),
+    }
+}
+
+fn fixture_link(source: &str, slug: &str) -> Link {
+    Link {
+        label: "receipt".into(),
+        url: format!("https://example.invalid/{source}/{slug}"),
+    }
+}
+
+fn fixture_source(system: SourceSystem, slug: &str) -> SourceRef {
+    let source = system.as_str().to_string();
+    SourceRef {
+        system,
+        url: Some(format!("https://example.invalid/{source}/{slug}")),
+        opaque_id: Some(format!("{source}-{slug}")),
+    }
+}
+
+fn fixture_pr_event(
+    system: SourceSystem,
+    repo: &str,
+    number: u64,
+    title: &str,
+    day: u32,
+) -> EventEnvelope {
+    let source = system.as_str().to_string();
+    let occurred_at = fixture_time(day);
+    let number_string = number.to_string();
+    EventEnvelope {
+        id: EventId::from_parts([source.as_str(), "pr", repo, number_string.as_str()]),
+        kind: EventKind::PullRequest,
+        occurred_at,
+        actor: fixture_actor(),
+        repo: fixture_repo(repo),
+        payload: EventPayload::PullRequest(PullRequestEvent {
+            number,
+            title: title.into(),
+            state: PullRequestState::Merged,
+            created_at: occurred_at,
+            merged_at: Some(occurred_at),
+            additions: Some(120),
+            deletions: Some(30),
+            changed_files: Some(5),
+            touched_paths_hint: vec!["src/".into(), "docs/".into()],
+            window: Some(fixture_window()),
+        }),
+        tags: vec!["fixture".into()],
+        links: vec![fixture_link(&source, &number_string)],
+        source: fixture_source(system, &number_string),
+    }
+}
+
+fn fixture_review_event(
+    system: SourceSystem,
+    repo: &str,
+    pull_number: u64,
+    title: &str,
+    day: u32,
+) -> EventEnvelope {
+    let source = system.as_str().to_string();
+    let occurred_at = fixture_time(day);
+    let pull_number_string = pull_number.to_string();
+    EventEnvelope {
+        id: EventId::from_parts([
+            source.as_str(),
+            "review",
+            repo,
+            pull_number_string.as_str(),
+            "approved",
+        ]),
+        kind: EventKind::Review,
+        occurred_at,
+        actor: fixture_actor(),
+        repo: fixture_repo(repo),
+        payload: EventPayload::Review(ReviewEvent {
+            pull_number,
+            pull_title: title.into(),
+            submitted_at: occurred_at,
+            state: "approved".into(),
+            window: Some(fixture_window()),
+        }),
+        tags: vec!["fixture".into(), "review".into()],
+        links: vec![fixture_link(&source, &format!("review-{pull_number}"))],
+        source: fixture_source(system, &format!("review-{pull_number}")),
+    }
+}
+
+fn fixture_manual_event(
+    system: SourceSystem,
+    repo: &str,
+    title: &str,
+    event_type: ManualEventType,
+    day: u32,
+) -> EventEnvelope {
+    let source = system.as_str().to_string();
+    let occurred_at = fixture_time(day);
+    let slug = title.to_ascii_lowercase().replace(' ', "-");
+    EventEnvelope {
+        id: EventId::from_parts([source.as_str(), "manual", repo, slug.as_str()]),
+        kind: EventKind::Manual,
+        occurred_at,
+        actor: fixture_actor(),
+        repo: fixture_repo(repo),
+        payload: EventPayload::Manual(ManualEvent {
+            event_type,
+            title: title.into(),
+            description: Some(format!(
+                "{source} fixture evidence for review-cycle coverage."
+            )),
+            started_at: Some(occurred_at.date_naive()),
+            ended_at: Some(occurred_at.date_naive()),
+            impact: Some("Captured evidence that would otherwise be easy to lose.".into()),
+        }),
+        tags: vec!["fixture".into()],
+        links: vec![fixture_link(&source, &slug)],
+        source: fixture_source(system, &slug),
+    }
+}
+
+fn write_events_jsonl(path: &Path, events: &[EventEnvelope]) {
+    let mut text = String::new();
+    for event in events {
+        text.push_str(&serde_json::to_string(event).unwrap());
+        text.push('\n');
+    }
+    std::fs::write(path, text).unwrap();
+}
+
+fn write_coverage_manifest(path: &Path, coverage: &CoverageManifest) {
+    std::fs::write(path, serde_json::to_string_pretty(coverage).unwrap()).unwrap();
+}
+
+fn all_source_fixture_events() -> Vec<EventEnvelope> {
+    vec![
+        fixture_pr_event(
+            SourceSystem::Github,
+            "acme/release-tools",
+            101,
+            "GitHub release automation",
+            3,
+        ),
+        fixture_review_event(
+            SourceSystem::Github,
+            "acme/release-tools",
+            102,
+            "Review GitHub release workflow",
+            4,
+        ),
+        fixture_pr_event(
+            SourceSystem::Other("gitlab".into()),
+            "platform/deploy",
+            7,
+            "GitLab self-hosted deploy fix",
+            8,
+        ),
+        fixture_manual_event(
+            SourceSystem::Other("jira".into()),
+            "ops/platform",
+            "Jira OPS-42 rollout checklist",
+            ManualEventType::Migration,
+            10,
+        ),
+        fixture_manual_event(
+            SourceSystem::Other("linear".into()),
+            "product/review",
+            "Linear issue triage",
+            ManualEventType::Note,
+            12,
+        ),
+        fixture_pr_event(
+            SourceSystem::LocalGit,
+            "local/hotfix",
+            1,
+            "Local git hotfix commit",
+            14,
+        ),
+        fixture_manual_event(
+            SourceSystem::Manual,
+            "customer/reliability",
+            "Manual customer debugging note",
+            ManualEventType::Incident,
+            16,
+        ),
+        fixture_manual_event(
+            SourceSystem::JsonImport,
+            "imported/artifacts",
+            "Imported architecture decision",
+            ManualEventType::Design,
+            18,
+        ),
+    ]
+}
+
+fn all_source_fixture_coverage() -> CoverageManifest {
+    let window = fixture_window();
+    let sources = [
+        ("github", 2),
+        ("gitlab", 1),
+        ("jira", 1),
+        ("linear", 1),
+        ("local_git", 1),
+        ("manual", 1),
+        ("json_import", 1),
+    ];
+
+    CoverageManifest {
+        run_id: RunId("run_all_sources".into()),
+        generated_at: fixture_time(20),
+        user: "octo".into(),
+        window: window.clone(),
+        mode: "all-source-fixture".into(),
+        sources: sources.iter().map(|(source, _)| (*source).into()).collect(),
+        slices: sources
+            .iter()
+            .map(|(source, count)| CoverageSlice {
+                window: window.clone(),
+                query: format!("{source} fixture"),
+                total_count: *count,
+                fetched: *count,
+                incomplete_results: Some(false),
+                notes: vec!["fixture".into()],
+            })
+            .collect(),
+        warnings: vec![],
+        completeness: Completeness::Complete,
+    }
 }
 
 fn git_available() -> bool {
@@ -1652,6 +1911,130 @@ user = "octo"
         coverage.contains("\"manual\""),
         "configured multi coverage should include manual source"
     );
+}
+
+#[test]
+fn collect_json_all_source_fixture_packet_is_coherent() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+    let events_path = tmp.path().join("ledger.events.jsonl");
+    let coverage_path = tmp.path().join("coverage.manifest.json");
+    let events = all_source_fixture_events();
+    let coverage = all_source_fixture_coverage();
+    write_events_jsonl(&events_path, &events);
+    write_coverage_manifest(&coverage_path, &coverage);
+
+    shiplog_cmd()
+        .args([
+            "collect",
+            "--out",
+            out.to_str().unwrap(),
+            "json",
+            "--events",
+            events_path.to_str().unwrap(),
+            "--coverage",
+            coverage_path.to_str().unwrap(),
+            "--user",
+            "octo",
+            "--window-label",
+            "all-source fixture",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Collected and wrote:"));
+
+    let run_dir = out.join("run_all_sources");
+    assert!(run_dir.join("packet.md").exists(), "missing packet");
+    assert!(
+        run_dir.join("ledger.events.jsonl").exists(),
+        "missing ledger"
+    );
+    assert!(
+        run_dir.join("coverage.manifest.json").exists(),
+        "missing coverage"
+    );
+
+    let packet = std::fs::read_to_string(run_dir.join("packet.md")).unwrap();
+    assert_packet_opens_with_coverage(&packet);
+    assert_packet_uses_summary_appendix(&packet);
+
+    for expected in [
+        "- GitHub: 2 events",
+        "- GitLab: 1 event",
+        "- Jira: 1 event",
+        "- Linear: 1 event",
+        "- Local git: 1 event",
+        "- Manual: 1 event",
+        "- JSON import: 1 event",
+    ] {
+        assert!(
+            packet.contains(expected),
+            "all-source packet should include source summary line {expected:?}"
+        );
+    }
+
+    assert!(
+        packet.contains("Skipped:\n- None recorded\n"),
+        "all-source packet should make absence of skipped sources explicit"
+    );
+    assert!(
+        packet.contains("Known gaps:\n- Manual events are user-provided\n"),
+        "all-source packet should keep user-provided manual evidence visible as a gap"
+    );
+    assert!(
+        packet.contains(
+            "- **Sources:** GitHub, GitLab, Jira, Linear, Local git, Manual, JSON import"
+        ),
+        "all-source packet should carry readable source details"
+    );
+
+    for title in [
+        "GitHub release automation",
+        "GitLab self-hosted deploy fix",
+        "Jira OPS-42 rollout checklist",
+        "Linear issue triage",
+        "Local git hotfix commit",
+        "Manual customer debugging note",
+        "Imported architecture decision",
+    ] {
+        assert!(
+            packet.contains(title),
+            "all-source packet should include evidence title {title:?}"
+        );
+    }
+    assert!(
+        packet.contains("[Review] approved"),
+        "all-source packet should include the review receipt"
+    );
+
+    assert!(
+        packet.contains("**Suggested claim prompts**"),
+        "all-source packet should include claim prompts for review-cycle writing"
+    );
+    assert!(
+        packet.contains("workstreams.suggested.yaml"),
+        "all-source packet should name generated workstream suggestions"
+    );
+    assert!(
+        packet.contains("bundle.manifest.json"),
+        "all-source packet should name the generated bundle manifest"
+    );
+
+    let written_coverage = std::fs::read_to_string(run_dir.join("coverage.manifest.json")).unwrap();
+    for source in [
+        "\"github\"",
+        "\"gitlab\"",
+        "\"jira\"",
+        "\"linear\"",
+        "\"local_git\"",
+        "\"manual\"",
+        "\"json_import\"",
+    ] {
+        assert!(
+            written_coverage.contains(source),
+            "written coverage should preserve source {source}"
+        );
+    }
 }
 
 #[test]
