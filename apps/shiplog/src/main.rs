@@ -29,7 +29,7 @@ use shiplog_render_md::{
 };
 use shiplog_schema::{
     bundle::BundleProfile,
-    coverage::TimeWindow,
+    coverage::{CoverageManifest, TimeWindow},
     event::{EventEnvelope, EventPayload},
     event::{Link, ManualDate, ManualEventEntry, ManualEventType},
     workstream::{Workstream, WorkstreamStats, WorkstreamsFile},
@@ -225,6 +225,9 @@ enum Command {
         /// Review the most recent run explicitly.
         #[arg(long)]
         latest: bool,
+        /// Exit with an error when review finds evidence debt.
+        #[arg(long)]
+        strict: bool,
     },
 
     /// Open generated artifacts for a run, or print their paths when unavailable.
@@ -5553,9 +5556,14 @@ fn main() -> Result<()> {
                 print_run_show(&summary);
             }
         },
-        Command::Review { out, run, latest } => {
+        Command::Review {
+            out,
+            run,
+            latest,
+            strict,
+        } => {
             let run_dir = resolve_render_run_dir(&out, run, latest)?;
-            print_review(&run_dir)?;
+            print_review(&run_dir, strict)?;
         }
         Command::Open { cmd } => match cmd {
             OpenCommand::Packet {
@@ -7005,7 +7013,98 @@ struct ConfiguredSourceSkip {
     reason: String,
 }
 
-fn print_review(run_dir: &Path) -> Result<()> {
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum EvidenceDebtSeverity {
+    Info,
+    Warning,
+    Blocking,
+}
+
+impl EvidenceDebtSeverity {
+    fn label(self) -> &'static str {
+        match self {
+            Self::Info => "info",
+            Self::Warning => "warning",
+            Self::Blocking => "blocking",
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum EvidenceDebtKind {
+    MissingSource,
+    PartialCoverage,
+    CoverageWarning,
+    IncompleteQuery,
+    ManualContext,
+    MissingReceiptAnchors,
+    BroadWorkstream,
+    WorkstreamValidation,
+}
+
+impl EvidenceDebtKind {
+    fn label(self) -> &'static str {
+        match self {
+            Self::MissingSource => "missing-source",
+            Self::PartialCoverage => "partial-coverage",
+            Self::CoverageWarning => "coverage-warning",
+            Self::IncompleteQuery => "incomplete-query",
+            Self::ManualContext => "manual-context",
+            Self::MissingReceiptAnchors => "missing-receipts",
+            Self::BroadWorkstream => "broad-workstream",
+            Self::WorkstreamValidation => "workstream-validation",
+        }
+    }
+}
+
+#[derive(Debug)]
+struct EvidenceDebt {
+    severity: EvidenceDebtSeverity,
+    kind: EvidenceDebtKind,
+    summary: String,
+    detail: Option<String>,
+    next_step: Option<String>,
+}
+
+struct EvidenceDebtInput<'a> {
+    run_id: &'a str,
+    coverage: &'a CoverageManifest,
+    events: &'a [EventEnvelope],
+    skipped_sources: &'a [ConfiguredSourceSkip],
+    workstreams: &'a WorkstreamsFile,
+    validation_errors: &'a [String],
+    no_receipt_workstreams: &'a [&'a Workstream],
+    broad_workstreams: &'a [&'a Workstream],
+    manual_events: usize,
+}
+
+impl EvidenceDebt {
+    fn new(
+        severity: EvidenceDebtSeverity,
+        kind: EvidenceDebtKind,
+        summary: impl Into<String>,
+    ) -> Self {
+        Self {
+            severity,
+            kind,
+            summary: summary.into(),
+            detail: None,
+            next_step: None,
+        }
+    }
+
+    fn detail(mut self, detail: impl Into<String>) -> Self {
+        self.detail = Some(detail.into());
+        self
+    }
+
+    fn next_step(mut self, next_step: impl Into<String>) -> Self {
+        self.next_step = Some(next_step.into());
+        self
+    }
+}
+
+fn print_review(run_dir: &Path, strict: bool) -> Result<()> {
     let ingest =
         load_run_ingest(run_dir).with_context(|| format!("load run {}", run_dir.display()))?;
     let coverage = ingest.coverage;
@@ -7028,6 +7127,17 @@ fn print_review(run_dir: &Path) -> Result<()> {
         .iter()
         .filter(|event| matches!(event.payload, EventPayload::Manual(_)))
         .count();
+    let evidence_debt = detect_evidence_debt(EvidenceDebtInput {
+        run_id: &run_id,
+        coverage: &coverage,
+        events: &events,
+        skipped_sources: &skipped_sources,
+        workstreams: &workstreams,
+        validation_errors: &validation_errors,
+        no_receipt_workstreams: &no_receipt_workstreams,
+        broad_workstreams: &broad_workstreams,
+        manual_events,
+    });
 
     println!("Run: {run_id}");
     println!("Directory: {}", run_dir.display());
@@ -7086,61 +7196,7 @@ fn print_review(run_dir: &Path) -> Result<()> {
     }
     println!();
 
-    println!("Evidence gaps:");
-    let mut gap_count = 0usize;
-    if !skipped_sources.is_empty() {
-        gap_count += 1;
-        println!("- Skipped sources need attention before this packet is complete.");
-    }
-    if coverage.completeness != shiplog_schema::coverage::Completeness::Complete {
-        gap_count += 1;
-        println!(
-            "- Coverage is {}; inspect coverage.manifest.json before making strong claims.",
-            coverage.completeness
-        );
-    }
-    for warning in coverage
-        .warnings
-        .iter()
-        .filter(|warning| configured_source_skip(warning).is_none())
-    {
-        gap_count += 1;
-        println!("- {warning}");
-    }
-    for slice in coverage.slices.iter().filter(|slice| {
-        slice.incomplete_results.unwrap_or(false) || slice.fetched < slice.total_count
-    }) {
-        gap_count += 1;
-        println!(
-            "- Query {:?} fetched {}/{} result(s).",
-            slice.query, slice.fetched, slice.total_count
-        );
-    }
-    if manual_events > 0 {
-        gap_count += 1;
-        println!("- Manual events are user-provided; keep context current before sharing.");
-    }
-    if !no_receipt_workstreams.is_empty() {
-        gap_count += 1;
-        println!(
-            "- {} workstream(s) have no selected receipt anchors.",
-            no_receipt_workstreams.len()
-        );
-    }
-    if !broad_workstreams.is_empty() {
-        gap_count += 1;
-        println!(
-            "- {} workstream(s) have 10+ events; consider splitting broad buckets.",
-            broad_workstreams.len()
-        );
-    }
-    if !validation_errors.is_empty() {
-        gap_count += 1;
-        println!("- Workstream validation needs attention before rendering.");
-    }
-    if gap_count == 0 {
-        println!("- No obvious evidence debt detected.");
-    }
+    print_evidence_debt(&evidence_debt);
     println!();
 
     print_review_next_steps(
@@ -7155,7 +7211,189 @@ fn print_review(run_dir: &Path) -> Result<()> {
         !skipped_sources.is_empty(),
     );
 
+    if strict && !evidence_debt.is_empty() {
+        anyhow::bail!(
+            "review found {} evidence debt item(s); rerun without --strict to inspect details",
+            evidence_debt.len()
+        );
+    }
+
     Ok(())
+}
+
+fn detect_evidence_debt(input: EvidenceDebtInput<'_>) -> Vec<EvidenceDebt> {
+    let mut debt = Vec::new();
+
+    for skipped in input.skipped_sources {
+        debt.push(
+            EvidenceDebt::new(
+                EvidenceDebtSeverity::Warning,
+                EvidenceDebtKind::MissingSource,
+                format!(
+                    "{} was skipped: {}",
+                    display_source_label(&skipped.source),
+                    skipped.reason
+                ),
+            )
+            .next_step("Run `shiplog doctor` to check source configuration and tokens."),
+        );
+    }
+
+    if input.coverage.completeness != shiplog_schema::coverage::Completeness::Complete {
+        debt.push(
+            EvidenceDebt::new(
+                EvidenceDebtSeverity::Warning,
+                EvidenceDebtKind::PartialCoverage,
+                format!(
+                    "Coverage is {}; inspect coverage.manifest.json before making strong claims.",
+                    input.coverage.completeness
+                ),
+            )
+            .next_step("Inspect coverage.manifest.json before sharing this packet."),
+        );
+    }
+
+    for warning in input
+        .coverage
+        .warnings
+        .iter()
+        .filter(|warning| configured_source_skip(warning).is_none())
+    {
+        debt.push(EvidenceDebt::new(
+            EvidenceDebtSeverity::Warning,
+            EvidenceDebtKind::CoverageWarning,
+            warning.clone(),
+        ));
+    }
+
+    for slice in input.coverage.slices.iter().filter(|slice| {
+        slice.incomplete_results.unwrap_or(false) || slice.fetched < slice.total_count
+    }) {
+        debt.push(EvidenceDebt::new(
+            EvidenceDebtSeverity::Warning,
+            EvidenceDebtKind::IncompleteQuery,
+            format!(
+                "Query {:?} fetched {}/{} result(s).",
+                slice.query, slice.fetched, slice.total_count
+            ),
+        ));
+    }
+
+    if input.manual_events > 0 {
+        debt.push(EvidenceDebt::new(
+            EvidenceDebtSeverity::Info,
+            EvidenceDebtKind::ManualContext,
+            "Manual events are user-provided; keep context current before sharing.",
+        ));
+    }
+
+    if !input.no_receipt_workstreams.is_empty() {
+        debt.push(
+            EvidenceDebt::new(
+                EvidenceDebtSeverity::Warning,
+                EvidenceDebtKind::MissingReceiptAnchors,
+                format!(
+                    "{} workstream(s) have no selected receipt anchors.",
+                    input.no_receipt_workstreams.len()
+                ),
+            )
+            .detail(workstream_title_sample(input.no_receipt_workstreams))
+            .next_step(format!(
+                "Run `shiplog workstreams receipts --run {} --workstream <title>`.",
+                input.run_id
+            )),
+        );
+    }
+
+    if !input.broad_workstreams.is_empty() {
+        debt.push(
+            EvidenceDebt::new(
+                EvidenceDebtSeverity::Info,
+                EvidenceDebtKind::BroadWorkstream,
+                format!(
+                    "{} workstream(s) have 10+ events; consider splitting broad buckets.",
+                    input.broad_workstreams.len()
+                ),
+            )
+            .detail(workstream_title_sample(input.broad_workstreams))
+            .next_step(format!(
+                "Run `shiplog workstreams split --run {} --from <title> --to \"<new workstream>\" --matching \"<pattern>\" --create`.",
+                input.run_id
+            )),
+        );
+    }
+
+    if !input.validation_errors.is_empty() {
+        debt.push(
+            EvidenceDebt::new(
+                EvidenceDebtSeverity::Blocking,
+                EvidenceDebtKind::WorkstreamValidation,
+                "Workstream validation needs attention before rendering.",
+            )
+            .detail(format!(
+                "{} validation issue(s) found across {} workstream(s).",
+                input.validation_errors.len(),
+                input.workstreams.workstreams.len()
+            ))
+            .next_step(format!(
+                "Run `shiplog workstreams validate --run {}`.",
+                input.run_id
+            )),
+        );
+    }
+
+    let assigned_events: usize = input
+        .workstreams
+        .workstreams
+        .iter()
+        .map(|workstream| workstream.events.len())
+        .sum();
+    if assigned_events == 0 && !input.events.is_empty() {
+        debt.push(EvidenceDebt::new(
+            EvidenceDebtSeverity::Blocking,
+            EvidenceDebtKind::WorkstreamValidation,
+            "Ledger has events but no workstream assignments.",
+        ));
+    }
+
+    debt
+}
+
+fn print_evidence_debt(debt: &[EvidenceDebt]) {
+    println!("Evidence debt:");
+    if debt.is_empty() {
+        println!("- No obvious evidence debt detected.");
+        return;
+    }
+
+    for item in debt {
+        println!(
+            "- [{}] {}: {}",
+            item.severity.label(),
+            item.kind.label(),
+            item.summary
+        );
+        if let Some(detail) = &item.detail {
+            println!("  Detail: {detail}");
+        }
+        if let Some(next_step) = &item.next_step {
+            println!("  Next: {next_step}");
+        }
+    }
+}
+
+fn workstream_title_sample(workstreams: &[&Workstream]) -> String {
+    let mut titles = workstreams
+        .iter()
+        .take(3)
+        .map(|workstream| workstream.title.as_str())
+        .collect::<Vec<_>>();
+    titles.sort_unstable();
+    let mut detail = format!("Examples: {}", titles.join(", "));
+    if workstreams.len() > titles.len() {
+        detail.push_str(&format!("; and {} more", workstreams.len() - titles.len()));
+    }
+    detail
 }
 
 fn print_review_next_steps(

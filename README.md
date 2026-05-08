@@ -233,7 +233,7 @@ out/<run_id>/
 | `refresh <source>` | Re-fetch events while preserving curated `workstreams.yaml` |
 | `workstreams list/validate/create/rename/move/split/receipts/receipt/delete` | Inspect, validate, and safely edit workstream curation |
 | `runs list/show` | Discover runs and inspect their sources, event counts, coverage, and artifact paths |
-| `review` | Inspect a run for skipped sources, weak curation, evidence gaps, and next steps |
+| `review` | Inspect a run for skipped sources, weak curation, evidence debt, and next steps |
 | `open packet/workstreams/out` | Open run artifacts, or print their paths when opening is unavailable |
 | `merge` | Merge existing run directories into one packet |
 | `import` | Import an existing run directory and re-render |
