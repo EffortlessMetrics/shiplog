@@ -165,11 +165,13 @@ enum Command {
         #[arg(long, value_enum, default_value = "packet")]
         mode: RenderPacketMode,
         /// Maximum curated receipts to show per workstream in the main receipts section.
-        #[arg(long, default_value_t = WORKSTREAM_RECEIPT_RENDER_LIMIT)]
-        receipt_limit: usize,
+        ///
+        /// Defaults depend on the selected bundle profile.
+        #[arg(long)]
+        receipt_limit: Option<usize>,
         /// Appendix density for receipt detail.
         ///
-        /// Defaults to summary for packet mode, none for scaffold mode, and full for receipts mode.
+        /// Defaults depend on output mode and selected bundle profile.
         #[arg(long, value_enum)]
         appendix: Option<RenderAppendixMode>,
         /// Also write a zip next to the run folder.
@@ -3643,17 +3645,14 @@ fn identity_client() -> Result<Client> {
 fn create_engine(
     redact_key: &str,
     clusterer: Box<dyn shiplog_ports::WorkstreamClusterer>,
+    bundle_profile: &BundleProfile,
 ) -> (Engine<'static>, &'static DeterministicRedactor) {
     create_engine_with_renderer(
         redact_key,
         clusterer,
         Box::new(ModeMarkdownRenderer::new(
             RenderPacketMode::Packet,
-            cli_render_options(
-                RenderPacketMode::Packet,
-                WORKSTREAM_RECEIPT_RENDER_LIMIT,
-                None,
-            ),
+            cli_render_options(RenderPacketMode::Packet, None, None, bundle_profile),
         )),
     )
 }
@@ -3699,22 +3698,44 @@ fn cli_packet_renderer() -> MarkdownRenderer {
     MarkdownRenderer::new().with_section_order(SectionOrder::CoverageFirst)
 }
 
+const MANAGER_RECEIPT_RENDER_LIMIT: usize = 3;
+const PUBLIC_RECEIPT_RENDER_LIMIT: usize = 1;
+
 fn cli_render_options(
     mode: RenderPacketMode,
-    receipt_limit: usize,
+    receipt_limit: Option<usize>,
     appendix: Option<RenderAppendixMode>,
+    bundle_profile: &BundleProfile,
 ) -> MarkdownRenderOptions {
     MarkdownRenderOptions {
-        receipt_limit,
+        receipt_limit: receipt_limit
+            .unwrap_or_else(|| default_receipt_limit_for_profile(mode, bundle_profile)),
         appendix_mode: appendix
-            .unwrap_or_else(|| default_appendix_for_mode(mode))
+            .unwrap_or_else(|| default_appendix_for_profile(mode, bundle_profile))
             .into(),
     }
 }
 
-fn default_appendix_for_mode(mode: RenderPacketMode) -> RenderAppendixMode {
+fn default_receipt_limit_for_profile(
+    mode: RenderPacketMode,
+    bundle_profile: &BundleProfile,
+) -> usize {
+    match (mode, bundle_profile) {
+        (RenderPacketMode::Packet, BundleProfile::Manager) => MANAGER_RECEIPT_RENDER_LIMIT,
+        (RenderPacketMode::Packet, BundleProfile::Public) => PUBLIC_RECEIPT_RENDER_LIMIT,
+        _ => WORKSTREAM_RECEIPT_RENDER_LIMIT,
+    }
+}
+
+fn default_appendix_for_profile(
+    mode: RenderPacketMode,
+    bundle_profile: &BundleProfile,
+) -> RenderAppendixMode {
     match mode {
-        RenderPacketMode::Packet => RenderAppendixMode::Summary,
+        RenderPacketMode::Packet => match bundle_profile {
+            BundleProfile::Internal | BundleProfile::Manager => RenderAppendixMode::Summary,
+            BundleProfile::Public => RenderAppendixMode::None,
+        },
         RenderPacketMode::Scaffold => RenderAppendixMode::None,
         RenderPacketMode::Receipts => RenderAppendixMode::Full,
     }
@@ -4283,7 +4304,8 @@ fn main() -> Result<()> {
                         &llm_model,
                         llm_api_key.clone(),
                     );
-                    let (engine, redactor) = create_engine(redaction_key.engine_key(), clusterer);
+                    let (engine, redactor) =
+                        create_engine(redaction_key.engine_key(), clusterer, &bundle_profile);
                     let engine = engine.with_profile_rendering(redaction_key.render_profiles());
                     let window = resolve_multi_window(window, &config_model)?;
                     let configured =
@@ -4375,7 +4397,8 @@ fn main() -> Result<()> {
             let redaction_key = RedactionKey::resolve(redact_key, &bundle_profile)?;
             let clusterer =
                 build_clusterer(llm_cluster, &llm_api_endpoint, &llm_model, llm_api_key);
-            let (engine, redactor) = create_engine(redaction_key.engine_key(), clusterer);
+            let (engine, redactor) =
+                create_engine(redaction_key.engine_key(), clusterer, &bundle_profile);
             let engine = engine.with_profile_rendering(redaction_key.render_profiles());
 
             match source {
@@ -4807,7 +4830,7 @@ fn main() -> Result<()> {
             let clusterer: Box<dyn shiplog_ports::WorkstreamClusterer> = Box::new(RepoClusterer);
             let renderer = Box::new(ModeMarkdownRenderer::new(
                 mode,
-                cli_render_options(mode, receipt_limit, appendix),
+                cli_render_options(mode, receipt_limit, appendix, &bundle_profile),
             ));
             let (engine, redactor) =
                 create_engine_with_renderer(redaction_key.engine_key(), clusterer, renderer);
@@ -4858,7 +4881,8 @@ fn main() -> Result<()> {
         } => {
             let redaction_key = RedactionKey::resolve(redact_key, &bundle_profile)?;
             let clusterer: Box<dyn shiplog_ports::WorkstreamClusterer> = Box::new(RepoClusterer);
-            let (engine, redactor) = create_engine(redaction_key.engine_key(), clusterer);
+            let (engine, redactor) =
+                create_engine(redaction_key.engine_key(), clusterer, &bundle_profile);
             let engine = engine.with_profile_rendering(redaction_key.render_profiles());
 
             // Resolve run directory: explicit --run-dir, or find most recent
@@ -5624,7 +5648,8 @@ fn main() -> Result<()> {
         } => {
             let redaction_key = RedactionKey::resolve(redact_key, &bundle_profile)?;
             let clusterer: Box<dyn shiplog_ports::WorkstreamClusterer> = Box::new(RepoClusterer);
-            let (engine, redactor) = create_engine(redaction_key.engine_key(), clusterer);
+            let (engine, redactor) =
+                create_engine(redaction_key.engine_key(), clusterer, &bundle_profile);
             let engine = engine.with_profile_rendering(redaction_key.render_profiles());
 
             let mut ingest_outputs = Vec::with_capacity(inputs.len());
@@ -5712,7 +5737,8 @@ fn main() -> Result<()> {
             let redaction_key = RedactionKey::resolve(redact_key, &bundle_profile)?;
             let clusterer =
                 build_clusterer(llm_cluster, &llm_api_endpoint, &llm_model, llm_api_key);
-            let (engine, redactor) = create_engine(redaction_key.engine_key(), clusterer);
+            let (engine, redactor) =
+                create_engine(redaction_key.engine_key(), clusterer, &bundle_profile);
             let engine = engine.with_profile_rendering(redaction_key.render_profiles());
 
             let ing = JsonIngestor {
@@ -5777,7 +5803,8 @@ fn main() -> Result<()> {
             let redaction_key = RedactionKey::resolve(redact_key, &bundle_profile)?;
             let clusterer =
                 build_clusterer(llm_cluster, &llm_api_endpoint, &llm_model, llm_api_key);
-            let (engine, redactor) = create_engine(redaction_key.engine_key(), clusterer);
+            let (engine, redactor) =
+                create_engine(redaction_key.engine_key(), clusterer, &bundle_profile);
             let engine = engine.with_profile_rendering(redaction_key.render_profiles());
 
             match source {
@@ -7746,6 +7773,58 @@ mod tests {
 
         let err = cache_clean_mode(&args).unwrap_err();
         assert!(err.to_string().contains("either --all or --older-than"));
+    }
+
+    #[test]
+    fn render_options_use_profile_specific_packet_defaults() {
+        let internal = cli_render_options(
+            RenderPacketMode::Packet,
+            None,
+            None,
+            &BundleProfile::Internal,
+        );
+        assert_eq!(internal.receipt_limit, WORKSTREAM_RECEIPT_RENDER_LIMIT);
+        assert_eq!(internal.appendix_mode, AppendixMode::Summary);
+
+        let manager = cli_render_options(
+            RenderPacketMode::Packet,
+            None,
+            None,
+            &BundleProfile::Manager,
+        );
+        assert_eq!(manager.receipt_limit, MANAGER_RECEIPT_RENDER_LIMIT);
+        assert_eq!(manager.appendix_mode, AppendixMode::Summary);
+
+        let public =
+            cli_render_options(RenderPacketMode::Packet, None, None, &BundleProfile::Public);
+        assert_eq!(public.receipt_limit, PUBLIC_RECEIPT_RENDER_LIMIT);
+        assert_eq!(public.appendix_mode, AppendixMode::None);
+    }
+
+    #[test]
+    fn render_options_keep_explicit_receipt_and_appendix_overrides() {
+        let options = cli_render_options(
+            RenderPacketMode::Packet,
+            Some(7),
+            Some(RenderAppendixMode::Full),
+            &BundleProfile::Public,
+        );
+
+        assert_eq!(options.receipt_limit, 7);
+        assert_eq!(options.appendix_mode, AppendixMode::Full);
+    }
+
+    #[test]
+    fn receipts_mode_keeps_audit_defaults_for_share_profiles() {
+        let options = cli_render_options(
+            RenderPacketMode::Receipts,
+            None,
+            None,
+            &BundleProfile::Public,
+        );
+
+        assert_eq!(options.receipt_limit, WORKSTREAM_RECEIPT_RENDER_LIMIT);
+        assert_eq!(options.appendix_mode, AppendixMode::Full);
     }
 
     #[test]

@@ -52,9 +52,13 @@ shiplog render --latest --receipt-limit 3 --appendix summary
 The scaffold mode gives prompts and evidence anchors. It does not write your
 performance narrative for you.
 
-The default packet starts with coverage and gaps, then uses a receipt-summary
-appendix so you can see what was included, skipped, or incomplete before
-refining claims. Use `--appendix full` when you want the dense audit appendix.
+The default internal packet starts with coverage and gaps, then uses a
+receipt-summary appendix so you can see what was included, skipped, or
+incomplete before refining claims. Rendering with `--bundle-profile manager`
+defaults to fewer main receipts with the same summary appendix. Rendering with
+`--bundle-profile public` defaults to the lowest density and omits the appendix
+unless you opt back in. Use `--appendix full` when you want the dense audit
+appendix.
 
 ## Capture missing work
 

@@ -93,8 +93,11 @@ Rendering and sharing:
 - `shiplog render --bundle-profile manager|public`
 
 Default CLI packets open with `Coverage and Limits`, then summary,
-workstreams, receipts, a receipt-summary appendix, and file artifacts. Receipts
-mode keeps the full audit appendix by default.
+workstreams, receipts, and file artifacts. Internal and manager selected-profile
+packet defaults use a receipt-summary appendix, with manager rendering showing
+fewer main receipts. Public selected-profile rendering defaults to lower density
+and omits the receipt appendix unless `--appendix` is provided. Receipts mode
+keeps the full audit appendix by default.
 
 Manager and public profiles fail closed unless `--redact-key` or the configured
 redaction-key environment variable is provided.
