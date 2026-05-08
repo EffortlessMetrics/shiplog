@@ -200,6 +200,9 @@ shiplog journal add \
   --receipt ticket=https://example.invalid/ticket/OPS-123
 ```
 
+`shiplog review` suggests a copy-paste `journal add` command when a broad
+workstream has implementation receipts but no manual outcome note.
+
 If you prefer direct YAML editing, copy `workstreams.suggested.yaml` to
 `workstreams.yaml` and edit that file.
 
