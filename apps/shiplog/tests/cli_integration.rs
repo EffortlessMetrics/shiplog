@@ -2355,9 +2355,18 @@ user = "octo"
         .args(["collect", "multi"])
         .assert()
         .failure()
-        .stderr(predicate::str::contains(
-            "public profile requires --redact-key or SHIPLOG_TEST_REDACT_KEY_FOR_CONFIG",
-        ));
+        .stderr(
+            predicate::str::contains(
+                "public profile requires --redact-key or SHIPLOG_TEST_REDACT_KEY_FOR_CONFIG",
+            )
+            .and(predicate::str::contains("Try:"))
+            .and(predicate::str::contains(
+                "export SHIPLOG_TEST_REDACT_KEY_FOR_CONFIG=replace-with-a-stable-secret",
+            ))
+            .and(predicate::str::contains(
+                "rerun this command with --bundle-profile public",
+            )),
+        );
 }
 
 #[test]
@@ -2796,9 +2805,16 @@ fn collect_json_public_profile_without_key_fails_closed() {
         ])
         .assert()
         .failure()
-        .stderr(predicate::str::contains(
-            "public profile requires --redact-key or SHIPLOG_REDACT_KEY",
-        ));
+        .stderr(
+            predicate::str::contains("public profile requires --redact-key or SHIPLOG_REDACT_KEY")
+                .and(predicate::str::contains("Try:"))
+                .and(predicate::str::contains(
+                    "export SHIPLOG_REDACT_KEY=replace-with-a-stable-secret",
+                ))
+                .and(predicate::str::contains(
+                    "rerun this command with --bundle-profile public",
+                )),
+        );
 }
 
 #[test]
@@ -4557,9 +4573,16 @@ fn render_public_profile_without_key_fails_closed() {
         ])
         .assert()
         .failure()
-        .stderr(predicate::str::contains(
-            "public profile requires --redact-key or SHIPLOG_REDACT_KEY",
-        ));
+        .stderr(
+            predicate::str::contains("public profile requires --redact-key or SHIPLOG_REDACT_KEY")
+                .and(predicate::str::contains("Try:"))
+                .and(predicate::str::contains(
+                    "export SHIPLOG_REDACT_KEY=replace-with-a-stable-secret",
+                ))
+                .and(predicate::str::contains(
+                    "rerun this command with --bundle-profile public",
+                )),
+        );
 }
 
 #[test]

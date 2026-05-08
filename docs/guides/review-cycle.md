@@ -120,6 +120,8 @@ it prints a `shiplog journal add` command with the workstream already filled in.
 
 The internal profile can render without a redaction key. Manager and public
 profiles fail closed: they require an explicit key or `SHIPLOG_REDACT_KEY`.
+When a key is missing, the CLI prints the exact env var to set and the profile
+to rerun.
 
 ```bash
 export SHIPLOG_REDACT_KEY=replace-with-a-stable-secret
