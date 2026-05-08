@@ -133,11 +133,16 @@ Use these commands when the packet looks smaller than expected:
 ```bash
 shiplog doctor
 shiplog review --latest
+shiplog review --latest --strict
 shiplog runs show --run latest
 shiplog cache stats --out ./out
 shiplog cache inspect --out ./out --source github
 shiplog cache clean --out ./out --source github --older-than 30d --dry-run
 ```
+
+Use `--strict` when you want review rehearsal or CI to fail if the run still
+has evidence debt, such as skipped sources, partial coverage, missing receipt
+anchors, broad workstreams, or validation errors.
 
 `cache clean` removes cache entries from known source API databases. It does not
 delete packets, ledgers, coverage manifests, bundles, or workstream files.

@@ -658,7 +658,8 @@ fn review_help_shows_run_options() {
         .success()
         .stdout(predicate::str::contains("--out"))
         .stdout(predicate::str::contains("--latest"))
-        .stdout(predicate::str::contains("--run"));
+        .stdout(predicate::str::contains("--run"))
+        .stdout(predicate::str::contains("--strict"));
 }
 
 #[test]
@@ -2576,7 +2577,7 @@ fn review_latest_summarizes_run_attention_items_without_writing_artifacts() {
     assert!(stdout.contains("Completeness: Complete"));
     assert!(stdout.contains("Curation:"));
     assert!(stdout.contains("- Validation: ok"));
-    assert!(stdout.contains("Evidence gaps:"));
+    assert!(stdout.contains("Evidence debt:"));
     assert!(stdout.contains("- No obvious evidence debt detected."));
     assert!(stdout.contains("Next:"));
     assert!(stdout.contains("shiplog render --run run_fixture --mode scaffold"));
@@ -2642,10 +2643,70 @@ user = "octo"
     assert!(stdout.contains("Completeness: Partial"));
     assert!(stdout.contains("Skipped sources:"));
     assert!(stdout.contains("- JSON:"));
-    assert!(stdout.contains("Evidence gaps:"));
-    assert!(stdout.contains("Skipped sources need attention"));
-    assert!(stdout.contains("Manual events are user-provided"));
+    assert!(stdout.contains("Evidence debt:"));
+    assert!(stdout.contains("[warning] missing-source"));
+    assert!(stdout.contains("[warning] partial-coverage"));
+    assert!(stdout.contains("[info] manual-context"));
     assert!(stdout.contains("shiplog doctor"));
+
+    assert_eq!(
+        packet_before,
+        std::fs::read_to_string(run_dir.join("packet.md")).unwrap()
+    );
+    assert_eq!(
+        coverage_before,
+        std::fs::read_to_string(run_dir.join("coverage.manifest.json")).unwrap()
+    );
+}
+
+#[test]
+fn review_strict_fails_when_evidence_debt_exists_without_writing_artifacts() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+    write_manual_events(&tmp.path().join("manual_events.yaml"));
+
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[defaults]
+window = "year:2025"
+
+[sources.manual]
+enabled = true
+events = "./manual_events.yaml"
+user = "octo"
+"#,
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .args([
+            "collect",
+            "--out",
+            out.to_str().unwrap(),
+            "multi",
+            "--config",
+            tmp.path().join("shiplog.toml").to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    let run_dir = first_run_dir(&out);
+    let packet_before = std::fs::read_to_string(run_dir.join("packet.md")).unwrap();
+    let coverage_before = std::fs::read_to_string(run_dir.join("coverage.manifest.json")).unwrap();
+
+    shiplog_cmd()
+        .args([
+            "review",
+            "--out",
+            out.to_str().unwrap(),
+            "--latest",
+            "--strict",
+        ])
+        .assert()
+        .failure()
+        .stdout(predicate::str::contains("Evidence debt:"))
+        .stdout(predicate::str::contains("[info] manual-context"))
+        .stderr(predicate::str::contains("review found"));
 
     assert_eq!(
         packet_before,
