@@ -107,6 +107,8 @@ fn assert_intake_artifacts(run_dir: &Path) {
         "coverage.manifest.json",
         "workstreams.suggested.yaml",
         "bundle.manifest.json",
+        "intake.report.md",
+        "intake.report.json",
     ] {
         assert!(
             run_dir.join(artifact).exists(),
@@ -3034,6 +3036,30 @@ user = "octo"
     assert_intake_artifacts(&run_dir);
     assert_ledger_event_count(&run_dir, 1);
 
+    let report_md = std::fs::read_to_string(run_dir.join("intake.report.md")).unwrap();
+    assert!(report_md.contains("# Review Intake Report"));
+    assert!(report_md.contains("Packet readiness: **Ready for review**"));
+    assert!(report_md.contains("- Manual: 1 event"));
+    assert!(report_md.contains("## Share Commands"));
+    assert!(report_md.contains("shiplog share manager"));
+    assert!(report_md.contains("SHIPLOG_REDACT_KEY"));
+
+    let report_json: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(run_dir.join("intake.report.json")).unwrap())
+            .unwrap();
+    assert_eq!(report_json["schema_version"], 1);
+    assert_eq!(report_json["readiness"], "Ready for review");
+    assert_eq!(report_json["included_sources"][0]["source"], "Manual");
+    assert_eq!(report_json["included_sources"][0]["event_count"], 1);
+    assert_eq!(report_json["skipped_sources"].as_array().unwrap().len(), 0);
+    assert!(
+        report_json["share_commands"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|command| command.as_str().unwrap().contains("shiplog share manager"))
+    );
+
     let packet = std::fs::read_to_string(run_dir.join("packet.md")).unwrap();
     assert_packet_opens_with_coverage(&packet);
     assert!(packet.contains("- Manual: 1 event"));
@@ -3348,6 +3374,33 @@ status = "done"
 
     let run_dir = first_run_dir(&out);
     let coverage = std::fs::read_to_string(run_dir.join("coverage.manifest.json")).unwrap();
+    let report_md = std::fs::read_to_string(run_dir.join("intake.report.md")).unwrap();
+    assert!(report_md.contains("## Skipped Sources"));
+    assert!(report_md.contains("- Jira: missing JIRA_TOKEN"));
+    assert!(report_md.contains("- Linear: missing LINEAR_API_KEY"));
+    assert!(report_md.contains("export JIRA_TOKEN=..."));
+    assert!(report_md.contains("shiplog identify jira --auth-user <email>"));
+    assert!(report_md.contains("export LINEAR_API_KEY=..."));
+    assert!(report_md.contains("shiplog identify linear"));
+
+    let report_json: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(run_dir.join("intake.report.json")).unwrap())
+            .unwrap();
+    assert_eq!(report_json["readiness"], "Needs curation");
+    assert_eq!(report_json["skipped_sources"].as_array().unwrap().len(), 2);
+    assert!(
+        report_json["source_decisions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|decision| decision["source"] == "Jira"
+                && decision["hint_lines"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .any(|line| line.as_str().unwrap().contains("JIRA_TOKEN")))
+    );
+
     assert!(
         coverage.contains("Configured source jira was skipped: missing JIRA_TOKEN"),
         "intake coverage should record skipped Jira source"

@@ -34,7 +34,9 @@ The CLI should let a review-cycle user run a fast best-effort intake, initialize
 local config, collect from configured sources, inspect coverage and gaps, curate
 workstreams without hand-editing YAML, render a packet with prompts and
 receipts, and produce manager/public share profiles only with an explicit
-redaction key.
+redaction key. Intake also leaves `intake.report.md` and `intake.report.json`
+beside the run so readiness, skipped sources, repair hints, fixups, and share
+commands are not terminal-only.
 
 ## CLI Product Surface
 

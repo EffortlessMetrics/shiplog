@@ -19,7 +19,8 @@ When the review form is already open, use intake first. It creates starter local
 files if needed, collects whatever configured sources are usable, records skipped
 sources as coverage warnings, renders the packet, and prints the review next
 steps. It also prints a readiness summary with good signals, attention items,
-and copy-ready next commands:
+and copy-ready next commands. The same checklist is written to
+`intake.report.md`, with a structured `intake.report.json` beside it:
 
 ```bash
 shiplog intake --last-6-months

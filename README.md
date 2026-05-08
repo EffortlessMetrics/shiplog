@@ -104,8 +104,10 @@ shiplog open packet --latest
 Use this when you need a packet now. It uses `shiplog.toml` if present, creates
 a minimal starter config if missing, skips unusable sources without hiding them,
 and writes the packet, ledger, coverage manifest, workstream file, and bundle
-manifest as soon as at least one source succeeds. It ends with a readiness
-summary: what worked, what needs attention, and the next commands to run.
+manifest as soon as at least one source succeeds. It also writes
+`intake.report.md` and `intake.report.json` as a durable checklist you can
+reopen after the terminal scrolls away. It ends with a readiness summary: what
+worked, what needs attention, and the next commands to run.
 `--explain` prints source decisions and setup repair hints. Add
 `--source github --source jira` to limit the intake, or `--no-open` to print
 paths only.
@@ -274,6 +276,8 @@ out/<run_id>/
   ledger.events.jsonl             # Canonical, append-only event log
   coverage.manifest.json          # What was queried, completeness, gaps
   bundle.manifest.json            # File checksums for integrity verification
+  intake.report.md                # Review rescue checklist and next actions
+  intake.report.json              # Structured intake report for tooling
   profiles/                       # Only written when a redaction key is provided
     manager/packet.md             # Redacted: keeps context, strips sensitive details
     public/packet.md              # Redacted: aliases repos/workstreams, strips fields

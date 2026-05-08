@@ -1462,6 +1462,79 @@ enum IntakeSourceDecision {
     Skipped,
 }
 
+#[derive(Debug, Serialize)]
+struct IntakeReport {
+    schema_version: u8,
+    run_id: String,
+    readiness: String,
+    config_path: String,
+    out_dir: String,
+    run_dir: String,
+    packet_path: String,
+    reports: IntakeReportFiles,
+    included_sources: Vec<IntakeReportIncludedSource>,
+    skipped_sources: Vec<IntakeReportSkippedSource>,
+    source_decisions: Vec<IntakeReportSourceDecision>,
+    good: Vec<String>,
+    needs_attention: Vec<String>,
+    evidence_debt: Vec<IntakeReportEvidenceDebt>,
+    top_fixups: Vec<IntakeReportFixup>,
+    journal_suggestions: Vec<String>,
+    share_commands: Vec<String>,
+    next_commands: Vec<String>,
+    artifacts: Vec<IntakeReportArtifact>,
+}
+
+#[derive(Debug, Serialize)]
+struct IntakeReportFiles {
+    markdown: String,
+    json: String,
+}
+
+#[derive(Debug, Serialize)]
+struct IntakeReportIncludedSource {
+    source: String,
+    event_count: usize,
+    summary: String,
+}
+
+#[derive(Debug, Serialize)]
+struct IntakeReportSkippedSource {
+    source: String,
+    reason: String,
+}
+
+#[derive(Debug, Serialize)]
+struct IntakeReportSourceDecision {
+    source: String,
+    decision: String,
+    reason: String,
+    hint_label: Option<String>,
+    hint_lines: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct IntakeReportEvidenceDebt {
+    severity: String,
+    kind: String,
+    summary: String,
+    detail: Option<String>,
+    next_step: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct IntakeReportFixup {
+    title: String,
+    detail: Option<String>,
+    command: String,
+}
+
+#[derive(Debug, Serialize)]
+struct IntakeReportArtifact {
+    label: String,
+    path: String,
+}
+
 #[derive(Debug)]
 struct ConfiguredSourceOutputs {
     successes: Vec<(String, IngestOutput)>,
@@ -1711,6 +1784,8 @@ fn run_intake(args: IntakeArgs) -> Result<()> {
         &engine,
         redactor,
     )?;
+    let report = build_intake_report(&result, &out, &args.config, &intake_plan.explanations)?;
+    write_intake_report(&result.outputs.out_dir, &report)?;
 
     println!("Review intake complete.");
     if config_setup.created {
@@ -1751,10 +1826,12 @@ fn run_intake(args: IntakeArgs) -> Result<()> {
 
     println!("Artifacts:");
     print_outputs(&result.outputs, result.ws_source.clone());
+    println!("- {}", report.reports.markdown);
+    println!("- {}", report.reports.json);
     println!();
     print_review(&result.outputs.out_dir, false)?;
     println!();
-    print_intake_readiness_summary(&result, &out, &args.config)?;
+    print_intake_readiness_report(&report);
 
     if args.no_open {
         println!();
@@ -1772,15 +1849,18 @@ fn run_intake(args: IntakeArgs) -> Result<()> {
     Ok(())
 }
 
-fn print_intake_readiness_summary(
+fn build_intake_report(
     result: &ConfiguredRunResult,
     out_dir: &Path,
     config_path: &Path,
-) -> Result<()> {
+    explanations: &[IntakeSourceExplanation],
+) -> Result<IntakeReport> {
     let ingest = load_run_ingest(&result.outputs.out_dir)
         .with_context(|| format!("load intake run {}", result.outputs.out_dir.display()))?;
     let coverage = ingest.coverage;
     let events = ingest.events;
+    let run_id = result.run_id.clone();
+    let skipped_sources = configured_source_skips(&coverage.warnings);
     let (workstreams, _, _) = load_effective_workstreams_for_run(&result.outputs.out_dir)?;
     let validation_errors = validate_workstreams_against_events(&workstreams, &events);
     let no_receipt_workstreams: Vec<_> = workstreams
@@ -1878,26 +1958,29 @@ fn print_intake_readiness_summary(
         "Needs curation"
     };
 
-    println!("Intake readiness:");
-    println!("Packet readiness: {readiness}");
-    println!();
-    println!("Good:");
-    for item in &good {
-        println!("- {item}");
-    }
-    println!();
-    println!("Needs attention:");
-    if attention.is_empty() {
-        println!("- None");
-    } else {
-        for item in &attention {
-            println!("- {item}");
-        }
-    }
-    println!();
-    println!("Next:");
-    for (idx, command) in intake_readiness_next_steps(
-        &result.run_id,
+    let evidence_debt = detect_evidence_debt(EvidenceDebtInput {
+        run_id: &run_id,
+        coverage: &coverage,
+        events: &events,
+        skipped_sources: &skipped_sources,
+        workstreams: &workstreams,
+        validation_errors: &validation_errors,
+        no_receipt_workstreams: &no_receipt_workstreams,
+        broad_workstreams: &broad_workstreams,
+        manual_context_workstreams: &manual_context_workstreams,
+        manual_events: manual_event_ids.len(),
+    });
+    let top_fixups = review_fixups(
+        &run_id,
+        out_dir,
+        &skipped_sources,
+        &validation_errors,
+        &no_receipt_workstreams,
+        &broad_workstreams,
+        &manual_context_workstreams,
+    );
+    let next_commands = intake_readiness_next_steps(
+        &run_id,
         out_dir,
         config_path,
         &result.configured.failures,
@@ -1910,14 +1993,309 @@ fn print_intake_readiness_summary(
         manual_context_workstreams
             .first()
             .map(|workstream| workstream.title.as_str()),
-    )
-    .iter()
-    .enumerate()
-    {
-        println!("{}. {}", idx + 1, command);
+    );
+    let out_arg = quote_cli_value(&out_dir.display().to_string());
+    let report_md = result.outputs.out_dir.join("intake.report.md");
+    let report_json = result.outputs.out_dir.join("intake.report.json");
+    let mut artifacts = vec![
+        IntakeReportArtifact {
+            label: "packet".to_string(),
+            path: result.outputs.packet_md.display().to_string(),
+        },
+        IntakeReportArtifact {
+            label: "ledger".to_string(),
+            path: result.outputs.ledger_events_jsonl.display().to_string(),
+        },
+        IntakeReportArtifact {
+            label: "coverage".to_string(),
+            path: result.outputs.coverage_manifest_json.display().to_string(),
+        },
+        IntakeReportArtifact {
+            label: format!("workstreams ({})", result.ws_source),
+            path: result.outputs.workstreams_yaml.display().to_string(),
+        },
+        IntakeReportArtifact {
+            label: "bundle manifest".to_string(),
+            path: result.outputs.bundle_manifest_json.display().to_string(),
+        },
+        IntakeReportArtifact {
+            label: "intake report markdown".to_string(),
+            path: report_md.display().to_string(),
+        },
+        IntakeReportArtifact {
+            label: "intake report json".to_string(),
+            path: report_json.display().to_string(),
+        },
+    ];
+    if let Some(zip_path) = &result.outputs.zip_path {
+        artifacts.push(IntakeReportArtifact {
+            label: "zip bundle".to_string(),
+            path: zip_path.display().to_string(),
+        });
     }
 
+    Ok(IntakeReport {
+        schema_version: 1,
+        run_id: run_id.clone(),
+        readiness: readiness.to_string(),
+        config_path: config_path.display().to_string(),
+        out_dir: out_dir.display().to_string(),
+        run_dir: result.outputs.out_dir.display().to_string(),
+        packet_path: result.outputs.packet_md.display().to_string(),
+        reports: IntakeReportFiles {
+            markdown: report_md.display().to_string(),
+            json: report_json.display().to_string(),
+        },
+        included_sources: result
+            .configured
+            .successes
+            .iter()
+            .map(|(name, ingest)| IntakeReportIncludedSource {
+                source: display_source_label(name),
+                event_count: ingest.events.len(),
+                summary: format!(
+                    "{} collected {}",
+                    display_source_label(name),
+                    event_count_phrase(ingest.events.len())
+                ),
+            })
+            .collect(),
+        skipped_sources: result
+            .configured
+            .failures
+            .iter()
+            .map(|failure| IntakeReportSkippedSource {
+                source: display_source_label(&failure.name),
+                reason: failure.error.clone(),
+            })
+            .collect(),
+        source_decisions: intake_source_decision_reports(explanations),
+        good,
+        needs_attention: attention,
+        evidence_debt: evidence_debt
+            .iter()
+            .map(|item| IntakeReportEvidenceDebt {
+                severity: item.severity.label().to_string(),
+                kind: item.kind.label().to_string(),
+                summary: item.summary.clone(),
+                detail: item.detail.clone(),
+                next_step: item.next_step.clone(),
+            })
+            .collect(),
+        top_fixups: top_fixups
+            .iter()
+            .take(5)
+            .map(|fixup| IntakeReportFixup {
+                title: fixup.title.clone(),
+                detail: fixup.detail.clone(),
+                command: fixup.command.clone(),
+            })
+            .collect(),
+        journal_suggestions: top_fixups
+            .iter()
+            .map(|fixup| fixup.command.as_str())
+            .filter(|command| command.starts_with("shiplog journal add "))
+            .map(str::to_string)
+            .collect(),
+        share_commands: vec![
+            format!("shiplog share manager --out {out_arg} --run {run_id}"),
+            format!("shiplog share public --out {out_arg} --run {run_id}"),
+        ],
+        next_commands,
+        artifacts,
+    })
+}
+
+fn print_intake_readiness_report(report: &IntakeReport) {
+    println!("Intake readiness:");
+    println!("Packet readiness: {}", report.readiness);
+    println!();
+    println!("Good:");
+    for item in &report.good {
+        println!("- {item}");
+    }
+    println!();
+    println!("Needs attention:");
+    if report.needs_attention.is_empty() {
+        println!("- None");
+    } else {
+        for item in &report.needs_attention {
+            println!("- {item}");
+        }
+    }
+    println!();
+    println!("Next:");
+    for (idx, command) in report.next_commands.iter().enumerate() {
+        println!("{}. {}", idx + 1, command);
+    }
+}
+
+fn write_intake_report(run_dir: &Path, report: &IntakeReport) -> Result<()> {
+    let markdown = render_intake_report_markdown(report);
+    std::fs::write(run_dir.join("intake.report.md"), markdown)
+        .with_context(|| format!("write {}", run_dir.join("intake.report.md").display()))?;
+
+    let json = serde_json::to_string_pretty(report)?;
+    std::fs::write(run_dir.join("intake.report.json"), format!("{json}\n"))
+        .with_context(|| format!("write {}", run_dir.join("intake.report.json").display()))?;
+
     Ok(())
+}
+
+fn render_intake_report_markdown(report: &IntakeReport) -> String {
+    let mut out = String::new();
+    out.push_str("# Review Intake Report\n\n");
+    out.push_str(&format!("Run: `{}`\n\n", report.run_id));
+    out.push_str(&format!("Packet readiness: **{}**\n\n", report.readiness));
+    out.push_str(&format!("Config: `{}`\n\n", report.config_path));
+    out.push_str(&format!("Packet: `{}`\n\n", report.packet_path));
+
+    out.push_str("## Included Sources\n\n");
+    if report.included_sources.is_empty() {
+        out.push_str("- None\n");
+    } else {
+        for source in &report.included_sources {
+            out.push_str(&format!(
+                "- {}: {}\n",
+                source.source,
+                event_count_phrase(source.event_count)
+            ));
+        }
+    }
+    out.push('\n');
+
+    out.push_str("## Skipped Sources\n\n");
+    if report.skipped_sources.is_empty() {
+        out.push_str("- None\n");
+    } else {
+        for skipped in &report.skipped_sources {
+            out.push_str(&format!("- {}: {}\n", skipped.source, skipped.reason));
+        }
+    }
+    out.push('\n');
+
+    out.push_str("## Source Decisions\n\n");
+    if report.source_decisions.is_empty() {
+        out.push_str("- None\n");
+    } else {
+        for decision in &report.source_decisions {
+            out.push_str(&format!(
+                "- {}: {}, {}\n",
+                decision.source, decision.decision, decision.reason
+            ));
+            if let Some(label) = &decision.hint_label {
+                out.push_str(&format!("  - {label}:\n"));
+                for line in &decision.hint_lines {
+                    out.push_str(&format!("    - {line}\n"));
+                }
+            }
+        }
+    }
+    out.push('\n');
+
+    out.push_str("## Good\n\n");
+    for item in &report.good {
+        out.push_str(&format!("- {item}\n"));
+    }
+    out.push('\n');
+
+    out.push_str("## Needs Attention\n\n");
+    if report.needs_attention.is_empty() {
+        out.push_str("- None\n");
+    } else {
+        for item in &report.needs_attention {
+            out.push_str(&format!("- {item}\n"));
+        }
+    }
+    out.push('\n');
+
+    out.push_str("## Evidence Debt\n\n");
+    if report.evidence_debt.is_empty() {
+        out.push_str("- No obvious evidence debt detected.\n");
+    } else {
+        for item in &report.evidence_debt {
+            out.push_str(&format!(
+                "- [{}] {}: {}\n",
+                item.severity, item.kind, item.summary
+            ));
+            if let Some(detail) = &item.detail {
+                out.push_str(&format!("  - Detail: {detail}\n"));
+            }
+            if let Some(next_step) = &item.next_step {
+                out.push_str(&format!("  - Next: {next_step}\n"));
+            }
+        }
+    }
+    out.push('\n');
+
+    out.push_str("## Top Fixups\n\n");
+    if report.top_fixups.is_empty() {
+        out.push_str("- No high-value fixups found.\n");
+    } else {
+        for (idx, fixup) in report.top_fixups.iter().enumerate() {
+            out.push_str(&format!("{}. {}\n", idx + 1, fixup.title));
+            if let Some(detail) = &fixup.detail {
+                out.push_str(&format!("   - {detail}\n"));
+            }
+            out.push_str(&format!("   - `{}`\n", fixup.command));
+        }
+    }
+    out.push('\n');
+
+    out.push_str("## Journal Suggestions\n\n");
+    if report.journal_suggestions.is_empty() {
+        out.push_str("- None\n");
+    } else {
+        for command in &report.journal_suggestions {
+            out.push_str(&format!("- `{command}`\n"));
+        }
+    }
+    out.push('\n');
+
+    out.push_str("## Share Commands\n\n");
+    for command in &report.share_commands {
+        out.push_str(&format!("- `{command}`\n"));
+    }
+    out.push_str(
+        "\nShare commands require `--redact-key` or `SHIPLOG_REDACT_KEY` at execution time.\n\n",
+    );
+
+    out.push_str("## Next Commands\n\n");
+    for (idx, command) in report.next_commands.iter().enumerate() {
+        out.push_str(&format!("{}. `{command}`\n", idx + 1));
+    }
+    out.push('\n');
+
+    out.push_str("## Artifacts\n\n");
+    for artifact in &report.artifacts {
+        out.push_str(&format!("- {}: `{}`\n", artifact.label, artifact.path));
+    }
+
+    out
+}
+
+fn intake_source_decision_reports(
+    explanations: &[IntakeSourceExplanation],
+) -> Vec<IntakeReportSourceDecision> {
+    explanations
+        .iter()
+        .map(|explanation| {
+            let hint = intake_source_hint(explanation);
+            let (hint_label, hint_lines) = hint
+                .map(|hint| (Some(hint.label.to_string()), hint.lines))
+                .unwrap_or((None, Vec::new()));
+            IntakeReportSourceDecision {
+                source: display_source_label(&explanation.name),
+                decision: match explanation.decision {
+                    IntakeSourceDecision::Included => "included".to_string(),
+                    IntakeSourceDecision::Skipped => "skipped".to_string(),
+                },
+                reason: explanation.reason.clone(),
+                hint_label,
+                hint_lines,
+            }
+        })
+        .collect()
 }
 
 fn intake_readiness_next_steps(

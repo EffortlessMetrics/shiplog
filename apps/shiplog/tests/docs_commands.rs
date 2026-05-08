@@ -347,6 +347,7 @@ fn review_cycle_fixture_commands_execute_without_network() {
         .success()
         .stdout(predicate::str::contains("Review intake complete."))
         .stdout(predicate::str::contains("Source decisions:"))
+        .stdout(predicate::str::contains("intake.report.md"))
         .stdout(predicate::str::contains("Evidence debt:"))
         .stdout(predicate::str::contains("Open later:"));
 
