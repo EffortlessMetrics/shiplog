@@ -31,6 +31,7 @@ Recorded Tier 1 baselines:
 | `shiplog-coverage` | `762841b` | 31 | 26 | 0 | 5 | clean baseline |
 | `shiplog-ids` | `e6166e5` | 8 | 5 | 0 | 3 | clean baseline |
 | `shiplog-ports` | `74d095d` | 0 | 0 | 0 | 0 | no mutation targets |
+| `shiplog-schema` | `77dc752` | 33 | 27 | 0 | 6 | clean baseline |
 
 The local PowerShell receipts used:
 
@@ -39,6 +40,7 @@ New-Item -ItemType Directory -Force -Path target\mutants | Out-Null
 cargo mutants -p shiplog-coverage --timeout 600 --copy-target=false --output target/mutants/shiplog-coverage-baseline
 cargo mutants -p shiplog-ids --timeout 600 --copy-target=false --output target/mutants/shiplog-ids-baseline
 cargo mutants -p shiplog-ports --timeout 600 --copy-target=false --output target/mutants/shiplog-ports-baseline
+cargo mutants -p shiplog-schema --timeout 600 --copy-target=false --output target/mutants/shiplog-schema-baseline
 ```
 
 `cargo-mutants` reported:
@@ -53,6 +55,9 @@ shiplog-ids:
 shiplog-ports:
 Found 0 mutants to test
 WARN No mutants found under the active filters
+
+shiplog-schema:
+33 mutants tested in 4m: 27 caught, 6 unviable
 ```
 
 The generated `missed.txt` files were empty, so there were no surviving mutants
@@ -67,7 +72,6 @@ error-path, and composition tests rather than mutation survivor counts.
 Record the remaining Tier 1 crates one at a time before enforcing mutation
 thresholds:
 
-- `shiplog-schema`
 - `shiplog-redact`
 - `shiplog-bundle`
 
