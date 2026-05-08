@@ -814,6 +814,55 @@ mod tests {
     }
 
     #[test]
+    fn collect_mr_notes_replays_cached_payload_without_network() {
+        let ing = default_ingestor()
+            .with_instance("127.0.0.1:9".to_string())
+            .unwrap()
+            .with_in_memory_cache()
+            .unwrap();
+        let notes: Vec<GitlabNote> = serde_json::from_value(serde_json::json!([
+            {
+                "id": 9001,
+                "type": null,
+                "body": "LGTM, rollback path is clear.",
+                "attachment": null,
+                "author": {
+                    "id": 101,
+                    "name": "Bob Reviewer",
+                    "username": "bob",
+                    "state": "active",
+                    "avatar_url": null,
+                    "web_url": "https://gitlab.example.com/bob"
+                },
+                "created_at": "2025-01-12T16:30:00Z",
+                "updated_at": "2025-01-12T16:30:00Z",
+                "system": false,
+                "noteable_id": 424242,
+                "noteable_type": "MergeRequest",
+                "project_id": 3001,
+                "resolvable": false,
+                "confidential": false,
+                "internal": false,
+                "noteable_iid": 42
+            }
+        ]))
+        .unwrap();
+        ing.cache
+            .as_ref()
+            .unwrap()
+            .set(&CacheKey::mr_notes(3001, 42, 1), &notes)
+            .unwrap();
+
+        let client = Client::new();
+        let replayed = ing.collect_mr_notes(&client, 3001, 42).unwrap();
+
+        assert_eq!(replayed.len(), 1);
+        assert_eq!(replayed[0].id, 9001);
+        assert_eq!(replayed[0].author.username, "bob");
+        assert!(!replayed[0].system);
+    }
+
+    #[test]
     fn with_token_validates_non_empty() {
         let result = GitlabIngestor::new(
             "alice".to_string(),
