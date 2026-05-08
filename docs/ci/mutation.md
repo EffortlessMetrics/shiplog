@@ -30,6 +30,7 @@ Recorded Tier 1 baselines:
 | ----- | ------ | ------: | -----: | -------: | -------: | ------ |
 | `shiplog-coverage` | `762841b` | 31 | 26 | 0 | 5 | clean baseline |
 | `shiplog-ids` | `e6166e5` | 8 | 5 | 0 | 3 | clean baseline |
+| `shiplog-ports` | `74d095d` | 0 | 0 | 0 | 0 | no mutation targets |
 
 The local PowerShell receipts used:
 
@@ -37,6 +38,7 @@ The local PowerShell receipts used:
 New-Item -ItemType Directory -Force -Path target\mutants | Out-Null
 cargo mutants -p shiplog-coverage --timeout 600 --copy-target=false --output target/mutants/shiplog-coverage-baseline
 cargo mutants -p shiplog-ids --timeout 600 --copy-target=false --output target/mutants/shiplog-ids-baseline
+cargo mutants -p shiplog-ports --timeout 600 --copy-target=false --output target/mutants/shiplog-ports-baseline
 ```
 
 `cargo-mutants` reported:
@@ -47,10 +49,18 @@ shiplog-coverage:
 
 shiplog-ids:
 8 mutants tested in 50s: 5 caught, 3 unviable
+
+shiplog-ports:
+Found 0 mutants to test
+WARN No mutants found under the active filters
 ```
 
 The generated `missed.txt` files were empty, so there were no surviving mutants
 for these crates in the baseline runs.
+
+`shiplog-ports` is a trait contract crate. The current cargo-mutants scan found
+no mutable implementation targets; its behavior remains covered by trait-object,
+error-path, and composition tests rather than mutation survivor counts.
 
 ## Next baseline candidates
 
@@ -59,7 +69,6 @@ thresholds:
 
 - `shiplog-schema`
 - `shiplog-redact`
-- `shiplog-ports`
 - `shiplog-bundle`
 
 Keep each baseline as evidence, not a PR gate, until repeated scheduled runs
