@@ -73,7 +73,12 @@ proptest! {
         let review_count = events.iter().filter(|e| matches!(e.kind, EventKind::Review)).count();
         let manual_count = events.iter().filter(|e| matches!(e.kind, EventKind::Manual)).count();
 
-        let expected = format!("**Events:** {} PRs, {} reviews, {} manual", pr_count, review_count, manual_count);
+        let expected = format!(
+            "**Events:** {}, {}, {}",
+            count_label(pr_count, "PR", "PRs"),
+            count_label(review_count, "review", "reviews"),
+            count_label(manual_count, "manual event", "manual events")
+        );
         prop_assert!(out.contains(&expected), "Expected '{}' in output", expected);
     }
 
@@ -156,4 +161,9 @@ proptest! {
         let out2 = render(&events, &workstreams, &coverage);
         prop_assert_eq!(out1, out2, "Rendering should be deterministic");
     }
+}
+
+fn count_label(count: usize, singular: &str, plural: &str) -> String {
+    let noun = if count == 1 { singular } else { plural };
+    format!("{count} {noun}")
 }

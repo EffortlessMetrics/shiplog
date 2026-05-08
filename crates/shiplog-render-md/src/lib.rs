@@ -314,15 +314,20 @@ fn render_summary(
         .filter(|e| matches!(e.kind, EventKind::Manual))
         .count();
     out.push_str(&format!(
-        "**Events:** {} PRs, {} reviews, {} manual\n\n",
-        pr_count, review_count, manual_count
+        "**Events:** {}, {}, {}\n\n",
+        count_label(pr_count, "PR", "PRs"),
+        count_label(review_count, "review", "reviews"),
+        count_label(manual_count, "manual event", "manual events")
     ));
 
     // Completeness
     out.push_str(&format!("**Coverage:** {:?}\n\n", coverage.completeness));
 
     // Sources
-    out.push_str(&format!("**Sources:** {}\n\n", coverage.sources.join(", ")));
+    out.push_str(&format!(
+        "**Sources:** {}\n\n",
+        display_source_list(&coverage.sources)
+    ));
 
     // Warnings
     if !coverage.warnings.is_empty() {
@@ -602,12 +607,10 @@ fn render_coverage(out: &mut String, coverage: &CoverageManifest, events: &[Even
     out.push_str(&format!("- **Mode:** {}\n", coverage.mode));
 
     // Sources
-    let source_details = if coverage.sources.is_empty() {
-        "none recorded".to_string()
-    } else {
-        coverage.sources.join(", ")
-    };
-    out.push_str(&format!("- **Sources:** {}\n", source_details));
+    out.push_str(&format!(
+        "- **Sources:** {}\n",
+        display_source_list(&coverage.sources)
+    ));
 
     // Completeness
     out.push_str(&format!(
@@ -763,6 +766,23 @@ fn display_source_label(source: &str) -> String {
         "unknown" => "Unknown".to_string(),
         _ => source.to_string(),
     }
+}
+
+fn display_source_list(sources: &[String]) -> String {
+    if sources.is_empty() {
+        return "none recorded".to_string();
+    }
+
+    sources
+        .iter()
+        .map(|source| display_source_label(source))
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+fn count_label(count: usize, singular: &str, plural: &str) -> String {
+    let noun = if count == 1 { singular } else { plural };
+    format!("{count} {noun}")
 }
 
 fn render_appendix(
@@ -1168,7 +1188,7 @@ mod tests {
             .unwrap();
 
         // Should show both PRs and reviews in summary
-        assert!(result.contains("1 PRs, 1 reviews"));
+        assert!(result.contains("1 PR, 1 review"));
     }
 
     #[test]

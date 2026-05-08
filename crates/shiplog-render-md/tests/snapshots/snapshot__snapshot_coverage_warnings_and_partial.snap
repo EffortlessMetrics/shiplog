@@ -1,5 +1,6 @@
 ---
 source: crates/shiplog-render-md/tests/snapshot.rs
+assertion_line: 508
 expression: result
 ---
 # Summary
@@ -8,11 +9,11 @@ expression: result
 
 **Workstreams:** 1
 
-**Events:** 1 PRs, 0 reviews, 0 manual
+**Events:** 1 PR, 0 reviews, 0 manual events
 
 **Coverage:** Partial
 
-**Sources:** github
+**Sources:** GitHub
 
 **Warnings:**
   - ⚠️ API rate limit hit during ingestion
@@ -60,7 +61,7 @@ Known gaps:
 Details:
 - **Date window:** 2025-01-01 to 2025-04-01
 - **Mode:** merged
-- **Sources:** github
+- **Sources:** GitHub
 - **Completeness:** Partial
 - **Query slices:** 2
   - ⚠️ 1 slices had incomplete results

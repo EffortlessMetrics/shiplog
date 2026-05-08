@@ -26,6 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Changed CLI-generated packets to open with coverage and gaps before summary,
   workstreams, and receipts, and made packet mode default to a receipt-summary
   appendix while receipts mode keeps the full audit appendix.
+- Polished Markdown packet summary labels so event counts pluralize correctly
+  and source names use reader-facing labels.
 - Fixed Jira search response deserialization for realistic REST payload field
   names.
 - Fixed the packet file-artifacts section so it lists generated run artifacts

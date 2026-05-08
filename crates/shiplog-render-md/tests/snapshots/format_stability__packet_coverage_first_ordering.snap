@@ -1,5 +1,6 @@
 ---
 source: crates/shiplog-render-md/tests/format_stability.rs
+assertion_line: 273
 expression: result
 ---
 ## Coverage and Limits
@@ -17,7 +18,7 @@ Known gaps:
 Details:
 - **Date window:** 2025-01-01 to 2025-04-01
 - **Mode:** merged
-- **Sources:** github
+- **Sources:** GitHub
 - **Completeness:** Complete
 
 # Summary
@@ -26,11 +27,11 @@ Details:
 
 **Workstreams:** 1
 
-**Events:** 1 PRs, 0 reviews, 0 manual
+**Events:** 1 PR, 0 reviews, 0 manual events
 
 **Coverage:** Complete
 
-**Sources:** github
+**Sources:** GitHub
 
 ## Workstreams
 
