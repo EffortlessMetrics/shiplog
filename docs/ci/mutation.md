@@ -24,27 +24,33 @@ advisory until crate-level baselines are established and reviewed.
 
 ## Current baseline
 
-At `main` commit `762841b`, the first recorded Tier 1 baseline is:
+Recorded Tier 1 baselines:
 
-| Crate | Mutants | Caught | Survived | Unviable | Result |
-| ----- | ------: | -----: | -------: | -------: | ------ |
-| `shiplog-coverage` | 31 | 26 | 0 | 5 | clean baseline |
+| Crate | Commit | Mutants | Caught | Survived | Unviable | Result |
+| ----- | ------ | ------: | -----: | -------: | -------: | ------ |
+| `shiplog-coverage` | `762841b` | 31 | 26 | 0 | 5 | clean baseline |
+| `shiplog-ids` | `e6166e5` | 8 | 5 | 0 | 3 | clean baseline |
 
-The local PowerShell receipt used:
+The local PowerShell receipts used:
 
 ```powershell
 New-Item -ItemType Directory -Force -Path target\mutants | Out-Null
 cargo mutants -p shiplog-coverage --timeout 600 --copy-target=false --output target/mutants/shiplog-coverage-baseline
+cargo mutants -p shiplog-ids --timeout 600 --copy-target=false --output target/mutants/shiplog-ids-baseline
 ```
 
 `cargo-mutants` reported:
 
 ```text
+shiplog-coverage:
 31 mutants tested in 2m: 26 caught, 5 unviable
+
+shiplog-ids:
+8 mutants tested in 50s: 5 caught, 3 unviable
 ```
 
-The generated `missed.txt` was empty, so there were no surviving mutants for
-this crate in the baseline run.
+The generated `missed.txt` files were empty, so there were no surviving mutants
+for these crates in the baseline runs.
 
 ## Next baseline candidates
 
@@ -53,7 +59,6 @@ thresholds:
 
 - `shiplog-schema`
 - `shiplog-redact`
-- `shiplog-ids`
 - `shiplog-ports`
 - `shiplog-bundle`
 

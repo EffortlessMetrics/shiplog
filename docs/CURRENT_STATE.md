@@ -159,6 +159,6 @@ install smoke evidence.
 The next post-v0.3 work should harden real-world usage rather than add broad new
 surface area: source adapter receipts, Jira/Linear identity help, config
 reference material, packet readability passes against real packets, and
-continued coverage/mutation baseline review. The first documented mutation
-baseline is `shiplog-coverage`, recorded in
+continued coverage/mutation baseline review. Documented mutation baselines now
+include `shiplog-coverage` and `shiplog-ids`, recorded in
 [`docs/ci/mutation.md`](ci/mutation.md).
