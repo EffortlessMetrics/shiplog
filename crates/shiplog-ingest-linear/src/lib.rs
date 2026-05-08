@@ -738,6 +738,85 @@ mod tests {
         assert_eq!(ing.api_base_url(), "https://api.linear.app/graphql");
     }
 
+    #[test]
+    fn recorded_linear_graphql_payload_deserializes_and_converts() {
+        let payload = serde_json::json!({
+            "data": {
+                "data": {
+                    "issues": {
+                        "nodes": [
+                            {
+                                "id": "issue-uuid-001",
+                                "identifier": "ENG-123",
+                                "title": "Implement API rate limiting",
+                                "description": "Add rate limiting middleware",
+                                "state": {
+                                    "id": "state-1",
+                                    "name": "Done",
+                                    "type": "completed"
+                                },
+                                "project": {
+                                    "id": "proj-1",
+                                    "name": "Backend Infrastructure",
+                                    "key": "INFRA"
+                                },
+                                "createdAt": "2025-01-10T09:00:00Z",
+                                "completedAt": "2025-01-18T16:00:00Z",
+                                "canceledAt": null,
+                                "assignee": {
+                                    "id": "user-1",
+                                    "name": "alice",
+                                    "displayName": "Alice Smith"
+                                }
+                            }
+                        ],
+                        "pageInfo": {
+                            "hasNextPage": false,
+                            "endCursor": null
+                        }
+                    }
+                }
+            }
+        });
+
+        let response: LinearResponse<LinearData<LinearIssuesResponse>> =
+            serde_json::from_value(payload).unwrap();
+        let connection = response.data.unwrap().data.unwrap().issues.unwrap();
+        assert!(!connection.page_info.has_next_page);
+        assert!(connection.page_info.end_cursor.is_none());
+        let issues = connection.nodes.unwrap();
+        assert_eq!(issues[0].state.as_ref().unwrap().type_, "completed");
+        assert_eq!(issues[0].project.as_ref().unwrap().key, "INFRA");
+
+        let ing = LinearIngestor::new(
+            "user-1".to_string(),
+            NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
+            NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),
+        );
+        let events = ing.issues_to_events(issues).unwrap();
+        assert_eq!(events.len(), 1);
+        let event = &events[0];
+        assert_eq!(event.actor.login, "alice");
+        assert_eq!(event.repo.full_name, "linear/INFRA");
+        assert_eq!(
+            event.source.system,
+            SourceSystem::Other("linear".to_string())
+        );
+        assert_eq!(
+            event.source.url.as_deref(),
+            Some("https://linear.app/issue/ENG-123")
+        );
+        if let EventPayload::Manual(manual) = &event.payload {
+            assert_eq!(manual.title, "Implement API rate limiting");
+            assert_eq!(
+                manual.ended_at,
+                Some(NaiveDate::from_ymd_opt(2025, 1, 18).unwrap())
+            );
+        } else {
+            panic!("Expected Manual payload");
+        }
+    }
+
     // --- Snapshot tests ---
 
     #[test]

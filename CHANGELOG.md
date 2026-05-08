@@ -21,6 +21,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a `shiplog.toml` config reference covering versioning, defaults,
   source fields, env vars, validation, and redaction safety.
 
+### Fixed
+
+- Fixed Jira search response deserialization for realistic REST payload field
+  names.
+
+### Testing
+
+- Added recorded-style Jira and Linear provider payload tests for adapter
+  parsing and event conversion.
+
 ## [0.3.0] - 2026-05-07
 
 ### Added

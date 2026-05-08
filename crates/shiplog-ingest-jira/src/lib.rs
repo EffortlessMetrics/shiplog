@@ -406,7 +406,9 @@ impl Ingestor for JiraIngestor {
 #[derive(Debug, Deserialize)]
 #[allow(dead_code)]
 struct JiraSearchResponse {
+    #[serde(rename = "startAt")]
     start_at: u64,
+    #[serde(rename = "maxResults")]
     max_results: u64,
     total: u64,
     issues: Vec<JiraIssue>,
@@ -439,21 +441,18 @@ struct JiraIssueFields {
 #[derive(Debug, Deserialize)]
 #[allow(dead_code)]
 struct JiraIssueStatus {
-    #[serde(rename = "self")]
     name: String,
 }
 
 #[derive(Debug, Deserialize)]
 #[allow(dead_code)]
 struct JiraIssueType {
-    #[serde(rename = "self")]
     name: String,
 }
 
 #[derive(Debug, Deserialize)]
 #[allow(dead_code)]
 struct JiraPriority {
-    #[serde(rename = "self")]
     name: String,
 }
 
@@ -640,6 +639,101 @@ mod tests {
                 ("fields".to_string(), "summary,status".to_string()),
             ]
         );
+    }
+
+    #[test]
+    fn recorded_jira_search_payload_deserializes_and_converts() {
+        let payload = serde_json::json!({
+            "startAt": 0,
+            "maxResults": 50,
+            "total": 1,
+            "issues": [
+                {
+                    "expand": "operations,versionedRepresentations,editmeta,changelog",
+                    "id": "10001",
+                    "self": "https://company.atlassian.net/rest/api/3/issue/10001",
+                    "key": "OPS-42",
+                    "fields": {
+                        "summary": "Reduce deploy rollback toil",
+                        "status": {
+                            "self": "https://company.atlassian.net/rest/api/3/status/10000",
+                            "description": "Work is complete",
+                            "iconUrl": "https://company.atlassian.net/images/icons/statuses/done.png",
+                            "name": "Done",
+                            "id": "10000",
+                            "statusCategory": { "key": "done", "name": "Done" }
+                        },
+                        "created": "2025-03-10T15:30:00.000+0000",
+                        "updated": "2025-03-12T17:45:00.000+0000",
+                        "resolutiondate": "2025-03-12T17:45:00.000+0000",
+                        "description": "Added rollback checklist and deploy validation.",
+                        "issuetype": {
+                            "self": "https://company.atlassian.net/rest/api/3/issuetype/10001",
+                            "id": "10001",
+                            "description": "A task that needs to be done.",
+                            "name": "Task",
+                            "subtask": false
+                        },
+                        "priority": {
+                            "self": "https://company.atlassian.net/rest/api/3/priority/3",
+                            "iconUrl": "https://company.atlassian.net/images/icons/priorities/medium.svg",
+                            "name": "Medium",
+                            "id": "3"
+                        },
+                        "assignee": {
+                            "self": "https://company.atlassian.net/rest/api/3/user?accountId=712020%3Aaccount-id",
+                            "accountId": "712020:account-id",
+                            "emailAddress": "alice@example.com",
+                            "displayName": "Alice Example",
+                            "active": true,
+                            "timeZone": "UTC",
+                            "name": "alice@example.com"
+                        }
+                    }
+                }
+            ]
+        });
+
+        let response: JiraSearchResponse = serde_json::from_value(payload).unwrap();
+        assert_eq!(response.start_at, 0);
+        assert_eq!(response.max_results, 50);
+        assert_eq!(response.total, 1);
+        assert_eq!(response.issues[0].fields.status.name, "Done");
+        assert_eq!(
+            response.issues[0].fields.issuetype.as_ref().unwrap().name,
+            "Task"
+        );
+        assert_eq!(
+            response.issues[0].fields.priority.as_ref().unwrap().name,
+            "Medium"
+        );
+
+        let mut ing = JiraIngestor::new(
+            "712020:account-id".to_string(),
+            NaiveDate::from_ymd_opt(2025, 3, 1).unwrap(),
+            NaiveDate::from_ymd_opt(2025, 4, 1).unwrap(),
+        );
+        ing.instance = "company.atlassian.net".to_string();
+
+        let events = ing.issues_to_events(response.issues).unwrap();
+        assert_eq!(events.len(), 1);
+        let event = &events[0];
+        assert_eq!(event.actor.login, "alice@example.com");
+        assert_eq!(event.repo.full_name, "jira/company.atlassian.net");
+        assert_eq!(event.source.system, SourceSystem::Other("jira".to_string()));
+        assert_eq!(
+            event.source.url.as_deref(),
+            Some("https://company.atlassian.net/browse/OPS-42")
+        );
+        if let EventPayload::Manual(manual) = &event.payload {
+            assert_eq!(manual.title, "Reduce deploy rollback toil");
+            assert_eq!(
+                manual.ended_at,
+                Some(NaiveDate::from_ymd_opt(2025, 3, 12).unwrap())
+            );
+        } else {
+            panic!("Expected Manual payload");
+        }
     }
 
     // --- Snapshot tests ---
