@@ -1,8 +1,8 @@
 //! `shiplog` CLI entrypoint.
 //!
 //! Exposes `init`, `doctor`, `config`, `collect`, `render`, `refresh`,
-//! `workstreams`, `runs`, `review`, `open`, `merge`, `import`, and `run`
-//! commands over the workspace engine and adapter crates.
+//! `workstreams`, `runs`, `review`, `journal`, `open`, `merge`, `import`, and
+//! `run` commands over the workspace engine and adapter crates.
 
 use anyhow::{Context, Result};
 use chrono::{DateTime, Datelike, Duration, Months, NaiveDate, Utc};
@@ -19,7 +19,9 @@ use shiplog_ingest_gitlab::{GitlabIngestor, MrState};
 use shiplog_ingest_jira::{IssueStatus, JiraIngestor};
 use shiplog_ingest_json::JsonIngestor;
 use shiplog_ingest_linear::{IssueStatus as LinearIssueStatus, LinearIngestor};
-use shiplog_ingest_manual::ManualIngestor;
+use shiplog_ingest_manual::{
+    ManualIngestor, create_empty_file, read_manual_events, write_manual_events,
+};
 use shiplog_ports::{IngestOutput, Ingestor, Renderer};
 use shiplog_redact::DeterministicRedactor;
 use shiplog_render_md::{
@@ -29,6 +31,7 @@ use shiplog_schema::{
     bundle::BundleProfile,
     coverage::TimeWindow,
     event::{EventEnvelope, EventPayload},
+    event::{Link, ManualDate, ManualEventEntry, ManualEventType},
     workstream::{Workstream, WorkstreamStats, WorkstreamsFile},
 };
 use shiplog_workstreams::{RepoClusterer, WORKSTREAM_RECEIPT_RENDER_LIMIT};
@@ -84,6 +87,12 @@ enum Command {
     Identify {
         #[command(subcommand)]
         cmd: IdentifyCommand,
+    },
+
+    /// Add factual manual evidence without hand-editing YAML.
+    Journal {
+        #[command(subcommand)]
+        cmd: JournalCommand,
     },
 
     /// Collect events from a source and generate workstream suggestions.
@@ -397,6 +406,82 @@ enum IdentifyCommand {
         #[arg(long)]
         api_key: Option<String>,
     },
+}
+
+#[derive(Subcommand, Debug)]
+enum JournalCommand {
+    /// Append one manual evidence entry to manual_events.yaml.
+    Add(JournalAddArgs),
+}
+
+#[derive(Args, Debug)]
+struct JournalAddArgs {
+    /// Manual events YAML file to create or append to.
+    #[arg(long, default_value = MANUAL_EVENTS_FILENAME)]
+    events: PathBuf,
+    /// Stable event ID. Defaults to `manual-<date>-<slugified-title>`.
+    #[arg(long)]
+    id: Option<String>,
+    /// Manual event type.
+    #[arg(long = "type", value_enum, default_value = "note")]
+    event_type: JournalEventType,
+    /// Single event date, in YYYY-MM-DD format.
+    #[arg(long)]
+    date: Option<NaiveDate>,
+    /// Inclusive start date for a multi-day event.
+    #[arg(long)]
+    start: Option<NaiveDate>,
+    /// Inclusive end date for a multi-day event.
+    #[arg(long)]
+    end: Option<NaiveDate>,
+    /// Factual title for the work.
+    #[arg(long)]
+    title: String,
+    /// Optional context. Keep this factual, not performance-review prose.
+    #[arg(long)]
+    description: Option<String>,
+    /// Workstream to associate with this evidence.
+    #[arg(long)]
+    workstream: Option<String>,
+    /// Tag to attach. Repeat for multiple tags.
+    #[arg(long = "tag")]
+    tags: Vec<String>,
+    /// Receipt link as LABEL=URL. Repeat for multiple receipts.
+    #[arg(long = "receipt", value_name = "LABEL=URL")]
+    receipts: Vec<String>,
+    /// Optional outcome or impact note.
+    #[arg(long)]
+    impact: Option<String>,
+    /// Print the entry that would be added without writing.
+    #[arg(long)]
+    dry_run: bool,
+}
+
+#[derive(Clone, Copy, Debug, ValueEnum)]
+enum JournalEventType {
+    Note,
+    Incident,
+    Design,
+    Mentoring,
+    Launch,
+    Migration,
+    Review,
+    Other,
+}
+
+impl From<JournalEventType> for ManualEventType {
+    fn from(value: JournalEventType) -> Self {
+        match value {
+            JournalEventType::Note => Self::Note,
+            JournalEventType::Incident => Self::Incident,
+            JournalEventType::Design => Self::Design,
+            JournalEventType::Mentoring => Self::Mentoring,
+            JournalEventType::Launch => Self::Launch,
+            JournalEventType::Migration => Self::Migration,
+            JournalEventType::Review => Self::Review,
+            JournalEventType::Other => Self::Other,
+        }
+    }
 }
 
 #[derive(Args, Debug)]
@@ -1497,6 +1582,198 @@ generated_at: "{generated_at}"
 events: []
 "#
     )
+}
+
+fn run_journal_add(args: JournalAddArgs) -> Result<()> {
+    let date = resolve_journal_date(args.date, args.start, args.end)?;
+    let id = match args.id {
+        Some(id) => required_text_arg("--id", &id)?,
+        None => generated_journal_id(&date, &args.title),
+    };
+    validate_journal_id(&id)?;
+
+    let mut file = if args.events.exists() {
+        read_manual_events(&args.events)?
+    } else {
+        create_empty_file()
+    };
+    if file.version != 1 {
+        anyhow::bail!(
+            "unsupported manual events version {}; expected 1",
+            file.version
+        );
+    }
+    if file.events.iter().any(|entry| entry.id == id) {
+        anyhow::bail!(
+            "manual event id {id:?} already exists in {}; use --id for a distinct entry",
+            args.events.display()
+        );
+    }
+
+    let entry = ManualEventEntry {
+        id,
+        event_type: args.event_type.into(),
+        date,
+        title: required_text_arg("--title", &args.title)?,
+        description: optional_text_arg(args.description),
+        workstream: optional_text_arg(args.workstream),
+        tags: normalize_journal_tags(args.tags)?,
+        receipts: parse_journal_receipts(&args.receipts)?,
+        impact: optional_text_arg(args.impact),
+    };
+
+    if args.dry_run {
+        print_journal_entry("Would add manual event", &args.events, &entry);
+        return Ok(());
+    }
+
+    if let Some(parent) = args
+        .events
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+    {
+        std::fs::create_dir_all(parent)
+            .with_context(|| format!("create manual events directory {}", parent.display()))?;
+    }
+
+    file.events.push(entry.clone());
+    write_manual_events(&args.events, &file)?;
+
+    print_journal_entry("Added manual event", &args.events, &entry);
+    println!("Next:");
+    println!("  shiplog collect multi --last-6-months");
+
+    Ok(())
+}
+
+fn resolve_journal_date(
+    date: Option<NaiveDate>,
+    start: Option<NaiveDate>,
+    end: Option<NaiveDate>,
+) -> Result<ManualDate> {
+    match (date, start, end) {
+        (Some(date), None, None) => Ok(ManualDate::Single(date)),
+        (None, Some(start), Some(end)) if start <= end => Ok(ManualDate::Range { start, end }),
+        (None, Some(start), Some(end)) => {
+            anyhow::bail!("journal date range must satisfy --start {start} <= --end {end}")
+        }
+        (None, None, None) => anyhow::bail!("journal add requires --date or --start/--end"),
+        _ => anyhow::bail!("use either --date or --start/--end, not both"),
+    }
+}
+
+fn generated_journal_id(date: &ManualDate, title: &str) -> String {
+    let date_label = match date {
+        ManualDate::Single(date) => date.to_string(),
+        ManualDate::Range { start, end } => format!("{start}-to-{end}"),
+    };
+    let slug = slugify_journal_title(title);
+    format!("manual-{date_label}-{slug}")
+}
+
+fn slugify_journal_title(title: &str) -> String {
+    let mut slug = String::new();
+    let mut pending_dash = false;
+    for ch in title.chars().flat_map(char::to_lowercase) {
+        if ch.is_ascii_alphanumeric() {
+            if pending_dash && !slug.is_empty() {
+                slug.push('-');
+            }
+            slug.push(ch);
+            pending_dash = false;
+        } else {
+            pending_dash = true;
+        }
+    }
+
+    if slug.is_empty() {
+        "event".to_string()
+    } else {
+        slug
+    }
+}
+
+fn validate_journal_id(id: &str) -> Result<()> {
+    if id.trim().is_empty() {
+        anyhow::bail!("manual event id cannot be blank");
+    }
+    if id.chars().any(char::is_whitespace) {
+        anyhow::bail!("manual event id cannot contain whitespace: {id:?}");
+    }
+    Ok(())
+}
+
+fn required_text_arg(name: &str, value: &str) -> Result<String> {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        anyhow::bail!("{name} cannot be blank");
+    }
+    Ok(trimmed.to_string())
+}
+
+fn optional_text_arg(value: Option<String>) -> Option<String> {
+    value
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+}
+
+fn normalize_journal_tags(tags: Vec<String>) -> Result<Vec<String>> {
+    let mut normalized = Vec::new();
+    for tag in tags {
+        let tag = tag.trim();
+        if tag.is_empty() {
+            anyhow::bail!("journal tag cannot be blank");
+        }
+        if !normalized.iter().any(|existing| existing == tag) {
+            normalized.push(tag.to_string());
+        }
+    }
+    Ok(normalized)
+}
+
+fn parse_journal_receipts(values: &[String]) -> Result<Vec<Link>> {
+    let mut receipts = Vec::new();
+    for value in values {
+        let (label, url) = match value.split_once('=') {
+            Some((label, url)) => (label.trim(), url.trim()),
+            None => ("receipt", value.trim()),
+        };
+        if label.is_empty() {
+            anyhow::bail!("journal receipt label cannot be blank in {value:?}");
+        }
+        if url.is_empty() {
+            anyhow::bail!("journal receipt URL cannot be blank in {value:?}");
+        }
+        receipts.push(Link {
+            label: label.to_string(),
+            url: url.to_string(),
+        });
+    }
+    Ok(receipts)
+}
+
+fn print_journal_entry(label: &str, path: &Path, entry: &ManualEventEntry) {
+    println!("{label}: {}", entry.id);
+    println!("File: {}", path.display());
+    println!("Type: {}", entry.event_type);
+    println!("Date: {}", journal_date_label(&entry.date));
+    println!("Title: {}", entry.title);
+    if let Some(workstream) = &entry.workstream {
+        println!("Workstream: {workstream}");
+    }
+    if !entry.tags.is_empty() {
+        println!("Tags: {}", entry.tags.join(", "));
+    }
+    if !entry.receipts.is_empty() {
+        println!("Receipts: {}", entry.receipts.len());
+    }
+}
+
+fn journal_date_label(date: &ManualDate) -> String {
+    match date {
+        ManualDate::Single(date) => date.to_string(),
+        ManualDate::Range { start, end } => format!("{start}..{end}"),
+    }
 }
 
 fn load_shiplog_config(config_path: &Path) -> Result<ShiplogConfig> {
@@ -3959,6 +4236,10 @@ fn main() -> Result<()> {
                 token,
             } => run_identify_jira(instance, auth_user, token)?,
             IdentifyCommand::Linear { api_key } => run_identify_linear(api_key)?,
+        },
+
+        Command::Journal { cmd } => match cmd {
+            JournalCommand::Add(args) => run_journal_add(args)?,
         },
 
         Command::Collect {

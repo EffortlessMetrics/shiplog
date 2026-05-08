@@ -85,6 +85,7 @@ fn documented_help_commands_stay_available() {
         .stdout(predicate::str::contains("collect"))
         .stdout(predicate::str::contains("render"))
         .stdout(predicate::str::contains("workstreams"))
+        .stdout(predicate::str::contains("journal"))
         .stdout(predicate::str::contains("cache"))
         .stdout(predicate::str::contains("identify"));
 
@@ -120,6 +121,15 @@ fn documented_help_commands_stay_available() {
         .stdout(predicate::str::contains("move"))
         .stdout(predicate::str::contains("split"))
         .stdout(predicate::str::contains("receipts"));
+
+    shiplog_cmd()
+        .args(["journal", "add", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--date"))
+        .stdout(predicate::str::contains("--title"))
+        .stdout(predicate::str::contains("--workstream"))
+        .stdout(predicate::str::contains("--receipt"));
 
     shiplog_cmd()
         .args(["cache", "--help"])
@@ -171,6 +181,25 @@ fn review_cycle_fixture_commands_execute_without_network() {
         .assert()
         .success()
         .stdout(predicate::str::contains("Would write shiplog.toml"));
+
+    let journal_path = tmp.path().join("manual_events.yaml");
+    shiplog_cmd()
+        .args([
+            "journal",
+            "add",
+            "--events",
+            journal_path.to_str().unwrap(),
+            "--date",
+            "2026-05-08",
+            "--title",
+            "Documented fixture rehearsal",
+            "--workstream",
+            "Docs",
+            "--dry-run",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Would add manual event"));
 
     shiplog_cmd()
         .current_dir(repo_root())

@@ -7,9 +7,9 @@ use shiplog_cache::ApiCache;
 use shiplog_ids::{EventId, RunId};
 use shiplog_schema::coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow};
 use shiplog_schema::event::{
-    Actor, EventEnvelope, EventKind, EventPayload, Link, ManualEvent, ManualEventType,
-    PullRequestEvent, PullRequestState, RepoRef, RepoVisibility, ReviewEvent, SourceRef,
-    SourceSystem,
+    Actor, EventEnvelope, EventKind, EventPayload, Link, ManualDate, ManualEvent, ManualEventType,
+    ManualEventsFile, PullRequestEvent, PullRequestState, RepoRef, RepoVisibility, ReviewEvent,
+    SourceRef, SourceSystem,
 };
 use shiplog_schema::workstream::WorkstreamsFile;
 use std::path::{Path, PathBuf};
@@ -487,6 +487,7 @@ fn help_shows_all_subcommands() {
         .stdout(predicate::str::contains("doctor"))
         .stdout(predicate::str::contains("config"))
         .stdout(predicate::str::contains("cache"))
+        .stdout(predicate::str::contains("journal"))
         .stdout(predicate::str::contains("collect"))
         .stdout(predicate::str::contains("render"))
         .stdout(predicate::str::contains("refresh"))
@@ -576,6 +577,28 @@ fn cache_help_shows_stats_inspect_and_clean() {
         .stdout(predicate::str::contains("--all"))
         .stdout(predicate::str::contains("--dry-run"))
         .stdout(predicate::str::contains("--yes"));
+}
+
+#[test]
+fn journal_help_shows_add_options() {
+    shiplog_cmd()
+        .args(["journal", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("add"));
+
+    shiplog_cmd()
+        .args(["journal", "add", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--events"))
+        .stdout(predicate::str::contains("--date"))
+        .stdout(predicate::str::contains("--start"))
+        .stdout(predicate::str::contains("--end"))
+        .stdout(predicate::str::contains("--title"))
+        .stdout(predicate::str::contains("--workstream"))
+        .stdout(predicate::str::contains("--receipt"))
+        .stdout(predicate::str::contains("--dry-run"));
 }
 
 #[test]
@@ -741,6 +764,181 @@ fn init_force_overwrites_existing_files() {
     assert!(config.contains("[sources.linear]\nenabled = true"));
     assert!(config.contains("[sources.github]\nenabled = false"));
     assert!(config.contains("[sources.manual]\nenabled = false"));
+}
+
+#[test]
+fn journal_add_creates_collectable_manual_event() {
+    let tmp = TempDir::new().unwrap();
+    let manual_events = tmp.path().join("manual_events.yaml");
+
+    shiplog_cmd()
+        .args([
+            "journal",
+            "add",
+            "--events",
+            manual_events.to_str().unwrap(),
+            "--date",
+            "2026-05-08",
+            "--title",
+            "Debugged customer import incident",
+            "--workstream",
+            "Customer Reliability",
+            "--impact",
+            "Prevented repeat failure before the next import window",
+            "--tag",
+            "support",
+            "--tag",
+            "review-cycle",
+            "--receipt",
+            "ticket=https://example.invalid/ticket/OPS-123",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "Added manual event: manual-2026-05-08-debugged-customer-import-incident",
+        ))
+        .stdout(predicate::str::contains("shiplog collect multi"));
+
+    let file: ManualEventsFile =
+        serde_yaml::from_str(&std::fs::read_to_string(&manual_events).unwrap()).unwrap();
+    assert_eq!(file.version, 1);
+    assert_eq!(file.events.len(), 1);
+    let entry = &file.events[0];
+    assert_eq!(
+        entry.id,
+        "manual-2026-05-08-debugged-customer-import-incident"
+    );
+    assert_eq!(entry.event_type, ManualEventType::Note);
+    assert_eq!(
+        entry.date,
+        ManualDate::Single(NaiveDate::from_ymd_opt(2026, 5, 8).unwrap())
+    );
+    assert_eq!(entry.title, "Debugged customer import incident");
+    assert_eq!(entry.workstream.as_deref(), Some("Customer Reliability"));
+    assert_eq!(
+        entry.impact.as_deref(),
+        Some("Prevented repeat failure before the next import window")
+    );
+    assert_eq!(entry.tags, vec!["support", "review-cycle"]);
+    assert_eq!(entry.receipts.len(), 1);
+    assert_eq!(entry.receipts[0].label, "ticket");
+
+    shiplog_cmd()
+        .args([
+            "collect",
+            "--out",
+            tmp.path().join("out").to_str().unwrap(),
+            "manual",
+            "--events",
+            manual_events.to_str().unwrap(),
+            "--user",
+            "octo",
+            "--since",
+            "2026-05-01",
+            "--until",
+            "2026-06-01",
+        ])
+        .assert()
+        .success();
+
+    let packet =
+        std::fs::read_to_string(first_run_dir(&tmp.path().join("out")).join("packet.md")).unwrap();
+    assert!(packet.contains("Debugged customer import incident"));
+    assert!(packet.contains("Customer Reliability"));
+}
+
+#[test]
+fn journal_add_dry_run_does_not_write() {
+    let tmp = TempDir::new().unwrap();
+    let manual_events = tmp.path().join("manual_events.yaml");
+
+    shiplog_cmd()
+        .args([
+            "journal",
+            "add",
+            "--events",
+            manual_events.to_str().unwrap(),
+            "--date",
+            "2026-05-08",
+            "--title",
+            "Captured a dry run note",
+            "--dry-run",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Would add manual event"));
+
+    assert!(
+        !manual_events.exists(),
+        "journal add --dry-run should not create manual_events.yaml"
+    );
+}
+
+#[test]
+fn journal_add_rejects_duplicate_manual_event_id() {
+    let tmp = TempDir::new().unwrap();
+    let manual_events = tmp.path().join("manual_events.yaml");
+
+    for expected_success in [true, false] {
+        let mut assert = shiplog_cmd()
+            .args([
+                "journal",
+                "add",
+                "--events",
+                manual_events.to_str().unwrap(),
+                "--id",
+                "manual-duplicate",
+                "--date",
+                "2026-05-08",
+                "--title",
+                "Duplicate evidence",
+            ])
+            .assert();
+
+        if expected_success {
+            assert = assert.success();
+            assert.stdout(predicate::str::contains("Added manual event"));
+        } else {
+            assert = assert.failure();
+            assert.stderr(predicate::str::contains("already exists"));
+        }
+    }
+}
+
+#[test]
+fn journal_add_writes_date_ranges() {
+    let tmp = TempDir::new().unwrap();
+    let manual_events = tmp.path().join("manual_events.yaml");
+
+    shiplog_cmd()
+        .args([
+            "journal",
+            "add",
+            "--events",
+            manual_events.to_str().unwrap(),
+            "--type",
+            "migration",
+            "--start",
+            "2026-05-01",
+            "--end",
+            "2026-05-08",
+            "--title",
+            "Finished migration rehearsal",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Date: 2026-05-01..2026-05-08"));
+
+    let file: ManualEventsFile =
+        serde_yaml::from_str(&std::fs::read_to_string(&manual_events).unwrap()).unwrap();
+    assert_eq!(file.events[0].event_type, ManualEventType::Migration);
+    assert_eq!(
+        file.events[0].date,
+        ManualDate::Range {
+            start: NaiveDate::from_ymd_opt(2026, 5, 1).unwrap(),
+            end: NaiveDate::from_ymd_opt(2026, 5, 8).unwrap()
+        }
+    );
 }
 
 #[test]

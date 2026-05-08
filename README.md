@@ -161,6 +161,18 @@ shiplog workstreams delete --run latest --workstream "old bucket" --move-to "Pla
 shiplog workstreams validate --run latest
 ```
 
+Use `journal add` when important work is not already visible in a source
+adapter:
+
+```bash
+shiplog journal add \
+  --date 2026-05-08 \
+  --title "Debugged customer import incident" \
+  --workstream "Customer Reliability" \
+  --impact "Prevented repeat failure before the next import window" \
+  --receipt ticket=https://example.invalid/ticket/OPS-123
+```
+
 If you prefer direct YAML editing, copy `workstreams.suggested.yaml` to
 `workstreams.yaml` and edit that file.
 
@@ -214,6 +226,7 @@ out/<run_id>/
 | `config validate/explain/migrate` | Validate `shiplog.toml`, print resolved settings, or add version metadata |
 | `cache stats/inspect/clean` | Inspect and safely clean source API cache databases |
 | `identify jira/linear` | Print provider user IDs for source configuration |
+| `journal add` | Append factual manual evidence to `manual_events.yaml` |
 | `collect <source>` | Fetch events from a source and generate packet artifacts |
 | `collect multi` | Collect enabled sources from `shiplog.toml` into one merged packet |
 | `render` | Re-render packet from existing ledger and workstreams |
