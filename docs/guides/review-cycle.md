@@ -79,6 +79,7 @@ Use `shiplog review fixups --latest` when you only want the top curation
 actions as existing commands. It is read-only and ranks setup repair,
 workstream validation, outcome notes, receipt inspection, and broad-bucket
 splits without scoring performance.
+Add `--commands-only` when you want a terse copy/paste list with no prose.
 
 ## Weekly upkeep
 
