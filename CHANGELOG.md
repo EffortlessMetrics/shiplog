@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Documented v0.3.0 release verification and updated the current-state record
   from release-ready to shipped.
+- Added a `shiplog.toml` config reference covering versioning, defaults,
+  source fields, env vars, validation, and redaction safety.
 
 ## [0.3.0] - 2026-05-07
 

@@ -13,6 +13,9 @@ Tokens stay in environment variables such as `GITHUB_TOKEN`, `GITLAB_TOKEN`,
 `JIRA_TOKEN`, `LINEAR_API_KEY`, and `SHIPLOG_REDACT_KEY`; they do not belong in
 `shiplog.toml`.
 
+For every supported section and field, see
+[docs/config-reference.md](../../docs/config-reference.md).
+
 Configs with `profile = "manager"` or `profile = "public"` validate without a
 redaction key, but `doctor`, collection, rendering, and bundle creation require
 `SHIPLOG_REDACT_KEY` or the configured redaction key environment variable.
