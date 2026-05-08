@@ -44,6 +44,7 @@ First-run and setup:
 - `shiplog config validate`
 - `shiplog config explain`
 - `shiplog config migrate`
+- `shiplog journal add`
 
 Collection and source coverage:
 

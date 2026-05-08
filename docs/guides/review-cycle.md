@@ -56,6 +56,24 @@ The default packet starts with coverage and gaps, then uses a receipt-summary
 appendix so you can see what was included, skipped, or incomplete before
 refining claims. Use `--appendix full` when you want the dense audit appendix.
 
+## Capture missing work
+
+Use `journal add` when the important work was not captured by code, ticket, or
+review APIs. It appends to `manual_events.yaml` so the next `collect multi`
+includes the evidence through the normal manual source path.
+
+```bash
+shiplog journal add \
+  --date 2026-05-08 \
+  --title "Debugged customer import incident" \
+  --workstream "Customer Reliability" \
+  --impact "Prevented repeat failure before the next import window" \
+  --receipt ticket=https://example.invalid/ticket/OPS-123
+```
+
+Keep journal entries factual. Use them to capture evidence, context, receipts,
+and impact prompts while the details are still fresh.
+
 ## Manager-safe packet
 
 The internal profile can render without a redaction key. Manager and public
@@ -131,6 +149,7 @@ fixtures:
 
 ```bash
 shiplog init --source json --source manual --dry-run
+shiplog journal add --events ./manual_events.yaml --date 2026-05-08 --title "Documented fixture rehearsal" --workstream "Docs" --dry-run
 shiplog config validate --config examples/configs/local-git-json-manual.toml
 shiplog config explain --config examples/configs/local-git-json-manual.toml
 shiplog doctor --config examples/configs/local-git-json-manual.toml
