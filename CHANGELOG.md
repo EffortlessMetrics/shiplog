@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added `shiplog identify jira` and `shiplog identify linear` to print provider
+  account/user IDs for source configuration.
+
 ### Documentation
 
 - Documented v0.3.0 release verification and updated the current-state record

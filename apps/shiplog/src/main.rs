@@ -9,7 +9,7 @@ use chrono::{DateTime, Datelike, Duration, Months, NaiveDate, Utc};
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use regex::{Regex, RegexBuilder};
 use reqwest::blocking::Client;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use shiplog_cache::ApiCache;
 use shiplog_engine::{ConflictResolution, Engine, WorkstreamSource};
 use shiplog_ids::{EventId, WorkstreamId};
@@ -78,6 +78,12 @@ enum Command {
     Cache {
         #[command(subcommand)]
         cmd: CacheCommand,
+    },
+
+    /// Discover provider identities for source configuration.
+    Identify {
+        #[command(subcommand)]
+        cmd: IdentifyCommand,
     },
 
     /// Collect events from a source and generate workstream suggestions.
@@ -353,6 +359,29 @@ enum CacheCommand {
 
     /// Remove expired, old, or all cache entries without deleting outputs.
     Clean(CacheCleanArgs),
+}
+
+#[derive(Subcommand, Debug)]
+enum IdentifyCommand {
+    /// Show the authenticated Jira account ID for use with `--user`.
+    Jira {
+        /// Jira instance hostname or URL.
+        #[arg(long)]
+        instance: String,
+        /// Jira Basic Auth username/email. Defaults to JIRA_AUTH_USER.
+        #[arg(long)]
+        auth_user: Option<String>,
+        /// Jira API token. Defaults to JIRA_TOKEN.
+        #[arg(long)]
+        token: Option<String>,
+    },
+
+    /// Show the authenticated Linear user ID for use with `--user-id`.
+    Linear {
+        /// Linear API key. Defaults to LINEAR_API_KEY.
+        #[arg(long)]
+        api_key: Option<String>,
+    },
 }
 
 #[derive(Args, Debug)]
@@ -2995,6 +3024,45 @@ struct GitlabAuthenticatedUser {
     username: String,
 }
 
+#[derive(Deserialize)]
+struct JiraAuthenticatedUser {
+    #[serde(rename = "accountId")]
+    account_id: String,
+    #[serde(rename = "displayName")]
+    display_name: Option<String>,
+    #[serde(rename = "emailAddress")]
+    email_address: Option<String>,
+    active: Option<bool>,
+}
+
+#[derive(Serialize)]
+struct LinearGraphqlRequest<'a> {
+    query: &'a str,
+}
+
+#[derive(Deserialize)]
+struct LinearGraphqlResponse<T> {
+    data: Option<T>,
+    errors: Option<Vec<LinearGraphqlError>>,
+}
+
+#[derive(Deserialize)]
+struct LinearGraphqlError {
+    message: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct LinearViewerData {
+    viewer: LinearViewer,
+}
+
+#[derive(Deserialize)]
+struct LinearViewer {
+    id: String,
+    name: Option<String>,
+    email: Option<String>,
+}
+
 fn discover_github_user(api_base: &str, token: Option<&str>) -> Result<String> {
     let token = token
         .map(ToOwned::to_owned)
@@ -3064,6 +3132,193 @@ fn discover_gitlab_user(instance: &str, token: Option<&str>) -> Result<String> {
     }
 
     Ok(user.username)
+}
+
+fn run_identify_jira(
+    instance: String,
+    auth_user: Option<String>,
+    token: Option<String>,
+) -> Result<()> {
+    let auth_user = arg_or_env(
+        "Jira identity lookup",
+        "--auth-user",
+        auth_user.as_deref(),
+        "JIRA_AUTH_USER",
+    )?;
+    let token = arg_or_env(
+        "Jira identity lookup",
+        "--token",
+        token.as_deref(),
+        "JIRA_TOKEN",
+    )?;
+
+    let identity = identify_jira_user(&instance, &auth_user, &token)?;
+    println!("Jira identity:");
+    println!("- account_id: {}", identity.account_id);
+    println!(
+        "- display_name: {}",
+        optional_output(identity.display_name.as_deref())
+    );
+    println!(
+        "- email: {}",
+        optional_output(identity.email_address.as_deref())
+    );
+    if let Some(active) = identity.active {
+        println!("- active: {active}");
+    }
+    println!();
+    println!("Use for collection:");
+    println!(
+        "  shiplog collect jira --instance {} --user {} --auth-user {}",
+        normalize_jira_instance(&instance)?,
+        identity.account_id,
+        auth_user
+    );
+    Ok(())
+}
+
+fn run_identify_linear(api_key: Option<String>) -> Result<()> {
+    let api_key = arg_or_env(
+        "Linear identity lookup",
+        "--api-key",
+        api_key.as_deref(),
+        "LINEAR_API_KEY",
+    )?;
+
+    let viewer = identify_linear_user(&api_key)?;
+    println!("Linear identity:");
+    println!("- user_id: {}", viewer.id);
+    println!("- name: {}", optional_output(viewer.name.as_deref()));
+    println!("- email: {}", optional_output(viewer.email.as_deref()));
+    println!();
+    println!("Use for collection:");
+    println!("  shiplog collect linear --user-id {}", viewer.id);
+    Ok(())
+}
+
+fn identify_jira_user(
+    instance: &str,
+    auth_user: &str,
+    token: &str,
+) -> Result<JiraAuthenticatedUser> {
+    let client = identity_client()?;
+    let url = jira_api_url(instance, "/myself")?;
+    let resp = client
+        .get(&url)
+        .header("Accept", "application/json")
+        .basic_auth(auth_user, Some(token))
+        .send()
+        .with_context(|| format!("GET {url}"))?;
+
+    let status = resp.status();
+    if !status.is_success() {
+        let body = resp.text().unwrap_or_default();
+        if status.as_u16() == 401 {
+            anyhow::bail!("Could not identify Jira user: Jira authentication failed");
+        }
+        anyhow::bail!("Could not identify Jira user: Jira API error {status}: {body}");
+    }
+
+    let user = resp
+        .json::<JiraAuthenticatedUser>()
+        .with_context(|| format!("parse Jira authenticated user from {url}"))?;
+    if user.account_id.trim().is_empty() {
+        anyhow::bail!("Could not identify Jira user: response had empty accountId");
+    }
+    Ok(user)
+}
+
+fn identify_linear_user(api_key: &str) -> Result<LinearViewer> {
+    let client = identity_client()?;
+    let query = "query Me { viewer { id name email } }";
+    let resp = client
+        .post(linear_graphql_url())
+        .header("Accept", "application/json")
+        .header("Content-Type", "application/json")
+        .header("Authorization", api_key)
+        .json(&LinearGraphqlRequest { query })
+        .send()
+        .context("POST Linear viewer query")?;
+
+    let status = resp.status();
+    if !status.is_success() {
+        let body = resp.text().unwrap_or_default();
+        if status.as_u16() == 401 {
+            anyhow::bail!("Could not identify Linear user: Linear authentication failed");
+        }
+        anyhow::bail!("Could not identify Linear user: Linear API error {status}: {body}");
+    }
+
+    let response = resp
+        .json::<LinearGraphqlResponse<LinearViewerData>>()
+        .context("parse Linear viewer response")?;
+    if let Some(errors) = response.errors {
+        anyhow::bail!(
+            "Could not identify Linear user: Linear GraphQL errors: {}",
+            errors
+                .iter()
+                .map(|error| error.message.as_deref().unwrap_or("unknown error"))
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
+    }
+    let viewer = response
+        .data
+        .ok_or_else(|| anyhow::anyhow!("Could not identify Linear user: response missing data"))?
+        .viewer;
+    if viewer.id.trim().is_empty() {
+        anyhow::bail!("Could not identify Linear user: response had empty viewer id");
+    }
+    Ok(viewer)
+}
+
+fn arg_or_env(
+    command: &str,
+    arg_name: &str,
+    explicit: Option<&str>,
+    env_name: &str,
+) -> Result<String> {
+    optional_config_string(explicit)
+        .or_else(|| {
+            std::env::var(env_name)
+                .ok()
+                .and_then(|value| non_empty_string(Some(&value)))
+        })
+        .ok_or_else(|| anyhow::anyhow!("{command} requires {arg_name} or {env_name}"))
+}
+
+fn optional_output(value: Option<&str>) -> &str {
+    value
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or("-")
+}
+
+fn jira_api_url(instance: &str, path: &str) -> Result<String> {
+    Ok(format!(
+        "https://{}/rest/api/3{}",
+        normalize_jira_instance(instance)?,
+        path
+    ))
+}
+
+fn normalize_jira_instance(instance: &str) -> Result<String> {
+    if instance.trim().is_empty() {
+        anyhow::bail!("Jira instance cannot be empty");
+    }
+
+    if instance.contains("://") {
+        return reqwest::Url::parse(instance)
+            .ok()
+            .and_then(|url| url.host_str().map(ToOwned::to_owned))
+            .ok_or_else(|| anyhow::anyhow!("Invalid Jira instance URL: {instance}"));
+    }
+
+    Ok(instance.trim().trim_end_matches('/').to_string())
+}
+
+fn linear_graphql_url() -> &'static str {
+    "https://api.linear.app/graphql"
 }
 
 fn gitlab_api_base(instance: &str) -> Result<String> {
@@ -3644,6 +3899,15 @@ fn main() -> Result<()> {
             CacheCommand::Stats(args) => run_cache_stats(args)?,
             CacheCommand::Inspect(args) => run_cache_inspect(args)?,
             CacheCommand::Clean(args) => run_cache_clean(args)?,
+        },
+
+        Command::Identify { cmd } => match cmd {
+            IdentifyCommand::Jira {
+                instance,
+                auth_user,
+                token,
+            } => run_identify_jira(instance, auth_user, token)?,
+            IdentifyCommand::Linear { api_key } => run_identify_linear(api_key)?,
         },
 
         Command::Collect {
@@ -6769,6 +7033,31 @@ mod tests {
             err.to_string().contains("parse GitLab MR state"),
             "unexpected error: {err:?}"
         );
+    }
+
+    #[test]
+    fn normalize_jira_instance_accepts_host_and_url() {
+        assert_eq!(
+            normalize_jira_instance("company.atlassian.net").unwrap(),
+            "company.atlassian.net"
+        );
+        assert_eq!(
+            normalize_jira_instance("https://company.atlassian.net").unwrap(),
+            "company.atlassian.net"
+        );
+    }
+
+    #[test]
+    fn jira_api_url_uses_myself_endpoint_base() {
+        assert_eq!(
+            jira_api_url("https://company.atlassian.net", "/myself").unwrap(),
+            "https://company.atlassian.net/rest/api/3/myself"
+        );
+    }
+
+    #[test]
+    fn linear_graphql_url_matches_adapter_endpoint() {
+        assert_eq!(linear_graphql_url(), "https://api.linear.app/graphql");
     }
 
     #[test]

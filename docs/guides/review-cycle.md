@@ -94,6 +94,14 @@ Partial source failures are recorded in the merged coverage manifest. A missing
 Jira token, for example, should show up as a skipped source or warning rather
 than a silent hole in the packet.
 
+If you do not know the exact Jira account ID or Linear user ID to configure,
+ask the provider API before collecting:
+
+```bash
+shiplog identify jira --instance company.atlassian.net --auth-user you@example.com
+shiplog identify linear
+```
+
 ## Troubleshooting source gaps
 
 Use these commands when the packet looks smaller than expected:

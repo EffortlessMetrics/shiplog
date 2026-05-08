@@ -170,6 +170,78 @@ fn collect_json_help_shows_flags() {
     );
 }
 
+#[test]
+fn identify_help_shows_sources() {
+    let out = shiplog_bin()
+        .args(["identify", "--help"])
+        .output()
+        .expect("failed to run shiplog identify --help");
+
+    assert!(out.status.success());
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(stdout.contains("jira"), "identify help should list jira");
+    assert!(
+        stdout.contains("linear"),
+        "identify help should list linear"
+    );
+}
+
+#[test]
+fn identify_jira_missing_auth_user_fails_before_network() {
+    let out = shiplog_bin()
+        .env_remove("JIRA_AUTH_USER")
+        .env_remove("JIRA_TOKEN")
+        .args(["identify", "jira", "--instance", "company.atlassian.net"])
+        .output()
+        .expect("failed to run shiplog identify jira");
+
+    assert!(!out.status.success());
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        stderr.contains("--auth-user") && stderr.contains("JIRA_AUTH_USER"),
+        "stderr should explain Jira auth user discovery, got: {stderr}"
+    );
+}
+
+#[test]
+fn identify_jira_missing_token_fails_before_network() {
+    let out = shiplog_bin()
+        .env_remove("JIRA_TOKEN")
+        .args([
+            "identify",
+            "jira",
+            "--instance",
+            "company.atlassian.net",
+            "--auth-user",
+            "you@example.com",
+        ])
+        .output()
+        .expect("failed to run shiplog identify jira");
+
+    assert!(!out.status.success());
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        stderr.contains("--token") && stderr.contains("JIRA_TOKEN"),
+        "stderr should explain Jira token discovery, got: {stderr}"
+    );
+}
+
+#[test]
+fn identify_linear_missing_api_key_fails_before_network() {
+    let out = shiplog_bin()
+        .env_remove("LINEAR_API_KEY")
+        .args(["identify", "linear"])
+        .output()
+        .expect("failed to run shiplog identify linear");
+
+    assert!(!out.status.success());
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        stderr.contains("--api-key") && stderr.contains("LINEAR_API_KEY"),
+        "stderr should explain Linear API key discovery, got: {stderr}"
+    );
+}
+
 // ── 2. version flag ────────────────────────────────────────────────────────
 
 #[test]
