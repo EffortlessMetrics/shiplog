@@ -34,6 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   parsing and event conversion.
 - Added a documented Codecov baseline and first informational project coverage
   target.
+- Added the first documented mutation baseline for the `shiplog-coverage` trust
+  surface.
 
 ## [0.3.0] - 2026-05-07
 
