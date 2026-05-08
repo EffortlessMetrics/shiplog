@@ -1585,7 +1585,7 @@ user = "octo"
         .success()
         .stdout(predicate::str::contains("Collected configured sources:"))
         .stdout(predicate::str::contains("- json: success"))
-        .stdout(predicate::str::contains("- manual: success"))
+        .stdout(predicate::str::contains("- manual: success, 1 event"))
         .stdout(predicate::str::contains("Merged and wrote:"));
 
     let run_dir = first_run_dir(&out);
@@ -1600,6 +1600,24 @@ user = "octo"
     );
 
     let packet = std::fs::read_to_string(run_dir.join("packet.md")).unwrap();
+    assert_packet_opens_with_coverage(&packet);
+    assert_packet_uses_summary_appendix(&packet);
+    assert!(
+        packet.contains("Included:\n- GitHub: 3 events\n- Manual: 1 event\n"),
+        "configured multi packet should summarize successful sources in Coverage and Limits"
+    );
+    assert!(
+        packet.contains("Skipped:\n- None recorded\n"),
+        "configured multi packet should make absence of skipped sources explicit"
+    );
+    assert!(
+        packet.contains("Known gaps:\n- Manual events are user-provided\n"),
+        "configured multi packet should flag manual evidence as user-provided"
+    );
+    assert!(
+        packet.contains("- **Sources:** GitHub, Manual"),
+        "configured multi packet should carry merged source details"
+    );
     assert!(
         packet.contains("Payments ledger rewrite"),
         "configured multi packet should include JSON fixture evidence"
@@ -1611,6 +1629,10 @@ user = "octo"
     assert!(
         packet.contains("workstreams.suggested.yaml"),
         "configured multi packet should name generated workstream suggestions"
+    );
+    assert!(
+        packet.contains("**Suggested claim prompts**"),
+        "configured multi packet should include claim prompts for review-cycle writing"
     );
     assert!(
         packet.contains("bundle.manifest.json"),

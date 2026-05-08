@@ -4056,7 +4056,10 @@ fn main() -> Result<()> {
 
                     println!("Collected configured sources:");
                     for (name, ingest) in &configured.successes {
-                        println!("- {name}: success, {} events", ingest.events.len());
+                        println!(
+                            "- {name}: success, {}",
+                            event_count_phrase(ingest.events.len())
+                        );
                     }
                     for failure in &configured.failures {
                         println!("- {}: skipped, {}", failure.name, failure.error);
@@ -5768,6 +5771,11 @@ fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+fn event_count_phrase(count: usize) -> String {
+    let noun = if count == 1 { "event" } else { "events" };
+    format!("{count} {noun}")
 }
 
 fn print_outputs(outputs: &shiplog_engine::RunOutputs, ws_source: WorkstreamSource) {
