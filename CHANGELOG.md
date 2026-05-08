@@ -40,6 +40,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   contract.
 - Recorded the `shiplog-ports` mutation scan result as a no-target trait
   contract crate.
+- Added the documented mutation baseline for the `shiplog-schema` persisted
+  data contract.
 
 ## [0.3.0] - 2026-05-07
 
