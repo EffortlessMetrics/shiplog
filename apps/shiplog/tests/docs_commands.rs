@@ -85,6 +85,7 @@ fn documented_help_commands_stay_available() {
         .stdout(predicate::str::contains("intake"))
         .stdout(predicate::str::contains("collect"))
         .stdout(predicate::str::contains("render"))
+        .stdout(predicate::str::contains("share"))
         .stdout(predicate::str::contains("workstreams"))
         .stdout(predicate::str::contains("journal"))
         .stdout(predicate::str::contains("cache"))
@@ -122,6 +123,21 @@ fn documented_help_commands_stay_available() {
         .stdout(predicate::str::contains("--receipt-limit"))
         .stdout(predicate::str::contains("--appendix"))
         .stdout(predicate::str::contains("--redact-key"));
+
+    shiplog_cmd()
+        .args(["share", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("manager"))
+        .stdout(predicate::str::contains("public"));
+
+    shiplog_cmd()
+        .args(["share", "manager", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--latest"))
+        .stdout(predicate::str::contains("--redact-key"))
+        .stdout(predicate::str::contains("--zip"));
 
     shiplog_cmd()
         .args(["review", "--help"])

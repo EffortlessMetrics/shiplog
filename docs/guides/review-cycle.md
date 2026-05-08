@@ -133,7 +133,7 @@ to rerun.
 
 ```bash
 export SHIPLOG_REDACT_KEY=replace-with-a-stable-secret
-shiplog render --latest --redact-key "$SHIPLOG_REDACT_KEY" --zip --bundle-profile manager
+shiplog share manager --latest --zip
 ```
 
 Use the same stable key across review cycles if you want deterministic aliases
@@ -145,7 +145,7 @@ Public packets are the most restrictive share profile. Use them only when you
 expect the output to leave your organization.
 
 ```bash
-shiplog render --latest --redact-key "$SHIPLOG_REDACT_KEY" --zip --bundle-profile public
+shiplog share public --latest --zip
 ```
 
 Review the public packet before sharing it. Redaction protects identifiers and

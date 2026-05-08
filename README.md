@@ -223,6 +223,7 @@ shiplog render --latest
 shiplog render --latest --receipt-limit 3 --appendix summary
 shiplog render --latest --mode scaffold
 shiplog render --latest --mode receipts
+shiplog share manager --latest
 shiplog open packet --latest
 ```
 
@@ -242,6 +243,11 @@ omitted. Receipts mode defaults to a full audit appendix. Use
 The default CLI packet opens with `Coverage and Limits`, listing completed
 sources with event counts, skipped configured sources, and known gaps before the
 summary, workstreams, receipts, and detailed coverage metadata.
+
+For shareable outputs, `shiplog share manager --latest` and
+`shiplog share public --latest` are convenience wrappers over the same
+fail-closed redaction and bundle-profile behavior as `render`. They require
+`--redact-key` or `SHIPLOG_REDACT_KEY`.
 
 ## Output layout
 
@@ -272,6 +278,7 @@ out/<run_id>/
 | `collect <source>` | Fetch events from a source and generate packet artifacts |
 | `collect multi` | Collect enabled sources from `shiplog.toml` into one merged packet |
 | `render` | Re-render packet from existing ledger and workstreams |
+| `share manager/public` | Render a manager- or public-safe packet with fail-closed redaction |
 | `refresh <source>` | Re-fetch events while preserving curated `workstreams.yaml` |
 | `workstreams list/validate/create/rename/move/split/receipts/receipt/delete` | Inspect, validate, and safely edit workstream curation |
 | `runs list/show/compare` | Discover runs, inspect their artifacts, and compare source/workstream changes |
