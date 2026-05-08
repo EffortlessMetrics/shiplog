@@ -4029,11 +4029,57 @@ fn render_public_profile_with_key_writes_public_packet() {
         .success()
         .stdout(predicate::str::contains("Rendered"));
 
+    let public_packet_path = tmp.path().join("run_fixture/profiles/public/packet.md");
     assert!(
-        tmp.path()
-            .join("run_fixture/profiles/public/packet.md")
-            .exists(),
+        public_packet_path.exists(),
         "public packet should be written when a redaction key is provided"
+    );
+
+    let public_packet = std::fs::read_to_string(public_packet_path).unwrap();
+    assert!(
+        public_packet.contains("omitted by appendix settings"),
+        "public profile should default to a low-density packet with explicit omission notes"
+    );
+    assert!(
+        !public_packet.contains("## Appendix:"),
+        "public profile should omit the receipt appendix by default"
+    );
+}
+
+#[test]
+fn render_public_profile_receipt_options_override_profile_defaults() {
+    let tmp = TempDir::new().unwrap();
+    collect_json_into(tmp.path());
+
+    shiplog_cmd()
+        .args([
+            "render",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+            "--bundle-profile",
+            "public",
+            "--redact-key",
+            "stable-test-key",
+            "--receipt-limit",
+            "3",
+            "--appendix",
+            "summary",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Rendered"));
+
+    let public_packet =
+        std::fs::read_to_string(tmp.path().join("run_fixture/profiles/public/packet.md")).unwrap();
+    assert!(
+        public_packet.contains("## Appendix: Receipt Summary"),
+        "explicit --appendix should override public profile defaults"
+    );
+    assert!(
+        !public_packet.contains("## Appendix: All Receipts"),
+        "summary appendix override should not render full receipt detail"
     );
 }
 
