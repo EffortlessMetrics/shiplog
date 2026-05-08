@@ -78,7 +78,9 @@ cargo run -p shiplog -- <subcommand>
 shiplog follows a **collect → curate → render** workflow. You fetch raw events once, organize them into workstreams, then re-render as many times as you like without hitting the API again.
 
 For a practical review-cycle walkthrough, see
-[docs/guides/review-cycle.md](docs/guides/review-cycle.md).
+[docs/guides/review-cycle.md](docs/guides/review-cycle.md). For the complete
+`shiplog.toml` field reference, see
+[docs/config-reference.md](docs/config-reference.md).
 
 ### 0. Initialize local files
 
@@ -96,8 +98,10 @@ Use `shiplog config validate` for a token-free config and local path check,
 and `shiplog config explain` to see resolved defaults and enabled source
 settings. New configs include `[shiplog] config_version = 1`; run
 `shiplog config migrate` on older configs to add that metadata without changing
-source settings. Copy-adaptable configs live in `examples/configs/`, including
-a fixture-safe local config that can be checked with:
+source settings. The full config reference is in
+[docs/config-reference.md](docs/config-reference.md). Copy-adaptable configs
+live in `examples/configs/`, including a fixture-safe local config that can be
+checked with:
 
 ```bash
 shiplog config validate --config examples/configs/local-git-json-manual.toml

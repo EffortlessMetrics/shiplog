@@ -18,6 +18,65 @@ fn example_config(name: &str) -> PathBuf {
 }
 
 #[test]
+fn config_reference_documents_current_surface() {
+    let doc_path = repo_root().join("docs/config-reference.md");
+    let doc = std::fs::read_to_string(&doc_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", doc_path.display()));
+
+    for needle in [
+        "shiplog config validate --config shiplog.toml",
+        "shiplog config explain --config shiplog.toml",
+        "shiplog doctor --config shiplog.toml",
+        "[shiplog]",
+        "config_version = 1",
+        "implicit v1",
+        "[defaults]",
+        "defaults.out",
+        "defaults.window",
+        "last-6-months",
+        "last-quarter",
+        "year:2025",
+        "internal",
+        "manager",
+        "public",
+        "[sources.github]",
+        "me = false",
+        "GITHUB_TOKEN",
+        "api_base",
+        "no_details",
+        "[sources.gitlab]",
+        "GITLAB_TOKEN",
+        "opened",
+        "merged",
+        "closed",
+        "[sources.jira]",
+        "auth_user_env",
+        "JIRA_TOKEN",
+        "assignee JQL value",
+        "[sources.linear]",
+        "user_id",
+        "LINEAR_API_KEY",
+        "backlog",
+        "cancelled",
+        "[sources.git]",
+        "include_merges",
+        "[sources.json]",
+        "coverage",
+        "[sources.manual]",
+        "manual_events.yaml",
+        "[redaction]",
+        "SHIPLOG_REDACT_KEY",
+        "config validate",
+        "doctor",
+    ] {
+        assert!(
+            doc.contains(needle),
+            "config reference should mention {needle:?}"
+        );
+    }
+}
+
+#[test]
 fn documented_help_commands_stay_available() {
     shiplog_cmd()
         .arg("--help")

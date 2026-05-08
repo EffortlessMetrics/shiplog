@@ -87,6 +87,9 @@ shiplog doctor --config shiplog.toml
 shiplog collect multi --config shiplog.toml --last-6-months
 ```
 
+For source fields, defaults, env vars, and versioning rules, see
+[docs/config-reference.md](../config-reference.md).
+
 Partial source failures are recorded in the merged coverage manifest. A missing
 Jira token, for example, should show up as a skipped source or warning rather
 than a silent hole in the packet.
