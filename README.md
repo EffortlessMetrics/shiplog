@@ -75,10 +75,19 @@ cargo run -p shiplog -- <subcommand>
 
 ## Quick start
 
-shiplog follows a **collect → curate → render** workflow. For review-deadline
-use, `shiplog intake` gives a best-effort fast path that creates starter local
-files when needed, collects usable configured sources, records skipped sources,
-renders a packet, runs review inspection, and prints next commands.
+If the review form is already open, start here:
+
+```bash
+cargo install shiplog
+shiplog intake --last-6-months --explain
+shiplog open packet --latest
+```
+
+`shiplog intake` is the best-effort rescue path: it creates starter local files
+when needed, collects usable configured sources, records skipped sources,
+renders a packet, runs review inspection, and prints next commands. The
+underlying workflow is still **collect → curate → render** when you want more
+control.
 
 For a practical review-cycle walkthrough, see
 [docs/guides/review-cycle.md](docs/guides/review-cycle.md). For the complete
@@ -88,7 +97,7 @@ For a practical review-cycle walkthrough, see
 ### 0. Fast review intake
 
 ```bash
-shiplog intake --last-6-months
+shiplog intake --last-6-months --explain
 shiplog open packet --latest
 ```
 
@@ -96,9 +105,10 @@ Use this when you need a packet now. It uses `shiplog.toml` if present, creates
 a minimal starter config if missing, skips unusable sources without hiding them,
 and writes the packet, ledger, coverage manifest, workstream file, and bundle
 manifest as soon as at least one source succeeds. It ends with a readiness
-summary: what worked, what needs attention, and the next commands to run. Add
-`--source github --source jira` to limit the intake, `--explain` to print source
-decisions and setup repair hints, or `--no-open` to print paths only.
+summary: what worked, what needs attention, and the next commands to run.
+`--explain` prints source decisions and setup repair hints. Add
+`--source github --source jira` to limit the intake, or `--no-open` to print
+paths only.
 
 ### 1. Initialize local files
 
