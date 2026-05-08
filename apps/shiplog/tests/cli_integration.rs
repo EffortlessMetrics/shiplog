@@ -2602,11 +2602,19 @@ fn intake_explain_reports_source_decisions_for_rescue_config() {
         .stdout(predicate::str::contains(
             "- GitHub: skipped, GITHUB_TOKEN not found",
         ))
+        .stdout(predicate::str::contains("Fix:"))
+        .stdout(predicate::str::contains("export GITHUB_TOKEN=..."))
         .stdout(predicate::str::contains(
             "- Local git: skipped, current directory is not a git repo",
         ))
         .stdout(predicate::str::contains(
+            "Run intake from a git repository root.",
+        ))
+        .stdout(predicate::str::contains(
             "- Manual: included, manual_events.yaml found",
+        ))
+        .stdout(predicate::str::contains(
+            "Use `shiplog journal add` to capture missing context without editing YAML.",
         ));
 }
 
@@ -2756,8 +2764,17 @@ status = "done"
         .stdout(predicate::str::contains(
             "- Jira: skipped, missing JIRA_TOKEN",
         ))
+        .stdout(predicate::str::contains("export JIRA_TOKEN=..."))
+        .stdout(predicate::str::contains(
+            "shiplog identify jira --auth-user <email>",
+        ))
         .stdout(predicate::str::contains(
             "- Linear: skipped, missing LINEAR_API_KEY",
+        ))
+        .stdout(predicate::str::contains("export LINEAR_API_KEY=..."))
+        .stdout(predicate::str::contains("shiplog identify linear"))
+        .stdout(predicate::str::contains(
+            "Retry with `shiplog intake --last-6-months --explain`.",
         ));
 }
 

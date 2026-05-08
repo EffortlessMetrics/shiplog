@@ -33,7 +33,8 @@ shiplog intake --last-6-months --explain
 ```
 
 That prints why each source was included or skipped, such as a missing token,
-missing local git repo, or fixture files that were found.
+missing local git repo, or fixture files that were found, and includes repair
+hints without printing token values.
 
 For a more deliberate setup pass, initialize local scaffolding, check setup,
 then collect enabled sources from `shiplog.toml`:
