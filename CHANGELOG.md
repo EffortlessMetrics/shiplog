@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added `shiplog identify jira` and `shiplog identify linear` to print provider
   account/user IDs for source configuration.
+- Added `scripts/verify-release.sh` to repeat public post-release verification
+  for GitHub assets, checksums, crates.io install, and binary smoke checks.
 
 ### Documentation
 
