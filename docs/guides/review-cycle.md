@@ -61,6 +61,7 @@ for common changes.
 
 ```bash
 shiplog review --latest
+shiplog review fixups --latest
 shiplog workstreams list --run latest
 shiplog workstreams rename --run latest --from "acme/platform" --to "Platform Reliability"
 shiplog workstreams move --run latest --event <event_id> --to "Platform Reliability"
@@ -72,6 +73,11 @@ shiplog render --latest --receipt-limit 3 --appendix summary
 
 The scaffold mode gives prompts and evidence anchors. It does not write your
 performance narrative for you.
+
+Use `shiplog review fixups --latest` when you only want the top curation
+actions as existing commands. It is read-only and ranks setup repair,
+workstream validation, outcome notes, receipt inspection, and broad-bucket
+splits without scoring performance.
 
 ## Weekly upkeep
 
@@ -180,6 +186,7 @@ Use these commands when the packet looks smaller than expected:
 shiplog doctor
 shiplog review --latest
 shiplog review weekly
+shiplog review fixups --latest
 shiplog review --latest --strict
 shiplog runs show --run latest
 shiplog runs compare --from review-2025-h2 --to latest

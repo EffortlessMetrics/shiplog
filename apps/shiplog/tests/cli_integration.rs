@@ -4,14 +4,14 @@ use assert_cmd::Command;
 use chrono::{Duration, NaiveDate, TimeZone, Utc};
 use predicates::prelude::*;
 use shiplog_cache::ApiCache;
-use shiplog_ids::{EventId, RunId};
+use shiplog_ids::{EventId, RunId, WorkstreamId};
 use shiplog_schema::coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow};
 use shiplog_schema::event::{
     Actor, EventEnvelope, EventKind, EventPayload, Link, ManualDate, ManualEvent, ManualEventType,
     ManualEventsFile, PullRequestEvent, PullRequestState, RepoRef, RepoVisibility, ReviewEvent,
     SourceRef, SourceSystem,
 };
-use shiplog_schema::workstream::WorkstreamsFile;
+use shiplog_schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
 use std::path::{Path, PathBuf};
 use std::process::Command as StdCommand;
 use tempfile::TempDir;
@@ -672,6 +672,7 @@ fn review_help_shows_run_options() {
         .assert()
         .success()
         .stdout(predicate::str::contains("weekly"))
+        .stdout(predicate::str::contains("fixups"))
         .stdout(predicate::str::contains("--out"))
         .stdout(predicate::str::contains("--latest"))
         .stdout(predicate::str::contains("--run"))
@@ -688,6 +689,17 @@ fn review_weekly_help_shows_run_options() {
         .stdout(predicate::str::contains("--latest"))
         .stdout(predicate::str::contains("--run"))
         .stdout(predicate::str::contains("--strict"));
+}
+
+#[test]
+fn review_fixups_help_shows_run_options() {
+    shiplog_cmd()
+        .args(["review", "fixups", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--out"))
+        .stdout(predicate::str::contains("--latest"))
+        .stdout(predicate::str::contains("--run"));
 }
 
 #[test]
@@ -3178,6 +3190,23 @@ user = "octo"
     assert!(weekly_stdout.contains("[warning] missing-source"));
     assert!(weekly_stdout.contains("shiplog doctor"));
 
+    let fixups_assert = shiplog_cmd()
+        .args([
+            "review",
+            "fixups",
+            "--out",
+            out.to_str().unwrap(),
+            "--latest",
+        ])
+        .assert()
+        .success();
+    let fixups_stdout = String::from_utf8(fixups_assert.get_output().stdout.clone()).unwrap();
+
+    assert!(fixups_stdout.contains("Review fixups:"));
+    assert!(fixups_stdout.contains("Repair skipped source setup"));
+    assert!(fixups_stdout.contains("Skipped sources: JSON."));
+    assert!(fixups_stdout.contains("shiplog doctor"));
+
     assert_eq!(
         packet_before,
         std::fs::read_to_string(run_dir.join("packet.md")).unwrap()
@@ -3263,6 +3292,126 @@ fn review_suggests_journal_add_for_broad_workstream_without_manual_context() {
     assert_eq!(
         coverage_before,
         std::fs::read_to_string(run_dir.join("coverage.manifest.json")).unwrap()
+    );
+}
+
+#[test]
+fn review_fixups_ranks_curation_actions_without_writing_artifacts() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+    let events_path = tmp.path().join("ledger.events.jsonl");
+    let coverage_path = tmp.path().join("coverage.manifest.json");
+    let events: Vec<_> = (0..10)
+        .map(|idx| {
+            fixture_pr_event(
+                SourceSystem::Github,
+                "acme/platform",
+                300 + idx as u64,
+                &format!("Platform reliability fix {}", idx + 1),
+                2 + idx,
+            )
+        })
+        .collect();
+    let coverage = CoverageManifest {
+        run_id: RunId("run_fixups".into()),
+        generated_at: fixture_time(20),
+        user: "octo".into(),
+        window: fixture_window(),
+        mode: "fixture".into(),
+        sources: vec!["github".into()],
+        slices: vec![CoverageSlice {
+            window: fixture_window(),
+            query: "github fixture".into(),
+            total_count: events.len() as u64,
+            fetched: events.len() as u64,
+            incomplete_results: Some(false),
+            notes: vec!["fixture".into()],
+        }],
+        warnings: vec![],
+        completeness: Completeness::Complete,
+    };
+    write_events_jsonl(&events_path, &events);
+    write_coverage_manifest(&coverage_path, &coverage);
+
+    shiplog_cmd()
+        .args([
+            "collect",
+            "--out",
+            out.to_str().unwrap(),
+            "json",
+            "--events",
+            events_path.to_str().unwrap(),
+            "--coverage",
+            coverage_path.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    let run_dir = out.join("run_fixups");
+    let curated = WorkstreamsFile {
+        version: 1,
+        generated_at: fixture_time(21),
+        workstreams: vec![Workstream {
+            id: WorkstreamId::from_parts(["repo", "acme/platform"]),
+            title: "acme/platform".into(),
+            summary: None,
+            tags: vec!["repo".into()],
+            stats: WorkstreamStats {
+                pull_requests: events.len(),
+                reviews: 0,
+                manual_events: 0,
+            },
+            events: events.iter().map(|event| event.id.clone()).collect(),
+            receipts: vec![],
+        }],
+    };
+    std::fs::write(
+        run_dir.join("workstreams.yaml"),
+        serde_yaml::to_string(&curated).unwrap(),
+    )
+    .unwrap();
+    let packet_before = std::fs::read_to_string(run_dir.join("packet.md")).unwrap();
+    let coverage_before = std::fs::read_to_string(run_dir.join("coverage.manifest.json")).unwrap();
+    let workstreams_before = std::fs::read_to_string(run_dir.join("workstreams.yaml")).unwrap();
+
+    let assert = shiplog_cmd()
+        .args([
+            "review",
+            "fixups",
+            "--out",
+            out.to_str().unwrap(),
+            "--latest",
+        ])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
+
+    assert!(stdout.contains("Review fixups: run_fixups"));
+    assert!(stdout.contains("Top fixups:"));
+    assert!(stdout.contains("1. Add outcome context for \"acme/platform\""));
+    assert!(stdout.contains("shiplog journal add --date"));
+    assert!(stdout.contains("--title \"Outcome note for acme/platform\""));
+    assert!(stdout.contains("2. Select anchor receipts for \"acme/platform\""));
+    assert!(stdout.contains("shiplog workstreams receipts --out"));
+    assert!(stdout.contains("--run run_fixups --workstream \"acme/platform\""));
+    assert!(stdout.contains("3. Split broad workstream \"acme/platform\""));
+    assert!(stdout.contains("shiplog workstreams split --out"));
+    assert!(stdout.contains("--run run_fixups --from \"acme/platform\""));
+    assert!(stdout.contains("shiplog review --out"));
+    assert!(stdout.contains("shiplog render --out"));
+    assert!(stdout.contains("--mode scaffold"));
+
+    assert_eq!(
+        packet_before,
+        std::fs::read_to_string(run_dir.join("packet.md")).unwrap()
+    );
+    assert_eq!(
+        coverage_before,
+        std::fs::read_to_string(run_dir.join("coverage.manifest.json")).unwrap()
+    );
+    assert_eq!(
+        workstreams_before,
+        std::fs::read_to_string(run_dir.join("workstreams.yaml")).unwrap()
     );
 }
 
