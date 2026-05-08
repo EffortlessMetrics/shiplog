@@ -17,7 +17,7 @@ Performance reviews ask "what did you ship?" shiplog answers that question with 
 
 **Coverage-first.** shiplog tracks what it queried and what might be incomplete. The coverage manifest documents API query windows, pagination limits hit, and gaps -- so you know exactly what the packet does and does not cover.
 
-**Safe sharing.** Three deterministic redaction profiles (internal, manager, public) let you share packets at the right level of detail. Same key + same input = same aliases across runs, powered by HMAC-SHA256.
+**Safe sharing.** Three deterministic redaction profiles (internal, manager, public) let you share packets at the right level of detail. Same key + same input = same aliases across runs, powered by keyed SHA-256.
 
 shiplog is not an analytics dashboard. It is not AI-generated narrative. It produces evidence you curate, evidence anchors you can cite, and claim prompts you answer in your own voice.
 
@@ -32,7 +32,7 @@ shiplog is not an analytics dashboard. It is not AI-generated narrative. It prod
 - 🔍 **Multi-source ingestion** — GitHub API, GitLab API, Jira API, Linear API, local git commits, canonical JSONL, and manual YAML events
 - 📊 **Automatic workstream clustering** — repo-based by default, optional LLM-assisted semantic grouping
 - ✍️ **Human-authored review scaffolds** — per-workstream evidence anchors and claim prompts without generated narrative
-- 🔒 **Deterministic HMAC-SHA256 redaction** — three profiles (internal / manager / public) with stable aliases
+- 🔒 **Deterministic keyed SHA-256 redaction** — three profiles (internal / manager / public) with stable aliases
 - ✅ **Coverage-first design** — every claim backed by receipts; gaps explicitly flagged in the coverage manifest
 - 📦 **Zip bundling with checksums** — SHA256 manifest for integrity verification
 - 🏗️ **Module-first clean architecture** — public crates for contracts, trust surfaces, adapters, and optional dependency boundaries
@@ -368,7 +368,7 @@ Generate redacted packets by providing a key:
 shiplog render --latest --redact-key my-stable-secret
 ```
 
-The key drives deterministic HMAC-SHA256 aliasing. Same key + same input = same aliases across runs.
+The key drives deterministic keyed SHA-256 aliasing. Same key + same input = same aliases across runs.
 
 | Field | Internal | Manager | Public |
 |-------|----------|---------|--------|
@@ -458,7 +458,7 @@ external contract. Adapters depend on ports and schema, never the reverse.
 | `shiplog-merge` | Multi-source merge helpers used by the engine |
 | `shiplog-cluster-llm` | Optional LLM-assisted semantic clustering |
 | `shiplog-team` | Team aggregation support |
-| `shiplog-redact` | Deterministic HMAC-SHA256 redaction across three profiles |
+| `shiplog-redact` | Deterministic keyed SHA-256 redaction across three profiles |
 | `shiplog-render-md` | Markdown packet renderer |
 | `shiplog-render-json` | JSON output renderer |
 | `shiplog-bundle` | Zip archives with SHA256 checksum manifests |

@@ -27,6 +27,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   names.
 - Fixed the packet file-artifacts section so it lists generated run artifacts
   instead of the manual-event input file.
+- Fixed public redaction so provider-specific source opaque IDs are stripped
+  along with source URLs.
+- Corrected redaction docs and package metadata to describe keyed SHA-256
+  aliasing instead of HMAC.
 
 ### Testing
 
@@ -42,6 +46,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   contract crate.
 - Added the documented mutation baseline for the `shiplog-schema` persisted
   data contract.
+- Added the documented mutation baseline for the `shiplog-redact` privacy trust
+  surface.
 
 ## [0.3.0] - 2026-05-07
 
@@ -164,7 +170,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Redaction System** (`shiplog-redact`):
   - Three redaction profiles: `internal`, `manager`, `public`
-  - Deterministic HMAC-based aliasing for repo names and workstream titles
+  - Deterministic keyed hash aliasing for repo names and workstream titles
   - Per-field redaction rules:
     - Public: strips titles, URLs, paths, descriptions
     - Manager: keeps titles/repos but removes sensitive details

@@ -10,7 +10,7 @@ readme = "README.md"
 documentation = "https://docs.rs/shiplog-redact"
 repository.workspace = true
 homepage.workspace = true
-keywords = ["redaction", "hmac", "privacy", "anonymization", "deterministic"]
+keywords = ["redaction", "privacy", "anonymization", "deterministic", "sharing"]
 categories = ["development-tools", "text-processing"]
 
 [dependencies]
