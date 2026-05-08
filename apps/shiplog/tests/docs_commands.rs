@@ -297,6 +297,22 @@ fn review_cycle_fixture_commands_execute_without_network() {
 
     shiplog_cmd()
         .args([
+            "runs",
+            "compare",
+            "--out",
+            out.to_str().unwrap(),
+            "--from",
+            "latest",
+            "--to",
+            "latest",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Compare:"))
+        .stdout(predicate::str::contains("Events:"));
+
+    shiplog_cmd()
+        .args([
             "workstreams",
             "list",
             "--out",

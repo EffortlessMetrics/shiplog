@@ -139,6 +139,7 @@ shiplog doctor
 shiplog review --latest
 shiplog review --latest --strict
 shiplog runs show --run latest
+shiplog runs compare --from review-2025-h2 --to latest
 shiplog cache stats --out ./out
 shiplog cache inspect --out ./out --source github
 shiplog cache clean --out ./out --source github --older-than 30d --dry-run

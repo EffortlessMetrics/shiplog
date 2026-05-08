@@ -619,13 +619,14 @@ fn workstreams_help_shows_list_and_validate() {
 }
 
 #[test]
-fn runs_help_shows_list_and_show() {
+fn runs_help_shows_list_show_and_compare() {
     shiplog_cmd()
         .args(["runs", "--help"])
         .assert()
         .success()
         .stdout(predicate::str::contains("list"))
-        .stdout(predicate::str::contains("show"));
+        .stdout(predicate::str::contains("show"))
+        .stdout(predicate::str::contains("compare"));
 }
 
 #[test]
@@ -2556,6 +2557,95 @@ fn runs_show_latest_shows_run_details() {
         .stdout(predicate::str::contains("Events: 3"))
         .stdout(predicate::str::contains("Gaps: 0"))
         .stdout(predicate::str::contains("Warnings: none"));
+}
+
+#[test]
+fn runs_compare_summarizes_cross_run_changes_without_writing_artifacts() {
+    let tmp = TempDir::new().unwrap();
+    let from_run = collect_json_into(tmp.path());
+    let from_packet_before = std::fs::read_to_string(from_run.join("packet.md")).unwrap();
+    let from_coverage_before =
+        std::fs::read_to_string(from_run.join("coverage.manifest.json")).unwrap();
+
+    let events_path = tmp.path().join("all-source.events.jsonl");
+    let coverage_path = tmp.path().join("all-source.coverage.json");
+    let events = all_source_fixture_events();
+    let coverage = all_source_fixture_coverage();
+    write_events_jsonl(&events_path, &events);
+    write_coverage_manifest(&coverage_path, &coverage);
+
+    shiplog_cmd()
+        .args([
+            "collect",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "json",
+            "--events",
+            events_path.to_str().unwrap(),
+            "--coverage",
+            coverage_path.to_str().unwrap(),
+            "--user",
+            "octo",
+            "--window-label",
+            "all-source fixture",
+        ])
+        .assert()
+        .success();
+
+    let to_run = tmp.path().join("run_all_sources");
+    let to_packet_before = std::fs::read_to_string(to_run.join("packet.md")).unwrap();
+    let to_coverage_before =
+        std::fs::read_to_string(to_run.join("coverage.manifest.json")).unwrap();
+
+    let assert = shiplog_cmd()
+        .args([
+            "runs",
+            "compare",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--from",
+            "run_fixture",
+            "--to",
+            "run_all_sources",
+        ])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
+
+    assert!(stdout.contains("Compare: run_fixture -> run_all_sources"));
+    assert!(stdout.contains("Events:"));
+    assert!(stdout.contains("- from: 3"));
+    assert!(stdout.contains("- to: 8"));
+    assert!(stdout.contains("- delta: +5"));
+    assert!(stdout.contains("Sources:"));
+    assert!(stdout.contains("- Added: Local git, GitLab, Jira, JSON, Linear, Manual"));
+    assert!(stdout.contains("- Continued: GitHub"));
+    assert!(stdout.contains("Workstreams:"));
+    assert!(stdout.contains("- Added:"));
+    assert!(stdout.contains("acme/release-tools"));
+    assert!(stdout.contains("- Removed:"));
+    assert!(stdout.contains("acme/platform"));
+    assert!(stdout.contains("Coverage:"));
+    assert!(stdout.contains("- from: Complete, gaps: 0"));
+    assert!(stdout.contains("- to: Complete, gaps: 0"));
+    assert!(stdout.contains("shiplog review --run run_all_sources"));
+
+    assert_eq!(
+        from_packet_before,
+        std::fs::read_to_string(from_run.join("packet.md")).unwrap()
+    );
+    assert_eq!(
+        from_coverage_before,
+        std::fs::read_to_string(from_run.join("coverage.manifest.json")).unwrap()
+    );
+    assert_eq!(
+        to_packet_before,
+        std::fs::read_to_string(to_run.join("packet.md")).unwrap()
+    );
+    assert_eq!(
+        to_coverage_before,
+        std::fs::read_to_string(to_run.join("coverage.manifest.json")).unwrap()
+    );
 }
 
 #[test]

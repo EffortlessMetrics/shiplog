@@ -131,6 +131,12 @@ is used. If one configured source fails but another source succeeds, shiplog
 still writes the merged packet and records the skipped source in coverage
 warnings.
 
+For repeat review cycles, compare a prior run with the latest one:
+
+```bash
+shiplog runs compare --from review-2025-h2 --to latest
+```
+
 For a single-source run, call the source directly:
 
 ```bash
@@ -235,7 +241,7 @@ out/<run_id>/
 | `render` | Re-render packet from existing ledger and workstreams |
 | `refresh <source>` | Re-fetch events while preserving curated `workstreams.yaml` |
 | `workstreams list/validate/create/rename/move/split/receipts/receipt/delete` | Inspect, validate, and safely edit workstream curation |
-| `runs list/show` | Discover runs and inspect their sources, event counts, coverage, and artifact paths |
+| `runs list/show/compare` | Discover runs, inspect their artifacts, and compare source/workstream changes |
 | `review` | Inspect a run for skipped sources, weak curation, evidence debt, and next steps |
 | `open packet/workstreams/out` | Open run artifacts, or print their paths when opening is unavailable |
 | `merge` | Merge existing run directories into one packet |
