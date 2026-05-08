@@ -341,10 +341,12 @@ fn review_cycle_fixture_commands_execute_without_network() {
             "--config",
             local_config.to_str().unwrap(),
             "--no-open",
+            "--explain",
         ])
         .assert()
         .success()
         .stdout(predicate::str::contains("Review intake complete."))
+        .stdout(predicate::str::contains("Source decisions:"))
         .stdout(predicate::str::contains("Evidence debt:"))
         .stdout(predicate::str::contains("Open later:"));
 
