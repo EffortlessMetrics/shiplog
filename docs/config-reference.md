@@ -18,6 +18,16 @@ settings, enum values, and local paths without requiring provider tokens.
 adds readiness checks such as token presence, identity discovery, output
 writability, and redaction-key safety.
 
+For Jira and Linear identity values, run:
+
+```bash
+shiplog identify jira --instance company.atlassian.net --auth-user you@example.com
+shiplog identify linear
+```
+
+The Jira helper prints the authenticated Atlassian account ID for `user`. The
+Linear helper prints the authenticated Linear user ID for `user_id`.
+
 ## Versioning
 
 New configs include explicit version metadata:
@@ -179,6 +189,9 @@ Required when enabled: `user` and `instance`.
 If neither `auth_user` nor `auth_user_env` is set, Jira authentication defaults
 to the assignee value in `user`.
 
+Use `shiplog identify jira --instance <host> --auth-user <email>` to print the
+authenticated account ID when you do not know the right `user` value.
+
 ### Linear
 
 ```toml
@@ -202,6 +215,9 @@ Required when enabled: `user_id`.
 | `throttle_ms` | Delay between provider requests. |
 | `cache_dir` | Source cache directory. |
 | `no_cache` | Disable this source cache when true. |
+
+Use `shiplog identify linear` to print the authenticated user ID when you do
+not know the right `user_id` value.
 
 ### Local Git
 

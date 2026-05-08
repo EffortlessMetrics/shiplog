@@ -85,7 +85,8 @@ fn documented_help_commands_stay_available() {
         .stdout(predicate::str::contains("collect"))
         .stdout(predicate::str::contains("render"))
         .stdout(predicate::str::contains("workstreams"))
-        .stdout(predicate::str::contains("cache"));
+        .stdout(predicate::str::contains("cache"))
+        .stdout(predicate::str::contains("identify"));
 
     shiplog_cmd()
         .args(["collect", "--help"])
@@ -127,6 +128,28 @@ fn documented_help_commands_stay_available() {
         .stdout(predicate::str::contains("stats"))
         .stdout(predicate::str::contains("inspect"))
         .stdout(predicate::str::contains("clean"));
+
+    shiplog_cmd()
+        .args(["identify", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("jira"))
+        .stdout(predicate::str::contains("linear"));
+
+    shiplog_cmd()
+        .args(["identify", "jira", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--instance"))
+        .stdout(predicate::str::contains("--auth-user"))
+        .stdout(predicate::str::contains("JIRA_TOKEN"));
+
+    shiplog_cmd()
+        .args(["identify", "linear", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--api-key"))
+        .stdout(predicate::str::contains("LINEAR_API_KEY"));
 }
 
 #[test]

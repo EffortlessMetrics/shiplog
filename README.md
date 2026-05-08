@@ -209,6 +209,7 @@ out/<run_id>/
 | `doctor` | Check local config, enabled sources, token env vars, and output safety |
 | `config validate/explain/migrate` | Validate `shiplog.toml`, print resolved settings, or add version metadata |
 | `cache stats/inspect/clean` | Inspect and safely clean source API cache databases |
+| `identify jira/linear` | Print provider user IDs for source configuration |
 | `collect <source>` | Fetch events from a source and generate packet artifacts |
 | `collect multi` | Collect enabled sources from `shiplog.toml` into one merged packet |
 | `render` | Re-render packet from existing ledger and workstreams |
@@ -239,6 +240,10 @@ curation.
 GitHub and GitLab accept `--me` to infer the source user from `--token`,
 `GITHUB_TOKEN`, or `GITLAB_TOKEN`. Use `--user <login>` when you want to pin the
 identity explicitly.
+
+Jira and Linear use provider-specific IDs. Use `shiplog identify jira` or
+`shiplog identify linear` to print the ID you should put in `shiplog.toml` or
+pass to `collect`.
 
 ### Sources
 
@@ -307,6 +312,10 @@ shiplog collect gitlab \
   --out ./out
 
 # Collect assigned issues from Jira
+shiplog identify jira \
+  --instance company.atlassian.net \
+  --auth-user you@example.com
+
 shiplog collect jira \
   --user 712020:account-id \
   --auth-user you@example.com \
@@ -316,6 +325,8 @@ shiplog collect jira \
   --out ./out
 
 # Collect assigned issues from Linear
+shiplog identify linear
+
 shiplog collect linear \
   --user-id 9cfb482a-81e3-4154-b5b9-2c805e70a02d \
   --last-quarter \
