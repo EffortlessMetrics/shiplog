@@ -89,6 +89,10 @@ Rendering and sharing:
 - `shiplog render --appendix full|summary|none`
 - `shiplog render --bundle-profile manager|public`
 
+Default CLI packets open with `Coverage and Limits`, then summary,
+workstreams, receipts, a receipt-summary appendix, and file artifacts. Receipts
+mode keeps the full audit appendix by default.
+
 Manager and public profiles fail closed unless `--redact-key` or the configured
 redaction-key environment variable is provided.
 
