@@ -61,6 +61,38 @@ fn collect_json_into(tmp: &Path) -> PathBuf {
     tmp.join("run_fixture")
 }
 
+fn assert_packet_opens_with_coverage(packet: &str) {
+    assert!(
+        packet.trim_start().starts_with("## Coverage and Limits"),
+        "packet should put coverage and gaps first"
+    );
+
+    let coverage = packet
+        .find("## Coverage and Limits")
+        .expect("packet should include coverage section");
+    let summary = packet
+        .find("# Summary")
+        .expect("packet should include summary section");
+    let workstreams = packet
+        .find("## Workstreams")
+        .expect("packet should include workstreams section");
+    assert!(
+        coverage < summary && summary < workstreams,
+        "packet section order should be coverage, summary, then workstreams"
+    );
+}
+
+fn assert_packet_uses_summary_appendix(packet: &str) {
+    assert!(
+        packet.contains("## Appendix: Receipt Summary"),
+        "packet mode should default to a summary appendix"
+    );
+    assert!(
+        !packet.contains("## Appendix: All Receipts"),
+        "packet mode should avoid replaying full receipt detail by default"
+    );
+}
+
 /// Run `collect manual` into `tmp` and return the run directory path.
 fn collect_manual_into(tmp: &Path) -> PathBuf {
     let manual_events = tmp.join("manual_events.yaml");
@@ -2971,7 +3003,7 @@ fn refresh_run_dir_latest_alias_on_collected_directory() {
 #[test]
 fn render_on_collected_directory() {
     let tmp = TempDir::new().unwrap();
-    let _run_dir = collect_json_into(tmp.path());
+    let run_dir = collect_json_into(tmp.path());
 
     shiplog_cmd()
         .args([
@@ -2989,6 +3021,19 @@ fn render_on_collected_directory() {
         tmp.path().join("run_fixture/packet.md").exists(),
         "packet.md should exist after render"
     );
+    let packet = std::fs::read_to_string(run_dir.join("packet.md")).unwrap();
+    assert_packet_opens_with_coverage(&packet);
+    assert_packet_uses_summary_appendix(&packet);
+}
+
+#[test]
+fn collect_json_writes_coverage_first_packet() {
+    let tmp = TempDir::new().unwrap();
+    let run_dir = collect_json_into(tmp.path());
+
+    let packet = std::fs::read_to_string(run_dir.join("packet.md")).unwrap();
+    assert_packet_opens_with_coverage(&packet);
+    assert_packet_uses_summary_appendix(&packet);
 }
 
 #[test]

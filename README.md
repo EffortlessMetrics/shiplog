@@ -182,9 +182,11 @@ generate manager and public profile packets. On remote shells, add
 and evidence anchors, or `--mode receipts` for a dense audit view.
 `--receipt-limit <N>` caps curated receipts shown in the main receipts section;
 `--receipt-limit 0` shows none there and leaves the detail to the appendix
-setting. `--appendix full|summary|none` controls appendix density.
-The packet coverage block lists completed sources with event counts, skipped
-configured sources, and known gaps before the detailed coverage metadata.
+setting. Packet mode defaults to a summary appendix; receipts mode defaults to a
+full audit appendix. Use `--appendix full|summary|none` to override the density.
+The default CLI packet opens with `Coverage and Limits`, listing completed
+sources with event counts, skipped configured sources, and known gaps before the
+summary, workstreams, receipts, and detailed coverage metadata.
 
 ## Output layout
 
