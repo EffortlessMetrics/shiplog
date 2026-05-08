@@ -145,6 +145,9 @@ The release proof scripts enforce both sides of the boundary:
 - `scripts/package-version-audit.sh` verifies workspace version alignment and
   normal workspace dependency requirements.
 - `scripts/package-proof.sh` runs both audits before package listing.
+- `scripts/verify-release.sh <version>` verifies the public GitHub release,
+  checksums, crates.io install, and current-platform release binary smoke after
+  publication.
 
 ## Release Posture
 

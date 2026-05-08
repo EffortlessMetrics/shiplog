@@ -123,6 +123,16 @@ shiplog-x86_64-pc-windows-msvc.exe render --help
 
 Both paths reported `shiplog 0.3.0`.
 
+Future releases can repeat the public verification path with:
+
+```bash
+scripts/verify-release.sh v0.3.0
+```
+
+The helper checks the GitHub release state, expected binary assets,
+`SHA256SUMS.txt`, crates.io install, installed-binary smoke, and the
+current-platform downloaded release asset.
+
 ## Follow-up Disposition
 
 Issue #61, `ci(windows): investigate windows-latest check failure`, was closed
