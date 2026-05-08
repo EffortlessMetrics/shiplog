@@ -25,6 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixed Jira search response deserialization for realistic REST payload field
   names.
+- Fixed the packet file-artifacts section so it lists generated run artifacts
+  instead of the manual-event input file.
 
 ### Testing
 

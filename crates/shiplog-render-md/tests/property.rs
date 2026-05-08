@@ -121,10 +121,13 @@ proptest! {
         };
         let out = render(&events, &workstreams, &coverage);
 
+        prop_assert!(out.contains("packet.md"));
         prop_assert!(out.contains("ledger.events.jsonl"));
         prop_assert!(out.contains("coverage.manifest.json"));
+        prop_assert!(out.contains("workstreams.suggested.yaml"));
         prop_assert!(out.contains("workstreams.yaml"));
-        prop_assert!(out.contains("manual_events.yaml"));
+        prop_assert!(out.contains("bundle.manifest.json"));
+        prop_assert!(!out.contains("manual_events.yaml"));
     }
 
     /// Rendering a single arbitrary event never panics and produces non-empty output.

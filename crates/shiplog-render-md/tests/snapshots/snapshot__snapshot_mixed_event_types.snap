@@ -74,7 +74,9 @@ Details:
 
 ## File Artifacts
 
+- `packet.md` (this review packet)
 - `ledger.events.jsonl` (canonical events)
 - `coverage.manifest.json` (completeness + slicing)
-- `workstreams.yaml` (editable clustering)
-- `manual_events.yaml` (non-GitHub work)
+- `workstreams.suggested.yaml` (auto-generated workstream suggestions)
+- `workstreams.yaml` (curated workstreams, created after edits)
+- `bundle.manifest.json` (artifact manifest and checksums)

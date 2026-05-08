@@ -827,10 +827,12 @@ fn render_appendix_summary(out: &mut String, workstreams: &WorkstreamsFile) {
 
 fn render_file_artifacts(out: &mut String) {
     out.push_str("## File Artifacts\n\n");
+    out.push_str("- `packet.md` (this review packet)\n");
     out.push_str("- `ledger.events.jsonl` (canonical events)\n");
     out.push_str("- `coverage.manifest.json` (completeness + slicing)\n");
-    out.push_str("- `workstreams.yaml` (editable clustering)\n");
-    out.push_str("- `manual_events.yaml` (non-GitHub work)\n");
+    out.push_str("- `workstreams.suggested.yaml` (auto-generated workstream suggestions)\n");
+    out.push_str("- `workstreams.yaml` (curated workstreams, created after edits)\n");
+    out.push_str("- `bundle.manifest.json` (artifact manifest and checksums)\n");
 }
 
 #[cfg(test)]

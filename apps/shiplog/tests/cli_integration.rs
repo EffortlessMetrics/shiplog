@@ -1576,6 +1576,18 @@ user = "octo"
         packet.contains("Manual incident follow-up"),
         "configured multi packet should include manual evidence"
     );
+    assert!(
+        packet.contains("workstreams.suggested.yaml"),
+        "configured multi packet should name generated workstream suggestions"
+    );
+    assert!(
+        packet.contains("bundle.manifest.json"),
+        "configured multi packet should name the generated bundle manifest"
+    );
+    assert!(
+        !packet.contains("manual_events.yaml"),
+        "configured multi packet should not list manual_events.yaml as a generated run artifact"
+    );
 
     let coverage = std::fs::read_to_string(run_dir.join("coverage.manifest.json")).unwrap();
     assert!(
