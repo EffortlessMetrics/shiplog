@@ -100,6 +100,33 @@ fn assert_packet_uses_summary_appendix(packet: &str) {
     );
 }
 
+fn assert_intake_artifacts(run_dir: &Path) {
+    for artifact in [
+        "packet.md",
+        "ledger.events.jsonl",
+        "coverage.manifest.json",
+        "workstreams.suggested.yaml",
+        "bundle.manifest.json",
+    ] {
+        assert!(
+            run_dir.join(artifact).exists(),
+            "golden intake run should write {artifact}"
+        );
+    }
+}
+
+fn assert_ledger_event_count(run_dir: &Path, expected: usize) {
+    let ledger = std::fs::read_to_string(run_dir.join("ledger.events.jsonl")).unwrap();
+    assert_eq!(
+        ledger
+            .lines()
+            .filter(|line| !line.trim().is_empty())
+            .count(),
+        expected,
+        "golden intake ledger should contain {expected} event(s)"
+    );
+}
+
 /// Run `collect manual` into `tmp` and return the run directory path.
 fn collect_manual_into(tmp: &Path) -> PathBuf {
     let manual_events = tmp.join("manual_events.yaml");
@@ -2567,6 +2594,228 @@ user = "octo"
     assert!(
         packet.contains("- GitHub: 3 events"),
         "intake packet should include successful configured sources"
+    );
+}
+
+#[test]
+fn golden_intake_manual_only_success_is_review_ready() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+    write_manual_events(&tmp.path().join("manual_events.yaml"));
+
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[defaults]
+window = "year:2025"
+
+[user]
+label = "octo"
+
+[sources.manual]
+enabled = true
+events = "./manual_events.yaml"
+user = "octo"
+"#,
+    )
+    .unwrap();
+
+    let assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args([
+            "intake",
+            "--out",
+            out.to_str().unwrap(),
+            "--config",
+            tmp.path().join("shiplog.toml").to_str().unwrap(),
+            "--year",
+            "2025",
+            "--no-open",
+            "--explain",
+        ])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
+
+    assert!(stdout.contains("Review intake complete."));
+    assert!(stdout.contains("- Manual: success, 1 event"));
+    assert!(stdout.contains("Skipped:\n- None"));
+    assert!(stdout.contains("Source decisions:"));
+    assert!(stdout.contains("- Manual: included, manual_events.yaml found"));
+    assert!(stdout.contains("Intake readiness:"));
+    assert!(stdout.contains("Packet readiness: Ready for review"));
+    assert!(stdout.contains("Needs attention:\n- None"));
+    assert!(stdout.contains("shiplog render --out"));
+    assert!(stdout.contains("--bundle-profile manager"));
+    assert!(stdout.contains("shiplog open packet --out"));
+
+    let run_dir = first_run_dir(&out);
+    assert_intake_artifacts(&run_dir);
+    assert_ledger_event_count(&run_dir, 1);
+
+    let packet = std::fs::read_to_string(run_dir.join("packet.md")).unwrap();
+    assert_packet_opens_with_coverage(&packet);
+    assert!(packet.contains("- Manual: 1 event"));
+    assert!(packet.contains("Skipped:\n- None recorded\n"));
+    assert!(packet.contains("Known gaps:\n- Manual events are user-provided\n"));
+    assert!(packet.contains("Manual incident follow-up"));
+
+    let coverage = std::fs::read_to_string(run_dir.join("coverage.manifest.json")).unwrap();
+    assert!(coverage.contains("\"Complete\""));
+    assert!(coverage.contains("\"manual\""));
+}
+
+#[test]
+fn golden_intake_all_source_fixture_surfaces_every_source_without_network() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+    let events_path = tmp.path().join("all-source.events.jsonl");
+    let coverage_path = tmp.path().join("all-source.coverage.json");
+    let events = all_source_fixture_events();
+    let coverage = all_source_fixture_coverage();
+    write_events_jsonl(&events_path, &events);
+    write_coverage_manifest(&coverage_path, &coverage);
+
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[defaults]
+window = "year:2025"
+include_reviews = true
+
+[user]
+label = "octo"
+
+[sources.json]
+enabled = true
+events = "./all-source.events.jsonl"
+coverage = "./all-source.coverage.json"
+"#,
+    )
+    .unwrap();
+
+    let assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args([
+            "intake",
+            "--out",
+            out.to_str().unwrap(),
+            "--config",
+            tmp.path().join("shiplog.toml").to_str().unwrap(),
+            "--year",
+            "2025",
+            "--no-open",
+        ])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
+
+    assert!(stdout.contains("Review intake complete."));
+    assert!(stdout.contains("- JSON: success, 8 events"));
+    assert!(stdout.contains("Skipped:\n- None"));
+    assert!(stdout.contains("Intake readiness:"));
+    assert!(stdout.contains("Good:"));
+    assert!(stdout.contains("- Packet rendered"));
+    assert!(stdout.contains("- Evidence ledger written"));
+    assert!(stdout.contains("- Coverage manifest written"));
+    assert!(stdout.contains("shiplog render --out"));
+    assert!(stdout.contains("shiplog open packet --out"));
+
+    let run_dir = first_run_dir(&out);
+    assert_intake_artifacts(&run_dir);
+    assert_ledger_event_count(&run_dir, 8);
+
+    let packet = std::fs::read_to_string(run_dir.join("packet.md")).unwrap();
+    assert_packet_opens_with_coverage(&packet);
+    assert_packet_uses_summary_appendix(&packet);
+
+    for expected in [
+        "- GitHub: 2 events",
+        "- GitLab: 1 event",
+        "- Jira: 1 event",
+        "- Linear: 1 event",
+        "- Local git: 1 event",
+        "- Manual: 1 event",
+        "- JSON import: 1 event",
+        "Skipped:\n- None recorded\n",
+        "Known gaps:\n- Manual events are user-provided\n",
+        "GitHub release automation",
+        "GitLab self-hosted deploy fix",
+        "Jira OPS-42 rollout checklist",
+        "Linear issue triage",
+        "Local git hotfix commit",
+        "Manual customer debugging note",
+        "Imported architecture decision",
+        "**Suggested claim prompts**",
+    ] {
+        assert!(
+            packet.contains(expected),
+            "golden all-source intake packet should contain {expected:?}"
+        );
+    }
+
+    let coverage = std::fs::read_to_string(run_dir.join("coverage.manifest.json")).unwrap();
+    for source in [
+        "\"github\"",
+        "\"gitlab\"",
+        "\"jira\"",
+        "\"linear\"",
+        "\"local_git\"",
+        "\"manual\"",
+        "\"json_import\"",
+    ] {
+        assert!(
+            coverage.contains(source),
+            "golden all-source intake coverage should preserve {source}"
+        );
+    }
+}
+
+#[test]
+fn golden_intake_manager_share_missing_key_fails_closed() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args(["intake", "--out", out.to_str().unwrap(), "--no-open"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Review intake complete."))
+        .stdout(predicate::str::contains("Packet readiness: Needs evidence"));
+
+    let run_dir = first_run_dir(&out);
+    assert_intake_artifacts(&run_dir);
+
+    shiplog_cmd()
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args([
+            "share",
+            "manager",
+            "--out",
+            out.to_str().unwrap(),
+            "--latest",
+        ])
+        .assert()
+        .failure()
+        .stderr(
+            predicate::str::contains("manager share requires --redact-key or SHIPLOG_REDACT_KEY")
+                .and(predicate::str::contains("shiplog share manager --latest")),
+        );
+
+    assert!(
+        !run_dir.join("profiles/manager/packet.md").exists(),
+        "manager share packet should not be written after intake without a key"
     );
 }
 
