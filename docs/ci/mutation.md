@@ -33,6 +33,7 @@ Recorded Tier 1 baselines:
 | `shiplog-ports` | `74d095d` | 0 | 0 | 0 | 0 | no mutation targets |
 | `shiplog-schema` | `77dc752` | 33 | 27 | 0 | 6 | clean baseline |
 | `shiplog-redact` | `812c45b` + policy cleanup | 35 | 26 | 0 | 9 | clean baseline |
+| `shiplog-bundle` | `f18b23d` + zip/hash cleanup | 22 | 21 | 0 | 1 | clean baseline |
 
 The local PowerShell receipts used:
 
@@ -43,6 +44,7 @@ cargo mutants -p shiplog-ids --timeout 600 --copy-target=false --output target/m
 cargo mutants -p shiplog-ports --timeout 600 --copy-target=false --output target/mutants/shiplog-ports-baseline
 cargo mutants -p shiplog-schema --timeout 600 --copy-target=false --output target/mutants/shiplog-schema-baseline
 cargo mutants -p shiplog-redact --timeout 600 --copy-target=false --output target/mutants/shiplog-redact-baseline-public-source
+cargo mutants -p shiplog-bundle --timeout 600 --copy-target=false --output target/mutants/shiplog-bundle-baseline-fixed
 ```
 
 `cargo-mutants` reported:
@@ -63,30 +65,35 @@ shiplog-schema:
 
 shiplog-redact:
 35 mutants tested in 2m: 26 caught, 9 unviable
+
+shiplog-bundle:
+22 mutants tested in 2m: 21 caught, 1 unviable
 ```
 
 The generated `missed.txt` files for `shiplog-coverage`, `shiplog-ids`,
-`shiplog-schema`, and `shiplog-redact` were empty, so there were no surviving
-mutants for these crates in the baseline runs.
+`shiplog-schema`, `shiplog-redact`, and `shiplog-bundle` were empty, so there
+were no surviving mutants for these crates in the baseline runs.
 
 The first `shiplog-redact` scan found two equivalent survivors in batch-level
 `Internal` fast paths. The policy cleanup in this baseline removes those
 duplicate fast paths so profile semantics live at the single-event and
 single-workstream policy boundary; the clean rerun is the recorded baseline.
 
+The first `shiplog-bundle` scan found a timeout in the manual file-read loop
+used for checksum hashing. The baseline cleanup switched hashing to
+`read_to_end` and fixed a bundle safety gap where a zip output written inside
+the run directory could be included in the archive being written. The clean
+rerun is the recorded baseline.
+
 `shiplog-ports` is a trait contract crate. The current cargo-mutants scan found
 no mutable implementation targets; its behavior remains covered by trait-object,
 error-path, and composition tests rather than mutation survivor counts.
 
-## Next baseline candidates
+## Next baseline posture
 
-Record the remaining Tier 1 crates one at a time before enforcing mutation
-thresholds:
-
-- `shiplog-bundle`
-
-Keep each baseline as evidence, not a PR gate, until repeated scheduled runs
-show stable timings and stable survivor counts.
+The current Tier 1 baseline set is recorded. Keep these baselines as evidence,
+not a PR gate, until repeated scheduled runs show stable timings and stable
+survivor counts.
 
 ## Claim boundary
 

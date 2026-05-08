@@ -161,5 +161,5 @@ surface area: source adapter receipts, Jira/Linear identity help, config
 reference material, packet readability passes against real packets, and
 continued coverage/mutation baseline review. Documented mutation baselines now
 include `shiplog-coverage`, `shiplog-ids`, `shiplog-schema`, `shiplog-redact`,
-and a `shiplog-ports` no-target scan, recorded in
+`shiplog-bundle`, and a `shiplog-ports` no-target scan, recorded in
 [`docs/ci/mutation.md`](ci/mutation.md).

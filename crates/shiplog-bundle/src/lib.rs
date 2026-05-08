@@ -121,8 +121,16 @@ pub fn write_zip(out_dir: &Path, zip_path: &Path, profile: &BundleProfile) -> Re
     let opts: zip::write::FileOptions<()> = zip::write::FileOptions::default()
         .compression_method(zip::CompressionMethod::Deflated)
         .unix_permissions(0o644);
+    let zip_target = zip_path
+        .canonicalize()
+        .unwrap_or_else(|_| zip_path.to_path_buf());
 
     for path in walk_files(out_dir, profile)? {
+        let source = path.canonicalize().unwrap_or_else(|_| path.clone());
+        if source == zip_target {
+            continue;
+        }
+
         let rel = path
             .strip_prefix(out_dir)
             .unwrap_or(&path)
@@ -144,14 +152,10 @@ pub fn write_zip(out_dir: &Path, zip_path: &Path, profile: &BundleProfile) -> Re
 fn sha256_file(path: &Path) -> Result<String> {
     let mut f = File::open(path).with_context(|| format!("open {path:?} for hashing"))?;
     let mut h = Sha256::new();
-    let mut buf = [0u8; 8192];
-    loop {
-        let n = f.read(&mut buf).with_context(|| format!("read {path:?}"))?;
-        if n == 0 {
-            break;
-        }
-        h.update(&buf[..n]);
-    }
+    let mut bytes = Vec::new();
+    f.read_to_end(&mut bytes)
+        .with_context(|| format!("read {path:?}"))?;
+    h.update(&bytes);
     Ok(hex::encode(h.finalize()))
 }
 
