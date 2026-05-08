@@ -67,6 +67,7 @@ Curation and inspection:
 - `shiplog runs show`
 - `shiplog runs compare --from <run> --to <run>`
 - `shiplog review`
+- `shiplog review weekly`
 - `shiplog review --strict`
 - `shiplog open packet`
 - `shiplog open workstreams`

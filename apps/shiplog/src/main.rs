@@ -218,18 +218,10 @@ enum Command {
 
     /// Inspect a run and suggest review-prep next steps.
     Review {
-        /// Output directory containing run folders.
-        #[arg(long, default_value = "./out")]
-        out: PathBuf,
-        /// Run ID to review (uses most recent if not specified).
-        #[arg(long)]
-        run: Option<String>,
-        /// Review the most recent run explicitly.
-        #[arg(long)]
-        latest: bool,
-        /// Exit with an error when review finds evidence debt.
-        #[arg(long)]
-        strict: bool,
+        #[command(subcommand)]
+        cmd: Option<ReviewCommand>,
+        #[command(flatten)]
+        options: ReviewOptions,
     },
 
     /// Open generated artifacts for a run, or print their paths when unavailable.
@@ -348,6 +340,41 @@ enum Command {
         /// LLM API key (or set SHIPLOG_LLM_API_KEY).
         #[arg(long)]
         llm_api_key: Option<String>,
+    },
+}
+
+#[derive(Args, Debug)]
+struct ReviewOptions {
+    /// Output directory containing run folders.
+    #[arg(long, default_value = "./out")]
+    out: PathBuf,
+    /// Run ID to review (uses most recent if not specified).
+    #[arg(long)]
+    run: Option<String>,
+    /// Review the most recent run explicitly.
+    #[arg(long)]
+    latest: bool,
+    /// Exit with an error when review finds evidence debt.
+    #[arg(long)]
+    strict: bool,
+}
+
+#[derive(Subcommand, Debug)]
+enum ReviewCommand {
+    /// Inspect the latest weekly evidence and suggest next steps.
+    Weekly {
+        /// Output directory containing run folders.
+        #[arg(long, default_value = "./out")]
+        out: PathBuf,
+        /// Run ID to review (uses most recent if not specified).
+        #[arg(long)]
+        run: Option<String>,
+        /// Review the most recent run explicitly.
+        #[arg(long)]
+        latest: bool,
+        /// Exit with an error when review finds evidence debt.
+        #[arg(long)]
+        strict: bool,
     },
 }
 
@@ -5599,15 +5626,21 @@ fn main() -> Result<()> {
                 print_run_compare(&comparison);
             }
         },
-        Command::Review {
-            out,
-            run,
-            latest,
-            strict,
-        } => {
-            let run_dir = resolve_render_run_dir(&out, run, latest)?;
-            print_review(&run_dir, strict)?;
-        }
+        Command::Review { cmd, options } => match cmd {
+            Some(ReviewCommand::Weekly {
+                out,
+                run,
+                latest,
+                strict,
+            }) => {
+                let run_dir = resolve_render_run_dir(&out, run, latest)?;
+                print_weekly_review(&run_dir, strict)?;
+            }
+            None => {
+                let run_dir = resolve_render_run_dir(&options.out, options.run, options.latest)?;
+                print_review(&run_dir, options.strict)?;
+            }
+        },
         Command::Open { cmd } => match cmd {
             OpenCommand::Packet {
                 out,
@@ -7351,6 +7384,46 @@ impl EvidenceDebt {
         self.next_step = Some(next_step.into());
         self
     }
+}
+
+fn print_weekly_review(run_dir: &Path, strict: bool) -> Result<()> {
+    let ingest =
+        load_run_ingest(run_dir).with_context(|| format!("load run {}", run_dir.display()))?;
+    let coverage = ingest.coverage;
+    let events = ingest.events;
+    let skipped_sources = configured_source_skips(&coverage.warnings);
+    let counts = review_source_event_counts(&coverage.sources, &events, &skipped_sources);
+
+    println!("Weekly review: {}", coverage.run_id);
+    println!("Directory: {}", run_dir.display());
+    println!(
+        "Window: {}..{}",
+        coverage.window.since, coverage.window.until
+    );
+    println!();
+
+    println!("New evidence:");
+    println!("- total: {} event(s)", events.len());
+    if counts.is_empty() {
+        println!("- No included source events");
+    } else {
+        for (source, count) in counts {
+            println!("- {}: {} event(s)", display_source_label(&source), count);
+        }
+    }
+    if !skipped_sources.is_empty() {
+        println!("Source gaps:");
+        for skipped in &skipped_sources {
+            println!(
+                "- {}: {}",
+                display_source_label(&skipped.source),
+                skipped.reason
+            );
+        }
+    }
+    println!();
+
+    print_review(run_dir, strict)
 }
 
 fn print_review(run_dir: &Path, strict: bool) -> Result<()> {

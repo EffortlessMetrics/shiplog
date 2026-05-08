@@ -657,6 +657,19 @@ fn review_help_shows_run_options() {
         .args(["review", "--help"])
         .assert()
         .success()
+        .stdout(predicate::str::contains("weekly"))
+        .stdout(predicate::str::contains("--out"))
+        .stdout(predicate::str::contains("--latest"))
+        .stdout(predicate::str::contains("--run"))
+        .stdout(predicate::str::contains("--strict"));
+}
+
+#[test]
+fn review_weekly_help_shows_run_options() {
+    shiplog_cmd()
+        .args(["review", "weekly", "--help"])
+        .assert()
+        .success()
         .stdout(predicate::str::contains("--out"))
         .stdout(predicate::str::contains("--latest"))
         .stdout(predicate::str::contains("--run"))
@@ -2683,6 +2696,44 @@ fn review_latest_summarizes_run_attention_items_without_writing_artifacts() {
 }
 
 #[test]
+fn review_weekly_summarizes_latest_run_without_writing_artifacts() {
+    let tmp = TempDir::new().unwrap();
+    let run_dir = collect_json_into(tmp.path());
+    let packet_before = std::fs::read_to_string(run_dir.join("packet.md")).unwrap();
+    let coverage_before = std::fs::read_to_string(run_dir.join("coverage.manifest.json")).unwrap();
+
+    let assert = shiplog_cmd()
+        .args([
+            "review",
+            "weekly",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--latest",
+        ])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
+
+    assert!(stdout.contains("Weekly review: run_fixture"));
+    assert!(stdout.contains("New evidence:"));
+    assert!(stdout.contains("- total: 3 event(s)"));
+    assert!(stdout.contains("- GitHub: 3 event(s)"));
+    assert!(stdout.contains("Evidence debt:"));
+    assert!(stdout.contains("- No obvious evidence debt detected."));
+    assert!(stdout.contains("Next:"));
+    assert!(stdout.contains("shiplog render --run run_fixture --mode scaffold"));
+
+    assert_eq!(
+        packet_before,
+        std::fs::read_to_string(run_dir.join("packet.md")).unwrap()
+    );
+    assert_eq!(
+        coverage_before,
+        std::fs::read_to_string(run_dir.join("coverage.manifest.json")).unwrap()
+    );
+}
+
+#[test]
 fn review_latest_surfaces_skipped_sources_and_manual_context() {
     let tmp = TempDir::new().unwrap();
     let out = tmp.path().join("out");
@@ -2738,6 +2789,27 @@ user = "octo"
     assert!(stdout.contains("[warning] partial-coverage"));
     assert!(stdout.contains("[info] manual-context"));
     assert!(stdout.contains("shiplog doctor"));
+
+    let weekly_assert = shiplog_cmd()
+        .args([
+            "review",
+            "weekly",
+            "--out",
+            out.to_str().unwrap(),
+            "--latest",
+        ])
+        .assert()
+        .success();
+    let weekly_stdout = String::from_utf8(weekly_assert.get_output().stdout.clone()).unwrap();
+
+    assert!(weekly_stdout.contains("Weekly review:"));
+    assert!(weekly_stdout.contains("New evidence:"));
+    assert!(weekly_stdout.contains("- Manual: 1 event(s)"));
+    assert!(weekly_stdout.contains("Source gaps:"));
+    assert!(weekly_stdout.contains("- JSON:"));
+    assert!(weekly_stdout.contains("Evidence debt:"));
+    assert!(weekly_stdout.contains("[warning] missing-source"));
+    assert!(weekly_stdout.contains("shiplog doctor"));
 
     assert_eq!(
         packet_before,
