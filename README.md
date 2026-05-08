@@ -204,10 +204,14 @@ shiplog journal add \
   --impact "Prevented repeat failure before the next import window" \
   --receipt ticket=https://example.invalid/ticket/OPS-123
 shiplog journal list
+shiplog journal edit --id manual-2026-05-08-debugged-customer-import-incident \
+  --impact "Identified the bad upstream export shape before the next import window"
 ```
 
 `shiplog review` suggests a copy-paste `journal add` command when a broad
 workstream has implementation receipts but no manual outcome note.
+`journal edit` replaces only the fields you pass; repeated `--tag` or
+`--receipt` values replace those lists for the selected entry.
 `shiplog review fixups` narrows the output to the top read-only curation
 actions: add context, inspect receipt anchors, split broad buckets, validate
 workstreams, or repair skipped sources.
@@ -275,7 +279,7 @@ out/<run_id>/
 | `config validate/explain/migrate` | Validate `shiplog.toml`, print resolved settings, or add version metadata |
 | `cache stats/inspect/clean` | Inspect and safely clean source API cache databases |
 | `identify jira/linear` | Print provider user IDs for source configuration |
-| `journal add/list` | Append and inspect factual manual evidence in `manual_events.yaml` |
+| `journal add/list/edit` | Append, inspect, and correct factual manual evidence in `manual_events.yaml` |
 | `collect <source>` | Fetch events from a source and generate packet artifacts |
 | `collect multi` | Collect enabled sources from `shiplog.toml` into one merged packet |
 | `render` | Re-render packet from existing ledger and workstreams |

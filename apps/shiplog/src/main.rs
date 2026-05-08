@@ -468,6 +468,8 @@ enum JournalCommand {
     Add(JournalAddArgs),
     /// List manual evidence entries without editing manual_events.yaml.
     List(JournalListArgs),
+    /// Edit one manual evidence entry in manual_events.yaml.
+    Edit(JournalEditArgs),
 }
 
 #[derive(Args, Debug)]
@@ -524,6 +526,49 @@ struct JournalListArgs {
     /// Only show entries containing this tag. Repeat to require multiple tags.
     #[arg(long = "tag")]
     tags: Vec<String>,
+}
+
+#[derive(Args, Debug)]
+struct JournalEditArgs {
+    /// Manual events YAML file to update.
+    #[arg(long, default_value = MANUAL_EVENTS_FILENAME)]
+    events: PathBuf,
+    /// Existing manual event ID to edit.
+    #[arg(long)]
+    id: String,
+    /// Replace the manual event type.
+    #[arg(long = "type", value_enum)]
+    event_type: Option<JournalEventType>,
+    /// Replace with a single event date, in YYYY-MM-DD format.
+    #[arg(long)]
+    date: Option<NaiveDate>,
+    /// Replace with an inclusive start date for a multi-day event.
+    #[arg(long)]
+    start: Option<NaiveDate>,
+    /// Replace with an inclusive end date for a multi-day event.
+    #[arg(long)]
+    end: Option<NaiveDate>,
+    /// Replace the factual title.
+    #[arg(long)]
+    title: Option<String>,
+    /// Replace optional context. Pass an empty value to clear.
+    #[arg(long)]
+    description: Option<String>,
+    /// Replace the workstream. Pass an empty value to clear.
+    #[arg(long)]
+    workstream: Option<String>,
+    /// Replace tags. Repeat for multiple tags.
+    #[arg(long = "tag")]
+    tags: Vec<String>,
+    /// Replace receipt links as LABEL=URL. Repeat for multiple receipts.
+    #[arg(long = "receipt", value_name = "LABEL=URL")]
+    receipts: Vec<String>,
+    /// Replace the outcome or impact note. Pass an empty value to clear.
+    #[arg(long)]
+    impact: Option<String>,
+    /// Print the edited entry without writing.
+    #[arg(long)]
+    dry_run: bool,
 }
 
 #[derive(Clone, Copy, Debug, ValueEnum)]
@@ -2776,6 +2821,109 @@ fn run_journal_list(args: JournalListArgs) -> Result<()> {
     Ok(())
 }
 
+fn run_journal_edit(args: JournalEditArgs) -> Result<()> {
+    let id = required_text_arg("--id", &args.id)?;
+    validate_journal_id(&id)?;
+    let events_path = args.events.clone();
+
+    if !events_path.exists() {
+        anyhow::bail!("No manual events file found at {:?}", events_path);
+    }
+
+    let replacement_date = resolve_optional_journal_date(args.date, args.start, args.end)?;
+    if !journal_edit_has_changes(&args, replacement_date.as_ref()) {
+        anyhow::bail!(
+            "journal edit requires at least one field to update: --title, --type, --date, --start/--end, --workstream, --tag, --receipt, --description, or --impact"
+        );
+    }
+
+    let mut file = read_manual_events(&events_path)?;
+    if file.version != 1 {
+        anyhow::bail!(
+            "unsupported manual events version {}; expected 1",
+            file.version
+        );
+    }
+
+    let matching: Vec<usize> = file
+        .events
+        .iter()
+        .enumerate()
+        .filter_map(|(index, entry)| (entry.id == id).then_some(index))
+        .collect();
+    let [entry_index] = matching.as_slice() else {
+        if matching.is_empty() {
+            anyhow::bail!(
+                "manual event id {id:?} was not found in {}",
+                events_path.display()
+            );
+        }
+        anyhow::bail!(
+            "manual event id {id:?} appears more than once in {}; edit would be ambiguous",
+            events_path.display()
+        );
+    };
+
+    let dry_run = args.dry_run;
+    let updated = apply_journal_edit(file.events[*entry_index].clone(), args, replacement_date)?;
+    if dry_run {
+        print_journal_entry("Would edit manual event", &events_path, &updated);
+        return Ok(());
+    }
+
+    file.events[*entry_index] = updated.clone();
+    write_manual_events(&events_path, &file)?;
+
+    print_journal_entry("Edited manual event", &events_path, &updated);
+    println!("Next:");
+    println!("  shiplog collect multi --last-6-months");
+
+    Ok(())
+}
+
+fn apply_journal_edit(
+    mut entry: ManualEventEntry,
+    args: JournalEditArgs,
+    replacement_date: Option<ManualDate>,
+) -> Result<ManualEventEntry> {
+    if let Some(event_type) = args.event_type {
+        entry.event_type = event_type.into();
+    }
+    if let Some(date) = replacement_date {
+        entry.date = date;
+    }
+    if let Some(title) = args.title {
+        entry.title = required_text_arg("--title", &title)?;
+    }
+    if args.description.is_some() {
+        entry.description = optional_text_arg(args.description);
+    }
+    if args.workstream.is_some() {
+        entry.workstream = optional_text_arg(args.workstream);
+    }
+    if !args.tags.is_empty() {
+        entry.tags = normalize_journal_tags(args.tags)?;
+    }
+    if !args.receipts.is_empty() {
+        entry.receipts = parse_journal_receipts(&args.receipts)?;
+    }
+    if args.impact.is_some() {
+        entry.impact = optional_text_arg(args.impact);
+    }
+    Ok(entry)
+}
+
+fn journal_edit_has_changes(args: &JournalEditArgs, replacement_date: Option<&ManualDate>) -> bool {
+    args.event_type.is_some()
+        || replacement_date.is_some()
+        || args.title.is_some()
+        || args.description.is_some()
+        || args.workstream.is_some()
+        || !args.tags.is_empty()
+        || !args.receipts.is_empty()
+        || args.impact.is_some()
+}
+
 fn journal_entry_matches_filters(
     entry: &ManualEventEntry,
     workstream: Option<&str>,
@@ -2792,6 +2940,27 @@ fn journal_entry_matches_filters(
 
     tags.iter()
         .all(|tag| entry.tags.iter().any(|entry_tag| entry_tag == tag))
+}
+
+fn resolve_optional_journal_date(
+    date: Option<NaiveDate>,
+    start: Option<NaiveDate>,
+    end: Option<NaiveDate>,
+) -> Result<Option<ManualDate>> {
+    match (date, start, end) {
+        (None, None, None) => Ok(None),
+        (Some(date), None, None) => Ok(Some(ManualDate::Single(date))),
+        (None, Some(start), Some(end)) if start <= end => {
+            Ok(Some(ManualDate::Range { start, end }))
+        }
+        (None, Some(start), Some(end)) => {
+            anyhow::bail!("journal date range must satisfy --start {start} <= --end {end}")
+        }
+        (None, Some(_), None) | (None, None, Some(_)) => {
+            anyhow::bail!("journal edit date range requires both --start and --end")
+        }
+        _ => anyhow::bail!("use either --date or --start/--end, not both"),
+    }
 }
 
 fn resolve_journal_date(
@@ -5577,6 +5746,7 @@ fn main() -> Result<()> {
         Command::Journal { cmd } => match cmd {
             JournalCommand::Add(args) => run_journal_add(args)?,
             JournalCommand::List(args) => run_journal_list(args)?,
+            JournalCommand::Edit(args) => run_journal_edit(args)?,
         },
 
         Command::Collect {

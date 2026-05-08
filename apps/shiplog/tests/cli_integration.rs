@@ -614,7 +614,8 @@ fn journal_help_shows_add_options() {
         .assert()
         .success()
         .stdout(predicate::str::contains("add"))
-        .stdout(predicate::str::contains("list"));
+        .stdout(predicate::str::contains("list"))
+        .stdout(predicate::str::contains("edit"));
 
     shiplog_cmd()
         .args(["journal", "add", "--help"])
@@ -636,6 +637,19 @@ fn journal_help_shows_add_options() {
         .stdout(predicate::str::contains("--events"))
         .stdout(predicate::str::contains("--workstream"))
         .stdout(predicate::str::contains("--tag"));
+
+    shiplog_cmd()
+        .args(["journal", "edit", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--events"))
+        .stdout(predicate::str::contains("--id"))
+        .stdout(predicate::str::contains("--title"))
+        .stdout(predicate::str::contains("--workstream"))
+        .stdout(predicate::str::contains("--impact"))
+        .stdout(predicate::str::contains("--tag"))
+        .stdout(predicate::str::contains("--receipt"))
+        .stdout(predicate::str::contains("--dry-run"));
 }
 
 #[test]
@@ -1153,6 +1167,208 @@ fn journal_list_missing_file_fails_without_creating_it() {
     assert!(
         !manual_events.exists(),
         "journal list should not create a missing file"
+    );
+}
+
+#[test]
+fn journal_edit_updates_entry_and_preserves_unrelated_entries() {
+    let tmp = TempDir::new().unwrap();
+    let manual_events = tmp.path().join("manual_events.yaml");
+    seed_journal_list_events(&manual_events);
+    let before: ManualEventsFile =
+        serde_yaml::from_str(&std::fs::read_to_string(&manual_events).unwrap()).unwrap();
+    let unrelated_before = before
+        .events
+        .iter()
+        .find(|entry| entry.id == "manual-architecture-review")
+        .unwrap()
+        .clone();
+
+    shiplog_cmd()
+        .args([
+            "journal",
+            "edit",
+            "--events",
+            manual_events.to_str().unwrap(),
+            "--id",
+            "manual-customer-import",
+            "--type",
+            "incident",
+            "--start",
+            "2026-05-08",
+            "--end",
+            "2026-05-09",
+            "--title",
+            "Debugged customer import and wrote runbook",
+            "--workstream",
+            "Customer Reliability",
+            "--impact",
+            "Prevented repeat failure before the next import window",
+            "--tag",
+            "support",
+            "--tag",
+            "customer",
+            "--receipt",
+            "ticket=https://example.invalid/ticket/OPS-123",
+            "--receipt",
+            "runbook=https://example.invalid/runbooks/import",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "Edited manual event: manual-customer-import",
+        ))
+        .stdout(predicate::str::contains("Date: 2026-05-08..2026-05-09"))
+        .stdout(predicate::str::contains(
+            "Title: Debugged customer import and wrote runbook",
+        ))
+        .stdout(predicate::str::contains("shiplog collect multi"));
+
+    let file: ManualEventsFile =
+        serde_yaml::from_str(&std::fs::read_to_string(&manual_events).unwrap()).unwrap();
+    assert_eq!(file.events.len(), 2);
+    let edited = file
+        .events
+        .iter()
+        .find(|entry| entry.id == "manual-customer-import")
+        .unwrap();
+    assert_eq!(edited.event_type, ManualEventType::Incident);
+    assert_eq!(
+        edited.date,
+        ManualDate::Range {
+            start: NaiveDate::from_ymd_opt(2026, 5, 8).unwrap(),
+            end: NaiveDate::from_ymd_opt(2026, 5, 9).unwrap()
+        }
+    );
+    assert_eq!(edited.title, "Debugged customer import and wrote runbook");
+    assert_eq!(edited.workstream.as_deref(), Some("Customer Reliability"));
+    assert_eq!(
+        edited.impact.as_deref(),
+        Some("Prevented repeat failure before the next import window")
+    );
+    assert_eq!(edited.tags, vec!["support", "customer"]);
+    assert_eq!(edited.receipts.len(), 2);
+    assert_eq!(edited.receipts[1].label, "runbook");
+
+    let unrelated_after = file
+        .events
+        .iter()
+        .find(|entry| entry.id == "manual-architecture-review")
+        .unwrap();
+    assert_eq!(
+        unrelated_after, &unrelated_before,
+        "journal edit should preserve unrelated entries"
+    );
+}
+
+#[test]
+fn journal_edit_dry_run_does_not_write() {
+    let tmp = TempDir::new().unwrap();
+    let manual_events = tmp.path().join("manual_events.yaml");
+    seed_journal_list_events(&manual_events);
+    let before = std::fs::read_to_string(&manual_events).unwrap();
+
+    shiplog_cmd()
+        .args([
+            "journal",
+            "edit",
+            "--events",
+            manual_events.to_str().unwrap(),
+            "--id",
+            "manual-customer-import",
+            "--title",
+            "Dry run title",
+            "--dry-run",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "Would edit manual event: manual-customer-import",
+        ))
+        .stdout(predicate::str::contains("Title: Dry run title"));
+
+    let after = std::fs::read_to_string(&manual_events).unwrap();
+    assert_eq!(before, after, "journal edit --dry-run should not write");
+}
+
+#[test]
+fn journal_edit_rejects_invalid_date_without_writing() {
+    let tmp = TempDir::new().unwrap();
+    let manual_events = tmp.path().join("manual_events.yaml");
+    seed_journal_list_events(&manual_events);
+    let before = std::fs::read_to_string(&manual_events).unwrap();
+
+    shiplog_cmd()
+        .args([
+            "journal",
+            "edit",
+            "--events",
+            manual_events.to_str().unwrap(),
+            "--id",
+            "manual-customer-import",
+            "--start",
+            "2026-05-10",
+            "--end",
+            "2026-05-01",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "journal date range must satisfy --start 2026-05-10 <= --end 2026-05-01",
+        ));
+
+    let after = std::fs::read_to_string(&manual_events).unwrap();
+    assert_eq!(
+        before, after,
+        "journal edit should not write when date validation fails"
+    );
+}
+
+#[test]
+fn journal_edit_rejects_duplicate_ids_without_writing() {
+    let tmp = TempDir::new().unwrap();
+    let manual_events = tmp.path().join("manual_events.yaml");
+    std::fs::write(
+        &manual_events,
+        r#"version: 1
+generated_at: 2026-01-01T00:00:00Z
+events:
+  - id: duplicate
+    type: Note
+    date: 2026-05-08
+    title: First duplicate
+    tags: []
+    receipts: []
+  - id: duplicate
+    type: Note
+    date: 2026-05-09
+    title: Second duplicate
+    tags: []
+    receipts: []
+"#,
+    )
+    .unwrap();
+    let before = std::fs::read_to_string(&manual_events).unwrap();
+
+    shiplog_cmd()
+        .args([
+            "journal",
+            "edit",
+            "--events",
+            manual_events.to_str().unwrap(),
+            "--id",
+            "duplicate",
+            "--title",
+            "Should not write",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("appears more than once"));
+
+    let after = std::fs::read_to_string(&manual_events).unwrap();
+    assert_eq!(
+        before, after,
+        "journal edit should not write when an ID is duplicated"
     );
 }
 
