@@ -15,8 +15,18 @@ workstream files, and optional share bundles.
 
 ## 5-minute packet
 
-Start with local scaffolding, check setup, then collect enabled sources from
-`shiplog.toml`:
+When the review form is already open, use intake first. It creates starter local
+files if needed, collects whatever configured sources are usable, records skipped
+sources as coverage warnings, renders the packet, and prints the review next
+steps:
+
+```bash
+shiplog intake --last-6-months
+shiplog open packet --latest
+```
+
+For a more deliberate setup pass, initialize local scaffolding, check setup,
+then collect enabled sources from `shiplog.toml`:
 
 ```bash
 shiplog init

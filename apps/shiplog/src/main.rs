@@ -1,8 +1,8 @@
 //! `shiplog` CLI entrypoint.
 //!
-//! Exposes `init`, `doctor`, `config`, `collect`, `render`, `refresh`,
-//! `workstreams`, `runs`, `review`, `journal`, `open`, `merge`, `import`, and
-//! `run` commands over the workspace engine and adapter crates.
+//! Exposes `init`, `doctor`, `intake`, `config`, `collect`, `render`,
+//! `refresh`, `workstreams`, `runs`, `review`, `journal`, `open`, `merge`,
+//! `import`, and `run` commands over the workspace engine and adapter crates.
 
 use anyhow::{Context, Result};
 use chrono::{DateTime, Datelike, Duration, Months, NaiveDate, Utc};
@@ -70,6 +70,9 @@ enum Command {
         #[arg(long = "source", value_enum)]
         sources: Vec<InitSource>,
     },
+
+    /// Run a guided best-effort review intake and print next steps.
+    Intake(IntakeArgs),
 
     /// Validate and explain shiplog.toml without collecting data.
     Config {
@@ -1144,6 +1147,34 @@ struct DateArgs {
     year: Option<i32>,
 }
 
+#[derive(Args, Debug, Clone)]
+struct IntakeArgs {
+    /// Path to shiplog.toml. Created with rescue-mode defaults if missing.
+    #[arg(long, default_value = CONFIG_FILENAME)]
+    config: PathBuf,
+    /// Output directory (a run folder will be created inside).
+    #[arg(long)]
+    out: Option<PathBuf>,
+    /// Limit intake to one or more sources.
+    #[arg(long = "source", value_enum)]
+    sources: Vec<InitSource>,
+    /// Bundle profile to render. Internal is default unless config says otherwise.
+    #[arg(long)]
+    profile: Option<BundleProfile>,
+    /// Redaction key. Required for manager/public profiles.
+    /// If omitted, SHIPLOG_REDACT_KEY or the configured redaction env var is used.
+    #[arg(long)]
+    redact_key: Option<String>,
+    /// Do not launch the packet after intake; print paths only.
+    #[arg(long)]
+    no_open: bool,
+    /// Duplicate event conflict policy.
+    #[arg(long, value_enum, default_value = "prefer-most-recent")]
+    conflict: MergeConflict,
+    #[command(flatten)]
+    window: DateArgs,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct ResolvedWindow {
     since: NaiveDate,
@@ -1304,6 +1335,14 @@ struct ConfiguredSourceOutputs {
     failures: Vec<ConfiguredSourceFailure>,
 }
 
+#[derive(Debug)]
+struct ConfiguredRunResult {
+    configured: ConfiguredSourceOutputs,
+    outputs: shiplog_engine::RunOutputs,
+    ws_source: WorkstreamSource,
+    run_id: String,
+}
+
 #[derive(Debug, Clone)]
 struct RedactionKey {
     key: Option<String>,
@@ -1456,6 +1495,378 @@ fn run_init(sources: Vec<InitSource>, dry_run: bool, force: bool) -> Result<()> 
     println!("  {}", init_next_command(&selected));
 
     Ok(())
+}
+
+fn run_intake(args: IntakeArgs) -> Result<()> {
+    let created_config = ensure_intake_config(&args.config, &args.sources)?;
+    let mut config_model = load_shiplog_config(&args.config)?;
+    ensure_supported_config_version(&config_model)?;
+
+    let base_dir = config_base_dir(&args.config);
+    let out = args
+        .out
+        .clone()
+        .unwrap_or_else(|| config_default_out(&config_model, &base_dir));
+    let bundle_profile = args
+        .profile
+        .clone()
+        .map(Ok)
+        .unwrap_or_else(|| doctor_config_profile(config_model.defaults.profile.as_deref()))?;
+    let redaction_key = RedactionKey::resolve_with_env(
+        args.redact_key.clone(),
+        &bundle_profile,
+        &config_redaction_key_env(&config_model),
+    )?;
+    let explicit_sources = dedupe_sources(&args.sources);
+    let mut skipped = prepare_intake_sources(&args.config, &mut config_model, &explicit_sources)?;
+    let window = resolve_multi_window(args.window.clone(), &config_model)?;
+    let mut configured = collect_configured_sources(&args.config, &config_model, window, &out)
+        .with_context(|| {
+            format!(
+                "collect usable intake sources from {}",
+                args.config.display()
+            )
+        })?;
+    skipped.append(&mut configured.failures);
+    configured.failures = skipped;
+
+    let clusterer = build_clusterer(false, "", "", None);
+    let (engine, redactor) = create_engine(redaction_key.engine_key(), clusterer, &bundle_profile);
+    let engine = engine.with_profile_rendering(redaction_key.render_profiles());
+    let result = run_configured_multi_pipeline(
+        &config_model,
+        &out,
+        window,
+        &bundle_profile,
+        args.conflict,
+        configured,
+        false,
+        false,
+        &engine,
+        redactor,
+    )?;
+
+    println!("Review intake complete.");
+    if created_config {
+        println!("Config: created {}", args.config.display());
+    } else {
+        println!("Config: {}", args.config.display());
+    }
+    println!("Run: {}", result.run_id);
+    println!("Packet: {}", result.outputs.packet_md.display());
+    println!();
+
+    println!("Collected:");
+    for (name, ingest) in &result.configured.successes {
+        println!(
+            "- {}: success, {}",
+            display_source_label(name),
+            event_count_phrase(ingest.events.len())
+        );
+    }
+    if result.configured.failures.is_empty() {
+        println!("Skipped:");
+        println!("- None");
+    } else {
+        println!("Skipped:");
+        for failure in &result.configured.failures {
+            println!(
+                "- {}: {}",
+                display_source_label(&failure.name),
+                failure.error
+            );
+        }
+    }
+    println!();
+
+    println!("Artifacts:");
+    print_outputs(&result.outputs, result.ws_source.clone());
+    println!();
+    print_review(&result.outputs.out_dir, false)?;
+
+    if args.no_open {
+        println!();
+        println!("Open later:");
+        println!(
+            "1. shiplog open packet --out {} --run {} --print-path",
+            quote_cli_value(&out.display().to_string()),
+            result.run_id
+        );
+    } else {
+        println!();
+        open_or_print_path(&result.outputs.packet_md, false)?;
+    }
+
+    Ok(())
+}
+
+fn ensure_intake_config(config_path: &Path, requested_sources: &[InitSource]) -> Result<bool> {
+    if config_path.exists() {
+        return Ok(false);
+    }
+
+    let selected = selected_intake_sources(requested_sources);
+    let config = render_init_config(&selected);
+    write_init_file(config_path, &config)?;
+
+    if init_source_enabled(&selected, InitSource::Manual) {
+        let manual_path = config_base_dir(config_path).join(MANUAL_EVENTS_FILENAME);
+        if !manual_path.exists() {
+            write_init_file(&manual_path, &render_manual_events_template())?;
+        }
+    }
+
+    Ok(true)
+}
+
+fn selected_intake_sources(requested_sources: &[InitSource]) -> Vec<InitSource> {
+    if !requested_sources.is_empty() {
+        return dedupe_sources(requested_sources);
+    }
+
+    let mut selected = Vec::new();
+    if env_var_present("GITHUB_TOKEN") {
+        selected.push(InitSource::Github);
+    }
+    if env_var_present("GITLAB_TOKEN") {
+        selected.push(InitSource::Gitlab);
+    }
+    if Path::new(".git").exists() {
+        selected.push(InitSource::Git);
+    }
+    if Path::new("ledger.events.jsonl").exists() && Path::new("coverage.manifest.json").exists() {
+        selected.push(InitSource::Json);
+    }
+    selected.push(InitSource::Manual);
+    dedupe_sources(&selected)
+}
+
+fn dedupe_sources(sources: &[InitSource]) -> Vec<InitSource> {
+    let mut selected = Vec::new();
+    for source in sources {
+        if !selected.contains(source) {
+            selected.push(*source);
+        }
+    }
+    selected
+}
+
+fn prepare_intake_sources(
+    config_path: &Path,
+    config: &mut ShiplogConfig,
+    explicit_sources: &[InitSource],
+) -> Result<Vec<ConfiguredSourceFailure>> {
+    let base_dir = config_base_dir(config_path);
+    let mut failures = Vec::new();
+
+    if let Some(source) = config.sources.github.as_mut() {
+        if !intake_source_in_scope(explicit_sources, InitSource::Github) {
+            source.enabled = false;
+        } else if source.enabled {
+            if optional_config_string(source.user.as_deref()).is_some() && source.me {
+                source.enabled = false;
+                push_intake_skip(&mut failures, "github", "configured both user and me");
+            } else if !env_var_present("GITHUB_TOKEN") {
+                source.enabled = false;
+                push_intake_skip(&mut failures, "github", "missing GITHUB_TOKEN");
+            } else if source.me {
+                let api_base = optional_config_string(source.api_base.as_deref())
+                    .unwrap_or_else(|| "https://api.github.com".to_string());
+                match discover_github_user(&api_base, None) {
+                    Ok(user) => {
+                        source.user = Some(user);
+                        source.me = false;
+                    }
+                    Err(err) => {
+                        source.enabled = false;
+                        push_intake_skip(&mut failures, "github", err.to_string());
+                    }
+                }
+            } else if optional_config_string(source.user.as_deref()).is_none() && !source.me {
+                source.enabled = false;
+                push_intake_skip(
+                    &mut failures,
+                    "github",
+                    "set sources.github.user or me = true",
+                );
+            }
+        }
+    }
+
+    if let Some(source) = config.sources.gitlab.as_mut() {
+        if !intake_source_in_scope(explicit_sources, InitSource::Gitlab) {
+            source.enabled = false;
+        } else if source.enabled {
+            if optional_config_string(source.user.as_deref()).is_some() && source.me {
+                source.enabled = false;
+                push_intake_skip(&mut failures, "gitlab", "configured both user and me");
+            } else if !env_var_present("GITLAB_TOKEN") {
+                source.enabled = false;
+                push_intake_skip(&mut failures, "gitlab", "missing GITLAB_TOKEN");
+            } else if source.me {
+                let instance = optional_config_string(source.instance.as_deref())
+                    .unwrap_or_else(|| "gitlab.com".to_string());
+                match discover_gitlab_user(&instance, None) {
+                    Ok(user) => {
+                        source.user = Some(user);
+                        source.me = false;
+                    }
+                    Err(err) => {
+                        source.enabled = false;
+                        push_intake_skip(&mut failures, "gitlab", err.to_string());
+                    }
+                }
+            } else if optional_config_string(source.user.as_deref()).is_none() && !source.me {
+                source.enabled = false;
+                push_intake_skip(
+                    &mut failures,
+                    "gitlab",
+                    "set sources.gitlab.user or me = true",
+                );
+            }
+        }
+    }
+
+    if let Some(source) = config.sources.jira.as_mut() {
+        if !intake_source_in_scope(explicit_sources, InitSource::Jira) {
+            source.enabled = false;
+        } else if source.enabled {
+            let user = optional_config_string(source.user.as_deref());
+            let instance = optional_config_string(source.instance.as_deref());
+            if !env_var_present("JIRA_TOKEN") {
+                source.enabled = false;
+                push_intake_skip(&mut failures, "jira", "missing JIRA_TOKEN");
+            } else if user.as_deref().is_none_or(is_unfilled_placeholder) {
+                source.enabled = false;
+                push_intake_skip(&mut failures, "jira", "set sources.jira.user");
+            } else if instance.as_deref().is_none_or(is_unfilled_placeholder) {
+                source.enabled = false;
+                push_intake_skip(&mut failures, "jira", "set sources.jira.instance");
+            }
+        }
+    }
+
+    if let Some(source) = config.sources.linear.as_mut() {
+        if !intake_source_in_scope(explicit_sources, InitSource::Linear) {
+            source.enabled = false;
+        } else if source.enabled {
+            let user_id = optional_config_string(source.user_id.as_deref());
+            if !env_var_present("LINEAR_API_KEY") {
+                source.enabled = false;
+                push_intake_skip(&mut failures, "linear", "missing LINEAR_API_KEY");
+            } else if user_id.as_deref().is_none_or(is_unfilled_placeholder) {
+                source.enabled = false;
+                push_intake_skip(&mut failures, "linear", "set sources.linear.user_id");
+            }
+        }
+    }
+
+    if let Some(source) = config.sources.git.as_mut() {
+        if !intake_source_in_scope(explicit_sources, InitSource::Git) {
+            source.enabled = false;
+        } else if source.enabled {
+            match source
+                .repo
+                .as_ref()
+                .filter(|path| !path.as_os_str().is_empty())
+                .map(|path| resolve_config_path(&base_dir, path))
+            {
+                Some(repo) if repo.exists() => {}
+                Some(repo) => {
+                    source.enabled = false;
+                    push_intake_skip(
+                        &mut failures,
+                        "git",
+                        format!("repo {} not found", repo.display()),
+                    );
+                }
+                None => {
+                    source.enabled = false;
+                    push_intake_skip(&mut failures, "git", "set sources.git.repo");
+                }
+            }
+        }
+    }
+
+    if let Some(source) = config.sources.json.as_mut() {
+        if !intake_source_in_scope(explicit_sources, InitSource::Json) {
+            source.enabled = false;
+        } else if source.enabled {
+            let events = source
+                .events
+                .as_ref()
+                .filter(|path| !path.as_os_str().is_empty())
+                .map(|path| resolve_config_path(&base_dir, path));
+            let coverage = source
+                .coverage
+                .as_ref()
+                .filter(|path| !path.as_os_str().is_empty())
+                .map(|path| resolve_config_path(&base_dir, path));
+            match (events, coverage) {
+                (Some(events), Some(coverage)) if events.exists() && coverage.exists() => {}
+                (Some(events), Some(coverage)) => {
+                    source.enabled = false;
+                    push_intake_skip(
+                        &mut failures,
+                        "json",
+                        format!("missing {} or {}", events.display(), coverage.display()),
+                    );
+                }
+                _ => {
+                    source.enabled = false;
+                    push_intake_skip(
+                        &mut failures,
+                        "json",
+                        "set sources.json.events and sources.json.coverage",
+                    );
+                }
+            }
+        }
+    }
+
+    if let Some(source) = config.sources.manual.as_mut() {
+        if !intake_source_in_scope(explicit_sources, InitSource::Manual) {
+            source.enabled = false;
+        } else if source.enabled {
+            if source
+                .events
+                .as_ref()
+                .is_none_or(|path| path.as_os_str().is_empty())
+            {
+                source.events = Some(PathBuf::from(MANUAL_EVENTS_FILENAME));
+            }
+            let events = source
+                .events
+                .as_ref()
+                .map(|path| resolve_config_path(&base_dir, path))
+                .expect("manual events path set above");
+            if !events.exists() {
+                write_init_file(&events, &render_manual_events_template())?;
+            }
+        }
+    }
+
+    Ok(failures)
+}
+
+fn intake_source_in_scope(explicit_sources: &[InitSource], source: InitSource) -> bool {
+    explicit_sources.is_empty() || explicit_sources.contains(&source)
+}
+
+fn push_intake_skip(
+    failures: &mut Vec<ConfiguredSourceFailure>,
+    name: &str,
+    error: impl Into<String>,
+) {
+    failures.push(ConfiguredSourceFailure {
+        name: name.to_string(),
+        error: error.into(),
+    });
+}
+
+fn is_unfilled_placeholder(value: &str) -> bool {
+    let value = value.trim().to_ascii_lowercase();
+    value.is_empty() || value.starts_with("your-") || value == "company.atlassian.net"
 }
 
 fn selected_init_sources(sources: &[InitSource]) -> Vec<InitSource> {
@@ -3331,6 +3742,87 @@ fn collect_configured_sources(
     })
 }
 
+#[allow(clippy::too_many_arguments)]
+fn run_configured_multi_pipeline(
+    config: &ShiplogConfig,
+    out: &Path,
+    window: ResolvedWindow,
+    bundle_profile: &BundleProfile,
+    conflict: MergeConflict,
+    configured: ConfiguredSourceOutputs,
+    regen: bool,
+    zip: bool,
+    engine: &Engine<'_>,
+    redactor: &DeterministicRedactor,
+) -> Result<ConfiguredRunResult> {
+    let ingest_outputs = configured
+        .successes
+        .iter()
+        .map(|(_, ingest)| ingest.clone())
+        .collect::<Vec<_>>();
+
+    let mut merged = engine
+        .merge(ingest_outputs, conflict.into())
+        .context("merge configured source outputs")?;
+    let merge_user = config_user_label(config).unwrap_or_else(|| merged.coverage.user.clone());
+    let window_label = window.window_label();
+    merged.coverage.user = merge_user.clone();
+    merged.coverage.window = TimeWindow {
+        since: window.since,
+        until: window.until,
+    };
+    if !configured.failures.is_empty() {
+        for failure in &configured.failures {
+            if !merged.coverage.sources.contains(&failure.name) {
+                merged.coverage.sources.push(failure.name.clone());
+            }
+            merged.coverage.warnings.push(format!(
+                "Configured source {} was skipped: {}",
+                failure.name, failure.error
+            ));
+        }
+        merged.coverage.sources.sort();
+        merged.coverage.sources.dedup();
+        merged.coverage.completeness = shiplog_schema::coverage::Completeness::Partial;
+    }
+
+    let run_id = merged.coverage.run_id.to_string();
+    let run_dir = out.join(&run_id);
+
+    if regen {
+        let suggested = shiplog_workstreams::WorkstreamManager::suggested_path(&run_dir);
+        if suggested.exists() {
+            std::fs::remove_file(&suggested)
+                .with_context(|| format!("remove {:?} for --regen", suggested))?;
+        }
+    }
+
+    let cache_path = DeterministicRedactor::cache_path(&run_dir);
+    let _ = redactor.load_cache(&cache_path);
+
+    let (outputs, ws_source) = engine
+        .run(
+            merged,
+            &merge_user,
+            &window_label,
+            &run_dir,
+            zip,
+            bundle_profile,
+        )
+        .context("run configured multi-source pipeline")?;
+
+    redactor
+        .save_cache(&cache_path)
+        .with_context(|| format!("save redaction cache to {cache_path:?}"))?;
+
+    Ok(ConfiguredRunResult {
+        configured,
+        outputs,
+        ws_source,
+        run_id,
+    })
+}
+
 fn config_user_label(config: &ShiplogConfig) -> Option<String> {
     optional_config_string(config.user.label.as_deref())
 }
@@ -4275,6 +4767,10 @@ fn main() -> Result<()> {
             run_doctor(&config, &sources)?;
         }
 
+        Command::Intake(args) => {
+            run_intake(args)?;
+        }
+
         Command::Config { cmd } => match cmd {
             ConfigCommand::Validate { config } => {
                 run_config_validate(&config)?;
@@ -4350,83 +4846,33 @@ fn main() -> Result<()> {
                     let window = resolve_multi_window(window, &config_model)?;
                     let configured =
                         collect_configured_sources(&config, &config_model, window, &out)?;
-                    let ingest_outputs = configured
-                        .successes
-                        .iter()
-                        .map(|(_, ingest)| ingest.clone())
-                        .collect::<Vec<_>>();
-
-                    let mut merged = engine
-                        .merge(ingest_outputs, conflict.into())
-                        .context("merge configured source outputs")?;
-                    let merge_user = config_user_label(&config_model)
-                        .unwrap_or_else(|| merged.coverage.user.clone());
-                    let window_label = window.window_label();
-                    merged.coverage.user = merge_user.clone();
-                    merged.coverage.window = TimeWindow {
-                        since: window.since,
-                        until: window.until,
-                    };
-                    if !configured.failures.is_empty() {
-                        for failure in &configured.failures {
-                            if !merged.coverage.sources.contains(&failure.name) {
-                                merged.coverage.sources.push(failure.name.clone());
-                            }
-                            merged.coverage.warnings.push(format!(
-                                "Configured source {} was skipped: {}",
-                                failure.name, failure.error
-                            ));
-                        }
-                        merged.coverage.sources.sort();
-                        merged.coverage.sources.dedup();
-                        merged.coverage.completeness =
-                            shiplog_schema::coverage::Completeness::Partial;
-                    }
-
-                    let run_id = merged.coverage.run_id.to_string();
-                    let run_dir = out.join(&run_id);
-
-                    if regen {
-                        let suggested =
-                            shiplog_workstreams::WorkstreamManager::suggested_path(&run_dir);
-                        if suggested.exists() {
-                            std::fs::remove_file(&suggested)
-                                .with_context(|| format!("remove {:?} for --regen", suggested))?;
-                        }
-                    }
-
-                    let cache_path = DeterministicRedactor::cache_path(&run_dir);
-                    let _ = redactor.load_cache(&cache_path);
-
-                    let (outputs, ws_source) = engine
-                        .run(
-                            merged,
-                            &merge_user,
-                            &window_label,
-                            &run_dir,
-                            zip,
-                            &bundle_profile,
-                        )
-                        .context("run configured multi-source pipeline")?;
-
-                    redactor
-                        .save_cache(&cache_path)
-                        .with_context(|| format!("save redaction cache to {cache_path:?}"))?;
+                    let result = run_configured_multi_pipeline(
+                        &config_model,
+                        &out,
+                        window,
+                        &bundle_profile,
+                        conflict,
+                        configured,
+                        regen,
+                        zip,
+                        &engine,
+                        redactor,
+                    )?;
 
                     println!("Collected configured sources:");
-                    for (name, ingest) in &configured.successes {
+                    for (name, ingest) in &result.configured.successes {
                         println!(
                             "- {name}: success, {}",
                             event_count_phrase(ingest.events.len())
                         );
                     }
-                    for failure in &configured.failures {
+                    for failure in &result.configured.failures {
                         println!("- {}: skipped, {}", failure.name, failure.error);
                     }
                     println!("Merged and wrote:");
-                    println!("- inputs: {}", configured.successes.len());
+                    println!("- inputs: {}", result.configured.successes.len());
                     println!("- conflict: {}", conflict.as_str());
-                    print_outputs(&outputs, ws_source);
+                    print_outputs(&result.outputs, result.ws_source);
                     return Ok(());
                 }
 

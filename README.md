@@ -75,14 +75,30 @@ cargo run -p shiplog -- <subcommand>
 
 ## Quick start
 
-shiplog follows a **collect → curate → render** workflow. You fetch raw events once, organize them into workstreams, then re-render as many times as you like without hitting the API again.
+shiplog follows a **collect → curate → render** workflow. For review-deadline
+use, `shiplog intake` gives a best-effort fast path that creates starter local
+files when needed, collects usable configured sources, records skipped sources,
+renders a packet, runs review inspection, and prints next commands.
 
 For a practical review-cycle walkthrough, see
 [docs/guides/review-cycle.md](docs/guides/review-cycle.md). For the complete
 `shiplog.toml` field reference, see
 [docs/config-reference.md](docs/config-reference.md).
 
-### 0. Initialize local files
+### 0. Fast review intake
+
+```bash
+shiplog intake --last-6-months
+shiplog open packet --latest
+```
+
+Use this when you need a packet now. It uses `shiplog.toml` if present, creates
+a minimal starter config if missing, skips unusable sources without hiding them,
+and writes the packet, ledger, coverage manifest, workstream file, and bundle
+manifest as soon as at least one source succeeds. Add `--source github --source
+jira` to limit the intake or `--no-open` to print paths only.
+
+### 1. Initialize local files
 
 ```bash
 shiplog init
@@ -111,7 +127,7 @@ shiplog config explain --config examples/configs/local-git-json-manual.toml
 `shiplog doctor` adds token, output, identity, and safety checks before a
 collection run.
 
-### 1. Collect events from GitHub
+### 2. Collect events from GitHub
 
 For the fastest review-cycle path, collect all enabled sources from
 `shiplog.toml` into one merged run:
@@ -236,6 +252,7 @@ out/<run_id>/
 |---------|-------------|
 | `init` | Create `shiplog.toml` and `manual_events.yaml` scaffold files |
 | `doctor` | Check local config, enabled sources, token env vars, and output safety |
+| `intake` | Run best-effort review intake, render a packet, inspect it, and print next steps |
 | `config validate/explain/migrate` | Validate `shiplog.toml`, print resolved settings, or add version metadata |
 | `cache stats/inspect/clean` | Inspect and safely clean source API cache databases |
 | `identify jira/linear` | Print provider user IDs for source configuration |

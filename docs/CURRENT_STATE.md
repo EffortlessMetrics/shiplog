@@ -30,10 +30,11 @@ The artifact contract is:
 packet + ledger + coverage + bundles
 ```
 
-The CLI should let a review-cycle user initialize local config, collect from
-configured sources, inspect coverage and gaps, curate workstreams without
-hand-editing YAML, render a packet with prompts and receipts, and produce
-manager/public share profiles only with an explicit redaction key.
+The CLI should let a review-cycle user run a fast best-effort intake, initialize
+local config, collect from configured sources, inspect coverage and gaps, curate
+workstreams without hand-editing YAML, render a packet with prompts and
+receipts, and produce manager/public share profiles only with an explicit
+redaction key.
 
 ## CLI Product Surface
 
@@ -41,6 +42,7 @@ First-run and setup:
 
 - `shiplog init`
 - `shiplog doctor`
+- `shiplog intake`
 - `shiplog config validate`
 - `shiplog config explain`
 - `shiplog config migrate`

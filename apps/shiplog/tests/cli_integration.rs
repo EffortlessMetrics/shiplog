@@ -652,6 +652,19 @@ fn open_packet_help_shows_run_and_print_options() {
 }
 
 #[test]
+fn intake_help_shows_rescue_mode_options() {
+    shiplog_cmd()
+        .args(["intake", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--last-6-months"))
+        .stdout(predicate::str::contains("--year"))
+        .stdout(predicate::str::contains("--source"))
+        .stdout(predicate::str::contains("--profile"))
+        .stdout(predicate::str::contains("--no-open"));
+}
+
+#[test]
 fn review_help_shows_run_options() {
     shiplog_cmd()
         .args(["review", "--help"])
@@ -2415,6 +2428,207 @@ user = "octo"
     assert!(
         coverage.contains("Configured source json was skipped"),
         "configured multi coverage should record skipped source warning"
+    );
+}
+
+#[test]
+fn intake_from_config_writes_packet_and_review_next_steps() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+    let fixtures = fixture_dir();
+    std::fs::copy(
+        fixtures.join("ledger.events.jsonl"),
+        tmp.path().join("ledger.events.jsonl"),
+    )
+    .unwrap();
+    std::fs::copy(
+        fixtures.join("coverage.manifest.json"),
+        tmp.path().join("coverage.manifest.json"),
+    )
+    .unwrap();
+    write_manual_events(&tmp.path().join("manual_events.yaml"));
+
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[defaults]
+window = "year:2025"
+include_reviews = true
+
+[user]
+label = "octo"
+
+[sources.json]
+enabled = true
+events = "./ledger.events.jsonl"
+coverage = "./coverage.manifest.json"
+
+[sources.manual]
+enabled = true
+events = "./manual_events.yaml"
+user = "octo"
+"#,
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args([
+            "intake",
+            "--out",
+            out.to_str().unwrap(),
+            "--config",
+            tmp.path().join("shiplog.toml").to_str().unwrap(),
+            "--last-6-months",
+            "--no-open",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Review intake complete."))
+        .stdout(predicate::str::contains("- JSON: success"))
+        .stdout(predicate::str::contains("- Manual: success"))
+        .stdout(predicate::str::contains("Evidence debt:"))
+        .stdout(predicate::str::contains("Next:"))
+        .stdout(predicate::str::contains("Open later:"));
+
+    let run_dir = first_run_dir(&out);
+    assert!(run_dir.join("packet.md").exists(), "missing intake packet");
+    assert!(
+        run_dir.join("ledger.events.jsonl").exists(),
+        "missing intake ledger"
+    );
+    assert!(
+        run_dir.join("coverage.manifest.json").exists(),
+        "missing intake coverage"
+    );
+    assert!(
+        run_dir.join("workstreams.suggested.yaml").exists(),
+        "missing intake workstream suggestions"
+    );
+    assert!(
+        run_dir.join("bundle.manifest.json").exists(),
+        "missing intake bundle manifest"
+    );
+
+    let packet = std::fs::read_to_string(run_dir.join("packet.md")).unwrap();
+    assert_packet_opens_with_coverage(&packet);
+    assert!(
+        packet.contains("- GitHub: 3 events"),
+        "intake packet should include successful configured sources"
+    );
+}
+
+#[test]
+fn intake_creates_minimal_config_and_manual_rescue_packet() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args(["intake", "--out", out.to_str().unwrap(), "--no-open"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Review intake complete."))
+        .stdout(predicate::str::contains("Config: created"))
+        .stdout(predicate::str::contains("- Manual: success, 0 events"))
+        .stdout(predicate::str::contains("Packet:"))
+        .stdout(predicate::str::contains("Open later:"));
+
+    assert!(
+        tmp.path().join("shiplog.toml").exists(),
+        "intake should create shiplog.toml"
+    );
+    assert!(
+        tmp.path().join("manual_events.yaml").exists(),
+        "intake should create manual_events.yaml"
+    );
+    let run_dir = first_run_dir(&out);
+    assert!(run_dir.join("packet.md").exists(), "missing rescue packet");
+    assert!(
+        run_dir.join("coverage.manifest.json").exists(),
+        "missing rescue coverage"
+    );
+}
+
+#[test]
+fn intake_records_configured_missing_tokens_as_skipped_sources() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+    let fixtures = fixture_dir();
+    std::fs::copy(
+        fixtures.join("ledger.events.jsonl"),
+        tmp.path().join("ledger.events.jsonl"),
+    )
+    .unwrap();
+    std::fs::copy(
+        fixtures.join("coverage.manifest.json"),
+        tmp.path().join("coverage.manifest.json"),
+    )
+    .unwrap();
+
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[defaults]
+window = "year:2025"
+
+[sources.json]
+enabled = true
+events = "./ledger.events.jsonl"
+coverage = "./coverage.manifest.json"
+
+[sources.jira]
+enabled = true
+user = "712020:account-id"
+instance = "example.atlassian.net"
+status = "done"
+
+[sources.linear]
+enabled = true
+user_id = "linear-user-id"
+status = "done"
+"#,
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args([
+            "intake",
+            "--out",
+            out.to_str().unwrap(),
+            "--config",
+            tmp.path().join("shiplog.toml").to_str().unwrap(),
+            "--no-open",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("- JSON: success"))
+        .stdout(predicate::str::contains("- Jira: missing JIRA_TOKEN"))
+        .stdout(predicate::str::contains("- Linear: missing LINEAR_API_KEY"))
+        .stdout(predicate::str::contains("Skipped sources:"));
+
+    let run_dir = first_run_dir(&out);
+    let coverage = std::fs::read_to_string(run_dir.join("coverage.manifest.json")).unwrap();
+    assert!(
+        coverage.contains("Configured source jira was skipped: missing JIRA_TOKEN"),
+        "intake coverage should record skipped Jira source"
+    );
+    assert!(
+        coverage.contains("Configured source linear was skipped: missing LINEAR_API_KEY"),
+        "intake coverage should record skipped Linear source"
+    );
+    assert!(
+        coverage.contains("\"Partial\""),
+        "intake coverage should mark partial source collection"
     );
 }
 

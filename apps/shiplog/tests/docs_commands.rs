@@ -82,6 +82,7 @@ fn documented_help_commands_stay_available() {
         .arg("--help")
         .assert()
         .success()
+        .stdout(predicate::str::contains("intake"))
         .stdout(predicate::str::contains("collect"))
         .stdout(predicate::str::contains("render"))
         .stdout(predicate::str::contains("workstreams"))
@@ -101,6 +102,15 @@ fn documented_help_commands_stay_available() {
         .stdout(predicate::str::contains("git"))
         .stdout(predicate::str::contains("json"))
         .stdout(predicate::str::contains("manual"));
+
+    shiplog_cmd()
+        .args(["intake", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--last-6-months"))
+        .stdout(predicate::str::contains("--source"))
+        .stdout(predicate::str::contains("--profile"))
+        .stdout(predicate::str::contains("--no-open"));
 
     shiplog_cmd()
         .args(["render", "--help"])
@@ -282,6 +292,27 @@ fn review_cycle_fixture_commands_execute_without_network() {
         .stdout(predicate::str::contains("- json: success"))
         .stdout(predicate::str::contains("- manual: success"))
         .stdout(predicate::str::contains("Merged and wrote:"));
+
+    let intake_out = tmp.path().join("intake-out");
+    shiplog_cmd()
+        .current_dir(repo_root())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args([
+            "intake",
+            "--out",
+            intake_out.to_str().unwrap(),
+            "--config",
+            local_config.to_str().unwrap(),
+            "--no-open",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Review intake complete."))
+        .stdout(predicate::str::contains("Evidence debt:"))
+        .stdout(predicate::str::contains("Open later:"));
 
     shiplog_cmd()
         .args(["runs", "list", "--out", out.to_str().unwrap()])
