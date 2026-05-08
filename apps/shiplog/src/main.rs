@@ -1479,6 +1479,7 @@ struct IntakeReport {
     skipped_sources: Vec<IntakeReportSkippedSource>,
     source_decisions: Vec<IntakeReportSourceDecision>,
     repair_sources: Vec<IntakeReportRepairSource>,
+    curation_notes: Vec<String>,
     good: Vec<String>,
     needs_attention: Vec<String>,
     evidence_debt: Vec<IntakeReportEvidenceDebt>,
@@ -1558,6 +1559,15 @@ struct ConfiguredRunResult {
     outputs: shiplog_engine::RunOutputs,
     ws_source: WorkstreamSource,
     run_id: String,
+    prior_curation: Option<PriorCuration>,
+}
+
+#[derive(Debug)]
+struct PriorCuration {
+    source_run_dir: PathBuf,
+    source_path: PathBuf,
+    destination_path: PathBuf,
+    copied: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -1791,6 +1801,7 @@ fn run_intake(args: IntakeArgs) -> Result<()> {
         args.conflict,
         configured,
         false,
+        true,
         false,
         &engine,
         redactor,
@@ -1990,6 +2001,7 @@ fn build_intake_report(
         &broad_workstreams,
         &manual_context_workstreams,
     );
+    let curation_notes = intake_curation_notes(result);
     let next_commands = intake_readiness_next_steps(
         &run_id,
         out_dir,
@@ -2082,6 +2094,7 @@ fn build_intake_report(
             .collect(),
         source_decisions: intake_source_decision_reports(explanations),
         repair_sources: intake_repair_source_reports(explanations),
+        curation_notes,
         good,
         needs_attention: attention,
         evidence_debt: evidence_debt
@@ -2143,6 +2156,13 @@ fn print_intake_readiness_report(report: &IntakeReport) {
             for command in &repair.commands {
                 println!("  {command}");
             }
+        }
+    }
+    if !report.curation_notes.is_empty() {
+        println!();
+        println!("Curation:");
+        for note in &report.curation_notes {
+            println!("- {note}");
         }
     }
     println!();
@@ -2224,6 +2244,16 @@ fn render_intake_report_markdown(report: &IntakeReport) -> String {
             for command in &repair.commands {
                 out.push_str(&format!("  - {command}\n"));
             }
+        }
+    }
+    out.push('\n');
+
+    out.push_str("## Curation Notes\n\n");
+    if report.curation_notes.is_empty() {
+        out.push_str("- None\n");
+    } else {
+        for note in &report.curation_notes {
+            out.push_str(&format!("- {note}\n"));
         }
     }
     out.push('\n');
@@ -2348,6 +2378,26 @@ fn intake_repair_source_reports(
             })
         })
         .collect()
+}
+
+fn intake_curation_notes(result: &ConfiguredRunResult) -> Vec<String> {
+    let Some(prior) = &result.prior_curation else {
+        return Vec::new();
+    };
+
+    if prior.copied {
+        vec![format!(
+            "Prior workstream curation reused from run {} ({}) into {}.",
+            prior.source_run_dir.display(),
+            prior.source_path.display(),
+            prior.destination_path.display()
+        )]
+    } else {
+        vec![format!(
+            "Existing workstream curation reused from {}.",
+            prior.destination_path.display()
+        )]
+    }
 }
 
 fn intake_readiness_next_steps(
@@ -5049,6 +5099,7 @@ fn run_configured_multi_pipeline(
     conflict: MergeConflict,
     configured: ConfiguredSourceOutputs,
     regen: bool,
+    preserve_prior_curation: bool,
     zip: bool,
     engine: &Engine<'_>,
     redactor: &DeterministicRedactor,
@@ -5095,6 +5146,12 @@ fn run_configured_multi_pipeline(
         }
     }
 
+    let prior_curation = if preserve_prior_curation {
+        preserve_prior_curated_workstreams(out, &run_dir)?
+    } else {
+        None
+    };
+
     let cache_path = DeterministicRedactor::cache_path(&run_dir);
     let _ = redactor.load_cache(&cache_path);
 
@@ -5118,7 +5175,87 @@ fn run_configured_multi_pipeline(
         outputs,
         ws_source,
         run_id,
+        prior_curation,
     })
+}
+
+fn preserve_prior_curated_workstreams(out: &Path, run_dir: &Path) -> Result<Option<PriorCuration>> {
+    let destination_path = shiplog_workstreams::WorkstreamManager::curated_path(run_dir);
+    if destination_path.exists() {
+        return Ok(Some(PriorCuration {
+            source_run_dir: run_dir.to_path_buf(),
+            source_path: destination_path.clone(),
+            destination_path,
+            copied: false,
+        }));
+    }
+
+    let Some((source_run_dir, source_path)) = latest_prior_curated_workstreams(out, run_dir)?
+    else {
+        return Ok(None);
+    };
+
+    std::fs::create_dir_all(run_dir)
+        .with_context(|| format!("create intake run directory {run_dir:?}"))?;
+    std::fs::copy(&source_path, &destination_path).with_context(|| {
+        format!(
+            "copy prior curated workstreams from {:?} to {:?}",
+            source_path, destination_path
+        )
+    })?;
+
+    Ok(Some(PriorCuration {
+        source_run_dir,
+        source_path,
+        destination_path,
+        copied: true,
+    }))
+}
+
+fn latest_prior_curated_workstreams(
+    out: &Path,
+    current_run_dir: &Path,
+) -> Result<Option<(PathBuf, PathBuf)>> {
+    if !out.exists() {
+        return Ok(None);
+    }
+
+    let mut candidates = Vec::new();
+    for entry in std::fs::read_dir(out).with_context(|| format!("read output directory {out:?}"))? {
+        let entry = entry?;
+        let run_dir = entry.path();
+        if !run_dir.is_dir() || same_path(&run_dir, current_run_dir) {
+            continue;
+        }
+        if !run_dir.join("ledger.events.jsonl").exists() {
+            continue;
+        }
+        let curated_path = shiplog_workstreams::WorkstreamManager::curated_path(&run_dir);
+        if !curated_path.exists() {
+            continue;
+        }
+        let modified = curated_path
+            .metadata()
+            .and_then(|metadata| metadata.modified())
+            .ok();
+        candidates.push((modified, run_dir, curated_path));
+    }
+
+    candidates.sort_by(|left, right| right.0.cmp(&left.0));
+    Ok(candidates
+        .into_iter()
+        .next()
+        .map(|(_, run_dir, curated_path)| (run_dir, curated_path)))
+}
+
+fn same_path(left: &Path, right: &Path) -> bool {
+    if left == right {
+        return true;
+    }
+    match (left.canonicalize(), right.canonicalize()) {
+        (Ok(left), Ok(right)) => left == right,
+        _ => false,
+    }
 }
 
 fn config_user_label(config: &ShiplogConfig) -> Option<String> {
@@ -6231,6 +6368,7 @@ fn main() -> Result<()> {
                         conflict,
                         configured,
                         regen,
+                        false,
                         zip,
                         &engine,
                         redactor,
