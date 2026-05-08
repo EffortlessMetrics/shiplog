@@ -1,12 +1,16 @@
 # shiplog Current State
 
-This document records the v0.3.0 release-readiness baseline after the product
-completion pass.
+This document records the shipped v0.3.0 baseline after the product completion
+pass and release verification.
 
 ## Baseline
 
-- `main` is a release-ready product baseline for v0.3.0 once the release
-  validation scripts and hosted checks pass.
+- `main` is the released v0.3.0 product baseline.
+- `v0.3.0` is published on crates.io and tagged on GitHub.
+- The GitHub release has Linux x86_64, macOS x86_64, macOS arm64, Windows
+  x86_64, and `SHA256SUMS.txt` assets.
+- The crates.io install smoke and downloaded Windows binary smoke both reported
+  `shiplog 0.3.0`.
 - The workspace follows the package invariant: production workspace crates are
   publishable public surfaces, and `publish = false` is reserved for dev-only
   packages.
@@ -144,7 +148,12 @@ The release proof scripts enforce both sides of the boundary:
 
 ## Release Posture
 
-The v0.3.0 readiness branch should not add new product features. It should align
-versions, changelog entries, release matrix decisions, package proof scripts,
-release workflow smoke tests, and the release handoff for the already-merged
-product surface.
+v0.3.0 is shipped. The release record is
+[`RELEASE_HANDOFF_0.3.0.md`](../RELEASE_HANDOFF_0.3.0.md), including the
+published crate order, release workflow, asset set, checksum verification, and
+install smoke evidence.
+
+The next post-v0.3 work should harden real-world usage rather than add broad new
+surface area: source adapter receipts, Jira/Linear identity help, config
+reference material, packet readability passes against real packets, and
+coverage/mutation baseline review.
