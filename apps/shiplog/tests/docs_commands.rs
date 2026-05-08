@@ -110,7 +110,8 @@ fn documented_help_commands_stay_available() {
         .stdout(predicate::str::contains("--last-6-months"))
         .stdout(predicate::str::contains("--source"))
         .stdout(predicate::str::contains("--profile"))
-        .stdout(predicate::str::contains("--no-open"));
+        .stdout(predicate::str::contains("--no-open"))
+        .stdout(predicate::str::contains("--explain"));
 
     shiplog_cmd()
         .args(["render", "--help"])

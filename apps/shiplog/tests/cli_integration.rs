@@ -661,7 +661,8 @@ fn intake_help_shows_rescue_mode_options() {
         .stdout(predicate::str::contains("--year"))
         .stdout(predicate::str::contains("--source"))
         .stdout(predicate::str::contains("--profile"))
-        .stdout(predicate::str::contains("--no-open"));
+        .stdout(predicate::str::contains("--no-open"))
+        .stdout(predicate::str::contains("--explain"));
 }
 
 #[test]
@@ -2558,6 +2559,38 @@ fn intake_creates_minimal_config_and_manual_rescue_packet() {
 }
 
 #[test]
+fn intake_explain_reports_source_decisions_for_rescue_config() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args([
+            "intake",
+            "--out",
+            out.to_str().unwrap(),
+            "--no-open",
+            "--explain",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Source decisions:"))
+        .stdout(predicate::str::contains(
+            "- GitHub: skipped, GITHUB_TOKEN not found",
+        ))
+        .stdout(predicate::str::contains(
+            "- Local git: skipped, current directory is not a git repo",
+        ))
+        .stdout(predicate::str::contains(
+            "- Manual: included, manual_events.yaml found",
+        ));
+}
+
+#[test]
 fn intake_records_configured_missing_tokens_as_skipped_sources() {
     let tmp = TempDir::new().unwrap();
     let out = tmp.path().join("out");
@@ -2630,6 +2663,73 @@ status = "done"
         coverage.contains("\"Partial\""),
         "intake coverage should mark partial source collection"
     );
+}
+
+#[test]
+fn intake_explain_reports_configured_source_decisions() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+    let fixtures = fixture_dir();
+    std::fs::copy(
+        fixtures.join("ledger.events.jsonl"),
+        tmp.path().join("ledger.events.jsonl"),
+    )
+    .unwrap();
+    std::fs::copy(
+        fixtures.join("coverage.manifest.json"),
+        tmp.path().join("coverage.manifest.json"),
+    )
+    .unwrap();
+
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[defaults]
+window = "year:2025"
+
+[sources.json]
+enabled = true
+events = "./ledger.events.jsonl"
+coverage = "./coverage.manifest.json"
+
+[sources.jira]
+enabled = true
+user = "712020:account-id"
+instance = "example.atlassian.net"
+status = "done"
+
+[sources.linear]
+enabled = true
+user_id = "linear-user-id"
+status = "done"
+"#,
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args([
+            "intake",
+            "--out",
+            out.to_str().unwrap(),
+            "--config",
+            tmp.path().join("shiplog.toml").to_str().unwrap(),
+            "--no-open",
+            "--explain",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Source decisions:"))
+        .stdout(predicate::str::contains(
+            "- JSON: included, events and coverage files found",
+        ))
+        .stdout(predicate::str::contains(
+            "- Jira: skipped, missing JIRA_TOKEN",
+        ))
+        .stdout(predicate::str::contains(
+            "- Linear: skipped, missing LINEAR_API_KEY",
+        ));
 }
 
 #[test]
