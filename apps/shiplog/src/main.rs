@@ -69,6 +69,9 @@ enum Command {
         /// Limit checks to one or more sources.
         #[arg(long = "source", value_enum)]
         sources: Vec<InitSource>,
+        /// Print a read-only setup repair plan instead of active doctor checks.
+        #[arg(long)]
+        repair_plan: bool,
     },
 
     /// Run a guided best-effort review intake and print next steps.
@@ -695,6 +698,20 @@ enum InitSource {
     Git,
     Json,
     Manual,
+}
+
+impl InitSource {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Github => "github",
+            Self::Gitlab => "gitlab",
+            Self::Jira => "jira",
+            Self::Linear => "linear",
+            Self::Git => "git",
+            Self::Json => "json",
+            Self::Manual => "manual",
+        }
+    }
 }
 
 #[derive(ValueEnum, Debug, Clone, Copy, PartialEq, Eq)]
@@ -4542,6 +4559,239 @@ fn run_doctor(config_path: &Path, sources: &[InitSource]) -> Result<()> {
     Ok(())
 }
 
+fn run_doctor_repair_plan(config_path: &Path, sources: &[InitSource]) -> Result<()> {
+    let mut items = Vec::new();
+    let mut seen = BTreeSet::new();
+
+    if !config_path.exists() {
+        push_doctor_repair_item(
+            &mut items,
+            "Config",
+            IntakeRepairKind::MissingFile,
+            format!(
+                "{} not found; run `shiplog init` first",
+                config_path.display()
+            ),
+            vec!["shiplog init".to_string()],
+        );
+        print_doctor_repair_plan(config_path, &items);
+        anyhow::bail!("doctor repair plan found {} action(s)", items.len());
+    }
+
+    let config = match load_shiplog_config(config_path) {
+        Ok(config) => config,
+        Err(err) => {
+            push_doctor_repair_item(
+                &mut items,
+                "Config",
+                IntakeRepairKind::SetupRequired,
+                err.to_string(),
+                vec![format!(
+                    "shiplog config validate --config {}",
+                    quote_cli_value(&config_path.display().to_string())
+                )],
+            );
+            print_doctor_repair_plan(config_path, &items);
+            anyhow::bail!("doctor repair plan found {} action(s)", items.len());
+        }
+    };
+
+    let base_dir = config_base_dir(config_path);
+    if let Err(err) = config_version_state(&config) {
+        push_doctor_repair_item(
+            &mut items,
+            "Config version",
+            IntakeRepairKind::SetupRequired,
+            err.to_string(),
+            vec![format!(
+                "shiplog config migrate --config {}",
+                quote_cli_value(&config_path.display().to_string())
+            )],
+        );
+    } else {
+        doctor_repair_plan_defaults(&mut items, &config, &base_dir, config_path);
+        doctor_repair_plan_sources(
+            &mut items,
+            &mut seen,
+            &config,
+            &base_dir,
+            sources,
+            config_path,
+        );
+    }
+
+    print_doctor_repair_plan(config_path, &items);
+    if !items.is_empty() {
+        anyhow::bail!("doctor repair plan found {} action(s)", items.len());
+    }
+
+    Ok(())
+}
+
+fn print_doctor_repair_plan(config_path: &Path, items: &[IntakeReportRepairSource]) {
+    println!("Repair plan: {}", config_path.display());
+    if items.is_empty() {
+        println!("No repair actions found.");
+        return;
+    }
+
+    println!("Repair actions:");
+    for item in items {
+        println!("- {} [{}]: {}", item.source, item.kind, item.reason);
+        println!("  Fix:");
+        for command in &item.commands {
+            println!("    {command}");
+        }
+    }
+}
+
+fn push_doctor_repair_item(
+    items: &mut Vec<IntakeReportRepairSource>,
+    source: impl Into<String>,
+    kind: IntakeRepairKind,
+    reason: impl Into<String>,
+    commands: Vec<String>,
+) {
+    items.push(IntakeReportRepairSource {
+        source: source.into(),
+        kind: kind.as_str().to_string(),
+        reason: reason.into(),
+        commands,
+    });
+}
+
+fn push_doctor_source_repair_item(
+    items: &mut Vec<IntakeReportRepairSource>,
+    seen: &mut BTreeSet<(String, String)>,
+    source: &str,
+    reason: impl Into<String>,
+    config_path: &Path,
+) {
+    let before = items.len();
+    let reason = reason.into();
+    push_intake_repair_source_report(items, seen, source, &reason);
+    if let Some(item) = items.get_mut(before) {
+        let rerun = format!(
+            "shiplog doctor --config {} --repair-plan",
+            quote_cli_value(&config_path.display().to_string())
+        );
+        if !item.commands.iter().any(|command| command == &rerun) {
+            item.commands.push(rerun);
+        }
+    }
+}
+
+fn push_doctor_disabled_source_repair(
+    items: &mut Vec<IntakeReportRepairSource>,
+    source: InitSource,
+    config_path: &Path,
+) {
+    let name = source.as_str();
+    push_doctor_repair_item(
+        items,
+        display_source_label(name),
+        IntakeRepairKind::SetupRequired,
+        format!("{name} was requested but is not enabled in shiplog.toml"),
+        vec![
+            format!("Enable [sources.{name}] in shiplog.toml."),
+            format!(
+                "shiplog doctor --config {} --repair-plan",
+                quote_cli_value(&config_path.display().to_string())
+            ),
+        ],
+    );
+}
+
+fn doctor_repair_plan_defaults(
+    items: &mut Vec<IntakeReportRepairSource>,
+    config: &ShiplogConfig,
+    base_dir: &Path,
+    config_path: &Path,
+) {
+    let config_arg = quote_cli_value(&config_path.display().to_string());
+
+    if let Err(err) = resolve_multi_window(ConfigWindowArgs::default(), config) {
+        push_doctor_repair_item(
+            items,
+            "Window",
+            IntakeRepairKind::InvalidFilter,
+            err.to_string(),
+            vec![
+                "Set defaults.window to last-6-months, last-quarter, year:<YYYY>, or explicit dates."
+                    .to_string(),
+                format!("shiplog config explain --config {config_arg}"),
+            ],
+        );
+    }
+    for name in config.periods.keys() {
+        if let Err(err) = resolve_config_period(config, name) {
+            push_doctor_repair_item(
+                items,
+                "Period",
+                IntakeRepairKind::InvalidFilter,
+                format!("{name}: {err}"),
+                vec![
+                    format!("Fix [periods.{:?}] in shiplog.toml.", name),
+                    format!("shiplog config explain --config {config_arg}"),
+                ],
+            );
+        }
+    }
+
+    let out = config_default_out(config, base_dir);
+    if let Err(err) = validate_config_output_path(&out) {
+        push_doctor_repair_item(
+            items,
+            "Output",
+            classify_intake_repair_kind("output", &err.to_string()),
+            err.to_string(),
+            vec![
+                "Create the output directory parent or update defaults.out.".to_string(),
+                format!("shiplog config explain --config {config_arg}"),
+            ],
+        );
+    }
+
+    let profile = match doctor_config_profile(config.defaults.profile.as_deref()) {
+        Ok(profile) => Some(profile),
+        Err(err) => {
+            push_doctor_repair_item(
+                items,
+                "Profile",
+                IntakeRepairKind::InvalidFilter,
+                err.to_string(),
+                vec![
+                    "Set defaults.profile to internal, manager, or public.".to_string(),
+                    format!("shiplog config explain --config {config_arg}"),
+                ],
+            );
+            None
+        }
+    };
+
+    if let Some(profile) = profile
+        && !matches!(profile, BundleProfile::Internal)
+    {
+        let key_env = config_redaction_key_env(config);
+        if !env_var_present(&key_env) {
+            push_doctor_repair_item(
+                items,
+                "Redaction",
+                IntakeRepairKind::MissingToken,
+                format!(
+                    "{} profile requires {key_env}; set it or use profile = \"internal\"",
+                    profile.as_str()
+                ),
+                vec![
+                    format!("export {key_env}=..."),
+                    "Or set defaults.profile = \"internal\" for local-only packets.".to_string(),
+                    format!("shiplog doctor --config {config_arg} --repair-plan"),
+                ],
+            );
+        }
+    }
+}
+
 fn doctor_config_version(report: &mut DoctorReport, config: &ShiplogConfig) {
     match config_version_state(config) {
         Ok(version) => report.ok("Config version", version.label()),
@@ -5370,8 +5620,376 @@ fn doctor_sources(
     doctor_manual(report, config, base_dir, selected_sources);
 }
 
+fn doctor_repair_plan_sources(
+    items: &mut Vec<IntakeReportRepairSource>,
+    seen: &mut BTreeSet<(String, String)>,
+    config: &ShiplogConfig,
+    base_dir: &Path,
+    selected_sources: &[InitSource],
+    config_path: &Path,
+) {
+    doctor_repair_plan_github(items, seen, config, selected_sources, config_path);
+    doctor_repair_plan_gitlab(items, seen, config, selected_sources, config_path);
+    doctor_repair_plan_jira(items, seen, config, selected_sources, config_path);
+    doctor_repair_plan_linear(items, seen, config, selected_sources, config_path);
+    doctor_repair_plan_git(items, seen, config, base_dir, selected_sources, config_path);
+    doctor_repair_plan_json(items, seen, config, base_dir, selected_sources, config_path);
+    doctor_repair_plan_manual(items, seen, config, base_dir, selected_sources, config_path);
+}
+
 fn doctor_should_check(selected_sources: &[InitSource], source: InitSource) -> bool {
     selected_sources.is_empty() || selected_sources.contains(&source)
+}
+
+fn doctor_repair_disabled_if_selected(
+    items: &mut Vec<IntakeReportRepairSource>,
+    selected: &[InitSource],
+    source: InitSource,
+    config_path: &Path,
+) -> bool {
+    if selected.is_empty() {
+        return false;
+    }
+    push_doctor_disabled_source_repair(items, source, config_path);
+    true
+}
+
+fn doctor_repair_plan_github(
+    items: &mut Vec<IntakeReportRepairSource>,
+    seen: &mut BTreeSet<(String, String)>,
+    config: &ShiplogConfig,
+    selected: &[InitSource],
+    config_path: &Path,
+) {
+    if !doctor_should_check(selected, InitSource::Github) {
+        return;
+    }
+
+    let Some(source) = config.sources.github.as_ref() else {
+        doctor_repair_disabled_if_selected(items, selected, InitSource::Github, config_path);
+        return;
+    };
+    if !source.enabled {
+        doctor_repair_disabled_if_selected(items, selected, InitSource::Github, config_path);
+        return;
+    }
+
+    let token_present = env_var_present("GITHUB_TOKEN");
+    match (
+        optional_config_string(source.user.as_deref()),
+        source.me,
+        token_present,
+    ) {
+        (Some(_), true, _) => push_doctor_source_repair_item(
+            items,
+            seen,
+            "github",
+            "configured both user and me",
+            config_path,
+        ),
+        (Some(user), false, false) => push_doctor_source_repair_item(
+            items,
+            seen,
+            "github",
+            format!("missing GITHUB_TOKEN for configured user {user}"),
+            config_path,
+        ),
+        (None, true, false) => push_doctor_source_repair_item(
+            items,
+            seen,
+            "github",
+            "missing GITHUB_TOKEN for me identity discovery",
+            config_path,
+        ),
+        (None, false, _) => push_doctor_source_repair_item(
+            items,
+            seen,
+            "github",
+            "set sources.github.user or me = true",
+            config_path,
+        ),
+        _ => {}
+    }
+}
+
+fn doctor_repair_plan_gitlab(
+    items: &mut Vec<IntakeReportRepairSource>,
+    seen: &mut BTreeSet<(String, String)>,
+    config: &ShiplogConfig,
+    selected: &[InitSource],
+    config_path: &Path,
+) {
+    if !doctor_should_check(selected, InitSource::Gitlab) {
+        return;
+    }
+
+    let Some(source) = config.sources.gitlab.as_ref() else {
+        doctor_repair_disabled_if_selected(items, selected, InitSource::Gitlab, config_path);
+        return;
+    };
+    if !source.enabled {
+        doctor_repair_disabled_if_selected(items, selected, InitSource::Gitlab, config_path);
+        return;
+    }
+
+    let instance = optional_config_string(source.instance.as_deref())
+        .unwrap_or_else(|| "gitlab.com".to_string());
+    if let Err(err) = gitlab_api_base(&instance) {
+        push_doctor_source_repair_item(items, seen, "gitlab", err.to_string(), config_path);
+        return;
+    }
+    if let Some(state) = non_empty_string(source.state.as_deref())
+        && let Err(err) = state.parse::<MrState>()
+    {
+        push_doctor_source_repair_item(
+            items,
+            seen,
+            "gitlab",
+            format!("parse state {state:?}: {err}"),
+            config_path,
+        );
+        return;
+    }
+
+    let token_present = env_var_present("GITLAB_TOKEN");
+    match (
+        optional_config_string(source.user.as_deref()),
+        source.me,
+        token_present,
+    ) {
+        (Some(_), true, _) => push_doctor_source_repair_item(
+            items,
+            seen,
+            "gitlab",
+            "configured both user and me",
+            config_path,
+        ),
+        (Some(user), false, false) => push_doctor_source_repair_item(
+            items,
+            seen,
+            "gitlab",
+            format!("missing GITLAB_TOKEN for configured user {user}"),
+            config_path,
+        ),
+        (None, true, false) => push_doctor_source_repair_item(
+            items,
+            seen,
+            "gitlab",
+            "missing GITLAB_TOKEN for me identity discovery",
+            config_path,
+        ),
+        (None, false, _) => push_doctor_source_repair_item(
+            items,
+            seen,
+            "gitlab",
+            "set sources.gitlab.user or me = true",
+            config_path,
+        ),
+        _ => {}
+    }
+}
+
+fn doctor_repair_plan_jira(
+    items: &mut Vec<IntakeReportRepairSource>,
+    seen: &mut BTreeSet<(String, String)>,
+    config: &ShiplogConfig,
+    selected: &[InitSource],
+    config_path: &Path,
+) {
+    if !doctor_should_check(selected, InitSource::Jira) {
+        return;
+    }
+
+    let Some(source) = config.sources.jira.as_ref() else {
+        doctor_repair_disabled_if_selected(items, selected, InitSource::Jira, config_path);
+        return;
+    };
+    if !source.enabled {
+        doctor_repair_disabled_if_selected(items, selected, InitSource::Jira, config_path);
+        return;
+    }
+
+    if let Err(err) = required_config_string("jira", "user", source.user.as_deref()) {
+        push_doctor_source_repair_item(items, seen, "jira", err.to_string(), config_path);
+    }
+    if let Err(err) = required_config_string("jira", "instance", source.instance.as_deref()) {
+        push_doctor_source_repair_item(items, seen, "jira", err.to_string(), config_path);
+    }
+    let status = source.status.as_deref().unwrap_or("done");
+    if let Err(err) = status.parse::<IssueStatus>() {
+        push_doctor_source_repair_item(
+            items,
+            seen,
+            "jira",
+            format!("parse status {status:?}: {err}"),
+            config_path,
+        );
+    }
+    if !env_var_present("JIRA_TOKEN") {
+        push_doctor_source_repair_item(items, seen, "jira", "missing JIRA_TOKEN", config_path);
+    }
+}
+
+fn doctor_repair_plan_linear(
+    items: &mut Vec<IntakeReportRepairSource>,
+    seen: &mut BTreeSet<(String, String)>,
+    config: &ShiplogConfig,
+    selected: &[InitSource],
+    config_path: &Path,
+) {
+    if !doctor_should_check(selected, InitSource::Linear) {
+        return;
+    }
+
+    let Some(source) = config.sources.linear.as_ref() else {
+        doctor_repair_disabled_if_selected(items, selected, InitSource::Linear, config_path);
+        return;
+    };
+    if !source.enabled {
+        doctor_repair_disabled_if_selected(items, selected, InitSource::Linear, config_path);
+        return;
+    }
+
+    if let Err(err) = required_config_string("linear", "user_id", source.user_id.as_deref()) {
+        push_doctor_source_repair_item(items, seen, "linear", err.to_string(), config_path);
+    }
+    let status = source.status.as_deref().unwrap_or("done");
+    if let Err(err) = status.parse::<LinearIssueStatus>() {
+        push_doctor_source_repair_item(
+            items,
+            seen,
+            "linear",
+            format!("parse status {status:?}: {err}"),
+            config_path,
+        );
+    }
+    if !env_var_present("LINEAR_API_KEY") {
+        push_doctor_source_repair_item(
+            items,
+            seen,
+            "linear",
+            "missing LINEAR_API_KEY",
+            config_path,
+        );
+    }
+}
+
+fn doctor_repair_plan_git(
+    items: &mut Vec<IntakeReportRepairSource>,
+    seen: &mut BTreeSet<(String, String)>,
+    config: &ShiplogConfig,
+    base_dir: &Path,
+    selected: &[InitSource],
+    config_path: &Path,
+) {
+    if !doctor_should_check(selected, InitSource::Git) {
+        return;
+    }
+
+    let Some(source) = config.sources.git.as_ref() else {
+        doctor_repair_disabled_if_selected(items, selected, InitSource::Git, config_path);
+        return;
+    };
+    if !source.enabled {
+        doctor_repair_disabled_if_selected(items, selected, InitSource::Git, config_path);
+        return;
+    }
+
+    match required_config_path(base_dir, "git", "repo", source.repo.as_ref()) {
+        Ok(repo) if repo.is_dir() => {}
+        Ok(repo) => push_doctor_source_repair_item(
+            items,
+            seen,
+            "git",
+            format!("{} is not a directory", repo.display()),
+            config_path,
+        ),
+        Err(err) => {
+            push_doctor_source_repair_item(items, seen, "git", err.to_string(), config_path)
+        }
+    }
+}
+
+fn doctor_repair_plan_json(
+    items: &mut Vec<IntakeReportRepairSource>,
+    seen: &mut BTreeSet<(String, String)>,
+    config: &ShiplogConfig,
+    base_dir: &Path,
+    selected: &[InitSource],
+    config_path: &Path,
+) {
+    if !doctor_should_check(selected, InitSource::Json) {
+        return;
+    }
+
+    let Some(source) = config.sources.json.as_ref() else {
+        doctor_repair_disabled_if_selected(items, selected, InitSource::Json, config_path);
+        return;
+    };
+    if !source.enabled {
+        doctor_repair_disabled_if_selected(items, selected, InitSource::Json, config_path);
+        return;
+    }
+
+    let events = required_config_path(base_dir, "json", "events", source.events.as_ref());
+    let coverage = required_config_path(base_dir, "json", "coverage", source.coverage.as_ref());
+    match (events, coverage) {
+        (Ok(events), Ok(coverage)) if events.exists() && coverage.exists() => {}
+        (Ok(events), Ok(_)) if !events.exists() => push_doctor_source_repair_item(
+            items,
+            seen,
+            "json",
+            format!("{} not found", events.display()),
+            config_path,
+        ),
+        (Ok(_), Ok(coverage)) if !coverage.exists() => push_doctor_source_repair_item(
+            items,
+            seen,
+            "json",
+            format!("{} not found", coverage.display()),
+            config_path,
+        ),
+        (Err(err), _) | (_, Err(err)) => {
+            push_doctor_source_repair_item(items, seen, "json", err.to_string(), config_path)
+        }
+        _ => {}
+    }
+}
+
+fn doctor_repair_plan_manual(
+    items: &mut Vec<IntakeReportRepairSource>,
+    seen: &mut BTreeSet<(String, String)>,
+    config: &ShiplogConfig,
+    base_dir: &Path,
+    selected: &[InitSource],
+    config_path: &Path,
+) {
+    if !doctor_should_check(selected, InitSource::Manual) {
+        return;
+    }
+
+    let Some(source) = config.sources.manual.as_ref() else {
+        doctor_repair_disabled_if_selected(items, selected, InitSource::Manual, config_path);
+        return;
+    };
+    if !source.enabled {
+        doctor_repair_disabled_if_selected(items, selected, InitSource::Manual, config_path);
+        return;
+    }
+
+    match required_config_path(base_dir, "manual", "events", source.events.as_ref()) {
+        Ok(events) if events.exists() => {}
+        Ok(events) => push_doctor_source_repair_item(
+            items,
+            seen,
+            "manual",
+            format!("{} not found", events.display()),
+            config_path,
+        ),
+        Err(err) => {
+            push_doctor_source_repair_item(items, seen, "manual", err.to_string(), config_path)
+        }
+    }
 }
 
 fn doctor_github(report: &mut DoctorReport, config: &ShiplogConfig, selected: &[InitSource]) {
@@ -7219,8 +7837,16 @@ fn main() -> Result<()> {
             run_init(sources, dry_run, force)?;
         }
 
-        Command::Doctor { config, sources } => {
-            run_doctor(&config, &sources)?;
+        Command::Doctor {
+            config,
+            sources,
+            repair_plan,
+        } => {
+            if repair_plan {
+                run_doctor_repair_plan(&config, &sources)?;
+            } else {
+                run_doctor(&config, &sources)?;
+            }
         }
 
         Command::Intake(args) => {

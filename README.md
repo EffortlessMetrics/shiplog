@@ -165,7 +165,9 @@ shiplog config explain --config examples/configs/local-git-json-manual.toml
 ```
 
 `shiplog doctor` adds token, output, identity, and safety checks before a
-collection run.
+collection run. Use `shiplog doctor --repair-plan` when setup is broken and
+you want classified, source-by-source repair commands without collecting data
+or writing run artifacts.
 
 ### 2. Collect events from GitHub
 
@@ -335,7 +337,7 @@ out/<run_id>/
 | Command | Description |
 |---------|-------------|
 | `init` | Create `shiplog.toml` and `manual_events.yaml` scaffold files |
-| `doctor` | Check local config, enabled sources, token env vars, and output safety |
+| `doctor` | Check local config, enabled sources, token env vars, output safety, and repair plans |
 | `intake` | Run best-effort review intake, render a packet, inspect it, and print next steps |
 | `config validate/explain/migrate` | Validate `shiplog.toml`, print resolved settings, or add version metadata |
 | `cache stats/inspect/clean` | Inspect and safely clean source API cache databases |
