@@ -100,6 +100,10 @@ fn install_guide_documents_current_install_paths() {
         "Homebrew",
         "Scoop and winget",
         "shiplog intake --last-6-months --explain",
+        "scripts/release-install-smoke.sh v0.4.0",
+        "scripts\\release-install-smoke.ps1 v0.4.0",
+        "shiplog share verify public --help",
+        "examples/configs/local-git-json-manual.toml",
     ] {
         assert!(
             doc.contains(needle),

@@ -157,3 +157,35 @@ shiplog intake --last-6-months --explain
 shiplog open intake-report --latest
 shiplog open packet --latest
 ```
+
+## Release binary smoke
+
+Developers verifying a shipped release from a repository checkout can use the
+binary-only smoke scripts. They download the current-platform GitHub release
+asset, verify `SHA256SUMS.txt`, run the first-run help checks, and run a
+fixture-backed review rescue intake without provider tokens or Rust installed.
+
+Linux and macOS:
+
+```bash
+scripts/release-install-smoke.sh v0.4.0
+```
+
+Windows PowerShell:
+
+```powershell
+pwsh -File .\scripts\release-install-smoke.ps1 v0.4.0
+```
+
+The smoke path runs:
+
+```bash
+shiplog --version
+shiplog init --dry-run
+shiplog intake --help
+shiplog share verify public --help
+shiplog intake --config examples/configs/local-git-json-manual.toml --no-open --explain
+shiplog open intake-report --latest --print-path
+shiplog review fixups --latest --commands-only
+shiplog share verify manager --redact-key fixture-key
+```
