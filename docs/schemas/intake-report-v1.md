@@ -119,6 +119,25 @@ detail
 next_step
 ```
 
+Current writers include stable `top_fixups[].id` and `top_fixups[].kind`
+fields for future TUI and agent flows. Older v1 reports may not have these
+optional fields, so readers should fall back to `title` and `command` when they
+are absent. Known fixup kinds are:
+
+```text
+validate_workstreams
+repair_sources
+split_misc_workstream
+manual_context
+select_receipts
+trim_receipts
+split_broad_workstream
+ticket_context
+code_context
+manual_only_workstream
+thin_workstream
+```
+
 `top_fixups`, `journal_suggestions`, `share_commands`, and `next_commands` are
 operator guidance. Commands should be shown as suggestions and should not be run
 without user confirmation in future UI or agent surfaces.

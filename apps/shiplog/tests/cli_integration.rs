@@ -171,6 +171,28 @@ fn assert_intake_report_schema_contract(report_json: &serde_json::Value) {
             "repair source schema should allow kind {kind:?}"
         );
     }
+    let fixup_properties = schema["$defs"]["fixup"]["allOf"][1]["properties"]
+        .as_object()
+        .expect("fixup schema should document object properties");
+    assert!(
+        fixup_properties.contains_key("id"),
+        "fixup schema should document optional stable id"
+    );
+    assert!(
+        fixup_properties.contains_key("kind"),
+        "fixup schema should document optional stable kind"
+    );
+    let fixup_kind_values = fixup_properties["kind"]["enum"]
+        .as_array()
+        .expect("fixup schema should document fixup kind values");
+    for kind in ["manual_context", "select_receipts", "repair_sources"] {
+        assert!(
+            fixup_kind_values
+                .iter()
+                .any(|value| value.as_str() == Some(kind)),
+            "fixup schema should allow kind {kind:?}"
+        );
+    }
 }
 
 fn assert_schema_field_names_are_not_secret_bearing(value: &serde_json::Value) {
@@ -274,6 +296,22 @@ fn assert_golden_intake_report(run_dir: &Path, readiness: &str) -> (String, serd
         assert!(
             repair["kind"].as_str().is_some_and(|kind| !kind.is_empty()),
             "generated repair source should expose a stable kind"
+        );
+    }
+    for fixup in report_json["top_fixups"]
+        .as_array()
+        .expect("top_fixups should be an array")
+    {
+        let id = fixup["id"]
+            .as_str()
+            .expect("generated fixup should expose a stable id");
+        assert!(
+            id.starts_with("fixup_") && !id.chars().any(char::is_whitespace),
+            "generated fixup id should be a stable token"
+        );
+        assert!(
+            fixup["kind"].as_str().is_some_and(|kind| !kind.is_empty()),
+            "generated fixup should expose a stable kind"
         );
     }
 
@@ -5858,6 +5896,143 @@ fn report_validate_accepts_legacy_repair_sources_without_kind() {
         .assert()
         .success()
         .stdout(predicate::str::contains("Report valid:"));
+}
+
+#[test]
+fn report_validate_accepts_legacy_fixups_without_id_or_kind() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args(["intake", "--out", out.to_str().unwrap(), "--no-open"])
+        .assert()
+        .success();
+
+    let report_path = first_run_dir(&out).join("intake.report.json");
+    let mut report: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&report_path).unwrap()).unwrap();
+    report["top_fixups"] = serde_json::json!([
+        {
+            "title": "Add outcome context",
+            "detail": null,
+            "command": "shiplog journal add --title \"Outcome note\""
+        }
+    ]);
+    std::fs::write(
+        &report_path,
+        format!("{}\n", serde_json::to_string_pretty(&report).unwrap()),
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .args([
+            "report",
+            "validate",
+            "--path",
+            report_path.to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Report valid:"));
+}
+
+#[test]
+fn report_validate_rejects_unknown_fixup_kind() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args(["intake", "--out", out.to_str().unwrap(), "--no-open"])
+        .assert()
+        .success();
+
+    let report_path = first_run_dir(&out).join("intake.report.json");
+    let mut report: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&report_path).unwrap()).unwrap();
+    report["top_fixups"] = serde_json::json!([
+        {
+            "id": "fixup_mystery",
+            "kind": "mystery",
+            "title": "Mystery fixup",
+            "detail": null,
+            "command": "shiplog review --latest"
+        }
+    ]);
+    std::fs::write(
+        &report_path,
+        format!("{}\n", serde_json::to_string_pretty(&report).unwrap()),
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .args([
+            "report",
+            "validate",
+            "--path",
+            report_path.to_str().unwrap(),
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "top_fixups kind \"mystery\" is not supported",
+        ));
+}
+
+#[test]
+fn report_validate_rejects_invalid_fixup_id() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args(["intake", "--out", out.to_str().unwrap(), "--no-open"])
+        .assert()
+        .success();
+
+    let report_path = first_run_dir(&out).join("intake.report.json");
+    let mut report: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&report_path).unwrap()).unwrap();
+    report["top_fixups"] = serde_json::json!([
+        {
+            "id": "Fixup Bad Id",
+            "kind": "manual_context",
+            "title": "Bad fixup id",
+            "detail": null,
+            "command": "shiplog review --latest"
+        }
+    ]);
+    std::fs::write(
+        &report_path,
+        format!("{}\n", serde_json::to_string_pretty(&report).unwrap()),
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .args([
+            "report",
+            "validate",
+            "--path",
+            report_path.to_str().unwrap(),
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "top_fixups id must match fixup_[a-z0-9_]+",
+        ));
 }
 
 #[test]

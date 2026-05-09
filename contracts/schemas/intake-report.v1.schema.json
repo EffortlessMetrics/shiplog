@@ -414,6 +414,27 @@
             "command"
           ],
           "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^fixup_[a-z0-9_]+$"
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "validate_workstreams",
+                "repair_sources",
+                "split_misc_workstream",
+                "manual_context",
+                "select_receipts",
+                "trim_receipts",
+                "split_broad_workstream",
+                "ticket_context",
+                "code_context",
+                "manual_only_workstream",
+                "thin_workstream"
+              ]
+            },
             "title": {
               "type": "string",
               "minLength": 1

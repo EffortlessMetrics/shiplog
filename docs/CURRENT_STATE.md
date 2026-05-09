@@ -40,7 +40,9 @@ redaction key. Intake also leaves `intake.report.md` and `intake.report.json`
 beside the run so readiness, skipped sources, repair hints, fixups, and share
 commands are not terminal-only. The JSON report is documented as v1 in
 `docs/schemas/intake-report-v1.md` with the schema at
-`contracts/schemas/intake-report.v1.schema.json`.
+`contracts/schemas/intake-report.v1.schema.json`; current writers include
+stable repair kinds and top-fixup IDs/kinds for future local UI or agent
+surfaces.
 
 ## CLI Product Surface
 
@@ -136,7 +138,10 @@ rendering or requiring the redaction key again.
 Review evidence debt is packet-quality focused. It surfaces skipped sources,
 partial coverage, missing or over-selected receipts, broad/misc/thin
 workstreams, one-source-type workstreams, manual context gaps, and validation
-errors with concrete next commands; it is not a productivity score.
+errors with concrete next commands; it is not a productivity score. Generated
+intake reports include stable `top_fixups[].id` and `top_fixups[].kind` fields
+while validation remains compatible with older v1 reports that only recorded
+fixup title/detail/command.
 
 ## Public Crate Surface
 

@@ -1778,6 +1778,8 @@ struct IntakeReportEvidenceDebt {
 
 #[derive(Debug, Serialize)]
 struct IntakeReportFixup {
+    id: String,
+    kind: String,
     title: String,
     detail: Option<String>,
     command: String,
@@ -2389,6 +2391,8 @@ fn build_intake_report(
             .iter()
             .take(5)
             .map(|fixup| IntakeReportFixup {
+                id: fixup.id.clone(),
+                kind: fixup.kind.label().to_string(),
                 title: fixup.title.clone(),
                 detail: fixup.detail.clone(),
                 command: fixup.command.clone(),
@@ -2697,6 +2701,19 @@ const INTAKE_REPAIR_KIND_VALUES: &[&str] = &[
     "missing_file",
     "setup_required",
 ];
+const INTAKE_FIXUP_KIND_VALUES: &[&str] = &[
+    "validate_workstreams",
+    "repair_sources",
+    "split_misc_workstream",
+    "manual_context",
+    "select_receipts",
+    "trim_receipts",
+    "split_broad_workstream",
+    "ticket_context",
+    "code_context",
+    "manual_only_workstream",
+    "thin_workstream",
+];
 
 fn validate_intake_report_command(
     out_dir: &Path,
@@ -2915,6 +2932,8 @@ fn validate_report_items(report: &serde_json::Value) -> Result<()> {
             }
             if field == "repair_sources" {
                 validate_optional_repair_kind(item)?;
+            } else if field == "top_fixups" {
+                validate_optional_fixup_fields(item)?;
             }
         }
     }
@@ -2931,6 +2950,32 @@ fn validate_optional_repair_kind(item: &serde_json::Value) -> Result<()> {
     };
     if !INTAKE_REPAIR_KIND_VALUES.contains(&kind) {
         anyhow::bail!("intake report repair_sources kind {kind:?} is not supported")
+    }
+
+    Ok(())
+}
+
+fn validate_optional_fixup_fields(item: &serde_json::Value) -> Result<()> {
+    if let Some(id) = item.get("id") {
+        let Some(id) = id.as_str() else {
+            anyhow::bail!("intake report top_fixups id must be a string")
+        };
+        if !id.starts_with("fixup_")
+            || !id
+                .chars()
+                .all(|ch| ch.is_ascii_lowercase() || ch.is_ascii_digit() || ch == '_')
+        {
+            anyhow::bail!("intake report top_fixups id must match fixup_[a-z0-9_]+")
+        }
+    }
+
+    if let Some(kind) = item.get("kind") {
+        let Some(kind) = kind.as_str() else {
+            anyhow::bail!("intake report top_fixups kind must be a string")
+        };
+        if !INTAKE_FIXUP_KIND_VALUES.contains(&kind) {
+            anyhow::bail!("intake report top_fixups kind {kind:?} is not supported")
+        }
     }
 
     Ok(())
@@ -11891,7 +11936,42 @@ struct EvidenceDebt {
     next_step: Option<String>,
 }
 
+#[derive(Clone, Copy, Debug)]
+enum ReviewFixupKind {
+    ValidateWorkstreams,
+    RepairSources,
+    SplitMiscWorkstream,
+    ManualContext,
+    SelectReceipts,
+    TrimReceipts,
+    SplitBroadWorkstream,
+    TicketContext,
+    CodeContext,
+    ManualOnlyWorkstream,
+    ThinWorkstream,
+}
+
+impl ReviewFixupKind {
+    fn label(self) -> &'static str {
+        match self {
+            Self::ValidateWorkstreams => "validate_workstreams",
+            Self::RepairSources => "repair_sources",
+            Self::SplitMiscWorkstream => "split_misc_workstream",
+            Self::ManualContext => "manual_context",
+            Self::SelectReceipts => "select_receipts",
+            Self::TrimReceipts => "trim_receipts",
+            Self::SplitBroadWorkstream => "split_broad_workstream",
+            Self::TicketContext => "ticket_context",
+            Self::CodeContext => "code_context",
+            Self::ManualOnlyWorkstream => "manual_only_workstream",
+            Self::ThinWorkstream => "thin_workstream",
+        }
+    }
+}
+
 struct ReviewFixup {
+    id: String,
+    kind: ReviewFixupKind,
     title: String,
     detail: Option<String>,
     command: String,
@@ -12344,6 +12424,32 @@ fn review_journal_templates<'a>(signals: &'a WorkstreamQualitySignals<'a>) -> Ve
     templates
 }
 
+fn make_review_fixup(
+    kind: ReviewFixupKind,
+    subject: Option<&str>,
+    title: String,
+    detail: Option<String>,
+    command: String,
+) -> ReviewFixup {
+    ReviewFixup {
+        id: stable_fixup_id(kind, subject),
+        kind,
+        title,
+        detail,
+        command,
+    }
+}
+
+fn stable_fixup_id(kind: ReviewFixupKind, subject: Option<&str>) -> String {
+    match subject {
+        Some(subject) => {
+            let slug = slugify_journal_title(subject).replace('-', "_");
+            format!("fixup_{}_{}", kind.label(), slug)
+        }
+        None => format!("fixup_{}", kind.label()),
+    }
+}
+
 fn review_fixups(
     run_id: &str,
     out_dir: &Path,
@@ -12355,14 +12461,16 @@ fn review_fixups(
     let out_arg = quote_cli_value(&out_dir.display().to_string());
 
     if !validation_errors.is_empty() {
-        fixups.push(ReviewFixup {
-            title: "Validate workstream assignments".to_string(),
-            detail: Some(format!(
+        fixups.push(make_review_fixup(
+            ReviewFixupKind::ValidateWorkstreams,
+            None,
+            "Validate workstream assignments".to_string(),
+            Some(format!(
                 "{} validation issue(s) should be fixed before sharing.",
                 validation_errors.len()
             )),
-            command: format!("shiplog workstreams validate --out {out_arg} --run {run_id}"),
-        });
+            format!("shiplog workstreams validate --out {out_arg} --run {run_id}"),
+        ));
     }
 
     if !skipped_sources.is_empty() {
@@ -12380,149 +12488,169 @@ fn review_fixups(
         } else {
             format!("Skipped sources: {sources}.")
         };
-        fixups.push(ReviewFixup {
-            title: "Repair skipped source setup".to_string(),
-            detail: Some(detail),
-            command: "shiplog doctor".to_string(),
-        });
+        fixups.push(make_review_fixup(
+            ReviewFixupKind::RepairSources,
+            None,
+            "Repair skipped source setup".to_string(),
+            Some(detail),
+            "shiplog doctor".to_string(),
+        ));
     }
 
     for workstream in signals.large_misc_workstreams.iter().take(2) {
-        fixups.push(ReviewFixup {
-            title: format!(
+        fixups.push(make_review_fixup(
+            ReviewFixupKind::SplitMiscWorkstream,
+            Some(&workstream.title),
+            format!(
                 "Split large misc workstream {}",
                 quote_display_title(&workstream.title)
             ),
-            detail: Some(format!(
+            Some(format!(
                 "{} event(s) are still in a miscellaneous bucket.",
                 workstream.events.len()
             )),
-            command: format!(
+            format!(
                 "shiplog workstreams split --out {out_arg} --run {run_id} --from {} --to \"<new workstream>\" --matching \"<pattern>\" --create",
                 quote_cli_value(&workstream.title)
             ),
-        });
+        ));
     }
 
     for workstream in signals.manual_context_workstreams.iter().take(2) {
-        fixups.push(ReviewFixup {
-            title: format!(
+        fixups.push(make_review_fixup(
+            ReviewFixupKind::ManualContext,
+            Some(&workstream.title),
+            format!(
                 "Add outcome context for {}",
                 quote_display_title(&workstream.title)
             ),
-            detail: Some(format!(
+            Some(format!(
                 "{} event(s) are grouped here, but none are manual outcome notes.",
                 workstream.events.len()
             )),
-            command: journal_add_next_step(&workstream.title),
-        });
+            journal_add_next_step(&workstream.title),
+        ));
     }
 
     for workstream in signals.no_receipt_workstreams.iter().take(2) {
-        fixups.push(ReviewFixup {
-            title: format!(
+        fixups.push(make_review_fixup(
+            ReviewFixupKind::SelectReceipts,
+            Some(&workstream.title),
+            format!(
                 "Select anchor receipts for {}",
                 quote_display_title(&workstream.title)
             ),
-            detail: Some(format!(
+            Some(format!(
                 "{} event(s) are assigned, but no receipt anchors are selected.",
                 workstream.events.len()
             )),
-            command: format!(
+            format!(
                 "shiplog workstreams receipts --out {out_arg} --run {run_id} --workstream {}",
                 quote_cli_value(&workstream.title)
             ),
-        });
+        ));
     }
 
     for workstream in signals.too_many_receipt_workstreams.iter().take(2) {
-        fixups.push(ReviewFixup {
-            title: format!(
+        fixups.push(make_review_fixup(
+            ReviewFixupKind::TrimReceipts,
+            Some(&workstream.title),
+            format!(
                 "Trim selected receipts for {}",
                 quote_display_title(&workstream.title)
             ),
-            detail: Some(format!(
+            Some(format!(
                 "{} receipt anchors are selected; choose the strongest few for review.",
                 workstream.receipts.len()
             )),
-            command: format!(
+            format!(
                 "shiplog workstreams receipts --out {out_arg} --run {run_id} --workstream {}",
                 quote_cli_value(&workstream.title)
             ),
-        });
+        ));
     }
 
     for workstream in signals.broad_workstreams.iter().take(2) {
-        fixups.push(ReviewFixup {
-            title: format!(
+        fixups.push(make_review_fixup(
+            ReviewFixupKind::SplitBroadWorkstream,
+            Some(&workstream.title),
+            format!(
                 "Split broad workstream {}",
                 quote_display_title(&workstream.title)
             ),
-            detail: Some(format!(
+            Some(format!(
                 "{} event(s) may be too broad for one review claim.",
                 workstream.events.len()
             )),
-            command: format!(
+            format!(
                 "shiplog workstreams split --out {out_arg} --run {run_id} --from {} --to \"<new workstream>\" --matching \"<pattern>\" --create",
                 quote_cli_value(&workstream.title)
             ),
-        });
+        ));
     }
 
     for workstream in signals.ticket_only_workstreams.iter().take(2) {
-        fixups.push(ReviewFixup {
-            title: format!(
+        fixups.push(make_review_fixup(
+            ReviewFixupKind::TicketContext,
+            Some(&workstream.title),
+            format!(
                 "Add outcome context for ticket-only workstream {}",
                 quote_display_title(&workstream.title)
             ),
-            detail: Some(format!(
+            Some(format!(
                 "{} ticket event(s) are grouped here without code or manual context.",
                 workstream.events.len()
             )),
-            command: journal_add_next_step(&workstream.title),
-        });
+            journal_add_next_step(&workstream.title),
+        ));
     }
 
     for workstream in signals.code_only_workstreams.iter().take(2) {
-        fixups.push(ReviewFixup {
-            title: format!(
+        fixups.push(make_review_fixup(
+            ReviewFixupKind::CodeContext,
+            Some(&workstream.title),
+            format!(
                 "Add outcome context for code-only workstream {}",
                 quote_display_title(&workstream.title)
             ),
-            detail: Some(format!(
+            Some(format!(
                 "{} code/review event(s) are grouped here without ticket or manual context.",
                 workstream.events.len()
             )),
-            command: journal_add_next_step(&workstream.title),
-        });
+            journal_add_next_step(&workstream.title),
+        ));
     }
 
     for workstream in signals.manual_only_workstreams.iter().take(2) {
-        fixups.push(ReviewFixup {
-            title: format!(
+        fixups.push(make_review_fixup(
+            ReviewFixupKind::ManualOnlyWorkstream,
+            Some(&workstream.title),
+            format!(
                 "Check manual-only workstream {}",
                 quote_display_title(&workstream.title)
             ),
-            detail: Some(format!(
+            Some(format!(
                 "{} manual event(s) are grouped here without external source receipts.",
                 workstream.events.len()
             )),
-            command: "shiplog journal list".to_string(),
-        });
+            "shiplog journal list".to_string(),
+        ));
     }
 
     for workstream in signals.thin_workstreams.iter().take(2) {
-        fixups.push(ReviewFixup {
-            title: format!(
+        fixups.push(make_review_fixup(
+            ReviewFixupKind::ThinWorkstream,
+            Some(&workstream.title),
+            format!(
                 "Check thin workstream {}",
                 quote_display_title(&workstream.title)
             ),
-            detail: Some("Only one event is assigned; confirm it can stand alone.".to_string()),
-            command: format!(
+            Some("Only one event is assigned; confirm it can stand alone.".to_string()),
+            format!(
                 "shiplog workstreams receipts --out {out_arg} --run {run_id} --workstream {}",
                 quote_cli_value(&workstream.title)
             ),
-        });
+        ));
     }
 
     fixups
