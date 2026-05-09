@@ -51,6 +51,10 @@ next_commands
 artifacts
 ```
 
+Current writers also include the optional top-level `actions` array. Older v1
+reports may not have it, so readers should treat it as absent rather than
+invalid when loading historical reports.
+
 Consumers should treat display strings, paths, command strings, and ordering as
 best-effort user-facing guidance. They are stable enough to show to a user, but
 not a promise that a later v1 report will use identical wording for every
@@ -141,3 +145,39 @@ thin_workstream
 `top_fixups`, `journal_suggestions`, `share_commands`, and `next_commands` are
 operator guidance. Commands should be shown as suggestions and should not be run
 without user confirmation in future UI or agent surfaces.
+
+## Machine Actions
+
+`actions` is the machine-readable action list for future local UI/TUI and
+agent surfaces. It deduplicates the most useful repair, fixup, share, and next
+commands into objects with:
+
+```text
+id
+kind
+label
+command
+writes
+risk
+```
+
+Known action kinds are:
+
+```text
+repair_source
+fixup
+share_manager
+share_public
+next_command
+```
+
+Known risk values are:
+
+```text
+low
+medium
+high
+```
+
+`writes` identifies commands that may create or modify Shiplog artifacts. UI and
+agent consumers should still require user confirmation before running any action.

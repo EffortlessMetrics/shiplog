@@ -193,6 +193,26 @@ fn assert_intake_report_schema_contract(report_json: &serde_json::Value) {
             "fixup schema should allow kind {kind:?}"
         );
     }
+    let action_properties = schema["$defs"]["action"]["allOf"][1]["properties"]
+        .as_object()
+        .expect("action schema should document object properties");
+    for field in ["id", "kind", "label", "command", "writes", "risk"] {
+        assert!(
+            action_properties.contains_key(field),
+            "action schema should document {field:?}"
+        );
+    }
+    let action_kind_values = action_properties["kind"]["enum"]
+        .as_array()
+        .expect("action schema should document action kind values");
+    for kind in ["repair_source", "fixup", "share_manager", "share_public"] {
+        assert!(
+            action_kind_values
+                .iter()
+                .any(|value| value.as_str() == Some(kind)),
+            "action schema should allow kind {kind:?}"
+        );
+    }
 }
 
 fn assert_schema_field_names_are_not_secret_bearing(value: &serde_json::Value) {
@@ -282,6 +302,7 @@ fn assert_golden_intake_report(run_dir: &Path, readiness: &str) -> (String, serd
         "journal_suggestions",
         "share_commands",
         "curation_notes",
+        "actions",
         "artifacts",
     ] {
         assert!(
@@ -312,6 +333,42 @@ fn assert_golden_intake_report(run_dir: &Path, readiness: &str) -> (String, serd
         assert!(
             fixup["kind"].as_str().is_some_and(|kind| !kind.is_empty()),
             "generated fixup should expose a stable kind"
+        );
+    }
+    for action in report_json["actions"]
+        .as_array()
+        .expect("actions should be an array")
+    {
+        let id = action["id"]
+            .as_str()
+            .expect("generated action should expose a stable id");
+        assert!(
+            id.starts_with("action_") && !id.chars().any(char::is_whitespace),
+            "generated action id should be a stable token"
+        );
+        assert!(
+            action["kind"].as_str().is_some_and(|kind| !kind.is_empty()),
+            "generated action should expose a stable kind"
+        );
+        assert!(
+            action["label"]
+                .as_str()
+                .is_some_and(|label| !label.is_empty()),
+            "generated action should expose a label"
+        );
+        assert!(
+            action["command"]
+                .as_str()
+                .is_some_and(|command| !command.is_empty()),
+            "generated action should expose a command"
+        );
+        assert!(
+            action["writes"].is_boolean(),
+            "generated action should expose write intent"
+        );
+        assert!(
+            action["risk"].as_str().is_some_and(|risk| !risk.is_empty()),
+            "generated action should expose risk"
         );
     }
 
@@ -5942,6 +5999,46 @@ fn report_validate_accepts_legacy_fixups_without_id_or_kind() {
 }
 
 #[test]
+fn report_validate_accepts_legacy_reports_without_actions() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args(["intake", "--out", out.to_str().unwrap(), "--no-open"])
+        .assert()
+        .success();
+
+    let report_path = first_run_dir(&out).join("intake.report.json");
+    let mut report: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&report_path).unwrap()).unwrap();
+    report
+        .as_object_mut()
+        .expect("report should be an object")
+        .remove("actions");
+    std::fs::write(
+        &report_path,
+        format!("{}\n", serde_json::to_string_pretty(&report).unwrap()),
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .args([
+            "report",
+            "validate",
+            "--path",
+            report_path.to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Report valid:"));
+}
+
+#[test]
 fn report_validate_rejects_unknown_fixup_kind() {
     let tmp = TempDir::new().unwrap();
     let out = tmp.path().join("out");
@@ -6032,6 +6129,102 @@ fn report_validate_rejects_invalid_fixup_id() {
         .failure()
         .stderr(predicate::str::contains(
             "top_fixups id must match fixup_[a-z0-9_]+",
+        ));
+}
+
+#[test]
+fn report_validate_rejects_unknown_action_kind() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args(["intake", "--out", out.to_str().unwrap(), "--no-open"])
+        .assert()
+        .success();
+
+    let report_path = first_run_dir(&out).join("intake.report.json");
+    let mut report: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&report_path).unwrap()).unwrap();
+    report["actions"] = serde_json::json!([
+        {
+            "id": "action_mystery",
+            "kind": "mystery",
+            "label": "Mystery action",
+            "command": "shiplog review --latest",
+            "writes": false,
+            "risk": "low"
+        }
+    ]);
+    std::fs::write(
+        &report_path,
+        format!("{}\n", serde_json::to_string_pretty(&report).unwrap()),
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .args([
+            "report",
+            "validate",
+            "--path",
+            report_path.to_str().unwrap(),
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "actions kind \"mystery\" is not supported",
+        ));
+}
+
+#[test]
+fn report_validate_rejects_invalid_action_id() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args(["intake", "--out", out.to_str().unwrap(), "--no-open"])
+        .assert()
+        .success();
+
+    let report_path = first_run_dir(&out).join("intake.report.json");
+    let mut report: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&report_path).unwrap()).unwrap();
+    report["actions"] = serde_json::json!([
+        {
+            "id": "Action Bad",
+            "kind": "fixup",
+            "label": "Bad action",
+            "command": "shiplog review --latest",
+            "writes": false,
+            "risk": "low"
+        }
+    ]);
+    std::fs::write(
+        &report_path,
+        format!("{}\n", serde_json::to_string_pretty(&report).unwrap()),
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .args([
+            "report",
+            "validate",
+            "--path",
+            report_path.to_str().unwrap(),
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "actions id must match action_[a-z0-9_]+",
         ));
 }
 

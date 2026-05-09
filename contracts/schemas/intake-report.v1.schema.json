@@ -127,6 +127,12 @@
     "next_commands": {
       "$ref": "#/$defs/string_array"
     },
+    "actions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/action"
+      }
+    },
     "artifacts": {
       "type": "array",
       "items": {
@@ -448,6 +454,59 @@
             "command": {
               "type": "string",
               "minLength": 1
+            }
+          }
+        }
+      ]
+    },
+    "action": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "required": [
+            "id",
+            "kind",
+            "label",
+            "command",
+            "writes",
+            "risk"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^action_[a-z0-9_]+$"
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "repair_source",
+                "fixup",
+                "share_manager",
+                "share_public",
+                "next_command"
+              ]
+            },
+            "label": {
+              "type": "string",
+              "minLength": 1
+            },
+            "command": {
+              "type": "string",
+              "minLength": 1
+            },
+            "writes": {
+              "type": "boolean"
+            },
+            "risk": {
+              "type": "string",
+              "enum": [
+                "low",
+                "medium",
+                "high"
+              ]
             }
           }
         }

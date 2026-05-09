@@ -1721,6 +1721,7 @@ struct IntakeReport {
     journal_suggestions: Vec<String>,
     share_commands: Vec<String>,
     next_commands: Vec<String>,
+    actions: Vec<IntakeReportAction>,
     artifacts: Vec<IntakeReportArtifact>,
 }
 
@@ -1783,6 +1784,16 @@ struct IntakeReportFixup {
     title: String,
     detail: Option<String>,
     command: String,
+}
+
+#[derive(Debug, Serialize)]
+struct IntakeReportAction {
+    id: String,
+    kind: String,
+    label: String,
+    command: String,
+    writes: bool,
+    risk: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -2330,6 +2341,34 @@ fn build_intake_report(
             path: source_failures_path.display().to_string(),
         });
     }
+    let repair_sources = intake_repair_source_reports(explanations, &result.configured.failures);
+    let top_fixups = top_fixups
+        .iter()
+        .take(5)
+        .map(|fixup| IntakeReportFixup {
+            id: fixup.id.clone(),
+            kind: fixup.kind.label().to_string(),
+            title: fixup.title.clone(),
+            detail: fixup.detail.clone(),
+            command: fixup.command.clone(),
+        })
+        .collect::<Vec<_>>();
+    let journal_suggestions = top_fixups
+        .iter()
+        .map(|fixup| fixup.command.as_str())
+        .filter(|command| command.starts_with("shiplog journal add "))
+        .map(str::to_string)
+        .collect::<Vec<_>>();
+    let share_commands = vec![
+        format!("shiplog share manager --out {out_arg} --run {run_id}"),
+        format!("shiplog share public --out {out_arg} --run {run_id}"),
+    ];
+    let actions = intake_report_actions(
+        &repair_sources,
+        &top_fixups,
+        &share_commands,
+        &next_commands,
+    );
 
     Ok(IntakeReport {
         schema_version: 1,
@@ -2373,7 +2412,7 @@ fn build_intake_report(
             })
             .collect(),
         source_decisions: intake_source_decision_reports(explanations),
-        repair_sources: intake_repair_source_reports(explanations, &result.configured.failures),
+        repair_sources,
         curation_notes,
         good,
         needs_attention: attention,
@@ -2387,30 +2426,153 @@ fn build_intake_report(
                 next_step: item.next_step.clone(),
             })
             .collect(),
-        top_fixups: top_fixups
-            .iter()
-            .take(5)
-            .map(|fixup| IntakeReportFixup {
-                id: fixup.id.clone(),
-                kind: fixup.kind.label().to_string(),
-                title: fixup.title.clone(),
-                detail: fixup.detail.clone(),
-                command: fixup.command.clone(),
-            })
-            .collect(),
-        journal_suggestions: top_fixups
-            .iter()
-            .map(|fixup| fixup.command.as_str())
-            .filter(|command| command.starts_with("shiplog journal add "))
-            .map(str::to_string)
-            .collect(),
-        share_commands: vec![
-            format!("shiplog share manager --out {out_arg} --run {run_id}"),
-            format!("shiplog share public --out {out_arg} --run {run_id}"),
-        ],
+        top_fixups,
+        journal_suggestions,
+        share_commands,
         next_commands,
+        actions,
         artifacts,
     })
+}
+
+fn intake_report_actions(
+    repair_sources: &[IntakeReportRepairSource],
+    top_fixups: &[IntakeReportFixup],
+    share_commands: &[String],
+    next_commands: &[String],
+) -> Vec<IntakeReportAction> {
+    let mut actions = Vec::new();
+    let mut seen_commands = BTreeSet::new();
+    let mut repair_action_index_by_source = BTreeMap::new();
+
+    for repair in repair_sources {
+        for command in &repair.commands {
+            let source_token = action_token(&repair.source);
+            let action_index = repair_action_index_by_source
+                .entry(source_token.clone())
+                .and_modify(|value| *value += 1)
+                .or_insert(1);
+            push_intake_report_action(
+                &mut actions,
+                &mut seen_commands,
+                IntakeReportAction {
+                    id: format!("action_repair_{source_token}_{action_index}"),
+                    kind: "repair_source".to_string(),
+                    label: format!("Repair {}", repair.source),
+                    command: command.clone(),
+                    writes: action_writes(command),
+                    risk: action_risk(command).to_string(),
+                },
+            );
+        }
+    }
+
+    for fixup in top_fixups {
+        push_intake_report_action(
+            &mut actions,
+            &mut seen_commands,
+            IntakeReportAction {
+                id: format!("action_{}", fixup.id),
+                kind: "fixup".to_string(),
+                label: fixup.title.clone(),
+                command: fixup.command.clone(),
+                writes: action_writes(&fixup.command),
+                risk: action_risk(&fixup.command).to_string(),
+            },
+        );
+    }
+
+    for command in share_commands {
+        let profile = if command.contains(" share public ") {
+            "public"
+        } else if command.contains(" share manager ") {
+            "manager"
+        } else {
+            "profile"
+        };
+        push_intake_report_action(
+            &mut actions,
+            &mut seen_commands,
+            IntakeReportAction {
+                id: format!("action_share_{profile}"),
+                kind: format!("share_{profile}"),
+                label: format!("Render {profile} share"),
+                command: command.clone(),
+                writes: action_writes(command),
+                risk: action_risk(command).to_string(),
+            },
+        );
+    }
+
+    for (idx, command) in next_commands.iter().enumerate() {
+        push_intake_report_action(
+            &mut actions,
+            &mut seen_commands,
+            IntakeReportAction {
+                id: format!("action_next_{}", idx + 1),
+                kind: "next_command".to_string(),
+                label: format!("Next command {}", idx + 1),
+                command: command.clone(),
+                writes: action_writes(command),
+                risk: action_risk(command).to_string(),
+            },
+        );
+    }
+
+    actions
+}
+
+fn push_intake_report_action(
+    actions: &mut Vec<IntakeReportAction>,
+    seen_commands: &mut BTreeSet<String>,
+    action: IntakeReportAction,
+) {
+    if seen_commands.insert(action.command.clone()) {
+        actions.push(action);
+    }
+}
+
+fn action_token(value: &str) -> String {
+    slugify_journal_title(value).replace('-', "_")
+}
+
+fn action_writes(command: &str) -> bool {
+    let command = command.trim_start();
+    [
+        "shiplog collect ",
+        "shiplog init ",
+        "shiplog intake ",
+        "shiplog journal add ",
+        "shiplog journal edit ",
+        "shiplog journal receipt add ",
+        "shiplog journal receipt remove ",
+        "shiplog render ",
+        "shiplog share manager ",
+        "shiplog share public ",
+        "shiplog workstreams create ",
+        "shiplog workstreams delete ",
+        "shiplog workstreams move ",
+        "shiplog workstreams receipt add ",
+        "shiplog workstreams receipt remove ",
+        "shiplog workstreams rename ",
+        "shiplog workstreams split ",
+    ]
+    .iter()
+    .any(|prefix| command.starts_with(prefix))
+}
+
+fn action_risk(command: &str) -> &'static str {
+    let command = command.trim_start();
+    if command.starts_with("shiplog share public ") {
+        "high"
+    } else if command.starts_with("shiplog share manager ")
+        || command.contains("--bundle-profile manager")
+        || action_writes(command)
+    {
+        "medium"
+    } else {
+        "low"
+    }
 }
 
 fn print_intake_readiness_report(report: &IntakeReport) {
@@ -2656,6 +2818,7 @@ const INTAKE_REPORT_REQUIRED_FIELDS: &[&str] = &[
     "next_commands",
     "artifacts",
 ];
+const INTAKE_REPORT_OPTIONAL_FIELDS: &[&str] = &["actions"];
 const INTAKE_REPORT_ARRAY_FIELDS: &[&str] = &[
     "included_sources",
     "skipped_sources",
@@ -2671,6 +2834,7 @@ const INTAKE_REPORT_ARRAY_FIELDS: &[&str] = &[
     "next_commands",
     "artifacts",
 ];
+const INTAKE_REPORT_OPTIONAL_ARRAY_FIELDS: &[&str] = &["actions"];
 const INTAKE_REPORT_MARKDOWN_SECTIONS: &[&str] = &[
     "# Review Intake Report",
     "## Included Sources",
@@ -2714,6 +2878,14 @@ const INTAKE_FIXUP_KIND_VALUES: &[&str] = &[
     "manual_only_workstream",
     "thin_workstream",
 ];
+const INTAKE_ACTION_KIND_VALUES: &[&str] = &[
+    "repair_source",
+    "fixup",
+    "share_manager",
+    "share_public",
+    "next_command",
+];
+const INTAKE_ACTION_RISK_VALUES: &[&str] = &["low", "medium", "high"];
 
 fn validate_intake_report_command(
     out_dir: &Path,
@@ -2758,6 +2930,7 @@ fn summarize_intake_report_command(
     let top_fixups = json_array(&report_json, "top_fixups")?;
     let evidence_debt = json_array(&report_json, "evidence_debt")?;
     let share_commands = json_array(&report_json, "share_commands")?;
+    let actions = optional_json_array(&report_json, "actions")?;
     let packet_path = string_field(&report_json, "packet_path")?;
 
     println!("Report summary: {}", report_path.display());
@@ -2773,6 +2946,7 @@ fn summarize_intake_report_command(
     println!("Repairs: {} source actions", repair_sources.len());
     println!("Fixups: {} actions", top_fixups.len());
     println!("Share commands: {}", share_commands.len());
+    println!("Machine actions: {}", actions.len());
     println!("Artifacts: {} checked", validation.artifacts_checked);
     println!("Packet: {packet_path}");
     println!("Intake report: {}", validation.markdown_path.display());
@@ -2781,6 +2955,7 @@ fn summarize_intake_report_command(
     print_report_repair_summary_items("Top repairs", repair_sources)?;
     print_report_summary_items("Top fixups", top_fixups, "title", "command")?;
     print_report_summary_strings("Share next", share_commands)?;
+    print_report_summary_items("Machine actions", actions, "label", "command")?;
 
     Ok(())
 }
@@ -2819,14 +2994,18 @@ fn validate_intake_report(report_path: &Path) -> Result<IntakeReportValidation> 
         .as_object()
         .ok_or_else(|| anyhow::anyhow!("intake report must be a JSON object"))?;
 
-    let required: BTreeSet<_> = INTAKE_REPORT_REQUIRED_FIELDS.iter().copied().collect();
+    let allowed: BTreeSet<_> = INTAKE_REPORT_REQUIRED_FIELDS
+        .iter()
+        .chain(INTAKE_REPORT_OPTIONAL_FIELDS.iter())
+        .copied()
+        .collect();
     for field in INTAKE_REPORT_REQUIRED_FIELDS {
         if !report.contains_key(*field) {
             anyhow::bail!("intake report missing required field {field:?}")
         }
     }
     for field in report.keys() {
-        if !required.contains(field.as_str()) {
+        if !allowed.contains(field.as_str()) {
             anyhow::bail!("intake report contains unsupported field {field:?}")
         }
         ensure_field_name_not_secret_bearing(field)?;
@@ -2879,6 +3058,11 @@ fn validate_intake_report(report_path: &Path) -> Result<IntakeReportValidation> 
 
     for field in INTAKE_REPORT_ARRAY_FIELDS {
         if !report_json[*field].is_array() {
+            anyhow::bail!("intake report field {field:?} must be an array")
+        }
+    }
+    for field in INTAKE_REPORT_OPTIONAL_ARRAY_FIELDS {
+        if report_json.get(*field).is_some() && !report_json[*field].is_array() {
             anyhow::bail!("intake report field {field:?} must be an array")
         }
     }
@@ -2936,6 +3120,57 @@ fn validate_report_items(report: &serde_json::Value) -> Result<()> {
                 validate_optional_fixup_fields(item)?;
             }
         }
+    }
+    if let Some(actions) = report.get("actions") {
+        let actions = actions
+            .as_array()
+            .ok_or_else(|| anyhow::anyhow!("intake report field \"actions\" must be an array"))?;
+        for item in actions {
+            validate_report_action(item)?;
+        }
+    }
+
+    Ok(())
+}
+
+fn validate_report_action(item: &serde_json::Value) -> Result<()> {
+    let object = item
+        .as_object()
+        .ok_or_else(|| anyhow::anyhow!("intake report actions items must be objects"))?;
+    for required in ["id", "kind", "label", "command", "writes", "risk"] {
+        if !object.contains_key(required) {
+            anyhow::bail!("intake report actions item missing field {required:?}")
+        }
+    }
+    for key in object.keys() {
+        ensure_field_name_not_secret_bearing(key)?;
+    }
+
+    let id = string_field(item, "id")?;
+    if !id.starts_with("action_")
+        || !id
+            .chars()
+            .all(|ch| ch.is_ascii_lowercase() || ch.is_ascii_digit() || ch == '_')
+    {
+        anyhow::bail!("intake report actions id must match action_[a-z0-9_]+")
+    }
+
+    let kind = string_field(item, "kind")?;
+    if !INTAKE_ACTION_KIND_VALUES.contains(&kind.as_str()) {
+        anyhow::bail!("intake report actions kind {kind:?} is not supported")
+    }
+
+    ensure_string_field(item, "label")?;
+    ensure_string_field(item, "command")?;
+    if !item
+        .get("writes")
+        .is_some_and(serde_json::Value::is_boolean)
+    {
+        anyhow::bail!("intake report actions writes must be a boolean")
+    }
+    let risk = string_field(item, "risk")?;
+    if !INTAKE_ACTION_RISK_VALUES.contains(&risk.as_str()) {
+        anyhow::bail!("intake report actions risk {risk:?} is not supported")
     }
 
     Ok(())
@@ -3134,6 +3369,19 @@ fn json_array<'a>(value: &'a serde_json::Value, field: &str) -> Result<&'a [serd
         .and_then(|value| value.as_array())
         .map(Vec::as_slice)
         .ok_or_else(|| anyhow::anyhow!("intake report field {field:?} must be an array"))
+}
+
+fn optional_json_array<'a>(
+    value: &'a serde_json::Value,
+    field: &str,
+) -> Result<&'a [serde_json::Value]> {
+    match value.get(field) {
+        Some(value) => value
+            .as_array()
+            .map(Vec::as_slice)
+            .ok_or_else(|| anyhow::anyhow!("intake report field {field:?} must be an array")),
+        None => Ok(&[]),
+    }
 }
 
 fn ensure_string_field(value: &serde_json::Value, field: &str) -> Result<()> {
