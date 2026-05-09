@@ -61,7 +61,7 @@ jobs:
       - name: Run Droid Auto Review with MiniMax M2.7 BYOK
         if: env.FACTORY_API_KEY != '' && env.MINIMAX_API_KEY != ''
         continue-on-error: true
-        uses: EffortlessMetrics/droid-action-safe@01e76b659e4b1e5f23feedc8cfabf8dc14c7485f # safe pinned Droid action; raw debug artifact upload disabled
+        uses: EffortlessMetrics/droid-action-safe@7c1377ccbacddc95560d1570547a5baa51de01ec # safe pinned Droid action; raw debug artifact upload disabled
         with:
           factory_api_key: ${{ env.FACTORY_API_KEY }}
           upload_debug_artifacts: false
