@@ -2169,7 +2169,7 @@ fn build_intake_report(
             })
             .collect(),
         source_decisions: intake_source_decision_reports(explanations),
-        repair_sources: intake_repair_source_reports(explanations),
+        repair_sources: intake_repair_source_reports(explanations, &result.configured.failures),
         curation_notes,
         good,
         needs_attention: attention,
@@ -2448,19 +2448,55 @@ fn intake_source_decision_reports(
 
 fn intake_repair_source_reports(
     explanations: &[IntakeSourceExplanation],
+    failures: &[ConfiguredSourceFailure],
 ) -> Vec<IntakeReportRepairSource> {
-    explanations
+    let mut seen = BTreeSet::new();
+    let mut reports = Vec::new();
+
+    for explanation in explanations
         .iter()
         .filter(|explanation| matches!(explanation.decision, IntakeSourceDecision::Skipped))
-        .filter_map(|explanation| {
-            let hint = intake_source_hint(explanation)?;
-            Some(IntakeReportRepairSource {
-                source: display_source_label(&explanation.name),
-                reason: explanation.reason.clone(),
-                commands: hint.lines,
-            })
-        })
-        .collect()
+    {
+        push_intake_repair_source_report(
+            &mut reports,
+            &mut seen,
+            &explanation.name,
+            &explanation.reason,
+        );
+    }
+
+    for failure in failures {
+        push_intake_repair_source_report(&mut reports, &mut seen, &failure.name, &failure.error);
+    }
+
+    reports
+}
+
+fn push_intake_repair_source_report(
+    reports: &mut Vec<IntakeReportRepairSource>,
+    seen: &mut BTreeSet<(String, String)>,
+    name: &str,
+    reason: &str,
+) {
+    let key = (normalized_source_key(name), reason.to_string());
+    if !seen.insert(key) {
+        return;
+    }
+
+    let explanation = IntakeSourceExplanation {
+        name: name.to_string(),
+        decision: IntakeSourceDecision::Skipped,
+        reason: reason.to_string(),
+    };
+    let Some(hint) = intake_source_hint(&explanation) else {
+        return;
+    };
+
+    reports.push(IntakeReportRepairSource {
+        source: display_source_label(name),
+        reason: reason.to_string(),
+        commands: hint.lines,
+    });
 }
 
 fn intake_curation_notes(result: &ConfiguredRunResult) -> Vec<String> {
@@ -3026,6 +3062,12 @@ fn gitlab_repair_hint(reason: &str) -> Vec<String> {
             "Use sources.gitlab.me = true or set sources.gitlab.user in shiplog.toml.".to_string(),
         ];
     }
+    if reason.contains("state") || reason.contains("invalid mr state") {
+        return vec![
+            "Set sources.gitlab.state to opened, merged, closed, or all.".to_string(),
+            "Check sources.gitlab.instance for self-hosted GitLab hosts.".to_string(),
+        ];
+    }
     if reason.contains("both user and me") {
         return vec!["Keep either sources.gitlab.user or sources.gitlab.me, not both.".to_string()];
     }
@@ -3048,6 +3090,13 @@ fn jira_repair_hint(reason: &str) -> Vec<String> {
                 .to_string(),
         ];
     }
+    if reason.contains("status") || reason.contains("invalid issue status") {
+        return vec![
+            "Set sources.jira.status to open, in_progress, done, closed, or all.".to_string(),
+            "Jira --user remains the assignee JQL value; use auth_user only for Basic Auth."
+                .to_string(),
+        ];
+    }
     if reason.contains("instance") {
         return vec![
             "Set sources.jira.instance to your Atlassian host, such as company.atlassian.net."
@@ -3065,6 +3114,19 @@ fn linear_repair_hint(reason: &str) -> Vec<String> {
         return vec![
             "export LINEAR_API_KEY=...".to_string(),
             "Run `shiplog identify linear` to confirm candidate user IDs.".to_string(),
+        ];
+    }
+    if reason.contains("status") || reason.contains("invalid issue status") {
+        return vec![
+            "Set sources.linear.status to backlog, todo, in_progress, done, cancelled, or all."
+                .to_string(),
+            "Check sources.linear.project only after the status filter is valid.".to_string(),
+        ];
+    }
+    if reason.contains("project") {
+        return vec![
+            "Check sources.linear.project against the Linear project key or name.".to_string(),
+            "Omit sources.linear.project to collect all configured user issues.".to_string(),
         ];
     }
     vec![
@@ -5015,7 +5077,7 @@ fn push_configured_source_result(
         Ok(ingest) => successes.push((name.to_string(), ingest)),
         Err(err) => failures.push(ConfiguredSourceFailure {
             name: name.to_string(),
-            error: err.to_string(),
+            error: format!("{err:#}"),
         }),
     }
 }
@@ -11298,6 +11360,39 @@ mod tests {
     }
 
     #[test]
+    fn make_github_ingestor_configures_enterprise_api_base_and_cache() {
+        let since = NaiveDate::from_ymd_opt(2025, 1, 1).unwrap();
+        let until = NaiveDate::from_ymd_opt(2025, 2, 1).unwrap();
+        let cache_dir = tempfile::tempdir().unwrap();
+
+        let ing = make_github_ingestor(
+            "alice",
+            since,
+            until,
+            "merged",
+            true,
+            false,
+            10,
+            Some("ghp-token".to_string()),
+            "https://github.enterprise.example/api/v3",
+            Some(cache_dir.path().to_path_buf()),
+        )
+        .unwrap();
+
+        assert_eq!(ing.user, "alice");
+        assert_eq!(ing.since, since);
+        assert_eq!(ing.until, until);
+        assert_eq!(ing.mode, "merged");
+        assert!(ing.include_reviews);
+        assert!(ing.fetch_details);
+        assert_eq!(ing.throttle_ms, 10);
+        assert_eq!(ing.token.as_deref(), Some("ghp-token"));
+        assert_eq!(ing.api_base, "https://github.enterprise.example/api/v3");
+        assert!(ing.cache.is_some());
+        assert!(cache_dir.path().join("github-api-cache.db").exists());
+    }
+
+    #[test]
     fn make_gitlab_ingestor_configures_cli_options() {
         let since = NaiveDate::from_ymd_opt(2025, 1, 1).unwrap();
         let until = NaiveDate::from_ymd_opt(2025, 2, 1).unwrap();
@@ -11308,7 +11403,7 @@ mod tests {
             since,
             until,
             "closed",
-            "https://gitlab.example.com",
+            "https://gitlab.example.com/platform/reliability",
             true,
             25,
             Some("glpat-token".to_string()),

@@ -3928,6 +3928,182 @@ status = "done"
 }
 
 #[test]
+fn intake_records_remote_filter_failures_without_network_and_keeps_repair_guidance() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+    let fixtures = fixture_dir();
+    let cache_dir = tmp.path().join(".cache");
+    let github_cache_path = seed_github_cache(&cache_dir);
+    std::fs::copy(
+        fixtures.join("ledger.events.jsonl"),
+        tmp.path().join("ledger.events.jsonl"),
+    )
+    .unwrap();
+    std::fs::copy(
+        fixtures.join("coverage.manifest.json"),
+        tmp.path().join("coverage.manifest.json"),
+    )
+    .unwrap();
+
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[defaults]
+window = "year:2025"
+
+[sources.json]
+enabled = true
+events = "./ledger.events.jsonl"
+coverage = "./coverage.manifest.json"
+
+[sources.gitlab]
+enabled = true
+user = "octo"
+instance = "https://gitlab.self-hosted.example/platform/reliability"
+state = "needs_review"
+cache_dir = "./.cache"
+
+[sources.jira]
+enabled = true
+user = "712020:account-id"
+instance = "example.atlassian.net"
+status = "blocked"
+cache_dir = "./.cache"
+
+[sources.linear]
+enabled = true
+user_id = "linear-user-id"
+status = "waiting"
+project = "OPS"
+cache_dir = "./.cache"
+"#,
+    )
+    .unwrap();
+
+    let gitlab_token = "edge-gitlab-token-do-not-print";
+    let jira_token = "edge-jira-token-do-not-print";
+    let linear_key = "edge-linear-key-do-not-print";
+    let assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env("GITLAB_TOKEN", gitlab_token)
+        .env("JIRA_TOKEN", jira_token)
+        .env("LINEAR_API_KEY", linear_key)
+        .env_remove("GITHUB_TOKEN")
+        .args([
+            "intake",
+            "--out",
+            out.to_str().unwrap(),
+            "--config",
+            tmp.path().join("shiplog.toml").to_str().unwrap(),
+            "--year",
+            "2025",
+            "--no-open",
+            "--explain",
+        ])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
+
+    assert!(stdout.contains("Review intake complete."));
+    assert!(stdout.contains("- JSON: success"));
+    assert!(stdout.contains("- GitLab: create configured GitLab ingestor"));
+    assert!(stdout.contains("Invalid MR state: needs_review"));
+    assert!(stdout.contains("- Jira: create configured Jira ingestor"));
+    assert!(stdout.contains("Invalid issue status: blocked"));
+    assert!(stdout.contains("- Linear: create configured Linear ingestor"));
+    assert!(stdout.contains("Invalid issue status: waiting"));
+    assert!(stdout.contains("Source decisions:"));
+    assert!(stdout.contains("- GitLab: included"));
+    assert!(stdout.contains("- Jira: included"));
+    assert!(stdout.contains("- Linear: included"));
+    assert!(stdout.contains("Repair sources:"));
+    assert!(stdout.contains("Set sources.gitlab.state to opened, merged, closed, or all."));
+    assert!(stdout.contains("Set sources.jira.status to open, in_progress, done, closed, or all."));
+    assert!(stdout.contains(
+        "Set sources.linear.status to backlog, todo, in_progress, done, cancelled, or all."
+    ));
+    assert!(stdout.contains("Retry with `shiplog intake --last-6-months --explain`."));
+
+    for secret in [gitlab_token, jira_token, linear_key] {
+        assert!(
+            !stdout.contains(secret),
+            "intake stdout should not print secret sentinel {secret:?}"
+        );
+    }
+
+    let run_dir = first_run_dir(&out);
+    assert!(
+        github_cache_path.exists(),
+        "intake should not delete existing source cache files"
+    );
+    let coverage = std::fs::read_to_string(run_dir.join("coverage.manifest.json")).unwrap();
+    assert!(coverage.contains("\"Partial\""));
+    assert!(coverage.contains("Configured source gitlab was skipped"));
+    assert!(coverage.contains("Configured source jira was skipped"));
+    assert!(coverage.contains("Configured source linear was skipped"));
+    assert!(coverage.contains("Invalid MR state: needs_review"));
+    assert!(coverage.contains("Invalid issue status: blocked"));
+    assert!(coverage.contains("Invalid issue status: waiting"));
+
+    let (report_md, report_json) = assert_golden_intake_report(&run_dir, "Needs curation");
+    for secret in [gitlab_token, jira_token, linear_key] {
+        assert!(
+            !report_md.contains(secret) && !report_json.to_string().contains(secret),
+            "intake report should not print secret sentinel {secret:?}"
+        );
+    }
+    assert_eq!(report_json["skipped_sources"].as_array().unwrap().len(), 3);
+    let repairs = report_json["repair_sources"].as_array().unwrap();
+    assert!(repairs.iter().any(|repair| {
+        repair["source"] == "GitLab"
+            && repair["commands"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|command| command.as_str().unwrap().contains("sources.gitlab.state"))
+    }));
+    assert!(repairs.iter().any(|repair| {
+        repair["source"] == "Jira"
+            && repair["commands"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|command| command.as_str().unwrap().contains("sources.jira.status"))
+    }));
+    assert!(repairs.iter().any(|repair| {
+        repair["source"] == "Linear"
+            && repair["commands"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|command| command.as_str().unwrap().contains("sources.linear.status"))
+    }));
+    assert!(
+        report_json["next_commands"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|command| command.as_str().unwrap().contains("shiplog doctor")),
+        "intake report should keep rerun/repair guidance visible"
+    );
+
+    shiplog_cmd()
+        .args([
+            "cache",
+            "stats",
+            "--cache-dir",
+            cache_dir.to_str().unwrap(),
+            "--source",
+            "github",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("github:"))
+        .stdout(predicate::str::contains(
+            "entries: total 2, valid 1, expired 1",
+        ));
+}
+
+#[test]
 fn intake_rerun_reuses_prior_curation_without_overwriting_manual_events() {
     let tmp = TempDir::new().unwrap();
     let out = tmp.path().join("out");
