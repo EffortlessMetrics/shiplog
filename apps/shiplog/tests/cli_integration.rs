@@ -5057,6 +5057,124 @@ fn runs_compare_summarizes_cross_run_changes_without_writing_artifacts() {
 }
 
 #[test]
+fn runs_compare_resolves_named_period_selectors() {
+    let tmp = TempDir::new().unwrap();
+    collect_json_into(tmp.path());
+
+    let events_path = tmp.path().join("period-to.events.jsonl");
+    let coverage_path = tmp.path().join("period-to.coverage.json");
+    let events = all_source_fixture_events();
+    let mut coverage = all_source_fixture_coverage();
+    coverage.run_id = RunId("run_period_to".into());
+    coverage.window = TimeWindow {
+        since: NaiveDate::from_ymd_opt(2025, 4, 1).unwrap(),
+        until: NaiveDate::from_ymd_opt(2025, 7, 1).unwrap(),
+    };
+    for slice in &mut coverage.slices {
+        slice.window = coverage.window.clone();
+    }
+    write_events_jsonl(&events_path, &events);
+    write_coverage_manifest(&coverage_path, &coverage);
+
+    shiplog_cmd()
+        .args([
+            "collect",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "json",
+            "--events",
+            events_path.to_str().unwrap(),
+            "--coverage",
+            coverage_path.to_str().unwrap(),
+            "--user",
+            "octo",
+            "--window-label",
+            "period to fixture",
+        ])
+        .assert()
+        .success();
+
+    let config_path = tmp.path().join("shiplog.toml");
+    std::fs::write(
+        &config_path,
+        r#"[periods."2025-Q1"]
+since = "2025-01-01"
+until = "2025-04-01"
+
+[periods."2025-Q2"]
+since = "2025-04-01"
+until = "2025-07-01"
+"#,
+    )
+    .unwrap();
+
+    let assert = shiplog_cmd()
+        .args([
+            "runs",
+            "compare",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--config",
+            config_path.to_str().unwrap(),
+            "--from-period",
+            "2025-Q1",
+            "--to-period",
+            "2025-Q2",
+        ])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
+
+    assert!(stdout.contains("Compare: run_fixture -> run_period_to"));
+    assert!(stdout.contains("- from: 3"));
+    assert!(stdout.contains("- to: 8"));
+    assert!(stdout.contains("- Added: Local git, GitLab, Jira, JSON, Linear, Manual"));
+    assert!(stdout.contains("shiplog review --run run_period_to"));
+}
+
+#[test]
+fn runs_compare_requires_selector_for_each_side() {
+    let tmp = TempDir::new().unwrap();
+
+    shiplog_cmd()
+        .args([
+            "runs",
+            "compare",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--to",
+            "latest",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("missing --from or --from-period"));
+}
+
+#[test]
+fn runs_compare_rejects_run_and_period_for_same_side() {
+    let tmp = TempDir::new().unwrap();
+
+    shiplog_cmd()
+        .args([
+            "runs",
+            "compare",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--from",
+            "run_fixture",
+            "--from-period",
+            "2025-Q1",
+            "--to",
+            "latest",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "use either --from or --from-period, not both",
+        ));
+}
+
+#[test]
 fn review_latest_summarizes_run_attention_items_without_writing_artifacts() {
     let tmp = TempDir::new().unwrap();
     let run_dir = collect_json_into(tmp.path());

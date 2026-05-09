@@ -215,6 +215,7 @@ shiplog review fixups --latest
 shiplog review --latest --strict
 shiplog runs show --run latest
 shiplog runs compare --from review-2025-h2 --to latest
+shiplog runs compare --from-period 2025-H2 --to-period 2026-H1
 shiplog cache stats --out ./out
 shiplog cache inspect --out ./out --source github
 shiplog cache clean --out ./out --source github --older-than 30d --dry-run

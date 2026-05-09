@@ -811,12 +811,21 @@ enum RunsCommand {
         /// Output directory containing shiplog runs.
         #[arg(long, default_value = "./out")]
         out: PathBuf,
+        /// Path to shiplog.toml when resolving period selectors.
+        #[arg(long, default_value = CONFIG_FILENAME)]
+        config: PathBuf,
         /// Earlier run ID to compare from. Use "latest" for the most recent run.
         #[arg(long)]
-        from: String,
+        from: Option<String>,
+        /// Earlier named period to compare from.
+        #[arg(long)]
+        from_period: Option<String>,
         /// Later run ID to compare to. Use "latest" for the most recent run.
         #[arg(long)]
-        to: String,
+        to: Option<String>,
+        /// Later named period to compare to.
+        #[arg(long)]
+        to_period: Option<String>,
     },
 }
 
@@ -9852,9 +9861,16 @@ fn main() -> Result<()> {
                 let summary = load_run_summary(&run_dir)?;
                 print_run_show(&summary);
             }
-            RunsCommand::Compare { out, from, to } => {
-                let from_dir = resolve_run_selector(&out, &from)?;
-                let to_dir = resolve_run_selector(&out, &to)?;
+            RunsCommand::Compare {
+                out,
+                config,
+                from,
+                from_period,
+                to,
+                to_period,
+            } => {
+                let from_dir = resolve_compare_run_dir(&out, &config, "from", from, from_period)?;
+                let to_dir = resolve_compare_run_dir(&out, &config, "to", to, to_period)?;
                 let comparison = compare_runs(&from_dir, &to_dir)?;
                 print_run_compare(&comparison);
             }
@@ -12085,6 +12101,23 @@ fn print_run_show(summary: &RunSummary) {
 
 fn resolve_run_selector(out_dir: &Path, selector: &str) -> Result<PathBuf> {
     resolve_render_run_dir(out_dir, Some(selector.to_string()), false)
+}
+
+fn resolve_compare_run_dir(
+    out_dir: &Path,
+    config_path: &Path,
+    side: &str,
+    run: Option<String>,
+    period: Option<String>,
+) -> Result<PathBuf> {
+    let run_flag = format!("--{side}");
+    let period_flag = format!("--{side}-period");
+    match (run, period) {
+        (Some(_), Some(_)) => anyhow::bail!("use either {run_flag} or {period_flag}, not both"),
+        (Some(selector), None) => resolve_run_selector(out_dir, &selector),
+        (None, Some(period)) => resolve_period_run_dir(out_dir, config_path, &period),
+        (None, None) => anyhow::bail!("missing {run_flag} or {period_flag}"),
+    }
 }
 
 fn compare_runs(from_dir: &Path, to_dir: &Path) -> Result<RunComparison> {
