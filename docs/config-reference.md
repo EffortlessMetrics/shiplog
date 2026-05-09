@@ -109,6 +109,7 @@ available to config-driven commands:
 shiplog intake --period review-cycle
 shiplog collect multi --period 2026-H1
 shiplog review --period 2026-H1
+shiplog runs compare --from-period 2025-H2 --to-period 2026-H1
 shiplog periods list
 shiplog periods explain review-cycle
 ```
@@ -138,7 +139,9 @@ over `--period` when both are supplied.
 definition, resolved window, latest matching run when one exists, and suggested
 intake/review commands. Intake reports record the selected period name and
 resolved window so later reruns and review checks can explain which review
-cycle produced the packet.
+cycle produced the packet. `shiplog runs compare --from-period <name>
+--to-period <name>` compares the latest matching run for each period without
+rewriting packets or coverage artifacts.
 
 ## Source Sections
 

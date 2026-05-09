@@ -199,10 +199,12 @@ shiplog review --period review-cycle
 shiplog periods explain review-cycle
 ```
 
-For repeat review cycles, compare a prior run with the latest one:
+For repeat review cycles, compare a prior run with the latest one or compare
+two named periods:
 
 ```bash
 shiplog runs compare --from review-2025-h2 --to latest
+shiplog runs compare --from-period 2025-H2 --to-period 2026-H1
 ```
 
 For weekly upkeep, use `shiplog review weekly` after a refresh or collection

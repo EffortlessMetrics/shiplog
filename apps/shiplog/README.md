@@ -104,7 +104,8 @@ Output goes to `out/<run_id>/` containing `packet.md`, `ledger.events.jsonl`, `c
 
 Date-based sources accept `--since/--until`, `--last-6-months`, `--last-quarter`, or `--year <YYYY>`. If omitted, shiplog uses the last six months.
 Named review periods from `shiplog.toml` can be inspected with
-`shiplog periods list` and `shiplog periods explain review-cycle`.
+`shiplog periods list` and `shiplog periods explain review-cycle`, then compared
+with `shiplog runs compare --from-period 2025-H2 --to-period 2026-H1`.
 
 Use `shiplog render --latest` or `--run latest` to re-render the most recent run. `shiplog refresh --run-dir latest` refreshes that run while preserving curation.
 

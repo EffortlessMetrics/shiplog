@@ -40,6 +40,7 @@ fn config_reference_documents_current_surface() {
         "shiplog intake --period review-cycle",
         "shiplog collect multi --period 2026-H1",
         "shiplog review --period 2026-H1",
+        "shiplog runs compare --from-period 2025-H2 --to-period 2026-H1",
         "last-6-months",
         "last-quarter",
         "year:2025",
@@ -222,6 +223,13 @@ fn documented_help_commands_stay_available() {
         .success()
         .stdout(predicate::str::contains("list"))
         .stdout(predicate::str::contains("explain"));
+
+    shiplog_cmd()
+        .args(["runs", "compare", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--from-period"))
+        .stdout(predicate::str::contains("--to-period"));
 
     shiplog_cmd()
         .args(["render", "--help"])
