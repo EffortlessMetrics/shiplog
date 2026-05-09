@@ -244,6 +244,9 @@ workstream has implementation receipts but no manual outcome note.
 actions: add context, inspect receipt anchors, split broad buckets, validate
 workstreams, or repair skipped sources. Use `--commands-only` for a terse
 copy-friendly list.
+Use `--journal-template` when you only want factual `journal add` templates for
+missing human context; replace the placeholder description before adding it to
+your manual evidence.
 Evidence-debt findings are packet-quality checks, not person scores: skipped
 sources, partial coverage, missing or over-selected receipts, broad/misc/thin
 workstreams, one-source-type workstreams, and validation issues all include a

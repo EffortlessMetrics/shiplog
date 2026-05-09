@@ -197,7 +197,8 @@ fn documented_help_commands_stay_available() {
         .success()
         .stdout(predicate::str::contains("--latest"))
         .stdout(predicate::str::contains("--run"))
-        .stdout(predicate::str::contains("--commands-only"));
+        .stdout(predicate::str::contains("--commands-only"))
+        .stdout(predicate::str::contains("--journal-template"));
 
     shiplog_cmd()
         .args(["open", "intake-report", "--help"])
@@ -621,6 +622,7 @@ fn review_deadline_guide_documents_rescue_path() {
         "shiplog intake --last-6-months --explain",
         "shiplog open intake-report --latest",
         "shiplog review fixups --latest --commands-only",
+        "shiplog review fixups --latest --journal-template",
         "shiplog share verify manager --latest",
         "shiplog share manager --latest --zip",
         "Repair sources",
