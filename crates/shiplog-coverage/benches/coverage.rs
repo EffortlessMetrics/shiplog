@@ -1,6 +1,7 @@
 use chrono::NaiveDate;
-use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
+use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use shiplog_coverage::{day_windows, month_windows, week_windows, window_len_days};
+use std::hint::black_box;
 
 fn bench_month_windows(c: &mut Criterion) {
     let mut group = c.benchmark_group("month_windows");

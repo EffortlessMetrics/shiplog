@@ -1,5 +1,6 @@
-use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
+use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use shiplog_ids::{EventId, RunId, WorkstreamId};
+use std::hint::black_box;
 
 fn bench_event_id_from_parts(c: &mut Criterion) {
     let mut group = c.benchmark_group("event_id_from_parts");

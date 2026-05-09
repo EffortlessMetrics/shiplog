@@ -1,7 +1,8 @@
-use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
+use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use shiplog_ports::Redactor;
 use shiplog_redact::DeterministicRedactor;
 use shiplog_schema::event::EventEnvelope;
+use std::hint::black_box;
 
 fn sample_events(n: usize) -> Vec<EventEnvelope> {
     (0..n)

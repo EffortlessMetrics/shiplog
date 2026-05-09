@@ -1,9 +1,10 @@
 use chrono::{NaiveDate, TimeZone, Utc};
-use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
+use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use shiplog_ids::{EventId, RunId, WorkstreamId};
 use shiplog_schema::coverage::*;
 use shiplog_schema::event::*;
 use shiplog_schema::workstream::*;
+use std::hint::black_box;
 
 fn make_pr_event(i: u64) -> EventEnvelope {
     let ts = Utc.with_ymd_and_hms(2025, 1, 15, 12, 0, 0).unwrap();
