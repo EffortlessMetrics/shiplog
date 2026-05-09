@@ -135,6 +135,8 @@ creates a new run and reuses the latest prior `workstreams.yaml` when one
 exists, without overwriting that earlier curation or `manual_events.yaml`.
 For repeat cycles, define `[periods."review-cycle"]` in `shiplog.toml` and run
 `shiplog intake --period review-cycle`.
+The structured report contract is documented in
+[docs/schemas/intake-report-v1.md](docs/schemas/intake-report-v1.md).
 
 ### 1. Initialize local files
 

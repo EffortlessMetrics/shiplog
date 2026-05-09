@@ -38,7 +38,9 @@ workstreams without hand-editing YAML, render a packet with prompts and
 receipts, and produce manager/public share profiles only with an explicit
 redaction key. Intake also leaves `intake.report.md` and `intake.report.json`
 beside the run so readiness, skipped sources, repair hints, fixups, and share
-commands are not terminal-only.
+commands are not terminal-only. The JSON report is documented as v1 in
+`docs/schemas/intake-report-v1.md` with the schema at
+`contracts/schemas/intake-report.v1.schema.json`.
 
 ## CLI Product Surface
 

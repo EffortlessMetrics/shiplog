@@ -81,6 +81,43 @@ fn config_reference_documents_current_surface() {
 }
 
 #[test]
+fn intake_report_schema_docs_describe_v1_contract() {
+    let doc_path = repo_root().join("docs/schemas/intake-report-v1.md");
+    let doc = std::fs::read_to_string(&doc_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", doc_path.display()));
+    let schema_path = repo_root().join("contracts/schemas/intake-report.v1.schema.json");
+    let schema = std::fs::read_to_string(&schema_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", schema_path.display()));
+    let schema_json: serde_json::Value = serde_json::from_str(&schema)
+        .unwrap_or_else(|err| panic!("parse {}: {err}", schema_path.display()));
+
+    assert_eq!(schema_json["properties"]["schema_version"]["const"], 1);
+    assert_eq!(schema_json["additionalProperties"], false);
+
+    for needle in [
+        "contracts/schemas/intake-report.v1.schema.json",
+        "schema_version",
+        "Ready for review",
+        "Needs curation",
+        "Needs evidence",
+        "Needs repair",
+        "included_sources",
+        "skipped_sources",
+        "repair_sources",
+        "evidence_debt",
+        "top_fixups",
+        "share_commands",
+        "must not include token values",
+        "not be used for productivity scoring",
+    ] {
+        assert!(
+            doc.contains(needle),
+            "intake report schema docs should mention {needle:?}"
+        );
+    }
+}
+
+#[test]
 fn install_guide_documents_current_install_paths() {
     let doc_path = repo_root().join("docs/install.md");
     let doc = std::fs::read_to_string(&doc_path)

@@ -28,6 +28,9 @@ shiplog open intake-report --latest
 shiplog open packet --latest
 ```
 
+The JSON contract for downstream scripts and local tooling is documented in
+[../schemas/intake-report-v1.md](../schemas/intake-report-v1.md).
+
 If setup is unclear, add `--explain`:
 
 ```bash
