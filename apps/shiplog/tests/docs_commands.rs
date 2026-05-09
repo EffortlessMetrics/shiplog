@@ -104,6 +104,7 @@ fn intake_report_schema_docs_describe_v1_contract() {
         "shiplog report validate --latest",
         "shiplog report validate --path out/<run>/intake.report.json",
         "shiplog report summarize --latest",
+        "shiplog report export-agent-pack --latest --output agent-pack.json",
         "schema_version",
         "Ready for review",
         "Needs curation",
@@ -129,10 +130,49 @@ fn intake_report_schema_docs_describe_v1_contract() {
         "share_commands",
         "must not include token values",
         "not be used for productivity scoring",
+        "agent-pack-v1.md",
     ] {
         assert!(
             doc.contains(needle),
             "intake report schema docs should mention {needle:?}"
+        );
+    }
+}
+
+#[test]
+fn agent_pack_schema_docs_describe_v1_contract() {
+    let doc_path = repo_root().join("docs/schemas/agent-pack-v1.md");
+    let doc = std::fs::read_to_string(&doc_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", doc_path.display()));
+    let schema_path = repo_root().join("contracts/schemas/agent-pack.v1.schema.json");
+    let schema = std::fs::read_to_string(&schema_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", schema_path.display()));
+    let schema_json: serde_json::Value = serde_json::from_str(&schema)
+        .unwrap_or_else(|err| panic!("parse {}: {err}", schema_path.display()));
+
+    assert_eq!(schema_json["properties"]["schema_version"]["const"], 1);
+    assert_eq!(schema_json["additionalProperties"], false);
+
+    for needle in [
+        "contracts/schemas/agent-pack.v1.schema.json",
+        "shiplog report export-agent-pack --latest --output agent-pack.json",
+        "shiplog report export-agent-pack --path out/<run>/intake.report.json",
+        "schema_version",
+        "source_report",
+        "summary",
+        "gaps",
+        "repairs",
+        "fixups",
+        "share_status",
+        "actions",
+        "artifacts",
+        "productivity metrics",
+        "must not include token values",
+        "shiplog share verify public --latest --strict",
+    ] {
+        assert!(
+            doc.contains(needle),
+            "agent pack schema docs should mention {needle:?}"
         );
     }
 }
@@ -310,7 +350,8 @@ fn documented_help_commands_stay_available() {
         .assert()
         .success()
         .stdout(predicate::str::contains("validate"))
-        .stdout(predicate::str::contains("summarize"));
+        .stdout(predicate::str::contains("summarize"))
+        .stdout(predicate::str::contains("export-agent-pack"));
 
     shiplog_cmd()
         .args(["report", "validate", "--help"])
@@ -327,6 +368,15 @@ fn documented_help_commands_stay_available() {
         .stdout(predicate::str::contains("--latest"))
         .stdout(predicate::str::contains("--run"))
         .stdout(predicate::str::contains("--path"));
+
+    shiplog_cmd()
+        .args(["report", "export-agent-pack", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--latest"))
+        .stdout(predicate::str::contains("--run"))
+        .stdout(predicate::str::contains("--path"))
+        .stdout(predicate::str::contains("--output"));
 
     shiplog_cmd()
         .args(["workstreams", "--help"])

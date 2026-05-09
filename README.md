@@ -139,6 +139,10 @@ Use `shiplog periods list` or `shiplog periods explain review-cycle` to see the
 resolved window, latest matching run, and copy-ready intake/review commands.
 The structured report contract is documented in
 [docs/schemas/intake-report-v1.md](docs/schemas/intake-report-v1.md).
+For local UI, agent, or support/debug tooling, export the validated control
+surface with `shiplog report export-agent-pack --latest --output agent-pack.json`;
+the derived schema is documented in
+[docs/schemas/agent-pack-v1.md](docs/schemas/agent-pack-v1.md).
 
 ### 1. Initialize local files
 

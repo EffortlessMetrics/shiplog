@@ -929,6 +929,24 @@ enum ReportCommand {
         #[arg(long)]
         path: Option<PathBuf>,
     },
+    /// Export a compact machine-readable pack for future UI or agent consumers.
+    ExportAgentPack {
+        /// Output directory containing shiplog runs.
+        #[arg(long, default_value = "./out")]
+        out: PathBuf,
+        /// Run ID to export (uses most recent if not specified).
+        #[arg(long)]
+        run: Option<String>,
+        /// Export the most recent run explicitly.
+        #[arg(long)]
+        latest: bool,
+        /// Export this intake.report.json directly instead of resolving a run.
+        #[arg(long)]
+        path: Option<PathBuf>,
+        /// Write the agent pack JSON to this path instead of stdout.
+        #[arg(long)]
+        output: Option<PathBuf>,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -2932,6 +2950,7 @@ const INTAKE_ACTION_KIND_VALUES: &[&str] = &[
     "next_command",
 ];
 const INTAKE_ACTION_RISK_VALUES: &[&str] = &["low", "medium", "high"];
+const AGENT_PACK_SCHEMA_VERSION: u64 = 1;
 
 fn validate_intake_report_command(
     out_dir: &Path,
@@ -3002,6 +3021,114 @@ fn summarize_intake_report_command(
     print_report_summary_items("Top fixups", top_fixups, "title", "command")?;
     print_report_summary_strings("Share next", share_commands)?;
     print_report_summary_items("Machine actions", actions, "label", "command")?;
+
+    Ok(())
+}
+
+fn export_agent_pack_command(
+    out_dir: &Path,
+    run: Option<String>,
+    latest: bool,
+    path: Option<PathBuf>,
+    output: Option<PathBuf>,
+) -> Result<()> {
+    let report_path = resolve_intake_report_path(out_dir, run, latest, path)?;
+    let validation = validate_intake_report(&report_path)?;
+    let report_text = std::fs::read_to_string(&report_path)
+        .with_context(|| format!("read {}", report_path.display()))?;
+    let report_json: serde_json::Value = serde_json::from_str(&report_text)
+        .with_context(|| format!("parse {}", report_path.display()))?;
+
+    let window = object_field(&report_json, "window")?;
+    let reports = object_field(&report_json, "reports")?;
+    let included_sources = json_array(&report_json, "included_sources")?.to_vec();
+    let skipped_sources = json_array(&report_json, "skipped_sources")?.to_vec();
+    let repair_sources = json_array(&report_json, "repair_sources")?.to_vec();
+    let evidence_debt = json_array(&report_json, "evidence_debt")?.to_vec();
+    let top_fixups = json_array(&report_json, "top_fixups")?.to_vec();
+    let journal_suggestions = json_array(&report_json, "journal_suggestions")?.to_vec();
+    let share_commands = json_array(&report_json, "share_commands")?.to_vec();
+    let next_commands = json_array(&report_json, "next_commands")?.to_vec();
+    let actions = optional_json_array(&report_json, "actions")?.to_vec();
+    let artifacts = json_array(&report_json, "artifacts")?.to_vec();
+
+    let manager_share_available = share_commands
+        .iter()
+        .filter_map(serde_json::Value::as_str)
+        .any(|command| command.contains("shiplog share manager"));
+    let public_share_available = share_commands
+        .iter()
+        .filter_map(serde_json::Value::as_str)
+        .any(|command| command.contains("shiplog share public"));
+
+    let pack = serde_json::json!({
+        "schema_version": AGENT_PACK_SCHEMA_VERSION,
+        "source_report": {
+            "schema_version": validation.schema_version,
+            "path": report_path.display().to_string(),
+            "markdown_path": validation.markdown_path.display().to_string(),
+        },
+        "run": {
+            "run_id": validation.run_id,
+            "readiness": validation.readiness,
+            "period": report_json.get("period").cloned().unwrap_or(serde_json::Value::Null),
+            "window": window.clone(),
+            "config_path": string_field(&report_json, "config_path")?,
+            "out_dir": string_field(&report_json, "out_dir")?,
+            "run_dir": string_field(&report_json, "run_dir")?,
+            "packet_path": string_field(&report_json, "packet_path")?,
+            "reports": reports.clone(),
+        },
+        "summary": {
+            "readiness": string_field(&report_json, "readiness")?,
+            "included_source_count": included_sources.len(),
+            "skipped_source_count": skipped_sources.len(),
+            "evidence_debt_count": evidence_debt.len(),
+            "repair_count": repair_sources.len(),
+            "fixup_count": top_fixups.len(),
+            "journal_suggestion_count": journal_suggestions.len(),
+            "share_command_count": share_commands.len(),
+            "action_count": actions.len(),
+            "artifact_count": artifacts.len(),
+        },
+        "gaps": {
+            "needs_attention": json_array(&report_json, "needs_attention")?.to_vec(),
+            "skipped_sources": skipped_sources,
+            "evidence_debt": evidence_debt,
+        },
+        "repairs": repair_sources,
+        "fixups": top_fixups,
+        "journal_suggestions": journal_suggestions,
+        "share_status": {
+            "commands": share_commands,
+            "manager_available": manager_share_available,
+            "public_available": public_share_available,
+        },
+        "actions": actions,
+        "next_commands": next_commands,
+        "artifacts": artifacts,
+    });
+
+    let pack_text = format!("{}\n", serde_json::to_string_pretty(&pack)?);
+    ensure_no_secret_sentinels("agent pack", &pack_text)?;
+
+    match output {
+        Some(output_path) => {
+            if let Some(parent) = output_path
+                .parent()
+                .filter(|parent| !parent.as_os_str().is_empty())
+            {
+                std::fs::create_dir_all(parent)
+                    .with_context(|| format!("create {}", parent.display()))?;
+            }
+            std::fs::write(&output_path, pack_text)
+                .with_context(|| format!("write {}", output_path.display()))?;
+            println!("Agent pack: {}", output_path.display());
+        }
+        None => {
+            print!("{pack_text}");
+        }
+    }
 
     Ok(())
 }
@@ -9983,6 +10110,15 @@ fn main() -> Result<()> {
                 path,
             } => {
                 summarize_intake_report_command(&out, run, latest, path)?;
+            }
+            ReportCommand::ExportAgentPack {
+                out,
+                run,
+                latest,
+                path,
+                output,
+            } => {
+                export_agent_pack_command(&out, run, latest, path, output)?;
             }
         },
         Command::Merge {

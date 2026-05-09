@@ -1,0 +1,316 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/EffortlessMetrics/shiplog/contracts/schemas/agent-pack.v1.schema.json",
+  "title": "Shiplog agent pack v1",
+  "type": "object",
+  "additionalProperties": false,
+  "propertyNames": {
+    "$ref": "#/$defs/non_secret_field_name"
+  },
+  "required": [
+    "schema_version",
+    "source_report",
+    "run",
+    "summary",
+    "gaps",
+    "repairs",
+    "fixups",
+    "journal_suggestions",
+    "share_status",
+    "actions",
+    "next_commands",
+    "artifacts"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "source_report": {
+      "$ref": "#/$defs/source_report"
+    },
+    "run": {
+      "$ref": "#/$defs/run"
+    },
+    "summary": {
+      "$ref": "#/$defs/summary"
+    },
+    "gaps": {
+      "$ref": "#/$defs/gaps"
+    },
+    "repairs": {
+      "$ref": "#/$defs/object_array"
+    },
+    "fixups": {
+      "$ref": "#/$defs/object_array"
+    },
+    "journal_suggestions": {
+      "$ref": "#/$defs/string_array"
+    },
+    "share_status": {
+      "$ref": "#/$defs/share_status"
+    },
+    "actions": {
+      "$ref": "#/$defs/object_array"
+    },
+    "next_commands": {
+      "$ref": "#/$defs/string_array"
+    },
+    "artifacts": {
+      "$ref": "#/$defs/object_array"
+    }
+  },
+  "$defs": {
+    "non_secret_field_name": {
+      "type": "string",
+      "not": {
+        "pattern": "[Tt][Oo][Kk][Ee][Nn]|[Ss][Ee][Cc][Rr][Ee][Tt]|[Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd]|[Cc][Rr][Ee][Dd][Ee][Nn][Tt][Ii][Aa][Ll]|[Aa][Pp][Ii]_?[Kk][Ee][Yy]|[Kk][Ee][Yy]_?[Vv][Aa][Ll][Uu][Ee]"
+      }
+    },
+    "object_base": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "#/$defs/non_secret_field_name"
+      }
+    },
+    "path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "string_array": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "object_array": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/object_base"
+      }
+    },
+    "source_report": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "required": [
+            "schema_version",
+            "path",
+            "markdown_path"
+          ],
+          "properties": {
+            "schema_version": {
+              "const": 1
+            },
+            "path": {
+              "$ref": "#/$defs/path"
+            },
+            "markdown_path": {
+              "$ref": "#/$defs/path"
+            }
+          }
+        }
+      ]
+    },
+    "window": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "required": [
+            "since",
+            "until",
+            "label"
+          ],
+          "properties": {
+            "since": {
+              "type": "string",
+              "format": "date"
+            },
+            "until": {
+              "type": "string",
+              "format": "date"
+            },
+            "label": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      ]
+    },
+    "run": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "required": [
+            "run_id",
+            "readiness",
+            "period",
+            "window",
+            "config_path",
+            "out_dir",
+            "run_dir",
+            "packet_path",
+            "reports"
+          ],
+          "properties": {
+            "run_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "readiness": {
+              "type": "string",
+              "enum": [
+                "Ready for review",
+                "Needs curation",
+                "Needs evidence",
+                "Needs repair"
+              ]
+            },
+            "period": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "window": {
+              "$ref": "#/$defs/window"
+            },
+            "config_path": {
+              "$ref": "#/$defs/path"
+            },
+            "out_dir": {
+              "$ref": "#/$defs/path"
+            },
+            "run_dir": {
+              "$ref": "#/$defs/path"
+            },
+            "packet_path": {
+              "$ref": "#/$defs/path"
+            },
+            "reports": {
+              "$ref": "#/$defs/object_base"
+            }
+          }
+        }
+      ]
+    },
+    "summary": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "required": [
+            "readiness",
+            "included_source_count",
+            "skipped_source_count",
+            "evidence_debt_count",
+            "repair_count",
+            "fixup_count",
+            "journal_suggestion_count",
+            "share_command_count",
+            "action_count",
+            "artifact_count"
+          ],
+          "properties": {
+            "readiness": {
+              "type": "string"
+            },
+            "included_source_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "skipped_source_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "evidence_debt_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "repair_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "fixup_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "journal_suggestion_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "share_command_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "action_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "artifact_count": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      ]
+    },
+    "gaps": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "required": [
+            "needs_attention",
+            "skipped_sources",
+            "evidence_debt"
+          ],
+          "properties": {
+            "needs_attention": {
+              "$ref": "#/$defs/string_array"
+            },
+            "skipped_sources": {
+              "$ref": "#/$defs/object_array"
+            },
+            "evidence_debt": {
+              "$ref": "#/$defs/object_array"
+            }
+          }
+        }
+      ]
+    },
+    "share_status": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "required": [
+            "commands",
+            "manager_available",
+            "public_available"
+          ],
+          "properties": {
+            "commands": {
+              "$ref": "#/$defs/string_array"
+            },
+            "manager_available": {
+              "type": "boolean"
+            },
+            "public_available": {
+              "type": "boolean"
+            }
+          }
+        }
+      ]
+    }
+  }
+}
