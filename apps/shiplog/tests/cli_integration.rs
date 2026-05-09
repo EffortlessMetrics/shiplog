@@ -5625,6 +5625,104 @@ fn report_validate_rejects_missing_artifact() {
 }
 
 #[test]
+fn report_summarize_prints_operator_view_without_writing() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args(["intake", "--out", out.to_str().unwrap(), "--no-open"])
+        .assert()
+        .success();
+
+    let run_dir = first_run_dir(&out);
+    let report_path = run_dir.join("intake.report.json");
+    let report_modified = std::fs::metadata(&report_path).unwrap().modified().unwrap();
+
+    shiplog_cmd()
+        .args([
+            "report",
+            "summarize",
+            "--out",
+            out.to_str().unwrap(),
+            "--latest",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Report summary:"))
+        .stdout(predicate::str::contains("Readiness:"))
+        .stdout(predicate::str::contains("Sources:"))
+        .stdout(predicate::str::contains("Evidence debt:"))
+        .stdout(predicate::str::contains("Top repairs:"))
+        .stdout(predicate::str::contains("Top fixups:"))
+        .stdout(predicate::str::contains("Share next:"))
+        .stdout(predicate::str::contains("Packet:"))
+        .stdout(predicate::str::contains("Intake report:"));
+
+    assert_eq!(
+        report_modified,
+        std::fs::metadata(&report_path).unwrap().modified().unwrap(),
+        "report summarize should be read-only"
+    );
+}
+
+#[test]
+fn report_summarize_accepts_direct_path_and_rejects_invalid_reports() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args(["intake", "--out", out.to_str().unwrap(), "--no-open"])
+        .assert()
+        .success();
+
+    let report_path = first_run_dir(&out).join("intake.report.json");
+
+    shiplog_cmd()
+        .args([
+            "report",
+            "summarize",
+            "--path",
+            report_path.to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Report summary:"))
+        .stdout(predicate::str::contains("intake.report.json"));
+
+    let mut report: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&report_path).unwrap()).unwrap();
+    report["schema_version"] = serde_json::json!(2);
+    std::fs::write(
+        &report_path,
+        format!("{}\n", serde_json::to_string_pretty(&report).unwrap()),
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .args([
+            "report",
+            "summarize",
+            "--path",
+            report_path.to_str().unwrap(),
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "unsupported intake report schema_version 2",
+        ));
+}
+
+#[test]
 fn open_intake_report_fails_clearly_when_report_is_missing() {
     let tmp = TempDir::new().unwrap();
     collect_json_into(tmp.path());

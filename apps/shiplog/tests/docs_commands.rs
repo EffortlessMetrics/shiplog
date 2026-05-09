@@ -98,6 +98,7 @@ fn intake_report_schema_docs_describe_v1_contract() {
         "contracts/schemas/intake-report.v1.schema.json",
         "shiplog report validate --latest",
         "shiplog report validate --path out/<run>/intake.report.json",
+        "shiplog report summarize --latest",
         "schema_version",
         "Ready for review",
         "Needs curation",
@@ -263,10 +264,19 @@ fn documented_help_commands_stay_available() {
         .args(["report", "--help"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("validate"));
+        .stdout(predicate::str::contains("validate"))
+        .stdout(predicate::str::contains("summarize"));
 
     shiplog_cmd()
         .args(["report", "validate", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--latest"))
+        .stdout(predicate::str::contains("--run"))
+        .stdout(predicate::str::contains("--path"));
+
+    shiplog_cmd()
+        .args(["report", "summarize", "--help"])
         .assert()
         .success()
         .stdout(predicate::str::contains("--latest"))
