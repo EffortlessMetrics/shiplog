@@ -478,7 +478,7 @@ struct PeriodsArgs {
 
 #[derive(Args, Debug)]
 struct PeriodExplainArgs {
-    /// Period name under [periods.<name>].
+    /// Period name under `periods.<name>`.
     name: String,
     /// Path to shiplog.toml.
     #[arg(long, default_value = CONFIG_FILENAME)]
