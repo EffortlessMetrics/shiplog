@@ -700,6 +700,7 @@ fn open_help_shows_artifact_targets() {
         .success()
         .stdout(predicate::str::contains("packet"))
         .stdout(predicate::str::contains("workstreams"))
+        .stdout(predicate::str::contains("intake-report"))
         .stdout(predicate::str::contains("out"));
 }
 
@@ -707,6 +708,17 @@ fn open_help_shows_artifact_targets() {
 fn open_packet_help_shows_run_and_print_options() {
     shiplog_cmd()
         .args(["open", "packet", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--latest"))
+        .stdout(predicate::str::contains("--run"))
+        .stdout(predicate::str::contains("--print-path"));
+}
+
+#[test]
+fn open_intake_report_help_shows_run_and_print_options() {
+    shiplog_cmd()
+        .args(["open", "intake-report", "--help"])
         .assert()
         .success()
         .stdout(predicate::str::contains("--latest"))
@@ -4419,6 +4431,85 @@ fn open_out_latest_prints_run_directory_when_forced() {
         .assert()
         .success()
         .stdout(predicate::str::contains("run_fixture"));
+}
+
+#[test]
+fn open_intake_report_latest_prints_report_path_when_forced() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args(["intake", "--out", out.to_str().unwrap(), "--no-open"])
+        .assert()
+        .success();
+
+    shiplog_cmd()
+        .args([
+            "open",
+            "intake-report",
+            "--out",
+            out.to_str().unwrap(),
+            "--latest",
+            "--print-path",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("intake.report.md"));
+}
+
+#[test]
+fn open_report_alias_prints_intake_report_path_when_forced() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args(["intake", "--out", out.to_str().unwrap(), "--no-open"])
+        .assert()
+        .success();
+
+    shiplog_cmd()
+        .args([
+            "open",
+            "report",
+            "--out",
+            out.to_str().unwrap(),
+            "--latest",
+            "--print-path",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("intake.report.md"));
+}
+
+#[test]
+fn open_intake_report_fails_clearly_when_report_is_missing() {
+    let tmp = TempDir::new().unwrap();
+    collect_json_into(tmp.path());
+
+    shiplog_cmd()
+        .args([
+            "open",
+            "intake-report",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+            "--print-path",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("Intake report not found"))
+        .stderr(predicate::str::contains("shiplog intake"));
 }
 
 #[test]

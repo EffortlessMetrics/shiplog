@@ -24,6 +24,7 @@ and copy-ready next commands. The same checklist is written to
 
 ```bash
 shiplog intake --last-6-months
+shiplog open intake-report --latest
 shiplog open packet --latest
 ```
 

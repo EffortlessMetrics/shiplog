@@ -782,6 +782,23 @@ enum OpenCommand {
         print_path: bool,
     },
 
+    /// Open the durable intake report for a run.
+    #[command(alias = "report")]
+    IntakeReport {
+        /// Output directory containing shiplog runs.
+        #[arg(long, default_value = "./out")]
+        out: PathBuf,
+        /// Run ID to open (uses most recent if not specified).
+        #[arg(long)]
+        run: Option<String>,
+        /// Open the most recent run explicitly.
+        #[arg(long)]
+        latest: bool,
+        /// Print the path without launching a platform opener.
+        #[arg(long)]
+        print_path: bool,
+    },
+
     /// Open the run output directory.
     Out {
         /// Output directory containing shiplog runs.
@@ -7705,6 +7722,21 @@ fn main() -> Result<()> {
                     &run_dir,
                     "Run directory",
                     "Run `shiplog collect` first.",
+                    print_path,
+                )?;
+            }
+            OpenCommand::IntakeReport {
+                out,
+                run,
+                latest,
+                print_path,
+            } => {
+                let run_dir = resolve_render_run_dir(&out, run, latest)?;
+                let report = run_dir.join("intake.report.md");
+                open_existing_path(
+                    &report,
+                    "Intake report",
+                    "Run `shiplog intake` first.",
                     print_path,
                 )?;
             }

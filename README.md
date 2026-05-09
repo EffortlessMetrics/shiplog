@@ -80,6 +80,7 @@ If the review form is already open, start here:
 ```bash
 cargo install shiplog
 shiplog intake --last-6-months --explain
+shiplog open intake-report --latest
 shiplog open packet --latest
 ```
 
@@ -98,6 +99,7 @@ For a practical review-cycle walkthrough, see
 
 ```bash
 shiplog intake --last-6-months --explain
+shiplog open intake-report --latest
 shiplog open packet --latest
 ```
 
@@ -312,7 +314,7 @@ out/<run_id>/
 | `workstreams list/validate/create/rename/move/split/receipts/receipt/delete` | Inspect, validate, and safely edit workstream curation |
 | `runs list/show/compare` | Discover runs, inspect their artifacts, and compare source/workstream changes |
 | `review` / `review weekly` / `review fixups` | Inspect a run for skipped sources, weak curation, evidence debt, and next steps |
-| `open packet/workstreams/out` | Open run artifacts, or print their paths when opening is unavailable |
+| `open packet/workstreams/intake-report/out` | Open run artifacts, or print their paths when opening is unavailable |
 | `merge` | Merge existing run directories into one packet |
 | `import` | Import an existing run directory and re-render |
 | `run <source>` | Legacy: collect + render in one shot |

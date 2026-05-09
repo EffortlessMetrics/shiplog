@@ -78,6 +78,7 @@ Curation and inspection:
 - `shiplog review --strict`
 - `shiplog open packet`
 - `shiplog open workstreams`
+- `shiplog open intake-report`
 - `shiplog open out`
 - `shiplog workstreams list`
 - `shiplog workstreams validate`
