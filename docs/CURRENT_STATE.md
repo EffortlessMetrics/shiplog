@@ -1,18 +1,15 @@
 # shiplog Current State
 
-This document records the v0.4.0 Review Rescue release-prep baseline after the
-operator-UX lane. v0.3.0 remains the latest verified public release until
-v0.4.0 is published, tagged, and install-smoked.
+This document records the shipped v0.4.0 Review Rescue baseline after the
+operator-UX lane and release verification.
 
 ## Baseline
 
-- The workspace is version-aligned and release-prepped for v0.4.0.
-- `v0.3.0` is the latest published crates.io and GitHub release at the time of
-  this prep.
-- The v0.4.0 GitHub release is expected to include Linux x86_64, macOS x86_64,
-  macOS arm64, Windows x86_64, and `SHA256SUMS.txt` assets.
-- The v0.4.0 release is not complete until crates are published in dependency
-  order, the tag workflow builds assets, and install smoke reports
+- `main` is the released v0.4.0 product baseline.
+- `v0.4.0` is published on crates.io and tagged on GitHub.
+- The GitHub release has Linux x86_64, macOS x86_64, macOS arm64, Windows
+  x86_64, and `SHA256SUMS.txt` assets.
+- The crates.io install smoke and downloaded Windows binary smoke both reported
   `shiplog 0.4.0`.
 - `docs/install.md` documents release binaries, checksum verification,
   `cargo install`, and package-manager tracking notes.
@@ -192,16 +189,15 @@ The release proof scripts enforce both sides of the boundary:
 
 ## Release Posture
 
-v0.3.0 is shipped. The release record is
+v0.3.0 is shipped. The historical release record is
 [`RELEASE_HANDOFF_0.3.0.md`](../RELEASE_HANDOFF_0.3.0.md), including the
 published crate order, release workflow, asset set, checksum verification, and
 install smoke evidence.
 
-v0.4.0 is the Review Rescue release-prep line. The release handoff is
+v0.4.0 is shipped. The release record is
 [`RELEASE_HANDOFF_0.4.0.md`](../RELEASE_HANDOFF_0.4.0.md), including the
-publish order, proof commands, expected asset set, and post-release install
-smoke. Before claiming v0.4.0 as shipped, run the handoff and verify public
-crates.io, GitHub release, checksum, and binary-smoke evidence.
+published crate order, release workflow, asset set, checksum verification, and
+install smoke evidence.
 
 The next post-v0.4 work should deepen real-world usage rather than add broad new
 surface area: provider edge cases that affect first-run intake, stricter public
