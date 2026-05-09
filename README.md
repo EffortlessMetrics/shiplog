@@ -300,7 +300,9 @@ fail-closed redaction and bundle-profile behavior as `render`. They require
 `shiplog share verify manager --latest` or
 `shiplog share verify public --latest` to check the selected run, coverage
 warnings, skipped sources, and redaction-key readiness without writing share
-artifacts.
+artifacts. For public packets, add `--strict` to scan the rendered public view
+for obvious raw URLs and original names; this is a guardrail, not a guarantee of
+perfect privacy.
 
 ## Output layout
 

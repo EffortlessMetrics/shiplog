@@ -85,12 +85,13 @@ For a public packet, use the stricter profile and read the output before
 publishing it:
 
 ```bash
-shiplog share verify public --latest
+shiplog share verify public --latest --strict
 shiplog share public --latest --zip
 ```
 
-Redaction reduces accidental disclosure. It does not decide whether a receipt is
-appropriate to share.
+Strict public verification scans the rendered public view for obvious raw URLs
+and original names. Redaction reduces accidental disclosure; it does not decide
+whether a receipt is appropriate to share or guarantee perfect privacy.
 
 ## When a source fails
 

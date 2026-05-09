@@ -108,6 +108,7 @@ Rendering and sharing:
 - `shiplog render --bundle-profile manager|public`
 - `shiplog share manager|public`
 - `shiplog share verify manager|public`
+- `shiplog share verify public --strict`
 
 Default CLI packets open with `Coverage and Limits`, then summary,
 workstreams, receipts, and file artifacts. Internal and manager selected-profile
@@ -120,6 +121,9 @@ Manager and public profiles fail closed unless `--redact-key` or the configured
 redaction-key environment variable is provided.
 `shiplog share verify manager|public` performs the same redaction-key preflight
 and inspects coverage/skipped-source metadata without writing share artifacts.
+`shiplog share verify public --strict` also scans the existing or in-memory
+public packet for obvious raw URLs and original names; it is a guardrail, not a
+perfect-privacy claim.
 
 Review evidence debt is packet-quality focused. It surfaces skipped sources,
 partial coverage, missing or over-selected receipts, broad/misc/thin
