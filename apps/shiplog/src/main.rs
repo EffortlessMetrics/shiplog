@@ -1,7 +1,7 @@
 //! `shiplog` CLI entrypoint.
 //!
 //! Exposes `init`, `doctor`, `intake`, `config`, `collect`, `render`,
-//! `refresh`, `workstreams`, `runs`, `review`, `journal`, `open`, `merge`,
+//! `refresh`, `workstreams`, `runs`, `review`, `journal`, `open`, `report`, `merge`,
 //! `import`, and `run` commands over the workspace engine and adapter crates.
 
 use anyhow::{Context, Result};
@@ -237,6 +237,12 @@ enum Command {
     Open {
         #[command(subcommand)]
         cmd: OpenCommand,
+    },
+
+    /// Inspect durable machine-readable run reports.
+    Report {
+        #[command(subcommand)]
+        cmd: ReportCommand,
     },
 
     /// Merge existing run directories into one packet.
@@ -822,6 +828,25 @@ enum OpenCommand {
         /// Print the path without launching a platform opener.
         #[arg(long)]
         print_path: bool,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum ReportCommand {
+    /// Validate intake.report.json and its referenced run artifacts.
+    Validate {
+        /// Output directory containing shiplog runs.
+        #[arg(long, default_value = "./out")]
+        out: PathBuf,
+        /// Run ID to validate (uses most recent if not specified).
+        #[arg(long)]
+        run: Option<String>,
+        /// Validate the most recent run explicitly.
+        #[arg(long)]
+        latest: bool,
+        /// Validate this intake.report.json directly instead of resolving a run.
+        #[arg(long)]
+        path: Option<PathBuf>,
     },
 }
 
@@ -2423,6 +2448,363 @@ fn render_intake_report_markdown(report: &IntakeReport) -> String {
     }
 
     out
+}
+
+const INTAKE_REPORT_SCHEMA_VERSION: u64 = 1;
+const INTAKE_REPORT_REQUIRED_FIELDS: &[&str] = &[
+    "schema_version",
+    "run_id",
+    "readiness",
+    "config_path",
+    "out_dir",
+    "run_dir",
+    "packet_path",
+    "period",
+    "window",
+    "reports",
+    "included_sources",
+    "skipped_sources",
+    "source_decisions",
+    "repair_sources",
+    "curation_notes",
+    "good",
+    "needs_attention",
+    "evidence_debt",
+    "top_fixups",
+    "journal_suggestions",
+    "share_commands",
+    "next_commands",
+    "artifacts",
+];
+const INTAKE_REPORT_ARRAY_FIELDS: &[&str] = &[
+    "included_sources",
+    "skipped_sources",
+    "source_decisions",
+    "repair_sources",
+    "curation_notes",
+    "good",
+    "needs_attention",
+    "evidence_debt",
+    "top_fixups",
+    "journal_suggestions",
+    "share_commands",
+    "next_commands",
+    "artifacts",
+];
+const INTAKE_REPORT_MARKDOWN_SECTIONS: &[&str] = &[
+    "# Review Intake Report",
+    "## Included Sources",
+    "## Skipped Sources",
+    "## Next Commands",
+    "## Evidence Debt",
+    "## Top Fixups",
+    "## Share Commands",
+    "## Artifacts",
+];
+const INTAKE_REPORT_SECRET_SENTINELS: &[&str] = &[
+    "stable-env-key",
+    "stable-test-key",
+    "do-not-leak",
+    "super-secret",
+];
+
+fn validate_intake_report_command(
+    out_dir: &Path,
+    run: Option<String>,
+    latest: bool,
+    path: Option<PathBuf>,
+) -> Result<()> {
+    if path.is_some() && (latest || run.is_some()) {
+        anyhow::bail!("use --path without --latest or --run")
+    }
+
+    let report_path = match path {
+        Some(path) => path,
+        None => resolve_render_run_dir(out_dir, run, latest)?.join("intake.report.json"),
+    };
+    let validation = validate_intake_report(&report_path)?;
+
+    println!("Report valid: {}", report_path.display());
+    println!("Schema: v{}", validation.schema_version);
+    println!("Run: {}", validation.run_id);
+    println!("Readiness: {}", validation.readiness);
+    println!("Artifacts: {} checked", validation.artifacts_checked);
+    println!("Markdown: {}", validation.markdown_path.display());
+
+    Ok(())
+}
+
+struct IntakeReportValidation {
+    schema_version: u64,
+    run_id: String,
+    readiness: String,
+    artifacts_checked: usize,
+    markdown_path: PathBuf,
+}
+
+fn validate_intake_report(report_path: &Path) -> Result<IntakeReportValidation> {
+    let report_text = std::fs::read_to_string(report_path)
+        .with_context(|| format!("read {}", report_path.display()))?;
+    ensure_no_secret_sentinels("intake report json", &report_text)?;
+    let report_json: serde_json::Value = serde_json::from_str(&report_text)
+        .with_context(|| format!("parse {}", report_path.display()))?;
+    let report = report_json
+        .as_object()
+        .ok_or_else(|| anyhow::anyhow!("intake report must be a JSON object"))?;
+
+    let required: BTreeSet<_> = INTAKE_REPORT_REQUIRED_FIELDS.iter().copied().collect();
+    for field in INTAKE_REPORT_REQUIRED_FIELDS {
+        if !report.contains_key(*field) {
+            anyhow::bail!("intake report missing required field {field:?}")
+        }
+    }
+    for field in report.keys() {
+        if !required.contains(field.as_str()) {
+            anyhow::bail!("intake report contains unsupported field {field:?}")
+        }
+        ensure_field_name_not_secret_bearing(field)?;
+    }
+
+    let schema_version = report_json["schema_version"]
+        .as_u64()
+        .ok_or_else(|| anyhow::anyhow!("intake report schema_version must be an integer"))?;
+    if schema_version != INTAKE_REPORT_SCHEMA_VERSION {
+        anyhow::bail!(
+            "unsupported intake report schema_version {schema_version}; supported version is {INTAKE_REPORT_SCHEMA_VERSION}"
+        )
+    }
+
+    let readiness = string_field(&report_json, "readiness")?;
+    if ![
+        "Ready for review",
+        "Needs curation",
+        "Needs evidence",
+        "Needs repair",
+    ]
+    .contains(&readiness.as_str())
+    {
+        anyhow::bail!("intake report readiness {readiness:?} is not supported")
+    }
+
+    let run_id = string_field(&report_json, "run_id")?;
+    ensure_string_field(&report_json, "config_path")?;
+    ensure_string_field(&report_json, "out_dir")?;
+    ensure_string_field(&report_json, "run_dir")?;
+    ensure_string_field(&report_json, "packet_path")?;
+    if !report_json["period"].is_null() {
+        ensure_string_field(&report_json, "period")?;
+    }
+
+    let window = object_field(&report_json, "window")?;
+    for field in ["since", "until", "label"] {
+        ensure_nested_string_field(window, field, "window")?;
+    }
+    let reports = object_field(&report_json, "reports")?;
+    let markdown_path = nested_path_field(report_path, reports, "markdown", "reports")?;
+    let json_path = nested_path_field(report_path, reports, "json", "reports")?;
+    if !same_path_or_string(&json_path, report_path) {
+        anyhow::bail!(
+            "intake report reports.json points at {}, but validated file is {}",
+            json_path.display(),
+            report_path.display()
+        )
+    }
+
+    for field in INTAKE_REPORT_ARRAY_FIELDS {
+        if !report_json[*field].is_array() {
+            anyhow::bail!("intake report field {field:?} must be an array")
+        }
+    }
+
+    validate_report_items(&report_json)?;
+    validate_report_markdown(&markdown_path)?;
+    let artifacts_checked = validate_report_artifacts(report_path, &report_json)?;
+
+    Ok(IntakeReportValidation {
+        schema_version,
+        run_id,
+        readiness,
+        artifacts_checked,
+        markdown_path,
+    })
+}
+
+fn validate_report_items(report: &serde_json::Value) -> Result<()> {
+    for (field, required_fields) in [
+        (
+            "included_sources",
+            &["source", "event_count", "summary"][..],
+        ),
+        ("skipped_sources", &["source", "reason"][..]),
+        (
+            "source_decisions",
+            &["source", "decision", "reason", "hint_label", "hint_lines"][..],
+        ),
+        ("repair_sources", &["source", "reason", "commands"][..]),
+        (
+            "evidence_debt",
+            &["severity", "kind", "summary", "detail", "next_step"][..],
+        ),
+        ("top_fixups", &["title", "detail", "command"][..]),
+        ("artifacts", &["label", "path"][..]),
+    ] {
+        for item in report[field]
+            .as_array()
+            .ok_or_else(|| anyhow::anyhow!("intake report field {field:?} must be an array"))?
+        {
+            let object = item
+                .as_object()
+                .ok_or_else(|| anyhow::anyhow!("intake report {field} items must be objects"))?;
+            for required in required_fields {
+                if !object.contains_key(*required) {
+                    anyhow::bail!("intake report {field} item missing field {required:?}")
+                }
+            }
+            for key in object.keys() {
+                ensure_field_name_not_secret_bearing(key)?;
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn validate_report_markdown(markdown_path: &Path) -> Result<()> {
+    if !markdown_path.exists() {
+        anyhow::bail!(
+            "intake report markdown missing: {}",
+            markdown_path.display()
+        )
+    }
+    let markdown = std::fs::read_to_string(markdown_path)
+        .with_context(|| format!("read {}", markdown_path.display()))?;
+    ensure_no_secret_sentinels("intake report markdown", &markdown)?;
+    for section in INTAKE_REPORT_MARKDOWN_SECTIONS {
+        if !markdown.contains(section) {
+            anyhow::bail!(
+                "intake report markdown {} is missing section {section:?}",
+                markdown_path.display()
+            )
+        }
+    }
+
+    Ok(())
+}
+
+fn validate_report_artifacts(report_path: &Path, report: &serde_json::Value) -> Result<usize> {
+    let mut checked = 0;
+    let artifacts = report["artifacts"]
+        .as_array()
+        .ok_or_else(|| anyhow::anyhow!("intake report field \"artifacts\" must be an array"))?;
+    for artifact in artifacts {
+        let artifact = artifact
+            .as_object()
+            .ok_or_else(|| anyhow::anyhow!("intake report artifacts items must be objects"))?;
+        let label = artifact
+            .get("label")
+            .and_then(|value| value.as_str())
+            .ok_or_else(|| anyhow::anyhow!("intake report artifact label must be a string"))?;
+        let raw_path = artifact
+            .get("path")
+            .and_then(|value| value.as_str())
+            .ok_or_else(|| anyhow::anyhow!("intake report artifact path must be a string"))?;
+        let path = resolve_report_path(report_path, raw_path);
+        if !path.exists() {
+            anyhow::bail!("artifact missing for {label}: {}", path.display())
+        }
+        checked += 1;
+    }
+
+    Ok(checked)
+}
+
+fn object_field<'a>(value: &'a serde_json::Value, field: &str) -> Result<&'a serde_json::Value> {
+    value
+        .get(field)
+        .filter(|value| value.is_object())
+        .ok_or_else(|| anyhow::anyhow!("intake report field {field:?} must be an object"))
+}
+
+fn string_field(value: &serde_json::Value, field: &str) -> Result<String> {
+    value
+        .get(field)
+        .and_then(|value| value.as_str())
+        .map(str::to_string)
+        .ok_or_else(|| anyhow::anyhow!("intake report field {field:?} must be a string"))
+}
+
+fn ensure_string_field(value: &serde_json::Value, field: &str) -> Result<()> {
+    string_field(value, field).map(|_| ())
+}
+
+fn ensure_nested_string_field(value: &serde_json::Value, field: &str, parent: &str) -> Result<()> {
+    value
+        .get(field)
+        .and_then(|value| value.as_str())
+        .ok_or_else(|| anyhow::anyhow!("intake report {parent}.{field} must be a string"))?;
+    Ok(())
+}
+
+fn nested_path_field(
+    report_path: &Path,
+    value: &serde_json::Value,
+    field: &str,
+    parent: &str,
+) -> Result<PathBuf> {
+    let raw = value
+        .get(field)
+        .and_then(|value| value.as_str())
+        .ok_or_else(|| anyhow::anyhow!("intake report {parent}.{field} must be a string"))?;
+    Ok(resolve_report_path(report_path, raw))
+}
+
+fn resolve_report_path(report_path: &Path, raw: &str) -> PathBuf {
+    let path = PathBuf::from(raw);
+    if path.is_absolute() {
+        path
+    } else {
+        report_path
+            .parent()
+            .unwrap_or_else(|| Path::new("."))
+            .join(path)
+    }
+}
+
+fn same_path_or_string(left: &Path, right: &Path) -> bool {
+    if left == right {
+        return true;
+    }
+    match (left.canonicalize(), right.canonicalize()) {
+        (Ok(left), Ok(right)) => left == right,
+        _ => false,
+    }
+}
+
+fn ensure_field_name_not_secret_bearing(field: &str) -> Result<()> {
+    let lower = field.to_ascii_lowercase();
+    if [
+        "token",
+        "secret",
+        "password",
+        "credential",
+        "api_key",
+        "key_value",
+    ]
+    .iter()
+    .any(|needle| lower.contains(needle))
+    {
+        anyhow::bail!("intake report field {field:?} is secret-bearing")
+    }
+    Ok(())
+}
+
+fn ensure_no_secret_sentinels(label: &str, text: &str) -> Result<()> {
+    for sentinel in INTAKE_REPORT_SECRET_SENTINELS {
+        if text.contains(sentinel) {
+            anyhow::bail!("{label} contains secret sentinel {sentinel:?}")
+        }
+    }
+    Ok(())
 }
 
 fn intake_source_decision_reports(
@@ -7904,6 +8286,16 @@ fn main() -> Result<()> {
                     "Run `shiplog intake` first.",
                     print_path,
                 )?;
+            }
+        },
+        Command::Report { cmd } => match cmd {
+            ReportCommand::Validate {
+                out,
+                run,
+                latest,
+                path,
+            } => {
+                validate_intake_report_command(&out, run, latest, path)?;
             }
         },
         Command::Merge {
