@@ -117,6 +117,88 @@ fn assert_intake_artifacts(run_dir: &Path) {
     }
 }
 
+fn assert_intake_report_schema_contract(report_json: &serde_json::Value) {
+    let schema_path = repo_root().join("contracts/schemas/intake-report.v1.schema.json");
+    let schema_text = std::fs::read_to_string(&schema_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", schema_path.display()));
+    let schema: serde_json::Value = serde_json::from_str(&schema_text)
+        .unwrap_or_else(|err| panic!("parse {}: {err}", schema_path.display()));
+
+    assert_eq!(
+        schema["properties"]["schema_version"]["const"], 1,
+        "intake report schema should lock v1 reports to schema_version 1"
+    );
+    assert_eq!(
+        schema["additionalProperties"], false,
+        "intake report schema should reject undeclared top-level fields"
+    );
+
+    let required = schema["required"]
+        .as_array()
+        .expect("schema should list required top-level fields");
+    for field in required {
+        let field = field.as_str().expect("required field should be a string");
+        assert!(
+            report_json.get(field).is_some(),
+            "generated intake report should contain required schema field {field}"
+        );
+    }
+
+    let properties = schema["properties"]
+        .as_object()
+        .expect("schema should declare top-level properties");
+    for field in report_json
+        .as_object()
+        .expect("intake report should be a JSON object")
+        .keys()
+    {
+        assert!(
+            properties.contains_key(field),
+            "generated intake report field {field} should be declared in the v1 schema"
+        );
+    }
+
+    assert_schema_field_names_are_not_secret_bearing(&schema);
+}
+
+fn assert_schema_field_names_are_not_secret_bearing(value: &serde_json::Value) {
+    if let Some(properties) = value
+        .get("properties")
+        .and_then(|properties| properties.as_object())
+    {
+        for field in properties.keys() {
+            let lower = field.to_ascii_lowercase();
+            assert!(
+                ![
+                    "token",
+                    "secret",
+                    "password",
+                    "credential",
+                    "api_key",
+                    "key_value"
+                ]
+                .iter()
+                .any(|needle| lower.contains(needle)),
+                "schema field {field:?} should not be secret-bearing"
+            );
+        }
+    }
+
+    match value {
+        serde_json::Value::Array(items) => {
+            for item in items {
+                assert_schema_field_names_are_not_secret_bearing(item);
+            }
+        }
+        serde_json::Value::Object(map) => {
+            for item in map.values() {
+                assert_schema_field_names_are_not_secret_bearing(item);
+            }
+        }
+        _ => {}
+    }
+}
+
 fn assert_golden_intake_report(run_dir: &Path, readiness: &str) -> (String, serde_json::Value) {
     let report_md = std::fs::read_to_string(run_dir.join("intake.report.md")).unwrap();
     let report_json_text = std::fs::read_to_string(run_dir.join("intake.report.json")).unwrap();
@@ -124,6 +206,7 @@ fn assert_golden_intake_report(run_dir: &Path, readiness: &str) -> (String, serd
 
     assert_eq!(report_json["schema_version"], 1);
     assert_eq!(report_json["readiness"], readiness);
+    assert_intake_report_schema_contract(&report_json);
     assert!(
         report_json["run_id"]
             .as_str()

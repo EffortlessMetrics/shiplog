@@ -1,0 +1,441 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/EffortlessMetrics/shiplog/contracts/schemas/intake-report.v1.schema.json",
+  "title": "Shiplog intake report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "propertyNames": {
+    "$ref": "#/$defs/non_secret_field_name"
+  },
+  "required": [
+    "schema_version",
+    "run_id",
+    "readiness",
+    "config_path",
+    "out_dir",
+    "run_dir",
+    "packet_path",
+    "period",
+    "window",
+    "reports",
+    "included_sources",
+    "skipped_sources",
+    "source_decisions",
+    "repair_sources",
+    "curation_notes",
+    "good",
+    "needs_attention",
+    "evidence_debt",
+    "top_fixups",
+    "journal_suggestions",
+    "share_commands",
+    "next_commands",
+    "artifacts"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "readiness": {
+      "type": "string",
+      "enum": [
+        "Ready for review",
+        "Needs curation",
+        "Needs evidence",
+        "Needs repair"
+      ]
+    },
+    "config_path": {
+      "$ref": "#/$defs/path"
+    },
+    "out_dir": {
+      "$ref": "#/$defs/path"
+    },
+    "run_dir": {
+      "$ref": "#/$defs/path"
+    },
+    "packet_path": {
+      "$ref": "#/$defs/path"
+    },
+    "period": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "window": {
+      "$ref": "#/$defs/window"
+    },
+    "reports": {
+      "$ref": "#/$defs/reports"
+    },
+    "included_sources": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/included_source"
+      }
+    },
+    "skipped_sources": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/skipped_source"
+      }
+    },
+    "source_decisions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/source_decision"
+      }
+    },
+    "repair_sources": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/repair_source"
+      }
+    },
+    "curation_notes": {
+      "$ref": "#/$defs/string_array"
+    },
+    "good": {
+      "$ref": "#/$defs/string_array"
+    },
+    "needs_attention": {
+      "$ref": "#/$defs/string_array"
+    },
+    "evidence_debt": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/evidence_debt"
+      }
+    },
+    "top_fixups": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/fixup"
+      }
+    },
+    "journal_suggestions": {
+      "$ref": "#/$defs/string_array"
+    },
+    "share_commands": {
+      "$ref": "#/$defs/string_array"
+    },
+    "next_commands": {
+      "$ref": "#/$defs/string_array"
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/artifact"
+      }
+    }
+  },
+  "$defs": {
+    "non_secret_field_name": {
+      "type": "string",
+      "not": {
+        "pattern": "[Tt][Oo][Kk][Ee][Nn]|[Ss][Ee][Cc][Rr][Ee][Tt]|[Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd]|[Cc][Rr][Ee][Dd][Ee][Nn][Tt][Ii][Aa][Ll]|[Aa][Pp][Ii]_?[Kk][Ee][Yy]|[Kk][Ee][Yy]_?[Vv][Aa][Ll][Uu][Ee]"
+      }
+    },
+    "object_base": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "#/$defs/non_secret_field_name"
+      }
+    },
+    "path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "string_array": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "window": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "required": [
+            "since",
+            "until",
+            "label"
+          ],
+          "properties": {
+            "since": {
+              "type": "string",
+              "format": "date"
+            },
+            "until": {
+              "type": "string",
+              "format": "date"
+            },
+            "label": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      ]
+    },
+    "reports": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "required": [
+            "markdown",
+            "json"
+          ],
+          "properties": {
+            "markdown": {
+              "$ref": "#/$defs/path"
+            },
+            "json": {
+              "$ref": "#/$defs/path"
+            }
+          }
+        }
+      ]
+    },
+    "included_source": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "required": [
+            "source",
+            "event_count",
+            "summary"
+          ],
+          "properties": {
+            "source": {
+              "type": "string",
+              "minLength": 1
+            },
+            "event_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "summary": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "skipped_source": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "required": [
+            "source",
+            "reason"
+          ],
+          "properties": {
+            "source": {
+              "type": "string",
+              "minLength": 1
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      ]
+    },
+    "source_decision": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "required": [
+            "source",
+            "decision",
+            "reason",
+            "hint_label",
+            "hint_lines"
+          ],
+          "properties": {
+            "source": {
+              "type": "string",
+              "minLength": 1
+            },
+            "decision": {
+              "type": "string",
+              "enum": [
+                "included",
+                "skipped"
+              ]
+            },
+            "reason": {
+              "type": "string"
+            },
+            "hint_label": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "hint_lines": {
+              "$ref": "#/$defs/string_array"
+            }
+          }
+        }
+      ]
+    },
+    "repair_source": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "required": [
+            "source",
+            "reason",
+            "commands"
+          ],
+          "properties": {
+            "source": {
+              "type": "string",
+              "minLength": 1
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            },
+            "commands": {
+              "$ref": "#/$defs/string_array"
+            }
+          }
+        }
+      ]
+    },
+    "evidence_debt": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "required": [
+            "severity",
+            "kind",
+            "summary",
+            "detail",
+            "next_step"
+          ],
+          "properties": {
+            "severity": {
+              "type": "string",
+              "enum": [
+                "info",
+                "warning",
+                "blocking"
+              ]
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "missing-source",
+                "partial-coverage",
+                "coverage-warning",
+                "incomplete-query",
+                "manual-context",
+                "no-selected-receipts",
+                "thin-workstream",
+                "large-misc-workstream",
+                "code-only-workstream",
+                "ticket-only-workstream",
+                "manual-only-workstream",
+                "too-many-selected-receipts",
+                "broad-workstream",
+                "workstream-validation"
+              ]
+            },
+            "summary": {
+              "type": "string",
+              "minLength": 1
+            },
+            "detail": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "next_step": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "fixup": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "required": [
+            "title",
+            "detail",
+            "command"
+          ],
+          "properties": {
+            "title": {
+              "type": "string",
+              "minLength": 1
+            },
+            "detail": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "command": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      ]
+    },
+    "artifact": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "required": [
+            "label",
+            "path"
+          ],
+          "properties": {
+            "label": {
+              "type": "string",
+              "minLength": 1
+            },
+            "path": {
+              "$ref": "#/$defs/path"
+            }
+          }
+        }
+      ]
+    }
+  }
+}
