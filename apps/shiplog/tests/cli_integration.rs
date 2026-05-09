@@ -7356,6 +7356,12 @@ fn share_manager_without_key_fails_closed() {
             .exists(),
         "manager share packet should not be written without a redaction key"
     );
+    assert!(
+        !tmp.path()
+            .join("run_fixture/profiles/manager/share.manifest.json")
+            .exists(),
+        "manager share manifest should not be written without a redaction key"
+    );
 }
 
 #[test]
@@ -7575,6 +7581,38 @@ fn share_manager_uses_env_key_without_printing_secret() {
             .exists(),
         "manager share packet should be written with SHIPLOG_REDACT_KEY"
     );
+    let manager_manifest_path = tmp
+        .path()
+        .join("run_fixture/profiles/manager/share.manifest.json");
+    assert!(
+        manager_manifest_path.exists(),
+        "manager share manifest should be written"
+    );
+    let manager_manifest_text = std::fs::read_to_string(&manager_manifest_path).unwrap();
+    assert!(!manager_manifest_text.contains("stable-env-key"));
+    let manager_manifest: serde_json::Value = serde_json::from_str(&manager_manifest_text).unwrap();
+    assert_eq!(manager_manifest["schema_version"], 1);
+    assert_eq!(manager_manifest["profile"], "manager");
+    assert_eq!(manager_manifest["input_run_id"], "run_fixture");
+    assert_eq!(manager_manifest["redaction_key_source"], "env");
+    assert_eq!(manager_manifest["coverage_completeness"], "Complete");
+    assert_eq!(manager_manifest["skipped_source_count"], 0);
+    assert_eq!(
+        manager_manifest["strict_verify_result"]["status"],
+        "not_applicable"
+    );
+    assert_eq!(
+        manager_manifest["packet_path"],
+        "profiles/manager/packet.md"
+    );
+    assert!(manager_manifest["zip_path"].is_null());
+    assert_eq!(manager_manifest["checksum"]["algorithm"], "sha256");
+    assert!(
+        manager_manifest["checksum"]["packet_sha256"]
+            .as_str()
+            .is_some_and(|value| value.len() == 64)
+    );
+    assert!(manager_manifest["checksum"]["zip_sha256"].is_null());
     let manager_packet =
         std::fs::read_to_string(tmp.path().join("run_fixture/profiles/manager/packet.md")).unwrap();
     assert!(
@@ -7616,6 +7654,27 @@ fn share_public_with_explicit_key_can_write_zip() {
     assert!(
         tmp.path().join("run_fixture.public.zip").exists(),
         "public share zip should be written when --zip is set"
+    );
+    let public_manifest_text = std::fs::read_to_string(
+        tmp.path()
+            .join("run_fixture/profiles/public/share.manifest.json"),
+    )
+    .unwrap();
+    assert!(!public_manifest_text.contains("stable-test-key"));
+    let public_manifest: serde_json::Value = serde_json::from_str(&public_manifest_text).unwrap();
+    assert_eq!(public_manifest["profile"], "public");
+    assert_eq!(public_manifest["redaction_key_source"], "explicit");
+    assert_eq!(public_manifest["strict_verify_result"]["status"], "passed");
+    assert_eq!(
+        public_manifest["strict_verify_result"]["source"],
+        "profiles/public/packet.md"
+    );
+    assert_eq!(public_manifest["packet_path"], "profiles/public/packet.md");
+    assert_eq!(public_manifest["zip_path"], "../run_fixture.public.zip");
+    assert!(
+        public_manifest["checksum"]["zip_sha256"]
+            .as_str()
+            .is_some_and(|value| value.len() == 64)
     );
 }
 
