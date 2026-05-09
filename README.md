@@ -244,6 +244,10 @@ workstream has implementation receipts but no manual outcome note.
 actions: add context, inspect receipt anchors, split broad buckets, validate
 workstreams, or repair skipped sources. Use `--commands-only` for a terse
 copy-friendly list.
+Evidence-debt findings are packet-quality checks, not person scores: skipped
+sources, partial coverage, missing or over-selected receipts, broad/misc/thin
+workstreams, one-source-type workstreams, and validation issues all include a
+next command.
 
 If you prefer direct YAML editing, copy `workstreams.suggested.yaml` to
 `workstreams.yaml` and edit that file.

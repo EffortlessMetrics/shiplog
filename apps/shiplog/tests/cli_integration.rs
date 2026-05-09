@@ -3084,6 +3084,19 @@ user = "octo"
     assert_eq!(report_json["included_sources"][0]["source"], "Manual");
     assert_eq!(report_json["included_sources"][0]["event_count"], 1);
     assert_eq!(report_json["skipped_sources"].as_array().unwrap().len(), 0);
+    let evidence_debt = report_json["evidence_debt"].as_array().unwrap();
+    assert!(
+        evidence_debt
+            .iter()
+            .any(|item| item["kind"] == "manual-only-workstream"),
+        "intake report JSON should include packet-quality evidence debt"
+    );
+    assert!(
+        evidence_debt.iter().all(|item| item["next_step"]
+            .as_str()
+            .is_some_and(|step| !step.is_empty())),
+        "intake report evidence debt should include actionable next steps"
+    );
     assert!(
         report_json["share_commands"]
             .as_array()
@@ -4293,13 +4306,232 @@ fn review_fixups_ranks_curation_actions_without_writing_artifacts() {
         .collect();
     assert_eq!(
         commands.len(),
-        3,
+        4,
         "commands-only should print just the ranked fixup commands"
     );
     assert!(commands[0].starts_with("shiplog journal add --date"));
     assert!(commands[1].starts_with("shiplog workstreams receipts --out"));
     assert!(commands[2].starts_with("shiplog workstreams split --out"));
+    assert!(commands[3].starts_with("shiplog journal add --date"));
     assert!(commands.iter().all(|line| line.starts_with("shiplog ")));
+
+    assert_eq!(
+        packet_before,
+        std::fs::read_to_string(run_dir.join("packet.md")).unwrap()
+    );
+    assert_eq!(
+        coverage_before,
+        std::fs::read_to_string(run_dir.join("coverage.manifest.json")).unwrap()
+    );
+    assert_eq!(
+        workstreams_before,
+        std::fs::read_to_string(run_dir.join("workstreams.yaml")).unwrap()
+    );
+}
+
+#[test]
+fn review_surfaces_packet_quality_evidence_debt_categories() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+    let events_path = tmp.path().join("ledger.events.jsonl");
+    let coverage_path = tmp.path().join("coverage.manifest.json");
+    let mut events = Vec::new();
+
+    let misc_events: Vec<_> = (0..5)
+        .map(|idx| {
+            fixture_pr_event(
+                SourceSystem::Github,
+                "acme/misc",
+                400 + idx as u64,
+                &format!("Misc cleanup {}", idx + 1),
+                2 + idx,
+            )
+        })
+        .collect();
+    let ticket_events: Vec<_> = (0..5)
+        .map(|idx| {
+            fixture_manual_event(
+                SourceSystem::Other("jira".into()),
+                "acme/support",
+                &format!("Support ticket {}", idx + 1),
+                ManualEventType::Other,
+                8 + idx,
+            )
+        })
+        .collect();
+    let manual_events = [fixture_manual_event(
+        SourceSystem::Manual,
+        "acme/manual",
+        "Customer reliability context",
+        ManualEventType::Incident,
+        14,
+    )];
+    let release_events: Vec<_> = (0..6)
+        .map(|idx| {
+            fixture_pr_event(
+                SourceSystem::Github,
+                "acme/release",
+                500 + idx as u64,
+                &format!("Release automation {}", idx + 1),
+                15 + idx,
+            )
+        })
+        .collect();
+
+    events.extend(misc_events.iter().cloned());
+    events.extend(ticket_events.iter().cloned());
+    events.extend(manual_events.iter().cloned());
+    events.extend(release_events.iter().cloned());
+
+    let coverage = CoverageManifest {
+        run_id: RunId("run_quality_debt".into()),
+        generated_at: fixture_time(25),
+        user: "octo".into(),
+        window: fixture_window(),
+        mode: "fixture".into(),
+        sources: vec!["github".into(), "jira".into(), "manual".into()],
+        slices: vec![CoverageSlice {
+            window: fixture_window(),
+            query: "quality fixture".into(),
+            total_count: events.len() as u64,
+            fetched: events.len() as u64,
+            incomplete_results: Some(false),
+            notes: vec!["fixture".into()],
+        }],
+        warnings: vec![],
+        completeness: Completeness::Complete,
+    };
+    write_events_jsonl(&events_path, &events);
+    write_coverage_manifest(&coverage_path, &coverage);
+
+    shiplog_cmd()
+        .args([
+            "collect",
+            "--out",
+            out.to_str().unwrap(),
+            "json",
+            "--events",
+            events_path.to_str().unwrap(),
+            "--coverage",
+            coverage_path.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    let run_dir = out.join("run_quality_debt");
+    let curated = WorkstreamsFile {
+        version: 1,
+        generated_at: fixture_time(26),
+        workstreams: vec![
+            Workstream {
+                id: WorkstreamId::from_parts(["quality", "misc"]),
+                title: "Misc".into(),
+                summary: None,
+                tags: vec!["misc".into()],
+                stats: WorkstreamStats {
+                    pull_requests: misc_events.len(),
+                    reviews: 0,
+                    manual_events: 0,
+                },
+                events: misc_events.iter().map(|event| event.id.clone()).collect(),
+                receipts: vec![],
+            },
+            Workstream {
+                id: WorkstreamId::from_parts(["quality", "tickets"]),
+                title: "Customer Tickets".into(),
+                summary: None,
+                tags: vec!["tickets".into()],
+                stats: WorkstreamStats {
+                    pull_requests: 0,
+                    reviews: 0,
+                    manual_events: ticket_events.len(),
+                },
+                events: ticket_events.iter().map(|event| event.id.clone()).collect(),
+                receipts: vec![],
+            },
+            Workstream {
+                id: WorkstreamId::from_parts(["quality", "manual"]),
+                title: "Manual Context".into(),
+                summary: None,
+                tags: vec!["manual".into()],
+                stats: WorkstreamStats {
+                    pull_requests: 0,
+                    reviews: 0,
+                    manual_events: manual_events.len(),
+                },
+                events: manual_events.iter().map(|event| event.id.clone()).collect(),
+                receipts: vec![],
+            },
+            Workstream {
+                id: WorkstreamId::from_parts(["quality", "release"]),
+                title: "Release Automation".into(),
+                summary: None,
+                tags: vec!["release".into()],
+                stats: WorkstreamStats {
+                    pull_requests: release_events.len(),
+                    reviews: 0,
+                    manual_events: 0,
+                },
+                events: release_events
+                    .iter()
+                    .map(|event| event.id.clone())
+                    .collect(),
+                receipts: release_events
+                    .iter()
+                    .map(|event| event.id.clone())
+                    .collect(),
+            },
+        ],
+    };
+    std::fs::write(
+        run_dir.join("workstreams.yaml"),
+        serde_yaml::to_string(&curated).unwrap(),
+    )
+    .unwrap();
+    let packet_before = std::fs::read_to_string(run_dir.join("packet.md")).unwrap();
+    let coverage_before = std::fs::read_to_string(run_dir.join("coverage.manifest.json")).unwrap();
+    let workstreams_before = std::fs::read_to_string(run_dir.join("workstreams.yaml")).unwrap();
+
+    let assert = shiplog_cmd()
+        .args(["review", "--out", out.to_str().unwrap(), "--latest"])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
+
+    for needle in [
+        "[warning] no-selected-receipts",
+        "[info] thin-workstream",
+        "[warning] large-misc-workstream",
+        "[info] code-only-workstream",
+        "[info] ticket-only-workstream",
+        "[info] manual-only-workstream",
+        "[info] too-many-selected-receipts",
+        "shiplog workstreams receipts --run run_quality_debt --workstream <title>",
+        "shiplog workstreams split --run run_quality_debt",
+        "shiplog journal add --date",
+        "shiplog journal list",
+    ] {
+        assert!(
+            stdout.contains(needle),
+            "review output should mention {needle:?}"
+        );
+    }
+
+    let fixups_assert = shiplog_cmd()
+        .args([
+            "review",
+            "fixups",
+            "--out",
+            out.to_str().unwrap(),
+            "--latest",
+            "--commands-only",
+        ])
+        .assert()
+        .success();
+    let fixups_stdout = String::from_utf8(fixups_assert.get_output().stdout.clone()).unwrap();
+    assert!(fixups_stdout.contains("shiplog workstreams split"));
+    assert!(fixups_stdout.contains("shiplog workstreams receipts"));
+    assert!(fixups_stdout.contains("shiplog journal add"));
 
     assert_eq!(
         packet_before,

@@ -118,6 +118,11 @@ redaction-key environment variable is provided.
 `shiplog share verify manager|public` performs the same redaction-key preflight
 and inspects coverage/skipped-source metadata without writing share artifacts.
 
+Review evidence debt is packet-quality focused. It surfaces skipped sources,
+partial coverage, missing or over-selected receipts, broad/misc/thin
+workstreams, one-source-type workstreams, manual context gaps, and validation
+errors with concrete next commands; it is not a productivity score.
+
 ## Public Crate Surface
 
 Stable contracts:

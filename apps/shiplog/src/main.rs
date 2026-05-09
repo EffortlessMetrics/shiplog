@@ -1931,31 +1931,7 @@ fn build_intake_report(
     let skipped_sources = configured_source_skips(&coverage.warnings);
     let (workstreams, _, _) = load_effective_workstreams_for_run(&result.outputs.out_dir)?;
     let validation_errors = validate_workstreams_against_events(&workstreams, &events);
-    let no_receipt_workstreams: Vec<_> = workstreams
-        .workstreams
-        .iter()
-        .filter(|workstream| workstream.receipts.is_empty())
-        .collect();
-    let broad_workstreams: Vec<_> = workstreams
-        .workstreams
-        .iter()
-        .filter(|workstream| workstream.events.len() >= 10)
-        .collect();
-    let manual_event_ids: HashSet<_> = events
-        .iter()
-        .filter(|event| matches!(event.payload, EventPayload::Manual(_)))
-        .map(|event| event.id.clone())
-        .collect();
-    let manual_context_workstreams: Vec<_> = broad_workstreams
-        .iter()
-        .copied()
-        .filter(|workstream| {
-            !workstream
-                .events
-                .iter()
-                .any(|event_id| manual_event_ids.contains(event_id))
-        })
-        .collect();
+    let signals = workstream_quality_signals(&workstreams, &events);
 
     let mut good = Vec::new();
     for (name, ingest) in &result.configured.successes {
@@ -1997,22 +1973,22 @@ fn build_intake_report(
             validation_errors.len()
         ));
     }
-    if !no_receipt_workstreams.is_empty() {
+    if !signals.no_receipt_workstreams.is_empty() {
         attention.push(format!(
             "{} workstream(s) have no selected receipts.",
-            no_receipt_workstreams.len()
+            signals.no_receipt_workstreams.len()
         ));
     }
-    if !broad_workstreams.is_empty() {
+    if !signals.broad_workstreams.is_empty() {
         attention.push(format!(
             "{} broad workstream(s) may need splitting.",
-            broad_workstreams.len()
+            signals.broad_workstreams.len()
         ));
     }
-    if !manual_context_workstreams.is_empty() {
+    if !signals.manual_context_workstreams.is_empty() {
         attention.push(format!(
             "{} broad workstream(s) need outcome context.",
-            manual_context_workstreams.len()
+            signals.manual_context_workstreams.len()
         ));
     }
 
@@ -2033,19 +2009,14 @@ fn build_intake_report(
         skipped_sources: &skipped_sources,
         workstreams: &workstreams,
         validation_errors: &validation_errors,
-        no_receipt_workstreams: &no_receipt_workstreams,
-        broad_workstreams: &broad_workstreams,
-        manual_context_workstreams: &manual_context_workstreams,
-        manual_events: manual_event_ids.len(),
+        signals: &signals,
     });
     let top_fixups = review_fixups(
         &run_id,
         out_dir,
         &skipped_sources,
         &validation_errors,
-        &no_receipt_workstreams,
-        &broad_workstreams,
-        &manual_context_workstreams,
+        &signals,
     );
     let curation_notes = intake_curation_notes(result);
     let next_commands = intake_readiness_next_steps(
@@ -2053,13 +2024,16 @@ fn build_intake_report(
         out_dir,
         config_path,
         &result.configured.failures,
-        no_receipt_workstreams
+        signals
+            .no_receipt_workstreams
             .first()
             .map(|workstream| workstream.title.as_str()),
-        broad_workstreams
+        signals
+            .broad_workstreams
             .first()
             .map(|workstream| workstream.title.as_str()),
-        manual_context_workstreams
+        signals
+            .manual_context_workstreams
             .first()
             .map(|workstream| workstream.title.as_str()),
     );
@@ -9510,6 +9484,12 @@ enum EvidenceDebtKind {
     IncompleteQuery,
     ManualContext,
     MissingReceiptAnchors,
+    ThinWorkstream,
+    LargeMiscWorkstream,
+    CodeOnlyWorkstream,
+    TicketOnlyWorkstream,
+    ManualOnlyWorkstream,
+    TooManySelectedReceipts,
     BroadWorkstream,
     WorkstreamValidation,
 }
@@ -9522,7 +9502,13 @@ impl EvidenceDebtKind {
             Self::CoverageWarning => "coverage-warning",
             Self::IncompleteQuery => "incomplete-query",
             Self::ManualContext => "manual-context",
-            Self::MissingReceiptAnchors => "missing-receipts",
+            Self::MissingReceiptAnchors => "no-selected-receipts",
+            Self::ThinWorkstream => "thin-workstream",
+            Self::LargeMiscWorkstream => "large-misc-workstream",
+            Self::CodeOnlyWorkstream => "code-only-workstream",
+            Self::TicketOnlyWorkstream => "ticket-only-workstream",
+            Self::ManualOnlyWorkstream => "manual-only-workstream",
+            Self::TooManySelectedReceipts => "too-many-selected-receipts",
             Self::BroadWorkstream => "broad-workstream",
             Self::WorkstreamValidation => "workstream-validation",
         }
@@ -9544,6 +9530,27 @@ struct ReviewFixup {
     command: String,
 }
 
+#[derive(Default)]
+struct WorkstreamQualitySignals<'a> {
+    no_receipt_workstreams: Vec<&'a Workstream>,
+    broad_workstreams: Vec<&'a Workstream>,
+    manual_context_workstreams: Vec<&'a Workstream>,
+    thin_workstreams: Vec<&'a Workstream>,
+    large_misc_workstreams: Vec<&'a Workstream>,
+    code_only_workstreams: Vec<&'a Workstream>,
+    ticket_only_workstreams: Vec<&'a Workstream>,
+    manual_only_workstreams: Vec<&'a Workstream>,
+    too_many_receipt_workstreams: Vec<&'a Workstream>,
+    manual_events: usize,
+}
+
+#[derive(Default)]
+struct WorkstreamEvidenceProfile {
+    code: usize,
+    tickets: usize,
+    manual: usize,
+}
+
 struct EvidenceDebtInput<'a> {
     run_id: &'a str,
     coverage: &'a CoverageManifest,
@@ -9551,10 +9558,7 @@ struct EvidenceDebtInput<'a> {
     skipped_sources: &'a [ConfiguredSourceSkip],
     workstreams: &'a WorkstreamsFile,
     validation_errors: &'a [String],
-    no_receipt_workstreams: &'a [&'a Workstream],
-    broad_workstreams: &'a [&'a Workstream],
-    manual_context_workstreams: &'a [&'a Workstream],
-    manual_events: usize,
+    signals: &'a WorkstreamQualitySignals<'a>,
 }
 
 impl EvidenceDebt {
@@ -9581,6 +9585,122 @@ impl EvidenceDebt {
         self.next_step = Some(next_step.into());
         self
     }
+}
+
+const BROAD_WORKSTREAM_EVENT_THRESHOLD: usize = 10;
+const LARGE_MISC_WORKSTREAM_EVENT_THRESHOLD: usize = 5;
+const TOO_MANY_SELECTED_RECEIPTS_THRESHOLD: usize = 5;
+const SINGLE_SOURCE_WORKSTREAM_EVENT_THRESHOLD: usize = 5;
+
+fn workstream_quality_signals<'a>(
+    workstreams: &'a WorkstreamsFile,
+    events: &[EventEnvelope],
+) -> WorkstreamQualitySignals<'a> {
+    let events_by_id: HashMap<EventId, &EventEnvelope> = events
+        .iter()
+        .map(|event| (event.id.clone(), event))
+        .collect();
+    let manual_events = events
+        .iter()
+        .filter(|event| matches!(event.payload, EventPayload::Manual(_)))
+        .count();
+    let mut signals = WorkstreamQualitySignals {
+        manual_events,
+        ..WorkstreamQualitySignals::default()
+    };
+
+    for workstream in &workstreams.workstreams {
+        let event_count = workstream.events.len();
+        let profile = workstream_evidence_profile(workstream, &events_by_id);
+
+        if workstream.receipts.is_empty() {
+            signals.no_receipt_workstreams.push(workstream);
+        }
+        if event_count >= BROAD_WORKSTREAM_EVENT_THRESHOLD {
+            signals.broad_workstreams.push(workstream);
+        }
+        if event_count == 1 && workstream.receipts.is_empty() {
+            signals.thin_workstreams.push(workstream);
+        }
+        if event_count >= LARGE_MISC_WORKSTREAM_EVENT_THRESHOLD
+            && is_misc_workstream_title(workstream)
+        {
+            signals.large_misc_workstreams.push(workstream);
+        }
+        if workstream.receipts.len() > TOO_MANY_SELECTED_RECEIPTS_THRESHOLD {
+            signals.too_many_receipt_workstreams.push(workstream);
+        }
+        if event_count >= SINGLE_SOURCE_WORKSTREAM_EVENT_THRESHOLD
+            && profile.code > 0
+            && profile.tickets == 0
+            && profile.manual == 0
+        {
+            signals.code_only_workstreams.push(workstream);
+        }
+        if event_count >= SINGLE_SOURCE_WORKSTREAM_EVENT_THRESHOLD
+            && profile.tickets > 0
+            && profile.code == 0
+            && profile.manual == 0
+        {
+            signals.ticket_only_workstreams.push(workstream);
+        }
+        if event_count >= 1 && profile.manual > 0 && profile.code == 0 && profile.tickets == 0 {
+            signals.manual_only_workstreams.push(workstream);
+        }
+        if event_count >= BROAD_WORKSTREAM_EVENT_THRESHOLD && profile.manual == 0 {
+            signals.manual_context_workstreams.push(workstream);
+        }
+    }
+
+    signals
+}
+
+fn workstream_evidence_profile(
+    workstream: &Workstream,
+    events_by_id: &HashMap<EventId, &EventEnvelope>,
+) -> WorkstreamEvidenceProfile {
+    let mut profile = WorkstreamEvidenceProfile::default();
+
+    for event in workstream
+        .events
+        .iter()
+        .filter_map(|event_id| events_by_id.get(event_id).copied())
+    {
+        match event_source_bucket(event) {
+            WorkstreamSourceBucket::Code => profile.code += 1,
+            WorkstreamSourceBucket::Ticket => profile.tickets += 1,
+            WorkstreamSourceBucket::Manual => profile.manual += 1,
+        }
+    }
+
+    profile
+}
+
+enum WorkstreamSourceBucket {
+    Code,
+    Ticket,
+    Manual,
+}
+
+fn event_source_bucket(event: &EventEnvelope) -> WorkstreamSourceBucket {
+    let source = event.source.system.as_str().to_ascii_lowercase();
+    match source.as_str() {
+        "jira" | "linear" => WorkstreamSourceBucket::Ticket,
+        "manual" => WorkstreamSourceBucket::Manual,
+        "github" | "gitlab" | "local_git" | "localgit" => WorkstreamSourceBucket::Code,
+        _ => match event.payload {
+            EventPayload::PullRequest(_) | EventPayload::Review(_) => WorkstreamSourceBucket::Code,
+            EventPayload::Manual(_) => WorkstreamSourceBucket::Manual,
+        },
+    }
+}
+
+fn is_misc_workstream_title(workstream: &Workstream) -> bool {
+    let normalized = workstream.title.trim().to_ascii_lowercase();
+    matches!(
+        normalized.as_str(),
+        "misc" | "miscellaneous" | "other" | "uncategorized" | "untriaged"
+    )
 }
 
 fn print_weekly_review(run_dir: &Path, strict: bool) -> Result<()> {
@@ -9632,35 +9752,7 @@ fn print_review(run_dir: &Path, strict: bool) -> Result<()> {
     let skipped_sources = configured_source_skips(&coverage.warnings);
     let (workstreams, source, path) = load_effective_workstreams_for_run(run_dir)?;
     let validation_errors = validate_workstreams_against_events(&workstreams, &events);
-    let no_receipt_workstreams: Vec<_> = workstreams
-        .workstreams
-        .iter()
-        .filter(|workstream| workstream.receipts.is_empty())
-        .collect();
-    let broad_workstreams: Vec<_> = workstreams
-        .workstreams
-        .iter()
-        .filter(|workstream| workstream.events.len() >= 10)
-        .collect();
-    let manual_events = events
-        .iter()
-        .filter(|event| matches!(event.payload, EventPayload::Manual(_)))
-        .count();
-    let manual_event_ids: HashSet<_> = events
-        .iter()
-        .filter(|event| matches!(event.payload, EventPayload::Manual(_)))
-        .map(|event| event.id.clone())
-        .collect();
-    let manual_context_workstreams: Vec<_> = broad_workstreams
-        .iter()
-        .copied()
-        .filter(|workstream| {
-            !workstream
-                .events
-                .iter()
-                .any(|event_id| manual_event_ids.contains(event_id))
-        })
-        .collect();
+    let signals = workstream_quality_signals(&workstreams, &events);
     let evidence_debt = detect_evidence_debt(EvidenceDebtInput {
         run_id: &run_id,
         coverage: &coverage,
@@ -9668,10 +9760,7 @@ fn print_review(run_dir: &Path, strict: bool) -> Result<()> {
         skipped_sources: &skipped_sources,
         workstreams: &workstreams,
         validation_errors: &validation_errors,
-        no_receipt_workstreams: &no_receipt_workstreams,
-        broad_workstreams: &broad_workstreams,
-        manual_context_workstreams: &manual_context_workstreams,
-        manual_events,
+        signals: &signals,
     });
 
     println!("Run: {run_id}");
@@ -9715,9 +9804,21 @@ fn print_review(run_dir: &Path, strict: bool) -> Result<()> {
     println!("- Workstreams file: {}", path.display());
     println!(
         "- Workstreams with no selected receipts: {}",
-        no_receipt_workstreams.len()
+        signals.no_receipt_workstreams.len()
     );
-    println!("- Workstreams with 10+ events: {}", broad_workstreams.len());
+    println!(
+        "- Workstreams with too many selected receipts: {}",
+        signals.too_many_receipt_workstreams.len()
+    );
+    println!(
+        "- Workstreams with 10+ events: {}",
+        signals.broad_workstreams.len()
+    );
+    println!("- Thin workstreams: {}", signals.thin_workstreams.len());
+    println!(
+        "- Large misc workstreams: {}",
+        signals.large_misc_workstreams.len()
+    );
     if validation_errors.is_empty() {
         println!("- Validation: ok");
     } else {
@@ -9737,13 +9838,16 @@ fn print_review(run_dir: &Path, strict: bool) -> Result<()> {
     print_review_next_steps(
         &run_id,
         !validation_errors.is_empty(),
-        no_receipt_workstreams
+        signals
+            .no_receipt_workstreams
             .first()
             .map(|workstream| workstream.title.as_str()),
-        broad_workstreams
+        signals
+            .broad_workstreams
             .first()
             .map(|workstream| workstream.title.as_str()),
-        manual_context_workstreams
+        signals
+            .manual_context_workstreams
             .first()
             .map(|workstream| workstream.title.as_str()),
         !skipped_sources.is_empty(),
@@ -9768,39 +9872,13 @@ fn print_review_fixups(run_dir: &Path, out_dir: &Path, commands_only: bool) -> R
     let skipped_sources = configured_source_skips(&coverage.warnings);
     let (workstreams, _, _) = load_effective_workstreams_for_run(run_dir)?;
     let validation_errors = validate_workstreams_against_events(&workstreams, &events);
-    let no_receipt_workstreams: Vec<_> = workstreams
-        .workstreams
-        .iter()
-        .filter(|workstream| workstream.receipts.is_empty())
-        .collect();
-    let broad_workstreams: Vec<_> = workstreams
-        .workstreams
-        .iter()
-        .filter(|workstream| workstream.events.len() >= 10)
-        .collect();
-    let manual_event_ids: HashSet<_> = events
-        .iter()
-        .filter(|event| matches!(event.payload, EventPayload::Manual(_)))
-        .map(|event| event.id.clone())
-        .collect();
-    let manual_context_workstreams: Vec<_> = broad_workstreams
-        .iter()
-        .copied()
-        .filter(|workstream| {
-            !workstream
-                .events
-                .iter()
-                .any(|event_id| manual_event_ids.contains(event_id))
-        })
-        .collect();
+    let signals = workstream_quality_signals(&workstreams, &events);
     let fixups = review_fixups(
         &run_id,
         out_dir,
         &skipped_sources,
         &validation_errors,
-        &no_receipt_workstreams,
-        &broad_workstreams,
-        &manual_context_workstreams,
+        &signals,
     );
     if commands_only {
         if fixups.is_empty() {
@@ -9863,9 +9941,7 @@ fn review_fixups(
     out_dir: &Path,
     skipped_sources: &[ConfiguredSourceSkip],
     validation_errors: &[String],
-    no_receipt_workstreams: &[&Workstream],
-    broad_workstreams: &[&Workstream],
-    manual_context_workstreams: &[&Workstream],
+    signals: &WorkstreamQualitySignals<'_>,
 ) -> Vec<ReviewFixup> {
     let mut fixups = Vec::new();
     let out_arg = quote_cli_value(&out_dir.display().to_string());
@@ -9903,7 +9979,24 @@ fn review_fixups(
         });
     }
 
-    for workstream in manual_context_workstreams.iter().take(2) {
+    for workstream in signals.large_misc_workstreams.iter().take(2) {
+        fixups.push(ReviewFixup {
+            title: format!(
+                "Split large misc workstream {}",
+                quote_display_title(&workstream.title)
+            ),
+            detail: Some(format!(
+                "{} event(s) are still in a miscellaneous bucket.",
+                workstream.events.len()
+            )),
+            command: format!(
+                "shiplog workstreams split --out {out_arg} --run {run_id} --from {} --to \"<new workstream>\" --matching \"<pattern>\" --create",
+                quote_cli_value(&workstream.title)
+            ),
+        });
+    }
+
+    for workstream in signals.manual_context_workstreams.iter().take(2) {
         fixups.push(ReviewFixup {
             title: format!(
                 "Add outcome context for {}",
@@ -9917,7 +10010,7 @@ fn review_fixups(
         });
     }
 
-    for workstream in no_receipt_workstreams.iter().take(2) {
+    for workstream in signals.no_receipt_workstreams.iter().take(2) {
         fixups.push(ReviewFixup {
             title: format!(
                 "Select anchor receipts for {}",
@@ -9934,7 +10027,24 @@ fn review_fixups(
         });
     }
 
-    for workstream in broad_workstreams.iter().take(2) {
+    for workstream in signals.too_many_receipt_workstreams.iter().take(2) {
+        fixups.push(ReviewFixup {
+            title: format!(
+                "Trim selected receipts for {}",
+                quote_display_title(&workstream.title)
+            ),
+            detail: Some(format!(
+                "{} receipt anchors are selected; choose the strongest few for review.",
+                workstream.receipts.len()
+            )),
+            command: format!(
+                "shiplog workstreams receipts --out {out_arg} --run {run_id} --workstream {}",
+                quote_cli_value(&workstream.title)
+            ),
+        });
+    }
+
+    for workstream in signals.broad_workstreams.iter().take(2) {
         fixups.push(ReviewFixup {
             title: format!(
                 "Split broad workstream {}",
@@ -9946,6 +10056,62 @@ fn review_fixups(
             )),
             command: format!(
                 "shiplog workstreams split --out {out_arg} --run {run_id} --from {} --to \"<new workstream>\" --matching \"<pattern>\" --create",
+                quote_cli_value(&workstream.title)
+            ),
+        });
+    }
+
+    for workstream in signals.ticket_only_workstreams.iter().take(2) {
+        fixups.push(ReviewFixup {
+            title: format!(
+                "Add outcome context for ticket-only workstream {}",
+                quote_display_title(&workstream.title)
+            ),
+            detail: Some(format!(
+                "{} ticket event(s) are grouped here without code or manual context.",
+                workstream.events.len()
+            )),
+            command: journal_add_next_step(&workstream.title),
+        });
+    }
+
+    for workstream in signals.code_only_workstreams.iter().take(2) {
+        fixups.push(ReviewFixup {
+            title: format!(
+                "Add outcome context for code-only workstream {}",
+                quote_display_title(&workstream.title)
+            ),
+            detail: Some(format!(
+                "{} code/review event(s) are grouped here without ticket or manual context.",
+                workstream.events.len()
+            )),
+            command: journal_add_next_step(&workstream.title),
+        });
+    }
+
+    for workstream in signals.manual_only_workstreams.iter().take(2) {
+        fixups.push(ReviewFixup {
+            title: format!(
+                "Check manual-only workstream {}",
+                quote_display_title(&workstream.title)
+            ),
+            detail: Some(format!(
+                "{} manual event(s) are grouped here without external source receipts.",
+                workstream.events.len()
+            )),
+            command: "shiplog journal list".to_string(),
+        });
+    }
+
+    for workstream in signals.thin_workstreams.iter().take(2) {
+        fixups.push(ReviewFixup {
+            title: format!(
+                "Check thin workstream {}",
+                quote_display_title(&workstream.title)
+            ),
+            detail: Some("Only one event is assigned; confirm it can stand alone.".to_string()),
+            command: format!(
+                "shiplog workstreams receipts --out {out_arg} --run {run_id} --workstream {}",
                 quote_cli_value(&workstream.title)
             ),
         });
@@ -9992,61 +10158,79 @@ fn detect_evidence_debt(input: EvidenceDebtInput<'_>) -> Vec<EvidenceDebt> {
         .iter()
         .filter(|warning| configured_source_skip(warning).is_none())
     {
-        debt.push(EvidenceDebt::new(
-            EvidenceDebtSeverity::Warning,
-            EvidenceDebtKind::CoverageWarning,
-            warning.clone(),
-        ));
+        debt.push(
+            EvidenceDebt::new(
+                EvidenceDebtSeverity::Warning,
+                EvidenceDebtKind::CoverageWarning,
+                warning.clone(),
+            )
+            .next_step(format!(
+                "Run `shiplog runs show --run {}` to inspect this run.",
+                input.run_id
+            )),
+        );
     }
 
     for slice in input.coverage.slices.iter().filter(|slice| {
         slice.incomplete_results.unwrap_or(false) || slice.fetched < slice.total_count
     }) {
-        debt.push(EvidenceDebt::new(
-            EvidenceDebtSeverity::Warning,
-            EvidenceDebtKind::IncompleteQuery,
-            format!(
-                "Query {:?} fetched {}/{} result(s).",
-                slice.query, slice.fetched, slice.total_count
+        debt.push(
+            EvidenceDebt::new(
+                EvidenceDebtSeverity::Warning,
+                EvidenceDebtKind::IncompleteQuery,
+                format!(
+                    "Query {:?} fetched {}/{} result(s).",
+                    slice.query, slice.fetched, slice.total_count
+                ),
+            )
+            .next_step(
+                "Run `shiplog intake --last-6-months --explain` after repairing source setup.",
             ),
-        ));
+        );
     }
 
-    if input.manual_events > 0 {
-        debt.push(EvidenceDebt::new(
-            EvidenceDebtSeverity::Info,
-            EvidenceDebtKind::ManualContext,
-            "Manual events are user-provided; keep context current before sharing.",
-        ));
+    if input.signals.manual_events > 0 {
+        debt.push(
+            EvidenceDebt::new(
+                EvidenceDebtSeverity::Info,
+                EvidenceDebtKind::ManualContext,
+                "Manual events are user-provided; keep context current before sharing.",
+            )
+            .next_step("Run `shiplog journal list` to inspect manual evidence."),
+        );
     }
 
-    if !input.manual_context_workstreams.is_empty() {
-        let first = input.manual_context_workstreams[0];
+    if !input.signals.manual_context_workstreams.is_empty() {
+        let first = input.signals.manual_context_workstreams[0];
         debt.push(
             EvidenceDebt::new(
                 EvidenceDebtSeverity::Info,
                 EvidenceDebtKind::ManualContext,
                 format!(
                     "{} broad workstream(s) have no manual outcome note.",
-                    input.manual_context_workstreams.len()
+                    input.signals.manual_context_workstreams.len()
                 ),
             )
-            .detail(workstream_title_sample(input.manual_context_workstreams))
+            .detail(workstream_title_sample(
+                &input.signals.manual_context_workstreams,
+            ))
             .next_step(journal_add_next_step(&first.title)),
         );
     }
 
-    if !input.no_receipt_workstreams.is_empty() {
+    if !input.signals.no_receipt_workstreams.is_empty() {
         debt.push(
             EvidenceDebt::new(
                 EvidenceDebtSeverity::Warning,
                 EvidenceDebtKind::MissingReceiptAnchors,
                 format!(
                     "{} workstream(s) have no selected receipt anchors.",
-                    input.no_receipt_workstreams.len()
+                    input.signals.no_receipt_workstreams.len()
                 ),
             )
-            .detail(workstream_title_sample(input.no_receipt_workstreams))
+            .detail(workstream_title_sample(
+                &input.signals.no_receipt_workstreams,
+            ))
             .next_step(format!(
                 "Run `shiplog workstreams receipts --run {} --workstream <title>`.",
                 input.run_id
@@ -10054,17 +10238,128 @@ fn detect_evidence_debt(input: EvidenceDebtInput<'_>) -> Vec<EvidenceDebt> {
         );
     }
 
-    if !input.broad_workstreams.is_empty() {
+    if !input.signals.too_many_receipt_workstreams.is_empty() {
+        debt.push(
+            EvidenceDebt::new(
+                EvidenceDebtSeverity::Info,
+                EvidenceDebtKind::TooManySelectedReceipts,
+                format!(
+                    "{} workstream(s) have more than {} selected receipt anchors.",
+                    input.signals.too_many_receipt_workstreams.len(),
+                    TOO_MANY_SELECTED_RECEIPTS_THRESHOLD
+                ),
+            )
+            .detail(workstream_title_sample(&input.signals.too_many_receipt_workstreams))
+            .next_step(format!(
+                "Run `shiplog workstreams receipts --run {} --workstream <title>` and keep the strongest anchors.",
+                input.run_id
+            )),
+        );
+    }
+
+    if !input.signals.thin_workstreams.is_empty() {
+        debt.push(
+            EvidenceDebt::new(
+                EvidenceDebtSeverity::Info,
+                EvidenceDebtKind::ThinWorkstream,
+                format!(
+                    "{} workstream(s) have only one assigned event.",
+                    input.signals.thin_workstreams.len()
+                ),
+            )
+            .detail(workstream_title_sample(&input.signals.thin_workstreams))
+            .next_step(format!(
+                "Run `shiplog workstreams receipts --run {} --workstream <title>` to confirm the anchor.",
+                input.run_id
+            )),
+        );
+    }
+
+    if !input.signals.large_misc_workstreams.is_empty() {
+        debt.push(
+            EvidenceDebt::new(
+                EvidenceDebtSeverity::Warning,
+                EvidenceDebtKind::LargeMiscWorkstream,
+                format!(
+                    "{} miscellaneous workstream(s) have {}+ events.",
+                    input.signals.large_misc_workstreams.len(),
+                    LARGE_MISC_WORKSTREAM_EVENT_THRESHOLD
+                ),
+            )
+            .detail(workstream_title_sample(&input.signals.large_misc_workstreams))
+            .next_step(format!(
+                "Run `shiplog workstreams split --run {} --from <title> --to \"<new workstream>\" --matching \"<pattern>\" --create`.",
+                input.run_id
+            )),
+        );
+    }
+
+    if !input.signals.code_only_workstreams.is_empty() {
+        debt.push(
+            EvidenceDebt::new(
+                EvidenceDebtSeverity::Info,
+                EvidenceDebtKind::CodeOnlyWorkstream,
+                format!(
+                    "{} workstream(s) only have code or review receipts.",
+                    input.signals.code_only_workstreams.len()
+                ),
+            )
+            .detail(workstream_title_sample(
+                &input.signals.code_only_workstreams,
+            ))
+            .next_step(journal_add_next_step(
+                &input.signals.code_only_workstreams[0].title,
+            )),
+        );
+    }
+
+    if !input.signals.ticket_only_workstreams.is_empty() {
+        debt.push(
+            EvidenceDebt::new(
+                EvidenceDebtSeverity::Info,
+                EvidenceDebtKind::TicketOnlyWorkstream,
+                format!(
+                    "{} workstream(s) only have ticket receipts.",
+                    input.signals.ticket_only_workstreams.len()
+                ),
+            )
+            .detail(workstream_title_sample(
+                &input.signals.ticket_only_workstreams,
+            ))
+            .next_step(journal_add_next_step(
+                &input.signals.ticket_only_workstreams[0].title,
+            )),
+        );
+    }
+
+    if !input.signals.manual_only_workstreams.is_empty() {
+        debt.push(
+            EvidenceDebt::new(
+                EvidenceDebtSeverity::Info,
+                EvidenceDebtKind::ManualOnlyWorkstream,
+                format!(
+                    "{} workstream(s) only have manual evidence.",
+                    input.signals.manual_only_workstreams.len()
+                ),
+            )
+            .detail(workstream_title_sample(
+                &input.signals.manual_only_workstreams,
+            ))
+            .next_step("Run `shiplog journal list` and attach external receipts where available."),
+        );
+    }
+
+    if !input.signals.broad_workstreams.is_empty() {
         debt.push(
             EvidenceDebt::new(
                 EvidenceDebtSeverity::Info,
                 EvidenceDebtKind::BroadWorkstream,
                 format!(
                     "{} workstream(s) have 10+ events; consider splitting broad buckets.",
-                    input.broad_workstreams.len()
+                    input.signals.broad_workstreams.len()
                 ),
             )
-            .detail(workstream_title_sample(input.broad_workstreams))
+            .detail(workstream_title_sample(&input.signals.broad_workstreams))
             .next_step(format!(
                 "Run `shiplog workstreams split --run {} --from <title> --to \"<new workstream>\" --matching \"<pattern>\" --create`.",
                 input.run_id
@@ -10098,11 +10393,17 @@ fn detect_evidence_debt(input: EvidenceDebtInput<'_>) -> Vec<EvidenceDebt> {
         .map(|workstream| workstream.events.len())
         .sum();
     if assigned_events == 0 && !input.events.is_empty() {
-        debt.push(EvidenceDebt::new(
-            EvidenceDebtSeverity::Blocking,
-            EvidenceDebtKind::WorkstreamValidation,
-            "Ledger has events but no workstream assignments.",
-        ));
+        debt.push(
+            EvidenceDebt::new(
+                EvidenceDebtSeverity::Blocking,
+                EvidenceDebtKind::WorkstreamValidation,
+                "Ledger has events but no workstream assignments.",
+            )
+            .next_step(format!(
+                "Run `shiplog workstreams validate --run {}`.",
+                input.run_id
+            )),
+        );
     }
 
     debt

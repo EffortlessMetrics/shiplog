@@ -216,7 +216,10 @@ shiplog cache clean --out ./out --source github --older-than 30d --dry-run
 
 Use `--strict` when you want review rehearsal or CI to fail if the run still
 has evidence debt, such as skipped sources, partial coverage, missing receipt
-anchors, broad workstreams, or validation errors.
+anchors, too many selected receipt anchors, broad or miscellaneous workstreams,
+thin workstreams, code-only workstreams, ticket-only workstreams, manual-only
+workstreams, or validation errors. Findings are packet-quality checks, not
+person scores, and each one includes a next command.
 
 `cache clean` removes cache entries from known source API databases. It does not
 delete packets, ledgers, coverage manifests, bundles, or workstream files.

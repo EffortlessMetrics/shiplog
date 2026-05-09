@@ -111,8 +111,12 @@ shiplog review --latest --strict
 ```
 
 Evidence debt is about packet quality, not worker quality. Examples include
-skipped sources, partial coverage, missing selected receipts, broad workstreams,
-and workstreams that need manual outcome context.
+skipped sources, partial coverage, missing selected receipts, too many selected
+receipts, broad or miscellaneous workstreams, thin workstreams, code-only
+workstreams, ticket-only workstreams, manual-only workstreams, and workstreams
+that need manual outcome context. Each finding should point to an existing
+command such as `workstreams receipts`, `workstreams split`, `journal add`,
+`journal list`, or `doctor`.
 
 ## Add missing context
 
