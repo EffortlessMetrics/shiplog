@@ -125,7 +125,10 @@ redaction-key environment variable is provided.
 and inspects coverage/skipped-source metadata without writing share artifacts.
 `shiplog share verify public --strict` also scans the existing or in-memory
 public packet for obvious raw URLs and original names; it is a guardrail, not a
-perfect-privacy claim.
+perfect-privacy claim. Successful `share manager|public` writes
+`profiles/<profile>/share.manifest.json` as a postflight receipt with the
+profile, redaction-key source, coverage status, skipped-source count, public
+strict-scan result, output paths, and SHA-256 checksums.
 
 Review evidence debt is packet-quality focused. It surfaces skipped sources,
 partial coverage, missing or over-selected receipts, broad/misc/thin

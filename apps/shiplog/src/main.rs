@@ -10,6 +10,7 @@ use clap::{Args, Parser, Subcommand, ValueEnum};
 use regex::{Regex, RegexBuilder};
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use shiplog_cache::ApiCache;
 use shiplog_engine::{ConflictResolution, Engine, WorkstreamSource};
 use shiplog_ids::{EventId, WorkstreamId};
@@ -36,6 +37,8 @@ use shiplog_schema::{
 };
 use shiplog_workstreams::{RepoClusterer, WORKSTREAM_RECEIPT_RENDER_LIMIT};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::fs::File;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 
 #[derive(Parser, Debug)]
@@ -1432,6 +1435,8 @@ const MANUAL_EVENTS_FILENAME: &str = "manual_events.yaml";
 const CURRENT_CONFIG_VERSION: i64 = 1;
 const SOURCE_FAILURES_FILENAME: &str = "source.failures.json";
 const SOURCE_FAILURES_SCHEMA_VERSION: u8 = 1;
+const SHARE_MANIFEST_FILENAME: &str = "share.manifest.json";
+const SHARE_MANIFEST_SCHEMA_VERSION: u8 = 1;
 
 #[derive(Deserialize, Debug, Default)]
 #[serde(default)]
@@ -1604,6 +1609,35 @@ struct SourceFailureRecord {
     rerun_command: String,
 }
 
+#[derive(Debug, Serialize)]
+struct ShareManifest {
+    schema_version: u8,
+    profile: String,
+    input_run_id: String,
+    created_at: String,
+    redaction_key_source: String,
+    coverage_completeness: String,
+    skipped_source_count: usize,
+    strict_verify_result: ShareManifestStrictVerifyResult,
+    packet_path: String,
+    zip_path: Option<String>,
+    checksum: ShareManifestChecksum,
+}
+
+#[derive(Debug, Serialize)]
+struct ShareManifestStrictVerifyResult {
+    status: String,
+    source: Option<String>,
+    findings: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct ShareManifestChecksum {
+    algorithm: String,
+    packet_sha256: String,
+    zip_sha256: Option<String>,
+}
+
 #[derive(Debug, Default)]
 struct IntakeSourcePlan {
     failures: Vec<ConfiguredSourceFailure>,
@@ -1747,6 +1781,24 @@ struct PriorCuration {
 #[derive(Debug, Clone)]
 struct RedactionKey {
     key: Option<String>,
+    source: RedactionKeySource,
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+enum RedactionKeySource {
+    Explicit,
+    Env,
+    None,
+}
+
+impl RedactionKeySource {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Explicit => "explicit",
+            Self::Env => "env",
+            Self::None => "none",
+        }
+    }
 }
 
 impl RedactionKey {
@@ -1759,11 +1811,11 @@ impl RedactionKey {
         bundle_profile: &BundleProfile,
     ) -> Result<Self> {
         let key_env = "SHIPLOG_REDACT_KEY";
-        let key = redact_key.or_else(|| std::env::var(key_env).ok());
+        let (key, source) = resolve_redaction_key(redact_key, key_env);
         if key.is_none() {
             anyhow::bail!(share_command_key_error(bundle_profile, key_env));
         }
-        Ok(Self { key })
+        Ok(Self { key, source })
     }
 
     fn resolve_with_env(
@@ -1771,11 +1823,11 @@ impl RedactionKey {
         bundle_profile: &BundleProfile,
         key_env: &str,
     ) -> Result<Self> {
-        let key = redact_key.or_else(|| std::env::var(key_env).ok());
+        let (key, source) = resolve_redaction_key(redact_key, key_env);
         if key.is_none() && !matches!(bundle_profile, BundleProfile::Internal) {
             anyhow::bail!(share_profile_key_error(bundle_profile, key_env));
         }
-        Ok(Self { key })
+        Ok(Self { key, source })
     }
 
     fn engine_key(&self) -> &str {
@@ -1785,6 +1837,23 @@ impl RedactionKey {
     fn render_profiles(&self) -> bool {
         self.key.is_some()
     }
+
+    fn source(&self) -> RedactionKeySource {
+        self.source
+    }
+}
+
+fn resolve_redaction_key(
+    redact_key: Option<String>,
+    key_env: &str,
+) -> (Option<String>, RedactionKeySource) {
+    if let Some(key) = redact_key {
+        return (Some(key), RedactionKeySource::Explicit);
+    }
+    if let Ok(key) = std::env::var(key_env) {
+        return (Some(key), RedactionKeySource::Env);
+    }
+    (None, RedactionKeySource::None)
 }
 
 fn share_profile_key_error(bundle_profile: &BundleProfile, key_env: &str) -> String {
@@ -8549,14 +8618,16 @@ fn main() -> Result<()> {
                     latest: options.latest,
                     user: None,
                     window_label: None,
-                    redaction_key,
+                    redaction_key: redaction_key.clone(),
                     bundle_profile,
                     mode: RenderPacketMode::Packet,
                     receipt_limit: None,
                     appendix: None,
                     zip: options.zip,
                 })?;
-                print_share_outputs(&outputs, &BundleProfile::Manager);
+                let manifest_path =
+                    write_share_manifest(&outputs, &BundleProfile::Manager, &redaction_key)?;
+                print_share_outputs(&outputs, &BundleProfile::Manager, &manifest_path);
             }
             ShareCommand::Public(options) => {
                 let bundle_profile = BundleProfile::Public;
@@ -8568,14 +8639,16 @@ fn main() -> Result<()> {
                     latest: options.latest,
                     user: None,
                     window_label: None,
-                    redaction_key,
+                    redaction_key: redaction_key.clone(),
                     bundle_profile,
                     mode: RenderPacketMode::Packet,
                     receipt_limit: None,
                     appendix: None,
                     zip: options.zip,
                 })?;
-                print_share_outputs(&outputs, &BundleProfile::Public);
+                let manifest_path =
+                    write_share_manifest(&outputs, &BundleProfile::Public, &redaction_key)?;
+                print_share_outputs(&outputs, &BundleProfile::Public, &manifest_path);
             }
             ShareCommand::Verify { cmd } => match cmd {
                 ShareVerifyCommand::Manager(options) => {
@@ -9927,7 +10000,11 @@ fn print_outputs_simple(outputs: &shiplog_engine::RunOutputs) {
     }
 }
 
-fn print_share_outputs(outputs: &shiplog_engine::RunOutputs, bundle_profile: &BundleProfile) {
+fn print_share_outputs(
+    outputs: &shiplog_engine::RunOutputs,
+    bundle_profile: &BundleProfile,
+    manifest_path: &Path,
+) {
     let profile_packet = outputs
         .out_dir
         .join("profiles")
@@ -9935,11 +10012,150 @@ fn print_share_outputs(outputs: &shiplog_engine::RunOutputs, bundle_profile: &Bu
         .join("packet.md");
     println!("Wrote {bundle_profile} share output:");
     println!("- {}", profile_packet.display());
+    println!("- {}", manifest_path.display());
     println!("- {}", outputs.coverage_manifest_json.display());
     println!("- {}", outputs.bundle_manifest_json.display());
     if let Some(ref z) = outputs.zip_path {
         println!("- {}", z.display());
     }
+}
+
+fn write_share_manifest(
+    outputs: &shiplog_engine::RunOutputs,
+    bundle_profile: &BundleProfile,
+    redaction_key: &RedactionKey,
+) -> Result<PathBuf> {
+    let profile_dir = outputs
+        .out_dir
+        .join("profiles")
+        .join(bundle_profile.as_str());
+    let profile_packet = profile_dir.join("packet.md");
+    if !profile_packet.exists() {
+        anyhow::bail!(
+            "share profile packet missing after render: {}",
+            profile_packet.display()
+        )
+    }
+
+    let coverage_text = std::fs::read_to_string(&outputs.coverage_manifest_json)
+        .with_context(|| format!("read {}", outputs.coverage_manifest_json.display()))?;
+    let coverage: CoverageManifest = serde_json::from_str(&coverage_text)
+        .with_context(|| format!("parse {}", outputs.coverage_manifest_json.display()))?;
+    let strict_verify_result = share_manifest_strict_verify_result(
+        &outputs.out_dir,
+        bundle_profile,
+        redaction_key,
+        &profile_packet,
+    )?;
+    let packet_sha256 = sha256_file(&profile_packet)?;
+    let zip_sha256 = outputs
+        .zip_path
+        .as_ref()
+        .filter(|path| path.exists())
+        .map(|path| sha256_file(path))
+        .transpose()?;
+    let manifest = ShareManifest {
+        schema_version: SHARE_MANIFEST_SCHEMA_VERSION,
+        profile: bundle_profile.as_str().to_string(),
+        input_run_id: coverage.run_id.to_string(),
+        created_at: Utc::now().to_rfc3339(),
+        redaction_key_source: redaction_key.source().as_str().to_string(),
+        coverage_completeness: coverage.completeness.to_string(),
+        skipped_source_count: configured_source_skips(&coverage.warnings).len(),
+        strict_verify_result,
+        packet_path: run_relative_path(&outputs.out_dir, &profile_packet),
+        zip_path: outputs
+            .zip_path
+            .as_ref()
+            .filter(|path| path.exists())
+            .map(|path| run_relative_path(&outputs.out_dir, path)),
+        checksum: ShareManifestChecksum {
+            algorithm: "sha256".to_string(),
+            packet_sha256,
+            zip_sha256,
+        },
+    };
+    let json = serde_json::to_string_pretty(&manifest)?;
+    ensure_no_secret_sentinels(SHARE_MANIFEST_FILENAME, &json)?;
+    std::fs::create_dir_all(&profile_dir)
+        .with_context(|| format!("create {}", profile_dir.display()))?;
+    let manifest_path = profile_dir.join(SHARE_MANIFEST_FILENAME);
+    std::fs::write(&manifest_path, format!("{json}\n"))
+        .with_context(|| format!("write {}", manifest_path.display()))?;
+
+    Ok(manifest_path)
+}
+
+fn share_manifest_strict_verify_result(
+    run_dir: &Path,
+    bundle_profile: &BundleProfile,
+    redaction_key: &RedactionKey,
+    profile_packet: &Path,
+) -> Result<ShareManifestStrictVerifyResult> {
+    if !matches!(bundle_profile, BundleProfile::Public) {
+        return Ok(ShareManifestStrictVerifyResult {
+            status: "not_applicable".to_string(),
+            source: None,
+            findings: Vec::new(),
+        });
+    }
+
+    let ingest =
+        load_run_ingest(run_dir).with_context(|| format!("load run {}", run_dir.display()))?;
+    let (workstreams, _, _) = load_effective_workstreams_for_run(run_dir)?;
+    let scan = strict_public_packet_scan(
+        run_dir,
+        &ingest.coverage,
+        &ingest.events,
+        &workstreams,
+        redaction_key,
+        profile_packet,
+    )?;
+    let source_label = if scan.source_label == profile_packet.display().to_string() {
+        run_relative_path(run_dir, profile_packet)
+    } else {
+        scan.source_label
+    };
+    Ok(ShareManifestStrictVerifyResult {
+        status: if scan.findings.is_empty() {
+            "passed".to_string()
+        } else {
+            "attention".to_string()
+        },
+        source: Some(source_label),
+        findings: scan.findings,
+    })
+}
+
+fn run_relative_path(run_dir: &Path, path: &Path) -> String {
+    if let Ok(relative) = path.strip_prefix(run_dir) {
+        return normalize_path(relative);
+    }
+    if let Some(file_name) = path.file_name().and_then(|name| name.to_str()) {
+        return format!("../{file_name}");
+    }
+    path.display().to_string().replace('\\', "/")
+}
+
+fn normalize_path(path: &Path) -> String {
+    path.to_string_lossy().replace('\\', "/")
+}
+
+fn sha256_file(path: &Path) -> Result<String> {
+    let mut file =
+        File::open(path).with_context(|| format!("open {} for hashing", path.display()))?;
+    let mut hasher = Sha256::new();
+    let mut buffer = [0_u8; 8192];
+    loop {
+        let read = file
+            .read(&mut buffer)
+            .with_context(|| format!("read {} for hashing", path.display()))?;
+        if read == 0 {
+            break;
+        }
+        hasher.update(&buffer[..read]);
+    }
+    Ok(hex::encode(hasher.finalize()))
 }
 
 fn verify_share_profile(options: ShareVerifyOptions, bundle_profile: BundleProfile) -> Result<()> {

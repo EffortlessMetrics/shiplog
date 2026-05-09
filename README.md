@@ -307,7 +307,9 @@ summary, workstreams, receipts, and detailed coverage metadata.
 For shareable outputs, `shiplog share manager --latest` and
 `shiplog share public --latest` are convenience wrappers over the same
 fail-closed redaction and bundle-profile behavior as `render`. They require
-`--redact-key` or `SHIPLOG_REDACT_KEY`. Use
+`--redact-key` or `SHIPLOG_REDACT_KEY` and write
+`profiles/<profile>/share.manifest.json` as a postflight receipt for what was
+shared, which key source was used, and the packet/zip checksums. Use
 `shiplog share verify manager --latest` or
 `shiplog share verify public --latest` to check the selected run, coverage
 warnings, skipped sources, and redaction-key readiness without writing share
@@ -330,7 +332,9 @@ out/<run_id>/
   intake.report.json              # Structured intake report for tooling
   profiles/                       # Only written when a redaction key is provided
     manager/packet.md             # Redacted: keeps context, strips sensitive details
+    manager/share.manifest.json   # Share receipt, key source, checksums, gaps
     public/packet.md              # Redacted: aliases repos/workstreams, strips fields
+    public/share.manifest.json    # Share receipt plus public strict-scan result
 ```
 
 ## Commands
