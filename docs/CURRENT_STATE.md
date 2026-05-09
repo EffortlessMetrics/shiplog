@@ -66,8 +66,9 @@ Collection and source coverage:
 - `shiplog collect multi`
 
 Collection supports relative date presets (`--last-6-months`, `--last-quarter`,
-`--year`) and explicit date windows. GitHub and GitLab support `--me` identity
-inference when a token is available.
+`--year`), explicit date windows, and named config periods for `intake`,
+`collect multi`, and `review` via `--period <name>`. GitHub and GitLab support
+`--me` identity inference when a token is available.
 
 Curation and inspection:
 
