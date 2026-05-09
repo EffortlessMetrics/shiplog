@@ -77,6 +77,34 @@ fn config_reference_documents_current_surface() {
 }
 
 #[test]
+fn install_guide_documents_current_install_paths() {
+    let doc_path = repo_root().join("docs/install.md");
+    let doc = std::fs::read_to_string(&doc_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", doc_path.display()));
+
+    for needle in [
+        "shiplog-x86_64-unknown-linux-gnu",
+        "shiplog-x86_64-apple-darwin",
+        "shiplog-aarch64-apple-darwin",
+        "shiplog-x86_64-pc-windows-msvc.exe",
+        "SHA256SUMS.txt",
+        "Get-FileHash",
+        "sha256sum shiplog",
+        "shasum -a 256 shiplog",
+        "cargo install shiplog --locked",
+        "cargo-binstall",
+        "Homebrew",
+        "Scoop and winget",
+        "shiplog intake --last-6-months --explain",
+    ] {
+        assert!(
+            doc.contains(needle),
+            "install guide should mention {needle:?}"
+        );
+    }
+}
+
+#[test]
 fn documented_help_commands_stay_available() {
     shiplog_cmd()
         .arg("--help")
