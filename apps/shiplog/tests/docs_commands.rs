@@ -140,6 +140,13 @@ fn documented_help_commands_stay_available() {
         .stdout(predicate::str::contains("--zip"));
 
     shiplog_cmd()
+        .args(["share", "verify", "manager", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--latest"))
+        .stdout(predicate::str::contains("--redact-key"));
+
+    shiplog_cmd()
         .args(["review", "--help"])
         .assert()
         .success()

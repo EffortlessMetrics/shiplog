@@ -1028,6 +1028,11 @@ enum ShareCommand {
     Manager(ShareOptions),
     /// Render the public-safe packet profile.
     Public(ShareOptions),
+    /// Check whether a share profile is ready without writing files.
+    Verify {
+        #[command(subcommand)]
+        cmd: ShareVerifyCommand,
+    },
 }
 
 #[derive(Args, Debug)]
@@ -1047,6 +1052,30 @@ struct ShareOptions {
     /// Also write a zip next to the run folder.
     #[arg(long)]
     zip: bool,
+}
+
+#[derive(Subcommand, Debug)]
+enum ShareVerifyCommand {
+    /// Verify the manager-safe share profile without rendering it.
+    Manager(ShareVerifyOptions),
+    /// Verify the public-safe share profile without rendering it.
+    Public(ShareVerifyOptions),
+}
+
+#[derive(Args, Debug)]
+struct ShareVerifyOptions {
+    /// Output directory containing run folders.
+    #[arg(long, default_value = "./out")]
+    out: PathBuf,
+    /// Run ID to verify (uses most recent if not specified).
+    #[arg(long)]
+    run: Option<String>,
+    /// Verify the most recent run explicitly.
+    #[arg(long)]
+    latest: bool,
+    /// Redaction key. If omitted, SHIPLOG_REDACT_KEY is used.
+    #[arg(long)]
+    redact_key: Option<String>,
 }
 
 #[derive(Subcommand, Debug, Clone)]
@@ -6885,6 +6914,14 @@ fn main() -> Result<()> {
                 })?;
                 print_share_outputs(&outputs, &BundleProfile::Public);
             }
+            ShareCommand::Verify { cmd } => match cmd {
+                ShareVerifyCommand::Manager(options) => {
+                    verify_share_profile(options, BundleProfile::Manager)?;
+                }
+                ShareVerifyCommand::Public(options) => {
+                    verify_share_profile(options, BundleProfile::Public)?;
+                }
+            },
         },
 
         Command::Refresh {
@@ -8192,6 +8229,127 @@ fn print_share_outputs(outputs: &shiplog_engine::RunOutputs, bundle_profile: &Bu
     if let Some(ref z) = outputs.zip_path {
         println!("- {}", z.display());
     }
+}
+
+fn verify_share_profile(options: ShareVerifyOptions, bundle_profile: BundleProfile) -> Result<()> {
+    let _redaction_key = RedactionKey::resolve_for_share(options.redact_key, &bundle_profile)?;
+    let run_dir = resolve_render_run_dir(&options.out, options.run, options.latest)?;
+    let ingest =
+        load_run_ingest(&run_dir).with_context(|| format!("load run {}", run_dir.display()))?;
+    let coverage = ingest.coverage;
+    let events = ingest.events;
+    let (workstreams, ws_source, ws_path) = load_effective_workstreams_for_run(&run_dir)?;
+    let validation_errors = validate_workstreams_against_events(&workstreams, &events);
+    let skipped_sources = configured_source_skips(&coverage.warnings);
+    let gap_count = coverage_gap_count(&coverage);
+    let profile_packet = run_dir
+        .join("profiles")
+        .join(bundle_profile.as_str())
+        .join("packet.md");
+    let out_arg = quote_cli_value(&options.out.display().to_string());
+    let run_arg = quote_cli_value(&coverage.run_id.to_string());
+
+    let mut good = Vec::new();
+    good.push("Redaction key found".to_string());
+    good.push(format!(
+        "Coverage manifest exists with {} status",
+        coverage.completeness
+    ));
+    good.push(format!(
+        "Workstreams load from {}",
+        workstream_source_label(ws_source)
+    ));
+    if profile_packet.exists() {
+        good.push(format!(
+            "Profile packet exists at {}",
+            profile_packet.display()
+        ));
+    } else if validation_errors.is_empty() {
+        good.push("Profile packet can be rendered by the share command".to_string());
+    }
+
+    let mut attention = Vec::new();
+    if gap_count > 0 {
+        attention.push(format!("{gap_count} coverage gap(s) should be reviewed."));
+    }
+    for source in &skipped_sources {
+        attention.push(format!(
+            "{} skipped: {}",
+            display_source_label(&source.source),
+            source.reason
+        ));
+    }
+    for error in &validation_errors {
+        attention.push(format!("Workstream issue: {error}"));
+    }
+
+    println!("Share verify: {bundle_profile}");
+    println!("Run: {}", coverage.run_id);
+    println!("Directory: {}", run_dir.display());
+    println!("Workstreams: {}", ws_path.display());
+    println!();
+    println!("Good:");
+    for item in &good {
+        println!("- {item}");
+    }
+    println!();
+    println!("Needs attention:");
+    if attention.is_empty() {
+        println!("- None");
+    } else {
+        for item in &attention {
+            println!("- {item}");
+        }
+    }
+    println!();
+    println!("Profile:");
+    if profile_packet.exists() {
+        println!("- Packet: {}", profile_packet.display());
+    } else {
+        println!("- Packet: not written yet; share can render it.");
+    }
+    println!("Coverage:");
+    println!("- Status: {}", coverage.completeness);
+    println!("- Gaps: {gap_count}");
+    println!("Skipped sources:");
+    if skipped_sources.is_empty() {
+        println!("- None");
+    } else {
+        for source in &skipped_sources {
+            println!(
+                "- {}: {}",
+                display_source_label(&source.source),
+                source.reason
+            );
+        }
+    }
+    println!();
+    println!("Share safety:");
+    println!("- Coverage and skipped-source warnings are present in the run metadata.");
+    match bundle_profile {
+        BundleProfile::Manager => {
+            println!("- Manager profile will use deterministic redaction aliases.");
+        }
+        BundleProfile::Public => {
+            println!("- Public profile will use the strictest redaction profile.");
+            println!("- Review the rendered packet before sharing outside your organization.");
+        }
+        BundleProfile::Internal => {}
+    }
+    if attention.is_empty() {
+        println!("Result: ready to render {bundle_profile} share output.");
+    } else {
+        println!("Result: review attention items before sharing {bundle_profile} output.");
+    }
+    println!("Next:");
+    if !attention.is_empty() {
+        println!("1. shiplog review fixups --out {out_arg} --run {run_arg} --commands-only");
+        println!("2. shiplog share {bundle_profile} --out {out_arg} --run {run_arg}");
+    } else {
+        println!("1. shiplog share {bundle_profile} --out {out_arg} --run {run_arg}");
+    }
+
+    Ok(())
 }
 
 #[derive(Clone, Copy, Debug)]

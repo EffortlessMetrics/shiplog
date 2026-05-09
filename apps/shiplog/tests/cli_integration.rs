@@ -784,6 +784,15 @@ fn share_help_shows_profiles_and_safety_options() {
         .stdout(predicate::str::contains("--run"))
         .stdout(predicate::str::contains("--redact-key"))
         .stdout(predicate::str::contains("--zip"));
+
+    shiplog_cmd()
+        .args(["share", "verify", "manager", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--out"))
+        .stdout(predicate::str::contains("--latest"))
+        .stdout(predicate::str::contains("--run"))
+        .stdout(predicate::str::contains("--redact-key"));
 }
 
 #[test]
@@ -5719,6 +5728,112 @@ fn share_manager_without_key_fails_closed() {
             .join("run_fixture/profiles/manager/packet.md")
             .exists(),
         "manager share packet should not be written without a redaction key"
+    );
+}
+
+#[test]
+fn share_verify_manager_without_key_fails_closed_without_writing() {
+    let tmp = TempDir::new().unwrap();
+    collect_json_into(tmp.path());
+
+    shiplog_cmd()
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args([
+            "share",
+            "verify",
+            "manager",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+        ])
+        .assert()
+        .failure()
+        .stderr(
+            predicate::str::contains("manager share requires --redact-key or SHIPLOG_REDACT_KEY")
+                .and(predicate::str::contains("shiplog share manager --latest")),
+        );
+
+    assert!(
+        !tmp.path()
+            .join("run_fixture/profiles/manager/packet.md")
+            .exists(),
+        "manager verify should not write a share packet without a redaction key"
+    );
+}
+
+#[test]
+fn share_verify_manager_uses_env_key_without_writing_or_printing_secret() {
+    let tmp = TempDir::new().unwrap();
+    collect_json_into(tmp.path());
+
+    let assert = shiplog_cmd()
+        .env("SHIPLOG_REDACT_KEY", "stable-env-key")
+        .args([
+            "share",
+            "verify",
+            "manager",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+        ])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
+
+    assert!(stdout.contains("Share verify: manager"));
+    assert!(stdout.contains("Good:"));
+    assert!(stdout.contains("- Redaction key found"));
+    assert!(stdout.contains("Needs attention:\n- None"));
+    assert!(stdout.contains("- Packet: not written yet; share can render it."));
+    assert!(stdout.contains("Workstreams:"));
+    assert!(stdout.contains("Coverage:"));
+    assert!(stdout.contains("- Status: Complete"));
+    assert!(stdout.contains("- Gaps: 0"));
+    assert!(stdout.contains("Skipped sources:\n- None"));
+    assert!(stdout.contains("Result: ready to render manager share output."));
+    assert!(stdout.contains("shiplog share manager --out"));
+    assert!(!stdout.contains("stable-env-key"));
+    assert!(
+        !tmp.path()
+            .join("run_fixture/profiles/manager/packet.md")
+            .exists(),
+        "manager verify should not render the share packet"
+    );
+}
+
+#[test]
+fn share_verify_public_accepts_explicit_key_without_writing() {
+    let tmp = TempDir::new().unwrap();
+    collect_json_into(tmp.path());
+
+    let assert = shiplog_cmd()
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args([
+            "share",
+            "verify",
+            "public",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+            "--redact-key",
+            "stable-test-key",
+        ])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
+
+    assert!(stdout.contains("Share verify: public"));
+    assert!(stdout.contains("Public profile will use the strictest redaction profile."));
+    assert!(stdout.contains("shiplog share public --out"));
+    assert!(!stdout.contains("stable-test-key"));
+    assert!(
+        !tmp.path()
+            .join("run_fixture/profiles/public/packet.md")
+            .exists(),
+        "public verify should not render the share packet"
     );
 }
 

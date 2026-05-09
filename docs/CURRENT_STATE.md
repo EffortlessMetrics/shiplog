@@ -101,6 +101,7 @@ Rendering and sharing:
 - `shiplog render --appendix full|summary|none`
 - `shiplog render --bundle-profile manager|public`
 - `shiplog share manager|public`
+- `shiplog share verify manager|public`
 
 Default CLI packets open with `Coverage and Limits`, then summary,
 workstreams, receipts, and file artifacts. Internal and manager selected-profile
@@ -111,6 +112,8 @@ keeps the full audit appendix by default.
 
 Manager and public profiles fail closed unless `--redact-key` or the configured
 redaction-key environment variable is provided.
+`shiplog share verify manager|public` performs the same redaction-key preflight
+and inspects coverage/skipped-source metadata without writing share artifacts.
 
 ## Public Crate Surface
 

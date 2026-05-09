@@ -149,6 +149,7 @@ to rerun.
 
 ```bash
 export SHIPLOG_REDACT_KEY=replace-with-a-stable-secret
+shiplog share verify manager --latest
 shiplog share manager --latest --zip
 ```
 
@@ -161,6 +162,7 @@ Public packets are the most restrictive share profile. Use them only when you
 expect the output to leave your organization.
 
 ```bash
+shiplog share verify public --latest
 shiplog share public --latest --zip
 ```
 

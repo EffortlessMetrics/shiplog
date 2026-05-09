@@ -269,7 +269,11 @@ summary, workstreams, receipts, and detailed coverage metadata.
 For shareable outputs, `shiplog share manager --latest` and
 `shiplog share public --latest` are convenience wrappers over the same
 fail-closed redaction and bundle-profile behavior as `render`. They require
-`--redact-key` or `SHIPLOG_REDACT_KEY`.
+`--redact-key` or `SHIPLOG_REDACT_KEY`. Use
+`shiplog share verify manager --latest` or
+`shiplog share verify public --latest` to check the selected run, coverage
+warnings, skipped sources, and redaction-key readiness without writing share
+artifacts.
 
 ## Output layout
 
@@ -303,6 +307,7 @@ out/<run_id>/
 | `collect multi` | Collect enabled sources from `shiplog.toml` into one merged packet |
 | `render` | Re-render packet from existing ledger and workstreams |
 | `share manager/public` | Render a manager- or public-safe packet with fail-closed redaction |
+| `share verify manager/public` | Preflight a share profile without writing share artifacts |
 | `refresh <source>` | Re-fetch events while preserving curated `workstreams.yaml` |
 | `workstreams list/validate/create/rename/move/split/receipts/receipt/delete` | Inspect, validate, and safely edit workstream curation |
 | `runs list/show/compare` | Discover runs, inspect their artifacts, and compare source/workstream changes |
