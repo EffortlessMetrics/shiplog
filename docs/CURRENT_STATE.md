@@ -79,6 +79,8 @@ Curation and inspection:
 - `shiplog runs list`
 - `shiplog runs show`
 - `shiplog runs compare --from <run> --to <run>`
+- `shiplog periods list`
+- `shiplog periods explain <name>`
 - `shiplog review`
 - `shiplog review weekly`
 - `shiplog review fixups`

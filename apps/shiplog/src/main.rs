@@ -86,6 +86,12 @@ enum Command {
         cmd: ConfigCommand,
     },
 
+    /// List and explain named review periods from shiplog.toml.
+    Periods {
+        #[command(subcommand)]
+        cmd: PeriodsCommand,
+    },
+
     /// Inspect and clean source API caches.
     Cache {
         #[command(subcommand)]
@@ -449,6 +455,37 @@ enum ConfigCommand {
         #[arg(long)]
         dry_run: bool,
     },
+}
+
+#[derive(Subcommand, Debug)]
+enum PeriodsCommand {
+    /// List configured review periods and latest matching runs.
+    List(PeriodsArgs),
+
+    /// Explain one configured review period.
+    Explain(PeriodExplainArgs),
+}
+
+#[derive(Args, Debug)]
+struct PeriodsArgs {
+    /// Path to shiplog.toml.
+    #[arg(long, default_value = CONFIG_FILENAME)]
+    config: PathBuf,
+    /// Output directory containing run folders. Defaults to defaults.out from config.
+    #[arg(long)]
+    out: Option<PathBuf>,
+}
+
+#[derive(Args, Debug)]
+struct PeriodExplainArgs {
+    /// Period name under [periods.<name>].
+    name: String,
+    /// Path to shiplog.toml.
+    #[arg(long, default_value = CONFIG_FILENAME)]
+    config: PathBuf,
+    /// Output directory containing run folders. Defaults to defaults.out from config.
+    #[arg(long)]
+    out: Option<PathBuf>,
 }
 
 #[derive(Subcommand, Debug)]
@@ -5320,6 +5357,117 @@ fn run_config_migrate(config_path: &Path, dry_run: bool) -> Result<()> {
     }
 }
 
+fn run_periods_list(args: PeriodsArgs) -> Result<()> {
+    let config = load_config_for_command(&args.config)?;
+    ensure_supported_config_version(&config)?;
+    let base_dir = config_base_dir(&args.config);
+    let out_dir = periods_out_dir(args.out.as_deref(), &config, &base_dir);
+
+    println!("Configured periods:");
+    println!("Config: {}", args.config.display());
+    println!("Out: {}", out_dir.display());
+    if config.periods.is_empty() {
+        println!("- none");
+        return Ok(());
+    }
+
+    for name in config.periods.keys() {
+        let window = resolve_config_period(&config, name)?;
+        let source = period_definition_label(&config.periods[name]);
+        let latest = latest_period_run_summary(&out_dir, &window)?;
+        println!("- {name}");
+        println!("  - definition: {source}");
+        println!("  - window: {}..{}", window.since, window.until);
+        println!("  - label: {}", window.window_label());
+        if let Some(run) = latest {
+            println!("  - latest run: {}", run.run_id);
+            println!("  - packet: {}", run.packet_path.display());
+        } else {
+            println!("  - latest run: none");
+        }
+        println!(
+            "  - next: {}",
+            period_intake_command(&args.config, &out_dir, name)
+        );
+    }
+
+    Ok(())
+}
+
+fn run_periods_explain(args: PeriodExplainArgs) -> Result<()> {
+    let config = load_config_for_command(&args.config)?;
+    ensure_supported_config_version(&config)?;
+    let base_dir = config_base_dir(&args.config);
+    let out_dir = periods_out_dir(args.out.as_deref(), &config, &base_dir);
+    let configured = config
+        .periods
+        .get(&args.name)
+        .ok_or_else(|| anyhow::anyhow!("unknown period {:?}", args.name))?;
+    let window = resolve_config_period(&config, &args.name)?;
+    let latest = latest_period_run_summary(&out_dir, &window)?;
+
+    println!("Period: {}", args.name);
+    println!("Config: {}", args.config.display());
+    println!("Out: {}", out_dir.display());
+    println!("Definition: {}", period_definition_label(configured));
+    println!("Window: {}..{}", window.since, window.until);
+    println!("Label: {}", window.window_label());
+    if let Some(run) = latest {
+        println!("Latest run: {}", run.run_id);
+        println!("Packet: {}", run.packet_path.display());
+        println!("Coverage: {}, gaps: {}", run.completeness, run.gap_count);
+    } else {
+        println!("Latest run: none");
+    }
+    println!("Suggested:");
+    println!(
+        "1. {}",
+        period_intake_command(&args.config, &out_dir, &args.name)
+    );
+    println!(
+        "2. {}",
+        period_review_command(&args.config, &out_dir, &args.name)
+    );
+
+    Ok(())
+}
+
+fn periods_out_dir(cli_out: Option<&Path>, config: &ShiplogConfig, base_dir: &Path) -> PathBuf {
+    cli_out
+        .map(Path::to_path_buf)
+        .unwrap_or_else(|| config_default_out(config, base_dir))
+}
+
+fn period_definition_label(period: &ConfigPeriod) -> String {
+    if let Some(preset) = non_empty_string(period.preset.as_deref()) {
+        return format!("preset {preset}");
+    }
+    match (period.since, period.until) {
+        (Some(since), Some(until)) => format!("explicit {since}..{until}"),
+        (Some(since), None) => format!("invalid explicit since {since} without until"),
+        (None, Some(until)) => format!("invalid explicit until {until} without since"),
+        (None, None) => "invalid empty period".to_string(),
+    }
+}
+
+fn period_intake_command(config_path: &Path, out_dir: &Path, period: &str) -> String {
+    format!(
+        "shiplog intake --config {} --out {} --period {}",
+        quote_cli_value(&config_path.display().to_string()),
+        quote_cli_value(&out_dir.display().to_string()),
+        quote_cli_value(period)
+    )
+}
+
+fn period_review_command(config_path: &Path, out_dir: &Path, period: &str) -> String {
+    format!(
+        "shiplog review --config {} --out {} --period {}",
+        quote_cli_value(&config_path.display().to_string()),
+        quote_cli_value(&out_dir.display().to_string()),
+        quote_cli_value(period)
+    )
+}
+
 fn load_config_for_command(config_path: &Path) -> Result<ShiplogConfig> {
     if !config_path.exists() {
         anyhow::bail!(
@@ -8381,6 +8529,11 @@ fn main() -> Result<()> {
             ConfigCommand::Migrate { config, dry_run } => {
                 run_config_migrate(&config, dry_run)?;
             }
+        },
+
+        Command::Periods { cmd } => match cmd {
+            PeriodsCommand::List(args) => run_periods_list(args)?,
+            PeriodsCommand::Explain(args) => run_periods_explain(args)?,
         },
 
         Command::Cache { cmd } => match cmd {
@@ -13539,6 +13692,33 @@ fn resolve_period_run_dir(out_dir: &Path, config_path: &Path, period: &str) -> R
         window.until,
         quote_cli_value(period)
     )
+}
+
+fn latest_period_run_summary(
+    out_dir: &Path,
+    window: &ResolvedWindow,
+) -> Result<Option<RunSummary>> {
+    if !out_dir.exists() {
+        return Ok(None);
+    }
+
+    let run_dirs = match discover_run_dirs(out_dir) {
+        Ok(run_dirs) => run_dirs,
+        Err(err) if err.to_string().contains("No run directories found") => return Ok(None),
+        Err(err) => return Err(err),
+    };
+
+    for run_dir in run_dirs {
+        let ingest =
+            load_run_ingest(&run_dir).with_context(|| format!("load run {}", run_dir.display()))?;
+        if ingest.coverage.window.since == window.since
+            && ingest.coverage.window.until == window.until
+        {
+            return load_run_summary(&run_dir).map(Some);
+        }
+    }
+
+    Ok(None)
 }
 
 #[cfg(test)]

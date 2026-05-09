@@ -109,6 +109,8 @@ available to config-driven commands:
 shiplog intake --period review-cycle
 shiplog collect multi --period 2026-H1
 shiplog review --period 2026-H1
+shiplog periods list
+shiplog periods explain review-cycle
 ```
 
 Define a period with either explicit dates:
@@ -131,9 +133,12 @@ Supported period presets match `defaults.window`: `last-6-months`,
 must use either `preset` or `since`/`until`, not both. CLI date flags still win
 over `--period` when both are supplied.
 
-`config explain` prints each period with resolved concrete dates. Intake reports
-record the selected period name and resolved window so later reruns and review
-checks can explain which review cycle produced the packet.
+`config explain` prints each period with resolved concrete dates.
+`shiplog periods list` and `shiplog periods explain <name>` show the period
+definition, resolved window, latest matching run when one exists, and suggested
+intake/review commands. Intake reports record the selected period name and
+resolved window so later reruns and review checks can explain which review
+cycle produced the packet.
 
 ## Source Sections
 

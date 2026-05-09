@@ -84,6 +84,7 @@ Output goes to `out/<run_id>/` containing `packet.md`, `ledger.events.jsonl`, `c
 | `doctor` | Check local config, enabled sources, token env vars, and output safety |
 | `intake` | Best-effort review rescue path that collects usable sources, renders a packet, writes an intake report, and prints next actions |
 | `config validate/explain/migrate` | Validate `shiplog.toml`, print resolved settings, or add version metadata |
+| `periods list/explain` | Inspect named review windows and latest matching runs |
 | `journal add/list/edit` | Capture and correct factual manual evidence without hand-editing YAML |
 | `cache stats/inspect/clean` | Inspect and safely clean source API cache databases |
 | `collect <source>` | Fetch events from a source and generate packet artifacts |
@@ -102,6 +103,8 @@ Output goes to `out/<run_id>/` containing `packet.md`, `ledger.events.jsonl`, `c
 | `run <source>` | Legacy: collect + render in one shot |
 
 Date-based sources accept `--since/--until`, `--last-6-months`, `--last-quarter`, or `--year <YYYY>`. If omitted, shiplog uses the last six months.
+Named review periods from `shiplog.toml` can be inspected with
+`shiplog periods list` and `shiplog periods explain review-cycle`.
 
 Use `shiplog render --latest` or `--run latest` to re-render the most recent run. `shiplog refresh --run-dir latest` refreshes that run while preserving curation.
 
