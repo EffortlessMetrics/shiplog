@@ -90,7 +90,9 @@ renders a packet, runs review inspection, and prints next commands. The
 underlying workflow is still **collect → curate → render** when you want more
 control.
 
-For a practical review-cycle walkthrough, see
+For deadline use, see
+[docs/guides/review-deadline.md](docs/guides/review-deadline.md). For a
+practical review-cycle walkthrough, see
 [docs/guides/review-cycle.md](docs/guides/review-cycle.md). For the complete
 `shiplog.toml` field reference, see
 [docs/config-reference.md](docs/config-reference.md).

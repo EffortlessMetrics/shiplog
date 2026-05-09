@@ -172,6 +172,14 @@ fn documented_help_commands_stay_available() {
         .stdout(predicate::str::contains("--commands-only"));
 
     shiplog_cmd()
+        .args(["open", "intake-report", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--latest"))
+        .stdout(predicate::str::contains("--run"))
+        .stdout(predicate::str::contains("--print-path"));
+
+    shiplog_cmd()
         .args(["workstreams", "--help"])
         .assert()
         .success()
@@ -367,6 +375,50 @@ fn review_cycle_fixture_commands_execute_without_network() {
         .stdout(predicate::str::contains("Open later:"));
 
     shiplog_cmd()
+        .args([
+            "open",
+            "intake-report",
+            "--out",
+            intake_out.to_str().unwrap(),
+            "--latest",
+            "--print-path",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("intake.report.md"));
+
+    shiplog_cmd()
+        .args([
+            "review",
+            "fixups",
+            "--out",
+            intake_out.to_str().unwrap(),
+            "--latest",
+            "--commands-only",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("shiplog"));
+
+    shiplog_cmd()
+        .args([
+            "share",
+            "verify",
+            "manager",
+            "--out",
+            intake_out.to_str().unwrap(),
+            "--latest",
+            "--redact-key",
+            "fixture-key",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Share verify: manager"))
+        .stdout(predicate::str::contains(
+            "Result: ready to render manager share output",
+        ));
+
+    shiplog_cmd()
         .args(["runs", "list", "--out", out.to_str().unwrap()])
         .assert()
         .success()
@@ -529,4 +581,30 @@ fn share_profile_docs_fail_closed_without_key() {
         .stderr(predicate::str::contains(
             "manager profile requires --redact-key or SHIPLOG_REDACT_KEY",
         ));
+}
+
+#[test]
+fn review_deadline_guide_documents_rescue_path() {
+    let doc_path = repo_root().join("docs/guides/review-deadline.md");
+    let doc = std::fs::read_to_string(&doc_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", doc_path.display()));
+
+    for needle in [
+        "shiplog intake --last-6-months --explain",
+        "shiplog open intake-report --latest",
+        "shiplog review fixups --latest --commands-only",
+        "shiplog share verify manager --latest",
+        "shiplog share manager --latest --zip",
+        "Repair sources",
+        "shiplog journal add",
+        "shiplog journal list",
+        "shiplog journal edit",
+        "No-network rehearsal",
+        "It should not invent impact claims",
+    ] {
+        assert!(
+            doc.contains(needle),
+            "review deadline guide should mention {needle:?}"
+        );
+    }
 }
