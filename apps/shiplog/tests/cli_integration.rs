@@ -117,6 +117,82 @@ fn assert_intake_artifacts(run_dir: &Path) {
     }
 }
 
+fn assert_golden_intake_report(run_dir: &Path, readiness: &str) -> (String, serde_json::Value) {
+    let report_md = std::fs::read_to_string(run_dir.join("intake.report.md")).unwrap();
+    let report_json_text = std::fs::read_to_string(run_dir.join("intake.report.json")).unwrap();
+    let report_json: serde_json::Value = serde_json::from_str(&report_json_text).unwrap();
+
+    assert_eq!(report_json["schema_version"], 1);
+    assert_eq!(report_json["readiness"], readiness);
+    assert!(
+        report_json["run_id"]
+            .as_str()
+            .is_some_and(|id| !id.is_empty())
+    );
+    assert!(
+        report_json["reports"]["markdown"]
+            .as_str()
+            .is_some_and(|path| path.ends_with("intake.report.md"))
+    );
+    assert!(
+        report_json["reports"]["json"]
+            .as_str()
+            .is_some_and(|path| path.ends_with("intake.report.json"))
+    );
+
+    for key in [
+        "included_sources",
+        "skipped_sources",
+        "source_decisions",
+        "repair_sources",
+        "good",
+        "needs_attention",
+        "next_commands",
+        "evidence_debt",
+        "top_fixups",
+        "journal_suggestions",
+        "share_commands",
+        "curation_notes",
+        "artifacts",
+    ] {
+        assert!(
+            report_json[key].is_array(),
+            "intake.report.json should expose array field {key}"
+        );
+    }
+
+    for section in [
+        "# Review Intake Report",
+        "Packet readiness:",
+        "## Included Sources",
+        "## Skipped Sources",
+        "## Next Commands",
+        "## Evidence Debt",
+        "## Top Fixups",
+        "## Share Commands",
+        "## Artifacts",
+    ] {
+        assert!(
+            report_md.contains(section),
+            "intake.report.md should contain {section:?}"
+        );
+    }
+
+    for forbidden in [
+        "stable-env-key",
+        "stable-test-key",
+        "do-not-leak",
+        "super-secret",
+    ] {
+        assert!(
+            !report_md.contains(forbidden) && !report_json_text.contains(forbidden),
+            "intake reports should not contain secret sentinel {forbidden:?}"
+        );
+    }
+
+    (report_md, report_json)
+}
+
 fn assert_ledger_event_count(run_dir: &Path, expected: usize) {
     let ledger = std::fs::read_to_string(run_dir.join("ledger.events.jsonl")).unwrap();
     assert_eq!(
@@ -3069,22 +3145,20 @@ user = "octo"
     assert_intake_artifacts(&run_dir);
     assert_ledger_event_count(&run_dir, 1);
 
-    let report_md = std::fs::read_to_string(run_dir.join("intake.report.md")).unwrap();
-    assert!(report_md.contains("# Review Intake Report"));
+    let (report_md, report_json) = assert_golden_intake_report(&run_dir, "Ready for review");
     assert!(report_md.contains("Packet readiness: **Ready for review**"));
     assert!(report_md.contains("- Manual: 1 event"));
     assert!(report_md.contains("## Share Commands"));
     assert!(report_md.contains("shiplog share manager"));
     assert!(report_md.contains("SHIPLOG_REDACT_KEY"));
 
-    let report_json: serde_json::Value =
-        serde_json::from_str(&std::fs::read_to_string(run_dir.join("intake.report.json")).unwrap())
-            .unwrap();
-    assert_eq!(report_json["schema_version"], 1);
-    assert_eq!(report_json["readiness"], "Ready for review");
     assert_eq!(report_json["included_sources"][0]["source"], "Manual");
     assert_eq!(report_json["included_sources"][0]["event_count"], 1);
     assert_eq!(report_json["skipped_sources"].as_array().unwrap().len(), 0);
+    assert!(
+        !report_json["top_fixups"].as_array().unwrap().is_empty(),
+        "manual-only intake should keep fixups visible in the report"
+    );
     let evidence_debt = report_json["evidence_debt"].as_array().unwrap();
     assert!(
         evidence_debt
@@ -3180,6 +3254,24 @@ coverage = "./all-source.coverage.json"
     let run_dir = first_run_dir(&out);
     assert_intake_artifacts(&run_dir);
     assert_ledger_event_count(&run_dir, 8);
+    let (report_md, report_json) = assert_golden_intake_report(&run_dir, "Ready for review");
+    assert!(report_md.contains("- JSON: 8 events"));
+    assert!(
+        report_json["included_sources"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|source| source["source"] == "JSON" && source["event_count"] == 8)
+    );
+    assert_eq!(report_json["skipped_sources"].as_array().unwrap().len(), 0);
+    assert!(
+        report_json["share_commands"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|command| command.as_str().unwrap().contains("shiplog share public")),
+        "all-source intake report should keep share commands visible"
+    );
 
     let packet = std::fs::read_to_string(run_dir.join("packet.md")).unwrap();
     assert_packet_opens_with_coverage(&packet);
@@ -3246,6 +3338,16 @@ fn golden_intake_manager_share_missing_key_fails_closed() {
 
     let run_dir = first_run_dir(&out);
     assert_intake_artifacts(&run_dir);
+    let (report_md, report_json) = assert_golden_intake_report(&run_dir, "Needs evidence");
+    assert!(report_md.contains("Packet readiness: **Needs evidence**"));
+    assert!(
+        report_json["share_commands"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|command| command.as_str().unwrap().contains("shiplog share manager")),
+        "intake report should keep manager share recovery command visible"
+    );
 
     shiplog_cmd()
         .env_remove("SHIPLOG_REDACT_KEY")
@@ -3266,6 +3368,26 @@ fn golden_intake_manager_share_missing_key_fails_closed() {
     assert!(
         !run_dir.join("profiles/manager/packet.md").exists(),
         "manager share packet should not be written after intake without a key"
+    );
+
+    shiplog_cmd()
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args([
+            "share",
+            "verify",
+            "public",
+            "--out",
+            out.to_str().unwrap(),
+            "--latest",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "public share requires --redact-key or SHIPLOG_REDACT_KEY",
+        ));
+    assert!(
+        !run_dir.join("profiles/public/packet.md").exists(),
+        "public share verify should not write a packet without a key"
     );
 }
 
@@ -3307,6 +3429,16 @@ fn intake_creates_minimal_config_and_manual_rescue_packet() {
     assert!(
         run_dir.join("coverage.manifest.json").exists(),
         "missing rescue coverage"
+    );
+    let (report_md, report_json) = assert_golden_intake_report(&run_dir, "Needs evidence");
+    assert!(report_md.contains("No events collected"));
+    assert!(
+        report_json["needs_attention"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|item| item.as_str().unwrap().contains("No events collected")),
+        "empty rescue report should explain the evidence gap"
     );
 }
 
@@ -3427,7 +3559,7 @@ status = "done"
 
     let run_dir = first_run_dir(&out);
     let coverage = std::fs::read_to_string(run_dir.join("coverage.manifest.json")).unwrap();
-    let report_md = std::fs::read_to_string(run_dir.join("intake.report.md")).unwrap();
+    let (report_md, report_json) = assert_golden_intake_report(&run_dir, "Needs curation");
     assert!(report_md.contains("## Skipped Sources"));
     assert!(report_md.contains("## Repair Sources"));
     assert!(report_md.contains("- Jira: missing JIRA_TOKEN"));
@@ -3437,12 +3569,16 @@ status = "done"
     assert!(report_md.contains("export LINEAR_API_KEY=..."));
     assert!(report_md.contains("shiplog identify linear"));
 
-    let report_json: serde_json::Value =
-        serde_json::from_str(&std::fs::read_to_string(run_dir.join("intake.report.json")).unwrap())
-            .unwrap();
-    assert_eq!(report_json["readiness"], "Needs curation");
     assert_eq!(report_json["skipped_sources"].as_array().unwrap().len(), 2);
     assert_eq!(report_json["repair_sources"].as_array().unwrap().len(), 2);
+    assert!(
+        report_json["next_commands"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|command| command.as_str().unwrap().contains("shiplog doctor")),
+        "skipped-source intake report should keep repair/rerun next commands"
+    );
     assert!(
         report_json["source_decisions"]
             .as_array()
@@ -3579,14 +3715,10 @@ user = "octo"
         "intake rerun should not rewrite manual_events.yaml"
     );
 
-    let report_md = std::fs::read_to_string(second_run.join("intake.report.md")).unwrap();
+    let (report_md, report_json) = assert_golden_intake_report(&second_run, "Ready for review");
     assert!(report_md.contains("## Curation Notes"));
     assert!(report_md.contains("Prior workstream curation reused"));
 
-    let report_json: serde_json::Value = serde_json::from_str(
-        &std::fs::read_to_string(second_run.join("intake.report.json")).unwrap(),
-    )
-    .unwrap();
     assert!(
         report_json["curation_notes"]
             .as_array()
