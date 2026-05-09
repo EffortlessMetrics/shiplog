@@ -1,6 +1,6 @@
 [package]
 name = "shiplog-coverage"
-version = "0.3.0"
+version = "0.4.0"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
@@ -15,7 +15,7 @@ categories = ["date-and-time", "development-tools"]
 
 [dependencies]
 chrono.workspace = true
-shiplog-schema = { path = "../shiplog-schema", version = "0.3.0" }
+shiplog-schema = { path = "../shiplog-schema", version = "0.4.0" }
 
 [dev-dependencies]
 anyhow.workspace = true
@@ -23,7 +23,7 @@ criterion.workspace = true
 insta = { workspace = true, features = ["json"] }
 proptest.workspace = true
 serde_json.workspace = true
-shiplog-ids = { path = "../shiplog-ids", version = "0.3.0" }
+shiplog-ids = { path = "../shiplog-ids", version = "0.4.0" }
 shiplog-testkit = { path = "../shiplog-testkit" }
 
 [[bench]]

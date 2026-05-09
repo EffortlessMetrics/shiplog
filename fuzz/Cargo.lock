@@ -1327,7 +1327,7 @@ dependencies = [
 
 [[package]]
 name = "shiplog-cache"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1338,7 +1338,7 @@ dependencies = [
 
 [[package]]
 name = "shiplog-cluster-llm"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1354,7 +1354,7 @@ dependencies = [
 
 [[package]]
 name = "shiplog-coverage"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "chrono",
  "shiplog-schema",
@@ -1388,7 +1388,7 @@ dependencies = [
 
 [[package]]
 name = "shiplog-ids"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "hex",
  "serde",
@@ -1397,7 +1397,7 @@ dependencies = [
 
 [[package]]
 name = "shiplog-ingest-github"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1415,7 +1415,7 @@ dependencies = [
 
 [[package]]
 name = "shiplog-ingest-json"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "serde_json",
@@ -1425,7 +1425,7 @@ dependencies = [
 
 [[package]]
 name = "shiplog-ingest-manual"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1437,7 +1437,7 @@ dependencies = [
 
 [[package]]
 name = "shiplog-merge"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1449,7 +1449,7 @@ dependencies = [
 
 [[package]]
 name = "shiplog-ports"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "shiplog-schema",
@@ -1457,7 +1457,7 @@ dependencies = [
 
 [[package]]
 name = "shiplog-redact"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "hex",
@@ -1470,7 +1470,7 @@ dependencies = [
 
 [[package]]
 name = "shiplog-render-md"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1482,7 +1482,7 @@ dependencies = [
 
 [[package]]
 name = "shiplog-schema"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "chrono",
  "serde",
@@ -1492,7 +1492,7 @@ dependencies = [
 
 [[package]]
 name = "shiplog-team"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1507,7 +1507,7 @@ dependencies = [
 
 [[package]]
 name = "shiplog-workstreams"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "chrono",

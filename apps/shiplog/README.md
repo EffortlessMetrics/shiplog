@@ -23,21 +23,35 @@ cargo install shiplog --features llm
 ## Quick start
 
 ```bash
-# 0. Initialize local files
-shiplog init
-shiplog config validate
-shiplog config explain
-shiplog doctor
+# Fast review-deadline path
+shiplog intake --last-6-months --explain
+shiplog open intake-report --latest
+shiplog open packet --latest
+```
 
-# 1. Collect events from GitHub
+For repeatable setup:
+
+```bash
+shiplog init
+shiplog doctor
+shiplog collect multi --last-6-months
+shiplog review --latest
+shiplog render --latest
+```
+
+For direct source collection:
+
+```bash
 shiplog collect github \
   --me \
   --last-6-months \
   --mode merged \
   --out ./out
+```
 
-# 2. Curate workstreams
-#    Use CLI edits, or copy workstreams.suggested.yaml to workstreams.yaml.
+Curate workstreams without hand-editing YAML:
+
+```bash
 shiplog workstreams list --run latest
 shiplog workstreams create --run latest --title "Platform Reliability"
 shiplog workstreams rename --run latest --from "acme/platform" --to "Platform Reliability"
@@ -48,12 +62,16 @@ shiplog workstreams receipt add --run latest --workstream "Platform Reliability"
 shiplog workstreams receipt remove --run latest --workstream "Platform Reliability" --event <event_id>
 shiplog workstreams delete --run latest --workstream "old bucket" --move-to "Platform Reliability"
 shiplog workstreams validate --run latest
+```
 
-# 3. Re-render the packet with your curated workstreams
+Re-render and share:
+
+```bash
 shiplog render --latest
 shiplog render --latest --receipt-limit 3 --appendix summary
 shiplog render --latest --mode scaffold
 shiplog render --latest --mode receipts
+shiplog share verify manager --latest
 ```
 
 Output goes to `out/<run_id>/` containing `packet.md`, `ledger.events.jsonl`, `coverage.manifest.json`, and optional redacted profiles. Use `--mode packet` for the default packet, `--mode scaffold` for prompts and evidence anchors, or `--mode receipts` for a dense audit view. Use `--receipt-limit <N>` to cap main-section receipts and `--appendix full|summary|none` to control appendix density; `--receipt-limit 0` shows no main-section receipts. The packet coverage block lists completed sources with event counts, skipped configured sources, and known gaps before the detailed coverage metadata.
@@ -64,15 +82,20 @@ Output goes to `out/<run_id>/` containing `packet.md`, `ledger.events.jsonl`, `c
 |---------|-------------|
 | `init` | Create `shiplog.toml` and `manual_events.yaml` scaffold files |
 | `doctor` | Check local config, enabled sources, token env vars, and output safety |
+| `intake` | Best-effort review rescue path that collects usable sources, renders a packet, writes an intake report, and prints next actions |
 | `config validate/explain/migrate` | Validate `shiplog.toml`, print resolved settings, or add version metadata |
+| `journal add/list/edit` | Capture and correct factual manual evidence without hand-editing YAML |
 | `cache stats/inspect/clean` | Inspect and safely clean source API cache databases |
 | `collect <source>` | Fetch events from a source and generate packet artifacts |
 | `collect multi` | Collect enabled sources from `shiplog.toml` into one merged packet |
 | `render` | Re-render packet from existing ledger and workstreams |
+| `share manager/public` | Render manager/public-safe outputs with fail-closed redaction-key checks |
+| `share verify manager/public` | Preflight share readiness without writing share artifacts |
 | `refresh <source>` | Re-fetch events while preserving curated `workstreams.yaml` |
+| `review` | Inspect coverage, evidence debt, fixups, and next commands without writing artifacts |
 | `workstreams list/validate/create/rename/move/split/receipts/receipt/delete` | Inspect, validate, and safely edit workstream curation |
-| `runs list/show` | Discover runs and inspect their sources, counts, coverage, and paths |
-| `open packet/workstreams/out` | Open run artifacts, or print their paths when opening is unavailable |
+| `runs list/show/compare` | Discover runs and inspect or compare their sources, counts, coverage, and paths |
+| `open packet/workstreams/intake-report/out` | Open run artifacts, or print their paths when opening is unavailable |
 | `merge` | Merge existing run directories into one packet |
 | `import` | Import an existing run directory and re-render |
 | `run <source>` | Legacy: collect + render in one shot |

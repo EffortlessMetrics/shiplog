@@ -7,13 +7,13 @@
 [![MSRV](https://img.shields.io/badge/MSRV-1.92-blue.svg)](https://blog.rust-lang.org/)
 [![License](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
 
-> Compile your GitHub activity into defensible self-review packets -- with receipts.
+> Compile code, ticket, review, local git, JSON, and manual work evidence into defensible review packets -- with receipts.
 
 ## Why shiplog?
 
 Performance reviews ask "what did you ship?" shiplog answers that question with evidence.
 
-**Receipts-first.** Every claim in a shiplog packet traces back to fetched data -- merged PRs, reviews, manual entries. Missing data is explicitly flagged in a coverage manifest, never silently omitted.
+**Receipts-first.** Every claim in a shiplog packet traces back to fetched data -- PRs, merge requests, reviews, tickets, local commits, imported artifacts, and manual entries. Missing data is explicitly flagged in a coverage manifest, never silently omitted.
 
 **Coverage-first.** shiplog tracks what it queried and what might be incomplete. The coverage manifest documents API query windows, pagination limits hit, and gaps -- so you know exactly what the packet does and does not cover.
 
@@ -25,7 +25,7 @@ shiplog is not an analytics dashboard. It is not AI-generated narrative. It prod
 
 - **Individual contributors** preparing self-reviews, promo packets, or brag documents with concrete shipping receipts.
 - **Tech leads** compiling structured proof of what their team shipped during a review cycle.
-- **Anyone** who wants a repeatable, auditable record of their GitHub activity over a time window.
+- **Anyone** who wants a repeatable, auditable record of professional work over a time window.
 
 ## Features
 
@@ -522,9 +522,9 @@ boundaries; internal implementation seams live under their owning crates. See
 ### Data flow
 
 ```text
-GitHub API ─→ Ingestor ─→ Normalizer ─→ Clusterer ─→ Renderer ─→ Output
-    │              │            │             │            │
-    └── Cache      └── Schema   └── Workstreams └── Redact  └── Bundle
+Sources ─→ Ingestors ─→ Normalizer ─→ Clusterer ─→ Renderer ─→ Output
+  │             │             │             │            │
+  └── Cache     └── Schema    └── Workstreams └── Redact  └── Bundle
 ```
 
 Events flow left-to-right through well-defined ports. Product boundaries are tested at the

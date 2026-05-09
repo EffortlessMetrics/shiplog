@@ -7,8 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-05-09
+
 ### Added
 
+- Added the review rescue intake path: `shiplog intake` creates a best-effort
+  first packet, records skipped sources as coverage warnings, renders the
+  packet, runs review inspection, and writes durable `intake.report.md` and
+  `intake.report.json` artifacts.
+- Added intake readiness summaries, source-decision explanations, source repair
+  and rerun guidance, curation-preserving intake reruns, and `shiplog open
+  intake-report`.
+- Added `shiplog review`, `shiplog review weekly`, `shiplog review --strict`,
+  `shiplog review fixups`, `--commands-only`, and `--journal-template` for
+  packet-quality inspection and copy-ready next actions.
+- Added manual evidence capture and correction with `shiplog journal add`,
+  `shiplog journal list`, and `shiplog journal edit`.
+- Added manager/public share convenience commands and read-only share preflight
+  checks with `shiplog share manager|public` and `shiplog share verify
+  manager|public`.
+- Added `shiplog share verify public --strict` to scan an existing or in-memory
+  public packet for obvious raw URLs and original names before sharing.
+- Added `shiplog runs compare` for read-only cross-run comparison.
+- Added named review periods in `shiplog.toml` for `intake`, `collect multi`,
+  and `review`.
 - Added `shiplog identify jira` and `shiplog identify linear` to print provider
   account/user IDs for source configuration.
 - Added `scripts/verify-release.sh` to repeat public post-release verification
@@ -16,6 +38,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 
+- Made the README quick start intake-first and added a review-deadline guide
+  covering 5-minute, 15-minute, and 30-minute rescue flows.
+- Added binary-first install documentation with release binary downloads,
+  checksum verification, `cargo install`, and package-manager tracking notes.
 - Documented v0.3.0 release verification and updated the current-state record
   from release-ready to shipped.
 - Added a `shiplog.toml` config reference covering versioning, defaults,
@@ -38,9 +64,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   cannot include itself.
 - Corrected redaction docs and package metadata to describe keyed SHA-256
   aliasing instead of HMAC.
+- Improved share-profile redaction-key failures with copy-ready recovery
+  guidance.
 
 ### Testing
 
+- Added golden intake fixtures for manual-only rescue, all-source intake,
+  skipped-source visibility, readiness output, manager-share missing-key
+  safety, durable report content, curation-preserving reruns, and strict public
+  verification.
+- Added no-network provider edge smoke coverage for enterprise/self-hosted
+  source configuration, invalid provider filters, partial source failures, and
+  intake repair guidance.
 - Added recorded-style GitHub provider payload tests for search, pull request
   details, and review parsing through cached event conversion.
 - Added recorded-style GitLab provider payload tests for merge request and
@@ -61,6 +96,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   surface.
 - Added the documented mutation baseline for the `shiplog-bundle` artifact
   integrity surface.
+
+### Security
+
+- Kept manager/public sharing fail-closed while adding explicit share verbs,
+  read-only preflight checks, and strict public verification guardrails that do
+  not print redaction keys or token values.
 
 ## [0.3.0] - 2026-05-07
 
@@ -246,7 +287,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Basic workspace configuration with Cargo
 - MIT/Apache-2.0 dual licensing
 
-[Unreleased]: https://github.com/EffortlessMetrics/shiplog/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/EffortlessMetrics/shiplog/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/EffortlessMetrics/shiplog/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/EffortlessMetrics/shiplog/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/EffortlessMetrics/shiplog/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/EffortlessMetrics/shiplog/compare/v0.1.1...v0.2.0

@@ -72,9 +72,10 @@ folded into owner modules.
 
 Before a release, regenerate a dependency-topological dry-run for the final
 publishable set and prove no public crate depends on an unpublished internal
-production package. For v0.3.0, use
-[`plans/release-matrix-v0.3.0.md`](release-matrix-v0.3.0.md) as the current
-publish decision record. The v0.2.1 matrix remains as historical context.
+production package. For v0.4.0, use
+[`plans/release-matrix-v0.4.0.md`](release-matrix-v0.4.0.md) as the current
+publish decision record. The v0.3.0 and v0.2.1 matrices remain as historical
+context.
 Current package-boundary enforcement lives in
 `scripts/package-boundary-audit.sh`; current version-alignment enforcement lives
 in `scripts/package-version-audit.sh`.

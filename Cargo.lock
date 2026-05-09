@@ -2227,7 +2227,7 @@ dependencies = [
 
 [[package]]
 name = "shiplog"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -2261,7 +2261,7 @@ dependencies = [
 
 [[package]]
 name = "shiplog-bundle"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2278,7 +2278,7 @@ dependencies = [
 
 [[package]]
 name = "shiplog-cache"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2293,7 +2293,7 @@ dependencies = [
 
 [[package]]
 name = "shiplog-cluster-llm"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2310,7 +2310,7 @@ dependencies = [
 
 [[package]]
 name = "shiplog-coverage"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2325,7 +2325,7 @@ dependencies = [
 
 [[package]]
 name = "shiplog-engine"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2348,7 +2348,7 @@ dependencies = [
 
 [[package]]
 name = "shiplog-ids"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "criterion",
  "hex",
@@ -2361,7 +2361,7 @@ dependencies = [
 
 [[package]]
 name = "shiplog-ingest-git"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2377,7 +2377,7 @@ dependencies = [
 
 [[package]]
 name = "shiplog-ingest-github"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2397,7 +2397,7 @@ dependencies = [
 
 [[package]]
 name = "shiplog-ingest-gitlab"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2417,7 +2417,7 @@ dependencies = [
 
 [[package]]
 name = "shiplog-ingest-jira"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2438,7 +2438,7 @@ dependencies = [
 
 [[package]]
 name = "shiplog-ingest-json"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2454,7 +2454,7 @@ dependencies = [
 
 [[package]]
 name = "shiplog-ingest-linear"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2475,7 +2475,7 @@ dependencies = [
 
 [[package]]
 name = "shiplog-ingest-manual"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2491,7 +2491,7 @@ dependencies = [
 
 [[package]]
 name = "shiplog-merge"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2506,7 +2506,7 @@ dependencies = [
 
 [[package]]
 name = "shiplog-ports"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2518,7 +2518,7 @@ dependencies = [
 
 [[package]]
 name = "shiplog-redact"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2537,7 +2537,7 @@ dependencies = [
 
 [[package]]
 name = "shiplog-render-json"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2552,7 +2552,7 @@ dependencies = [
 
 [[package]]
 name = "shiplog-render-md"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2569,7 +2569,7 @@ dependencies = [
 
 [[package]]
 name = "shiplog-schema"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "chrono",
  "criterion",
@@ -2584,7 +2584,7 @@ dependencies = [
 
 [[package]]
 name = "shiplog-team"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2603,7 +2603,7 @@ dependencies = [
 
 [[package]]
 name = "shiplog-testkit"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2628,7 +2628,7 @@ dependencies = [
 
 [[package]]
 name = "shiplog-workstreams"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "chrono",
