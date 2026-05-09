@@ -105,6 +105,13 @@ practical review-cycle walkthrough, see
 `shiplog.toml` field reference, see
 [docs/config-reference.md](docs/config-reference.md).
 
+From a repository checkout, you can rehearse the rescue path without provider
+tokens:
+
+```bash
+scripts/demo-review-rescue.sh --out ./out/demo-review-rescue
+```
+
 ### 0. Fast review intake
 
 ```bash

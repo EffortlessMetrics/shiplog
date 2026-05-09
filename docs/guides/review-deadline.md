@@ -180,6 +180,18 @@ From this repository, you can rehearse the deadline path against checked-in
 fixtures:
 
 ```bash
+scripts/demo-review-rescue.sh --out ./out/deadline-fixture
+```
+
+On Windows PowerShell:
+
+```powershell
+pwsh -File .\scripts\demo-review-rescue.ps1 -Out .\out\deadline-fixture
+```
+
+The demo script runs the same rescue loop:
+
+```bash
 shiplog intake --out ./out/deadline-fixture --config examples/configs/local-git-json-manual.toml --no-open --explain
 shiplog open intake-report --out ./out/deadline-fixture --latest --print-path
 shiplog review fixups --out ./out/deadline-fixture --latest --commands-only

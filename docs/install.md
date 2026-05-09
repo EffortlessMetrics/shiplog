@@ -162,8 +162,8 @@ shiplog open packet --latest
 
 Developers verifying a shipped release from a repository checkout can use the
 binary-only smoke scripts. They download the current-platform GitHub release
-asset, verify `SHA256SUMS.txt`, run the first-run help checks, and run a
-fixture-backed review rescue intake without provider tokens or Rust installed.
+asset, verify `SHA256SUMS.txt`, run the first-run help checks, and run the
+fixture-backed review rescue demo without provider tokens or Rust installed.
 
 Linux and macOS:
 
@@ -184,8 +184,10 @@ shiplog --version
 shiplog init --dry-run
 shiplog intake --help
 shiplog share verify public --help
-shiplog intake --config examples/configs/local-git-json-manual.toml --no-open --explain
-shiplog open intake-report --latest --print-path
-shiplog review fixups --latest --commands-only
-shiplog share verify manager --redact-key fixture-key
+scripts/demo-review-rescue.sh --out ./out/demo-review-rescue
 ```
+
+On Windows, use `pwsh -File .\scripts\demo-review-rescue.ps1` for the same
+no-network fixture path. The demo uses
+`examples/configs/local-git-json-manual.toml` so it can exercise local git,
+JSON, and manual evidence without live provider credentials.

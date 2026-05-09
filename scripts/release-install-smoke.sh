@@ -33,13 +33,6 @@ work_dir="${SHIPLOG_RELEASE_SMOKE_DIR:-$repo_root/target/release-install-smoke/$
 download_dir="$work_dir/download"
 demo_out="$work_dir/demo-out"
 
-require_cmd() {
-  if ! command -v "$1" >/dev/null 2>&1; then
-    echo "missing required command: $1" >&2
-    exit 2
-  fi
-}
-
 download() {
   local url="$1"
   local out="$2"
@@ -84,15 +77,6 @@ sha256_file() {
   fi
 }
 
-without_provider_tokens() {
-  env \
-    -u GITHUB_TOKEN \
-    -u GITLAB_TOKEN \
-    -u JIRA_TOKEN \
-    -u LINEAR_API_KEY \
-    "$@"
-}
-
 asset="$(host_asset)"
 base_url="https://github.com/$repo/releases/download/$tag"
 binary_path="$download_dir/shiplog"
@@ -129,20 +113,10 @@ echo "==> smoking downloaded binary"
 
 echo "==> running no-network review rescue fixture"
 rm -rf "$demo_out"
-mkdir -p "$demo_out"
-(
-  cd "$repo_root"
-  without_provider_tokens "$binary_path" \
-    intake \
-    --out "$demo_out" \
-    --config examples/configs/local-git-json-manual.toml \
-    --no-open \
-    --explain \
-    >"$work_dir/intake.stdout"
-  without_provider_tokens "$binary_path" open intake-report --out "$demo_out" --latest --print-path >/dev/null
-  without_provider_tokens "$binary_path" review fixups --out "$demo_out" --latest --commands-only >/dev/null
-  without_provider_tokens "$binary_path" share verify manager --out "$demo_out" --latest --redact-key fixture-key >/dev/null
-)
+"$script_dir/demo-review-rescue.sh" \
+  --shiplog-bin "$binary_path" \
+  --out "$demo_out" \
+  >"$work_dir/demo-review-rescue.stdout"
 
 if ! find "$demo_out" -name intake.report.md -type f -print -quit | grep -q .; then
   echo "no intake.report.md produced under $demo_out" >&2
