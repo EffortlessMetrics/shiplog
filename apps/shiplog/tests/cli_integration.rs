@@ -159,6 +159,18 @@ fn assert_intake_report_schema_contract(report_json: &serde_json::Value) {
     }
 
     assert_schema_field_names_are_not_secret_bearing(&schema);
+    let repair_kind_values =
+        schema["$defs"]["repair_source"]["allOf"][1]["properties"]["kind"]["enum"]
+            .as_array()
+            .expect("repair source schema should document repair kind values");
+    for kind in ["missing_token", "invalid_filter", "setup_required"] {
+        assert!(
+            repair_kind_values
+                .iter()
+                .any(|value| value.as_str() == Some(kind)),
+            "repair source schema should allow kind {kind:?}"
+        );
+    }
 }
 
 fn assert_schema_field_names_are_not_secret_bearing(value: &serde_json::Value) {
@@ -253,6 +265,15 @@ fn assert_golden_intake_report(run_dir: &Path, readiness: &str) -> (String, serd
         assert!(
             report_json[key].is_array(),
             "intake.report.json should expose array field {key}"
+        );
+    }
+    for repair in report_json["repair_sources"]
+        .as_array()
+        .expect("repair_sources should be an array")
+    {
+        assert!(
+            repair["kind"].as_str().is_some_and(|kind| !kind.is_empty()),
+            "generated repair source should expose a stable kind"
         );
     }
 
@@ -3942,6 +3963,7 @@ status = "done"
             "- Linear skipped: missing LINEAR_API_KEY",
         ))
         .stdout(predicate::str::contains("Repair sources:"))
+        .stdout(predicate::str::contains("kind: missing_token"))
         .stdout(predicate::str::contains("export JIRA_TOKEN=..."))
         .stdout(predicate::str::contains(
             "shiplog identify jira --auth-user <email>",
@@ -3957,6 +3979,7 @@ status = "done"
     assert!(report_md.contains("## Repair Sources"));
     assert!(report_md.contains("- Jira: missing JIRA_TOKEN"));
     assert!(report_md.contains("- Linear: missing LINEAR_API_KEY"));
+    assert!(report_md.contains("kind: `missing_token`"));
     assert!(report_md.contains("export JIRA_TOKEN=..."));
     assert!(report_md.contains("shiplog identify jira --auth-user <email>"));
     assert!(report_md.contains("export LINEAR_API_KEY=..."));
@@ -3990,6 +4013,7 @@ status = "done"
             .unwrap()
             .iter()
             .any(|repair| repair["source"] == "Jira"
+                && repair["kind"] == "missing_token"
                 && repair["commands"]
                     .as_array()
                     .unwrap()
@@ -4100,6 +4124,7 @@ cache_dir = "./.cache"
     assert!(stdout.contains("- Jira: included"));
     assert!(stdout.contains("- Linear: included"));
     assert!(stdout.contains("Repair sources:"));
+    assert!(stdout.contains("kind: invalid_filter"));
     assert!(stdout.contains("Set sources.gitlab.state to opened, merged, closed, or all."));
     assert!(stdout.contains("Set sources.jira.status to open, in_progress, done, closed, or all."));
     assert!(stdout.contains(
@@ -4139,6 +4164,7 @@ cache_dir = "./.cache"
     let repairs = report_json["repair_sources"].as_array().unwrap();
     assert!(repairs.iter().any(|repair| {
         repair["source"] == "GitLab"
+            && repair["kind"] == "invalid_filter"
             && repair["commands"]
                 .as_array()
                 .unwrap()
@@ -4147,6 +4173,7 @@ cache_dir = "./.cache"
     }));
     assert!(repairs.iter().any(|repair| {
         repair["source"] == "Jira"
+            && repair["kind"] == "invalid_filter"
             && repair["commands"]
                 .as_array()
                 .unwrap()
@@ -4155,6 +4182,7 @@ cache_dir = "./.cache"
     }));
     assert!(repairs.iter().any(|repair| {
         repair["source"] == "Linear"
+            && repair["kind"] == "invalid_filter"
             && repair["commands"]
                 .as_array()
                 .unwrap()
@@ -5594,6 +5622,95 @@ fn report_validate_rejects_secret_sentinels() {
 }
 
 #[test]
+fn report_validate_accepts_legacy_repair_sources_without_kind() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args(["intake", "--out", out.to_str().unwrap(), "--no-open"])
+        .assert()
+        .success();
+
+    let report_path = first_run_dir(&out).join("intake.report.json");
+    let mut report: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&report_path).unwrap()).unwrap();
+    report["repair_sources"] = serde_json::json!([
+        {
+            "source": "Jira",
+            "reason": "missing JIRA_TOKEN",
+            "commands": ["export JIRA_TOKEN=..."]
+        }
+    ]);
+    std::fs::write(
+        &report_path,
+        format!("{}\n", serde_json::to_string_pretty(&report).unwrap()),
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .args([
+            "report",
+            "validate",
+            "--path",
+            report_path.to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Report valid:"));
+}
+
+#[test]
+fn report_validate_rejects_unknown_repair_kind() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args(["intake", "--out", out.to_str().unwrap(), "--no-open"])
+        .assert()
+        .success();
+
+    let report_path = first_run_dir(&out).join("intake.report.json");
+    let mut report: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&report_path).unwrap()).unwrap();
+    report["repair_sources"] = serde_json::json!([
+        {
+            "source": "Jira",
+            "kind": "mystery",
+            "reason": "missing JIRA_TOKEN",
+            "commands": ["export JIRA_TOKEN=..."]
+        }
+    ]);
+    std::fs::write(
+        &report_path,
+        format!("{}\n", serde_json::to_string_pretty(&report).unwrap()),
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .args([
+            "report",
+            "validate",
+            "--path",
+            report_path.to_str().unwrap(),
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "repair_sources kind \"mystery\" is not supported",
+        ));
+}
+
+#[test]
 fn report_validate_rejects_missing_artifact() {
     let tmp = TempDir::new().unwrap();
     let out = tmp.path().join("out");
@@ -5658,6 +5775,7 @@ fn report_summarize_prints_operator_view_without_writing() {
         .stdout(predicate::str::contains("Sources:"))
         .stdout(predicate::str::contains("Evidence debt:"))
         .stdout(predicate::str::contains("Top repairs:"))
+        .stdout(predicate::str::contains("missing_token"))
         .stdout(predicate::str::contains("Top fixups:"))
         .stdout(predicate::str::contains("Share next:"))
         .stdout(predicate::str::contains("Packet:"))

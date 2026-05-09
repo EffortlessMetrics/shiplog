@@ -313,6 +313,23 @@
               "type": "string",
               "minLength": 1
             },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "missing_token",
+                "missing_identity",
+                "invalid_filter",
+                "bad_instance_url",
+                "auth_rejected",
+                "rate_limited",
+                "network_timeout",
+                "partial_results",
+                "cache_replay",
+                "local_source_unavailable",
+                "missing_file",
+                "setup_required"
+              ]
+            },
             "reason": {
               "type": "string",
               "minLength": 1
