@@ -11,6 +11,13 @@ The v1 schema lives at:
 contracts/schemas/intake-report.v1.schema.json
 ```
 
+Validate a generated report and its referenced artifacts with:
+
+```bash
+shiplog report validate --latest
+shiplog report validate --path out/<run>/intake.report.json
+```
+
 ## Compatibility
 
 The top-level `schema_version` field is required and must be `1`.

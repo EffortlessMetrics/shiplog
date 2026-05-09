@@ -96,6 +96,8 @@ fn intake_report_schema_docs_describe_v1_contract() {
 
     for needle in [
         "contracts/schemas/intake-report.v1.schema.json",
+        "shiplog report validate --latest",
+        "shiplog report validate --path out/<run>/intake.report.json",
         "schema_version",
         "Ready for review",
         "Needs curation",
@@ -164,7 +166,8 @@ fn documented_help_commands_stay_available() {
         .stdout(predicate::str::contains("workstreams"))
         .stdout(predicate::str::contains("journal"))
         .stdout(predicate::str::contains("cache"))
-        .stdout(predicate::str::contains("identify"));
+        .stdout(predicate::str::contains("identify"))
+        .stdout(predicate::str::contains("report"));
 
     shiplog_cmd()
         .args(["collect", "--help"])
@@ -255,6 +258,20 @@ fn documented_help_commands_stay_available() {
         .stdout(predicate::str::contains("--latest"))
         .stdout(predicate::str::contains("--run"))
         .stdout(predicate::str::contains("--print-path"));
+
+    shiplog_cmd()
+        .args(["report", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("validate"));
+
+    shiplog_cmd()
+        .args(["report", "validate", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--latest"))
+        .stdout(predicate::str::contains("--run"))
+        .stdout(predicate::str::contains("--path"));
 
     shiplog_cmd()
         .args(["workstreams", "--help"])
