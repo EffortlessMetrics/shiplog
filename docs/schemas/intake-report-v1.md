@@ -86,9 +86,25 @@ usable evidence. `source_decisions` explains why intake included or skipped a
 source. `repair_sources` carries copy-ready setup and rerun commands for skipped
 or unusable sources.
 
-Provider failure kinds are still represented as human-readable `reason` strings
-in v1. A later v1-compatible extension may add a classifier only if it remains
-additive or is introduced under a new schema version.
+Current writers include a v1-compatible `repair_sources[].kind` classifier for
+source repair loops. Older v1 reports may not have this optional field, so
+readers should fall back to the human-readable `reason` when it is absent.
+Known repair kinds are:
+
+```text
+missing_token
+missing_identity
+invalid_filter
+bad_instance_url
+auth_rejected
+rate_limited
+network_timeout
+partial_results
+cache_replay
+local_source_unavailable
+missing_file
+setup_required
+```
 
 ## Evidence Debt And Fixups
 

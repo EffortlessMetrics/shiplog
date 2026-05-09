@@ -1647,6 +1647,7 @@ struct IntakeReportSourceDecision {
 #[derive(Debug, Serialize)]
 struct IntakeReportRepairSource {
     source: String,
+    kind: String,
     reason: String,
     commands: Vec<String>,
 }
@@ -2272,6 +2273,7 @@ fn print_intake_readiness_report(report: &IntakeReport) {
         println!("Repair sources:");
         for repair in &report.repair_sources {
             println!("- {}: {}", repair.source, repair.reason);
+            println!("  kind: {}", repair.kind);
             for command in &repair.commands {
                 println!("  {command}");
             }
@@ -2367,6 +2369,7 @@ fn render_intake_report_markdown(report: &IntakeReport) -> String {
     } else {
         for repair in &report.repair_sources {
             out.push_str(&format!("- {}: {}\n", repair.source, repair.reason));
+            out.push_str(&format!("  - kind: `{}`\n", repair.kind));
             for command in &repair.commands {
                 out.push_str(&format!("  - {command}\n"));
             }
@@ -2522,6 +2525,20 @@ const INTAKE_REPORT_SECRET_SENTINELS: &[&str] = &[
     "do-not-leak",
     "super-secret",
 ];
+const INTAKE_REPAIR_KIND_VALUES: &[&str] = &[
+    "missing_token",
+    "missing_identity",
+    "invalid_filter",
+    "bad_instance_url",
+    "auth_rejected",
+    "rate_limited",
+    "network_timeout",
+    "partial_results",
+    "cache_replay",
+    "local_source_unavailable",
+    "missing_file",
+    "setup_required",
+];
 
 fn validate_intake_report_command(
     out_dir: &Path,
@@ -2586,7 +2603,7 @@ fn summarize_intake_report_command(
     println!("Intake report: {}", validation.markdown_path.display());
 
     print_report_summary_items("Skipped sources", skipped_sources, "source", "reason")?;
-    print_report_summary_items("Top repairs", repair_sources, "source", "reason")?;
+    print_report_repair_summary_items("Top repairs", repair_sources)?;
     print_report_summary_items("Top fixups", top_fixups, "title", "command")?;
     print_report_summary_strings("Share next", share_commands)?;
 
@@ -2738,7 +2755,24 @@ fn validate_report_items(report: &serde_json::Value) -> Result<()> {
             for key in object.keys() {
                 ensure_field_name_not_secret_bearing(key)?;
             }
+            if field == "repair_sources" {
+                validate_optional_repair_kind(item)?;
+            }
         }
+    }
+
+    Ok(())
+}
+
+fn validate_optional_repair_kind(item: &serde_json::Value) -> Result<()> {
+    let Some(kind) = item.get("kind") else {
+        return Ok(());
+    };
+    let Some(kind) = kind.as_str() else {
+        anyhow::bail!("intake report repair_sources kind must be a string")
+    };
+    if !INTAKE_REPAIR_KIND_VALUES.contains(&kind) {
+        anyhow::bail!("intake report repair_sources kind {kind:?} is not supported")
     }
 
     Ok(())
@@ -2770,6 +2804,35 @@ fn print_report_summary_items(
                 anyhow::anyhow!("intake report summary item {secondary_field:?} must be a string")
             })?;
         println!("- {primary}: {secondary}");
+    }
+    if items.len() > 3 {
+        println!("- ... and {} more", items.len() - 3);
+    }
+
+    Ok(())
+}
+
+fn print_report_repair_summary_items(label: &str, items: &[serde_json::Value]) -> Result<()> {
+    println!("{label}:");
+    if items.is_empty() {
+        println!("- none");
+        return Ok(());
+    }
+
+    for item in items.iter().take(3) {
+        let source = item
+            .get("source")
+            .and_then(|value| value.as_str())
+            .ok_or_else(|| anyhow::anyhow!("intake report repair source must be a string"))?;
+        let reason = item
+            .get("reason")
+            .and_then(|value| value.as_str())
+            .ok_or_else(|| anyhow::anyhow!("intake report repair reason must be a string"))?;
+        if let Some(kind) = item.get("kind").and_then(|value| value.as_str()) {
+            println!("- {source} [{kind}]: {reason}");
+        } else {
+            println!("- {source}: {reason}");
+        }
     }
     if items.len() > 3 {
         println!("- ... and {} more", items.len() - 3);
@@ -3013,12 +3076,170 @@ fn push_intake_repair_source_report(
     let Some(hint) = intake_source_hint(&explanation) else {
         return;
     };
+    let kind = classify_intake_repair_kind(name, reason)
+        .as_str()
+        .to_string();
 
     reports.push(IntakeReportRepairSource {
         source: display_source_label(name),
+        kind,
         reason: reason.to_string(),
         commands: hint.lines,
     });
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+enum IntakeRepairKind {
+    MissingToken,
+    MissingIdentity,
+    InvalidFilter,
+    BadInstanceUrl,
+    AuthRejected,
+    RateLimited,
+    NetworkTimeout,
+    PartialResults,
+    CacheReplay,
+    LocalSourceUnavailable,
+    MissingFile,
+    SetupRequired,
+}
+
+impl IntakeRepairKind {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::MissingToken => "missing_token",
+            Self::MissingIdentity => "missing_identity",
+            Self::InvalidFilter => "invalid_filter",
+            Self::BadInstanceUrl => "bad_instance_url",
+            Self::AuthRejected => "auth_rejected",
+            Self::RateLimited => "rate_limited",
+            Self::NetworkTimeout => "network_timeout",
+            Self::PartialResults => "partial_results",
+            Self::CacheReplay => "cache_replay",
+            Self::LocalSourceUnavailable => "local_source_unavailable",
+            Self::MissingFile => "missing_file",
+            Self::SetupRequired => "setup_required",
+        }
+    }
+}
+
+fn classify_intake_repair_kind(source: &str, reason: &str) -> IntakeRepairKind {
+    let source = normalized_source_key(source);
+    let reason = reason.to_ascii_lowercase();
+
+    if contains_any(
+        &reason,
+        &[
+            "missing token",
+            "token not found",
+            "github_token",
+            "gitlab_token",
+            "jira_token",
+            "linear_api_key",
+            "api_key",
+        ],
+    ) {
+        return IntakeRepairKind::MissingToken;
+    }
+    if contains_any(
+        &reason,
+        &[
+            "both user and me",
+            "user_id",
+            "assignee",
+            "me = true",
+            "authenticated user",
+            "identity",
+        ],
+    ) || reason.contains("user") && source != "manual"
+    {
+        return IntakeRepairKind::MissingIdentity;
+    }
+    if contains_any(
+        &reason,
+        &[
+            "invalid mr state",
+            "invalid issue status",
+            "status",
+            "state",
+            "filter",
+            "jql",
+            "project",
+        ],
+    ) {
+        return IntakeRepairKind::InvalidFilter;
+    }
+    if contains_any(
+        &reason,
+        &["instance", "api base", "base url", "url", "host"],
+    ) {
+        return IntakeRepairKind::BadInstanceUrl;
+    }
+    if contains_any(
+        &reason,
+        &[
+            "unauthorized",
+            "forbidden",
+            "auth rejected",
+            "authentication",
+            "authorization",
+            "401",
+            "403",
+        ],
+    ) {
+        return IntakeRepairKind::AuthRejected;
+    }
+    if contains_any(
+        &reason,
+        &[
+            "rate limit",
+            "rate-limited",
+            "too many requests",
+            "429",
+            "throttle",
+        ],
+    ) {
+        return IntakeRepairKind::RateLimited;
+    }
+    if contains_any(
+        &reason,
+        &[
+            "timeout",
+            "timed out",
+            "network",
+            "connection",
+            "dns",
+            "could not resolve",
+        ],
+    ) {
+        return IntakeRepairKind::NetworkTimeout;
+    }
+    if contains_any(&reason, &["partial", "incomplete", "truncated"]) {
+        return IntakeRepairKind::PartialResults;
+    }
+    if contains_any(&reason, &["cache replay", "cache"]) {
+        return IntakeRepairKind::CacheReplay;
+    }
+    if source == "git" && reason.contains("not a git repo") {
+        return IntakeRepairKind::LocalSourceUnavailable;
+    }
+    if contains_any(
+        &reason,
+        &[
+            "no such file",
+            "not found",
+            "does not exist",
+            "missing file",
+        ],
+    ) {
+        return IntakeRepairKind::MissingFile;
+    }
+
+    IntakeRepairKind::SetupRequired
+}
+
+fn contains_any(haystack: &str, needles: &[&str]) -> bool {
+    needles.iter().any(|needle| haystack.contains(needle))
 }
 
 fn intake_curation_notes(result: &ConfiguredRunResult) -> Vec<String> {
@@ -11796,6 +12017,65 @@ mod tests {
         assert!(parse_cache_age("30").is_err());
         assert!(parse_cache_age("-1d").is_err());
         assert!(parse_cache_age("1w").is_err());
+    }
+
+    #[test]
+    fn classify_intake_repair_kind_maps_common_provider_failures() {
+        for (source, reason, expected) in [
+            ("jira", "missing JIRA_TOKEN", IntakeRepairKind::MissingToken),
+            (
+                "gitlab",
+                "Invalid MR state: needs_review",
+                IntakeRepairKind::InvalidFilter,
+            ),
+            (
+                "jira",
+                "Jira instance URL is invalid",
+                IntakeRepairKind::BadInstanceUrl,
+            ),
+            (
+                "github",
+                "GitHub API returned 403 forbidden",
+                IntakeRepairKind::AuthRejected,
+            ),
+            (
+                "linear",
+                "429 too many requests",
+                IntakeRepairKind::RateLimited,
+            ),
+            (
+                "github",
+                "network timeout while querying provider",
+                IntakeRepairKind::NetworkTimeout,
+            ),
+            (
+                "gitlab",
+                "partial results returned by provider",
+                IntakeRepairKind::PartialResults,
+            ),
+            (
+                "github",
+                "cache replay unavailable",
+                IntakeRepairKind::CacheReplay,
+            ),
+            (
+                "git",
+                "current directory is not a git repo",
+                IntakeRepairKind::LocalSourceUnavailable,
+            ),
+            (
+                "json",
+                "events file does not exist",
+                IntakeRepairKind::MissingFile,
+            ),
+            (
+                "linear",
+                "linear is enabled but sources.linear.user_id is empty",
+                IntakeRepairKind::MissingIdentity,
+            ),
+        ] {
+            assert_eq!(classify_intake_repair_kind(source, reason), expected);
+        }
     }
 
     #[test]
