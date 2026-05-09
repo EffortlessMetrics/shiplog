@@ -22,7 +22,7 @@ use shiplog_ingest_linear::{IssueStatus as LinearIssueStatus, LinearIngestor};
 use shiplog_ingest_manual::{
     ManualIngestor, create_empty_file, read_manual_events, write_manual_events,
 };
-use shiplog_ports::{IngestOutput, Ingestor, Renderer};
+use shiplog_ports::{IngestOutput, Ingestor, Redactor, Renderer};
 use shiplog_redact::DeterministicRedactor;
 use shiplog_render_md::{
     AppendixMode, MarkdownRenderOptions, MarkdownRenderer, SectionOrder, format_receipt_markdown,
@@ -1102,6 +1102,9 @@ struct ShareVerifyOptions {
     /// Redaction key. If omitted, SHIPLOG_REDACT_KEY is used.
     #[arg(long)]
     redact_key: Option<String>,
+    /// For public verification, scan the rendered public packet for obvious raw URLs/names.
+    #[arg(long)]
+    strict: bool,
 }
 
 #[derive(Subcommand, Debug, Clone)]
@@ -8426,7 +8429,7 @@ fn print_share_outputs(outputs: &shiplog_engine::RunOutputs, bundle_profile: &Bu
 }
 
 fn verify_share_profile(options: ShareVerifyOptions, bundle_profile: BundleProfile) -> Result<()> {
-    let _redaction_key = RedactionKey::resolve_for_share(options.redact_key, &bundle_profile)?;
+    let redaction_key = RedactionKey::resolve_for_share(options.redact_key, &bundle_profile)?;
     let run_dir = resolve_render_run_dir(&options.out, options.run, options.latest)?;
     let ingest =
         load_run_ingest(&run_dir).with_context(|| format!("load run {}", run_dir.display()))?;
@@ -8440,6 +8443,18 @@ fn verify_share_profile(options: ShareVerifyOptions, bundle_profile: BundleProfi
         .join("profiles")
         .join(bundle_profile.as_str())
         .join("packet.md");
+    let strict_public_scan = if matches!(bundle_profile, BundleProfile::Public) && options.strict {
+        Some(strict_public_packet_scan(
+            &run_dir,
+            &coverage,
+            &events,
+            &workstreams,
+            &redaction_key,
+            &profile_packet,
+        )?)
+    } else {
+        None
+    };
     let out_arg = quote_cli_value(&options.out.display().to_string());
     let run_arg = quote_cli_value(&coverage.run_id.to_string());
 
@@ -8461,6 +8476,14 @@ fn verify_share_profile(options: ShareVerifyOptions, bundle_profile: BundleProfi
     } else if validation_errors.is_empty() {
         good.push("Profile packet can be rendered by the share command".to_string());
     }
+    if let Some(scan) = &strict_public_scan
+        && scan.findings.is_empty()
+    {
+        good.push(format!(
+            "Strict public scan checked {} and found no obvious raw private URLs/names.",
+            scan.source_label
+        ));
+    }
 
     let mut attention = Vec::new();
     if gap_count > 0 {
@@ -8475,6 +8498,11 @@ fn verify_share_profile(options: ShareVerifyOptions, bundle_profile: BundleProfi
     }
     for error in &validation_errors {
         attention.push(format!("Workstream issue: {error}"));
+    }
+    if let Some(scan) = &strict_public_scan {
+        for finding in &scan.findings {
+            attention.push(format!("Strict public scan: {finding}"));
+        }
     }
 
     println!("Share verify: {bundle_profile}");
@@ -8527,6 +8555,13 @@ fn verify_share_profile(options: ShareVerifyOptions, bundle_profile: BundleProfi
         BundleProfile::Public => {
             println!("- Public profile will use the strictest redaction profile.");
             println!("- Review the rendered packet before sharing outside your organization.");
+            if let Some(scan) = &strict_public_scan {
+                println!(
+                    "- Strict public scan inspected {} for obvious raw URLs and original names.",
+                    scan.source_label
+                );
+                println!("- Strict scan is a guardrail, not a guarantee of perfect privacy.");
+            }
         }
         BundleProfile::Internal => {}
     }
@@ -8543,7 +8578,154 @@ fn verify_share_profile(options: ShareVerifyOptions, bundle_profile: BundleProfi
         println!("1. shiplog share {bundle_profile} --out {out_arg} --run {run_arg}");
     }
 
+    if let Some(scan) = &strict_public_scan
+        && !scan.findings.is_empty()
+    {
+        anyhow::bail!(
+            "strict public verification found {} issue(s); inspect the public packet before sharing",
+            scan.findings.len()
+        );
+    }
+
     Ok(())
+}
+
+struct StrictPublicPacketScan {
+    source_label: String,
+    findings: Vec<String>,
+}
+
+fn strict_public_packet_scan(
+    run_dir: &Path,
+    coverage: &CoverageManifest,
+    events: &[EventEnvelope],
+    workstreams: &WorkstreamsFile,
+    redaction_key: &RedactionKey,
+    profile_packet: &Path,
+) -> Result<StrictPublicPacketScan> {
+    let (source_label, packet) = if profile_packet.exists() {
+        (
+            profile_packet.display().to_string(),
+            std::fs::read_to_string(profile_packet)
+                .with_context(|| format!("read public packet {}", profile_packet.display()))?,
+        )
+    } else {
+        let redactor = DeterministicRedactor::new(redaction_key.engine_key().as_bytes());
+        let cache_path = DeterministicRedactor::cache_path(run_dir);
+        let _ = redactor.load_cache(&cache_path);
+        let public_events = redactor
+            .redact_events(events, BundleProfile::Public.as_str())
+            .context("redact events for strict public verification")?;
+        let public_workstreams = redactor
+            .redact_workstreams(workstreams, BundleProfile::Public.as_str())
+            .context("redact workstreams for strict public verification")?;
+        let renderer = cli_packet_renderer();
+        let window_label = format!("{}..{}", coverage.window.since, coverage.window.until);
+        (
+            "in-memory public render".to_string(),
+            renderer
+                .render_packet_markdown_with_options(
+                    &coverage.user,
+                    &window_label,
+                    &public_events,
+                    &public_workstreams,
+                    coverage,
+                    cli_render_options(
+                        RenderPacketMode::Packet,
+                        None,
+                        None,
+                        &BundleProfile::Public,
+                    ),
+                )
+                .context("render public packet for strict verification")?,
+        )
+    };
+
+    Ok(StrictPublicPacketScan {
+        source_label,
+        findings: public_packet_privacy_findings(&packet, events, workstreams),
+    })
+}
+
+fn public_packet_privacy_findings(
+    packet: &str,
+    events: &[EventEnvelope],
+    workstreams: &WorkstreamsFile,
+) -> Vec<String> {
+    let mut findings = BTreeSet::new();
+    let url_re = Regex::new(r"https?://").expect("valid strict public URL regex");
+    if url_re.is_match(packet) {
+        findings.insert("public packet contains raw URL(s).".to_string());
+    }
+
+    for event in events {
+        if packet_contains_sensitive_literal(packet, &event.repo.full_name) {
+            findings.insert("public packet contains an original repository name.".to_string());
+        }
+        if let Some(url) = &event.repo.html_url
+            && packet_contains_sensitive_literal(packet, url)
+        {
+            findings.insert("public packet contains an original repository URL.".to_string());
+        }
+        if let Some(url) = &event.source.url
+            && packet_contains_sensitive_literal(packet, url)
+        {
+            findings.insert("public packet contains an original source URL.".to_string());
+        }
+        for link in &event.links {
+            if packet_contains_sensitive_literal(packet, &link.url) {
+                findings.insert("public packet contains an original receipt URL.".to_string());
+            }
+        }
+        match &event.payload {
+            EventPayload::PullRequest(pr) => {
+                if packet_contains_sensitive_literal(packet, &pr.title) {
+                    findings.insert("public packet contains an original PR title.".to_string());
+                }
+            }
+            EventPayload::Review(review) => {
+                if packet_contains_sensitive_literal(packet, &review.pull_title) {
+                    findings.insert("public packet contains an original review title.".to_string());
+                }
+            }
+            EventPayload::Manual(manual) => {
+                if packet_contains_sensitive_literal(packet, &manual.title) {
+                    findings.insert("public packet contains an original manual title.".to_string());
+                }
+                if let Some(description) = &manual.description
+                    && packet_contains_sensitive_literal(packet, description)
+                {
+                    findings.insert(
+                        "public packet contains an original manual description.".to_string(),
+                    );
+                }
+                if let Some(impact) = &manual.impact
+                    && packet_contains_sensitive_literal(packet, impact)
+                {
+                    findings
+                        .insert("public packet contains an original manual impact.".to_string());
+                }
+            }
+        }
+    }
+
+    for workstream in &workstreams.workstreams {
+        if packet_contains_sensitive_literal(packet, &workstream.title) {
+            findings.insert("public packet contains an original workstream title.".to_string());
+        }
+        if let Some(summary) = &workstream.summary
+            && packet_contains_sensitive_literal(packet, summary)
+        {
+            findings.insert("public packet contains an original workstream summary.".to_string());
+        }
+    }
+
+    findings.into_iter().collect()
+}
+
+fn packet_contains_sensitive_literal(packet: &str, value: &str) -> bool {
+    let value = value.trim();
+    value.len() >= 6 && value != "[redacted]" && packet.contains(value)
 }
 
 #[derive(Clone, Copy, Debug)]

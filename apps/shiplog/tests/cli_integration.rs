@@ -897,7 +897,8 @@ fn share_help_shows_profiles_and_safety_options() {
         .stdout(predicate::str::contains("--out"))
         .stdout(predicate::str::contains("--latest"))
         .stdout(predicate::str::contains("--run"))
-        .stdout(predicate::str::contains("--redact-key"));
+        .stdout(predicate::str::contains("--redact-key"))
+        .stdout(predicate::str::contains("--strict"));
 }
 
 #[test]
@@ -6822,6 +6823,88 @@ fn share_verify_public_accepts_explicit_key_without_writing() {
             .exists(),
         "public verify should not render the share packet"
     );
+}
+
+#[test]
+fn share_verify_public_strict_scans_in_memory_without_writing() {
+    let tmp = TempDir::new().unwrap();
+    collect_json_into(tmp.path());
+
+    let assert = shiplog_cmd()
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args([
+            "share",
+            "verify",
+            "public",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+            "--redact-key",
+            "stable-test-key",
+            "--strict",
+        ])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
+
+    assert!(stdout.contains("Share verify: public"));
+    assert!(stdout.contains("Strict public scan checked in-memory public render"));
+    assert!(
+        stdout
+            .contains("Strict public scan inspected in-memory public render for obvious raw URLs")
+    );
+    assert!(stdout.contains("Strict scan is a guardrail, not a guarantee of perfect privacy."));
+    assert!(stdout.contains("Result: ready to render public share output."));
+    assert!(!stdout.contains("stable-test-key"));
+    assert!(
+        !tmp.path()
+            .join("run_fixture/profiles/public/packet.md")
+            .exists(),
+        "strict public verify should not write the share packet"
+    );
+}
+
+#[test]
+fn share_verify_public_strict_fails_on_existing_unredacted_packet() {
+    let tmp = TempDir::new().unwrap();
+    let run_dir = collect_json_into(tmp.path());
+    let public_dir = run_dir.join("profiles/public");
+    std::fs::create_dir_all(&public_dir).unwrap();
+    std::fs::write(
+        public_dir.join("packet.md"),
+        "# Public Packet\n\nLeaked https://github.com/acme/platform and acme/platform.\n",
+    )
+    .unwrap();
+
+    let assert = shiplog_cmd()
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args([
+            "share",
+            "verify",
+            "public",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+            "--redact-key",
+            "stable-test-key",
+            "--strict",
+        ])
+        .assert()
+        .failure();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
+    let stderr = String::from_utf8(assert.get_output().stderr.clone()).unwrap();
+
+    assert!(stdout.contains("Share verify: public"));
+    assert!(stdout.contains("Strict public scan: public packet contains raw URL(s)."));
+    assert!(
+        stdout.contains("Strict public scan: public packet contains an original repository name.")
+    );
+    assert!(stdout.contains("Result: review attention items before sharing public output."));
+    assert!(stderr.contains("strict public verification found"));
+    assert!(!stdout.contains("stable-test-key"));
+    assert!(!stderr.contains("stable-test-key"));
 }
 
 #[test]
