@@ -1430,6 +1430,8 @@ enum WindowLabel {
 const CONFIG_FILENAME: &str = "shiplog.toml";
 const MANUAL_EVENTS_FILENAME: &str = "manual_events.yaml";
 const CURRENT_CONFIG_VERSION: i64 = 1;
+const SOURCE_FAILURES_FILENAME: &str = "source.failures.json";
+const SOURCE_FAILURES_SCHEMA_VERSION: u8 = 1;
 
 #[derive(Deserialize, Debug, Default)]
 #[serde(default)]
@@ -1573,6 +1575,33 @@ struct ConfigRedaction {
 struct ConfiguredSourceFailure {
     name: String,
     error: String,
+}
+
+#[derive(Debug, Serialize)]
+struct SourceFailuresFile {
+    schema_version: u8,
+    run_id: String,
+    generated_at: String,
+    window: SourceFailureWindow,
+    failures: Vec<SourceFailureRecord>,
+}
+
+#[derive(Debug, Serialize, Clone)]
+struct SourceFailureWindow {
+    since: String,
+    until: String,
+    label: String,
+    period: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct SourceFailureRecord {
+    source: String,
+    kind: String,
+    reason: String,
+    recorded_at: String,
+    window: SourceFailureWindow,
+    rerun_command: String,
 }
 
 #[derive(Debug, Default)]
@@ -1951,6 +1980,7 @@ fn run_intake(args: IntakeArgs) -> Result<()> {
     let (engine, redactor) = create_engine(redaction_key.engine_key(), clusterer, &bundle_profile);
     let engine = engine.with_profile_rendering(redaction_key.render_profiles());
     let result = run_configured_multi_pipeline(
+        &args.config,
         &config_model,
         &out,
         window,
@@ -2185,6 +2215,13 @@ fn build_intake_report(
         artifacts.push(IntakeReportArtifact {
             label: "zip bundle".to_string(),
             path: zip_path.display().to_string(),
+        });
+    }
+    let source_failures_path = result.outputs.out_dir.join(SOURCE_FAILURES_FILENAME);
+    if source_failures_path.exists() {
+        artifacts.push(IntakeReportArtifact {
+            label: "source failures".to_string(),
+            path: source_failures_path.display().to_string(),
         });
     }
 
@@ -3143,6 +3180,7 @@ impl IntakeRepairKind {
 fn classify_intake_repair_kind(source: &str, reason: &str) -> IntakeRepairKind {
     let source = normalized_source_key(source);
     let reason = reason.to_ascii_lowercase();
+    let identity_source = matches!(source.as_str(), "github" | "gitlab" | "jira" | "linear");
 
     if contains_any(
         &reason,
@@ -3168,7 +3206,7 @@ fn classify_intake_repair_kind(source: &str, reason: &str) -> IntakeRepairKind {
             "authenticated user",
             "identity",
         ],
-    ) || reason.contains("user") && source != "manual"
+    ) || identity_source && reason.contains("user")
     {
         return IntakeRepairKind::MissingIdentity;
     }
@@ -3247,6 +3285,9 @@ fn classify_intake_repair_kind(source: &str, reason: &str) -> IntakeRepairKind {
             "not found",
             "does not exist",
             "missing file",
+            "cannot find the file",
+            "system cannot find",
+            "os error 2",
         ],
     ) {
         return IntakeRepairKind::MissingFile;
@@ -6443,6 +6484,78 @@ fn push_configured_source_result(
     }
 }
 
+fn write_source_failures_file(
+    run_dir: &Path,
+    run_id: &str,
+    window: &ResolvedWindow,
+    config_path: &Path,
+    failures: &[ConfiguredSourceFailure],
+) -> Result<Option<PathBuf>> {
+    if failures.is_empty() {
+        return Ok(None);
+    }
+
+    std::fs::create_dir_all(run_dir).with_context(|| format!("create {run_dir:?}"))?;
+    let generated_at = Utc::now().to_rfc3339();
+    let window = SourceFailureWindow {
+        since: window.since.to_string(),
+        until: window.until.to_string(),
+        label: window.window_label(),
+        period: window.period.clone(),
+    };
+    let rerun_command =
+        source_failure_rerun_command(config_path, window.period.as_deref(), &window);
+    let records = failures
+        .iter()
+        .map(|failure| SourceFailureRecord {
+            source: failure.name.clone(),
+            kind: classify_intake_repair_kind(&failure.name, &failure.error)
+                .as_str()
+                .to_string(),
+            reason: failure.error.clone(),
+            recorded_at: generated_at.clone(),
+            window: window.clone(),
+            rerun_command: rerun_command.clone(),
+        })
+        .collect();
+    let file = SourceFailuresFile {
+        schema_version: SOURCE_FAILURES_SCHEMA_VERSION,
+        run_id: run_id.to_string(),
+        generated_at,
+        window,
+        failures: records,
+    };
+    let json = serde_json::to_string_pretty(&file)?;
+    ensure_no_secret_sentinels(SOURCE_FAILURES_FILENAME, &json)?;
+    let path = run_dir.join(SOURCE_FAILURES_FILENAME);
+    std::fs::write(&path, format!("{json}\n"))
+        .with_context(|| format!("write {}", path.display()))?;
+    Ok(Some(path))
+}
+
+fn source_failure_rerun_command(
+    config_path: &Path,
+    period: Option<&str>,
+    window: &SourceFailureWindow,
+) -> String {
+    let config_arg = quote_cli_value(&config_path.display().to_string());
+    let window_args = if let Some(period) = period {
+        format!("--period {}", quote_cli_value(period))
+    } else if window.label.starts_with("last-6-months ") {
+        "--last-6-months".to_string()
+    } else if window.label.starts_with("last-quarter ") {
+        "--last-quarter".to_string()
+    } else if let Some((year, _)) = window.label.split_once(' ')
+        && year.len() == 4
+        && year.chars().all(|ch| ch.is_ascii_digit())
+    {
+        format!("--year {year}")
+    } else {
+        format!("--since {} --until {}", window.since, window.until)
+    };
+    format!("shiplog intake --config {config_arg} {window_args} --explain")
+}
+
 fn collect_configured_sources(
     config_path: &Path,
     config: &ShiplogConfig,
@@ -6653,6 +6766,7 @@ fn collect_configured_sources(
 
 #[allow(clippy::too_many_arguments)]
 fn run_configured_multi_pipeline(
+    config_path: &Path,
     config: &ShiplogConfig,
     out: &Path,
     window: ResolvedWindow,
@@ -6698,6 +6812,13 @@ fn run_configured_multi_pipeline(
 
     let run_id = merged.coverage.run_id.to_string();
     let run_dir = out.join(&run_id);
+    write_source_failures_file(
+        &run_dir,
+        &run_id,
+        &window,
+        config_path,
+        &configured.failures,
+    )?;
 
     if regen {
         let suggested = shiplog_workstreams::WorkstreamManager::suggested_path(&run_dir);
@@ -7931,6 +8052,7 @@ fn main() -> Result<()> {
                     let configured =
                         collect_configured_sources(&config, &config_model, window.clone(), &out)?;
                     let result = run_configured_multi_pipeline(
+                        &config,
                         &config_model,
                         &out,
                         window,
@@ -9780,6 +9902,10 @@ fn print_outputs(outputs: &shiplog_engine::RunOutputs, ws_source: WorkstreamSour
     println!("- {}", outputs.workstreams_yaml.display());
     println!("- {}", outputs.ledger_events_jsonl.display());
     println!("- {}", outputs.coverage_manifest_json.display());
+    let source_failures = outputs.out_dir.join(SOURCE_FAILURES_FILENAME);
+    if source_failures.exists() {
+        println!("- {}", source_failures.display());
+    }
     println!("- {}", outputs.bundle_manifest_json.display());
     if let Some(ref z) = outputs.zip_path {
         println!("- {}", z.display());
@@ -9791,6 +9917,10 @@ fn print_outputs_simple(outputs: &shiplog_engine::RunOutputs) {
     println!("- {}", outputs.workstreams_yaml.display());
     println!("- {}", outputs.ledger_events_jsonl.display());
     println!("- {}", outputs.coverage_manifest_json.display());
+    let source_failures = outputs.out_dir.join(SOURCE_FAILURES_FILENAME);
+    if source_failures.exists() {
+        println!("- {}", source_failures.display());
+    }
     println!("- {}", outputs.bundle_manifest_json.display());
     if let Some(ref z) = outputs.zip_path {
         println!("- {}", z.display());
@@ -12692,6 +12822,11 @@ mod tests {
             (
                 "json",
                 "events file does not exist",
+                IntakeRepairKind::MissingFile,
+            ),
+            (
+                "json",
+                r#"read C:\Users\steven\missing-ledger.events.jsonl: The system cannot find the file specified."#,
                 IntakeRepairKind::MissingFile,
             ),
             (

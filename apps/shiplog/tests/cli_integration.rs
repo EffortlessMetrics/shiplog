@@ -3528,6 +3528,31 @@ user = "octo"
         coverage.contains("Configured source json was skipped"),
         "configured multi coverage should record skipped source warning"
     );
+
+    let source_failures_path = run_dir.join("source.failures.json");
+    assert!(
+        source_failures_path.exists(),
+        "configured multi should write source failure receipts"
+    );
+    let source_failures: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(source_failures_path).unwrap()).unwrap();
+    assert_eq!(source_failures["schema_version"], 1);
+    assert_eq!(source_failures["failures"].as_array().unwrap().len(), 1);
+    assert_eq!(source_failures["failures"][0]["source"], "json");
+    assert_eq!(source_failures["failures"][0]["kind"], "missing_file");
+    assert!(
+        source_failures["failures"][0]["rerun_command"]
+            .as_str()
+            .unwrap()
+            .contains("shiplog intake --config"),
+        "source failure receipt should include a safe rerun command"
+    );
+    assert!(
+        std::fs::read_to_string(run_dir.join("bundle.manifest.json"))
+            .unwrap()
+            .contains("source.failures.json"),
+        "bundle manifest should receipt the source failure artifact"
+    );
 }
 
 #[test]
@@ -4101,6 +4126,42 @@ status = "done"
     let run_dir = first_run_dir(&out);
     let coverage = std::fs::read_to_string(run_dir.join("coverage.manifest.json")).unwrap();
     let (report_md, report_json) = assert_golden_intake_report(&run_dir, "Needs curation");
+    let source_failures_path = run_dir.join("source.failures.json");
+    assert!(
+        source_failures_path.exists(),
+        "intake should write source failure receipts for skipped configured sources"
+    );
+    let source_failures: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&source_failures_path).unwrap()).unwrap();
+    assert_eq!(source_failures["schema_version"], 1);
+    assert_eq!(
+        source_failures["run_id"].as_str().unwrap(),
+        run_dir.file_name().unwrap().to_string_lossy().as_ref()
+    );
+    assert_eq!(source_failures["failures"].as_array().unwrap().len(), 2);
+    assert!(
+        source_failures["failures"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|failure| failure["source"] == "jira"
+                && failure["kind"] == "missing_token"
+                && failure["rerun_command"]
+                    .as_str()
+                    .unwrap()
+                    .contains("shiplog intake --config"))
+    );
+    assert!(
+        report_json["artifacts"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|artifact| artifact["path"]
+                .as_str()
+                .unwrap()
+                .ends_with("source.failures.json")),
+        "intake report should expose the source failure receipt artifact"
+    );
     assert!(report_md.contains("## Skipped Sources"));
     assert!(report_md.contains("## Repair Sources"));
     assert!(report_md.contains("- Jira: missing JIRA_TOKEN"));

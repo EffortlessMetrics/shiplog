@@ -324,6 +324,7 @@ out/<run_id>/
   workstreams.suggested.yaml      # Auto-generated workstream suggestions
   ledger.events.jsonl             # Canonical, append-only event log
   coverage.manifest.json          # What was queried, completeness, gaps
+  source.failures.json            # Present when configured sources failed
   bundle.manifest.json            # File checksums for integrity verification
   intake.report.md                # Review rescue checklist and next actions
   intake.report.json              # Structured intake report for tooling
