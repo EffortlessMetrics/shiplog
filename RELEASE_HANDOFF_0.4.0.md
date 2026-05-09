@@ -1,16 +1,19 @@
-# Release Handoff: v0.4.0
+# Release Record: v0.4.0
 
-Date prepared: 2026-05-09 UTC
-Release theme: Review Rescue
-Release status: prepared, not published
-Source commit: use the merge commit for the v0.4.0 release-prep PR
+Date: 2026-05-09 UTC
+Release: <https://github.com/EffortlessMetrics/shiplog/releases/tag/v0.4.0>
+Release workflow: <https://github.com/EffortlessMetrics/shiplog/actions/runs/25595483715>
+Source commit: `ac9993470ba6234380910b67a02c9815d60db94c`
 
 ## Status
 
-`shiplog v0.4.0` is version-aligned and ready for final proof, publication,
-tagging, release-asset generation, and install smoke. Do not describe v0.4.0 as
-shipped until crates.io, GitHub release assets, checksums, and install smoke
-have all been verified.
+`shiplog v0.4.0` has been published to crates.io, tagged on GitHub, built for
+all release targets, and smoke-tested from both crates.io and the downloaded
+Windows release asset.
+
+This file was originally the v0.4.0 handoff. It now records the shipped release
+state so future work can start from verified public evidence instead of the
+pre-release runbook.
 
 ## Release Summary
 
@@ -40,7 +43,7 @@ line:
 
 ## Published Crates
 
-Publish to crates.io in dependency order:
+Published to crates.io in dependency order:
 
 1. `shiplog-ids`
 2. `shiplog-schema`
@@ -72,44 +75,32 @@ Non-publishable:
 
 ## Release Validation
 
-Before publication:
+Pre-publish:
 
 ```bash
-git switch main
-git pull --ff-only origin main
 scripts/package-proof.sh
 ```
 
-Publication is manual and ordered. For each package:
+Publication:
 
 ```bash
 cargo publish -p <package> --dry-run
 cargo publish -p <package>
 ```
 
-Downstream dry-runs can fail until upstream `0.4.0` crates are visible in the
-crates.io index. Resume dry-runs with:
-
-```bash
-scripts/publish-dry-run.sh --from <package>
-```
-
-After all crates are published:
+After all crates were published:
 
 ```bash
 scripts/publish-dry-run.sh
 ```
 
-Then tag:
+The final dry-run completed successfully after every upstream `0.4.0` crate was
+visible in the crates.io index.
 
-```bash
-git tag -a v0.4.0 -m "Release v0.4.0"
-git push origin v0.4.0
-```
+## GitHub Release Assets
 
-## Expected GitHub Release Assets
-
-The release workflow should produce:
+The GitHub release workflow completed successfully and the public release page
+returned HTTP 200. Uploaded assets:
 
 - `shiplog-x86_64-unknown-linux-gnu`
 - `shiplog-x86_64-apple-darwin`
@@ -117,15 +108,12 @@ The release workflow should produce:
 - `shiplog-x86_64-pc-windows-msvc.exe`
 - `SHA256SUMS.txt`
 
-## Post-Release Verification
+The assets were downloaded from the public release URLs and verified against
+`SHA256SUMS.txt`.
 
-After the tag workflow completes:
+## Smoke Tests
 
-```bash
-scripts/verify-release.sh v0.4.0
-```
-
-Also smoke the installed CLI path explicitly:
+The crates.io install smoke was run under an isolated install root:
 
 ```bash
 cargo install shiplog --version 0.4.0 --locked
@@ -136,6 +124,31 @@ shiplog review --help
 shiplog share verify manager --help
 shiplog share verify public --help
 ```
+
+The downloaded Windows release binary was also smoke-tested with:
+
+```bash
+shiplog-x86_64-pc-windows-msvc.exe --version
+shiplog-x86_64-pc-windows-msvc.exe --help
+shiplog-x86_64-pc-windows-msvc.exe init --dry-run
+shiplog-x86_64-pc-windows-msvc.exe collect --help
+shiplog-x86_64-pc-windows-msvc.exe collect multi --help
+shiplog-x86_64-pc-windows-msvc.exe render --help
+```
+
+Both paths reported `shiplog 0.4.0`.
+
+Future releases can repeat the public verification path with:
+
+```bash
+scripts/verify-release.sh v0.4.0
+```
+
+The helper checks the GitHub release state, expected binary assets,
+`SHA256SUMS.txt`, crates.io install, installed-binary smoke, and the
+current-platform downloaded release asset. During this release, the GitHub API
+became rate-limited after the tag workflow completed, so the asset verification
+was repeated directly through public release download URLs.
 
 ## Known Release Notes
 
