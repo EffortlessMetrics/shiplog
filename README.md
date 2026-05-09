@@ -39,16 +39,24 @@ shiplog is not an analytics dashboard. It is not AI-generated narrative. It prod
 
 ## Installation
 
-### From crates.io (recommended)
+### GitHub release binary
+
+Download the release binary for your platform when you need shiplog quickly and
+do not already have Rust installed. See [docs/install.md](docs/install.md) for
+Windows, macOS, Linux, and checksum verification commands.
+
+### From crates.io
+
+Use Cargo when you already have a Rust toolchain:
 
 ```bash
-cargo install shiplog
+cargo install shiplog --locked
 ```
 
-With optional LLM-assisted workstream clustering:
+Install optional LLM-assisted workstream clustering explicitly:
 
 ```bash
-cargo install shiplog --features llm
+cargo install shiplog --locked --features llm
 ```
 
 ### From source
@@ -78,7 +86,7 @@ cargo run -p shiplog -- <subcommand>
 If the review form is already open, start here:
 
 ```bash
-cargo install shiplog
+shiplog --version
 shiplog intake --last-6-months --explain
 shiplog open intake-report --latest
 shiplog open packet --latest

@@ -11,6 +11,8 @@ pass and release verification.
   x86_64, and `SHA256SUMS.txt` assets.
 - The crates.io install smoke and downloaded Windows binary smoke both reported
   `shiplog 0.3.0`.
+- `docs/install.md` documents release binaries, checksum verification,
+  `cargo install`, and package-manager tracking notes.
 - The workspace follows the package invariant: production workspace crates are
   publishable public surfaces, and `publish = false` is reserved for dev-only
   packages.
