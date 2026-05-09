@@ -111,6 +111,7 @@ Rendering and sharing:
 - `shiplog share manager|public`
 - `shiplog share verify manager|public`
 - `shiplog share verify public --strict`
+- `shiplog share verify manifest --profile manager|public`
 
 Default CLI packets open with `Coverage and Limits`, then summary,
 workstreams, receipts, and file artifacts. Internal and manager selected-profile
@@ -128,7 +129,9 @@ public packet for obvious raw URLs and original names; it is a guardrail, not a
 perfect-privacy claim. Successful `share manager|public` writes
 `profiles/<profile>/share.manifest.json` as a postflight receipt with the
 profile, redaction-key source, coverage status, skipped-source count, public
-strict-scan result, output paths, and SHA-256 checksums.
+strict-scan result, output paths, and SHA-256 checksums. `share verify manifest`
+re-checks that receipt against the run packet and optional zip without
+rendering or requiring the redaction key again.
 
 Review evidence debt is packet-quality focused. It surfaces skipped sources,
 partial coverage, missing or over-selected receipts, broad/misc/thin

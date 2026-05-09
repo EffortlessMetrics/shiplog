@@ -238,6 +238,13 @@ fn documented_help_commands_stay_available() {
         .stdout(predicate::str::contains("--strict"));
 
     shiplog_cmd()
+        .args(["share", "verify", "manifest", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--latest"))
+        .stdout(predicate::str::contains("--profile"));
+
+    shiplog_cmd()
         .args(["review", "--help"])
         .assert()
         .success()

@@ -1146,6 +1146,8 @@ enum ShareVerifyCommand {
     Manager(ShareVerifyOptions),
     /// Verify the public-safe share profile without rendering it.
     Public(ShareVerifyOptions),
+    /// Verify an existing share.manifest.json without rendering anything.
+    Manifest(ShareManifestVerifyOptions),
 }
 
 #[derive(Args, Debug)]
@@ -1165,6 +1167,39 @@ struct ShareVerifyOptions {
     /// For public verification, scan the rendered public packet for obvious raw URLs/names.
     #[arg(long)]
     strict: bool,
+}
+
+#[derive(Args, Debug)]
+struct ShareManifestVerifyOptions {
+    /// Output directory containing run folders.
+    #[arg(long, default_value = "./out")]
+    out: PathBuf,
+    /// Run ID to verify (uses most recent if not specified).
+    #[arg(long)]
+    run: Option<String>,
+    /// Verify the most recent run explicitly.
+    #[arg(long)]
+    latest: bool,
+    /// Share profile whose manifest should be verified.
+    #[arg(long, value_enum)]
+    profile: ShareManifestProfile,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
+enum ShareManifestProfile {
+    /// Manager-safe share manifest.
+    Manager,
+    /// Public-safe share manifest.
+    Public,
+}
+
+impl From<ShareManifestProfile> for BundleProfile {
+    fn from(value: ShareManifestProfile) -> Self {
+        match value {
+            ShareManifestProfile::Manager => Self::Manager,
+            ShareManifestProfile::Public => Self::Public,
+        }
+    }
 }
 
 #[derive(Subcommand, Debug, Clone)]
@@ -1609,7 +1644,7 @@ struct SourceFailureRecord {
     rerun_command: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 struct ShareManifest {
     schema_version: u8,
     profile: String,
@@ -1624,14 +1659,14 @@ struct ShareManifest {
     checksum: ShareManifestChecksum,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 struct ShareManifestStrictVerifyResult {
     status: String,
     source: Option<String>,
     findings: Vec<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 struct ShareManifestChecksum {
     algorithm: String,
     packet_sha256: String,
@@ -8657,6 +8692,9 @@ fn main() -> Result<()> {
                 ShareVerifyCommand::Public(options) => {
                     verify_share_profile(options, BundleProfile::Public)?;
                 }
+                ShareVerifyCommand::Manifest(options) => {
+                    verify_share_manifest(options)?;
+                }
             },
         },
 
@@ -10156,6 +10194,235 @@ fn sha256_file(path: &Path) -> Result<String> {
         hasher.update(&buffer[..read]);
     }
     Ok(hex::encode(hasher.finalize()))
+}
+
+fn verify_share_manifest(options: ShareManifestVerifyOptions) -> Result<()> {
+    let bundle_profile: BundleProfile = options.profile.into();
+    let run_dir = resolve_render_run_dir(&options.out, options.run, options.latest)?;
+    let profile_dir = run_dir.join("profiles").join(bundle_profile.as_str());
+    let manifest_path = profile_dir.join(SHARE_MANIFEST_FILENAME);
+    let manifest_text = std::fs::read_to_string(&manifest_path)
+        .with_context(|| format!("read {}", manifest_path.display()))?;
+    ensure_no_secret_sentinels(SHARE_MANIFEST_FILENAME, &manifest_text)?;
+    let manifest: ShareManifest = serde_json::from_str(&manifest_text)
+        .with_context(|| format!("parse {}", manifest_path.display()))?;
+    let coverage = load_coverage_manifest(&run_dir)?;
+
+    let mut good = Vec::new();
+    let mut attention = Vec::new();
+
+    if manifest.schema_version != SHARE_MANIFEST_SCHEMA_VERSION {
+        anyhow::bail!(
+            "unsupported share manifest schema_version {}; supported version is {SHARE_MANIFEST_SCHEMA_VERSION}",
+            manifest.schema_version
+        );
+    }
+    good.push(format!("Manifest schema v{}", manifest.schema_version));
+
+    if manifest.profile != bundle_profile.as_str() {
+        anyhow::bail!(
+            "share manifest profile mismatch: expected {}, found {}",
+            bundle_profile,
+            manifest.profile
+        );
+    }
+    good.push(format!("Profile matches {}", bundle_profile.as_str()));
+
+    if manifest.input_run_id != coverage.run_id.to_string() {
+        anyhow::bail!(
+            "share manifest run mismatch: expected {}, found {}",
+            coverage.run_id,
+            manifest.input_run_id
+        );
+    }
+    good.push(format!("Run id matches {}", coverage.run_id));
+
+    if manifest.coverage_completeness != coverage.completeness.to_string() {
+        attention.push(format!(
+            "Coverage status changed from {} to {}.",
+            manifest.coverage_completeness, coverage.completeness
+        ));
+    } else {
+        good.push(format!(
+            "Coverage status recorded as {}",
+            manifest.coverage_completeness
+        ));
+    }
+
+    let skipped_source_count = configured_source_skips(&coverage.warnings).len();
+    if manifest.skipped_source_count != skipped_source_count {
+        attention.push(format!(
+            "Skipped-source count changed from {} to {}.",
+            manifest.skipped_source_count, skipped_source_count
+        ));
+    } else {
+        good.push(format!(
+            "Skipped-source count recorded as {}",
+            manifest.skipped_source_count
+        ));
+    }
+
+    if manifest.checksum.algorithm != "sha256" {
+        anyhow::bail!(
+            "share manifest checksum algorithm {:?} is not supported",
+            manifest.checksum.algorithm
+        );
+    }
+    let packet_path =
+        resolve_share_manifest_run_path(&run_dir, &manifest.packet_path, "packet_path")?;
+    if !packet_path.exists() {
+        anyhow::bail!("share packet missing: {}", packet_path.display());
+    }
+    let packet_sha256 = sha256_file(&packet_path)?;
+    if packet_sha256 != manifest.checksum.packet_sha256 {
+        anyhow::bail!(
+            "share packet checksum mismatch for {}",
+            packet_path.display()
+        );
+    }
+    good.push(format!("Packet checksum matches {}", manifest.packet_path));
+
+    match (&manifest.zip_path, &manifest.checksum.zip_sha256) {
+        (Some(zip_path_raw), Some(expected_sha256)) => {
+            let zip_path = resolve_share_manifest_zip_path(&run_dir, zip_path_raw)?;
+            if !zip_path.exists() {
+                anyhow::bail!("share zip missing: {}", zip_path.display());
+            }
+            let zip_sha256 = sha256_file(&zip_path)?;
+            if &zip_sha256 != expected_sha256 {
+                anyhow::bail!("share zip checksum mismatch for {}", zip_path.display());
+            }
+            good.push(format!("Zip checksum matches {zip_path_raw}"));
+        }
+        (None, None) => good.push("No zip recorded".to_string()),
+        (Some(_), None) => anyhow::bail!("share manifest records zip_path without zip checksum"),
+        (None, Some(_)) => anyhow::bail!("share manifest records zip checksum without zip_path"),
+    }
+
+    match bundle_profile {
+        BundleProfile::Public => {
+            if !["passed", "attention"].contains(&manifest.strict_verify_result.status.as_str()) {
+                anyhow::bail!(
+                    "public share manifest strict_verify_result status {:?} is not supported",
+                    manifest.strict_verify_result.status
+                );
+            }
+            if manifest.strict_verify_result.source.is_none() {
+                attention.push("Public strict result does not record a scan source.".to_string());
+            }
+            if manifest.strict_verify_result.findings.is_empty() {
+                good.push(format!(
+                    "Public strict result recorded as {}",
+                    manifest.strict_verify_result.status
+                ));
+            } else {
+                attention.push(format!(
+                    "Public strict result recorded {} finding(s).",
+                    manifest.strict_verify_result.findings.len()
+                ));
+            }
+        }
+        BundleProfile::Manager => {
+            if manifest.strict_verify_result.status != "not_applicable" {
+                attention.push(format!(
+                    "Manager strict result is {}, expected not_applicable.",
+                    manifest.strict_verify_result.status
+                ));
+            } else {
+                good.push(
+                    "Strict public verification is not applicable to manager profile".to_string(),
+                );
+            }
+        }
+        BundleProfile::Internal => {}
+    }
+
+    if !["explicit", "env", "config"].contains(&manifest.redaction_key_source.as_str()) {
+        attention.push(format!(
+            "Redaction key source {:?} is not recognized.",
+            manifest.redaction_key_source
+        ));
+    } else {
+        good.push(format!(
+            "Redaction key source recorded as {}",
+            manifest.redaction_key_source
+        ));
+    }
+
+    println!("Share manifest verify: {bundle_profile}");
+    println!("Run: {}", coverage.run_id);
+    println!("Directory: {}", run_dir.display());
+    println!("Manifest: {}", manifest_path.display());
+    println!();
+    println!("Good:");
+    for item in &good {
+        println!("- {item}");
+    }
+    println!();
+    println!("Needs attention:");
+    if attention.is_empty() {
+        println!("- None");
+    } else {
+        for item in &attention {
+            println!("- {item}");
+        }
+    }
+    println!("Result: share manifest verified.");
+
+    Ok(())
+}
+
+fn resolve_share_manifest_run_path(run_dir: &Path, raw: &str, field: &str) -> Result<PathBuf> {
+    let path = PathBuf::from(raw);
+    ensure_relative_manifest_path(&path, field, false)?;
+    Ok(run_dir.join(path))
+}
+
+fn resolve_share_manifest_zip_path(run_dir: &Path, raw: &str) -> Result<PathBuf> {
+    let path = PathBuf::from(raw);
+    ensure_relative_manifest_path(&path, "zip_path", true)?;
+    Ok(run_dir.join(path))
+}
+
+fn ensure_relative_manifest_path(path: &Path, field: &str, allow_parent_file: bool) -> Result<()> {
+    if path.is_absolute() {
+        anyhow::bail!("share manifest {field} must be relative")
+    }
+
+    let components: Vec<_> = path.components().collect();
+    if components.is_empty() {
+        anyhow::bail!("share manifest {field} must not be empty")
+    }
+    if allow_parent_file
+        && components.len() == 2
+        && matches!(components[0], std::path::Component::ParentDir)
+        && matches!(components[1], std::path::Component::Normal(_))
+    {
+        return Ok(());
+    }
+    if components
+        .iter()
+        .any(|component| matches!(component, std::path::Component::ParentDir))
+    {
+        anyhow::bail!("share manifest {field} must not traverse outside the run directory")
+    }
+    if components.iter().any(|component| {
+        matches!(
+            component,
+            std::path::Component::Prefix(_) | std::path::Component::RootDir
+        )
+    }) {
+        anyhow::bail!("share manifest {field} must be a relative path")
+    }
+
+    Ok(())
+}
+
+fn load_coverage_manifest(run_dir: &Path) -> Result<CoverageManifest> {
+    let path = run_dir.join("coverage.manifest.json");
+    let text =
+        std::fs::read_to_string(&path).with_context(|| format!("read {}", path.display()))?;
+    serde_json::from_str(&text).with_context(|| format!("parse {}", path.display()))
 }
 
 fn verify_share_profile(options: ShareVerifyOptions, bundle_profile: BundleProfile) -> Result<()> {

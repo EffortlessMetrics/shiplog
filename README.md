@@ -315,7 +315,10 @@ shared, which key source was used, and the packet/zip checksums. Use
 warnings, skipped sources, and redaction-key readiness without writing share
 artifacts. For public packets, add `--strict` to scan the rendered public view
 for obvious raw URLs and original names; this is a guardrail, not a guarantee of
-perfect privacy.
+perfect privacy. Use
+`shiplog share verify manifest --profile manager --latest` or
+`shiplog share verify manifest --profile public --latest` to re-check an
+existing share receipt, packet checksum, and optional zip checksum.
 
 ## Output layout
 
@@ -353,6 +356,7 @@ out/<run_id>/
 | `render` | Re-render packet from existing ledger and workstreams |
 | `share manager/public` | Render a manager- or public-safe packet with fail-closed redaction |
 | `share verify manager/public` | Preflight a share profile without writing share artifacts |
+| `share verify manifest` | Verify an existing share manifest and packet/zip checksums |
 | `refresh <source>` | Re-fetch events while preserving curated `workstreams.yaml` |
 | `workstreams list/validate/create/rename/move/split/receipts/receipt/delete` | Inspect, validate, and safely edit workstream curation |
 | `runs list/show/compare` | Discover runs, inspect their artifacts, and compare source/workstream changes |

@@ -1004,6 +1004,15 @@ fn share_help_shows_profiles_and_safety_options() {
         .stdout(predicate::str::contains("--run"))
         .stdout(predicate::str::contains("--redact-key"))
         .stdout(predicate::str::contains("--strict"));
+
+    shiplog_cmd()
+        .args(["share", "verify", "manifest", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--out"))
+        .stdout(predicate::str::contains("--latest"))
+        .stdout(predicate::str::contains("--run"))
+        .stdout(predicate::str::contains("--profile"));
 }
 
 #[test]
@@ -7676,6 +7685,190 @@ fn share_public_with_explicit_key_can_write_zip() {
             .as_str()
             .is_some_and(|value| value.len() == 64)
     );
+}
+
+#[test]
+fn share_verify_manifest_public_validates_packet_and_zip_receipts() {
+    let tmp = TempDir::new().unwrap();
+    collect_json_into(tmp.path());
+
+    shiplog_cmd()
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args([
+            "share",
+            "public",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+            "--redact-key",
+            "stable-test-key",
+            "--zip",
+        ])
+        .assert()
+        .success();
+
+    let assert = shiplog_cmd()
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args([
+            "share",
+            "verify",
+            "manifest",
+            "--profile",
+            "public",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+        ])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
+
+    assert!(stdout.contains("Share manifest verify: public"));
+    assert!(stdout.contains("Manifest schema v1"));
+    assert!(stdout.contains("Profile matches public"));
+    assert!(stdout.contains("Packet checksum matches profiles/public/packet.md"));
+    assert!(stdout.contains("Zip checksum matches ../run_fixture.public.zip"));
+    assert!(stdout.contains("Public strict result recorded as passed"));
+    assert!(stdout.contains("Result: share manifest verified."));
+    assert!(!stdout.contains("stable-test-key"));
+}
+
+#[test]
+fn share_verify_manifest_detects_packet_checksum_mismatch() {
+    let tmp = TempDir::new().unwrap();
+    collect_json_into(tmp.path());
+
+    shiplog_cmd()
+        .env("SHIPLOG_REDACT_KEY", "stable-env-key")
+        .args([
+            "share",
+            "manager",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+        ])
+        .assert()
+        .success();
+    std::fs::write(
+        tmp.path().join("run_fixture/profiles/manager/packet.md"),
+        "# Tampered manager packet\n",
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args([
+            "share",
+            "verify",
+            "manifest",
+            "--profile",
+            "manager",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("share packet checksum mismatch"));
+}
+
+#[test]
+fn share_verify_manifest_rejects_profile_mismatch() {
+    let tmp = TempDir::new().unwrap();
+    collect_json_into(tmp.path());
+
+    shiplog_cmd()
+        .env("SHIPLOG_REDACT_KEY", "stable-env-key")
+        .args([
+            "share",
+            "manager",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+        ])
+        .assert()
+        .success();
+    let public_manifest_dir = tmp.path().join("run_fixture/profiles/public");
+    std::fs::create_dir_all(&public_manifest_dir).unwrap();
+    std::fs::copy(
+        tmp.path()
+            .join("run_fixture/profiles/manager/share.manifest.json"),
+        public_manifest_dir.join("share.manifest.json"),
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args([
+            "share",
+            "verify",
+            "manifest",
+            "--profile",
+            "public",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "share manifest profile mismatch: expected public, found manager",
+        ));
+}
+
+#[test]
+fn share_verify_manifest_rejects_packet_path_traversal() {
+    let tmp = TempDir::new().unwrap();
+    collect_json_into(tmp.path());
+
+    shiplog_cmd()
+        .env("SHIPLOG_REDACT_KEY", "stable-env-key")
+        .args([
+            "share",
+            "manager",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+        ])
+        .assert()
+        .success();
+    let manifest_path = tmp
+        .path()
+        .join("run_fixture/profiles/manager/share.manifest.json");
+    let mut manifest: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&manifest_path).unwrap()).unwrap();
+    manifest["packet_path"] = serde_json::json!("../outside.md");
+    std::fs::write(
+        &manifest_path,
+        format!("{}\n", serde_json::to_string_pretty(&manifest).unwrap()),
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args([
+            "share",
+            "verify",
+            "manifest",
+            "--profile",
+            "manager",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "share manifest packet_path must not traverse outside the run directory",
+        ));
 }
 
 #[test]

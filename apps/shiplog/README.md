@@ -91,6 +91,7 @@ Output goes to `out/<run_id>/` containing `packet.md`, `ledger.events.jsonl`, `c
 | `render` | Re-render packet from existing ledger and workstreams |
 | `share manager/public` | Render manager/public-safe outputs with fail-closed redaction-key checks |
 | `share verify manager/public` | Preflight share readiness without writing share artifacts |
+| `share verify manifest` | Verify an existing share manifest and packet/zip checksums |
 | `refresh <source>` | Re-fetch events while preserving curated `workstreams.yaml` |
 | `review` | Inspect coverage, evidence debt, fixups, and next commands without writing artifacts |
 | `workstreams list/validate/create/rename/move/split/receipts/receipt/delete` | Inspect, validate, and safely edit workstream curation |
