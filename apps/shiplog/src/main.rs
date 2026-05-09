@@ -400,6 +400,9 @@ enum ReviewCommand {
         /// Print only runnable command lines.
         #[arg(long)]
         commands_only: bool,
+        /// Print only journal-add templates for missing human context.
+        #[arg(long)]
+        journal_template: bool,
     },
 }
 
@@ -7645,9 +7648,10 @@ fn main() -> Result<()> {
                 run,
                 latest,
                 commands_only,
+                journal_template,
             }) => {
                 let run_dir = resolve_render_run_dir(&out, run, latest)?;
-                print_review_fixups(&run_dir, &out, commands_only)?;
+                print_review_fixups(&run_dir, &out, commands_only, journal_template)?;
             }
             None => {
                 let run_dir = resolve_render_run_dir(&options.out, options.run, options.latest)?;
@@ -9863,7 +9867,18 @@ fn print_review(run_dir: &Path, strict: bool) -> Result<()> {
     Ok(())
 }
 
-fn print_review_fixups(run_dir: &Path, out_dir: &Path, commands_only: bool) -> Result<()> {
+fn print_review_fixups(
+    run_dir: &Path,
+    out_dir: &Path,
+    commands_only: bool,
+    journal_template: bool,
+) -> Result<()> {
+    if commands_only && journal_template {
+        anyhow::bail!(
+            "review fixups accepts either --commands-only or --journal-template, not both"
+        );
+    }
+
     let ingest =
         load_run_ingest(run_dir).with_context(|| format!("load run {}", run_dir.display()))?;
     let coverage = ingest.coverage;
@@ -9880,6 +9895,18 @@ fn print_review_fixups(run_dir: &Path, out_dir: &Path, commands_only: bool) -> R
         &validation_errors,
         &signals,
     );
+    if journal_template {
+        let templates = review_journal_templates(&signals);
+        if templates.is_empty() {
+            println!("# No journal templates found for {run_id}.");
+        } else {
+            for workstream in templates.iter().take(5) {
+                println!("{}", journal_add_template_next_step(&workstream.title));
+            }
+        }
+        return Ok(());
+    }
+
     if commands_only {
         if fixups.is_empty() {
             println!(
@@ -9934,6 +9961,24 @@ fn print_review_fixups(run_dir: &Path, out_dir: &Path, commands_only: bool) -> R
     );
 
     Ok(())
+}
+
+fn review_journal_templates<'a>(signals: &'a WorkstreamQualitySignals<'a>) -> Vec<&'a Workstream> {
+    let mut seen = HashSet::new();
+    let mut templates = Vec::new();
+
+    for workstream in signals
+        .manual_context_workstreams
+        .iter()
+        .chain(signals.ticket_only_workstreams.iter())
+        .chain(signals.code_only_workstreams.iter())
+    {
+        if seen.insert(workstream.title.clone()) {
+            templates.push(*workstream);
+        }
+    }
+
+    templates
 }
 
 fn review_fixups(
@@ -10493,6 +10538,16 @@ fn journal_add_next_step(workstream_title: &str) -> String {
         Utc::now().date_naive(),
         quote_cli_value(&format!("Outcome note for {workstream_title}")),
         quote_cli_value(workstream_title)
+    )
+}
+
+fn journal_add_template_next_step(workstream_title: &str) -> String {
+    format!(
+        "shiplog journal add --date {} --title {} --workstream {} --description {}",
+        Utc::now().date_naive(),
+        quote_cli_value(&format!("Outcome note for {workstream_title}")),
+        quote_cli_value(workstream_title),
+        quote_cli_value("<replace with factual context or outcome>")
     )
 }
 

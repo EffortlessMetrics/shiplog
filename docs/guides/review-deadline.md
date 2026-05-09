@@ -43,10 +43,13 @@ Use fixups to find the highest-value curation actions.
 ```bash
 shiplog review fixups --latest
 shiplog review fixups --latest --commands-only
+shiplog review fixups --latest --journal-template
 ```
 
 The first command explains the issues. The second prints only copy-ready
-commands. Typical fixups are:
+commands. The third prints only factual `journal add` templates for missing
+human context; replace the placeholder description before adding the entry.
+Typical fixups are:
 
 - select anchor receipts for a workstream;
 - add manual outcome context for a broad workstream;

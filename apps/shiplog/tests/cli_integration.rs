@@ -775,7 +775,8 @@ fn review_fixups_help_shows_run_options() {
         .stdout(predicate::str::contains("--out"))
         .stdout(predicate::str::contains("--latest"))
         .stdout(predicate::str::contains("--run"))
-        .stdout(predicate::str::contains("--commands-only"));
+        .stdout(predicate::str::contains("--commands-only"))
+        .stdout(predicate::str::contains("--journal-template"));
 }
 
 #[test]
@@ -4314,6 +4315,52 @@ fn review_fixups_ranks_curation_actions_without_writing_artifacts() {
     assert!(commands[2].starts_with("shiplog workstreams split --out"));
     assert!(commands[3].starts_with("shiplog journal add --date"));
     assert!(commands.iter().all(|line| line.starts_with("shiplog ")));
+
+    let templates_assert = shiplog_cmd()
+        .args([
+            "review",
+            "fixups",
+            "--out",
+            out.to_str().unwrap(),
+            "--run",
+            "run_fixups",
+            "--journal-template",
+        ])
+        .assert()
+        .success();
+    let templates_stdout = String::from_utf8(templates_assert.get_output().stdout.clone()).unwrap();
+    assert!(!templates_stdout.contains("Review fixups:"));
+    assert!(!templates_stdout.contains("Top fixups:"));
+    assert!(!templates_stdout.contains("shiplog workstreams"));
+    let templates: Vec<_> = templates_stdout
+        .lines()
+        .filter(|line| !line.trim().is_empty())
+        .collect();
+    assert_eq!(
+        templates.len(),
+        1,
+        "journal-template should dedupe repeated context gaps for one workstream"
+    );
+    assert!(templates[0].starts_with("shiplog journal add --date"));
+    assert!(templates[0].contains("--title \"Outcome note for acme/platform\""));
+    assert!(templates[0].contains("--workstream \"acme/platform\""));
+    assert!(templates[0].contains("--description \"<replace with factual context or outcome>\""));
+
+    shiplog_cmd()
+        .args([
+            "review",
+            "fixups",
+            "--out",
+            out.to_str().unwrap(),
+            "--latest",
+            "--commands-only",
+            "--journal-template",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "either --commands-only or --journal-template",
+        ));
 
     assert_eq!(
         packet_before,

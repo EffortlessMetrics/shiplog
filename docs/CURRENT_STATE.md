@@ -77,6 +77,8 @@ Curation and inspection:
 - `shiplog review`
 - `shiplog review weekly`
 - `shiplog review fixups`
+- `shiplog review fixups --commands-only`
+- `shiplog review fixups --journal-template`
 - `shiplog review --strict`
 - `shiplog open packet`
 - `shiplog open workstreams`
