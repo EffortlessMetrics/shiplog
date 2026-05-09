@@ -751,7 +751,8 @@ fn doctor_help_shows_options() {
         .assert()
         .success()
         .stdout(predicate::str::contains("--config"))
-        .stdout(predicate::str::contains("--source"));
+        .stdout(predicate::str::contains("--source"))
+        .stdout(predicate::str::contains("--repair-plan"));
 }
 
 #[test]
@@ -1744,6 +1745,131 @@ profile = "manager"
         .failure()
         .stdout(predicate::str::contains("Redaction: error"))
         .stdout(predicate::str::contains("SHIPLOG_REDACT_KEY"));
+}
+
+#[test]
+fn doctor_repair_plan_reports_missing_token_without_writing_outputs() {
+    let tmp = TempDir::new().unwrap();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["init"])
+        .assert()
+        .success();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .args(["doctor", "--repair-plan"])
+        .assert()
+        .failure()
+        .stdout(predicate::str::contains("Repair plan:"))
+        .stdout(predicate::str::contains("GitHub [missing_token]"))
+        .stdout(predicate::str::contains("export GITHUB_TOKEN=..."))
+        .stdout(predicate::str::contains(
+            "shiplog doctor --config \"shiplog.toml\" --repair-plan",
+        ));
+
+    assert!(
+        !tmp.path().join("out").exists(),
+        "doctor repair plan should not write run artifacts"
+    );
+}
+
+#[test]
+fn doctor_repair_plan_succeeds_for_fixture_safe_sources_without_writing_outputs() {
+    let tmp = TempDir::new().unwrap();
+    let fixtures = fixture_dir();
+    std::fs::copy(
+        fixtures.join("ledger.events.jsonl"),
+        tmp.path().join("ledger.events.jsonl"),
+    )
+    .unwrap();
+    std::fs::copy(
+        fixtures.join("coverage.manifest.json"),
+        tmp.path().join("coverage.manifest.json"),
+    )
+    .unwrap();
+    write_manual_events(&tmp.path().join("manual_events.yaml"));
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[defaults]
+out = "./out"
+window = "last-6-months"
+profile = "internal"
+
+[sources.json]
+enabled = true
+events = "./ledger.events.jsonl"
+coverage = "./coverage.manifest.json"
+
+[sources.manual]
+enabled = true
+events = "./manual_events.yaml"
+"#,
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["doctor", "--repair-plan"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Repair plan:"))
+        .stdout(predicate::str::contains("No repair actions found."));
+
+    assert!(
+        !tmp.path().join("out").exists(),
+        "doctor repair plan should not create defaults.out"
+    );
+}
+
+#[test]
+fn doctor_repair_plan_classifies_source_setup_issues() {
+    let tmp = TempDir::new().unwrap();
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[defaults]
+profile = "manager"
+
+[sources.gitlab]
+enabled = true
+user = "steven"
+state = "finished"
+
+[sources.jira]
+enabled = true
+user = "712020:account-id"
+instance = "company.atlassian.net"
+
+[sources.linear]
+enabled = true
+status = "done"
+
+[sources.manual]
+enabled = true
+events = "./missing_manual_events.yaml"
+"#,
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args(["doctor", "--repair-plan"])
+        .assert()
+        .failure()
+        .stdout(predicate::str::contains("Redaction [missing_token]"))
+        .stdout(predicate::str::contains("GitLab [invalid_filter]"))
+        .stdout(predicate::str::contains("Jira [missing_token]"))
+        .stdout(predicate::str::contains("Linear [missing_identity]"))
+        .stdout(predicate::str::contains("Manual [missing_file]"))
+        .stdout(predicate::str::contains(
+            "shiplog doctor --config \"shiplog.toml\" --repair-plan",
+        ));
 }
 
 #[test]

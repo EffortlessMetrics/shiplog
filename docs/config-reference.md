@@ -11,13 +11,16 @@ Use these commands before collecting:
 shiplog config validate --config shiplog.toml
 shiplog config explain --config shiplog.toml
 shiplog doctor --config shiplog.toml
+shiplog doctor --config shiplog.toml --repair-plan
 ```
 
 `config validate` checks the file shape, configured date window, enabled source
 settings, enum values, and local paths without requiring provider tokens.
 `config explain` prints the resolved defaults and enabled sources. `doctor`
 adds readiness checks such as token presence, identity discovery, output
-writability, and redaction-key safety.
+writability, and redaction-key safety. `doctor --repair-plan` is read-only: it
+classifies setup issues and prints source-by-source repair commands without
+collecting data or writing run artifacts.
 
 For Jira and Linear identity values, run:
 
