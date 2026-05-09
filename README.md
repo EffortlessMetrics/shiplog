@@ -135,6 +135,8 @@ creates a new run and reuses the latest prior `workstreams.yaml` when one
 exists, without overwriting that earlier curation or `manual_events.yaml`.
 For repeat cycles, define `[periods."review-cycle"]` in `shiplog.toml` and run
 `shiplog intake --period review-cycle`.
+Use `shiplog periods list` or `shiplog periods explain review-cycle` to see the
+resolved window, latest matching run, and copy-ready intake/review commands.
 The structured report contract is documented in
 [docs/schemas/intake-report-v1.md](docs/schemas/intake-report-v1.md).
 
@@ -194,6 +196,7 @@ Named periods from `[periods.<name>]` are also supported:
 ```bash
 shiplog collect multi --period review-cycle
 shiplog review --period review-cycle
+shiplog periods explain review-cycle
 ```
 
 For repeat review cycles, compare a prior run with the latest one:

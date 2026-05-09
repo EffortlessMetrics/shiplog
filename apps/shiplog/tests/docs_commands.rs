@@ -35,6 +35,8 @@ fn config_reference_documents_current_surface() {
         "defaults.out",
         "defaults.window",
         "[periods.\"review-cycle\"]",
+        "shiplog periods list",
+        "shiplog periods explain review-cycle",
         "shiplog intake --period review-cycle",
         "shiplog collect multi --period 2026-H1",
         "shiplog review --period 2026-H1",
@@ -182,7 +184,8 @@ fn documented_help_commands_stay_available() {
         .stdout(predicate::str::contains("journal"))
         .stdout(predicate::str::contains("cache"))
         .stdout(predicate::str::contains("identify"))
-        .stdout(predicate::str::contains("report"));
+        .stdout(predicate::str::contains("report"))
+        .stdout(predicate::str::contains("periods"));
 
     shiplog_cmd()
         .args(["collect", "--help"])
@@ -212,6 +215,13 @@ fn documented_help_commands_stay_available() {
         .assert()
         .success()
         .stdout(predicate::str::contains("--repair-plan"));
+
+    shiplog_cmd()
+        .args(["periods", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("list"))
+        .stdout(predicate::str::contains("explain"));
 
     shiplog_cmd()
         .args(["render", "--help"])

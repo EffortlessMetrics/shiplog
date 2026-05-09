@@ -2533,6 +2533,117 @@ user = "octo"
         ));
 }
 
+#[test]
+fn periods_list_prints_named_windows_without_existing_runs() {
+    let tmp = TempDir::new().unwrap();
+    write_manual_events(&tmp.path().join("manual_events.yaml"));
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[periods."2026-H1"]
+since = "2026-01-01"
+until = "2026-07-01"
+
+[periods."review-cycle"]
+preset = "year:2025"
+
+[sources.manual]
+enabled = true
+events = "./manual_events.yaml"
+"#,
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["periods", "list", "--out", "out"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Configured periods:"))
+        .stdout(predicate::str::contains("- 2026-H1"))
+        .stdout(predicate::str::contains(
+            "definition: explicit 2026-01-01..2026-07-01",
+        ))
+        .stdout(predicate::str::contains("window: 2026-01-01..2026-07-01"))
+        .stdout(predicate::str::contains("latest run: none"))
+        .stdout(predicate::str::contains(
+            "shiplog intake --config \"shiplog.toml\" --out \"out\" --period \"2026-H1\"",
+        ))
+        .stdout(predicate::str::contains("- review-cycle"))
+        .stdout(predicate::str::contains("definition: preset year:2025"));
+}
+
+#[test]
+fn periods_explain_shows_latest_matching_run_and_next_commands() {
+    let tmp = TempDir::new().unwrap();
+    write_manual_events(&tmp.path().join("manual_events.yaml"));
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[periods."review-cycle"]
+preset = "year:2025"
+
+[sources.manual]
+enabled = true
+events = "./manual_events.yaml"
+"#,
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args([
+            "intake",
+            "--period",
+            "review-cycle",
+            "--out",
+            "out",
+            "--no-open",
+        ])
+        .assert()
+        .success();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["periods", "explain", "review-cycle", "--out", "out"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Period: review-cycle"))
+        .stdout(predicate::str::contains("Definition: preset year:2025"))
+        .stdout(predicate::str::contains("Window: 2025-01-01..2026-01-01"))
+        .stdout(predicate::str::contains("Latest run: "))
+        .stdout(predicate::str::contains("Coverage:"))
+        .stdout(predicate::str::contains(
+            "shiplog review --config \"shiplog.toml\" --out \"out\" --period \"review-cycle\"",
+        ));
+}
+
+#[test]
+fn periods_explain_unknown_period_fails_clearly() {
+    let tmp = TempDir::new().unwrap();
+    write_manual_events(&tmp.path().join("manual_events.yaml"));
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[periods."review-cycle"]
+preset = "year:2025"
+
+[sources.manual]
+enabled = true
+events = "./manual_events.yaml"
+"#,
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["periods", "explain", "missing"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("unknown period \"missing\""));
+}
+
 // ── 3. collect --help shows collect-specific options ───────────────────────
 
 #[test]
