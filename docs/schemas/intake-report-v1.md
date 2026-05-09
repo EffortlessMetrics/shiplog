@@ -17,6 +17,7 @@ Validate a generated report and its referenced artifacts with:
 shiplog report validate --latest
 shiplog report validate --path out/<run>/intake.report.json
 shiplog report summarize --latest
+shiplog report export-agent-pack --latest --output agent-pack.json
 ```
 
 ## Compatibility
@@ -181,3 +182,18 @@ high
 
 `writes` identifies commands that may create or modify Shiplog artifacts. UI and
 agent consumers should still require user confirmation before running any action.
+
+## Agent Pack Export
+
+Use `shiplog report export-agent-pack` when a downstream tool needs a compact
+view of the report's summary, gaps, repairs, fixups, actions, share status, and
+artifact paths:
+
+```bash
+shiplog report export-agent-pack --latest --output agent-pack.json
+```
+
+The export validates `intake.report.json` first and then writes a derived
+`agent-pack.json` using the schema documented in
+[agent-pack-v1.md](agent-pack-v1.md). It does not rewrite packet, ledger,
+coverage, workstream, or share artifacts.

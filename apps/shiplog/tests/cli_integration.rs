@@ -6634,6 +6634,120 @@ fn report_summarize_accepts_direct_path_and_rejects_invalid_reports() {
 }
 
 #[test]
+fn report_export_agent_pack_writes_derived_control_surface_without_mutating_report() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args(["intake", "--out", out.to_str().unwrap(), "--no-open"])
+        .assert()
+        .success();
+
+    let run_dir = first_run_dir(&out);
+    let report_path = run_dir.join("intake.report.json");
+    let report_text = std::fs::read_to_string(&report_path).unwrap();
+    let report_json: serde_json::Value = serde_json::from_str(&report_text).unwrap();
+    let report_modified = std::fs::metadata(&report_path).unwrap().modified().unwrap();
+    let pack_path = tmp.path().join("agent-pack.json");
+
+    shiplog_cmd()
+        .args([
+            "report",
+            "export-agent-pack",
+            "--out",
+            out.to_str().unwrap(),
+            "--latest",
+            "--output",
+            pack_path.to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Agent pack:"))
+        .stdout(predicate::str::contains("agent-pack.json"));
+
+    assert_eq!(
+        report_modified,
+        std::fs::metadata(&report_path).unwrap().modified().unwrap(),
+        "agent pack export should not rewrite intake.report.json"
+    );
+
+    let pack_text = std::fs::read_to_string(&pack_path).unwrap();
+    let pack_json: serde_json::Value = serde_json::from_str(&pack_text).unwrap();
+    assert_eq!(pack_json["schema_version"], 1);
+    assert_eq!(pack_json["source_report"]["schema_version"], 1);
+    assert!(
+        pack_json["source_report"]["path"]
+            .as_str()
+            .unwrap()
+            .contains("intake.report.json")
+    );
+    assert_eq!(pack_json["run"]["run_id"], report_json["run_id"]);
+    assert_eq!(pack_json["run"]["readiness"], report_json["readiness"]);
+    assert_eq!(
+        pack_json["summary"]["skipped_source_count"].as_u64(),
+        Some(report_json["skipped_sources"].as_array().unwrap().len() as u64)
+    );
+    assert_eq!(
+        pack_json["summary"]["repair_count"].as_u64(),
+        Some(report_json["repair_sources"].as_array().unwrap().len() as u64)
+    );
+    assert!(pack_json["gaps"]["needs_attention"].is_array());
+    assert!(pack_json["gaps"]["skipped_sources"].is_array());
+    assert!(pack_json["gaps"]["evidence_debt"].is_array());
+    assert!(pack_json["repairs"].is_array());
+    assert!(pack_json["fixups"].is_array());
+    assert!(pack_json["actions"].is_array());
+    assert!(pack_json["share_status"]["commands"].is_array());
+    assert!(pack_json["artifacts"].is_array());
+    assert!(
+        !pack_text.contains("super-secret"),
+        "agent pack should not contain known secret sentinel values"
+    );
+}
+
+#[test]
+fn report_export_agent_pack_accepts_direct_path_and_stdout() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args(["intake", "--out", out.to_str().unwrap(), "--no-open"])
+        .assert()
+        .success();
+
+    let report_path = first_run_dir(&out).join("intake.report.json");
+    let output = shiplog_cmd()
+        .args([
+            "report",
+            "export-agent-pack",
+            "--path",
+            report_path.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "export-agent-pack should succeed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let pack_json: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(pack_json["schema_version"], 1);
+    assert_eq!(pack_json["source_report"]["schema_version"], 1);
+    assert!(pack_json["summary"]["action_count"].is_number());
+}
+
+#[test]
 fn open_intake_report_fails_clearly_when_report_is_missing() {
     let tmp = TempDir::new().unwrap();
     collect_json_into(tmp.path());

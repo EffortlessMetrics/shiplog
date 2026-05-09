@@ -42,7 +42,11 @@ commands are not terminal-only. The JSON report is documented as v1 in
 `docs/schemas/intake-report-v1.md` with the schema at
 `contracts/schemas/intake-report.v1.schema.json`; current writers include
 stable repair kinds, top-fixup IDs/kinds, and a deduplicated machine-readable
-`actions` array for future local UI or agent surfaces.
+`actions` array for future local UI or agent surfaces. `shiplog report
+export-agent-pack` derives a compact validated `agent-pack.json` from that
+report for downstream UI, agent, and support/debug tooling; its schema is
+documented at `docs/schemas/agent-pack-v1.md` and
+`contracts/schemas/agent-pack.v1.schema.json`.
 
 ## CLI Product Surface
 
