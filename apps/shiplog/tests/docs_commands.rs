@@ -102,6 +102,8 @@ fn install_guide_documents_current_install_paths() {
         "shiplog intake --last-6-months --explain",
         "scripts/release-install-smoke.sh v0.4.0",
         "scripts\\release-install-smoke.ps1 v0.4.0",
+        "scripts/demo-review-rescue.sh --out ./out/demo-review-rescue",
+        "scripts\\demo-review-rescue.ps1",
         "shiplog share verify public --help",
         "examples/configs/local-git-json-manual.toml",
     ] {
@@ -640,6 +642,8 @@ fn review_deadline_guide_documents_rescue_path() {
         "shiplog journal list",
         "shiplog journal edit",
         "No-network rehearsal",
+        "scripts/demo-review-rescue.sh --out ./out/deadline-fixture",
+        "scripts\\demo-review-rescue.ps1",
         "It should not invent impact claims",
     ] {
         assert!(

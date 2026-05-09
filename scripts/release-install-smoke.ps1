@@ -28,29 +28,6 @@ function Invoke-Shiplog {
     }
 }
 
-function Invoke-WithoutProviderTokens {
-    param(
-        [Parameter(Mandatory = $true)]
-        [scriptblock]$Script
-    )
-
-    $names = @("GITHUB_TOKEN", "GITLAB_TOKEN", "JIRA_TOKEN", "LINEAR_API_KEY")
-    $oldValues = @{}
-    foreach ($name in $names) {
-        $oldValues[$name] = [Environment]::GetEnvironmentVariable($name, "Process")
-        [Environment]::SetEnvironmentVariable($name, $null, "Process")
-    }
-
-    try {
-        & $Script
-    }
-    finally {
-        foreach ($name in $names) {
-            [Environment]::SetEnvironmentVariable($name, $oldValues[$name], "Process")
-        }
-    }
-}
-
 if ($Version -eq "-h" -or $Version -eq "--help") {
     @"
 usage: scripts/release-install-smoke.ps1 <version>
@@ -113,27 +90,8 @@ Invoke-Shiplog $binaryPath @("share", "verify", "public", "--help") | Out-Null
 
 Invoke-Step "running no-network review rescue fixture"
 Remove-Item -Recurse -Force $demoOut -ErrorAction SilentlyContinue
-New-Item -ItemType Directory -Force $demoOut | Out-Null
-Push-Location $repoRoot
-try {
-    Invoke-WithoutProviderTokens {
-        Invoke-Shiplog $binaryPath @(
-            "intake",
-            "--out",
-            $demoOut,
-            "--config",
-            "examples/configs/local-git-json-manual.toml",
-            "--no-open",
-            "--explain"
-        ) | Out-File -FilePath (Join-Path $workDir "intake.stdout") -Encoding utf8
-        Invoke-Shiplog $binaryPath @("open", "intake-report", "--out", $demoOut, "--latest", "--print-path") | Out-Null
-        Invoke-Shiplog $binaryPath @("review", "fixups", "--out", $demoOut, "--latest", "--commands-only") | Out-Null
-        Invoke-Shiplog $binaryPath @("share", "verify", "manager", "--out", $demoOut, "--latest", "--redact-key", "fixture-key") | Out-Null
-    }
-}
-finally {
-    Pop-Location
-}
+& (Join-Path $scriptDir "demo-review-rescue.ps1") -ShiplogBin $binaryPath -Out $demoOut |
+    Out-File -FilePath (Join-Path $workDir "demo-review-rescue.stdout") -Encoding utf8
 
 if (-not (Get-ChildItem -Path $demoOut -Recurse -Filter "intake.report.md" | Select-Object -First 1)) {
     throw "no intake.report.md produced under $demoOut"
