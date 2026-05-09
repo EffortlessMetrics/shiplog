@@ -6,6 +6,9 @@ window = "last-6-months"
 profile = "internal"
 include_reviews = true
 
+[periods."review-cycle"]
+preset = "last-6-months"
+
 [user]
 label = "Your Name"
 

@@ -139,6 +139,18 @@ fn assert_golden_intake_report(run_dir: &Path, readiness: &str) -> (String, serd
             .as_str()
             .is_some_and(|path| path.ends_with("intake.report.json"))
     );
+    assert!(
+        report_json["window"]["since"].as_str().is_some(),
+        "intake.report.json should expose the resolved window since date"
+    );
+    assert!(
+        report_json["window"]["until"].as_str().is_some(),
+        "intake.report.json should expose the resolved window until date"
+    );
+    assert!(
+        report_json["window"]["label"].as_str().is_some(),
+        "intake.report.json should expose the resolved window label"
+    );
 
     for key in [
         "included_sources",
@@ -164,6 +176,7 @@ fn assert_golden_intake_report(run_dir: &Path, readiness: &str) -> (String, serd
     for section in [
         "# Review Intake Report",
         "Packet readiness:",
+        "Window:",
         "## Included Sources",
         "## Skipped Sources",
         "## Next Commands",
@@ -809,6 +822,7 @@ fn intake_help_shows_rescue_mode_options() {
         .assert()
         .success()
         .stdout(predicate::str::contains("--last-6-months"))
+        .stdout(predicate::str::contains("--period"))
         .stdout(predicate::str::contains("--year"))
         .stdout(predicate::str::contains("--source"))
         .stdout(predicate::str::contains("--profile"))
@@ -825,7 +839,9 @@ fn review_help_shows_run_options() {
         .stdout(predicate::str::contains("weekly"))
         .stdout(predicate::str::contains("fixups"))
         .stdout(predicate::str::contains("--out"))
+        .stdout(predicate::str::contains("--config"))
         .stdout(predicate::str::contains("--latest"))
+        .stdout(predicate::str::contains("--period"))
         .stdout(predicate::str::contains("--run"))
         .stdout(predicate::str::contains("--strict"));
 }
@@ -910,6 +926,8 @@ fn init_creates_config_and_manual_events() {
 
     let config = std::fs::read_to_string(tmp.path().join("shiplog.toml")).unwrap();
     assert!(config.contains("[shiplog]\nconfig_version = 1"));
+    assert!(config.contains("[periods.\"review-cycle\"]"));
+    assert!(config.contains("preset = \"last-6-months\""));
     assert!(config.contains("[sources.github]"));
     assert!(config.contains("enabled = true"));
     assert!(config.contains("me = true"));
@@ -1673,6 +1691,32 @@ events = "./manual_events.yaml"
 }
 
 #[test]
+fn config_validate_rejects_invalid_named_periods() {
+    let tmp = TempDir::new().unwrap();
+    write_manual_events(&tmp.path().join("manual_events.yaml"));
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[periods."broken"]
+since = "2026-01-01"
+
+[sources.manual]
+enabled = true
+events = "./manual_events.yaml"
+"#,
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["config", "validate"])
+        .assert()
+        .failure()
+        .stdout(predicate::str::contains("Period: error"))
+        .stdout(predicate::str::contains("broken"))
+        .stdout(predicate::str::contains("both since and until"));
+}
+
+#[test]
 fn example_configs_validate_without_source_tokens() {
     for name in [
         "github-only.toml",
@@ -2108,10 +2152,50 @@ events = "./manual_events.yaml"
         ))
         .stdout(predicate::str::contains("- out: ./review-out ->"))
         .stdout(predicate::str::contains("- user.label: Octo"))
+        .stdout(predicate::str::contains("Configured periods:"))
+        .stdout(predicate::str::contains("- none"))
         .stdout(predicate::str::contains("Enabled sources:"))
         .stdout(predicate::str::contains("- json: events"))
         .stdout(predicate::str::contains("- manual: events"))
         .stdout(predicate::str::contains("user Octo"));
+}
+
+#[test]
+fn config_explain_prints_named_periods() {
+    let tmp = TempDir::new().unwrap();
+    write_manual_events(&tmp.path().join("manual_events.yaml"));
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[defaults]
+window = "year:2025"
+
+[periods."2026-H1"]
+since = "2026-01-01"
+until = "2026-07-01"
+
+[periods."review-cycle"]
+preset = "year:2025"
+
+[sources.manual]
+enabled = true
+events = "./manual_events.yaml"
+user = "octo"
+"#,
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["config", "explain"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Configured periods:"))
+        .stdout(predicate::str::contains(
+            "- 2026-H1: 2026-H1 (2026-01-01..2026-07-01)",
+        ))
+        .stdout(predicate::str::contains(
+            "- review-cycle: review-cycle (2025-01-01..2026-01-01)",
+        ));
 }
 
 // ── 3. collect --help shows collect-specific options ───────────────────────
@@ -2139,6 +2223,7 @@ fn collect_multi_help_shows_config_and_conflict_policy() {
         .assert()
         .success()
         .stdout(predicate::str::contains("--config"))
+        .stdout(predicate::str::contains("--period"))
         .stdout(predicate::str::contains("--last-6-months"))
         .stdout(predicate::str::contains("--conflict"))
         .stdout(predicate::str::contains("prefer-most-recent"));
@@ -2698,6 +2783,230 @@ user = "octo"
     assert!(
         coverage.contains("\"manual\""),
         "configured multi coverage should include manual source"
+    );
+}
+
+#[test]
+fn collect_multi_uses_named_config_period() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+    let fixtures = fixture_dir();
+    std::fs::copy(
+        fixtures.join("ledger.events.jsonl"),
+        tmp.path().join("ledger.events.jsonl"),
+    )
+    .unwrap();
+    std::fs::copy(
+        fixtures.join("coverage.manifest.json"),
+        tmp.path().join("coverage.manifest.json"),
+    )
+    .unwrap();
+
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[defaults]
+window = "year:2025"
+
+[periods."review-cycle"]
+since = "2026-01-01"
+until = "2026-07-01"
+
+[sources.json]
+enabled = true
+events = "./ledger.events.jsonl"
+coverage = "./coverage.manifest.json"
+"#,
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .args([
+            "collect",
+            "--out",
+            out.to_str().unwrap(),
+            "multi",
+            "--config",
+            tmp.path().join("shiplog.toml").to_str().unwrap(),
+            "--period",
+            "review-cycle",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Collected configured sources:"));
+
+    let run_dir = first_run_dir(&out);
+    let coverage: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(run_dir.join("coverage.manifest.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(coverage["window"]["since"], "2026-01-01");
+    assert_eq!(coverage["window"]["until"], "2026-07-01");
+
+    shiplog_cmd()
+        .args([
+            "review",
+            "--out",
+            out.to_str().unwrap(),
+            "--config",
+            tmp.path().join("shiplog.toml").to_str().unwrap(),
+            "--period",
+            "review-cycle",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Window: 2026-01-01..2026-07-01"))
+        .stdout(predicate::str::contains("Evidence debt:"));
+}
+
+#[test]
+fn collect_multi_cli_dates_override_named_period() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+    let fixtures = fixture_dir();
+    std::fs::copy(
+        fixtures.join("ledger.events.jsonl"),
+        tmp.path().join("ledger.events.jsonl"),
+    )
+    .unwrap();
+    std::fs::copy(
+        fixtures.join("coverage.manifest.json"),
+        tmp.path().join("coverage.manifest.json"),
+    )
+    .unwrap();
+
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[periods."review-cycle"]
+since = "2026-01-01"
+until = "2026-07-01"
+
+[sources.json]
+enabled = true
+events = "./ledger.events.jsonl"
+coverage = "./coverage.manifest.json"
+"#,
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .args([
+            "collect",
+            "--out",
+            out.to_str().unwrap(),
+            "multi",
+            "--config",
+            tmp.path().join("shiplog.toml").to_str().unwrap(),
+            "--period",
+            "review-cycle",
+            "--year",
+            "2025",
+        ])
+        .assert()
+        .success();
+
+    let run_dir = first_run_dir(&out);
+    let coverage: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(run_dir.join("coverage.manifest.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(coverage["window"]["since"], "2025-01-01");
+    assert_eq!(coverage["window"]["until"], "2026-01-01");
+}
+
+#[test]
+fn collect_multi_unknown_period_fails_clearly() {
+    let tmp = TempDir::new().unwrap();
+    let fixtures = fixture_dir();
+    std::fs::copy(
+        fixtures.join("ledger.events.jsonl"),
+        tmp.path().join("ledger.events.jsonl"),
+    )
+    .unwrap();
+    std::fs::copy(
+        fixtures.join("coverage.manifest.json"),
+        tmp.path().join("coverage.manifest.json"),
+    )
+    .unwrap();
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[sources.json]
+enabled = true
+events = "./ledger.events.jsonl"
+coverage = "./coverage.manifest.json"
+"#,
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .args([
+            "collect",
+            "multi",
+            "--config",
+            tmp.path().join("shiplog.toml").to_str().unwrap(),
+            "--period",
+            "missing",
+        ])
+        .assert()
+        .failure()
+        .stderr(
+            predicate::str::contains("unknown period")
+                .and(predicate::str::contains("[periods.\"missing\"]")),
+        );
+}
+
+#[test]
+fn intake_uses_named_config_period_and_records_report_window() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+    let fixtures = fixture_dir();
+    std::fs::copy(
+        fixtures.join("ledger.events.jsonl"),
+        tmp.path().join("ledger.events.jsonl"),
+    )
+    .unwrap();
+    std::fs::copy(
+        fixtures.join("coverage.manifest.json"),
+        tmp.path().join("coverage.manifest.json"),
+    )
+    .unwrap();
+
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[periods."review-cycle"]
+since = "2026-01-01"
+until = "2026-07-01"
+
+[sources.json]
+enabled = true
+events = "./ledger.events.jsonl"
+coverage = "./coverage.manifest.json"
+"#,
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .args([
+            "intake",
+            "--config",
+            tmp.path().join("shiplog.toml").to_str().unwrap(),
+            "--out",
+            out.to_str().unwrap(),
+            "--period",
+            "review-cycle",
+            "--no-open",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Review intake complete."));
+
+    let run_dir = first_run_dir(&out);
+    let (_, report) = assert_golden_intake_report(&run_dir, "Ready for review");
+    assert_eq!(report["period"], "review-cycle");
+    assert_eq!(report["window"]["since"], "2026-01-01");
+    assert_eq!(report["window"]["until"], "2026-07-01");
+    assert_eq!(
+        report["window"]["label"],
+        "review-cycle (2026-01-01..2026-07-01)"
     );
 }
 

@@ -357,12 +357,18 @@ struct ReviewOptions {
     /// Output directory containing run folders.
     #[arg(long, default_value = "./out")]
     out: PathBuf,
+    /// Path to shiplog.toml when resolving --period.
+    #[arg(long, default_value = CONFIG_FILENAME)]
+    config: PathBuf,
     /// Run ID to review (uses most recent if not specified).
     #[arg(long)]
     run: Option<String>,
     /// Review the most recent run explicitly.
     #[arg(long)]
     latest: bool,
+    /// Review the most recent run whose coverage matches a named `periods.<name>` window.
+    #[arg(long)]
+    period: Option<String>,
     /// Exit with an error when review finds evidence debt.
     #[arg(long)]
     strict: bool,
@@ -1106,7 +1112,7 @@ enum CollectSource {
         #[arg(long, default_value = CONFIG_FILENAME)]
         config: PathBuf,
         #[command(flatten)]
-        window: DateArgs,
+        window: ConfigWindowArgs,
         /// Duplicate event conflict policy.
         #[arg(long, value_enum, default_value = "prefer-most-recent")]
         conflict: MergeConflict,
@@ -1333,14 +1339,24 @@ struct IntakeArgs {
     #[arg(long, value_enum, default_value = "prefer-most-recent")]
     conflict: MergeConflict,
     #[command(flatten)]
-    window: DateArgs,
+    window: ConfigWindowArgs,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Args, Debug, Clone, Default)]
+struct ConfigWindowArgs {
+    #[command(flatten)]
+    dates: DateArgs,
+    /// Use a named `periods.<name>` window from shiplog.toml.
+    #[arg(long)]
+    period: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct ResolvedWindow {
     since: NaiveDate,
     until: NaiveDate,
     label: WindowLabel,
+    period: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1360,6 +1376,7 @@ const CURRENT_CONFIG_VERSION: i64 = 1;
 struct ShiplogConfig {
     shiplog: ConfigMetadata,
     defaults: ConfigDefaults,
+    periods: BTreeMap<String, ConfigPeriod>,
     user: ConfigUser,
     sources: ConfigSources,
     redaction: ConfigRedaction,
@@ -1378,6 +1395,14 @@ struct ConfigDefaults {
     window: Option<String>,
     profile: Option<String>,
     include_reviews: Option<bool>,
+}
+
+#[derive(Deserialize, Debug, Default)]
+#[serde(default)]
+struct ConfigPeriod {
+    since: Option<NaiveDate>,
+    until: Option<NaiveDate>,
+    preset: Option<String>,
 }
 
 #[derive(Deserialize, Debug, Default)]
@@ -1523,6 +1548,8 @@ struct IntakeReport {
     out_dir: String,
     run_dir: String,
     packet_path: String,
+    period: Option<String>,
+    window: IntakeReportWindow,
     reports: IntakeReportFiles,
     included_sources: Vec<IntakeReportIncludedSource>,
     skipped_sources: Vec<IntakeReportSkippedSource>,
@@ -1543,6 +1570,13 @@ struct IntakeReport {
 struct IntakeReportFiles {
     markdown: String,
     json: String,
+}
+
+#[derive(Debug, Serialize)]
+struct IntakeReportWindow {
+    since: String,
+    until: String,
+    label: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -1608,6 +1642,7 @@ struct ConfiguredRunResult {
     outputs: shiplog_engine::RunOutputs,
     ws_source: WorkstreamSource,
     run_id: String,
+    window: ResolvedWindow,
     prior_curation: Option<PriorCuration>,
 }
 
@@ -1684,7 +1719,7 @@ fn share_command_key_error(bundle_profile: &BundleProfile, key_env: &str) -> Str
 
 impl ResolvedWindow {
     fn window_label(&self) -> String {
-        match self.label {
+        let label = match self.label {
             WindowLabel::Explicit => format!("{}..{}", self.since, self.until),
             WindowLabel::LastSixMonths => {
                 format!("last-6-months ({}..{})", self.since, self.until)
@@ -1693,7 +1728,17 @@ impl ResolvedWindow {
                 format!("last-quarter ({}..{})", self.since, self.until)
             }
             WindowLabel::Year(year) => format!("{year} ({}..{})", self.since, self.until),
+        };
+        if let Some(period) = &self.period {
+            format!("{period} ({}..{})", self.since, self.until)
+        } else {
+            label
         }
+    }
+
+    fn with_period(mut self, period: impl Into<String>) -> Self {
+        self.period = Some(period.into());
+        self
     }
 }
 
@@ -1755,6 +1800,7 @@ fn checked_window(
         since,
         until,
         label,
+        period: None,
     })
 }
 
@@ -1829,13 +1875,14 @@ fn run_intake(args: IntakeArgs) -> Result<()> {
         .explanations
         .splice(0..0, config_setup.source_explanations);
     let window = resolve_multi_window(args.window.clone(), &config_model)?;
-    let mut configured = collect_configured_sources(&args.config, &config_model, window, &out)
-        .with_context(|| {
-            format!(
-                "collect usable intake sources from {}",
-                args.config.display()
-            )
-        })?;
+    let mut configured =
+        collect_configured_sources(&args.config, &config_model, window.clone(), &out)
+            .with_context(|| {
+                format!(
+                    "collect usable intake sources from {}",
+                    args.config.display()
+                )
+            })?;
     intake_plan.failures.append(&mut configured.failures);
     configured.failures = intake_plan.failures;
 
@@ -2088,6 +2135,12 @@ fn build_intake_report(
         out_dir: out_dir.display().to_string(),
         run_dir: result.outputs.out_dir.display().to_string(),
         packet_path: result.outputs.packet_md.display().to_string(),
+        period: result.window.period.clone(),
+        window: IntakeReportWindow {
+            since: result.window.since.to_string(),
+            until: result.window.until.to_string(),
+            label: result.window.window_label(),
+        },
         reports: IntakeReportFiles {
             markdown: report_md.display().to_string(),
             json: report_json.display().to_string(),
@@ -2212,6 +2265,13 @@ fn render_intake_report_markdown(report: &IntakeReport) -> String {
     out.push_str("# Review Intake Report\n\n");
     out.push_str(&format!("Run: `{}`\n\n", report.run_id));
     out.push_str(&format!("Packet readiness: **{}**\n\n", report.readiness));
+    out.push_str(&format!(
+        "Window: `{}`..`{}` ({})\n\n",
+        report.window.since, report.window.until, report.window.label
+    ));
+    if let Some(period) = &report.period {
+        out.push_str(&format!("Period: `{period}`\n\n"));
+    }
     out.push_str(&format!("Config: `{}`\n\n", report.config_path));
     out.push_str(&format!("Packet: `{}`\n\n", report.packet_path));
 
@@ -3121,6 +3181,9 @@ window = "last-6-months"
 profile = "internal"
 include_reviews = true
 
+[periods."review-cycle"]
+preset = "last-6-months"
+
 [user]
 label = "Your Name"
 
@@ -3790,9 +3853,10 @@ fn validate_shiplog_config(config: &ShiplogConfig, base_dir: &Path) -> Vec<Confi
     if let Err(err) = config_version_state(config) {
         issues.push(config_issue("Version", err.to_string()));
     }
-    if let Err(err) = resolve_multi_window(DateArgs::default(), config) {
+    if let Err(err) = resolve_multi_window(ConfigWindowArgs::default(), config) {
         issues.push(config_issue("Window", err.to_string()));
     }
+    validate_config_periods(config, &mut issues);
     if let Err(err) = doctor_config_profile(config.defaults.profile.as_deref()) {
         issues.push(config_issue("Profile", err.to_string()));
     }
@@ -3815,6 +3879,14 @@ fn validate_shiplog_config(config: &ShiplogConfig, base_dir: &Path) -> Vec<Confi
     validate_config_manual(config, base_dir, &mut issues);
 
     issues
+}
+
+fn validate_config_periods(config: &ShiplogConfig, issues: &mut Vec<ConfigIssue>) {
+    for name in config.periods.keys() {
+        if let Err(err) = resolve_config_period(config, name) {
+            issues.push(config_issue("Period", format!("{name}: {err}")));
+        }
+    }
 }
 
 impl ConfigVersionState {
@@ -4102,7 +4174,7 @@ fn validate_config_user_or_me(
 
 fn print_config_validation_summary(config: &ShiplogConfig, base_dir: &Path) -> Result<()> {
     let version = config_version_state(config)?;
-    let window = resolve_multi_window(DateArgs::default(), config)?;
+    let window = resolve_multi_window(ConfigWindowArgs::default(), config)?;
     let out = config_default_out(config, base_dir);
     let profile = doctor_config_profile(config.defaults.profile.as_deref())?;
     println!("Version: ok, {}", version.label());
@@ -4122,7 +4194,7 @@ fn print_config_explanation(
     base_dir: &Path,
 ) -> Result<()> {
     let version = config_version_state(config)?;
-    let window = resolve_multi_window(DateArgs::default(), config)?;
+    let window = resolve_multi_window(ConfigWindowArgs::default(), config)?;
     let out = config_default_out(config, base_dir);
     let profile = doctor_config_profile(config.defaults.profile.as_deref())?;
     let window_setting = non_empty_string(config.defaults.window.as_deref())
@@ -4152,6 +4224,15 @@ fn print_config_explanation(
         optional_config_string(config.user.label.as_deref()).unwrap_or_else(|| "-".to_string())
     );
     println!("- redaction.key_env: {}", config_redaction_key_env(config));
+    println!("Configured periods:");
+    if config.periods.is_empty() {
+        println!("- none");
+    } else {
+        for name in config.periods.keys() {
+            let window = resolve_config_period(config, name)?;
+            println!("- {name}: {}", window.window_label());
+        }
+    }
     println!("Enabled sources:");
     for line in config_enabled_source_explanations(config, base_dir, &out) {
         println!("- {line}");
@@ -4387,7 +4468,7 @@ fn config_cache_label(cache_dir: Option<&Path>) -> String {
 }
 
 fn doctor_defaults(report: &mut DoctorReport, config: &ShiplogConfig, base_dir: &Path) {
-    match resolve_multi_window(DateArgs::default(), config) {
+    match resolve_multi_window(ConfigWindowArgs::default(), config) {
         Ok(window) => report.ok("Window", window.window_label()),
         Err(err) => report.error("Window", err.to_string()),
     }
@@ -4771,9 +4852,13 @@ fn env_var_present(name: &str) -> bool {
         .is_some_and(|value| !value.trim().is_empty())
 }
 
-fn resolve_multi_window(args: DateArgs, config: &ShiplogConfig) -> Result<ResolvedWindow> {
-    if date_args_has_any(&args) {
-        return resolve_date_window(args);
+fn resolve_multi_window(args: ConfigWindowArgs, config: &ShiplogConfig) -> Result<ResolvedWindow> {
+    if date_args_has_any(&args.dates) {
+        return resolve_date_window(args.dates);
+    }
+
+    if let Some(period) = non_empty_string(args.period.as_deref()) {
+        return resolve_config_period(config, &period);
     }
 
     if let Some(window) = non_empty_string(config.defaults.window.as_deref()) {
@@ -4781,6 +4866,36 @@ fn resolve_multi_window(args: DateArgs, config: &ShiplogConfig) -> Result<Resolv
     }
 
     resolve_date_window(DateArgs::default())
+}
+
+fn resolve_config_period(config: &ShiplogConfig, period: &str) -> Result<ResolvedWindow> {
+    let configured = config.periods.get(period).ok_or_else(|| {
+        anyhow::anyhow!("unknown period {period:?}; define [periods.{period:?}] in shiplog.toml")
+    })?;
+
+    let has_explicit = configured.since.is_some() || configured.until.is_some();
+    let has_preset = non_empty_string(configured.preset.as_deref()).is_some();
+    if has_explicit && has_preset {
+        anyhow::bail!("period {period:?} should use either preset or since/until, not both");
+    }
+
+    if has_explicit {
+        let since = configured
+            .since
+            .ok_or_else(|| anyhow::anyhow!("period {period:?} must set both since and until"))?;
+        let until = configured
+            .until
+            .ok_or_else(|| anyhow::anyhow!("period {period:?} must set both since and until"))?;
+        return checked_window(since, until, WindowLabel::Explicit)
+            .map(|window| window.with_period(period.to_string()));
+    }
+
+    if let Some(preset) = non_empty_string(configured.preset.as_deref()) {
+        return resolve_date_window(date_args_from_config_window(&preset)?)
+            .map(|window| window.with_period(period.to_string()));
+    }
+
+    anyhow::bail!("period {period:?} must set preset or since/until")
 }
 
 fn date_args_has_any(args: &DateArgs) -> bool {
@@ -5198,6 +5313,7 @@ fn run_configured_multi_pipeline(
         outputs,
         ws_source,
         run_id,
+        window,
         prior_curation,
     })
 }
@@ -6382,7 +6498,7 @@ fn main() -> Result<()> {
                     let engine = engine.with_profile_rendering(redaction_key.render_profiles());
                     let window = resolve_multi_window(window, &config_model)?;
                     let configured =
-                        collect_configured_sources(&config, &config_model, window, &out)?;
+                        collect_configured_sources(&config, &config_model, window.clone(), &out)?;
                     let result = run_configured_multi_pipeline(
                         &config_model,
                         &out,
@@ -7654,7 +7770,13 @@ fn main() -> Result<()> {
                 print_review_fixups(&run_dir, &out, commands_only, journal_template)?;
             }
             None => {
-                let run_dir = resolve_render_run_dir(&options.out, options.run, options.latest)?;
+                let run_dir = resolve_review_run_dir(
+                    &options.out,
+                    options.run,
+                    options.latest,
+                    &options.config,
+                    options.period,
+                )?;
                 print_review(&run_dir, options.strict)?;
             }
         },
@@ -10762,6 +10884,46 @@ fn resolve_render_run_dir(out_dir: &Path, run: Option<String>, latest: bool) -> 
     }
 }
 
+fn resolve_review_run_dir(
+    out_dir: &Path,
+    run: Option<String>,
+    latest: bool,
+    config_path: &Path,
+    period: Option<String>,
+) -> Result<PathBuf> {
+    if let Some(period) = period {
+        if latest || run.is_some() {
+            anyhow::bail!("use --period without --latest or --run")
+        }
+        return resolve_period_run_dir(out_dir, config_path, &period);
+    }
+
+    resolve_render_run_dir(out_dir, run, latest)
+}
+
+fn resolve_period_run_dir(out_dir: &Path, config_path: &Path, period: &str) -> Result<PathBuf> {
+    let config = load_config_for_command(config_path)?;
+    ensure_supported_config_version(&config)?;
+    let window = resolve_config_period(&config, period)?;
+
+    for run_dir in discover_run_dirs(out_dir)? {
+        let ingest =
+            load_run_ingest(&run_dir).with_context(|| format!("load run {}", run_dir.display()))?;
+        if ingest.coverage.window.since == window.since
+            && ingest.coverage.window.until == window.until
+        {
+            return Ok(run_dir);
+        }
+    }
+
+    anyhow::bail!(
+        "no run found for period {period:?} ({}..{}); run `shiplog intake --period {}` first",
+        window.since,
+        window.until,
+        quote_cli_value(period)
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -10982,6 +11144,114 @@ mod tests {
         assert_eq!(window.since, NaiveDate::from_ymd_opt(2025, 1, 1).unwrap());
         assert_eq!(window.until, NaiveDate::from_ymd_opt(2026, 1, 1).unwrap());
         assert_eq!(window.label, WindowLabel::Year(2025));
+    }
+
+    #[test]
+    fn resolve_multi_window_uses_named_period_with_explicit_dates() {
+        let mut config = ShiplogConfig::default();
+        config.periods.insert(
+            "review-cycle".to_string(),
+            ConfigPeriod {
+                since: Some(NaiveDate::from_ymd_opt(2026, 1, 1).unwrap()),
+                until: Some(NaiveDate::from_ymd_opt(2026, 7, 1).unwrap()),
+                preset: None,
+            },
+        );
+        let args = ConfigWindowArgs {
+            period: Some("review-cycle".to_string()),
+            ..ConfigWindowArgs::default()
+        };
+
+        let window = resolve_multi_window(args, &config).unwrap();
+
+        assert_eq!(window.since, NaiveDate::from_ymd_opt(2026, 1, 1).unwrap());
+        assert_eq!(window.until, NaiveDate::from_ymd_opt(2026, 7, 1).unwrap());
+        assert_eq!(window.period.as_deref(), Some("review-cycle"));
+        assert_eq!(
+            window.window_label(),
+            "review-cycle (2026-01-01..2026-07-01)"
+        );
+    }
+
+    #[test]
+    fn resolve_multi_window_uses_named_period_preset() {
+        let mut config = ShiplogConfig::default();
+        config.periods.insert(
+            "h1".to_string(),
+            ConfigPeriod {
+                preset: Some("year:2025".to_string()),
+                ..ConfigPeriod::default()
+            },
+        );
+        let args = ConfigWindowArgs {
+            period: Some("h1".to_string()),
+            ..ConfigWindowArgs::default()
+        };
+
+        let window = resolve_multi_window(args, &config).unwrap();
+
+        assert_eq!(window.since, NaiveDate::from_ymd_opt(2025, 1, 1).unwrap());
+        assert_eq!(window.until, NaiveDate::from_ymd_opt(2026, 1, 1).unwrap());
+        assert_eq!(window.period.as_deref(), Some("h1"));
+        assert_eq!(window.label, WindowLabel::Year(2025));
+    }
+
+    #[test]
+    fn resolve_multi_window_cli_dates_override_period() {
+        let mut config = ShiplogConfig::default();
+        config.periods.insert(
+            "review-cycle".to_string(),
+            ConfigPeriod {
+                since: Some(NaiveDate::from_ymd_opt(2026, 1, 1).unwrap()),
+                until: Some(NaiveDate::from_ymd_opt(2026, 7, 1).unwrap()),
+                preset: None,
+            },
+        );
+        let mut dates = date_args();
+        dates.year = Some(2025);
+        let args = ConfigWindowArgs {
+            dates,
+            period: Some("review-cycle".to_string()),
+        };
+
+        let window = resolve_multi_window(args, &config).unwrap();
+
+        assert_eq!(window.since, NaiveDate::from_ymd_opt(2025, 1, 1).unwrap());
+        assert_eq!(window.until, NaiveDate::from_ymd_opt(2026, 1, 1).unwrap());
+        assert_eq!(window.period, None);
+    }
+
+    #[test]
+    fn resolve_multi_window_rejects_unknown_period() {
+        let args = ConfigWindowArgs {
+            period: Some("missing".to_string()),
+            ..ConfigWindowArgs::default()
+        };
+
+        let err = resolve_multi_window(args, &ShiplogConfig::default()).unwrap_err();
+
+        assert!(err.to_string().contains("unknown period"));
+    }
+
+    #[test]
+    fn resolve_multi_window_rejects_invalid_period_shape() {
+        let mut config = ShiplogConfig::default();
+        config.periods.insert(
+            "broken".to_string(),
+            ConfigPeriod {
+                since: Some(NaiveDate::from_ymd_opt(2026, 1, 1).unwrap()),
+                preset: Some("last-6-months".to_string()),
+                ..ConfigPeriod::default()
+            },
+        );
+        let args = ConfigWindowArgs {
+            period: Some("broken".to_string()),
+            ..ConfigWindowArgs::default()
+        };
+
+        let err = resolve_multi_window(args, &config).unwrap_err();
+
+        assert!(err.to_string().contains("either preset or since/until"));
     }
 
     #[test]

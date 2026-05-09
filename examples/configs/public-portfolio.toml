@@ -6,6 +6,9 @@ window = "year:2025"
 profile = "public"
 include_reviews = false
 
+[periods."portfolio-2025"]
+preset = "year:2025"
+
 [user]
 label = "Your Public Name"
 

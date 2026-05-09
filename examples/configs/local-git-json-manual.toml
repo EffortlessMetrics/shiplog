@@ -6,6 +6,9 @@ window = "year:2025"
 profile = "internal"
 include_reviews = false
 
+[periods."review-cycle"]
+preset = "year:2025"
+
 [user]
 label = "Fixture User"
 

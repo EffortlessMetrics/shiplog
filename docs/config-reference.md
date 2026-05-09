@@ -1,8 +1,9 @@
 # shiplog.toml Reference
 
-`shiplog.toml` is the repeat-use configuration for `shiplog collect multi`.
-It records default output, date-window, profile, and source settings. Secrets do
-not belong in this file; keep provider tokens in environment variables.
+`shiplog.toml` is the repeat-use configuration for `shiplog collect multi` and
+`shiplog intake`. It records default output, date-window, named review periods,
+profile, and source settings. Secrets do not belong in this file; keep provider
+tokens in environment variables.
 
 Use these commands before collecting:
 
@@ -95,6 +96,41 @@ window = "2025"
 
 CLI date flags such as `--last-6-months`, `--last-quarter`, `--year`,
 `--since`, and `--until` override `defaults.window`.
+
+## Named Periods
+
+Named periods make review windows repeatable without retyping dates. They are
+available to config-driven commands:
+
+```bash
+shiplog intake --period review-cycle
+shiplog collect multi --period 2026-H1
+shiplog review --period 2026-H1
+```
+
+Define a period with either explicit dates:
+
+```toml
+[periods."2026-H1"]
+since = "2026-01-01"
+until = "2026-07-01"
+```
+
+or a supported preset:
+
+```toml
+[periods."review-cycle"]
+preset = "last-6-months"
+```
+
+Supported period presets match `defaults.window`: `last-6-months`,
+`last-quarter`, `year:YYYY`, `year=YYYY`, or a bare four-digit year. A period
+must use either `preset` or `since`/`until`, not both. CLI date flags still win
+over `--period` when both are supplied.
+
+`config explain` prints each period with resolved concrete dates. Intake reports
+record the selected period name and resolved window so later reruns and review
+checks can explain which review cycle produced the packet.
 
 ## Source Sections
 

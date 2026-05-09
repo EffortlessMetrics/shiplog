@@ -126,6 +126,8 @@ paths only. When sources are skipped, intake groups repair commands by source
 and writes the same rerun guidance to `intake.report.md`. Re-running intake
 creates a new run and reuses the latest prior `workstreams.yaml` when one
 exists, without overwriting that earlier curation or `manual_events.yaml`.
+For repeat cycles, define `[periods."review-cycle"]` in `shiplog.toml` and run
+`shiplog intake --period review-cycle`.
 
 ### 1. Initialize local files
 
@@ -176,6 +178,12 @@ Explicit date flags override the config window; otherwise `defaults.window`
 is used. If one configured source fails but another source succeeds, shiplog
 still writes the merged packet and records the skipped source in coverage
 warnings.
+Named periods from `[periods.<name>]` are also supported:
+
+```bash
+shiplog collect multi --period review-cycle
+shiplog review --period review-cycle
+```
 
 For repeat review cycles, compare a prior run with the latest one:
 

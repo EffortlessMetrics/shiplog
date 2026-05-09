@@ -27,6 +27,13 @@ shiplog open intake-report --latest
 shiplog open packet --latest
 ```
 
+If your config has a saved review window, use it instead of retyping dates:
+
+```bash
+shiplog intake --period review-cycle --explain
+shiplog review --period review-cycle
+```
+
 Read the top of `intake.report.md` first. It is the durable checklist for the
 run after terminal output scrolls away. It shows readiness, included sources,
 skipped sources, repair hints, evidence debt, fixups, journal suggestions, share
