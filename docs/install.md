@@ -4,7 +4,7 @@ Use the GitHub release binary when you need shiplog quickly and do not already
 have Rust installed. Use `cargo install` when you already have a Rust toolchain
 or want optional Cargo features.
 
-Current release assets for `v0.3.0`:
+Release assets for `v0.4.0`:
 
 ```text
 shiplog-x86_64-unknown-linux-gnu
@@ -19,7 +19,7 @@ SHA256SUMS.txt
 ### Windows PowerShell
 
 ```powershell
-$version = "v0.3.0"
+$version = "v0.4.0"
 $asset = "shiplog-x86_64-pc-windows-msvc.exe"
 $base = "https://github.com/EffortlessMetrics/shiplog/releases/download/$version"
 $bin = "$HOME\bin"
@@ -57,7 +57,7 @@ asset=shiplog-x86_64-apple-darwin
 Then download, verify, and install:
 
 ```bash
-version=v0.3.0
+version=v0.4.0
 base="https://github.com/EffortlessMetrics/shiplog/releases/download/$version"
 
 curl -fsSLo shiplog "$base/$asset"
@@ -77,7 +77,7 @@ mv shiplog "$HOME/bin/shiplog"
 ### Linux x86_64
 
 ```bash
-version=v0.3.0
+version=v0.4.0
 asset=shiplog-x86_64-unknown-linux-gnu
 base="https://github.com/EffortlessMetrics/shiplog/releases/download/$version"
 

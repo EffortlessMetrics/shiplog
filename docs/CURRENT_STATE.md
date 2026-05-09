@@ -1,22 +1,25 @@
 # shiplog Current State
 
-This document records the shipped v0.3.0 baseline after the product completion
-pass and release verification.
+This document records the v0.4.0 Review Rescue release-prep baseline after the
+operator-UX lane. v0.3.0 remains the latest verified public release until
+v0.4.0 is published, tagged, and install-smoked.
 
 ## Baseline
 
-- `main` is the released v0.3.0 product baseline.
-- `v0.3.0` is published on crates.io and tagged on GitHub.
-- The GitHub release has Linux x86_64, macOS x86_64, macOS arm64, Windows
-  x86_64, and `SHA256SUMS.txt` assets.
-- The crates.io install smoke and downloaded Windows binary smoke both reported
-  `shiplog 0.3.0`.
+- The workspace is version-aligned and release-prepped for v0.4.0.
+- `v0.3.0` is the latest published crates.io and GitHub release at the time of
+  this prep.
+- The v0.4.0 GitHub release is expected to include Linux x86_64, macOS x86_64,
+  macOS arm64, Windows x86_64, and `SHA256SUMS.txt` assets.
+- The v0.4.0 release is not complete until crates are published in dependency
+  order, the tag workflow builds assets, and install smoke reports
+  `shiplog 0.4.0`.
 - `docs/install.md` documents release binaries, checksum verification,
   `cargo install`, and package-manager tracking notes.
 - The workspace follows the package invariant: production workspace crates are
   publishable public surfaces, and `publish = false` is reserved for dev-only
   packages.
-- All workspace packages are version-aligned for the v0.3.0 release train.
+- All workspace packages are version-aligned for the v0.4.0 release train.
 
 ## Product Contract
 
@@ -194,10 +197,16 @@ v0.3.0 is shipped. The release record is
 published crate order, release workflow, asset set, checksum verification, and
 install smoke evidence.
 
-The next post-v0.3 work should harden real-world usage rather than add broad new
-surface area: source adapter receipts, Jira/Linear identity help, config
-reference material, packet readability passes against real packets, and
-continued coverage/mutation baseline review. Documented mutation baselines now
-include `shiplog-coverage`, `shiplog-ids`, `shiplog-schema`, `shiplog-redact`,
+v0.4.0 is the Review Rescue release-prep line. The release handoff is
+[`RELEASE_HANDOFF_0.4.0.md`](../RELEASE_HANDOFF_0.4.0.md), including the
+publish order, proof commands, expected asset set, and post-release install
+smoke. Before claiming v0.4.0 as shipped, run the handoff and verify public
+crates.io, GitHub release, checksum, and binary-smoke evidence.
+
+The next post-v0.4 work should deepen real-world usage rather than add broad new
+surface area: provider edge cases that affect first-run intake, stricter public
+packet safety checks where redaction rules make them testable, and follow-on
+release/distribution polish. Documented mutation baselines now include
+`shiplog-coverage`, `shiplog-ids`, `shiplog-schema`, `shiplog-redact`,
 `shiplog-bundle`, and a `shiplog-ports` no-target scan, recorded in
 [`docs/ci/mutation.md`](ci/mutation.md).

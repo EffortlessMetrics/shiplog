@@ -1,11 +1,11 @@
 [package]
 name = "shiplog-ingest-manual"
-version = "0.3.0"
+version = "0.4.0"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 authors.workspace = true
-description = "YAML manual-event ingestor for non-GitHub work in shiplog."
+description = "YAML manual-event ingestor for human-entered work evidence in shiplog."
 readme = "README.md"
 documentation = "https://docs.rs/shiplog-ingest-manual"
 repository.workspace = true
@@ -17,16 +17,16 @@ categories = ["parser-implementations", "development-tools"]
 anyhow.workspace = true
 chrono.workspace = true
 serde_yaml.workspace = true
-shiplog-ids = { path = "../shiplog-ids", version = "0.3.0" }
-shiplog-schema = { path = "../shiplog-schema", version = "0.3.0" }
-shiplog-ports = { path = "../shiplog-ports", version = "0.3.0" }
+shiplog-ids = { path = "../shiplog-ids", version = "0.4.0" }
+shiplog-schema = { path = "../shiplog-schema", version = "0.4.0" }
+shiplog-ports = { path = "../shiplog-ports", version = "0.4.0" }
 
 [dev-dependencies]
 chrono.workspace = true
 insta = { workspace = true, features = ["redactions"] }
 proptest.workspace = true
-shiplog-schema = { path = "../shiplog-schema", version = "0.3.0" }
-shiplog-ports = { path = "../shiplog-ports", version = "0.3.0" }
+shiplog-schema = { path = "../shiplog-schema", version = "0.4.0" }
+shiplog-ports = { path = "../shiplog-ports", version = "0.4.0" }
 shiplog-testkit = { path = "../shiplog-testkit" }
 tempfile = "3"
 
