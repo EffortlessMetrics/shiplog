@@ -848,6 +848,21 @@ enum ReportCommand {
         #[arg(long)]
         path: Option<PathBuf>,
     },
+    /// Summarize intake.report.json without rewriting run artifacts.
+    Summarize {
+        /// Output directory containing shiplog runs.
+        #[arg(long, default_value = "./out")]
+        out: PathBuf,
+        /// Run ID to summarize (uses most recent if not specified).
+        #[arg(long)]
+        run: Option<String>,
+        /// Summarize the most recent run explicitly.
+        #[arg(long)]
+        latest: bool,
+        /// Summarize this intake.report.json directly instead of resolving a run.
+        #[arg(long)]
+        path: Option<PathBuf>,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -2514,14 +2529,7 @@ fn validate_intake_report_command(
     latest: bool,
     path: Option<PathBuf>,
 ) -> Result<()> {
-    if path.is_some() && (latest || run.is_some()) {
-        anyhow::bail!("use --path without --latest or --run")
-    }
-
-    let report_path = match path {
-        Some(path) => path,
-        None => resolve_render_run_dir(out_dir, run, latest)?.join("intake.report.json"),
-    };
+    let report_path = resolve_intake_report_path(out_dir, run, latest, path)?;
     let validation = validate_intake_report(&report_path)?;
 
     println!("Report valid: {}", report_path.display());
@@ -2532,6 +2540,73 @@ fn validate_intake_report_command(
     println!("Markdown: {}", validation.markdown_path.display());
 
     Ok(())
+}
+
+fn summarize_intake_report_command(
+    out_dir: &Path,
+    run: Option<String>,
+    latest: bool,
+    path: Option<PathBuf>,
+) -> Result<()> {
+    let report_path = resolve_intake_report_path(out_dir, run, latest, path)?;
+    let validation = validate_intake_report(&report_path)?;
+    let report_text = std::fs::read_to_string(&report_path)
+        .with_context(|| format!("read {}", report_path.display()))?;
+    let report_json: serde_json::Value = serde_json::from_str(&report_text)
+        .with_context(|| format!("parse {}", report_path.display()))?;
+
+    let window = object_field(&report_json, "window")?;
+    let window_label = string_field(window, "label")?;
+    let window_since = string_field(window, "since")?;
+    let window_until = string_field(window, "until")?;
+
+    let included_sources = json_array(&report_json, "included_sources")?;
+    let skipped_sources = json_array(&report_json, "skipped_sources")?;
+    let repair_sources = json_array(&report_json, "repair_sources")?;
+    let top_fixups = json_array(&report_json, "top_fixups")?;
+    let evidence_debt = json_array(&report_json, "evidence_debt")?;
+    let share_commands = json_array(&report_json, "share_commands")?;
+    let packet_path = string_field(&report_json, "packet_path")?;
+
+    println!("Report summary: {}", report_path.display());
+    println!("Run: {}", validation.run_id);
+    println!("Readiness: {}", validation.readiness);
+    println!("Window: {window_label} ({window_since}..{window_until})");
+    println!(
+        "Sources: {} included, {} skipped",
+        included_sources.len(),
+        skipped_sources.len()
+    );
+    println!("Evidence debt: {} findings", evidence_debt.len());
+    println!("Repairs: {} source actions", repair_sources.len());
+    println!("Fixups: {} actions", top_fixups.len());
+    println!("Share commands: {}", share_commands.len());
+    println!("Artifacts: {} checked", validation.artifacts_checked);
+    println!("Packet: {packet_path}");
+    println!("Intake report: {}", validation.markdown_path.display());
+
+    print_report_summary_items("Skipped sources", skipped_sources, "source", "reason")?;
+    print_report_summary_items("Top repairs", repair_sources, "source", "reason")?;
+    print_report_summary_items("Top fixups", top_fixups, "title", "command")?;
+    print_report_summary_strings("Share next", share_commands)?;
+
+    Ok(())
+}
+
+fn resolve_intake_report_path(
+    out_dir: &Path,
+    run: Option<String>,
+    latest: bool,
+    path: Option<PathBuf>,
+) -> Result<PathBuf> {
+    if path.is_some() && (latest || run.is_some()) {
+        anyhow::bail!("use --path without --latest or --run")
+    }
+
+    Ok(match path {
+        Some(path) => path,
+        None => resolve_render_run_dir(out_dir, run, latest)?.join("intake.report.json"),
+    })
 }
 
 struct IntakeReportValidation {
@@ -2669,6 +2744,60 @@ fn validate_report_items(report: &serde_json::Value) -> Result<()> {
     Ok(())
 }
 
+fn print_report_summary_items(
+    label: &str,
+    items: &[serde_json::Value],
+    primary_field: &str,
+    secondary_field: &str,
+) -> Result<()> {
+    println!("{label}:");
+    if items.is_empty() {
+        println!("- none");
+        return Ok(());
+    }
+
+    for item in items.iter().take(3) {
+        let primary = item
+            .get(primary_field)
+            .and_then(|value| value.as_str())
+            .ok_or_else(|| {
+                anyhow::anyhow!("intake report summary item {primary_field:?} must be a string")
+            })?;
+        let secondary = item
+            .get(secondary_field)
+            .and_then(|value| value.as_str())
+            .ok_or_else(|| {
+                anyhow::anyhow!("intake report summary item {secondary_field:?} must be a string")
+            })?;
+        println!("- {primary}: {secondary}");
+    }
+    if items.len() > 3 {
+        println!("- ... and {} more", items.len() - 3);
+    }
+
+    Ok(())
+}
+
+fn print_report_summary_strings(label: &str, items: &[serde_json::Value]) -> Result<()> {
+    println!("{label}:");
+    if items.is_empty() {
+        println!("- none");
+        return Ok(());
+    }
+
+    for item in items.iter().take(3) {
+        let item = item
+            .as_str()
+            .ok_or_else(|| anyhow::anyhow!("intake report summary item must be a string"))?;
+        println!("- {item}");
+    }
+    if items.len() > 3 {
+        println!("- ... and {} more", items.len() - 3);
+    }
+
+    Ok(())
+}
+
 fn validate_report_markdown(markdown_path: &Path) -> Result<()> {
     if !markdown_path.exists() {
         anyhow::bail!(
@@ -2731,6 +2860,14 @@ fn string_field(value: &serde_json::Value, field: &str) -> Result<String> {
         .and_then(|value| value.as_str())
         .map(str::to_string)
         .ok_or_else(|| anyhow::anyhow!("intake report field {field:?} must be a string"))
+}
+
+fn json_array<'a>(value: &'a serde_json::Value, field: &str) -> Result<&'a [serde_json::Value]> {
+    value
+        .get(field)
+        .and_then(|value| value.as_array())
+        .map(Vec::as_slice)
+        .ok_or_else(|| anyhow::anyhow!("intake report field {field:?} must be an array"))
 }
 
 fn ensure_string_field(value: &serde_json::Value, field: &str) -> Result<()> {
@@ -8296,6 +8433,14 @@ fn main() -> Result<()> {
                 path,
             } => {
                 validate_intake_report_command(&out, run, latest, path)?;
+            }
+            ReportCommand::Summarize {
+                out,
+                run,
+                latest,
+                path,
+            } => {
+                summarize_intake_report_command(&out, run, latest, path)?;
             }
         },
         Command::Merge {

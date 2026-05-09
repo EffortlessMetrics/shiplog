@@ -16,6 +16,7 @@ Validate a generated report and its referenced artifacts with:
 ```bash
 shiplog report validate --latest
 shiplog report validate --path out/<run>/intake.report.json
+shiplog report summarize --latest
 ```
 
 ## Compatibility
