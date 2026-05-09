@@ -41,8 +41,8 @@ beside the run so readiness, skipped sources, repair hints, fixups, and share
 commands are not terminal-only. The JSON report is documented as v1 in
 `docs/schemas/intake-report-v1.md` with the schema at
 `contracts/schemas/intake-report.v1.schema.json`; current writers include
-stable repair kinds and top-fixup IDs/kinds for future local UI or agent
-surfaces.
+stable repair kinds, top-fixup IDs/kinds, and a deduplicated machine-readable
+`actions` array for future local UI or agent surfaces.
 
 ## CLI Product Surface
 
@@ -140,6 +140,7 @@ partial coverage, missing or over-selected receipts, broad/misc/thin
 workstreams, one-source-type workstreams, manual context gaps, and validation
 errors with concrete next commands; it is not a productivity score. Generated
 intake reports include stable `top_fixups[].id` and `top_fixups[].kind` fields
+plus optional `actions` entries with id/kind/label/command/writes/risk metadata,
 while validation remains compatible with older v1 reports that only recorded
 fixup title/detail/command.
 
