@@ -1,11 +1,21 @@
 name: Mutation Testing
 
+# Broad mutation sweep (lane.mutation_weekly) + targeted PR opt-in
+# (lane.mutation_targeted). PR routing added in PR #155: PRs labeled
+# `mutation` or `full-ci` get the full mutation run; otherwise PR
+# events are no-ops. Weekly cron + dispatch unchanged.
+
 on:
   pull_request:
     branches: [main]
+    types: [labeled, synchronize, reopened]
   workflow_dispatch:
   schedule:
     - cron: "0 8 * * 1"
+
+concurrency:
+  group: mutation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' && github.event.action == 'synchronize' }}
 
 env:
   CARGO_TERM_COLOR: always
@@ -13,10 +23,12 @@ env:
 jobs:
   mutation-test:
     name: Mutation Testing
-    # The current mutation suite is a long-running baseline signal with known
-    # surviving mutants. Keep it off the PR gate until score baselines are
-    # established and enforced deliberately.
-    if: github.event_name != 'pull_request'
+    # Long-running baseline signal with known surviving mutants. PR runs
+    # require an explicit opt-in label; weekly + dispatch always run.
+    if: |
+      github.event_name != 'pull_request' ||
+      contains(github.event.pull_request.labels.*.name, 'mutation') ||
+      contains(github.event.pull_request.labels.*.name, 'full-ci')
     runs-on: ubuntu-latest
     timeout-minutes: 120
 

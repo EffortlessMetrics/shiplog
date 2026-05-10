@@ -75,7 +75,7 @@ workflow_name = "CI"
 job_name = "MSRV (1.95)"
 note = "Redundant with lane.ci_check while toolchain pin == MSRV; candidate to drop in PR #147."
 
-# ── Standalone security workflow (duplicate of ci_deny on PR) ──────────
+# ── Standalone security workflow (label-gated; duplicate of ci_deny) ──
 
 [lane.ci_security]
 description = "Standalone cargo-deny workflow."
@@ -90,7 +90,8 @@ job_name = "Cargo Deny Security"
 duplicate_of = "lane.ci_deny"
 labels = ["security-audit", "full-ci"]
 branches = ["main"]
-note = "Same intent as lane.ci_deny on PR; PR #155 routes to manifest changes / weekly / label only."
+schedule = "weekly"
+note = "Same intent as lane.ci_deny on PR; PR #155 routed PR fires to label-only (security-audit / full-ci). Push to main + weekly cron + dispatch unchanged."
 
 # ── Stochastic lanes: bounded smoke vs broad sweep ─────────────────────
 #
@@ -142,42 +143,44 @@ description = "BDD acceptance behavior checks (full 4-job matrix)."
 intent = "CLI/user-flow behavior proof"
 runner = "ubuntu_24_04"
 base_lem = 32
-default_pr = true
+default_pr = false
 blocking = false
 workflow = ".github/workflows/bdd-testing.yml"
 workflow_name = "BDD Testing"
 # No job_name set: workflow-catchall applies to all 5 jobs (BDD & Property
 # Tests, Ingest Crate Tests, Render/Trust/Contract Crates, Optional Surface
-# Tests, App Tests). PR #154 may split into per-job lanes when carving out
-# bounded smoke.
+# Tests, App Tests).
 labels = ["bdd", "full-ci"]
-target_lane = "PR fast (smoke 1-2 critical flows in PR #154) + PR-targeted (affected feature files in PR #155) + nightly (full BDD in PR #155)"
+schedule = "nightly"
+note = "PR-fast smoke is lane.bdd_smoke (PR #154). PR #155 routed broad sweep to label-only PR (bdd / full-ci) + push to main + nightly cron + dispatch."
 
 [lane.property]
 description = "Property tests at 256 cases per crate (full sweep, all 13 crates)."
 intent = "schema/property invariant"
 runner = "ubuntu_24_04"
 base_lem = 20
-default_pr = true
+default_pr = false
 blocking = false
 workflow = ".github/workflows/property-testing.yml"
 workflow_name = "Property Testing"
 job_name = "Property Testing"
 labels = ["property-tests", "full-ci"]
-target_lane = "PR fast (bounded 16-64 cases on selected invariants in PR #154) + PR-targeted (risk-pack scope at elevated cases in PR #155) + nightly (full sweep in PR #155)"
+schedule = "nightly"
+note = "PR-fast smoke is lane.property_smoke (PR #154). PR #155 routed broad sweep to label-only PR (property-tests / full-ci) + push to main + nightly cron + dispatch."
 
 [lane.fuzz_quick]
 description = "Quick-fuzz smoke (9 targets at 30s each)."
 intent = "parser robustness"
 runner = "ubuntu_24_04"
 base_lem = 10
-default_pr = true
+default_pr = false
 blocking = false
 workflow = ".github/workflows/fuzzing.yml"
 workflow_name = "Fuzzing"
 job_name = "Quick Fuzz (CI)"
 labels = ["fuzz", "full-ci"]
-target_lane = "PR fast (touched-target only at 30-90s in PR #154) + PR-targeted (selected target via parsers risk pack in PR #155) + nightly (full 9-target matrix in PR #155)"
+schedule = "nightly"
+note = "PR-fast touched-target smoke is lane.fuzz_smoke (PR #154). PR #155 routed broad 9-target sweep to label-only PR (fuzz / full-ci) + push to main + nightly cron + dispatch."
 
 [lane.fuzz_extended]
 description = "Extended fuzz (60 min × 9 targets)."
@@ -228,8 +231,8 @@ base_lem = 45
 default_pr = false
 blocking = false
 workflow = ".github/workflows/mutation-testing.yml"
-labels = ["mutation"]
-note = "Triggered by label, risk pack, or severe ripr finding. Routing added in PR #155."
+labels = ["mutation", "full-ci"]
+note = "Triggered by label (mutation / full-ci), risk pack, or severe ripr finding. PR #155 wired the label trigger; the workflow's job-level if-guard accepts mutation or full-ci. Risk-pack auto-application of the mutation label is a follow-up."
 
 # ── ripr advisory (added in PR #153) ───────────────────────────────────
 

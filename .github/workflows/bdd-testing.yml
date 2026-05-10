@@ -1,15 +1,34 @@
 name: BDD Testing
 
+# Broad BDD sweep (lane.bdd). Routed in PR #155 to label-gated PR +
+# nightly + main only; the bounded smoke (lane.bdd_smoke,
+# .github/workflows/bdd-smoke.yml) runs on every PR-fast.
+#
+# Triggers:
+#   - push to main: full sweep
+#   - PR with `bdd` or `full-ci` label: full sweep
+#   - nightly cron: full sweep
+#   - manual dispatch
+#
+# Job-level `if` guards label-gated PR runs so synchronizing an unlabeled
+# PR doesn't burn LEM.
+
 on:
   push:
-    branches: [main, develop]
+    branches: [main]
   pull_request:
-    # Docs-only PRs do not need to compile + run BDD; they are reported as
-    # skipped-by-policy in the PR plan (see docs/ci/skipped-by-policy.md).
+    types: [labeled, synchronize, reopened]
     paths-ignore:
       - "docs/**"
       - "*.md"
       - "**/*.md"
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: bdd-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' && github.event.action == 'synchronize' }}
 
 env:
   CARGO_TERM_COLOR: always
@@ -17,6 +36,10 @@ env:
 jobs:
   bdd-test:
     name: BDD & Property Tests
+    if: |
+      github.event_name != 'pull_request' ||
+      contains(github.event.pull_request.labels.*.name, 'bdd') ||
+      contains(github.event.pull_request.labels.*.name, 'full-ci')
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -66,6 +89,10 @@ jobs:
 
   ingest-tests:
     name: Ingest Crate Tests
+    if: |
+      github.event_name != 'pull_request' ||
+      contains(github.event.pull_request.labels.*.name, 'bdd') ||
+      contains(github.event.pull_request.labels.*.name, 'full-ci')
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -89,6 +116,10 @@ jobs:
 
   render-and-trust-tests:
     name: Render, Trust, and Contract Crates
+    if: |
+      github.event_name != 'pull_request' ||
+      contains(github.event.pull_request.labels.*.name, 'bdd') ||
+      contains(github.event.pull_request.labels.*.name, 'full-ci')
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -112,6 +143,10 @@ jobs:
 
   optional-surface-tests:
     name: Optional Surface Tests
+    if: |
+      github.event_name != 'pull_request' ||
+      contains(github.event.pull_request.labels.*.name, 'bdd') ||
+      contains(github.event.pull_request.labels.*.name, 'full-ci')
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -135,6 +170,10 @@ jobs:
 
   app-tests:
     name: App Tests
+    if: |
+      github.event_name != 'pull_request' ||
+      contains(github.event.pull_request.labels.*.name, 'bdd') ||
+      contains(github.event.pull_request.labels.*.name, 'full-ci')
     runs-on: ubuntu-latest
     timeout-minutes: 30
 

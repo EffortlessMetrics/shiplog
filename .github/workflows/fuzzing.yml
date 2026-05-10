@@ -1,20 +1,35 @@
 name: Fuzzing
 
+# Broad fuzzing (lane.fuzz_quick = full 9-target × 30s on PR;
+# lane.fuzz_extended = nightly 60min × 9 targets). Quick-fuzz routed in
+# PR #155 to label-gated PR + nightly + main only; the touched-target
+# smoke (lane.fuzz_smoke, .github/workflows/fuzz-smoke.yml) runs on
+# every PR-fast for the parser surfaces actually touched by the diff.
+# Extended fuzz keeps its existing schedule + dispatch posture.
+#
+# Quick-fuzz triggers:
+#   - push to main: full 9-target sweep
+#   - PR with `fuzz` or `full-ci` label: full sweep
+#   - nightly cron (existing): extended sweep covers it
+#   - manual dispatch
+
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
-    # Docs-only PRs do not exercise parser robustness; reported as
-    # skipped-by-policy in the PR plan (see docs/ci/skipped-by-policy.md).
+    types: [labeled, synchronize, reopened]
     paths-ignore:
       - "docs/**"
       - "*.md"
       - "**/*.md"
   schedule:
-    # Run extended fuzzing daily at midnight UTC
     - cron: '0 0 * * *'
   workflow_dispatch:
+
+concurrency:
+  group: fuzzing-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' && github.event.action == 'synchronize' }}
 
 env:
   CARGO_TERM_COLOR: always
@@ -22,6 +37,10 @@ env:
 jobs:
   quick-fuzz:
     name: Quick Fuzz (CI)
+    if: |
+      github.event_name != 'pull_request' ||
+      contains(github.event.pull_request.labels.*.name, 'fuzz') ||
+      contains(github.event.pull_request.labels.*.name, 'full-ci')
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
