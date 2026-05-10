@@ -1,5 +1,10 @@
 # Cargo configuration for shiplog project
 
+[alias]
+# `cargo xtask <subcommand>` runs the workspace policy/release-proof runner.
+# See docs/xtask.md.
+xtask = "run --quiet -p xtask --"
+
 [profile.dev]
 # Optimize dependencies in dev mode for faster test runs
 opt-level = 1

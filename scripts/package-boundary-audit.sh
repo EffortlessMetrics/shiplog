@@ -39,6 +39,7 @@ published = {
 
 dev_only = {
     "shiplog-testkit",
+    "xtask",
 }
 
 workspace_ids = set(metadata["workspace_members"])

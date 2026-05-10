@@ -1,0 +1,23 @@
+[package]
+name = "xtask"
+version = "0.4.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Rust-native policy runner and release-proof aggregator for shiplog (dev-only)."
+publish = false
+
+[dependencies]
+anyhow.workspace = true
+clap = { workspace = true, features = ["env"] }
+serde = { workspace = true }
+toml.workspace = true
+
+[dev-dependencies]
+assert_cmd.workspace = true
+predicates.workspace = true
+tempfile.workspace = true
+
+[lints]
+workspace = true
