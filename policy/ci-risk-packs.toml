@@ -1,0 +1,142 @@
+schema_version = 1
+policy = "ci-risk-packs"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+# Path-pattern → label / lane selection. A PR that touches matching paths
+# auto-applies the listed labels and selects the listed PR-targeted lanes.
+# See docs/ci/test-evidence-lanes.md for the lane assignments and
+# docs/ci/risk-packs.md (added in PR #142) for the routing detail.
+
+[[risk_pack]]
+id = "redaction-privacy"
+description = "Redaction trust surface and privacy-sensitive code paths."
+paths = [
+  "crates/shiplog-redact/**",
+  "crates/shiplog-bundle/**",
+  "apps/shiplog/src/**/share*.rs",
+  "apps/shiplog/src/**/profile*.rs",
+]
+labels = ["mutation"]
+selected_lanes = ["mutation_targeted", "property"]
+
+[[risk_pack]]
+id = "bundle-share"
+description = "Bundle integrity, share manifests, share verification."
+paths = [
+  "crates/shiplog-bundle/**",
+  "apps/shiplog/src/**/share*.rs",
+  "apps/shiplog/src/**/manifest*.rs",
+]
+labels = ["mutation"]
+selected_lanes = ["mutation_targeted"]
+
+[[risk_pack]]
+id = "report-schema"
+description = "Intake report schema, agent pack export, contracts/schemas."
+paths = [
+  "contracts/schemas/**",
+  "crates/shiplog-engine/src/**/report*.rs",
+  "crates/shiplog-engine/src/**/intake*.rs",
+  "apps/shiplog/src/**/report*.rs",
+]
+labels = ["property-tests"]
+selected_lanes = ["property"]
+
+[[risk_pack]]
+id = "schema-ids"
+description = "Stable contract crates: schema, ids, ports."
+paths = [
+  "crates/shiplog-schema/**",
+  "crates/shiplog-ids/**",
+  "crates/shiplog-ports/**",
+]
+labels = ["mutation"]
+selected_lanes = ["mutation_targeted", "property"]
+
+[[risk_pack]]
+id = "source-adapter"
+description = "Source ingest adapters."
+paths = [
+  "crates/shiplog-ingest-*/**",
+]
+labels = ["bdd"]
+selected_lanes = ["bdd", "mutation_targeted"]
+
+[[risk_pack]]
+id = "manual-journal"
+description = "Manual event capture and journal commands."
+paths = [
+  "crates/shiplog-ingest-manual/**",
+  "apps/shiplog/src/**/journal*.rs",
+]
+labels = ["property-tests"]
+selected_lanes = ["property"]
+
+[[risk_pack]]
+id = "period-window"
+description = "Period and window resolution, named periods in shiplog.toml."
+paths = [
+  "crates/shiplog-coverage/src/**/period*.rs",
+  "crates/shiplog-coverage/src/**/window*.rs",
+  "apps/shiplog/src/**/period*.rs",
+]
+labels = ["property-tests"]
+selected_lanes = ["property"]
+
+[[risk_pack]]
+id = "cli-product"
+description = "CLI / user-flow surface (apps/shiplog)."
+paths = [
+  "apps/shiplog/**",
+]
+labels = ["bdd"]
+selected_lanes = ["bdd"]
+
+[[risk_pack]]
+id = "release-package"
+description = "Release scripts, release.yml, package metadata, version alignment."
+paths = [
+  "scripts/**",
+  ".github/workflows/release.yml",
+  "Cargo.toml",
+  "**/Cargo.toml",
+]
+labels = ["release-check"]
+selected_lanes = ["release_preflight"]
+
+[[risk_pack]]
+id = "policy-workflows"
+description = "Policy ledgers, xtask, GitHub Actions workflows."
+paths = [
+  "policy/**",
+  "xtask/**",
+  ".github/workflows/**",
+]
+labels = ["full-ci"]
+selected_lanes = ["pr_plan", "ci_check", "ci_check_windows", "ci_deny", "ci_msrv"]
+
+[[risk_pack]]
+id = "parsers-serde"
+description = "Parser surfaces (fuzz targets, *_parse.rs, serde derives at trust boundaries)."
+paths = [
+  "fuzz/fuzz_targets/**",
+  "**/serde*.rs",
+  "**/*_parse.rs",
+  "**/parse*.rs",
+]
+labels = ["fuzz"]
+selected_lanes = ["fuzz_quick"]
+
+[[risk_pack]]
+id = "docs-only"
+description = "Docs-only changes — skip compile-heavy lanes."
+paths = [
+  "docs/**",
+  "README.md",
+  "CHANGELOG.md",
+  "*.md",
+]
+labels = []
+selected_lanes = ["pr_plan"]
+note = "PR Plan should report skipped-by-policy: docs-only for compile-heavy lanes (see docs/ci/skipped-by-policy.md added in PR #142)."

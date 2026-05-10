@@ -1,0 +1,37 @@
+schema_version = 1
+policy = "no-panic-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[policy_config]
+mode = "no-new-debt"
+
+# Skeleton — permanent justified panic-family exceptions go here, not in
+# the baseline. Reserved for panics we have decided are correct (e.g. an
+# `unreachable!` in an exhaustive match the type system cannot prove).
+#
+# Most existing findings belong in `no-panic-baseline.toml`, not here.
+# The allowlist is reserved for codified exceptions that should not be
+# burnt down. Adding to the allowlist requires reviewer approval.
+#
+# Entry shape:
+#
+# [[allow]]
+# id = "panic-0001"
+# path = "apps/shiplog/tests/example.rs"
+# family = "unreachable"
+# classification = "exhaustive_match"
+# owner = "cli"
+# reason = "All Source variants matched explicitly above; the unreachable! documents intent and the type system cannot prove exhaustiveness."
+# created = "2026-05-09"
+# review_after = "2026-09-09"
+# expires = "permanent"
+# count = 1
+#
+# [allow.selector]
+# kind = "macro_call"
+# container = "match Source"
+# callee = "unreachable!"
+# snippet = "unreachable!(\"Source::Unknown handled above\")"
+#
+# See docs/NO_PANIC_POLICY.md.

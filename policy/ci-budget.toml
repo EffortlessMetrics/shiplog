@@ -1,0 +1,51 @@
+schema_version = 1
+policy = "ci-budget"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+# Linux Equivalent Minutes (LEM): 1 LEM = 1 wall-clock minute on a Linux
+# (ubuntu) GitHub-hosted runner. See docs/ci/lem-budgeting.md for the
+# unit, runner multipliers, and budget tiers; see
+# docs/ci/cost-and-verification-policy.md for the routing doctrine.
+
+[budget]
+preferred_default_lem = 25
+default_limit_lem = 35
+elevated_limit_lem = 75
+hard_limit_lem = 125
+linux_minute_rate_usd = 0.008
+
+[runner_multipliers]
+ubuntu_latest = 1.0
+ubuntu_24_04 = 1.0
+windows_latest = 2.0
+macos_latest = 10.0
+macos_15_intel = 10.0
+docker_build = 6.0
+external_ai_review = 4.0
+
+[labels]
+full_ci = "full-ci"
+budget_ack = "ci-budget-ack"
+budget_override = "ci-budget-override"
+ripr_force = "ripr"
+ripr_waive = "ripr-waive"
+coverage = "coverage"
+mutation = "mutation"
+property_tests = "property-tests"
+fuzz = "fuzz"
+bdd = "bdd"
+security_audit = "security-audit"
+release_check = "release-check"
+
+# Costs LEM does not cover. These are real spend the budget plan should
+# eventually account for but cannot capture in wall-clock minutes alone.
+# See docs/ci/lem-budgeting.md for the discussion; PR #148 may extend the
+# actuals schema to include these dimensions.
+[external_cost_notes]
+bot_review_tokens = "Droid / CodeRabbit / Gemini token spend per PR review"
+codecov_processing = "Codecov upload + report processing on coverage runs"
+factory_droid = "Factory.ai Droid orchestration (review + security scan)"
+external_model_calls = "MiniMax / OpenAI / Anthropic API calls from bot lanes"
+artifact_storage = "GitHub Actions artifact retention (mutation reports, fuzz corpus, coverage)"
+macos_runner_premium = "macOS runners are 10x Linux billing; release lane uses macos for darwin parity"

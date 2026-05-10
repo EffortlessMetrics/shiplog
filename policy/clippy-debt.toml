@@ -1,0 +1,42 @@
+schema_version = 1
+policy = "clippy-debt"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+# Broad workspace lint allows that exist as receipted debt. The Clippy
+# ledger checker (PR #150) verifies that every broad allow in
+# workspace.lints in Cargo.toml has a matching debt entry here.
+# See docs/CLIPPY_POLICY.md.
+
+[[debt]]
+id = "clippy-debt-0001"
+lint = "clippy::needless_pass_by_value"
+lint_level = "allow"
+crate_scope = "workspace"
+owner = "shiplog-engine"
+reason = "30+ hits across crates (CLI argument parsers, config loaders, packet builders). Burndown is opportunistic; small dent in PR #152, broader sweep is a follow-up release."
+created = "2026-05-09"
+review_after = "2026-09-09"
+expires = "2027-02-09"
+
+[[debt]]
+id = "clippy-debt-0002"
+lint = "clippy::cloned_instead_of_copied"
+lint_level = "allow"
+crate_scope = "workspace"
+owner = "shiplog-engine"
+reason = "40+ hits across crates (mostly small struct field copies in iterators). Burndown is opportunistic; small dent in PR #152, broader sweep is a follow-up release."
+created = "2026-05-09"
+review_after = "2026-09-09"
+expires = "2027-02-09"
+
+[[debt]]
+id = "clippy-debt-0003"
+lint = "rust::missing_debug_implementations"
+lint_level = "allow"
+crate_scope = "workspace"
+owner = "policy"
+reason = "53+ types lack Debug. Adding Debug is mostly mechanical but cuts across all 22 crates; deferred to a model/Debug sweep follow-up release."
+created = "2026-05-09"
+review_after = "2026-12-09"
+expires = "2027-05-09"

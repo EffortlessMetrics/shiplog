@@ -1,0 +1,234 @@
+schema_version = 1
+policy = "ci-lanes"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+# Maps existing GitHub Actions workflows / jobs to lane assignments. These
+# are tentative in v0.5.0 and become routed in PR #146 (PR plan emits the
+# forecast), PR #153 (ripr advisory wired), PR #154 (bounded stochastic
+# PR-fast carve-out), and PR #155 (broad lane routing). See
+# docs/ci/test-evidence-lanes.md.
+
+# Every lane declares: description, intent, runner, base_lem, default_pr,
+# blocking. Optional: workflow, labels, branches, schedule, duplicate_of,
+# outputs, target_lane, note.
+
+# ── PR plan (added in PR #146) ────────────────────────────────────────
+
+[lane.pr_plan]
+description = "Forecast PR CI cost, touched risk packs, and selected lanes."
+intent = "visibility"
+runner = "ubuntu_24_04"
+base_lem = 1
+default_pr = true
+blocking = false
+workflow = ".github/workflows/pr-plan.yml"
+outputs = ["target/ci/ci-plan.json"]
+
+# ── ci.yml jobs (PR-fast required gate) ────────────────────────────────
+
+[lane.ci_check]
+description = "Primary shiplog PR correctness gate (Ubuntu)."
+intent = "Rust correctness"
+runner = "ubuntu_24_04"
+base_lem = 12
+default_pr = true
+blocking = true
+workflow = ".github/workflows/ci.yml"
+
+[lane.ci_check_windows]
+description = "Cross-platform parity check (Windows)."
+intent = "Rust correctness (Windows parity)"
+runner = "windows_latest"
+base_lem = 36
+default_pr = true
+blocking = true
+workflow = ".github/workflows/ci.yml"
+note = "Windows runners are 2x Linux billing; covered by ci-exception-0001."
+
+[lane.ci_deny]
+description = "Dependency policy: bans, advisories, licenses, sources."
+intent = "dependency policy"
+runner = "ubuntu_24_04"
+base_lem = 4
+default_pr = true
+blocking = true
+workflow = ".github/workflows/ci.yml"
+
+[lane.ci_msrv]
+description = "Workspace compiles on declared MSRV."
+intent = "Rust correctness (MSRV)"
+runner = "ubuntu_24_04"
+base_lem = 5
+default_pr = true
+blocking = true
+workflow = ".github/workflows/ci.yml"
+note = "Redundant with lane.ci_check while toolchain pin == MSRV; candidate to drop in PR #147."
+
+# ── Standalone security workflow (duplicate of ci_deny on PR) ──────────
+
+[lane.ci_security]
+description = "Standalone cargo-deny workflow."
+intent = "dependency policy"
+runner = "ubuntu_24_04"
+base_lem = 4
+default_pr = false
+blocking = false
+workflow = ".github/workflows/security.yml"
+duplicate_of = "lane.ci_deny"
+labels = ["security-audit", "full-ci"]
+branches = ["main"]
+note = "Same intent as lane.ci_deny on PR; PR #155 routes to manifest changes / weekly / label only."
+
+# ── Stochastic lanes: bounded smoke vs broad sweep ─────────────────────
+
+[lane.bdd]
+description = "BDD acceptance behavior checks (full 4-job matrix)."
+intent = "CLI/user-flow behavior proof"
+runner = "ubuntu_24_04"
+base_lem = 32
+default_pr = true
+blocking = false
+workflow = ".github/workflows/bdd-testing.yml"
+labels = ["bdd", "full-ci"]
+target_lane = "PR fast (smoke 1-2 critical flows in PR #154) + PR-targeted (affected feature files in PR #155) + nightly (full BDD in PR #155)"
+
+[lane.property]
+description = "Property tests at 256 cases per crate (full sweep, all 13 crates)."
+intent = "schema/property invariant"
+runner = "ubuntu_24_04"
+base_lem = 20
+default_pr = true
+blocking = false
+workflow = ".github/workflows/property-testing.yml"
+labels = ["property-tests", "full-ci"]
+target_lane = "PR fast (bounded 16-64 cases on selected invariants in PR #154) + PR-targeted (risk-pack scope at elevated cases in PR #155) + nightly (full sweep in PR #155)"
+
+[lane.fuzz_quick]
+description = "Quick-fuzz smoke (9 targets at 30s each)."
+intent = "parser robustness"
+runner = "ubuntu_24_04"
+base_lem = 10
+default_pr = true
+blocking = false
+workflow = ".github/workflows/fuzzing.yml"
+labels = ["fuzz", "full-ci"]
+target_lane = "PR fast (touched-target only at 30-90s in PR #154) + PR-targeted (selected target via parsers risk pack in PR #155) + nightly (full 9-target matrix in PR #155)"
+
+[lane.fuzz_extended]
+description = "Extended fuzz (60 min × 9 targets)."
+intent = "parser robustness (deep)"
+runner = "ubuntu_24_04"
+base_lem = 540
+default_pr = false
+blocking = false
+workflow = ".github/workflows/fuzzing.yml"
+schedule = "daily"
+
+# ── Coverage and mutation (already correctly off PR) ───────────────────
+
+[lane.coverage]
+description = "Codecov execution-surface coverage."
+intent = "execution-surface measurement"
+runner = "ubuntu_24_04"
+base_lem = 45
+default_pr = false
+blocking = false
+workflow = ".github/workflows/coverage.yml"
+labels = ["coverage", "full-ci"]
+branches = ["main"]
+
+[lane.mutation_weekly]
+description = "Mutation testing across 22 crates (3 tiers, advisory baseline)."
+intent = "test-strength evidence"
+runner = "ubuntu_24_04"
+base_lem = 120
+default_pr = false
+blocking = false
+workflow = ".github/workflows/mutation-testing.yml"
+labels = ["mutation", "full-ci"]
+schedule = "weekly"
+
+[lane.mutation_targeted]
+description = "Targeted mutation for the touched risk-pack scope."
+intent = "test-strength evidence (scoped)"
+runner = "ubuntu_24_04"
+base_lem = 45
+default_pr = false
+blocking = false
+workflow = ".github/workflows/mutation-testing.yml"
+labels = ["mutation"]
+note = "Triggered by label, risk pack, or severe ripr finding. Routing added in PR #155."
+
+# ── ripr advisory (added in PR #153) ───────────────────────────────────
+
+[lane.ripr_advisory]
+description = "Static reachable-mutant exposure analysis on Rust diffs."
+intent = "oracle-gap detection"
+runner = "ubuntu_24_04"
+base_lem = 4
+default_pr = true
+blocking = false
+workflow = ".github/workflows/ripr.yml"
+labels = ["ripr", "ripr-waive"]
+outputs = ["target/ripr/ripr.json", "target/ripr/ripr.sarif"]
+
+# ── Bot review lanes (advisory, external AI multiplier 4x) ─────────────
+
+[lane.droid_review]
+description = "Factory Droid auto-review (PR-time bot review + security)."
+intent = "advisory bot review"
+runner = "external_ai_review"
+base_lem = 20
+default_pr = true
+blocking = false
+workflow = ".github/workflows/droid-review.yml"
+
+[lane.droid_security_scan]
+description = "Factory Droid weekly security scan."
+intent = "advisory security scan"
+runner = "external_ai_review"
+base_lem = 20
+default_pr = false
+blocking = false
+workflow = ".github/workflows/droid-security-scan.yml"
+schedule = "weekly"
+
+[lane.droid_tag]
+description = "Out-of-band @droid mention handler."
+intent = "interactive bot orchestration"
+runner = "ubuntu_24_04"
+base_lem = 5
+default_pr = false
+blocking = false
+workflow = ".github/workflows/droid.yml"
+
+# ── Release lanes (tag-triggered) ──────────────────────────────────────
+
+[lane.release_preflight]
+description = "Release preflight: package-proof + publish-dry-run."
+intent = "publish readiness"
+runner = "ubuntu_24_04"
+base_lem = 8
+default_pr = false
+blocking = true
+workflow = ".github/workflows/release.yml"
+
+[lane.release_build]
+description = "Multi-platform release build (Linux x86_64, macOS x86_64, macOS arm64, Windows x86_64)."
+intent = "multi-platform release readiness"
+runner = "macos_latest"
+base_lem = 90
+default_pr = false
+blocking = true
+workflow = ".github/workflows/release.yml"
+note = "macos_latest at 10x multiplier dominates the release LEM cost; Linux x86_64 and Windows x86_64 are the cheaper matrix legs."
+
+[lane.release_validation]
+description = "Smoke downloaded artifact + freshly built release binary across product help surface."
+intent = "release asset smoke"
+runner = "ubuntu_24_04"
+base_lem = 12
+default_pr = false
+blocking = true
+workflow = ".github/workflows/release.yml"

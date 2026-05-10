@@ -1,0 +1,176 @@
+schema_version = 1
+policy = "workflow-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+# GitHub Actions workflows. Each entry captures the workflow's
+# permissions, secrets used, and external actions. A new `uses:` line in
+# any workflow is a policy event, not just a code change. The
+# file-policy checker (PR #149) verifies that:
+#   - every workflow file has an entry,
+#   - declared external_actions match the actual uses: lines,
+#   - secrets_used matches the actual ${{ secrets.* }} references.
+# See docs/FILE_POLICY.md.
+
+[[entry]]
+path = ".github/workflows/ci.yml"
+owner = "release/ci"
+reason = "Primary PR correctness gate (Ubuntu + Windows). Runs fmt, clippy -D, tests, doc-tests, doc build, release build, canary publish dry-run; cargo-deny job; MSRV job."
+permissions = ["contents:read"]
+secrets_used = []
+external_actions = [
+  "actions/checkout@v6.0.2",
+  "dtolnay/rust-toolchain@master",
+  "Swatinem/rust-cache@v2",
+]
+created = "2026-05-09"
+expires = "permanent"
+
+[[entry]]
+path = ".github/workflows/release.yml"
+owner = "release/ci"
+reason = "Tag-triggered release pipeline; multi-platform binary build + crates.io readiness."
+permissions = ["contents:write"]
+secrets_used = ["GITHUB_TOKEN"]
+external_actions = [
+  "actions/checkout@v6.0.2",
+  "dtolnay/rust-toolchain@master",
+  "actions/upload-artifact@v7",
+  "actions/download-artifact@v8",
+  "actions/cache@v5",
+  "softprops/action-gh-release@v3",
+  "Swatinem/rust-cache@v2",
+  "taiki-e/install-action@v2",
+]
+created = "2026-05-09"
+expires = "permanent"
+
+[[entry]]
+path = ".github/workflows/security.yml"
+owner = "release/ci"
+reason = "Standalone cargo-deny on push/PR/weekly. Duplicate of ci.yml#deny on PR; PR #155 routes to manifest changes / weekly / label only."
+permissions = ["contents:read"]
+secrets_used = []
+external_actions = [
+  "actions/checkout@v6.0.2",
+  "dtolnay/rust-toolchain@stable",
+  "taiki-e/install-action@v2",
+]
+duplicate_of_lane = "lane.ci_deny"
+created = "2026-05-09"
+expires = "permanent"
+
+[[entry]]
+path = ".github/workflows/property-testing.yml"
+owner = "policy"
+reason = "Property tests at 256 cases per crate. Currently runs full sweep on every PR; PR #154 carves out a bounded smoke; PR #155 routes broad form."
+permissions = ["contents:read"]
+secrets_used = []
+external_actions = [
+  "actions/checkout@v6.0.2",
+  "dtolnay/rust-toolchain@master",
+  "Swatinem/rust-cache@v2",
+]
+created = "2026-05-09"
+expires = "permanent"
+
+[[entry]]
+path = ".github/workflows/bdd-testing.yml"
+owner = "policy"
+reason = "BDD scenarios across 4 jobs. Currently runs full matrix on every PR; PR #154 carves out a critical-flow smoke; PR #155 routes broad form."
+permissions = ["contents:read"]
+secrets_used = []
+external_actions = [
+  "actions/checkout@v6.0.2",
+  "dtolnay/rust-toolchain@master",
+  "Swatinem/rust-cache@v2",
+]
+created = "2026-05-09"
+expires = "permanent"
+
+[[entry]]
+path = ".github/workflows/fuzzing.yml"
+owner = "policy"
+reason = "Quick fuzz on PR (9 targets × 30s) + extended fuzz on nightly cron (9 targets × 60min). PR #154 carves out touched-target smoke; PR #155 routes full matrix to nightly + label."
+permissions = ["contents:read"]
+secrets_used = []
+external_actions = [
+  "actions/checkout@v6.0.2",
+  "dtolnay/rust-toolchain@master",
+  "actions/cache@v5",
+  "Swatinem/rust-cache@v2",
+  "actions/upload-artifact@v7",
+]
+created = "2026-05-09"
+expires = "permanent"
+
+[[entry]]
+path = ".github/workflows/mutation-testing.yml"
+owner = "policy"
+reason = "Mutation testing across 22 crates (3 tiers, advisory). Off PR (correctly), Mon weekly cron + dispatch."
+permissions = ["contents:read"]
+secrets_used = []
+external_actions = [
+  "actions/checkout@v6.0.2",
+  "dtolnay/rust-toolchain@master",
+  "actions/upload-artifact@v7",
+  "Swatinem/rust-cache@v2",
+]
+created = "2026-05-09"
+expires = "permanent"
+
+[[entry]]
+path = ".github/workflows/coverage.yml"
+owner = "release/ci"
+reason = "Codecov execution-surface coverage. Push main + label-gated PR (coverage / full-ci) + dispatch."
+permissions = ["contents:read"]
+secrets_used = ["CODECOV_TOKEN"]
+external_actions = [
+  "actions/checkout@v6.0.2",
+  "dtolnay/rust-toolchain@master",
+  "Swatinem/rust-cache@v2",
+  "taiki-e/install-action@v2",
+  "codecov/codecov-action@v6",
+  "actions/upload-artifact@v7",
+]
+created = "2026-05-09"
+expires = "permanent"
+
+[[entry]]
+path = ".github/workflows/droid.yml"
+owner = "policy"
+reason = "Out-of-band @droid mention handler (interactive)."
+permissions = ["contents:read", "pull-requests:write", "issues:write", "id-token:write", "actions:read"]
+secrets_used = ["MINIMAX_API_KEY", "FACTORY_API_KEY"]
+external_actions = [
+  "actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+  "EffortlessMetrics/droid-action-safe@7c1377ccbacddc95560d1570547a5baa51de01ec",
+]
+created = "2026-05-09"
+expires = "permanent"
+
+[[entry]]
+path = ".github/workflows/droid-review.yml"
+owner = "policy"
+reason = "Factory Droid auto-review on PR open/sync/ready_for_review/reopened. Advisory only; bot failure is not code failure."
+permissions = ["contents:write", "pull-requests:write", "issues:write", "id-token:write", "actions:read"]
+secrets_used = ["MINIMAX_API_KEY", "FACTORY_API_KEY"]
+external_actions = [
+  "actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+  "EffortlessMetrics/droid-action-safe@7c1377ccbacddc95560d1570547a5baa51de01ec",
+]
+created = "2026-05-09"
+expires = "permanent"
+
+[[entry]]
+path = ".github/workflows/droid-security-scan.yml"
+owner = "policy"
+reason = "Factory Droid weekly security scan."
+permissions = ["contents:write", "pull-requests:write", "issues:write", "id-token:write", "actions:read"]
+secrets_used = ["MINIMAX_API_KEY", "FACTORY_API_KEY"]
+external_actions = [
+  "actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd",
+  "EffortlessMetrics/droid-action-safe@7c1377ccbacddc95560d1570547a5baa51de01ec",
+]
+created = "2026-05-09"
+expires = "permanent"
