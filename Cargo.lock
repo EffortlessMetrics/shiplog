@@ -3766,6 +3766,7 @@ dependencies = [
  "clap",
  "globset",
  "predicates",
+ "regex",
  "serde",
  "serde_json",
  "tempfile",

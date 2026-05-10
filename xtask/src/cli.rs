@@ -62,6 +62,12 @@ enum Command {
 
     /// Verify the network-policy allowlist (`policy/network-allowlist.toml`).
     CheckNetworkPolicy(FilePolicyModeArgs),
+
+    /// Verify the Clippy lint ledger (`policy/clippy-lints.toml` + `clippy-debt.toml`).
+    CheckLintPolicy(FilePolicyModeArgs),
+
+    /// Verify Clippy exceptions in source vs `policy/clippy-exceptions.toml`.
+    CheckClippyExceptions(FilePolicyModeArgs),
 }
 
 #[derive(Debug, Args)]
@@ -202,6 +208,13 @@ impl Cli {
             Command::CheckNetworkPolicy(args) => {
                 tasks::file_policy::check_network_policy(&workspace_root, parse_mode(&args.mode)?)
             }
+            Command::CheckLintPolicy(args) => {
+                tasks::clippy_policy::check_lint_policy(&workspace_root, parse_mode(&args.mode)?)
+            }
+            Command::CheckClippyExceptions(args) => tasks::clippy_policy::check_clippy_exceptions(
+                &workspace_root,
+                parse_mode(&args.mode)?,
+            ),
         }
     }
 }
