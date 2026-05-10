@@ -181,7 +181,6 @@ impl<'a> Engine<'a> {
     /// Set `render_profiles` to `false` for internal-only outputs when no real
     /// redaction key is available. Manager and public bundle profiles require
     /// profile rendering because those bundles include redacted packet paths.
-    #[allow(clippy::too_many_arguments)]
     pub fn run_with_profile_rendering(
         &self,
         ingest: IngestOutput,
@@ -319,7 +318,6 @@ impl<'a> Engine<'a> {
     /// # Ok(())
     /// # }
     /// ```
-    #[allow(clippy::too_many_arguments)]
     pub fn import(
         &self,
         ingest: IngestOutput,
@@ -347,7 +345,7 @@ impl<'a> Engine<'a> {
     /// Set `render_profiles` to `false` for internal-only outputs when no real
     /// redaction key is available. Manager and public bundle profiles require
     /// profile rendering because those bundles include redacted packet paths.
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments, reason = "policy:clippy-0001")]
     pub fn import_with_profile_rendering(
         &self,
         ingest: IngestOutput,
@@ -493,7 +491,6 @@ impl<'a> Engine<'a> {
     /// Set `render_profiles` to `false` for internal-only outputs when no real
     /// redaction key is available. Manager and public bundle profiles require
     /// profile rendering because those bundles include redacted packet paths.
-    #[allow(clippy::too_many_arguments)]
     pub fn refresh_with_profile_rendering(
         &self,
         ingest: IngestOutput,
@@ -590,7 +587,6 @@ impl<'a> Engine<'a> {
         })
     }
 
-    #[allow(clippy::too_many_arguments)]
     fn render_profiles_if_requested(
         &self,
         render_profiles: bool,
@@ -628,7 +624,6 @@ impl<'a> Engine<'a> {
         Ok(())
     }
 
-    #[allow(clippy::too_many_arguments)]
     fn render_profile(
         &self,
         profile: &str,

@@ -249,6 +249,7 @@ fn is_test_scope(path: &str) -> bool {
         || p.contains("/tests/")
         || p.starts_with("fuzz/")
         || p.starts_with("crates/shiplog-testkit/")
+        || p.starts_with("xtask/")
         || p == "build.rs"
         || p.ends_with("/build.rs")
 }
@@ -483,6 +484,8 @@ mod tests {
         assert!(is_test_scope("crates/foo/tests/bar.rs"));
         assert!(is_test_scope("fuzz/fuzz_targets/foo.rs"));
         assert!(is_test_scope("crates/shiplog-testkit/src/lib.rs"));
+        assert!(is_test_scope("xtask/src/main.rs"));
+        assert!(is_test_scope("xtask/src/tasks/no_panic.rs"));
         assert!(is_test_scope("build.rs"));
         assert!(is_test_scope("crates/foo/build.rs"));
         assert!(!is_test_scope("crates/shiplog-engine/src/lib.rs"));

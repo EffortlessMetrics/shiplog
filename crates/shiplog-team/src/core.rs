@@ -124,7 +124,6 @@ pub fn parse_alias_list(alias_args: &[String]) -> Result<HashMap<String, String>
 }
 
 /// Resolve team command flags and optional config file into a normalized `TeamConfig`.
-#[allow(clippy::too_many_arguments)]
 pub fn resolve_team_config(
     config: Option<PathBuf>,
     members: Option<String>,

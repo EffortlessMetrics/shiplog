@@ -5,9 +5,12 @@ status = "advisory"
 msrv = "1.95"
 
 # `msrv` was bumped to "1.95" in PR #145 alongside the workspace toolchain
-# bump. Planned lints with `activate_when_msrv = "1.95"` are now
-# eligible to activate; activation moves them from [[planned]] to
-# [[active]] in PR #152 (Rust+Clippy ratchets). See docs/CLIPPY_POLICY.md.
+# bump. Planned 1.95-eligible lints were activated in PR #152 (Rust+Clippy
+# ratchets); they appear below as [[active]] entries. `clippy::disallowed_fields`
+# remains [[planned]] until protected seams are configured.
+# `clippy::manual_pop_if` was removed because it does not exist in Clippy 1.95
+# (verified via probe — `unknown lint` warning).
+# See docs/CLIPPY_POLICY.md.
 
 [posture]
 panic_free_tests = true
@@ -15,7 +18,7 @@ allow_test_carveouts = false
 suppression_style = "expect-with-policy-reason"
 blanket_categories = false
 
-# ── Currently active in workspace.lints (Cargo.toml at v0.4.0) ─────────
+# ── Currently active in workspace.lints (Cargo.toml) ───────────────────
 
 [[active]]
 name = "rust::unsafe_code"
@@ -42,123 +45,99 @@ level = "warn"
 class = "style"
 reason = "Prefer `.filter_map()` over `.flat_map().filter().map()` chains."
 
-# ── Rust 1.95 rustc lint floor (activate in PR #152) ───────────────────
+# ── Rust 1.95 rustc lint floor (activated in PR #152) ──────────────────
 
-[[planned]]
+[[active]]
 name = "rust::unsafe_op_in_unsafe_fn"
 level = "deny"
-activate_when_msrv = "1.95"
 class = "unsafe-memory"
 reason = "Unsafe operations must stay explicitly scoped."
 
-[[planned]]
+[[active]]
 name = "rust::unused_must_use"
 level = "deny"
-activate_when_msrv = "1.95"
 class = "silent-failure"
 reason = "Must-use values represent work that cannot be silently discarded."
 
-[[planned]]
+[[active]]
 name = "rust::unexpected_cfgs"
 level = "warn"
-activate_when_msrv = "1.95"
 class = "configuration"
 reason = "Surface stale cfg gates."
 
-[[planned]]
+[[active]]
 name = "rust::const_item_interior_mutations"
 level = "deny"
-activate_when_msrv = "1.95"
 class = "concurrency"
 reason = "Const items with interior mutability are footguns."
 
-[[planned]]
+[[active]]
 name = "rust::function_casts_as_integer"
 level = "deny"
-activate_when_msrv = "1.95"
 class = "type-safety"
 reason = "Function-pointer-to-integer casts should be deliberate."
 
-[[planned]]
+[[active]]
 name = "rust::unused_visibilities"
 level = "warn"
-activate_when_msrv = "1.95"
 class = "documentation"
 reason = "Surface dead-code visibility decisions."
 
-# ── Rust 1.94 ratchet (still pending MSRV bump) ────────────────────────
+# ── Rust 1.94 / 1.95 Clippy ratchets (activated in PR #152) ────────────
 
-[[planned]]
+[[active]]
 name = "clippy::same_length_and_capacity"
 level = "deny"
-activate_when_msrv = "1.94"
 class = "unsafe-memory"
 reason = "Catch raw-parts reconstruction mistakes."
 
-# ── Rust 1.95 Clippy ratchets (measure first in PR #152) ───────────────
-
-[[planned]]
+[[active]]
 name = "clippy::manual_checked_ops"
 level = "warn"
-activate_when_msrv = "1.95"
 class = "numeric"
 reason = "Prefer checked arithmetic over manual divide-by-zero guards."
 
-[[planned]]
+[[active]]
 name = "clippy::manual_take"
 level = "warn"
-activate_when_msrv = "1.95"
 class = "ownership"
 reason = "Use std::mem::take instead of manual reimplementation."
 
-[[planned]]
-name = "clippy::manual_pop_if"
-level = "warn"
-activate_when_msrv = "1.95"
-class = "collections"
-reason = "Use collection APIs that encode predicate-and-pop intent."
-
-[[planned]]
+[[active]]
 name = "clippy::duration_suboptimal_units"
 level = "warn"
-activate_when_msrv = "1.95"
 class = "time"
 reason = "Make durations legible without mental unit conversion."
 
-[[planned]]
+[[active]]
 name = "clippy::unnecessary_trailing_comma"
 level = "warn"
-activate_when_msrv = "1.95"
 class = "style"
 reason = "Keep format macro calls clean."
 
-[[planned]]
+[[active]]
 name = "clippy::needless_type_cast"
 level = "warn"
-activate_when_msrv = "1.95"
 class = "type-safety"
 reason = "Avoid no-op casts."
 
-[[planned]]
+[[active]]
 name = "clippy::manual_ilog2"
 level = "warn"
-activate_when_msrv = "1.95"
 class = "numeric"
 reason = "Prefer ilog2 over manual bit-counting."
 
-[[planned]]
+[[active]]
 name = "clippy::decimal_bitwise_operands"
 level = "warn"
-activate_when_msrv = "1.95"
 class = "numeric"
 reason = "Bitwise operators on decimal-literal operands are usually a bug."
 
-[[planned]]
+[[active]]
 name = "clippy::unnecessary_sort_by"
 level = "warn"
-activate_when_msrv = "1.95"
 class = "collections"
-reason = "Prefer `sort_by_key(|x| std::cmp::Reverse(...))` over comparator closures. Surfaced in PR #144's 1.95 probe; the two existing sites were fixed inline in PR #145."
+reason = "Prefer `sort_by_key(|x| std::cmp::Reverse(...))` over comparator closures. The two existing sites were fixed inline in PR #145."
 
 # ── Held until protected fields are configured ─────────────────────────
 

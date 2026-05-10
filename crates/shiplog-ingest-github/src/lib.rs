@@ -636,7 +636,7 @@ impl GithubIngestor {
     fn fetch_pr_details(&self, client: &Client, pr_api_url: &str) -> Result<PullRequestDetails> {
         // Check cache first
         let cache_key = CacheKey::pr_details(pr_api_url);
-        #[allow(clippy::collapsible_if)]
+        #[expect(clippy::collapsible_if, reason = "policy:clippy-0002")]
         if let Some(ref cache) = self.cache {
             if let Some(cached) = cache.get::<PullRequestDetails>(&cache_key)? {
                 return Ok(cached);
@@ -742,7 +742,7 @@ fn build_url_with_params(base: &str, params: &[(&str, String)]) -> Result<Url> {
 }
 
 fn repo_from_repo_url(repo_api_url: &str, html_base: &str) -> (String, String) {
-    #[allow(clippy::collapsible_if)]
+    #[expect(clippy::collapsible_if, reason = "policy:clippy-0002")]
     if let Ok(u) = Url::parse(repo_api_url) {
         if let Some(segs) = u.path_segments() {
             let v: Vec<&str> = segs.collect();
