@@ -1,0 +1,169 @@
+name: Fuzz Smoke
+
+# Bounded touched-target fuzz smoke for the PR-fast lane.
+#
+# Lane: lane.fuzz_smoke (advisory, default_pr=true). Runs only the fuzz
+# targets whose parser inputs the diff actually touches, at 30s each
+# (capped). The broad quick-fuzz sweep (lane.fuzz_quick,
+# .github/workflows/fuzzing.yml#quick-fuzz) keeps running all 9 targets
+# on PR until PR #155 routes the full matrix to nightly + label.
+#
+# Scope rationale (see docs/ci/test-evidence-lanes.md#bounded-vs-broad-stochastic):
+# parser robustness is cheap and high-value, but running every target
+# on every PR (broad lane today) is unnecessary when most diffs touch
+# at most one parser surface. Touched-target routing keeps the signal
+# while shedding ~80% of the cost on the typical PR.
+#
+# Path-to-target map (ordered to match the actual fuzz targets in
+# fuzz/fuzz_targets/):
+#   crates/shiplog-cache/                                -> parse_jsonl
+#   crates/shiplog-engine/src/ledger.rs                  -> parse_jsonl
+#   crates/shiplog-workstreams/                          -> parse_workstreams
+#   crates/shiplog-ingest-github/                        -> parse_github_api
+#   crates/shiplog-ingest-gitlab/                        -> parse_gitlab_api
+#   crates/shiplog-ingest-jira/                          -> parse_jira_linear_api
+#   crates/shiplog-ingest-linear/                        -> parse_jira_linear_api
+#   crates/shiplog-ingest-manual/                        -> parse_manual_events
+#   apps/shiplog/src/template.rs (any template parsing)  -> parse_template
+#   crates/shiplog-engine/src/config.rs                  -> parse_config
+#   crates/shiplog-plugin-manifest/                      -> parse_plugin_manifest
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths-ignore:
+      - "docs/**"
+      - "*.md"
+      - "**/*.md"
+
+concurrency:
+  group: fuzz-smoke-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' && github.event.action == 'synchronize' }}
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  smoke:
+    name: smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Resolve touched fuzz targets
+        id: targets
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base="${{ github.event.pull_request.base.sha }}"
+            head="${{ github.event.pull_request.head.sha }}"
+            changed=$(git diff --name-only "$base..$head")
+          else
+            changed=$(git diff --name-only HEAD~1..HEAD || true)
+          fi
+
+          echo "Changed files:"
+          echo "$changed" | sed 's/^/  /'
+
+          targets=()
+          if echo "$changed" | grep -qE '^crates/shiplog-(cache|engine)/'; then
+            targets+=("parse_jsonl")
+          fi
+          if echo "$changed" | grep -qE '^crates/shiplog-workstreams/'; then
+            targets+=("parse_workstreams")
+          fi
+          if echo "$changed" | grep -qE '^crates/shiplog-ingest-github/'; then
+            targets+=("parse_github_api")
+          fi
+          if echo "$changed" | grep -qE '^crates/shiplog-ingest-gitlab/'; then
+            targets+=("parse_gitlab_api")
+          fi
+          if echo "$changed" | grep -qE '^crates/shiplog-ingest-(jira|linear)/'; then
+            targets+=("parse_jira_linear_api")
+          fi
+          if echo "$changed" | grep -qE '^crates/shiplog-ingest-manual/'; then
+            targets+=("parse_manual_events")
+          fi
+          if echo "$changed" | grep -qE '^crates/shiplog-engine/src/config\.rs|^apps/shiplog/src/.*config'; then
+            targets+=("parse_config")
+          fi
+          if echo "$changed" | grep -qE 'template\.rs|^apps/shiplog/templates/'; then
+            targets+=("parse_template")
+          fi
+          if echo "$changed" | grep -qE '^crates/shiplog-plugin'; then
+            targets+=("parse_plugin_manifest")
+          fi
+
+          # Deduplicate while preserving order.
+          if [ ${#targets[@]} -gt 0 ]; then
+            uniq_targets=$(printf '%s\n' "${targets[@]}" | awk '!seen[$0]++' | paste -sd, -)
+          else
+            uniq_targets=""
+          fi
+          echo "targets=${uniq_targets}" >> "$GITHUB_OUTPUT"
+          echo "Selected targets: ${uniq_targets:-<none>}"
+
+      - name: No parser surfaces touched — nothing to fuzz
+        if: steps.targets.outputs.targets == ''
+        run: echo "No fuzz targets selected for this diff; lane completes as a no-op."
+
+      - name: Install Rust nightly toolchain
+        if: steps.targets.outputs.targets != ''
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly-2026-02-18
+          components: llvm-tools-preview
+
+      - name: Cache cargo binaries
+        if: steps.targets.outputs.targets != ''
+        uses: actions/cache@v5
+        with:
+          path: ~/.cargo/bin
+          key: ${{ runner.os }}-cargo-bin-nightly-2026-02-18
+
+      - name: Cache Rust build artifacts
+        if: steps.targets.outputs.targets != ''
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: fuzz
+          shared-key: fuzz-smoke
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Install cargo-fuzz
+        if: steps.targets.outputs.targets != ''
+        run: |
+          if ! command -v cargo-fuzz >/dev/null 2>&1; then
+            cargo install cargo-fuzz --locked
+          fi
+
+      - name: Run touched-target fuzz (30s each)
+        if: steps.targets.outputs.targets != ''
+        run: |
+          set -euo pipefail
+          IFS=',' read -ra TARGETS <<< "${{ steps.targets.outputs.targets }}"
+          cd fuzz
+          for t in "${TARGETS[@]}"; do
+            case "$t" in
+              parse_jsonl|parse_github_api|parse_gitlab_api|parse_jira_linear_api|parse_plugin_manifest) dict=json.dict ;;
+              parse_workstreams|parse_config|parse_manual_events|parse_template) dict=yaml.dict ;;
+              *) dict="" ;;
+            esac
+            if [ -n "$dict" ]; then
+              cargo fuzz run "$t" -- -max_total_time=30 -dict=dictionaries/"$dict"
+            else
+              cargo fuzz run "$t" -- -max_total_time=30
+            fi
+          done
+
+      - name: Upload fuzz artifacts on failure
+        if: failure() && steps.targets.outputs.targets != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: fuzz-smoke-crash-artifacts
+          path: fuzz/artifacts/**
+          retention-days: 30
