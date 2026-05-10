@@ -174,6 +174,16 @@ created = "2026-05-09"
 expires = "permanent"
 
 [[allow]]
+id = "non-rust-ripr-config"
+path = "ripr.toml"
+category = "policy_config"
+language = "toml"
+owner = "policy"
+reason = "ripr configuration (analysis mode, severity mapping, suppressions path). Added in PR #153."
+created = "2026-05-10"
+expires = "permanent"
+
+[[allow]]
 id = "non-rust-codecov"
 glob = "codecov.yml"
 category = "ci_config"

@@ -1,0 +1,36 @@
+# ripr — fast oracle-exposure filter for PR Rust diffs.
+#
+# Always advisory in v0.5.0 (`fail_on = []`). The workflow at
+# .github/workflows/ripr.yml emits target/ripr/ripr.json and
+# target/ripr/ripr.sarif and never blocks merge. See docs/ci/ripr.md
+# for the operating doc; see policy/ripr-suppressions.toml for known-
+# tracked findings.
+#
+# v1 in PR #153 ships the workflow + config + suppressions ledger as a
+# stub (no real analysis yet). Real ripr integration is a follow-up
+# release; the contract artifacts let the PR plan, CI actuals
+# collector, and any downstream tooling treat the lane as live.
+
+schema_version = 1
+
+[analysis]
+mode = "diff"
+
+[policy]
+fail_on = []
+
+[report]
+max_related_tests = 8
+include_context = true
+
+[severity]
+exposed = "notice"
+weakly_exposed = "warning"
+reachable_unrevealed = "warning"
+no_static_path = "notice"
+infection_unknown = "notice"
+propagation_unknown = "notice"
+static_unknown = "notice"
+
+[suppressions]
+path = "policy/ripr-suppressions.toml"

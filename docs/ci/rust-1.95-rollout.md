@@ -66,7 +66,7 @@ ladder.
 | CI operating contracts | implicit | `docs/ci/{ci-lane-map,labels,risk-packs,branch-protection,required-check-migration,skipped-by-policy,bot-review-policy,cache-policy,ci-plan-json,ci-actuals,ripr,per-pr-acceptance-contract,policy-ledgers}.md` + JSON schemas | planned (PR #142) |
 | No-panic baseline | absent | exact-identity (path + family + selector_kind + selector_callee + snippet + count), no-new-debt mode | planned (PR #151) |
 | Non-Rust file policy | absent | non-Rust + companion ledgers (generated, executable, dependency, workflow, process, network) | planned (PR #149) |
-| `ripr` | absent | advisory PR-time exposure filter, label-promotable | planned (PR #153) |
+| `ripr` | absent | advisory PR-time exposure filter, label-promotable | landed (#153, v1 stub — real analysis is a follow-up release) |
 | Bounded stochastic on PR fast | broad-on-every-PR today (BDD 4 jobs, property 256-case all crates, quick fuzz × 9 targets) | bounded BDD smoke + bounded proptest + touched-target quick fuzz; deterministic seeds and time caps | planned (PR #154) |
 | Broad evidence routing | always-on parity testing on every PR | label / risk pack on PR-targeted, full sweeps on nightly; mutation snapshot on release | planned (PR #155; reconciles existing `mutation-testing.yml`) |
 | CI cache economics | mixed save/restore on every PR | PR caches restore-only, `main` saves canonical, docs-only skips compile-heavy non-required lanes | landed (#147) |
