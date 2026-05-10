@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Planned
+
+- **Rust 1.95 / shiplog 0.5.0 quality rollout.** v0.5.0 will ship as
+  "Operational Review Rescue + Rust 1.95 quality floor + policy/CI economics
+  foundation," bundling the operational hardening lane already merged after
+  v0.4.0 (PRs #125–#139), an MSRV bump from Rust 1.92 to Rust 1.95, and a
+  first cut of policy ledgers, a thin Rust-native `xtask` runner, an advisory
+  LEM-budgeted CI lane plan, and `ripr` advisory routing. Hard CI budget
+  enforcement is a follow-up release decision.
+- See [`docs/ci/rust-1.95-rollout.md`](docs/ci/rust-1.95-rollout.md) for the
+  rollout map and 14-PR ladder.
+- See [`docs/CLIPPY_POLICY.md`](docs/CLIPPY_POLICY.md),
+  [`docs/NO_PANIC_POLICY.md`](docs/NO_PANIC_POLICY.md),
+  [`docs/FILE_POLICY.md`](docs/FILE_POLICY.md), and
+  [`docs/POLICY_ALLOWLISTS.md`](docs/POLICY_ALLOWLISTS.md) for the policy
+  doctrine.
+- See [`docs/ci/cost-and-verification-policy.md`](docs/ci/cost-and-verification-policy.md),
+  [`docs/ci/lem-budgeting.md`](docs/ci/lem-budgeting.md),
+  [`docs/ci/verification-ladder.md`](docs/ci/verification-ladder.md), and
+  [`docs/ci/test-evidence-lanes.md`](docs/ci/test-evidence-lanes.md) for the
+  CI economics doctrine.
+
 ## [0.4.0] - 2026-05-09
 
 ### Added
