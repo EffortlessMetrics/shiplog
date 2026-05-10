@@ -13,6 +13,21 @@ status = "advisory"
 # See docs/FILE_POLICY.md.
 
 [[entry]]
+path = ".github/workflows/pr-plan.yml"
+owner = "release/ci"
+reason = "Advisory LEM PR Plan. Emits target/ci/ci-plan.json against contracts/schemas/ci-plan.v1.schema.json. Reads policy/ci-budget.toml + policy/ci-lanes.toml + policy/ci-risk-packs.toml via `cargo xtask ci plan`. Never blocks merge in v0.5.0."
+permissions = ["contents:read", "pull-requests:read"]
+secrets_used = []
+external_actions = [
+  "actions/checkout@v6.0.2",
+  "dtolnay/rust-toolchain@master",
+  "Swatinem/rust-cache@v2",
+  "actions/upload-artifact@v7",
+]
+created = "2026-05-10"
+expires = "permanent"
+
+[[entry]]
 path = ".github/workflows/ci.yml"
 owner = "release/ci"
 reason = "Primary PR correctness gate (Ubuntu + Windows). Runs fmt, clippy -D, tests, doc-tests, doc build, release build, canary publish dry-run; cargo-deny job; MSRV job."
