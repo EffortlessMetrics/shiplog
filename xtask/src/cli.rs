@@ -53,6 +53,8 @@ pub struct CiArgs {
 enum CiCommand {
     /// Emit a CI Plan (forecast) against contracts/schemas/ci-plan.v1.schema.json.
     Plan(PlanArgs),
+    /// Emit CI Actuals (per-job timings + drift) against contracts/schemas/ci-actuals.v1.schema.json.
+    Actuals(ActualsArgs),
 }
 
 #[derive(Debug, Args)]
@@ -82,6 +84,34 @@ pub struct PlanArgs {
     pub output: PathBuf,
 }
 
+#[derive(Debug, Args)]
+pub struct ActualsArgs {
+    /// GitHub Actions run ID being summarized.
+    #[arg(long, env = "GITHUB_RUN_ID")]
+    pub run_id: String,
+
+    /// Top-level workflow name whose run produced the artifact.
+    #[arg(long, env = "GITHUB_WORKFLOW")]
+    pub workflow_name: String,
+
+    /// Head SHA of the run.
+    #[arg(long, env = "GITHUB_SHA")]
+    pub head_sha: String,
+
+    /// PR number (optional).
+    #[arg(long, env = "GITHUB_PR_NUMBER")]
+    pub pr_number: Option<u32>,
+
+    /// Path to a JSON file with the GitHub Actions jobs response
+    /// (output of `gh api repos/{owner}/{repo}/actions/runs/{run_id}/jobs`).
+    #[arg(long)]
+    pub input: PathBuf,
+
+    /// Output path for the JSON actuals.
+    #[arg(long, default_value = "target/ci/ci-actuals.json")]
+    pub output: PathBuf,
+}
+
 impl Cli {
     pub fn run(self) -> Result<()> {
         let workspace_root = match self.workspace_root {
@@ -107,6 +137,17 @@ impl Cli {
                     },
                     output: args.output,
                 }),
+                CiCommand::Actuals(args) => {
+                    tasks::ci_actuals::run(tasks::ci_actuals::ActualsInputs {
+                        workspace_root,
+                        run_id: args.run_id,
+                        workflow_name: args.workflow_name,
+                        head_sha: args.head_sha,
+                        pr_number: args.pr_number,
+                        jobs_input: args.input,
+                        output: args.output,
+                    })
+                }
             },
         }
     }

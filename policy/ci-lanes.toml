@@ -23,6 +23,8 @@ base_lem = 1
 default_pr = true
 blocking = false
 workflow = ".github/workflows/pr-plan.yml"
+workflow_name = "PR Plan"
+job_name = "forecast"
 outputs = ["target/ci/ci-plan.json"]
 
 # ── ci.yml jobs (PR-fast required gate) ────────────────────────────────
@@ -35,6 +37,8 @@ base_lem = 12
 default_pr = true
 blocking = true
 workflow = ".github/workflows/ci.yml"
+workflow_name = "CI"
+job_name = "Check (ubuntu-latest)"
 
 [lane.ci_check_windows]
 description = "Cross-platform parity check (Windows)."
@@ -44,6 +48,8 @@ base_lem = 36
 default_pr = true
 blocking = true
 workflow = ".github/workflows/ci.yml"
+workflow_name = "CI"
+job_name = "Check (windows-latest)"
 note = "Windows runners are 2x Linux billing; covered by ci-exception-0001."
 
 [lane.ci_deny]
@@ -54,6 +60,8 @@ base_lem = 4
 default_pr = true
 blocking = true
 workflow = ".github/workflows/ci.yml"
+workflow_name = "CI"
+job_name = "cargo-deny"
 
 [lane.ci_msrv]
 description = "Workspace compiles on declared MSRV."
@@ -63,6 +71,8 @@ base_lem = 5
 default_pr = true
 blocking = true
 workflow = ".github/workflows/ci.yml"
+workflow_name = "CI"
+job_name = "MSRV (1.95)"
 note = "Redundant with lane.ci_check while toolchain pin == MSRV; candidate to drop in PR #147."
 
 # ── Standalone security workflow (duplicate of ci_deny on PR) ──────────
@@ -75,6 +85,8 @@ base_lem = 4
 default_pr = false
 blocking = false
 workflow = ".github/workflows/security.yml"
+workflow_name = "Security Checks"
+job_name = "Cargo Deny Security"
 duplicate_of = "lane.ci_deny"
 labels = ["security-audit", "full-ci"]
 branches = ["main"]
@@ -90,6 +102,11 @@ base_lem = 32
 default_pr = true
 blocking = false
 workflow = ".github/workflows/bdd-testing.yml"
+workflow_name = "BDD Testing"
+# No job_name set: workflow-catchall applies to all 5 jobs (BDD & Property
+# Tests, Ingest Crate Tests, Render/Trust/Contract Crates, Optional Surface
+# Tests, App Tests). PR #154 may split into per-job lanes when carving out
+# bounded smoke.
 labels = ["bdd", "full-ci"]
 target_lane = "PR fast (smoke 1-2 critical flows in PR #154) + PR-targeted (affected feature files in PR #155) + nightly (full BDD in PR #155)"
 
@@ -101,6 +118,8 @@ base_lem = 20
 default_pr = true
 blocking = false
 workflow = ".github/workflows/property-testing.yml"
+workflow_name = "Property Testing"
+job_name = "Property Testing"
 labels = ["property-tests", "full-ci"]
 target_lane = "PR fast (bounded 16-64 cases on selected invariants in PR #154) + PR-targeted (risk-pack scope at elevated cases in PR #155) + nightly (full sweep in PR #155)"
 
@@ -112,6 +131,8 @@ base_lem = 10
 default_pr = true
 blocking = false
 workflow = ".github/workflows/fuzzing.yml"
+workflow_name = "Fuzzing"
+job_name = "Quick Fuzz (CI)"
 labels = ["fuzz", "full-ci"]
 target_lane = "PR fast (touched-target only at 30-90s in PR #154) + PR-targeted (selected target via parsers risk pack in PR #155) + nightly (full 9-target matrix in PR #155)"
 
@@ -123,6 +144,9 @@ base_lem = 540
 default_pr = false
 blocking = false
 workflow = ".github/workflows/fuzzing.yml"
+workflow_name = "Fuzzing"
+# Matrix job; actual GHA job names look like "Extended Fuzz (parse_jsonl)" etc.
+# No job_name set: workflow-catchall picks them up for actuals.
 schedule = "daily"
 
 # ── Coverage and mutation (already correctly off PR) ───────────────────
@@ -135,6 +159,8 @@ base_lem = 45
 default_pr = false
 blocking = false
 workflow = ".github/workflows/coverage.yml"
+workflow_name = "Coverage"
+job_name = "Codecov Coverage"
 labels = ["coverage", "full-ci"]
 branches = ["main"]
 
@@ -146,6 +172,8 @@ base_lem = 120
 default_pr = false
 blocking = false
 workflow = ".github/workflows/mutation-testing.yml"
+workflow_name = "Mutation Testing"
+job_name = "Mutation Testing"
 labels = ["mutation", "full-ci"]
 schedule = "weekly"
 
@@ -183,6 +211,8 @@ base_lem = 20
 default_pr = true
 blocking = false
 workflow = ".github/workflows/droid-review.yml"
+workflow_name = "Droid Auto Review"
+job_name = "droid-review"
 
 [lane.droid_security_scan]
 description = "Factory Droid weekly security scan."
@@ -192,6 +222,8 @@ base_lem = 20
 default_pr = false
 blocking = false
 workflow = ".github/workflows/droid-security-scan.yml"
+workflow_name = "Droid Security Scan"
+job_name = "droid-security-scan"
 schedule = "weekly"
 
 [lane.droid_tag]
@@ -202,6 +234,8 @@ base_lem = 5
 default_pr = false
 blocking = false
 workflow = ".github/workflows/droid.yml"
+workflow_name = "Droid Tag"
+job_name = "droid"
 
 # ── Release lanes (tag-triggered) ──────────────────────────────────────
 
@@ -213,6 +247,8 @@ base_lem = 8
 default_pr = false
 blocking = true
 workflow = ".github/workflows/release.yml"
+workflow_name = "Release"
+job_name = "Release Preflight"
 
 [lane.release_build]
 description = "Multi-platform release build (Linux x86_64, macOS x86_64, macOS arm64, Windows x86_64)."
@@ -222,6 +258,10 @@ base_lem = 90
 default_pr = false
 blocking = true
 workflow = ".github/workflows/release.yml"
+workflow_name = "Release"
+# Matrix job; GHA names look like "Build x86_64-unknown-linux-gnu" etc.
+# Workflow-catchall picks them up; consider per-target lanes if drift analysis
+# wants per-leg accuracy.
 note = "macos_latest at 10x multiplier dominates the release LEM cost; Linux x86_64 and Windows x86_64 are the cheaper matrix legs."
 
 [lane.release_validation]
@@ -232,3 +272,5 @@ base_lem = 12
 default_pr = false
 blocking = true
 workflow = ".github/workflows/release.yml"
+workflow_name = "Release"
+job_name = "Release Validation"

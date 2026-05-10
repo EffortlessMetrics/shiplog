@@ -70,7 +70,7 @@ ladder.
 | Bounded stochastic on PR fast | broad-on-every-PR today (BDD 4 jobs, property 256-case all crates, quick fuzz × 9 targets) | bounded BDD smoke + bounded proptest + touched-target quick fuzz; deterministic seeds and time caps | planned (PR #154) |
 | Broad evidence routing | always-on parity testing on every PR | label / risk pack on PR-targeted, full sweeps on nightly; mutation snapshot on release | planned (PR #155; reconciles existing `mutation-testing.yml`) |
 | CI cache economics | mixed save/restore on every PR | PR caches restore-only, `main` saves canonical, docs-only skips compile-heavy non-required lanes | landed (#147) |
-| CI actuals feedback loop | absent | `target/ci/ci-actuals.json` against v1 schema; calibrates the LEM forecast | planned (PR #148) |
+| CI actuals feedback loop | absent | `target/ci/ci-actuals.json` against v1 schema; calibrates the LEM forecast | landed (#148) |
 | Release proof | shell scripts (`package-proof.sh`, `publish-dry-run.sh`, `package-boundary-audit.sh`, `package-version-audit.sh`, `verify-release.sh`, `release-install-smoke.{sh,ps1}`) | shell scripts wrap `xtask` parity over time; never silently dropped | partial (PR #143 wraps; release-readiness in PR #157) |
 
 ## Existing CI / evidence inventory and tentative lanes

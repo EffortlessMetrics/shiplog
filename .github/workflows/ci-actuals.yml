@@ -1,0 +1,110 @@
+name: CI Actuals
+
+# Closes the LEM feedback loop: triggers on the completion of every
+# instrumented workflow, fetches its per-job timings via `gh api`, joins
+# them to lanes in policy/ci-lanes.toml + multipliers in
+# policy/ci-budget.toml, and emits target/ci/ci-actuals.json against
+# contracts/schemas/ci-actuals.v1.schema.json.
+#
+# Always advisory in v0.5.0: never blocks merge. Hard enforcement is a
+# follow-up release decision after enough actuals accumulate to confirm
+# the LEM model.
+#
+# See docs/ci/ci-actuals.md.
+
+on:
+  workflow_run:
+    workflows:
+      - "CI"
+      - "BDD Testing"
+      - "Property Testing"
+      - "Fuzzing"
+      - "Coverage"
+      - "Mutation Testing"
+      - "Security Checks"
+      - "Droid Auto Review"
+      - "Droid Security Scan"
+      - "Droid Tag"
+      - "PR Plan"
+      - "Release"
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: ci-actuals-${{ github.event.workflow_run.id }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  collect:
+    name: collect
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v6.0.2
+        with:
+          # Policy ledgers + xtask source for the run that produced the
+          # workflow we're summarizing. The workflow_run head_sha is the
+          # commit being summarized.
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.95.0"
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: ci-actuals
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Resolve PR number
+        id: pr
+        run: |
+          set -euo pipefail
+          # workflow_run.pull_requests is an array; first element is the PR
+          # for first-party PR runs. Empty / absent on push to main, etc.
+          n='${{ toJson(github.event.workflow_run.pull_requests[0].number) }}'
+          if [ "$n" = "null" ] || [ -z "$n" ]; then
+            echo "pr_number=" >> "$GITHUB_OUTPUT"
+          else
+            echo "pr_number=$n" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Fetch jobs from GitHub Actions API
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p target/ci
+          gh api \
+            -H "Accept: application/vnd.github+json" \
+            "repos/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}/jobs?per_page=100" \
+            > target/ci/jobs.json
+          echo "Fetched $(jq '.jobs | length' target/ci/jobs.json) jobs."
+
+      - name: Run CI actuals
+        env:
+          GITHUB_RUN_ID: ${{ github.event.workflow_run.id }}
+          GITHUB_WORKFLOW: ${{ github.event.workflow_run.name }}
+          GITHUB_SHA: ${{ github.event.workflow_run.head_sha }}
+          GITHUB_PR_NUMBER: ${{ steps.pr.outputs.pr_number }}
+        run: |
+          cargo xtask ci actuals \
+            --input target/ci/jobs.json \
+            --output target/ci/ci-actuals.json
+
+      - name: Upload actuals artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ci-actuals-${{ github.event.workflow_run.id }}
+          path: target/ci/ci-actuals.json
+          retention-days: 30
+          if-no-files-found: warn
