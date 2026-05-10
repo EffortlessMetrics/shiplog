@@ -41,6 +41,35 @@ enum Command {
 
     /// CI economics commands (forecast, actuals).
     Ci(CiArgs),
+
+    /// Verify the non-Rust file allowlist (`policy/non-rust-allowlist.toml`).
+    CheckFilePolicy(FilePolicyModeArgs),
+
+    /// Verify the generated-file allowlist (`policy/generated-allowlist.toml`).
+    CheckGenerated(FilePolicyModeArgs),
+
+    /// Verify the executable-file allowlist (`policy/executable-allowlist.toml`).
+    CheckExecutableFiles(FilePolicyModeArgs),
+
+    /// Verify the workflow allowlist (`policy/workflow-allowlist.toml`).
+    CheckWorkflows(FilePolicyModeArgs),
+
+    /// Verify the dependency-surface allowlist (`policy/dependency-surface-allowlist.toml`).
+    CheckDependencySurfaces(FilePolicyModeArgs),
+
+    /// Verify the process-policy allowlist (`policy/process-allowlist.toml`).
+    CheckProcessPolicy(FilePolicyModeArgs),
+
+    /// Verify the network-policy allowlist (`policy/network-allowlist.toml`).
+    CheckNetworkPolicy(FilePolicyModeArgs),
+}
+
+#[derive(Debug, Args)]
+pub struct FilePolicyModeArgs {
+    /// Enforcement mode. `advisory` (default) reports findings without
+    /// failing; `blocking-allowlist` exits non-zero on any finding.
+    #[arg(long, default_value = "advisory")]
+    pub mode: String,
 }
 
 #[derive(Debug, Args)]
@@ -149,6 +178,40 @@ impl Cli {
                     })
                 }
             },
+            Command::CheckFilePolicy(args) => {
+                tasks::file_policy::check_file_policy(&workspace_root, parse_mode(&args.mode)?)
+            }
+            Command::CheckGenerated(args) => {
+                tasks::file_policy::check_generated(&workspace_root, parse_mode(&args.mode)?)
+            }
+            Command::CheckExecutableFiles(args) => {
+                tasks::file_policy::check_executable_files(&workspace_root, parse_mode(&args.mode)?)
+            }
+            Command::CheckWorkflows(args) => {
+                tasks::file_policy::check_workflows(&workspace_root, parse_mode(&args.mode)?)
+            }
+            Command::CheckDependencySurfaces(args) => {
+                tasks::file_policy::check_dependency_surfaces(
+                    &workspace_root,
+                    parse_mode(&args.mode)?,
+                )
+            }
+            Command::CheckProcessPolicy(args) => {
+                tasks::file_policy::check_process_policy(&workspace_root, parse_mode(&args.mode)?)
+            }
+            Command::CheckNetworkPolicy(args) => {
+                tasks::file_policy::check_network_policy(&workspace_root, parse_mode(&args.mode)?)
+            }
         }
+    }
+}
+
+fn parse_mode(s: &str) -> Result<tasks::file_policy::Mode> {
+    match s {
+        "advisory" => Ok(tasks::file_policy::Mode::Advisory),
+        "blocking-allowlist" => Ok(tasks::file_policy::Mode::BlockingAllowlist),
+        other => Err(anyhow::anyhow!(
+            "invalid --mode {other:?}; expected `advisory` or `blocking-allowlist`"
+        )),
     }
 }
