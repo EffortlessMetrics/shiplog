@@ -7,27 +7,140 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Planned
+## [0.5.0] - 2026-05-10
 
-- **Rust 1.95 / shiplog 0.5.0 quality rollout.** v0.5.0 will ship as
-  "Operational Review Rescue + Rust 1.95 quality floor + policy/CI economics
-  foundation," bundling the operational hardening lane already merged after
-  v0.4.0 (PRs #125–#139), an MSRV bump from Rust 1.92 to Rust 1.95, and a
-  first cut of policy ledgers, a thin Rust-native `xtask` runner, an advisory
-  LEM-budgeted CI lane plan, and `ripr` advisory routing. Hard CI budget
-  enforcement is a follow-up release decision.
-- See [`docs/ci/rust-1.95-rollout.md`](docs/ci/rust-1.95-rollout.md) for the
-  rollout map and 14-PR ladder.
-- See [`docs/CLIPPY_POLICY.md`](docs/CLIPPY_POLICY.md),
+shiplog 0.5.0 is **Operational Review Rescue + Rust 1.95 quality floor +
+policy/CI economics foundation.** It bundles the operational hardening lane
+already merged after v0.4.0 (PRs #125–#139), an MSRV bump from Rust 1.92 to
+Rust 1.95, and a first cut of policy ledgers, a thin Rust-native `xtask`
+runner, an advisory LEM-budgeted CI lane plan, and `ripr` advisory routing.
+Hard CI budget enforcement is a follow-up release decision.
+
+See [`docs/ci/rust-1.95-rollout.md`](docs/ci/rust-1.95-rollout.md) for the
+rollout map and the 18-PR ladder (#140–#157).
+
+### Changed
+
+- **MSRV bumped from Rust 1.92 to Rust 1.95** (#145). `rust-toolchain.toml`,
+  `Cargo.toml` `rust-version`, `clippy.toml` `msrv`, and the toolchain pin in
+  every CI/release workflow are now `1.95.0`. Compatibility was probed in #144
+  before the mechanical bump in #145.
+- **`SourceSystem` serde** is now flat lowercase strings (`"github"`,
+  `"json_import"`, `"local_git"`, `"manual"`, `"unknown"`); deserialization is
+  case-insensitive for backward compatibility with old PascalCase ledger
+  values.
+
+### Added — Operational hardening lane (already shipped after v0.4.0)
+
+- Added the release-install smoke test, the no-network demo, the intake-report
+  v1 contract with `validate` and `summarize`, repair classifiers,
+  `doctor --repair-plan`, source-failure receipts, share manifests with
+  verification, stable fixup IDs, machine-readable intake actions, period
+  inspection and comparison, and the agent-pack export from the intake
+  report (PRs #125–#139).
+
+### Added — Policy ledgers + xtask runner
+
+- Added the `xtask/` Rust-native policy runner (#143) with eight task
+  modules: `check-policy-schemas`, `ci plan`, `ci actuals`,
+  `check-lint-policy`, `check-clippy-exceptions`, the seven file-policy
+  checkers (#149), `check-no-panic-family` (#151), `package-boundary` and
+  `package-version` shell wrappers, and `policy-report`.
+- Added 18 policy ledger files under `policy/` (#141, #149, #150, #151, #152,
+  #153, #154, #155): CI lanes, CI budget, CI risk packs, CI exceptions,
+  Clippy lints + debt + exceptions, no-panic baseline (541 entries / 1112
+  occurrences), non-Rust allowlist + companion ledgers (generated, executable,
+  workflow, dependency, process, network), and `ripr-suppressions`. All
+  ledgers ship with a common header (`schema_version`, `policy`, `owner`,
+  `status`) and load via `cargo xtask check-policy-schemas`.
+- Added Rust 1.95 lint floor (#152): `unsafe_op_in_unsafe_fn`,
+  `unused_must_use`, `unexpected_cfgs`, `const_item_interior_mutations`,
+  `function_casts_as_integer`, `unused_visibilities` activated as Rust lints;
+  `same_length_and_capacity`, `manual_checked_ops`, `manual_take`,
+  `duration_suboptimal_units`, `unnecessary_trailing_comma`,
+  `needless_type_cast`, `manual_ilog2`, `decimal_bitwise_operands`,
+  `unnecessary_sort_by` activated as Clippy lints. All bare `#[allow]` sites
+  converted to `#[expect(..., reason = "policy:<id>")]` with citations into
+  `policy/clippy-exceptions.toml`.
+- Added the no-panic baseline (#151) with exact-identity matching
+  `(path, family, selector_kind, selector_callee, snippet, count)` and
+  no-new-debt enforcement.
+- Added file-policy enforcement (#149) with seven checkers (workflow,
+  generated, executable, dependency, process, network, non-Rust) sharing a
+  `Mode { Advisory | BlockingAllowlist }` enum.
+
+### Added — CI economics
+
+- Added the **LEM (Linux Equivalent Minutes) cost model** as the canonical
+  CI cost unit. Runner multipliers: ubuntu 1×, windows 2×, macos 10×, docker
+  6×, AI 4×. See [`docs/ci/lem-budgeting.md`](docs/ci/lem-budgeting.md) and
+  [`docs/ci/cost-and-verification-policy.md`](docs/ci/cost-and-verification-policy.md).
+- Added the **PR Plan** advisory workflow (#146): `.github/workflows/pr-plan.yml`
+  emits `target/ci/ci-plan.json` against
+  [`contracts/schemas/ci-plan.v1.schema.json`](contracts/schemas/ci-plan.v1.schema.json),
+  forecasting per-lane LEM, touched risk packs, and the planned set for the
+  PR. Always advisory in v0.5.0.
+- Added the **CI Actuals collector** (#148): `.github/workflows/ci-actuals.yml`
+  triggers on `workflow_run` completion for every instrumented workflow,
+  fetches per-job timings via `gh api`, joins to `policy/ci-lanes.toml` +
+  `policy/ci-budget.toml`, and emits `target/ci/ci-actuals.json` against
+  [`contracts/schemas/ci-actuals.v1.schema.json`](contracts/schemas/ci-actuals.v1.schema.json).
+  Closes the LEM forecast/actual loop.
+- Added cache economics (#147): every workflow uses `Swatinem/rust-cache@v2`
+  with `save-if: ${{ github.ref == 'refs/heads/main' }}` so PRs restore-only;
+  `paths-ignore` keeps docs-only PRs off compile-heavy non-required lanes.
+- Added 18 CI operating contract docs (#142): `ci-lane-map`, `labels`,
+  `risk-packs`, `branch-protection`, `required-check-migration`,
+  `skipped-by-policy`, `bot-review-policy`, `cache-policy`, `ci-plan-json`,
+  `ci-actuals`, `ripr`, `per-pr-acceptance-contract`, `policy-ledgers`,
+  `cost-and-verification-policy`, `lem-budgeting`, `verification-ladder`,
+  `test-evidence-lanes`, `coverage`, `mutation`.
+
+### Added — Evidence lanes
+
+- Added the **`ripr` advisory lane** (#153): `.github/workflows/ripr.yml`
+  is wired as a v0.5.0 stub on every Rust-diff PR, emitting
+  `target/ripr/ripr.json` (schema v1) and `target/ripr/ripr.sarif` (SARIF
+  2.1.0) so downstream tooling (PR plan, CI actuals, future required-check
+  promotion) can treat the lane as live. Real ripr integration is a
+  follow-up release. Always advisory.
+- Added **bounded smoke lanes** for the PR-fast tier (#154): `bdd-smoke.yml`
+  (two critical multi-source merge + render scenarios), `property-smoke.yml`
+  (`PROPTEST_CASES=64` with deterministic seed across foundation crates),
+  `fuzz-smoke.yml` (touched-target fuzz at 30s based on changed paths).
+- **Routed broad evidence lanes** off PR-on-every (#155): `bdd-testing.yml`,
+  `property-testing.yml`, `fuzzing.yml#quick-fuzz`, `security.yml`, and
+  `mutation-testing.yml` now require an explicit opt-in label
+  (`bdd` / `property-tests` / `fuzz` / `security-audit` / `mutation`, or
+  `full-ci`) on PR; nightly cron and dispatch unchanged. PR cargo-deny
+  coverage is still blocking via `ci.yml#cargo-deny`.
+
+### Optimized
+
+- Hinted `core::hint::cold_path()` on four canonical fail-closed redaction
+  paths (#156): alias cache version mismatch, bundle profile rendering
+  prerequisite mismatch, share-command redaction-key required, and
+  share-profile redaction-key required.
+
+### Documentation
+
+- Added the rollout map [`docs/ci/rust-1.95-rollout.md`](docs/ci/rust-1.95-rollout.md)
+  (#140) covering current-vs-target table, existing CI/evidence inventory
+  with tentative lane assignments, the 18-PR ladder, per-PR acceptance gates,
+  per-PR operating contract, the self-review checklist, and the v0.5.0
+  definition of done.
+- Added policy doctrine docs: [`docs/CLIPPY_POLICY.md`](docs/CLIPPY_POLICY.md),
   [`docs/NO_PANIC_POLICY.md`](docs/NO_PANIC_POLICY.md),
-  [`docs/FILE_POLICY.md`](docs/FILE_POLICY.md), and
-  [`docs/POLICY_ALLOWLISTS.md`](docs/POLICY_ALLOWLISTS.md) for the policy
-  doctrine.
-- See [`docs/ci/cost-and-verification-policy.md`](docs/ci/cost-and-verification-policy.md),
-  [`docs/ci/lem-budgeting.md`](docs/ci/lem-budgeting.md),
-  [`docs/ci/verification-ladder.md`](docs/ci/verification-ladder.md), and
-  [`docs/ci/test-evidence-lanes.md`](docs/ci/test-evidence-lanes.md) for the
-  CI economics doctrine.
+  [`docs/FILE_POLICY.md`](docs/FILE_POLICY.md),
+  [`docs/POLICY_ALLOWLISTS.md`](docs/POLICY_ALLOWLISTS.md).
+- Added [`docs/release/0.5.0-readiness.md`](docs/release/0.5.0-readiness.md)
+  and [`RELEASE_HANDOFF_0.5.0.md`](RELEASE_HANDOFF_0.5.0.md) (#157).
+
+### Security
+
+- Kept manager/public sharing fail-closed and added `cold_path()` hints on
+  the two share-profile redaction-key required paths so the optimizer knows
+  these are diagnostic-quality errors, not hot paths.
 
 ## [0.4.0] - 2026-05-09
 
