@@ -1,6 +1,6 @@
 param(
     [string]$Out = ".\out\demo-review-rescue",
-    [string]$ShiplogBin = "shiplog",
+    [string]$ShiplogBin = (Join-Path $PSScriptRoot "..\target\release\shiplog.exe"),
     [string]$Config = "examples/configs/local-git-json-manual.toml"
 )
 

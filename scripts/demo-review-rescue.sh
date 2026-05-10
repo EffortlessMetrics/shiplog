@@ -11,7 +11,7 @@ manager share verification without requiring provider tokens.
 
 Defaults:
   --out ./out/demo-review-rescue
-  --shiplog-bin shiplog
+  --shiplog-bin <repo>/target/release/shiplog
   --config examples/configs/local-git-json-manual.toml
 USAGE
 }
@@ -19,7 +19,7 @@ USAGE
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd -- "$script_dir/.." && pwd)"
 out="./out/demo-review-rescue"
-shiplog_bin="shiplog"
+shiplog_bin="$repo_root/target/release/shiplog"
 config="examples/configs/local-git-json-manual.toml"
 
 absolute_path() {
