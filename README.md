@@ -652,13 +652,27 @@ LLM clustering is feature-gated and off by default. It falls back to repository-
 - [CONTRIBUTING](CONTRIBUTING.md) -- Setup, conventions, and how to submit changes.
 - [docs.rs/shiplog](https://docs.rs/shiplog) -- API documentation for all published crates.
 
+### Policy doctrine (v0.5.0+)
+
+- [docs/CLIPPY_POLICY.md](docs/CLIPPY_POLICY.md) -- Lint ledger, exception ledger, and how to add a justified `#[expect(...)]`.
+- [docs/NO_PANIC_POLICY.md](docs/NO_PANIC_POLICY.md) -- Panic-family baseline (no-new-debt enforcement) and the procedure to reset it in a dedicated PR.
+- [docs/FILE_POLICY.md](docs/FILE_POLICY.md) -- Non-Rust file allowlist, generated-file allowlist, executable bit, workflow, dependency-surface, process-policy, and network-policy companions.
+- [docs/POLICY_ALLOWLISTS.md](docs/POLICY_ALLOWLISTS.md) -- Common header schema and the per-checker semantics (advisory vs blocking-allowlist).
+
 ## For contributors
 
 We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, coding conventions, and how to submit changes.
 
 ```bash
 # Quick dev loop
-cargo fmt --all && cargo clippy --workspace --all-targets --all-features -- -D warnings && cargo test --workspace
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+cargo test --workspace --all-features --locked
+RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
+
+# Policy gates (advisory by default; release-prep runs them in --mode blocking-allowlist)
+cargo xtask check-policy-schemas
+cargo xtask policy-report
 ```
 
 ## License

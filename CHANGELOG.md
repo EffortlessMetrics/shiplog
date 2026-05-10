@@ -122,6 +122,28 @@ rollout map and the 18-PR ladder (#140–#157).
   prerequisite mismatch, share-command redaction-key required, and
   share-profile redaction-key required.
 
+### Fixed — Release-prep cleanup (post-#157)
+
+- Tolerated empty `GITHUB_PR_NUMBER` in `cargo xtask ci actuals` (#159). The
+  `ci-actuals.yml` lane runs on `workflow_run` for every push to `main`,
+  where the upstream PR field resolves to an empty string; clap's
+  `Option<u32>` parser previously rejected the empty value and exited with
+  `cannot parse integer from empty string`. The CLI now reads
+  `GITHUB_PR_NUMBER` manually, treating absent and empty as `None`, which
+  serializes as `"pr_number": null` (the schema already permits null).
+  Four pure unit tests cover absent / empty / valid / garbage.
+- Registered `scripts/publish-v0.5.0.sh` in
+  `policy/executable-allowlist.toml` and anchored the demo rescue script
+  defaults to `<repo>/target/release/shiplog` instead of `shiplog` on
+  `$PATH` (#160). The publish script gained the executable bit when it
+  landed in #158 but never had an allowlist entry, so
+  `cargo xtask check-executable-files --mode blocking-allowlist` failed
+  locally; file-policy is `Mode::Advisory` in v0.5.0 CI by design, so this
+  never fired in CI but did block the readiness contract. Demo rescue
+  scripts now resolve the binary deterministically against the workspace
+  build; explicit overrides (`--shiplog-bin` / `-ShiplogBin`) are
+  unaffected.
+
 ### Documentation
 
 - Added the rollout map [`docs/ci/rust-1.95-rollout.md`](docs/ci/rust-1.95-rollout.md)
@@ -135,6 +157,12 @@ rollout map and the 18-PR ladder (#140–#157).
   [`docs/POLICY_ALLOWLISTS.md`](docs/POLICY_ALLOWLISTS.md).
 - Added [`docs/release/0.5.0-readiness.md`](docs/release/0.5.0-readiness.md)
   and [`RELEASE_HANDOFF_0.5.0.md`](RELEASE_HANDOFF_0.5.0.md) (#157).
+- Added the dependency-ordered v0.5.0 publish driver
+  `scripts/publish-v0.5.0.sh` and updated the readiness ledger's
+  "Tag / publish order" section with the canonical 22-crate sequence (#158).
+- Backfilled the `[0.5.0]` CHANGELOG block with post-#157 fixes and refreshed
+  [`RELEASE_HANDOFF_0.5.0.md`](RELEASE_HANDOFF_0.5.0.md) and the README
+  Documentation pointers to land the four new policy doctrine docs (#161).
 
 ### Security
 
