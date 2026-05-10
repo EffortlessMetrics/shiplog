@@ -5,6 +5,12 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+    # Docs-only PRs do not exercise property invariants; reported as
+    # skipped-by-policy in the PR plan (see docs/ci/skipped-by-policy.md).
+    paths-ignore:
+      - "docs/**"
+      - "*.md"
+      - "**/*.md"
 
 env:
   CARGO_TERM_COLOR: always
@@ -29,6 +35,9 @@ jobs:
           components: rustfmt, clippy
 
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: property
+          save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Run property tests
         run: |

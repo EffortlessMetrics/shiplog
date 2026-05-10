@@ -31,6 +31,9 @@ jobs:
           components: rustfmt, clippy
 
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: mutation
+          save-if: ${{ github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' }}
 
       - name: Install cargo-mutants
         run: cargo install cargo-mutants --locked

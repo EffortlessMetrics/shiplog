@@ -75,17 +75,19 @@ rule applies: PR restores, `main` (or scheduled) saves.
 
 The `coverage.yml` workflow already does this (`save-if: ${{ github.ref == 'refs/heads/main' }}`).
 
-PR #147 applies the pattern to the rest:
+PR #147 applied the pattern to the rest (now landed):
 
-- `ci.yml` (`check`, `deny`, `msrv`)
-- `bdd-testing.yml` (4 jobs)
-- `property-testing.yml`
-- `fuzzing.yml` (quick + extended)
+- `ci.yml` (`check`, `deny`, `msrv`) — `save-if: ${{ github.ref == 'refs/heads/main' }}` on each
+- `bdd-testing.yml` (5 jobs) — distinct `shared-key` per job + main-only save
+- `property-testing.yml` — `shared-key: property` + main-only save
+- `fuzzing.yml` (quick + extended) — `shared-key: fuzz` + save on main or scheduled cron
+- `mutation-testing.yml` — `shared-key: mutation` + save on main or `workflow_dispatch`
 
 ## Docs-only PRs skip compile
 
 A PR that matches only the `docs-only` risk pack should not pay any
-compile cost. PR #147 adds path filters to compile-heavy workflows:
+compile cost. PR #147 added path filters to the compile-heavy
+non-required workflows:
 
 ```yaml
 on:
@@ -96,13 +98,24 @@ on:
       - "**/*.md"
 ```
 
-Combined with `policy/ci-risk-packs.toml`, a docs-only PR runs only:
+Applied to `bdd-testing.yml`, `property-testing.yml`, and
+`fuzzing.yml` (quick lane). Not applied to `ci.yml` because its `check`
+/ `deny` / `msrv` jobs are required-merge gates and a missing required
+check would deadlock docs-only PRs (see
+[`branch-protection.md`](branch-protection.md)). On a docs-only PR
+post-#147:
 
-- `pr-plan / forecast` (1 LEM)
-- bots (CodeRabbit / Gemini / Droid — advisory)
-- GitGuardian (push-event)
+- `ci.yml` runs (required) — fast on docs because no Rust changes; cache
+  hits `main`'s warm cache
+- `pr-plan / forecast` runs (1 LEM)
+- `coverage.yml` already path-gated to Rust surfaces — naturally skips
+- `bdd-testing.yml`, `property-testing.yml`, `fuzzing.yml` quick — all
+  skip via `paths-ignore`
+- `mutation-testing.yml`, extended fuzz — skip via non-PR triggers
+- bots (CodeRabbit / Gemini / Droid — advisory) run unchanged
+- GitGuardian (push-event) runs unchanged
 
-…and reports `skipped: docs-only` for everything else (see
+The PR plan reports the path-filtered skips as `skipped: docs-only` (see
 [`skipped-by-policy.md`](skipped-by-policy.md)).
 
 ## What rule 4 means in practice
@@ -120,16 +133,21 @@ satisfied; PR #147 documents this and adds the matching `save-if` /
 
 ## Validation
 
-PR #147's acceptance criteria:
+PR #147's acceptance criteria (now landed):
 
 - Every PR-time job uses `save-if: ${{ github.ref == 'refs/heads/main' }}`
-  on `Swatinem/rust-cache@v2` (or equivalent for `actions/cache`).
+  on `Swatinem/rust-cache@v2` (or, for `mutation-testing.yml` and
+  `fuzzing.yml` extended, the equivalent `main || schedule` /
+  `main || workflow_dispatch` form so the producer is the long-running
+  variant of each lane).
 - Every push-to-`main` run produces or refreshes the canonical cache.
-- A docs-only PR has a measurable LEM drop (target: ≥10 LEM saved
-  vs today, mostly from skipping compile-heavy lanes).
-- The release pipeline cache keys remain segregated from PR-fast keys.
+- A docs-only PR's compile-heavy non-required workflows skip via
+  `paths-ignore`; reviewers see the skips called out in the PR plan
+  step summary.
+- The release pipeline cache keys (`release-preflight` shared-key plus
+  per-target `actions/cache` keys) remain segregated from PR-fast keys.
 
-The actuals to confirm these targets land in PR #148.
+The actuals to confirm the LEM drop land in PR #148.
 
 ## See also
 

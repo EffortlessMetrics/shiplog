@@ -4,6 +4,12 @@ on:
   push:
     branches: [main, develop]
   pull_request:
+    # Docs-only PRs do not need to compile + run BDD; they are reported as
+    # skipped-by-policy in the PR plan (see docs/ci/skipped-by-policy.md).
+    paths-ignore:
+      - "docs/**"
+      - "*.md"
+      - "**/*.md"
 
 env:
   CARGO_TERM_COLOR: always
@@ -25,6 +31,9 @@ jobs:
           components: rustfmt, clippy
 
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: bdd-testkit
+          save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Run v0.3.x BDD Tests
         run: cargo test -p shiplog-testkit bdd_v03x_tests -- --test-threads=4
@@ -71,6 +80,9 @@ jobs:
           components: rustfmt, clippy
 
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: bdd-ingest
+          save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Test ingest crates
         run: cargo test -p shiplog-ingest-gitlab -p shiplog-ingest-jira -p shiplog-ingest-linear -p shiplog-ingest-github -p shiplog-ingest-git -p shiplog-ingest-manual -p shiplog-ingest-json -- --test-threads=4
@@ -91,6 +103,9 @@ jobs:
           components: rustfmt, clippy
 
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: bdd-render-trust
+          save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Test stable contracts and trust surfaces
         run: cargo test -p shiplog-ids -p shiplog-schema -p shiplog-ports -p shiplog-coverage -p shiplog-cache -p shiplog-workstreams -p shiplog-redact -p shiplog-bundle -p shiplog-render-md -p shiplog-render-json -p shiplog-cluster-llm -- --test-threads=4
@@ -111,6 +126,9 @@ jobs:
           components: rustfmt, clippy
 
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: bdd-optional
+          save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Test optional surface crates
         run: cargo test -p shiplog-workstreams -p shiplog-team -p shiplog-merge -- --test-threads=4
@@ -131,6 +149,9 @@ jobs:
           components: rustfmt, clippy
 
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: bdd-app
+          save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Test shiplog app without optional features
         run: cargo test -p shiplog --no-default-features -- --test-threads=4

@@ -28,6 +28,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "check-${{ matrix.os }}"
+          save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Package boundary audit
         if: matrix.os == 'ubuntu-latest'
@@ -73,6 +74,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "deny"
+          save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Install cargo-deny
         run: cargo install cargo-deny --locked
@@ -94,6 +96,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "msrv"
+          save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Check workspace compiles on MSRV
         run: cargo check --workspace --all-features

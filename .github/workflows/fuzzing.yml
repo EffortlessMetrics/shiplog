@@ -5,6 +5,12 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+    # Docs-only PRs do not exercise parser robustness; reported as
+    # skipped-by-policy in the PR plan (see docs/ci/skipped-by-policy.md).
+    paths-ignore:
+      - "docs/**"
+      - "*.md"
+      - "**/*.md"
   schedule:
     # Run extended fuzzing daily at midnight UTC
     - cron: '0 0 * * *'
@@ -41,6 +47,8 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: fuzz
+          shared-key: fuzz
+          save-if: ${{ github.ref == 'refs/heads/main' || github.event_name == 'schedule' }}
 
       - name: Install cargo-fuzz
         run: |
@@ -153,6 +161,8 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: fuzz
+          shared-key: fuzz
+          save-if: ${{ github.ref == 'refs/heads/main' || github.event_name == 'schedule' }}
 
       - name: Install cargo-fuzz
         run: |
