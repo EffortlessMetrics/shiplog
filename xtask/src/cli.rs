@@ -68,6 +68,34 @@ enum Command {
 
     /// Verify Clippy exceptions in source vs `policy/clippy-exceptions.toml`.
     CheckClippyExceptions(FilePolicyModeArgs),
+
+    /// No-panic baseline commands.
+    NoPanic(NoPanicArgs),
+
+    /// Verify the panic-family baseline (`policy/no-panic-baseline.toml`).
+    CheckNoPanicFamily(FilePolicyModeArgs),
+}
+
+#[derive(Debug, Args)]
+pub struct NoPanicArgs {
+    #[command(subcommand)]
+    command: NoPanicCommand,
+}
+
+#[derive(Debug, Subcommand)]
+enum NoPanicCommand {
+    /// Show diff between source and the on-disk baseline; with `--reset`,
+    /// regenerate the baseline file.
+    Baseline(BaselineArgs),
+}
+
+#[derive(Debug, Args)]
+pub struct BaselineArgs {
+    /// Regenerate `policy/no-panic-baseline.toml` from a fresh source scan.
+    /// This is the only documented way to mutate the baseline; do it in a
+    /// dedicated PR.
+    #[arg(long)]
+    pub reset: bool,
 }
 
 #[derive(Debug, Args)]
@@ -215,6 +243,14 @@ impl Cli {
                 &workspace_root,
                 parse_mode(&args.mode)?,
             ),
+            Command::NoPanic(np) => match np.command {
+                NoPanicCommand::Baseline(args) => {
+                    tasks::no_panic::baseline(&workspace_root, args.reset)
+                }
+            },
+            Command::CheckNoPanicFamily(args) => {
+                tasks::no_panic::check_no_panic_family(&workspace_root, parse_mode(&args.mode)?)
+            }
         }
     }
 }
