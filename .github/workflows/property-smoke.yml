@@ -1,0 +1,62 @@
+name: Property Smoke
+
+# Bounded property-test smoke for the PR-fast lane.
+#
+# Lane: lane.property_smoke (advisory, default_pr=true). Runs proptest
+# at PROPTEST_CASES=64 with a deterministic seed against the foundation
+# crates (shiplog-ids, shiplog-schema, shiplog-coverage, shiplog-redact)
+# whose invariants are most load-bearing. The broad property sweep
+# (lane.property, .github/workflows/property-testing.yml) keeps running
+# on PR at PROPTEST_CASES=256 until PR #155 routes the broad form to
+# nightly + label.
+#
+# Scope rationale (see docs/ci/test-evidence-lanes.md#bounded-vs-broad-stochastic):
+# fast stochastic tests are good PR tests; the waste comes from running
+# them too broadly. 64 cases on the foundation crates catches counter-
+# examples that show up at small sizes (where most do) at a fraction of
+# the broad lane's cost. The deterministic seed makes every PR run see
+# the same case sequence so flakes don't masquerade as regressions.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths-ignore:
+      - "docs/**"
+      - "*.md"
+      - "**/*.md"
+
+concurrency:
+  group: property-smoke-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' && github.event.action == 'synchronize' }}
+
+env:
+  CARGO_TERM_COLOR: always
+  PROPTEST_CASES: "64"
+  PROPTEST_MAX_LOCAL_REJECTS: "2048"
+  PROPTEST_MAX_GLOBAL_REJECTS: "8192"
+  # Deterministic seed so PR runs share a stable case sequence; the
+  # broad nightly sweep continues to vary.
+  PROPTEST_RNG_ALGORITHM: "xorshift"
+  PROPTEST_RNG_SEED: "shiplog-pr-fast-v1"
+
+jobs:
+  smoke:
+    name: smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.95.0"
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: property-smoke
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Foundation property tests (bounded, deterministic)
+        run: cargo test -p shiplog-ids -p shiplog-schema -p shiplog-coverage -p shiplog-redact -- --test-threads=4

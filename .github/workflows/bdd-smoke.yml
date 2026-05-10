@@ -1,0 +1,56 @@
+name: BDD Smoke
+
+# Bounded BDD smoke for the PR-fast lane.
+#
+# Lane: lane.bdd_smoke (advisory, default_pr=true). Runs a fixed,
+# deterministic, time-capped set of critical CLI flow scenarios on every
+# Rust-diff PR. The broad BDD sweep (lane.bdd, .github/workflows/
+# bdd-testing.yml) keeps running on PR until PR #155 routes the broad
+# form to nightly + label.
+#
+# Scope rationale (see docs/ci/test-evidence-lanes.md#bounded-vs-broad-stochastic):
+# the broad BDD lane runs ~30 scenarios across 4 jobs. The smoke lane
+# picks two end-to-end scenarios that exercise the canonical merge +
+# render pipeline so a correctness regression on the most-trafficked
+# flow is caught in PR-fast time, even if the broad lane is skipped or
+# slow.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths-ignore:
+      - "docs/**"
+      - "*.md"
+      - "**/*.md"
+
+concurrency:
+  group: bdd-smoke-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' && github.event.action == 'synchronize' }}
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  smoke:
+    name: smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.95.0"
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: bdd-smoke
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Critical merge + render contract scenario
+        run: cargo test -p shiplog-testkit --features merge_pipeline multi_source_merging_scenario_7_10_pipeline_contract -- --exact --nocapture
+
+      - name: Critical multi-source render scenario
+        run: cargo test -p shiplog-testkit multi_source_merging_scenario_7_8_render -- --exact --nocapture

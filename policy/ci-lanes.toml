@@ -93,6 +93,49 @@ branches = ["main"]
 note = "Same intent as lane.ci_deny on PR; PR #155 routes to manifest changes / weekly / label only."
 
 # ── Stochastic lanes: bounded smoke vs broad sweep ─────────────────────
+#
+# Bounded smoke lanes (lane.bdd_smoke / .property_smoke / .fuzz_smoke,
+# added in PR #154) run on every PR-fast and are designed to be cheap,
+# deterministic, and scoped (touched-target for fuzz; foundation crates
+# for property; fixed critical-flow scenarios for BDD). The broad
+# sweeps below them (lane.bdd, .property, .fuzz_quick) keep running on
+# PR until PR #155 routes the broad form to nightly + label.
+
+[lane.bdd_smoke]
+description = "Critical CLI flow BDD scenarios (merge + render contract), bounded and deterministic."
+intent = "PR-fast acceptance smoke"
+runner = "ubuntu_24_04"
+base_lem = 6
+default_pr = true
+blocking = false
+workflow = ".github/workflows/bdd-smoke.yml"
+workflow_name = "BDD Smoke"
+job_name = "smoke"
+note = "Added in PR #154. Two scenarios: multi_source_merging_scenario_7_10_pipeline_contract (--features merge_pipeline) + multi_source_merging_scenario_7_8_render."
+
+[lane.property_smoke]
+description = "Foundation crate property tests at PROPTEST_CASES=64, deterministic seed."
+intent = "PR-fast invariant smoke"
+runner = "ubuntu_24_04"
+base_lem = 5
+default_pr = true
+blocking = false
+workflow = ".github/workflows/property-smoke.yml"
+workflow_name = "Property Smoke"
+job_name = "smoke"
+note = "Added in PR #154. Bounded sweep over shiplog-ids, shiplog-schema, shiplog-coverage, shiplog-redact at 64 cases. Broad lane.property keeps PR-on-every until PR #155."
+
+[lane.fuzz_smoke]
+description = "Touched-target quick fuzz at 30s on Rust diffs."
+intent = "PR-fast parser robustness"
+runner = "ubuntu_24_04"
+base_lem = 4
+default_pr = true
+blocking = false
+workflow = ".github/workflows/fuzz-smoke.yml"
+workflow_name = "Fuzz Smoke"
+job_name = "smoke"
+note = "Added in PR #154. Resolves changed paths to a subset of {parse_jsonl, parse_workstreams, parse_github_api, parse_gitlab_api, parse_jira_linear_api, parse_manual_events, parse_config, parse_template, parse_plugin_manifest}; if no parser surface is touched, the lane completes as a no-op. Broad lane.fuzz_quick keeps PR-on-every until PR #155."
 
 [lane.bdd]
 description = "BDD acceptance behavior checks (full 4-job matrix)."
