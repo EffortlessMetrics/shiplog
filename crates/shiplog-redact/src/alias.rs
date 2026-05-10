@@ -49,6 +49,7 @@ impl DeterministicAliasStore {
             serde_json::from_str(&text).with_context(|| format!("parse alias cache {path:?}"))?;
 
         if cache.version != 1 {
+            core::hint::cold_path();
             anyhow::bail!("unsupported alias cache version: {}", cache.version);
         }
 

@@ -79,6 +79,7 @@ fn ensure_bundle_profile_available(
     render_profiles: bool,
 ) -> Result<()> {
     if !render_profiles && !matches!(bundle_profile, BundleProfile::Internal) {
+        core::hint::cold_path();
         anyhow::bail!(
             "{} bundle profile requires manager/public profile rendering",
             bundle_profile
