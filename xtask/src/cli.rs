@@ -1,6 +1,6 @@
 //! CLI surface for `cargo xtask`.
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use clap::{Args, Parser, Subcommand};
 use std::path::PathBuf;
 
@@ -161,8 +161,13 @@ pub struct ActualsArgs {
     #[arg(long, env = "GITHUB_SHA")]
     pub head_sha: String,
 
-    /// PR number (optional).
-    #[arg(long, env = "GITHUB_PR_NUMBER")]
+    /// PR number (optional; null on push / workflow_dispatch).
+    ///
+    /// Falls back to `GITHUB_PR_NUMBER` when the flag is omitted; an empty
+    /// env value is treated as "no PR" so the actuals lane can run on
+    /// `workflow_run` after a push to `main` (where the upstream PR field
+    /// resolves to an empty string).
+    #[arg(long)]
     pub pr_number: Option<u32>,
 
     /// Path to a JSON file with the GitHub Actions jobs response
@@ -201,12 +206,19 @@ impl Cli {
                     output: args.output,
                 }),
                 CiCommand::Actuals(args) => {
+                    let pr_number = match args.pr_number {
+                        Some(n) => Some(n),
+                        None => {
+                            parse_optional_u32(std::env::var("GITHUB_PR_NUMBER").ok().as_deref())
+                                .context("parse GITHUB_PR_NUMBER env var")?
+                        }
+                    };
                     tasks::ci_actuals::run(tasks::ci_actuals::ActualsInputs {
                         workspace_root,
                         run_id: args.run_id,
                         workflow_name: args.workflow_name,
                         head_sha: args.head_sha,
-                        pr_number: args.pr_number,
+                        pr_number,
                         jobs_input: args.input,
                         output: args.output,
                     })
@@ -262,5 +274,44 @@ fn parse_mode(s: &str) -> Result<tasks::file_policy::Mode> {
         other => Err(anyhow::anyhow!(
             "invalid --mode {other:?}; expected `advisory` or `blocking-allowlist`"
         )),
+    }
+}
+
+/// Parse an optional `u32` from a string env value, treating absent and
+/// empty strings as `None`. Bridges clap's `Option<u32>` env-arg semantics
+/// to GitHub Actions, where workflow_run env vars can resolve to the empty
+/// string on push / workflow_dispatch (and clap rejects `""` as a u32).
+fn parse_optional_u32(value: Option<&str>) -> Result<Option<u32>> {
+    match value {
+        None | Some("") => Ok(None),
+        Some(s) => s
+            .parse::<u32>()
+            .map(Some)
+            .with_context(|| format!("parse {s:?} as u32")),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_optional_u32;
+
+    #[test]
+    fn absent_env_returns_none() {
+        assert_eq!(parse_optional_u32(None).unwrap(), None);
+    }
+
+    #[test]
+    fn empty_env_returns_none() {
+        assert_eq!(parse_optional_u32(Some("")).unwrap(), None);
+    }
+
+    #[test]
+    fn integer_env_returns_some() {
+        assert_eq!(parse_optional_u32(Some("157")).unwrap(), Some(157));
+    }
+
+    #[test]
+    fn non_integer_env_errors() {
+        assert!(parse_optional_u32(Some("not-a-number")).is_err());
     }
 }
