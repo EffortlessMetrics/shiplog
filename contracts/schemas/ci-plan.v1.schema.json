@@ -1,0 +1,201 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/EffortlessMetrics/shiplog/contracts/schemas/ci-plan.v1.schema.json",
+  "title": "shiplog CI Plan v1",
+  "description": "Per-PR forecast of selected CI lanes, matched risk packs, and projected LEM cost. Emitted by pr-plan.yml (added in PR #146). See docs/ci/ci-plan-json.md for the human reference.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "repo",
+    "base_sha",
+    "head_sha",
+    "labels",
+    "changed",
+    "selection",
+    "budget",
+    "warnings"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "repo": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Repository name (e.g. \"shiplog\")."
+    },
+    "base_sha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$",
+      "description": "Base commit SHA (PR target branch HEAD)."
+    },
+    "head_sha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$",
+      "description": "Head commit SHA (PR source HEAD)."
+    },
+    "pr_number": {
+      "type": ["integer", "null"],
+      "minimum": 1,
+      "description": "PR number; null on dispatch / push to non-PR ref."
+    },
+    "labels": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true,
+      "description": "Labels currently applied to the PR."
+    },
+    "changed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["files", "areas", "crates"],
+      "properties": {
+        "files": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true,
+          "description": "Repository-relative paths from the PR diff."
+        },
+        "areas": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["docs", "crates", "apps", "scripts", "policy", "workflows", "contracts", "fuzz", "tests", "examples", "root"]
+          },
+          "uniqueItems": true,
+          "description": "Top-level areas affected."
+        },
+        "crates": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true,
+          "description": "Workspace crates touched (without the 'shiplog-' prefix is allowed)."
+        }
+      }
+    },
+    "selection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["risk_packs", "lanes", "skipped_lanes"],
+      "properties": {
+        "risk_packs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "matched_paths"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Risk pack ID matching policy/ci-risk-packs.toml."
+              },
+              "matched_paths": {
+                "type": "array",
+                "items": { "type": "string", "minLength": 1 },
+                "uniqueItems": true,
+                "minItems": 1,
+                "description": "Subset of changed.files that matched this pack."
+              }
+            }
+          }
+        },
+        "lanes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "selected_by"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^lane\\.[a-z0-9_]+$",
+                "description": "Lane ID matching policy/ci-lanes.toml."
+              },
+              "selected_by": {
+                "type": "string",
+                "pattern": "^(default_pr|label:[a-z0-9_-]+|risk_pack:[a-z0-9_-]+|branch:[a-z0-9_/-]+)$",
+                "description": "Why this lane was selected."
+              }
+            }
+          }
+        },
+        "skipped_lanes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "skip_reason"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^lane\\.[a-z0-9_]+$"
+              },
+              "skip_reason": {
+                "type": "string",
+                "enum": [
+                  "docs-only",
+                  "no-matching-risk-pack",
+                  "label-absent",
+                  "nightly-only",
+                  "release-only",
+                  "ripr-waived",
+                  "duplicate"
+                ],
+                "description": "Skip category from docs/ci/skipped-by-policy.md."
+              },
+              "skip_detail": {
+                "type": ["string", "null"],
+                "description": "Free-form explanation."
+              }
+            }
+          }
+        }
+      }
+    },
+    "budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "estimated_lem",
+        "band",
+        "default_limit_lem",
+        "elevated_limit_lem",
+        "hard_limit_lem",
+        "ack_required",
+        "ack_present"
+      ],
+      "properties": {
+        "estimated_lem": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Sum of base_lem * runner_multiplier for selected lanes."
+        },
+        "band": {
+          "type": "string",
+          "enum": ["preferred", "default", "elevated", "hard"],
+          "description": "Tier the estimated_lem falls into."
+        },
+        "default_limit_lem": { "type": "integer", "minimum": 0 },
+        "elevated_limit_lem": { "type": "integer", "minimum": 0 },
+        "hard_limit_lem": { "type": "integer", "minimum": 0 },
+        "ack_required": {
+          "type": ["string", "null"],
+          "enum": ["ci-budget-ack", "ci-budget-override", null],
+          "description": "Label needed for the band; null if no ack required."
+        },
+        "ack_present": {
+          "type": "boolean",
+          "description": "Whether the required label is on the PR."
+        }
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Non-blocking diagnostics from the planner."
+    }
+  }
+}

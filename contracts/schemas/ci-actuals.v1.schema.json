@@ -1,0 +1,183 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/EffortlessMetrics/shiplog/contracts/schemas/ci-actuals.v1.schema.json",
+  "title": "shiplog CI Actuals v1",
+  "description": "Per-run record of what each CI lane actually cost (wall-clock, runner, cache, conclusion). Emitted by the actuals collector (added in PR #148). See docs/ci/ci-actuals.md for the human reference.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "repo",
+    "run_id",
+    "workflow",
+    "head_sha",
+    "pr_number",
+    "lanes",
+    "totals"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "repo": {
+      "type": "string",
+      "minLength": 1
+    },
+    "run_id": {
+      "type": "string",
+      "pattern": "^[0-9]+$",
+      "description": "GitHub Actions run ID."
+    },
+    "workflow": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Top-level workflow name whose run produced the artifact."
+    },
+    "head_sha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "pr_number": {
+      "type": ["integer", "null"],
+      "minimum": 1,
+      "description": "PR number, or null on push/dispatch."
+    },
+    "lanes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "lane_id",
+          "workflow",
+          "job",
+          "runner",
+          "runner_multiplier",
+          "estimated_lem",
+          "started_at",
+          "completed_at",
+          "actual_seconds",
+          "actual_lem",
+          "cache_hit",
+          "cache_key",
+          "conclusion",
+          "skip_reason",
+          "skip_detail"
+        ],
+        "properties": {
+          "lane_id": {
+            "type": "string",
+            "pattern": "^lane\\.[a-z0-9_]+$",
+            "description": "Lane ID matching policy/ci-lanes.toml."
+          },
+          "workflow": {
+            "type": "string",
+            "minLength": 1
+          },
+          "job": {
+            "type": "string",
+            "minLength": 1
+          },
+          "runner": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Runner label (e.g. 'ubuntu-latest', 'windows-latest')."
+          },
+          "runner_multiplier": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Mirror of policy/ci-budget.toml runner_multipliers."
+          },
+          "estimated_lem": {
+            "type": "number",
+            "minimum": 0
+          },
+          "started_at": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "completed_at": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "actual_seconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "actual_lem": {
+            "type": "number",
+            "minimum": 0
+          },
+          "cache_hit": {
+            "type": ["boolean", "null"]
+          },
+          "cache_key": {
+            "type": ["string", "null"]
+          },
+          "conclusion": {
+            "type": "string",
+            "enum": ["success", "failure", "skipped", "cancelled", "timed_out"]
+          },
+          "skip_reason": {
+            "type": ["string", "null"],
+            "enum": [
+              "docs-only",
+              "no-matching-risk-pack",
+              "label-absent",
+              "nightly-only",
+              "release-only",
+              "ripr-waived",
+              "duplicate",
+              null
+            ]
+          },
+          "skip_detail": {
+            "type": ["string", "null"]
+          }
+        },
+        "allOf": [
+          {
+            "description": "skip_reason / skip_detail are non-null only when conclusion is 'skipped'.",
+            "if": {
+              "properties": { "conclusion": { "const": "skipped" } }
+            },
+            "then": {
+              "required": ["skip_reason"],
+              "properties": {
+                "skip_reason": { "type": "string" }
+              }
+            },
+            "else": {
+              "properties": {
+                "skip_reason": { "type": "null" },
+                "skip_detail": { "type": "null" }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "totals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["estimated_lem", "actual_lem", "drift_pct"],
+      "properties": {
+        "estimated_lem": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Sum of lanes[].estimated_lem for non-skipped lanes."
+        },
+        "actual_lem": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Sum of lanes[].actual_lem."
+        },
+        "drift_pct": {
+          "type": "number",
+          "description": "(actual_lem - estimated_lem) / estimated_lem * 100; positive means over-budget."
+        }
+      }
+    }
+  }
+}
