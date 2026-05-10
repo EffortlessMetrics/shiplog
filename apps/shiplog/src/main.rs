@@ -1925,6 +1925,7 @@ impl RedactionKey {
         let key_env = "SHIPLOG_REDACT_KEY";
         let (key, source) = resolve_redaction_key(redact_key, key_env);
         if key.is_none() {
+            core::hint::cold_path();
             anyhow::bail!(share_command_key_error(bundle_profile, key_env));
         }
         Ok(Self { key, source })
@@ -1937,6 +1938,7 @@ impl RedactionKey {
     ) -> Result<Self> {
         let (key, source) = resolve_redaction_key(redact_key, key_env);
         if key.is_none() && !matches!(bundle_profile, BundleProfile::Internal) {
+            core::hint::cold_path();
             anyhow::bail!(share_profile_key_error(bundle_profile, key_env));
         }
         Ok(Self { key, source })
