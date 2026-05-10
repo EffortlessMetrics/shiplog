@@ -11,8 +11,8 @@
 //!   entry via `reason = "policy:<id>"`).
 //!
 //! Both checkers respect the shared
-//! [`Mode`](super::file_policy::Mode) — `advisory` (print, exit 0) or
-//! `blocking-allowlist` (exit non-zero on findings).
+//! [`Mode`] — `advisory` (print, exit 0) or `blocking-allowlist` (exit
+//! non-zero on findings).
 //!
 //! See [`docs/CLIPPY_POLICY.md`](../../docs/CLIPPY_POLICY.md).
 
