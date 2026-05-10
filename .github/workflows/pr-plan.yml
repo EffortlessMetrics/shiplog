@@ -1,0 +1,84 @@
+name: PR Plan
+
+# Advisory LEM PR Plan: emits target/ci/ci-plan.json against
+# contracts/schemas/ci-plan.v1.schema.json. Reads
+# policy/ci-budget.toml + policy/ci-lanes.toml + policy/ci-risk-packs.toml.
+#
+# Always advisory in v0.5.0: never blocks merge. Hard enforcement is a
+# follow-up release decision after PR #148 records actuals.
+#
+# See docs/ci/ci-plan-json.md.
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: pr-plan-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' && github.event.action == 'synchronize' }}
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  forecast:
+    name: forecast
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v6.0.2
+        with:
+          # Full history so `git diff base..head` resolves on PR refs.
+          fetch-depth: 0
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.95.0"
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: pr-plan
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Resolve PR metadata
+        id: meta
+        if: github.event_name == 'pull_request'
+        run: |
+          set -euo pipefail
+          echo "base_sha=${{ github.event.pull_request.base.sha }}" >> "$GITHUB_OUTPUT"
+          echo "head_sha=${{ github.event.pull_request.head.sha }}" >> "$GITHUB_OUTPUT"
+          echo "pr_number=${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
+          # Comma-join PR label names. join() handles the empty-array case.
+          echo "labels=${{ join(github.event.pull_request.labels.*.name, ',') }}" >> "$GITHUB_OUTPUT"
+
+      - name: Run PR plan (PR event)
+        if: github.event_name == 'pull_request'
+        env:
+          GITHUB_BASE_SHA: ${{ steps.meta.outputs.base_sha }}
+          GITHUB_HEAD_SHA: ${{ steps.meta.outputs.head_sha }}
+          GITHUB_PR_NUMBER: ${{ steps.meta.outputs.pr_number }}
+          GITHUB_PR_LABELS: ${{ steps.meta.outputs.labels }}
+        run: |
+          mkdir -p target/ci
+          cargo xtask ci plan --output target/ci/ci-plan.json
+
+      - name: Run PR plan (manual dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          mkdir -p target/ci
+          cargo xtask ci plan --output target/ci/ci-plan.json
+
+      - name: Upload plan artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ci-plan
+          path: target/ci/ci-plan.json
+          retention-days: 30
+          if-no-files-found: warn

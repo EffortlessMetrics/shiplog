@@ -1,7 +1,7 @@
 //! CLI surface for `cargo xtask`.
 
 use anyhow::Result;
-use clap::{Parser, Subcommand};
+use clap::{Args, Parser, Subcommand};
 use std::path::PathBuf;
 
 use crate::tasks;
@@ -38,6 +38,48 @@ enum Command {
 
     /// Print a human summary of every policy ledger.
     PolicyReport,
+
+    /// CI economics commands (forecast, actuals).
+    Ci(CiArgs),
+}
+
+#[derive(Debug, Args)]
+pub struct CiArgs {
+    #[command(subcommand)]
+    command: CiCommand,
+}
+
+#[derive(Debug, Subcommand)]
+enum CiCommand {
+    /// Emit a CI Plan (forecast) against contracts/schemas/ci-plan.v1.schema.json.
+    Plan(PlanArgs),
+}
+
+#[derive(Debug, Args)]
+pub struct PlanArgs {
+    /// Base SHA or git ref (PR target). Defaults to env GITHUB_BASE_SHA, then `main`.
+    #[arg(long, env = "GITHUB_BASE_SHA")]
+    pub base_ref: Option<String>,
+
+    /// Head SHA or git ref (PR source). Defaults to env GITHUB_HEAD_SHA, then `HEAD`.
+    #[arg(long, env = "GITHUB_HEAD_SHA")]
+    pub head_ref: Option<String>,
+
+    /// PR number (omit for non-PR runs).
+    #[arg(long, env = "GITHUB_PR_NUMBER")]
+    pub pr_number: Option<u32>,
+
+    /// Comma-separated PR labels.
+    #[arg(long, env = "GITHUB_PR_LABELS", value_delimiter = ',')]
+    pub labels: Vec<String>,
+
+    /// Override changed files (comma-separated). Skips git diff. Used for testing.
+    #[arg(long, value_delimiter = ',')]
+    pub changed_files: Vec<String>,
+
+    /// Output path for the JSON plan.
+    #[arg(long, default_value = "target/ci/ci-plan.json")]
+    pub output: PathBuf,
 }
 
 impl Cli {
@@ -51,6 +93,21 @@ impl Cli {
             Command::PackageBoundary => tasks::package_boundary::run(&workspace_root),
             Command::PackageVersion => tasks::package_version::run(&workspace_root),
             Command::PolicyReport => tasks::policy_report::run(&workspace_root),
+            Command::Ci(ci) => match ci.command {
+                CiCommand::Plan(args) => tasks::ci_plan::run(tasks::ci_plan::PlanInputs {
+                    workspace_root,
+                    base_ref: args.base_ref,
+                    head_ref: args.head_ref,
+                    pr_number: args.pr_number,
+                    labels: args.labels,
+                    changed_files_override: if args.changed_files.is_empty() {
+                        None
+                    } else {
+                        Some(args.changed_files)
+                    },
+                    output: args.output,
+                }),
+            },
         }
     }
 }
