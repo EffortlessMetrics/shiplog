@@ -22,7 +22,7 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: "1.92"
+          toolchain: "1.95.0"
           components: rustfmt, clippy
 
       - uses: Swatinem/rust-cache@v2
@@ -68,7 +68,7 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: "1.92"
+          toolchain: "1.95.0"
 
       - name: Install Rust target
         run: rustup target add ${{ matrix.target }}
@@ -186,7 +186,7 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: "1.92"
+          toolchain: "1.95.0"
 
       - name: Cache cargo build
         uses: actions/cache@v5
@@ -267,7 +267,7 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: "1.92"
+          toolchain: "1.95.0"
 
       - name: Cache cargo build
         uses: actions/cache@v5

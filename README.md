@@ -4,7 +4,7 @@
 [![Codecov](https://codecov.io/gh/EffortlessMetrics/shiplog/branch/main/graph/badge.svg)](https://codecov.io/gh/EffortlessMetrics/shiplog)
 [![crates.io](https://img.shields.io/crates/v/shiplog.svg)](https://crates.io/crates/shiplog)
 [![docs.rs](https://docs.rs/shiplog/badge.svg)](https://docs.rs/shiplog)
-[![MSRV](https://img.shields.io/badge/MSRV-1.92-blue.svg)](https://blog.rust-lang.org/)
+[![MSRV](https://img.shields.io/badge/MSRV-1.95-blue.svg)](https://blog.rust-lang.org/)
 [![License](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
 
 > Compile code, ticket, review, local git, JSON, and manual work evidence into defensible review packets -- with receipts.
@@ -75,7 +75,7 @@ cargo run -p shiplog -- <subcommand>
 
 ### Prerequisites
 
-- Rust 1.92+
+- Rust 1.95+
 - A `GITHUB_TOKEN` environment variable for GitHub ingestion
 - A `GITLAB_TOKEN` environment variable for GitLab ingestion
 - A `JIRA_TOKEN` environment variable for Jira ingestion

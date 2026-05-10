@@ -154,7 +154,7 @@ glob = "rust-toolchain.toml"
 category = "build_metadata"
 language = "toml"
 owner = "release/ci"
-reason = "Pins the workspace Rust toolchain (1.92 today; 1.95 in PR #145)."
+reason = "Pins the workspace Rust toolchain (1.95.0 since PR #145)."
 created = "2026-05-09"
 expires = "permanent"
 

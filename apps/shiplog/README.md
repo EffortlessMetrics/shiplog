@@ -18,7 +18,7 @@ With optional LLM-assisted workstream clustering:
 cargo install shiplog --features llm
 ```
 
-**Prerequisites:** Rust 1.92+. Set `GITHUB_TOKEN` for GitHub ingestion, `GITLAB_TOKEN` for GitLab ingestion, `JIRA_TOKEN` for Jira ingestion, or `LINEAR_API_KEY` for Linear ingestion.
+**Prerequisites:** Rust 1.95+. Set `GITHUB_TOKEN` for GitHub ingestion, `GITLAB_TOKEN` for GitLab ingestion, `JIRA_TOKEN` for Jira ingestion, or `LINEAR_API_KEY` for Linear ingestion.
 
 ## Quick start
 

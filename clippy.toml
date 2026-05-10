@@ -1,0 +1,17 @@
+# shiplog Clippy configuration.
+#
+# Added in PR #145 alongside the MSRV bump (1.92 → 1.95). The msrv field
+# tells Clippy not to suggest fixes that depend on Rust features newer
+# than the declared MSRV.
+#
+# Threshold values are intentionally somewhat lenient at v0.5.0 — the
+# Clippy ledger checker (PR #150) verifies these match
+# `policy/clippy-lints.toml`'s declared msrv but does not enforce a
+# tighter complexity budget. PR #152 may revisit thresholds when
+# activating Rust 1.95 ratchets.
+
+msrv = "1.95"
+
+cognitive-complexity-threshold = 40
+too-many-arguments-threshold = 8
+type-complexity-threshold = 300

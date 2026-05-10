@@ -53,13 +53,13 @@ ladder.
 | Layer | Current | Target | Status |
 | ----- | ------: | -----: | ------ |
 | Edition | 2024 | 2024 | done |
-| MSRV | 1.92 | 1.95 | planned (PR #145) |
-| Toolchain pin (`rust-toolchain.toml`) | 1.92 | 1.95.0 | planned (PR #145) |
-| `release.yml` toolchain pin | 1.92 (preflight, build, validation, integration) | 1.95.0 | planned (PR #145; release moves with CI) |
+| MSRV | 1.92 | 1.95 | landed (#145) |
+| Toolchain pin (`rust-toolchain.toml`) | 1.92 | 1.95.0 | landed (#145) |
+| `release.yml` toolchain pin | 1.92 (preflight, build, validation, integration) | 1.95.0 | landed (#145; release moved with CI) |
 | Workspace version | 0.4.0 | 0.5.0 | planned (PR #157) |
 | Workspace lints (Rust) | `unsafe_code = deny`, `missing_debug_implementations = allow` | 1.95 lint floor (`unsafe_op_in_unsafe_fn`, `unused_must_use`, `unexpected_cfgs`, `const_item_interior_mutations`, `function_casts_as_integer`, `unused_visibilities`) | planned (PR #152) |
 | Workspace lints (Clippy) | `enum_glob_use`, `flat_map_option` warn; `needless_pass_by_value`, `cloned_instead_of_copied` allow as debt | 1.94/1.95 ratchets activated; broad allows moved to receipted debt ledger | planned (PR #150 ledger, PR #152 ratchets) |
-| `clippy.toml` | absent | present, MSRV-aware, no test carveouts | planned (PR #145) |
+| `clippy.toml` | absent | present, MSRV-aware, no test carveouts | landed (#145) |
 | `xtask/` | absent | thin Rust-native policy runner | planned (PR #143) |
 | `policy/` ledger files | absent | TOML skeletons present (PR #141), enforced by xtask (PR #149–#152) | planned (PR #141 skeleton, PR #149+ enforcement) |
 | `ci/lanes` policy | implicit | `policy/ci-budget.toml`, `policy/ci-lanes.toml`, `policy/ci-risk-packs.toml`, `pr-plan.yml` advisory | planned (PR #146) |

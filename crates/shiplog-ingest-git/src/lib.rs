@@ -264,7 +264,7 @@ impl LocalGitIngestor {
         }
 
         // Sort events by timestamp (newest first)
-        events.sort_by(|a, b| b.occurred_at.cmp(&a.occurred_at));
+        events.sort_by_key(|e| std::cmp::Reverse(e.occurred_at));
 
         Ok(events)
     }
