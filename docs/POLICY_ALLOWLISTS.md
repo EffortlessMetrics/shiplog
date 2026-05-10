@@ -6,9 +6,9 @@ schema and suppression style. This document is the single place to look up
 what a ledger entry means.
 
 It is part of the [Rust 1.95 / 0.5.0 quality
-rollout](ci/rust-1.95-rollout.md). The ledger TOML skeletons land in PR 2;
-the checkers land in PRs 7 (file policy), 8 (Clippy), and 9 (no-panic).
-Everything below describes the intended steady state.
+rollout](ci/rust-1.95-rollout.md). The ledger TOML skeletons land in PR #141;
+the checkers land in PR #149 (file policy), PR #150 (Clippy), and PR #151
+(no-panic). Everything below describes the intended steady state.
 
 ## Why a common schema
 
@@ -134,7 +134,7 @@ Refer to each policy document for the rationale behind its extension fields.
 
 ## Validation
 
-The `xtask` runner (PR 3 onward) provides:
+The `xtask` runner (PR #143 onward) provides:
 
 ```bash
 cargo xtask check-lint-policy            # Clippy

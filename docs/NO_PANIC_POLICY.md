@@ -6,8 +6,9 @@ This document describes how shiplog tracks panic-family shapes (`unwrap`,
 
 It is part of the [Rust 1.95 / 0.5.0 quality
 rollout](ci/rust-1.95-rollout.md). The `policy/no-panic-baseline.toml` and
-`policy/no-panic-allowlist.toml` skeletons land in PR 2; the classifier and
-gate land in PR 9. Everything below describes the intended steady state.
+`policy/no-panic-allowlist.toml` skeletons land in PR #141; the classifier
+and gate land in PR #151. Everything below describes the intended steady
+state.
 
 ## Intent
 
@@ -31,8 +32,8 @@ mode = "no-new-debt"
 
 `no-new-debt` means: the baseline records the panic-family findings that exist
 today; PRs cannot introduce new findings; PRs can remove findings, which
-shrinks the baseline; resetting the baseline requires a dedicated PR (PR 9 for
-the initial baseline; future resets are themselves single-purpose PRs).
+shrinks the baseline; resetting the baseline requires a dedicated PR (PR #151
+for the initial baseline; future resets are themselves single-purpose PRs).
 
 This is not "all panics are forbidden". It is "today's panics are receipted
 and cannot grow without an explicit decision."
@@ -132,7 +133,7 @@ The baseline is reset only in a dedicated PR. Trigger conditions:
 - A burndown effort removed enough findings that the file should be rewritten
   so reviewers can see the smaller surface, not a long list of removed
   entries. (Burndown in v0.5.0 is opportunistic: small dents during 1.95
-  ratchets in PR 10, broader sweeps as follow-up.)
+  ratchets in PR #152, broader sweeps as follow-up.)
 - A refactor changed file paths, breaking entry identity. Always prefer to
   preserve identities by rebasing the path field; reset only when the change
   is structural (crate split, large rename).

@@ -42,7 +42,7 @@ Ordered roughly best-signal-per-LEM first, given a typical Rust diff:
 | 18 | downloaded-artifact + binary smoke (tag) | 10–15 | Released artifact actually launches | Behavior beyond `--help` / `--version` |
 
 (Costs are approximate steady-state estimates for shiplog as of the v0.5.0
-cut. The PR plan in PR 6 will record actual observed costs and update the
+cut. The PR plan in PR #146 will record actual observed costs and update the
 table.)
 
 ## Reading the ladder
@@ -115,7 +115,7 @@ ladder makes that explicit so reviewers do not over-claim:
 - A clean release smoke does not prove the binary handles inputs beyond
   `--help` / `--version`.
 
-The release-readiness doc (`docs/release/0.5.0-readiness.md`, PR 14) records
+The release-readiness doc (`docs/release/0.5.0-readiness.md`, PR #157) records
 the explicit known-non-blockers list.
 
 ## Promotion rules (advisory → required)

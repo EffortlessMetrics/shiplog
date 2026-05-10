@@ -6,10 +6,10 @@ allowed, and how do we change that?
 
 It is part of the [Rust 1.95 / 0.5.0 quality
 rollout](ci/rust-1.95-rollout.md). Today shiplog has only a small workspace
-lints block; the TOML skeletons land in PR 2, the `xtask` runner in PR 3,
-the `clippy.toml` in PR 5 (alongside the MSRV bump), and the ledger checker
-in PR 8. Everything below describes the intended steady state once those PRs
-have merged.
+lints block; the TOML skeletons land in PR #141, the `xtask` runner in
+PR #143, the `clippy.toml` in PR #145 (alongside the MSRV bump), and the
+ledger checker in PR #150. Everything below describes the intended steady
+state once those PRs have merged.
 
 ## Intent
 
@@ -29,7 +29,7 @@ policy/clippy-debt.toml        Broad allows that exist as receipted debt
 policy/clippy-exceptions.toml  Per-occurrence suppressions with owner+reason+expiry
 ```
 
-The `xtask` runner (PR 3) provides:
+The `xtask` runner (PR #143) provides:
 
 ```bash
 cargo xtask check-lint-policy        # workspace lints match policy
@@ -103,14 +103,14 @@ reason = "Prefer checked arithmetic over manual divide-by-zero guards."
 ```
 
 When `policy.msrv` reaches the gate, the lint moves from `[[planned]]` to
-`[[active]]` in a dedicated PR (PR 7 in the rollout). Bumping MSRV without
-activating gated lints is allowed, but `check-lint-policy` will report the
-lints as ready-to-activate.
+`[[active]]` in a dedicated PR (PR #152, the Rust+Clippy 1.95 ratchets PR).
+Bumping MSRV without activating gated lints is allowed, but
+`check-lint-policy` will report the lints as ready-to-activate.
 
 ## Current debt (pre-ledger)
 
-Until PR 8 lands the ledger checker, the following workspace allows exist in
-`Cargo.toml`:
+Until PR #150 lands the ledger checker, the following workspace allows exist
+in `Cargo.toml`:
 
 ```toml
 [workspace.lints.clippy]
@@ -120,8 +120,8 @@ cloned_instead_of_copied = "allow" # ~40+ hits across crates
 
 These are intentional debt and will become entries in
 `policy/clippy-debt.toml` with owner, reason, and expiry once the ledger
-lands (skeletons in PR 2, checker in PR 8). Burndown is opportunistic — a
-small dent happens when 1.95 ratchets activate in PR 10, and the broader
+lands (skeletons in PR #141, checker in PR #150). Burndown is opportunistic —
+a small dent happens when 1.95 ratchets activate in PR #152, and the broader
 sweep is a follow-up release.
 
 ## See also

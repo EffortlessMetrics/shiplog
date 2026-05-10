@@ -7,8 +7,8 @@ and the cost model in [`lem-budgeting.md`](lem-budgeting.md).
 It is part of the [Rust 1.95 / 0.5.0 quality
 rollout](rust-1.95-rollout.md). The TOML ledgers it describes
 (`policy/ci-budget.toml`, `policy/ci-lanes.toml`, `policy/ci-risk-packs.toml`,
-`policy/ci-exceptions.toml`) are added in PR 6. Everything below describes the
-intended steady state.
+`policy/ci-exceptions.toml`) are added in PR #146. Skeletons land earlier in
+PR #141. Everything below describes the intended steady state.
 
 ## The framing
 
@@ -201,7 +201,7 @@ deny job" was free to ship without a reviewer noticing. With it, the duplicate
 is named, scoped, and reviewable.
 
 shiplog has at least one declared duplicate today (`security.yml` vs
-`ci.yml#deny`); PR 6 records it.
+`ci.yml#deny`); PR #146 records it.
 
 ### Rule 3 — Expensive defaults need an exception
 
@@ -234,7 +234,7 @@ PRs route through three mechanisms:
 - **Branch / event.** `coverage` runs on push `main` regardless of label.
   Mutation runs Mon weekly regardless of label.
 
-The PR plan (PR 6) emits `target/ci/ci-plan.json` listing which lanes a PR
+The PR plan (PR #146) emits `target/ci/ci-plan.json` listing which lanes a PR
 will run, why (which risk packs / labels matched), and the projected LEM cost.
 This makes routing decisions reviewable up front.
 
@@ -283,7 +283,7 @@ to blocking happens deliberately, in its own PR, after:
 
 shiplog 0.5.0 ships with no hard CI budget enforcement. The PR plan emits
 forecasts; nothing blocks on them. Hard enforcement is a follow-up release
-decision after PR 12 confirms the model with actuals.
+decision after PR #148 confirms the model with actuals.
 
 ## Anti-patterns
 

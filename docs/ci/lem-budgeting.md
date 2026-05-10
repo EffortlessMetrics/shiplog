@@ -6,8 +6,8 @@ that escalate a PR from one tier to the next.
 
 It is part of the [Rust 1.95 / 0.5.0 quality
 rollout](rust-1.95-rollout.md). The TOML ledger
-(`policy/ci-budget.toml`) is added in PR 6 and is advisory only in v0.5.0.
-Hard enforcement is a follow-up release decision after PR 12 records actuals.
+(`policy/ci-budget.toml`) is added in PR #146 and is advisory only in v0.5.0.
+Hard enforcement is a follow-up release decision after PR #148 records actuals.
 
 ## The unit
 
@@ -76,7 +76,7 @@ nothing blocks merge on it.
 
 ## What contributes to the budget
 
-The PR plan (PR 6) sums LEM across:
+The PR plan (PR #146) sums LEM across:
 
 - `default_pr = true` lanes (always run on PR).
 - Lanes triggered by labels on the PR.
@@ -93,7 +93,7 @@ In rough order of payoff:
 
 1. **Cache restore-only on PR; save on `main`.** PRs read caches built by
    `main`; PRs do not write new cache keys. This avoids cache fan-out and
-   keeps `main` as the canonical cache producer. (PR 12.)
+   keeps `main` as the canonical cache producer. (PR #147.)
 2. **Skip compile on docs-only PRs.** Path filters that exclude
    `docs/**` + `*.md` from compile-heavy lanes save 5–20 LEM per docs PR. (PR
    12.)
@@ -134,9 +134,9 @@ A representative shiplog PR after the rollout (target):
 | `ci.yml#check` Ubuntu | 12 | unchanged |
 | `ci.yml#check` Windows | 36 | covered by exception entry; reviewable |
 | `ci.yml#deny` | 4 | unchanged |
-| `ci.yml#msrv` | 0–5 | candidate to drop in PR 12 (redundant with `check` while pin == MSRV) |
-| `ripr.yml` advisory | 4 | added in PR 11 |
-| `pr-plan.yml` | 1 | added in PR 6 |
+| `ci.yml#msrv` | 0–5 | candidate to drop in PR #147 (redundant with `check` while pin == MSRV) |
+| `ripr.yml` advisory | 4 | added in PR #153 |
+| `pr-plan.yml` | 1 | added in PR #146 |
 | BDD critical-flow smoke (1–2 flows) | 4 | bounded (was ~32 LEM as full 4-job matrix on every PR) |
 | Bounded proptest (selected invariants, 16–64 cases) | 5 | bounded (was ~20 LEM as 256-case all-crates sweep) |
 | Quick-fuzz of touched target (30–90s) | 2 | bounded (was ~10 LEM as 9-target × 30s matrix) |

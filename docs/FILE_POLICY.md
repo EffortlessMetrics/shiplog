@@ -6,8 +6,8 @@ config examples, fuzz corpora, and so on.
 
 It is part of the [Rust 1.95 / 0.5.0 quality
 rollout](ci/rust-1.95-rollout.md). The `policy/non-rust-allowlist.toml` and
-its companion ledger skeletons land in PR 2; the checkers land in PR 7.
-Everything below describes the intended steady state.
+its companion ledger skeletons land in PR #141; the checkers land in
+PR #149. Everything below describes the intended steady state.
 
 ## Intent
 
@@ -58,8 +58,8 @@ cargo xtask check-network-policy       # network-calling surfaces
 cargo xtask policy-report              # combined human summary
 ```
 
-PR 7 starts these in `--mode advisory`. Promotion to blocking happens after
-ledger cleanup, in a follow-up release.
+PR #149 starts these in `--mode advisory`. Promotion to blocking happens
+after ledger cleanup, in a follow-up release.
 
 ## Surfaces shiplog needs to receipt
 
@@ -98,7 +98,7 @@ Each gets a category and a reason in the appropriate ledger.
 shiplog has shell scripts that perform real release-proof work today
 (`package-proof.sh`, `publish-dry-run.sh`, `package-boundary-audit.sh`,
 `package-version-audit.sh`, `verify-release.sh`). These will move into
-`xtask` over time (PR 3 onward), but the policy is:
+`xtask` over time (PR #143 onward), but the policy is:
 
 - The shell entry points keep working as wrappers (so existing CI / docs / muscle
   memory continues to function) until `xtask` parity is proven for every step

@@ -15,11 +15,13 @@ rollout](rust-1.95-rollout.md).
 
 **Important:** the lane assignments below are **tentative and advisory** in
 v0.5.0. They describe the intended steady state. Encoding them as TOML
-happens in PR 6 (`policy/ci-lanes.toml`, `policy/ci-budget.toml`,
-`policy/ci-risk-packs.toml`). Wiring `ripr.yml` and the targeted mutation
-routing happens in PR 11. Measuring actuals and tightening cache economics
-happens in PR 12. Hard enforcement of lane budgets is a follow-up release
-decision, not v0.5.0.
+happens in PR #146 (`policy/ci-lanes.toml`, `policy/ci-budget.toml`,
+`policy/ci-risk-packs.toml`). Phase 6 splits the wiring across three PRs:
+PR #153 adds the `ripr.yml` advisory lane, PR #154 carves out the bounded
+stochastic PR-fast lane, and PR #155 routes broad BDD/property/fuzz/mutation
+to nightly + label + risk pack. Tightening cache economics happens in
+PR #147; CI actuals (the LEM feedback loop) land in PR #148. Hard enforcement
+of lane budgets is a follow-up release decision, not v0.5.0.
 
 This document changes how the rollout PRs are reviewed; it does not by itself
 move any workflow.
@@ -55,11 +57,11 @@ below.
 | -------- | -------------- | ------------- | ----------------- |
 | `ci.yml` (`check`) | Workspace builds, formats, lints (`-D warnings`), tests, doc-tests, doc build, release build, canary publish dry-run | PR + push (Ubuntu + Windows matrix) | unchanged |
 | `ci.yml` (`deny`) | `cargo deny check` — bans, advisories, licenses, sources | PR + push | unchanged |
-| `ci.yml` (`msrv`) | Workspace compiles on declared MSRV | PR + push | redundant with `check` while toolchain pin == MSRV; consider removing in PR 12 |
-| **(planned, PR 11)** `ripr.yml` | Reachable-mutant exposure analysis | not present | added as advisory |
-| **(planned, PR 11)** bounded proptest smoke | Selected high-value invariants (redaction alias stability, bundle manifest paths, coverage/gap accounting, intake.report.json shape, share.manifest checksum/path rules, source.failures.json classification, period/window resolution, journal/manual event ID stability) at 16–64 cases per selected test | full proptest sweep across all crates today | bounded smoke on PR fast; full sweep moves to nightly + risk-pack PR-targeted |
-| **(planned, PR 11)** quick-fuzz of touched targets | Compile + 30–90s fuzz of the parser/serde target the PR touches (or one canonical anchor if PR is tooling) | quick fuzz × 9 targets on every PR (~15 min) today | touched-target smoke on PR fast; full 9-target matrix moves to nightly + label |
-| **(planned, PR 11)** BDD critical-flow smoke | One or two CLI critical flows (e.g. `intake` happy path + `share verify public --strict`) | full 4-job BDD matrix on every PR today | smoke on PR fast; affected feature files routed by risk pack PR-targeted; full BDD suite moves to nightly |
+| `ci.yml` (`msrv`) | Workspace compiles on declared MSRV | PR + push | redundant with `check` while toolchain pin == MSRV; consider removing in PR #147 |
+| **(planned, PR #153)** `ripr.yml` | Reachable-mutant exposure analysis | not present | added as advisory |
+| **(planned, PR #154)** bounded proptest smoke | Selected high-value invariants (redaction alias stability, bundle manifest paths, coverage/gap accounting, intake.report.json shape, share.manifest checksum/path rules, source.failures.json classification, period/window resolution, journal/manual event ID stability) at 16–64 cases per selected test | full proptest sweep across all crates today | bounded smoke on PR fast; full sweep moves to nightly + risk-pack PR-targeted |
+| **(planned, PR #154)** quick-fuzz of touched targets | Compile + 30–90s fuzz of the parser/serde target the PR touches (or one canonical anchor if PR is tooling) | quick fuzz × 9 targets on every PR (~15 min) today | touched-target smoke on PR fast; full 9-target matrix moves to nightly + label |
+| **(planned, PR #154)** BDD critical-flow smoke | One or two CLI critical flows (e.g. `intake` happy path + `share verify public --strict`) | full 4-job BDD matrix on every PR today | smoke on PR fast; affected feature files routed by risk pack PR-targeted; full BDD suite moves to nightly |
 
 PR fast lane claim boundary:
 
@@ -94,16 +96,17 @@ Stochastic checks belong in higher-cost lanes when they are:
 - combined with another expensive lane (coverage + proptest, mutation +
   proptest).
 
-The rollout (PR 11) carves out the bounded forms for the PR fast lane and
-moves the broad forms to PR-targeted (label / risk pack) and nightly. Today's
-shiplog runs the broad forms on every PR; the rollout reshapes them rather
-than removing them.
+The rollout splits this carve-out across two PRs: PR #154 adds the bounded
+stochastic PR-fast lane, and PR #155 routes the broad forms to PR-targeted
+(label / risk pack) and nightly. Today's shiplog runs the broad forms on
+every PR; the rollout reshapes them rather than removing them.
 
 ## PR-targeted lane
 
-Opt-in via PR label or via risk-pack auto-routing (PR 6 emits the assignment;
-PR 11 wires the routing). This is where the **broader scopes** of the
-stochastic lanes live — risk-pack-scoped proptest sweeps, selected fuzz
+Opt-in via PR label or via risk-pack auto-routing (PR #146 emits the
+assignment in `policy/ci-risk-packs.toml`; PR #153 wires `ripr` advisory;
+PR #155 wires broad lane routing). This is where the **broader scopes** of
+the stochastic lanes live — risk-pack-scoped proptest sweeps, selected fuzz
 targets at 30–90s, the BDD feature files relevant to the change, and
 label-gated coverage / mutation. Blocking when present; otherwise the workflow
 reports skipped-by-policy rather than just "not run".
@@ -111,14 +114,14 @@ reports skipped-by-policy rather than just "not run".
 | Workflow | Label / trigger | Posture today | Tentative posture |
 | -------- | --------------- | ------------- | ----------------- |
 | `bdd-testing.yml` (affected feature files) | label `bdd` or `full-ci`; risk pack `cli/product` | runs every-test on every PR (4 jobs, ≤30 min each) | scoped to affected feature files on PR-targeted; full BDD suite moves to nightly |
-| `coverage.yml` | label `coverage` or `full-ci`; risk pack `coverage-impacting` | label-gated already | unchanged on PR; codify in TOML (PR 6) |
+| `coverage.yml` | label `coverage` or `full-ci`; risk pack `coverage-impacting` | label-gated already | unchanged on PR; codify in TOML (PR #146) |
 | `property-testing.yml` (risk-pack scoped) | label `property-tests` or `full-ci`; risk pack `schema/ids`, `redaction`, `bundle`, or `source-adapter` | runs all crates / 256 cases on every PR | risk-pack-scoped on PR-targeted with elevated case count; full sweep moves to nightly |
 | `security.yml` | label `security-audit`; manifest changes (Cargo.toml / Cargo.lock) | runs on every PR (duplicates `ci.yml` `deny`) | route to manifest changes / security label / main / scheduled; remove duplicate from default PR |
 | `fuzzing.yml` (selected target, 30–90s) | label `fuzz`; risk pack `parser` (parsers / serde) | runs all 9 targets on every PR (~15 min) | risk-pack-selected target at 30–90s on PR-targeted; full 9-target matrix moves to nightly |
-| **(planned, PR 11)** mutation targeted (narrow) | label `mutation` or `full-ci`; risk pack matches `redaction`, `bundle`, `schema/ids`, `coverage`, or `source-adapter`; severe `ripr` finding | not present | added |
+| **(planned, PR #155)** mutation targeted (narrow) | label `mutation` or `full-ci`; risk pack matches `redaction`, `bundle`, `schema/ids`, `coverage`, or `source-adapter`; severe `ripr` finding | not present | added |
 
-Risk packs (PR 6 inventory; PR 11 routing) auto-apply labels based on which
-files a PR touches:
+Risk packs (PR #146 inventory; PR #155 routing) auto-apply labels based on
+which files a PR touches:
 
 ```text
 redaction/privacy   → crates/shiplog-redact/, crates/shiplog-bundle/, profile/share code
@@ -177,8 +180,8 @@ need a refresh.
 | Workflow | Schedule | What it claims | Posture today | Tentative posture |
 | -------- | -------- | -------------- | ------------- | ----------------- |
 | `coverage.yml` | push `main` | Codecov coverage on `main` post-merge (Codecov flag `rust-core`) | unchanged | unchanged |
-| `bdd-testing.yml` | nightly cron (PR 11 adds) | BDD across all 4 jobs at full size | not scheduled | add nightly |
-| `property-testing.yml` | nightly cron (PR 11 adds) | Property suites across all 13 crates at full sample size | not scheduled | add nightly |
+| `bdd-testing.yml` | nightly cron (PR #155 adds) | BDD across all 4 jobs at full size | not scheduled | add nightly |
+| `property-testing.yml` | nightly cron (PR #155 adds) | Property suites across all 13 crates at full sample size | not scheduled | add nightly |
 | `fuzzing.yml` extended | daily 00:00 UTC | 60-minute fuzz per target × 9 targets | unchanged | unchanged |
 | `mutation-testing.yml` | Mon 08:00 UTC | Mutation testing for all 22 workspace crates, three tiers, 120-minute cap, advisory | unchanged | unchanged |
 | `droid-security-scan.yml` | Mon 08:00 UTC | Bot-driven 7-day security scan with medium severity threshold | unchanged | unchanged |
@@ -198,13 +201,13 @@ Runs on tag push (`v*`). Blocking; a release fails to ship if any step fails.
 
 | Workflow / step | What it claims | Posture today | Tentative posture |
 | --------------- | -------------- | ------------- | ----------------- |
-| `release.yml` `release-preflight` | `scripts/package-proof.sh` (package boundary + version alignment + cargo-deny) and `scripts/publish-dry-run.sh` (crates.io publish readiness, ordered) | unchanged | toolchain bumps to 1.95.0 in PR 5 |
-| `release.yml` `build-binary` | Builds `shiplog` for `x86_64-unknown-linux-gnu`, `x86_64-apple-darwin`, `aarch64-apple-darwin`, `x86_64-pc-windows-msvc` | unchanged | toolchain bumps to 1.95.0 in PR 5 |
+| `release.yml` `release-preflight` | `scripts/package-proof.sh` (package boundary + version alignment + cargo-deny) and `scripts/publish-dry-run.sh` (crates.io publish readiness, ordered) | unchanged | toolchain bumps to 1.95.0 in PR #145 |
+| `release.yml` `build-binary` | Builds `shiplog` for `x86_64-unknown-linux-gnu`, `x86_64-apple-darwin`, `aarch64-apple-darwin`, `x86_64-pc-windows-msvc` | unchanged | toolchain bumps to 1.95.0 in PR #145 |
 | `release.yml` `create-release` | Creates draft GitHub release with auto-generated release notes | unchanged | unchanged |
 | `release.yml` `upload-assets` | Uploads platform binaries + `SHA256SUMS.txt` to the release | unchanged | unchanged |
-| `release.yml` `release-validation` | Smoke tests downloaded Linux artifact + freshly-built release binary across the product help surface | unchanged | toolchain bumps to 1.95.0 in PR 5 |
-| `release.yml` `release-test` | Runs `cargo test --release --workspace --exclude shiplog-testkit` | unchanged | toolchain bumps to 1.95.0 in PR 5 |
-| **(planned, PR 11)** release-readiness mutation snapshot | Single-tier mutation snapshot for trust surfaces at tag time | not present | added |
+| `release.yml` `release-validation` | Smoke tests downloaded Linux artifact + freshly-built release binary across the product help surface | unchanged | toolchain bumps to 1.95.0 in PR #145 |
+| `release.yml` `release-test` | Runs `cargo test --release --workspace --exclude shiplog-testkit` | unchanged | toolchain bumps to 1.95.0 in PR #145 |
+| **(planned, PR #155)** release-readiness mutation snapshot | Single-tier mutation snapshot for trust surfaces at tag time | not present | added |
 
 Release lane claim boundary:
 
@@ -213,7 +216,7 @@ Release lane claim boundary:
   tree passes the dry-run.
 - It does not prove the absence of latent bugs in surfaces not covered by
   smoke tests. The release-readiness doc (`docs/release/0.5.0-readiness.md`,
-  PR 14) carries the explicit known-non-blockers list.
+  PR #157) carries the explicit known-non-blockers list.
 
 ## How `ripr` fits (planned)
 
@@ -274,13 +277,14 @@ Evidence does not stay advisory forever. The expected promotion paths:
 - **Mutation**: per-tier baselines become blocking on a per-tier basis once
   scheduled runs show stable timings and stable survivor counts
   (`docs/ci/mutation.md`).
-- **`ripr`**: the suppressions ledger (`policy/ripr-suppressions.toml`, PR 11)
-  exists so promotion to severity-gated blocking can happen without flag day.
-- **File policy**: `--mode advisory` in PR 7; promotion to
+- **`ripr`**: the suppressions ledger (`policy/ripr-suppressions.toml`,
+  skeleton in PR #141, wired in PR #153) exists so promotion to severity-gated
+  blocking can happen without flag day.
+- **File policy**: `--mode advisory` in PR #149; promotion to
   `--mode blocking-allowlist` in a follow-up release after ledger cleanup.
-- **Lane budgets**: LEM caps stay advisory in v0.5.0 (PR 6 only emits
+- **Lane budgets**: LEM caps stay advisory in v0.5.0 (PR #146 only emits
   forecasts). Hard enforcement is a follow-up release decision once actuals
-  (PR 12) confirm the model.
+  (PR #148) confirm the model.
 
 ## See also
 
