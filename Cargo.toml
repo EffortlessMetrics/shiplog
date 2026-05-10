@@ -79,6 +79,13 @@ criterion = { version = "0.8", features = ["html_reports"] }
 [workspace.lints.rust]
 # deny rather than forbid so narrow crates can document intentional exceptions.
 unsafe_code = "deny"
+# Rust 1.95 lint floor (activated in PR #152); see policy/clippy-lints.toml.
+unsafe_op_in_unsafe_fn = "deny"
+unused_must_use = "deny"
+unexpected_cfgs = "warn"
+const_item_interior_mutations = "deny"
+function_casts_as_integer = "deny"
+unused_visibilities = "warn"
 # Too many types lack Debug (53+); allow for now, revisit later
 missing_debug_implementations = "allow"
 
@@ -90,6 +97,16 @@ needless_pass_by_value = "allow"
 # Pedantic — too many hits (40+) across codebase; allow for now
 cloned_instead_of_copied = "allow"
 flat_map_option = "warn"
+# Rust 1.94 / 1.95 ratchets (activated in PR #152); see policy/clippy-lints.toml.
+same_length_and_capacity = "deny"
+manual_checked_ops = "warn"
+manual_take = "warn"
+duration_suboptimal_units = "warn"
+unnecessary_trailing_comma = "warn"
+needless_type_cast = "warn"
+manual_ilog2 = "warn"
+decimal_bitwise_operands = "warn"
+unnecessary_sort_by = "warn"
 
 [profile.release]
 codegen-units = 1

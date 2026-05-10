@@ -7445,7 +7445,7 @@ fn collect_configured_sources(
     })
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments, reason = "policy:clippy-0001")]
 fn run_configured_multi_pipeline(
     config_path: &Path,
     config: &ShiplogConfig,
@@ -8460,7 +8460,7 @@ fn cache_clean_apply(cache: &ApiCache, mode: &CacheCleanMode, planned: usize) ->
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments, reason = "policy:clippy-0001")]
 fn make_github_ingestor(
     user: &str,
     since: NaiveDate,
@@ -8492,7 +8492,7 @@ fn make_github_ingestor(
     Ok(ing)
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments, reason = "policy:clippy-0001")]
 fn make_gitlab_ingestor(
     user: &str,
     since: NaiveDate,
@@ -8529,7 +8529,7 @@ fn make_gitlab_ingestor(
     Ok(ing)
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments, reason = "policy:clippy-0001")]
 fn make_jira_ingestor(
     user: &str,
     auth_user: Option<String>,
@@ -8571,7 +8571,6 @@ fn make_jira_ingestor(
     Ok(ing)
 }
 
-#[allow(clippy::too_many_arguments)]
 fn make_linear_ingestor(
     user_id: &str,
     since: NaiveDate,

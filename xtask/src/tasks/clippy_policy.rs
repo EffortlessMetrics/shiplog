@@ -331,7 +331,18 @@ pub fn check_clippy_exceptions(workspace_root: &Path, mode: Mode) -> Result<()> 
             Ok(t) => t,
             Err(_) => continue,
         };
+        // Track multi-line raw string depth (`r#"..."#` style). A line that
+        // opens a raw string without closing it puts the scanner in
+        // raw-string mode; subsequent lines are skipped until we see the
+        // closing `"#`.
+        let mut in_raw_string = false;
         for (lineno, line) in text.lines().enumerate() {
+            if in_raw_string {
+                if line.contains("\"#") {
+                    in_raw_string = false;
+                }
+                continue;
+            }
             // Skip lines inside string literals or doc-comment examples by being
             // crude: a leading `//` (line comment) means this is documentation
             // text, not actual code.
@@ -339,7 +350,17 @@ pub fn check_clippy_exceptions(workspace_root: &Path, mode: Mode) -> Result<()> 
             if trimmed.starts_with("//") {
                 continue;
             }
-            if let Some(cap) = allow_re.captures(line) {
+            // Detect raw-string opener (r#" or r##" etc.) without matching
+            // close on the same line; switch to raw-string mode for the next
+            // iteration.
+            if line.contains("r#\"") && !line.contains("\"#") {
+                in_raw_string = true;
+                continue;
+            }
+            if let Some(cap) = allow_re.captures(line)
+                && let Some(mat) = cap.get(0)
+                && !is_inside_string_literal(line, mat.start())
+            {
                 let lint = cap.get(1).map_or("?", |m| m.as_str()).to_string();
                 findings.push(Finding {
                     kind: "bare-allow".to_string(),
@@ -398,6 +419,25 @@ pub fn check_clippy_exceptions(workspace_root: &Path, mode: Mode) -> Result<()> 
     }
 
     report("check-clippy-exceptions", &findings, mode)
+}
+
+/// Detect whether `position` falls inside a `"..."` string literal on the
+/// given line. Counts unescaped quotes before `position`; odd → inside.
+/// Doesn't handle multi-line raw strings or escaped quotes inside raw
+/// strings — sufficient for line-by-line lint scanning.
+fn is_inside_string_literal(line: &str, position: usize) -> bool {
+    let mut count = 0;
+    let mut iter = line[..position].chars().peekable();
+    while let Some(c) = iter.next() {
+        match c {
+            '\\' => {
+                iter.next();
+            }
+            '"' => count += 1,
+            _ => {}
+        }
+    }
+    count % 2 == 1
 }
 
 fn git_ls_rs_files(workspace_root: &Path) -> Result<Vec<String>> {

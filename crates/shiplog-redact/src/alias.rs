@@ -81,7 +81,7 @@ impl DeterministicAliasStore {
     /// Resolve a stable alias for a (`kind`, `value`) pair.
     pub(crate) fn alias(&self, kind: &str, value: &str) -> String {
         let cache_key = format!("{kind}:{value}");
-        #[allow(clippy::collapsible_if)]
+        #[expect(clippy::collapsible_if, reason = "policy:clippy-0002")]
         if let Ok(cache) = self.cache.lock() {
             if let Some(v) = cache.get(&cache_key) {
                 return v.clone();

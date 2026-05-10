@@ -15,24 +15,37 @@ status = "advisory"
 #
 # See docs/CLIPPY_POLICY.md and docs/POLICY_ALLOWLISTS.md.
 
-# Skeleton — no exceptions yet. Entry shape:
-#
-# [[exception]]
-# id = "clippy-0001"
-# lint = "clippy::indexing_slicing"
-# path = "apps/shiplog/src/example.rs"
-# classification = "bounded_fixture"
-# owner = "cli"
-# reason = "Fixture index is bounded by generated fixture construction."
-# created = "2026-05-09"
-# review_after = "2026-06-09"
-# expires = "2026-08-09"
-#
-# [exception.selector]
-# kind = "expr"
-# container = "fixture_helper"
-# text_contains = "items[idx]"
-#
-# [exception.last_seen]
-# line = 42
-# column = 9
+# Entries cited from source via `#[expect(clippy::FOO, reason = "policy:<id>")]`.
+# Multiple source sites may share one id when the rationale is the same; the
+# checker just verifies every cited id exists in this ledger and that no
+# `#[allow(clippy::...)]` (bare) is present.
+
+[[exception]]
+id = "clippy-0001"
+lint = "clippy::too_many_arguments"
+classification = "wide-cli-and-engine-signatures"
+owner = "shiplog-engine"
+reason = "Several CLI command parsers and shiplog-engine entry points have wide signatures by design — they expose every relevant flag/path/config option as a parameter rather than packing them into a struct that loses argument-name documentation. The signatures are stable trust-surface API; refactoring to builder pattern is a follow-up release. Cited from 12 sites in apps/shiplog/src/main.rs (5), crates/shiplog-engine/src/lib.rs (6), crates/shiplog-team/src/core.rs (1)."
+created = "2026-05-10"
+review_after = "2026-09-10"
+expires = "2027-02-10"
+
+[exception.selector]
+kind = "fn-signature"
+container = "various"
+text_contains = "fn ... ( ... )  // 8+ args"
+
+[[exception]]
+id = "clippy-0002"
+lint = "clippy::collapsible_if"
+classification = "intentional-readability"
+owner = "shiplog-ingest-github"
+reason = "`if let Some(cache) = self.cache { if let Some(cached) = cache.get(...) { ... } }` and similar patterns kept as nested `if let` for readability — the inner condition is conceptually a separate decision (cache present? AND cached value exists?). Collapsing into `if let Some(...) && let Some(...)` works on Rust 1.95 but loses the visual separation. Cited from 3 sites: 2 in shiplog-ingest-github cache lookups, 1 in shiplog-redact alias cache."
+created = "2026-05-10"
+review_after = "2026-09-10"
+expires = "2027-02-10"
+
+[exception.selector]
+kind = "expr"
+container = "cache lookup"
+text_contains = "if let Some(... cache ...)"
