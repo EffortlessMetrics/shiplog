@@ -75,7 +75,7 @@ x86_64 artifacts and creates the GitHub release with checksums.
 
 ```bash
 scripts/release-install-smoke.sh v0.5.0
-scripts/release-install-smoke.ps1 -Tag v0.5.0
+scripts/release-install-smoke.ps1 -Version v0.5.0
 ```
 
 ## Publish to crates.io

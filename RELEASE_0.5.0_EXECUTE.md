@@ -64,7 +64,7 @@ git push origin v0.5.0
 
 ```bash
 scripts/release-install-smoke.sh v0.5.0           # Linux/macOS/Windows validation
-scripts/release-install-smoke.ps1 -Tag v0.5.0    # PowerShell parity on Windows
+scripts/release-install-smoke.ps1 -Version v0.5.0  # PowerShell parity on Windows
 ```
 
 ### 5. Announce
