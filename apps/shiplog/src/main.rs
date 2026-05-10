@@ -7605,7 +7605,7 @@ fn latest_prior_curated_workstreams(
         candidates.push((modified, run_dir, curated_path));
     }
 
-    candidates.sort_by(|left, right| right.0.cmp(&left.0));
+    candidates.sort_by_key(|c| std::cmp::Reverse(c.0));
     Ok(candidates
         .into_iter()
         .next()

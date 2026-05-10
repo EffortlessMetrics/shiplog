@@ -2,11 +2,12 @@ schema_version = 1
 policy = "clippy-lints"
 owner = "EffortlessMetrics"
 status = "advisory"
-msrv = "1.92"
+msrv = "1.95"
 
-# `msrv` bumps to "1.95" in PR #145 alongside the workspace toolchain bump.
-# Planned lints with `activate_when_msrv = "1.95"` move from [[planned]] to
-# [[active]] in PR #152. See docs/CLIPPY_POLICY.md.
+# `msrv` was bumped to "1.95" in PR #145 alongside the workspace toolchain
+# bump. Planned lints with `activate_when_msrv = "1.95"` are now
+# eligible to activate; activation moves them from [[planned]] to
+# [[active]] in PR #152 (Rust+Clippy ratchets). See docs/CLIPPY_POLICY.md.
 
 [posture]
 panic_free_tests = true
@@ -151,6 +152,13 @@ level = "warn"
 activate_when_msrv = "1.95"
 class = "numeric"
 reason = "Bitwise operators on decimal-literal operands are usually a bug."
+
+[[planned]]
+name = "clippy::unnecessary_sort_by"
+level = "warn"
+activate_when_msrv = "1.95"
+class = "collections"
+reason = "Prefer `sort_by_key(|x| std::cmp::Reverse(...))` over comparator closures. Surfaced in PR #144's 1.95 probe; the two existing sites were fixed inline in PR #145."
 
 # ── Held until protected fields are configured ─────────────────────────
 

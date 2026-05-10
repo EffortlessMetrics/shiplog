@@ -19,17 +19,17 @@ Required-check renames and additions happen at specific points in the
 ladder. Required-check removals happen as separate PRs after the lane
 they replace has been observed stable.
 
-## Today (post-#142)
+## Today (post-#145)
 
 | Required check | Source | Notes |
 |---|---|---|
 | `CI / Check (ubuntu-latest)` | `ci.yml` | Primary correctness gate |
 | `CI / Check (windows-latest)` | `ci.yml` | Cross-platform parity |
 | `CI / cargo-deny` | `ci.yml` | Dependency policy |
-| `CI / MSRV (1.92)` | `ci.yml` | MSRV regression |
+| `CI / MSRV (1.95)` | `ci.yml` | MSRV regression (renamed from `MSRV (1.92)` in PR #145) |
 
-Nothing has moved yet. PRs #140, #141, #142 do not touch branch
-protection.
+PRs #140–#143 did not touch branch protection. PR #145 (this rename)
+required a same-merge branch-protection update.
 
 ## At PR #145 (MSRV bump 1.92 → 1.95)
 

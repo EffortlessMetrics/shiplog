@@ -52,7 +52,7 @@ on the relevant lanes.
 | `CI / Check (ubuntu-latest)` | `ci.yml` | Primary Rust correctness gate |
 | `CI / Check (windows-latest)` | `ci.yml` | Cross-platform parity (covered by `ci-exception-0001`) |
 | `CI / cargo-deny` | `ci.yml` | Dependency policy |
-| `CI / MSRV (1.92)` | `ci.yml` | MSRV regression (renames to `MSRV (1.95)` in PR #145; consider dropping in PR #147 when redundant) |
+| `CI / MSRV (1.95)` | `ci.yml` | MSRV regression (renamed from `MSRV (1.92)` in PR #145; consider dropping in PR #147 when redundant) |
 | `pr-plan / forecast` | `pr-plan.yml` (added in PR #146) | LEM forecast + risk-pack receipt |
 
 These should **not** be required:

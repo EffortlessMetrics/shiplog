@@ -40,7 +40,7 @@ Key CLI flags:
 
 ## Architecture
 
-Module-first Rust workspace (edition 2024, MSRV 1.92) following **Clean Architecture / ports-and-adapters**. Public crates represent product/API contracts, trust surfaces, real adapters, or heavy optional boundaries; implementation seams should start as modules inside an owning crate. The CLI (`apps/shiplog`) drives `shiplog-engine`, which orchestrates: ingest → cluster → redact → render. See `API_SURFACE.md` before adding or promoting package boundaries.
+Module-first Rust workspace (edition 2024, MSRV 1.95) following **Clean Architecture / ports-and-adapters**. Public crates represent product/API contracts, trust surfaces, real adapters, or heavy optional boundaries; implementation seams should start as modules inside an owning crate. The CLI (`apps/shiplog`) drives `shiplog-engine`, which orchestrates: ingest → cluster → redact → render. See `API_SURFACE.md` before adding or promoting package boundaries.
 
 ### Dependency layers (top → bottom)
 

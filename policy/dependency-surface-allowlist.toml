@@ -59,7 +59,7 @@ id = "dep-rust-toolchain"
 path = "rust-toolchain.toml"
 surface = "toolchain_pin"
 owner = "release/ci"
-reason = "Rust toolchain pin (1.92 today; 1.95 in PR #145)."
+reason = "Rust toolchain pin (1.95.0 since PR #145)."
 created = "2026-05-09"
 expires = "permanent"
 

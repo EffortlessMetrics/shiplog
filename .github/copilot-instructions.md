@@ -68,7 +68,7 @@ This is a module-first Rust workspace following Clean Architecture boundaries. P
 
 Important workspace metadata
 - Rust edition: 2024
-- Minimum rust-version: 1.92
+- Minimum rust-version: 1.95
 - Common workspace deps: anyhow, thiserror, serde(+derive), insta, proptest, etc.
 
 Primary runtime/flow: CLI (`apps/shiplog`) drives the engine which wires ingestors (ports -> adapters), normalizes events into the canonical schema, clusters into workstreams, applies deterministic redaction profiles, and renders output formats (Markdown/JSON) with a coverage manifest and optional bundling.

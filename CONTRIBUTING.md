@@ -4,7 +4,7 @@ Thank you for your interest in contributing. This document covers setup, convent
 
 ## Prerequisites
 
-- **Rust 1.92+** (edition 2024) — install via [rustup](https://rustup.rs/)
+- **Rust 1.95+** (edition 2024) — install via [rustup](https://rustup.rs/)
 - **Git**
 - **cargo-insta** for reviewing snapshot tests: `cargo install cargo-insta`
 - A `GITHUB_TOKEN` if you plan to test GitHub ingestion against live APIs

@@ -56,7 +56,7 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: "1.92"
+          toolchain: "1.95.0"
           components: llvm-tools-preview
 
       - name: Use larger target dir
@@ -66,7 +66,7 @@ jobs:
         with:
           cache-on-failure: true
           cache-directories: ${{ runner.temp }}/target
-          shared-key: coverage-1.92
+          shared-key: coverage-1.95
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Install coverage tools
