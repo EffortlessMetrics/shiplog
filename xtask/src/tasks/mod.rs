@@ -1,6 +1,7 @@
 pub mod check_policy_schemas;
 pub mod ci_actuals;
 pub mod ci_plan;
+pub mod clippy_policy;
 pub mod file_policy;
 pub mod package_boundary;
 pub mod package_version;
