@@ -1,16 +1,35 @@
 name: Property Testing
 
+# Broad property sweep (lane.property, 256 cases × 13 crates). Routed in
+# PR #155 to label-gated PR + nightly + main only; the bounded smoke
+# (lane.property_smoke, .github/workflows/property-smoke.yml) runs on
+# every PR-fast at 64 cases against the foundation crates.
+#
+# Triggers:
+#   - push to main: full sweep
+#   - PR with `property-tests` or `full-ci` label: full sweep
+#   - nightly cron: full sweep
+#   - manual dispatch
+#
+# Job-level `if` guards label-gated PR runs.
+
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
-    # Docs-only PRs do not exercise property invariants; reported as
-    # skipped-by-policy in the PR plan (see docs/ci/skipped-by-policy.md).
+    types: [labeled, synchronize, reopened]
     paths-ignore:
       - "docs/**"
       - "*.md"
       - "**/*.md"
+  schedule:
+    - cron: "0 7 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: property-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' && github.event.action == 'synchronize' }}
 
 env:
   CARGO_TERM_COLOR: always
@@ -21,6 +40,10 @@ env:
 jobs:
   property-test:
     name: Property Testing
+    if: |
+      github.event_name != 'pull_request' ||
+      contains(github.event.pull_request.labels.*.name, 'property-tests') ||
+      contains(github.event.pull_request.labels.*.name, 'full-ci')
     runs-on: ubuntu-latest
     timeout-minutes: 30
 

@@ -1,16 +1,32 @@
 name: Security Checks
 
+# Standalone cargo-deny (lane.ci_security). PR coverage is provided by
+# `ci.yml#cargo-deny` (lane.ci_deny, blocking, runs on every PR).
+# Routed in PR #155 to remove the duplicate PR fire; this workflow now
+# runs on push-to-main + weekly cron + manual dispatch + label-only PR.
+#
+# To run on a PR ad-hoc, add the `security-audit` or `full-ci` label.
+
 on:
   push:
-    branches: [main, develop]
+    branches: [main]
   pull_request:
+    types: [labeled, synchronize, reopened]
   schedule:
-    - cron: "0 0 * * 0"  # Weekly on Sunday at midnight
+    - cron: "0 0 * * 0"
   workflow_dispatch:
+
+concurrency:
+  group: security-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' && github.event.action == 'synchronize' }}
 
 jobs:
   cargo-deny:
     name: Cargo Deny Security
+    if: |
+      github.event_name != 'pull_request' ||
+      contains(github.event.pull_request.labels.*.name, 'security-audit') ||
+      contains(github.event.pull_request.labels.*.name, 'full-ci')
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
