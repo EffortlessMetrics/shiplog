@@ -1,0 +1,53 @@
+schema_version = 1
+policy = "ci-exceptions"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+# Exceptions to the "expensive defaults need an exception" rule
+# (lanes with default_pr = true and base_lem > preferred_default_lem of 25).
+# See docs/ci/cost-and-verification-policy.md (Rule 3).
+
+[[exception]]
+id = "ci-exception-0001"
+lane = "lane.ci_check_windows"
+owner = "release"
+reason = "Windows release build is the only cross-platform parity check shiplog has on PRs; moving it nightly would let Windows-only regressions ship to a tag."
+created = "2026-05-09"
+review_after = "2026-09-09"
+expires = "permanent"
+
+[[exception]]
+id = "ci-exception-0002"
+lane = "lane.bdd"
+owner = "policy"
+reason = "Currently runs in full form on every PR (4 jobs × ≤30 min each). PR #154 carves out a bounded smoke (1-2 critical flows); PR #155 routes the broad form to nightly + cli/product risk pack."
+created = "2026-05-09"
+review_after = "2026-07-09"
+expires = "2026-08-09"
+
+[[exception]]
+id = "ci-exception-0003"
+lane = "lane.property"
+owner = "policy"
+reason = "Currently runs full sweep on every PR (256 cases × all 13 crates). PR #154 carves out a bounded smoke (selected high-value invariants at 16-64 cases); PR #155 routes the broad form to nightly + risk-pack scope."
+created = "2026-05-09"
+review_after = "2026-07-09"
+expires = "2026-08-09"
+
+[[exception]]
+id = "ci-exception-0004"
+lane = "lane.fuzz_quick"
+owner = "policy"
+reason = "Currently runs all 9 fuzz targets on every PR (~15 min). PR #154 carves out touched-target-only smoke (30-90s); PR #155 routes the full matrix to nightly + fuzz label."
+created = "2026-05-09"
+review_after = "2026-07-09"
+expires = "2026-08-09"
+
+[[exception]]
+id = "ci-exception-0005"
+lane = "lane.droid_review"
+owner = "policy"
+reason = "External AI review at 4x multiplier (~20 LEM equivalent). Advisory only and bot-failure is not code-failure (see docs/ci/bot-review-policy.md added in PR #142). Tracked here so the LEM forecast accounts for the spend."
+created = "2026-05-09"
+review_after = "2026-09-09"
+expires = "permanent"

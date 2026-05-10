@@ -1,0 +1,281 @@
+schema_version = 1
+policy = "non-rust-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+# Non-Rust files allowed in the repository. The file-policy checker
+# (PR #149) verifies that every non-Rust file matches at least one allow
+# entry, and that broad globs have a `broad_glob_reason`.
+# See docs/FILE_POLICY.md.
+
+[defaults]
+rust_is_default = true
+xtask_is_default_for_repo_automation = true
+new_non_rust_requires_review = true
+broad_globs_require_reason = true
+
+# ── Documentation surface ──────────────────────────────────────────────
+
+[[allow]]
+id = "non-rust-docs"
+glob = "docs/**"
+category = "documentation"
+language = "markdown"
+owner = "docs"
+reason = "Repository policy prose, implementation plans, user guides, schema docs, release notes."
+broad_glob_reason = "Docs are intentionally tree-shaped and non-executable; companion policies (executable, generated, workflow) cover the dimensions where execution or drift would matter."
+created = "2026-05-09"
+review_after = "2026-09-09"
+expires = "permanent"
+
+[[allow]]
+id = "non-rust-readme"
+glob = "README.md"
+category = "documentation"
+language = "markdown"
+owner = "docs"
+reason = "Top-level README."
+created = "2026-05-09"
+expires = "permanent"
+
+[[allow]]
+id = "non-rust-changelog"
+glob = "CHANGELOG.md"
+category = "documentation"
+language = "markdown"
+owner = "release"
+reason = "Keep-a-Changelog formatted release log."
+created = "2026-05-09"
+expires = "permanent"
+
+[[allow]]
+id = "non-rust-claude-md"
+glob = "CLAUDE.md"
+category = "documentation"
+language = "markdown"
+owner = "policy"
+reason = "Per-repo Claude Code operating instructions."
+created = "2026-05-09"
+expires = "permanent"
+
+[[allow]]
+id = "non-rust-license"
+glob = "LICENSE*"
+category = "metadata"
+language = "text"
+owner = "release"
+reason = "MIT and Apache-2.0 dual license texts."
+created = "2026-05-09"
+expires = "permanent"
+
+[[allow]]
+id = "non-rust-release-handoff"
+glob = "RELEASE_HANDOFF_*.md"
+category = "documentation"
+language = "markdown"
+owner = "release"
+reason = "Per-release handoff records (RELEASE_HANDOFF_0.3.0.md, RELEASE_HANDOFF_0.4.0.md, RELEASE_HANDOFF_0.5.0.md added in PR #157)."
+created = "2026-05-09"
+expires = "permanent"
+
+# ── CI surface ─────────────────────────────────────────────────────────
+
+[[allow]]
+id = "non-rust-github-workflows"
+glob = ".github/workflows/*.yml"
+category = "ci_declarative"
+language = "yaml"
+owner = "release/ci"
+reason = "GitHub Actions workflows are platform-required YAML. See workflow-allowlist.toml for per-file detail (permissions, secrets, external actions)."
+created = "2026-05-09"
+expires = "permanent"
+
+[[allow]]
+id = "non-rust-github-meta"
+glob = ".github/**"
+category = "ci_meta"
+language = "mixed"
+owner = "release/ci"
+reason = "GitHub-specific configuration: workflows, dependabot config, issue templates."
+broad_glob_reason = "Per-file detail of workflow files is in workflow-allowlist.toml; this glob covers ancillary GitHub config that does not warrant per-file receipts."
+created = "2026-05-09"
+expires = "permanent"
+
+# ── Release / package proof ────────────────────────────────────────────
+
+[[allow]]
+id = "non-rust-release-scripts-sh"
+glob = "scripts/*.sh"
+category = "release_tooling"
+language = "bash"
+owner = "release/ci"
+reason = "Existing package/release proof scripts. Retained as wrappers while Rust-native xtask parity is built (PR #143 onward). See executable-allowlist.toml for the per-file list."
+created = "2026-05-09"
+review_after = "2026-12-09"
+expires = "2027-05-09"
+
+[[allow]]
+id = "non-rust-release-scripts-ps1"
+glob = "scripts/*.ps1"
+category = "release_tooling"
+language = "powershell"
+owner = "release/ci"
+reason = "Windows-side parity wrappers for release-install-smoke and demo-review-rescue."
+created = "2026-05-09"
+review_after = "2026-12-09"
+expires = "2027-05-09"
+
+# ── Build configuration / metadata ─────────────────────────────────────
+
+[[allow]]
+id = "non-rust-cargo-files"
+glob = "**/Cargo.toml"
+category = "build_metadata"
+language = "toml"
+owner = "release"
+reason = "Workspace and per-crate manifests. See dependency-surface-allowlist.toml for the dependency surface tracking."
+broad_glob_reason = "Every workspace crate has a Cargo.toml; per-file enumeration would duplicate workspace member list."
+created = "2026-05-09"
+expires = "permanent"
+
+[[allow]]
+id = "non-rust-cargo-lock"
+glob = "Cargo.lock"
+category = "build_lockfile"
+language = "toml"
+owner = "release"
+reason = "Reproducible dep resolution; checked in for the binary crate."
+created = "2026-05-09"
+expires = "permanent"
+
+[[allow]]
+id = "non-rust-rust-toolchain"
+glob = "rust-toolchain.toml"
+category = "build_metadata"
+language = "toml"
+owner = "release/ci"
+reason = "Pins the workspace Rust toolchain (1.92 today; 1.95 in PR #145)."
+created = "2026-05-09"
+expires = "permanent"
+
+[[allow]]
+id = "non-rust-deny-config"
+glob = "deny.toml"
+category = "policy_config"
+language = "toml"
+owner = "release/ci"
+reason = "cargo-deny configuration for licenses/bans/sources/advisories."
+created = "2026-05-09"
+expires = "permanent"
+
+[[allow]]
+id = "non-rust-codecov"
+glob = "codecov.yml"
+category = "ci_config"
+language = "yaml"
+owner = "release/ci"
+reason = "Codecov flag and surface configuration; pairs with coverage workflow."
+created = "2026-05-09"
+expires = "permanent"
+
+# ── Policy and schemas ─────────────────────────────────────────────────
+
+[[allow]]
+id = "non-rust-policy"
+glob = "policy/**"
+category = "policy_ledger"
+language = "toml"
+owner = "policy"
+reason = "Machine-readable policy ledgers (this directory). Self-referential allow."
+broad_glob_reason = "Per-ledger detail is the contents of each TOML; glob is the ledger directory."
+created = "2026-05-09"
+expires = "permanent"
+
+[[allow]]
+id = "non-rust-contracts"
+glob = "contracts/schemas/**"
+category = "schema"
+language = "json"
+owner = "policy"
+reason = "JSON Schemas for shiplog persisted contracts (intake-report, agent-pack today; ci-plan and ci-actuals added in PR #142)."
+created = "2026-05-09"
+expires = "permanent"
+
+# ── Test fixtures and examples ─────────────────────────────────────────
+
+[[allow]]
+id = "non-rust-test-fixtures"
+glob = "tests/**"
+category = "test_fixture"
+language = "mixed"
+owner = "policy"
+reason = "Integration test fixtures: YAML/JSON/JSONL inputs, snapshot expectations."
+broad_glob_reason = "Fixtures are inert data; per-file enumeration would not add review value."
+created = "2026-05-09"
+expires = "permanent"
+
+[[allow]]
+id = "non-rust-snapshots"
+glob = "**/snapshots/**"
+category = "test_snapshot"
+language = "mixed"
+owner = "policy"
+reason = "insta snapshot files (.snap and .snap.new)."
+broad_glob_reason = "Snapshots are generated by `cargo insta`; per-file enumeration would constantly drift."
+created = "2026-05-09"
+expires = "permanent"
+
+[[allow]]
+id = "non-rust-examples"
+glob = "examples/**"
+category = "example"
+language = "mixed"
+owner = "docs"
+reason = "Example shiplog.toml configurations and YAML manual-event files referenced from README/docs."
+broad_glob_reason = "Examples are inert data referenced from docs."
+created = "2026-05-09"
+expires = "permanent"
+
+# ── Fuzz workspace ─────────────────────────────────────────────────────
+
+[[allow]]
+id = "non-rust-fuzz-cargo"
+glob = "fuzz/Cargo.toml"
+category = "build_metadata"
+language = "toml"
+owner = "policy"
+reason = "Fuzz harness manifest; cargo-fuzz workspace, not part of the main workspace."
+created = "2026-05-09"
+expires = "permanent"
+
+[[allow]]
+id = "non-rust-fuzz-dictionaries"
+glob = "fuzz/dictionaries/*.dict"
+category = "fuzz_corpus"
+language = "text"
+owner = "policy"
+reason = "libfuzzer dictionaries (json.dict, yaml.dict)."
+created = "2026-05-09"
+expires = "permanent"
+
+# ── Git metadata ───────────────────────────────────────────────────────
+
+[[allow]]
+id = "non-rust-gitignore"
+glob = ".gitignore"
+category = "git_metadata"
+language = "text"
+owner = "policy"
+reason = "Top-level gitignore."
+created = "2026-05-09"
+expires = "permanent"
+
+[[allow]]
+id = "non-rust-gitattributes"
+glob = ".gitattributes"
+category = "git_metadata"
+language = "text"
+owner = "policy"
+reason = "Marks generated files as linguist-generated (e.g. no-panic-baseline.toml in PR #151)."
+created = "2026-05-09"
+expires = "permanent"

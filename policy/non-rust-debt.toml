@@ -1,0 +1,21 @@
+schema_version = 1
+policy = "non-rust-debt"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+# Non-Rust files that exist today but should ideally migrate to Rust
+# (`xtask`). Skeleton in PR #141; entries seeded by the file-policy
+# checker (PR #149) once shell-script-as-wrapper status is parsed.
+#
+# Entry shape:
+#
+# [[debt]]
+# id = "non-rust-debt-0001"
+# path = "scripts/package-boundary-audit.sh"
+# language = "bash+python"
+# owner = "release"
+# target = "cargo xtask package-boundary"
+# reason = "Embedded Python in shell; PR #143 wraps with xtask, PR #157 retires the inline Python."
+# created = "2026-05-09"
+# review_after = "2026-12-09"
+# expires = "2027-05-09"

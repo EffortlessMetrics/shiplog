@@ -1,0 +1,162 @@
+schema_version = 1
+policy = "clippy-lints"
+owner = "EffortlessMetrics"
+status = "advisory"
+msrv = "1.92"
+
+# `msrv` bumps to "1.95" in PR #145 alongside the workspace toolchain bump.
+# Planned lints with `activate_when_msrv = "1.95"` move from [[planned]] to
+# [[active]] in PR #152. See docs/CLIPPY_POLICY.md.
+
+[posture]
+panic_free_tests = true
+allow_test_carveouts = false
+suppression_style = "expect-with-policy-reason"
+blanket_categories = false
+
+# ── Currently active in workspace.lints (Cargo.toml at v0.4.0) ─────────
+
+[[active]]
+name = "rust::unsafe_code"
+level = "deny"
+class = "unsafe-memory"
+reason = "No unsafe code without a narrow reviewed exception."
+
+[[active]]
+name = "rust::missing_debug_implementations"
+level = "allow"
+class = "documentation"
+reason = "Too many types lack Debug (53+); allow for now, revisit later. See clippy-debt.toml#clippy-debt-0003."
+debt_ref = "clippy-debt-0003"
+
+[[active]]
+name = "clippy::enum_glob_use"
+level = "warn"
+class = "style"
+reason = "Avoid `use SomeEnum::*;` — keep variants explicit."
+
+[[active]]
+name = "clippy::flat_map_option"
+level = "warn"
+class = "style"
+reason = "Prefer `.filter_map()` over `.flat_map().filter().map()` chains."
+
+# ── Rust 1.95 rustc lint floor (activate in PR #152) ───────────────────
+
+[[planned]]
+name = "rust::unsafe_op_in_unsafe_fn"
+level = "deny"
+activate_when_msrv = "1.95"
+class = "unsafe-memory"
+reason = "Unsafe operations must stay explicitly scoped."
+
+[[planned]]
+name = "rust::unused_must_use"
+level = "deny"
+activate_when_msrv = "1.95"
+class = "silent-failure"
+reason = "Must-use values represent work that cannot be silently discarded."
+
+[[planned]]
+name = "rust::unexpected_cfgs"
+level = "warn"
+activate_when_msrv = "1.95"
+class = "configuration"
+reason = "Surface stale cfg gates."
+
+[[planned]]
+name = "rust::const_item_interior_mutations"
+level = "deny"
+activate_when_msrv = "1.95"
+class = "concurrency"
+reason = "Const items with interior mutability are footguns."
+
+[[planned]]
+name = "rust::function_casts_as_integer"
+level = "deny"
+activate_when_msrv = "1.95"
+class = "type-safety"
+reason = "Function-pointer-to-integer casts should be deliberate."
+
+[[planned]]
+name = "rust::unused_visibilities"
+level = "warn"
+activate_when_msrv = "1.95"
+class = "documentation"
+reason = "Surface dead-code visibility decisions."
+
+# ── Rust 1.94 ratchet (still pending MSRV bump) ────────────────────────
+
+[[planned]]
+name = "clippy::same_length_and_capacity"
+level = "deny"
+activate_when_msrv = "1.94"
+class = "unsafe-memory"
+reason = "Catch raw-parts reconstruction mistakes."
+
+# ── Rust 1.95 Clippy ratchets (measure first in PR #152) ───────────────
+
+[[planned]]
+name = "clippy::manual_checked_ops"
+level = "warn"
+activate_when_msrv = "1.95"
+class = "numeric"
+reason = "Prefer checked arithmetic over manual divide-by-zero guards."
+
+[[planned]]
+name = "clippy::manual_take"
+level = "warn"
+activate_when_msrv = "1.95"
+class = "ownership"
+reason = "Use std::mem::take instead of manual reimplementation."
+
+[[planned]]
+name = "clippy::manual_pop_if"
+level = "warn"
+activate_when_msrv = "1.95"
+class = "collections"
+reason = "Use collection APIs that encode predicate-and-pop intent."
+
+[[planned]]
+name = "clippy::duration_suboptimal_units"
+level = "warn"
+activate_when_msrv = "1.95"
+class = "time"
+reason = "Make durations legible without mental unit conversion."
+
+[[planned]]
+name = "clippy::unnecessary_trailing_comma"
+level = "warn"
+activate_when_msrv = "1.95"
+class = "style"
+reason = "Keep format macro calls clean."
+
+[[planned]]
+name = "clippy::needless_type_cast"
+level = "warn"
+activate_when_msrv = "1.95"
+class = "type-safety"
+reason = "Avoid no-op casts."
+
+[[planned]]
+name = "clippy::manual_ilog2"
+level = "warn"
+activate_when_msrv = "1.95"
+class = "numeric"
+reason = "Prefer ilog2 over manual bit-counting."
+
+[[planned]]
+name = "clippy::decimal_bitwise_operands"
+level = "warn"
+activate_when_msrv = "1.95"
+class = "numeric"
+reason = "Bitwise operators on decimal-literal operands are usually a bug."
+
+# ── Held until protected fields are configured ─────────────────────────
+
+[[planned]]
+name = "clippy::disallowed_fields"
+level = "deny"
+activate_when_msrv = "1.95"
+class = "architecture"
+reason = "Ban direct field access across protected seams. Held until protected seams are defined: redaction alias internals, bundle manifest paths, coverage/gap state, source opaque IDs, provider auth/token config, shiplog.toml parsed source records, cache key internals."

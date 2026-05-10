@@ -1,0 +1,89 @@
+schema_version = 1
+policy = "executable-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+# Files with the executable bit set. Today these are the release-proof
+# and demo scripts. The file-policy checker (PR #149) verifies that no
+# unrecognized executable files exist.
+
+[[allow]]
+id = "exec-package-proof"
+path = "scripts/package-proof.sh"
+interpreter = "bash"
+owner = "release"
+reason = "Release preflight aggregator: package boundary + version + cargo-deny."
+created = "2026-05-09"
+expires = "permanent"
+
+[[allow]]
+id = "exec-publish-dry-run"
+path = "scripts/publish-dry-run.sh"
+interpreter = "bash"
+owner = "release"
+reason = "crates.io publish dry-run for the v0.5.0 publish set, in dependency order."
+created = "2026-05-09"
+expires = "permanent"
+
+[[allow]]
+id = "exec-package-boundary-audit"
+path = "scripts/package-boundary-audit.sh"
+interpreter = "bash+python"
+owner = "release"
+reason = "Verifies published vs dev-only package classification against the workspace package set."
+created = "2026-05-09"
+review_after = "2026-12-09"
+
+[[allow]]
+id = "exec-package-version-audit"
+path = "scripts/package-version-audit.sh"
+interpreter = "bash+python"
+owner = "release"
+reason = "Verifies workspace package versions and internal dep req alignment."
+created = "2026-05-09"
+review_after = "2026-12-09"
+
+[[allow]]
+id = "exec-verify-release"
+path = "scripts/verify-release.sh"
+interpreter = "bash"
+owner = "release"
+reason = "Post-publication verification: GitHub assets, checksums, crates.io install, current-platform binary smoke."
+created = "2026-05-09"
+expires = "permanent"
+
+[[allow]]
+id = "exec-release-install-smoke-sh"
+path = "scripts/release-install-smoke.sh"
+interpreter = "bash"
+owner = "release"
+reason = "Linux/macOS release artifact install smoke."
+created = "2026-05-09"
+expires = "permanent"
+
+[[allow]]
+id = "exec-release-install-smoke-ps1"
+path = "scripts/release-install-smoke.ps1"
+interpreter = "powershell"
+owner = "release"
+reason = "Windows release artifact install smoke parity."
+created = "2026-05-09"
+expires = "permanent"
+
+[[allow]]
+id = "exec-demo-review-rescue-sh"
+path = "scripts/demo-review-rescue.sh"
+interpreter = "bash"
+owner = "docs"
+reason = "No-network review-rescue demo path."
+created = "2026-05-09"
+expires = "permanent"
+
+[[allow]]
+id = "exec-demo-review-rescue-ps1"
+path = "scripts/demo-review-rescue.ps1"
+interpreter = "powershell"
+owner = "docs"
+reason = "Windows demo parity."
+created = "2026-05-09"
+expires = "permanent"

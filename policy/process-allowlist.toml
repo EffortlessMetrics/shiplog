@@ -1,0 +1,97 @@
+schema_version = 1
+policy = "process-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+# Surfaces that spawn external processes (workflows, scripts, build.rs).
+# Captures binary, argv shape, and whether the call reaches the network.
+# The file-policy checker (PR #149) verifies that new process spawns are
+# receipted here.
+
+[[allow]]
+id = "proc-cargo-install-cargo-deny"
+binary = "cargo"
+argv_shape = ["install", "cargo-deny", "--locked"]
+network_reach = true
+called_by = [".github/workflows/ci.yml"]
+owner = "release/ci"
+reason = "Installs cargo-deny in the deny job. Could be replaced with taiki-e/install-action for prebuilt binary."
+created = "2026-05-09"
+review_after = "2026-09-09"
+
+[[allow]]
+id = "proc-cargo-install-cargo-fuzz"
+binary = "cargo"
+argv_shape = ["install", "cargo-fuzz", "--locked"]
+network_reach = true
+called_by = [".github/workflows/fuzzing.yml"]
+owner = "policy"
+reason = "Installs cargo-fuzz in the fuzz job. Pre-cached via actions/cache."
+created = "2026-05-09"
+review_after = "2026-09-09"
+
+[[allow]]
+id = "proc-cargo-install-cargo-mutants"
+binary = "cargo"
+argv_shape = ["install", "cargo-mutants", "--locked"]
+network_reach = true
+called_by = [".github/workflows/mutation-testing.yml"]
+owner = "policy"
+reason = "Installs cargo-mutants for the weekly mutation lane."
+created = "2026-05-09"
+review_after = "2026-09-09"
+
+[[allow]]
+id = "proc-cargo-fuzz-run"
+binary = "cargo"
+argv_shape = ["fuzz", "run", "<target>", "--", "<libfuzzer-args>"]
+network_reach = false
+called_by = [".github/workflows/fuzzing.yml"]
+owner = "policy"
+reason = "Runs the fuzz targets."
+created = "2026-05-09"
+expires = "permanent"
+
+[[allow]]
+id = "proc-cargo-mutants-run"
+binary = "cargo"
+argv_shape = ["mutants", "-p", "<crate>", "--timeout", "<seconds>", "--copy-target=false"]
+network_reach = false
+called_by = [".github/workflows/mutation-testing.yml"]
+owner = "policy"
+reason = "Runs cargo-mutants per crate (3 tiers)."
+created = "2026-05-09"
+expires = "permanent"
+
+[[allow]]
+id = "proc-cargo-llvm-cov"
+binary = "cargo"
+argv_shape = ["llvm-cov", "<subcmd>", "..."]
+network_reach = false
+called_by = [".github/workflows/coverage.yml"]
+owner = "release/ci"
+reason = "cargo-llvm-cov for coverage generation."
+created = "2026-05-09"
+expires = "permanent"
+
+[[allow]]
+id = "proc-bash-package-proof"
+binary = "bash"
+argv_shape = ["scripts/package-proof.sh"]
+network_reach = false
+called_by = [".github/workflows/release.yml"]
+owner = "release"
+reason = "Release preflight package proof; pure local checks."
+created = "2026-05-09"
+expires = "permanent"
+
+[[allow]]
+id = "proc-bash-publish-dry-run"
+binary = "bash"
+argv_shape = ["scripts/publish-dry-run.sh"]
+network_reach = true
+called_by = [".github/workflows/release.yml"]
+owner = "release"
+reason = "Hits crates.io for publish dry-run."
+created = "2026-05-09"
+expires = "permanent"

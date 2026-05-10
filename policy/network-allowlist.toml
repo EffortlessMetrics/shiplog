@@ -1,0 +1,106 @@
+schema_version = 1
+policy = "network-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+# Outbound network destinations reached from CI / build / test / release.
+# The file-policy checker (PR #149) verifies that any new network call
+# (reqwest URL, cargo install registry, GHA action endpoint) is receipted
+# here.
+
+[[allow]]
+id = "net-crates-io-fetch"
+destination = "crates.io"
+auth_required = false
+lane = "build"
+reason = "cargo fetch / cargo build resolves and downloads crate dependencies."
+created = "2026-05-09"
+expires = "permanent"
+
+[[allow]]
+id = "net-crates-io-publish"
+destination = "crates.io"
+auth_required = true
+auth_secret = "CARGO_REGISTRY_TOKEN"
+lane = "release"
+reason = "cargo publish (real and dry-run) for the v0.5.0 publish set. Dry-run does not require auth."
+created = "2026-05-09"
+expires = "permanent"
+
+[[allow]]
+id = "net-rustup"
+destination = "static.rust-lang.org"
+auth_required = false
+lane = "build"
+reason = "Toolchain installation via rustup / dtolnay/rust-toolchain action."
+created = "2026-05-09"
+expires = "permanent"
+
+[[allow]]
+id = "net-github-raw"
+destination = "raw.githubusercontent.com"
+auth_required = false
+lane = "build"
+reason = "Action source pulls (composite actions, install scripts)."
+created = "2026-05-09"
+expires = "permanent"
+
+[[allow]]
+id = "net-github-api"
+destination = "api.github.com"
+auth_required = true
+auth_secret = "GITHUB_TOKEN"
+lane = "release"
+reason = "Release uploads via softprops/action-gh-release; PR/issue interaction via gh CLI."
+created = "2026-05-09"
+expires = "permanent"
+
+[[allow]]
+id = "net-github-app"
+destination = "github.com"
+auth_required = true
+auth_secret = "GITHUB_TOKEN"
+lane = "release"
+reason = "Action uploads, asset downloads, release creation."
+created = "2026-05-09"
+expires = "permanent"
+
+[[allow]]
+id = "net-codecov"
+destination = "codecov.io"
+auth_required = true
+auth_secret = "CODECOV_TOKEN"
+lane = "test"
+reason = "Codecov coverage upload from coverage.yml."
+created = "2026-05-09"
+expires = "permanent"
+
+[[allow]]
+id = "net-minimax"
+destination = "api.minimax.io"
+auth_required = true
+auth_secret = "MINIMAX_API_KEY"
+lane = "review"
+reason = "MiniMax M2.7 BYOK endpoint for Factory Droid auto-review and security scan."
+created = "2026-05-09"
+expires = "permanent"
+
+[[allow]]
+id = "net-factory"
+destination = "factory.ai"
+auth_required = true
+auth_secret = "FACTORY_API_KEY"
+lane = "review"
+reason = "Factory Droid orchestration for review / security scan."
+created = "2026-05-09"
+expires = "permanent"
+
+[[allow]]
+id = "net-gitguardian"
+destination = "dashboard.gitguardian.com"
+auth_required = true
+auth_secret = "(GitHub-app installed; no repo-level secret)"
+lane = "security"
+reason = "GitGuardian security scan."
+created = "2026-05-09"
+expires = "permanent"

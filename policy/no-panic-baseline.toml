@@ -1,0 +1,29 @@
+schema_version = 1
+policy = "no-panic-baseline"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[policy_config]
+mode = "no-new-debt"
+
+# Skeleton — populated in PR #151 by `cargo xtask no-panic baseline --reset`
+# (added by the no-panic checker in PR #151). The baseline records
+# panic-family findings (unwrap, expect, panic!, unreachable!, todo!,
+# unimplemented!, indexing slices, assert! outside tests) by **exact
+# counted identity**, so a new occurrence in the same file fails the gate
+# even if other occurrences exist.
+#
+# Identity key: (path, family, selector_kind, selector_callee, snippet, count).
+# Coarse file-level matching is not allowed.
+#
+# Entry shape:
+#
+# [[entry]]
+# path = "crates/shiplog-engine/src/intake.rs"
+# family = "unwrap"
+# selector_kind = "method-call"
+# selector_callee = "Option::unwrap"
+# snippet = "config.report_dir.unwrap()"
+# count = 1
+#
+# See docs/NO_PANIC_POLICY.md.

@@ -1,0 +1,73 @@
+schema_version = 1
+policy = "dependency-surface-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+# Surfaces that declare third-party dependencies. New deps should enter
+# through one of these. The file-policy checker (PR #149) verifies that
+# any new manifest path is receipted here.
+
+[[allow]]
+id = "dep-workspace-cargo-toml"
+path = "Cargo.toml"
+surface = "workspace_manifest"
+owner = "release"
+reason = "Workspace dependency block. New deps land here."
+dep_count_at_baseline = 22
+created = "2026-05-09"
+expires = "permanent"
+
+[[allow]]
+id = "dep-cargo-lock"
+path = "Cargo.lock"
+surface = "workspace_lockfile"
+owner = "release"
+reason = "Reproducible resolution for the binary crate."
+created = "2026-05-09"
+expires = "permanent"
+
+[[allow]]
+id = "dep-app-cargo-toml"
+path = "apps/shiplog/Cargo.toml"
+surface = "crate_manifest"
+owner = "release"
+reason = "Per-crate manifest for the shiplog app."
+created = "2026-05-09"
+expires = "permanent"
+
+[[allow]]
+id = "dep-crate-cargo-toml"
+path = "crates/*/Cargo.toml"
+surface = "crate_manifest"
+owner = "release"
+reason = "Per-crate manifests for the 22 workspace crates."
+broad_glob_reason = "Per-crate enumeration would duplicate the workspace member list."
+created = "2026-05-09"
+expires = "permanent"
+
+[[allow]]
+id = "dep-fuzz-cargo-toml"
+path = "fuzz/Cargo.toml"
+surface = "fuzz_manifest"
+owner = "policy"
+reason = "Fuzz harness manifest; cargo-fuzz workspace, not part of the main workspace."
+created = "2026-05-09"
+expires = "permanent"
+
+[[allow]]
+id = "dep-rust-toolchain"
+path = "rust-toolchain.toml"
+surface = "toolchain_pin"
+owner = "release/ci"
+reason = "Rust toolchain pin (1.92 today; 1.95 in PR #145)."
+created = "2026-05-09"
+expires = "permanent"
+
+[[allow]]
+id = "dep-deny-config"
+path = "deny.toml"
+surface = "policy_config"
+owner = "release/ci"
+reason = "cargo-deny configuration for license/source/advisory/ban policy."
+created = "2026-05-09"
+expires = "permanent"

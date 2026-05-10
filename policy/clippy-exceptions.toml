@@ -1,0 +1,38 @@
+schema_version = 1
+policy = "clippy-exceptions"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+# Per-occurrence Clippy suppressions. Cited from source as
+#
+#     #[expect(<lint>, reason = "policy:<id>")]
+#
+# The Clippy ledger checker (PR #150) verifies that:
+#   - bare `#[allow(clippy::...)]` does not exist in source,
+#   - every `#[expect(clippy::..., reason = "policy:...")]` in source has a
+#     matching entry here,
+#   - every entry here is cited from at least one source location.
+#
+# See docs/CLIPPY_POLICY.md and docs/POLICY_ALLOWLISTS.md.
+
+# Skeleton — no exceptions yet. Entry shape:
+#
+# [[exception]]
+# id = "clippy-0001"
+# lint = "clippy::indexing_slicing"
+# path = "apps/shiplog/src/example.rs"
+# classification = "bounded_fixture"
+# owner = "cli"
+# reason = "Fixture index is bounded by generated fixture construction."
+# created = "2026-05-09"
+# review_after = "2026-06-09"
+# expires = "2026-08-09"
+#
+# [exception.selector]
+# kind = "expr"
+# container = "fixture_helper"
+# text_contains = "items[idx]"
+#
+# [exception.last_seen]
+# line = 42
+# column = 9
