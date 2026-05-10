@@ -4,6 +4,15 @@
 lane on every PR (added in PR #153) and answers a mutation-shaped question
 **without** running mutations:
 
+> **v0.5.0 status:** The lane in PR #153 ships as a **stub** — the
+> workflow, configuration, and contract artifacts (`target/ripr/ripr.json`
+> + `.sarif`) are wired so downstream tooling (PR plan, CI actuals,
+> future required-check promotion) can treat the lane as live, but the
+> stub does not perform real exposure analysis and always reports zero
+> findings. Real ripr integration is a follow-up release. The
+> doctrine, suppressions schema, severity table, and label model below
+> are forward-stable.
+
 > For the behavior changed in this diff, do current tests appear to
 > expose that behavior to a meaningful test discriminator?
 

@@ -1,0 +1,131 @@
+name: ripr
+
+# Advisory ripr exposure analysis for Rust diffs.
+#
+# v0.5.0 ships a stub (PR #153) that emits the contract artifacts
+# (target/ripr/ripr.json + .sarif) without doing real analysis — the
+# downstream tooling (PR plan, CI actuals, future required-check
+# promotion) treats the lane as live without depending on the actual
+# tool being released yet. Real ripr integration is a follow-up
+# release; see docs/ci/ripr.md.
+#
+# Always advisory: never blocks merge. Suppressions live in
+# policy/ripr-suppressions.toml. Behavior controlled by ripr.toml at
+# repo root.
+
+on:
+  pull_request:
+    paths:
+      - "apps/**"
+      - "crates/**"
+      - "xtask/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "ripr.toml"
+      - "policy/ripr-suppressions.toml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ripr-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' && github.event.action == 'synchronize' }}
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  advisory:
+    name: advisory
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Emit ripr stub artifacts
+        run: |
+          set -euo pipefail
+          mkdir -p target/ripr
+          # Compute changed Rust file count (informational only — stub doesn't analyse).
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base="${{ github.event.pull_request.base.sha }}"
+            head="${{ github.event.pull_request.head.sha }}"
+            changed_rs=$(git diff --name-only "$base..$head" | grep -E '\.rs$' | wc -l || echo 0)
+          else
+            changed_rs=0
+          fi
+
+          cat > target/ripr/ripr.json <<JSON
+          {
+            "schema_version": 1,
+            "tool": "ripr (stub)",
+            "tool_version": "0.0.0",
+            "mode": "diff",
+            "head_sha": "${{ github.event.pull_request.head.sha || github.sha }}",
+            "base_sha": "${{ github.event.pull_request.base.sha || '' }}",
+            "pr_number": ${{ github.event.pull_request.number || 'null' }},
+            "summary": {
+              "changed_rust_files": ${changed_rs},
+              "exposed": 0,
+              "weakly_exposed": 0,
+              "reachable_unrevealed": 0,
+              "no_static_path": 0,
+              "infection_unknown": 0,
+              "propagation_unknown": 0,
+              "static_unknown": 0
+            },
+            "findings": [],
+            "suppressions_applied": [],
+            "note": "Stub implementation in PR #153. Real ripr integration is a follow-up release; this lane satisfies the workflow contract (config + artifacts) for downstream tooling without producing findings."
+          }
+          JSON
+
+          cat > target/ripr/ripr.sarif <<'SARIF'
+          {
+            "$schema": "https://docs.oasis-open.org/sarif/sarif/v2.1.0/cos02/schemas/sarif-schema-2.1.0.json",
+            "version": "2.1.0",
+            "runs": [
+              {
+                "tool": {
+                  "driver": {
+                    "name": "ripr",
+                    "version": "0.0.0",
+                    "informationUri": "https://github.com/EffortlessMetrics/shiplog/blob/main/docs/ci/ripr.md",
+                    "shortDescription": {
+                      "text": "Fast oracle-exposure filter for Rust diffs (stub in PR #153; real implementation is a follow-up release)."
+                    }
+                  }
+                },
+                "results": []
+              }
+            ]
+          }
+          SARIF
+
+          echo "ripr stub: emitted empty advisory report (changed_rust_files=${changed_rs})"
+
+      - name: Write step summary
+        run: |
+          set -euo pipefail
+          {
+            echo "## ripr (advisory)"
+            echo
+            echo "- **Mode:** stub (PR #153)"
+            echo "- **Findings:** 0 (real analysis lands in a follow-up release)"
+            echo "- **Artifacts:** \`target/ripr/ripr.json\`, \`target/ripr/ripr.sarif\`"
+            echo
+            echo "Always advisory; never blocks merge. See [docs/ci/ripr.md](https://github.com/EffortlessMetrics/shiplog/blob/main/docs/ci/ripr.md)."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload ripr artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ripr
+          path: target/ripr/
+          retention-days: 30
+          if-no-files-found: warn

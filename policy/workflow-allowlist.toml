@@ -43,6 +43,19 @@ created = "2026-05-10"
 expires = "permanent"
 
 [[entry]]
+path = ".github/workflows/ripr.yml"
+owner = "policy"
+reason = "ripr advisory lane. Stub in PR #153 emits target/ripr/ripr.json + .sarif on Rust-diff PRs without doing real analysis (follow-up release replaces the stub with real ripr integration). Reads ripr.toml + policy/ripr-suppressions.toml. Never blocks merge."
+permissions = ["contents:read"]
+secrets_used = []
+external_actions = [
+  "actions/checkout@v6.0.2",
+  "actions/upload-artifact@v7",
+]
+created = "2026-05-10"
+expires = "permanent"
+
+[[entry]]
 path = ".github/workflows/ci.yml"
 owner = "release/ci"
 reason = "Primary PR correctness gate (Ubuntu + Windows). Runs fmt, clippy -D, tests, doc-tests, doc build, release build, canary publish dry-run; cargo-deny job; MSRV job."
