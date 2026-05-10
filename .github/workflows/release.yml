@@ -37,8 +37,15 @@ jobs:
       - name: Package proof
         run: ./scripts/package-proof.sh
 
-      - name: Publish dry run
-        run: ./scripts/publish-dry-run.sh
+      - name: Publish dry run (foundation crate)
+        # Only the foundation crate can be dry-run pre-publish. Every other
+        # crate has a transitive `shiplog-ids = "^<version>"` requirement that
+        # cannot resolve from crates.io until the foundation is uploaded.
+        # The publish driver (`scripts/publish-v0.5.0.sh`) interleaves
+        # `scripts/publish-dry-run.sh --from <next>` per crate as it walks the
+        # dependency order. See `docs/release/0.5.0-readiness.md` —
+        # "Publish dry-run status".
+        run: cargo publish -p shiplog-ids --dry-run
 
   # Build binaries for all platforms
   build-binary:
