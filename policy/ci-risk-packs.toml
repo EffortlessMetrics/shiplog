@@ -114,7 +114,7 @@ paths = [
   ".github/workflows/**",
 ]
 labels = ["full-ci"]
-selected_lanes = ["pr_plan", "ci_check", "ci_check_windows", "ci_deny"]
+selected_lanes = ["pr_plan", "ci_check", "ci_check_windows", "ci_deny", "ci_policy"]
 
 [[risk_pack]]
 id = "parsers-serde"
