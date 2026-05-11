@@ -42,6 +42,17 @@ job_name = "collect"
 outputs = ["target/ci/ci-actuals.json"]
 note = "Fires on workflow_run completion for 16 instrumented workflows (trigger list expanded in PR #169 to include bounded smoke lanes + ripr). default_pr is false because the lane is workflow_run-driven, not PR-event-driven, but effectively runs once per PR per upstream workflow completion."
 
+# Workflows declared as a lane `workflow_name` that intentionally do
+# NOT appear in `ci-actuals.yml`'s `on.workflow_run.workflows` list.
+# Cross-checked by `cargo xtask check-actuals-coverage`.
+#
+# - "CI Actuals": the actuals emitter cannot subscribe to its own
+#   completions without creating a feedback loop.
+[actuals_exemptions]
+not_subscribed = [
+  "CI Actuals",
+]
+
 # ── ci.yml jobs (PR-fast required gate) ────────────────────────────────
 
 [lane.ci_check]

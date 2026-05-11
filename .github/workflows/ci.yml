@@ -139,3 +139,6 @@ jobs:
 
       - name: check-lane-mappings (blocking)
         run: cargo xtask check-lane-mappings --mode blocking-allowlist
+
+      - name: check-actuals-coverage (blocking)
+        run: cargo xtask check-actuals-coverage --mode blocking-allowlist

@@ -89,6 +89,12 @@ enum Command {
     /// real workflow files and (where set) real job display names.
     /// Catches stale `workflow`/`workflow_name`/`job_name` references.
     CheckLaneMappings(FilePolicyModeArgs),
+
+    /// Verify every lane `workflow_name` in `policy/ci-lanes.toml` is
+    /// subscribed by `ci-actuals.yml`'s `workflow_run.workflows` list
+    /// (and vice versa). Exemptions are explicit in
+    /// `[actuals_exemptions].not_subscribed`.
+    CheckActualsCoverage(FilePolicyModeArgs),
 }
 
 #[derive(Debug, Args)]
@@ -286,6 +292,9 @@ impl Cli {
             }
             Command::CheckLaneMappings(args) => {
                 tasks::check_lane_mappings::run(&workspace_root, parse_mode(&args.mode)?)
+            }
+            Command::CheckActualsCoverage(args) => {
+                tasks::check_actuals_coverage::run(&workspace_root, parse_mode(&args.mode)?)
             }
         }
     }

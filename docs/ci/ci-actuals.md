@@ -10,6 +10,15 @@ The JSON Schema lives at
 [`contracts/schemas/ci-actuals.v1.schema.json`](../../contracts/schemas/ci-actuals.v1.schema.json).
 This doc is the human reference.
 
+Coverage of every declared lane is machine-checked by
+`cargo xtask check-actuals-coverage` (run in the `Policy gates` CI job):
+every `workflow_name` declared in `policy/ci-lanes.toml` must either
+appear in `ci-actuals.yml`'s `on.workflow_run.workflows` list or be
+explicitly listed in `[actuals_exemptions].not_subscribed` in
+`policy/ci-lanes.toml`. The check also fails on orphan subscriptions
+(workflow subscribed but no lane declares it as `workflow_name` —
+every job would categorise as `lane.unknown`).
+
 ## Why actuals matter
 
 Without actuals, LEM is a forecast: each lane has a `base_lem` in
