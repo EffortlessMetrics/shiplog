@@ -41,11 +41,14 @@ allowed.
 
 ## Required checks (target steady state)
 
-These are what should appear in branch-protection settings for `main` after
-the rollout. **Today (post-#142), branch protection has not been changed
-yet** — these are the planned set, encoded in
-[`policy/ci-lanes.toml`](../../policy/ci-lanes.toml) via `blocking = true`
-on the relevant lanes.
+These describe what should appear in branch-protection settings for
+`main` once protection is enabled. **`main` is currently unprotected**
+at the GitHub level (verified via the `/repos/.../branches/main/protection`
+endpoint returning 404 "Branch not protected"). The table is the
+**target** set, encoded as `blocking = true` on `default_pr = true`
+lanes in [`policy/ci-lanes.toml`](../../policy/ci-lanes.toml). It
+describes what would be required-enforced if protection were enabled,
+not what is currently enforced.
 
 | Required check | Source | Why required |
 |---|---|---|
@@ -61,35 +64,57 @@ pin `toolchain: 1.95.0`).
 
 These should **not** be required:
 
-- `Mutation Testing` — weekly only, advisory
-- `Coverage` — push-main only or label-gated, advisory
-- `Quick Fuzz (CI)` — bounded smoke is required-eligible; full matrix is nightly
-- `BDD & Property Tests`, `Ingest Crate Tests`, `Render, Trust, and Contract Crates`, `Optional Surface Tests`, `App Tests` — full matrix today; bounded critical-flow smoke (PR #154) is required-eligible after lane carve-out
-- `Property Testing` — full sweep today; bounded smoke (PR #154) is required-eligible
-- `droid-review`, `droid`, `droid-security-scan` — advisory bot review
-- `ripr` (added in PR #153) — advisory advisory
-- `Cargo Deny Security` (`security.yml`) — duplicate of `CI / cargo-deny` on PR
+- `Mutation Testing` — weekly cron + `mutation` / `full-ci` label only, advisory.
+- `Coverage` — push to `main` + `coverage` / `full-ci` label only, advisory.
+- `Quick Fuzz (CI)` — label-gated (`fuzz` / `full-ci`, routed in PR #155); the bounded `Fuzz Smoke` (PR #154) is required-eligible.
+- `BDD & Property Tests`, `Ingest Crate Tests`, `Render, Trust, and Contract Crates`, `Optional Surface Tests`, `App Tests` — broad BDD matrix, label-gated (`bdd` / `full-ci`, routed in PR #155); the bounded `BDD Smoke` (PR #154) is required-eligible.
+- `Property Testing` — broad sweep, label-gated (`property-tests` / `full-ci`, routed in PR #155); the bounded `Property Smoke` (PR #154) is required-eligible.
+- `droid-review`, `droid`, `droid-security-scan` — advisory bot review.
+- `ripr` (PR #153) — advisory lane, v1 stub.
+- `Cargo Deny Security` (`security.yml`) — duplicate of `CI / cargo-deny` on PR; standalone workflow now label-gated (`security-audit` / `full-ci`, routed in PR #155).
 
-## Migration plan
+## Migration history
 
-The actual GitHub branch-protection settings move when:
+The v0.5.0 ladder shipped every PR that would have triggered a
+branch-protection setting change under the rule above. Because `main`
+was never protected during the ladder, those rule-triggered setting
+changes were not actually performed — they remain forward-looking
+guidance.
 
-- PR #146 lands the PR plan, so `pr-plan / forecast` exists as a check.
-- PR #154 lands bounded stochastic, so the small-cost stochastic smokes
-  become required-eligible.
-- PR #155 lands lane routing, so the broad sweeps move to nightly /
-  label.
+- **PR #146** added `pr-plan / forecast` as a check. Required-eligible
+  but not enforced (no protection setting was added).
+- **PR #154** added bounded smoke lanes (`lane.bdd_smoke`,
+  `lane.property_smoke`, `lane.fuzz_smoke`). Required-eligible but not
+  enforced.
+- **PR #155** routed the broad sweep lanes to nightly + label. The
+  broad jobs are now `default_pr = false` in the lane policy and
+  job-level `if:`-gated in the workflow YAML.
+- **PR #164** dropped the redundant `MSRV (1.95)` job — closes the
+  candidate-removal step that had been forward-looking in earlier
+  versions of this doc.
+- **PR #165** added `Policy gates` to `ci.yml` as a blocking job and
+  registered `[lane.ci_policy]` with `blocking = true`.
 
-The migration sequence is documented in
-[`required-check-migration.md`](required-check-migration.md).
+When/if branch-protection is enabled on `main`, the sequencing rules
+in [`required-check-migration.md`](required-check-migration.md)
+describe how to make those required-check changes safely (avoid
+pending-check deadlocks, rename in-merge, etc.).
 
-## Why no checks are blocking on Phase 0–1
+## Why no checks are blocking today
 
-PRs #140, #141, and #142 are docs / TOML only. They do not change branch
-protection. The first PR that changes branch protection is #146 (adds
-`pr-plan / forecast`). Hard required-check changes for the broader lane
-moves happen in their own follow-up PR (likely after PR #148 confirms
-actuals).
+GitHub branch-protection on `main` is disabled. The
+`/repos/EffortlessMetrics/shiplog/branches/main/protection` endpoint
+returns 404 "Branch not protected"; no required-check enforcement is
+active. The "target steady state" table above describes what
+`blocking = true` lanes in `policy/ci-lanes.toml` would require if
+protection were enabled — it is the source of truth for the **intended**
+required-check set, not a description of currently-enforced behavior.
+
+Enabling protection (and choosing the corresponding required-check
+list) is a separate release decision. Until that happens, every
+`ci.yml` job runs but no GitHub-level gate forces a green status
+before merge — reviewers and the CodeRabbit/Droid advisory lanes
+provide the practical merge gate today.
 
 ## See also
 
