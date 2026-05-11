@@ -64,11 +64,11 @@ doctrine.
 | `release-validation` | tag `v*` + dispatch | no | yes | ubuntu-latest | 12 | Release asset smoke | Downloaded artifact does not launch | step summary + downloaded artifact run | — | release | release |
 | `release-test` | tag `v*` + dispatch | no | yes | ubuntu-latest | 15 | Release-mode test parity | Release-mode-only failures | test output | `cargo test --release` in `Check` | release | release |
 
-## security.yml — duplicate of ci.yml `cargo-deny` on PR
+## security.yml — duplicate of ci.yml `cargo-deny` (label-gated on PR)
 
 | Job | Trigger | Default PR? | Blocking | Runner | Base LEM | Intent | Failure mode caught | Evidence | duplicate_of | Target lane | Owner |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `Cargo Deny Security` | push main+develop + PR + weekly cron + dispatch | yes (PR) | no | ubuntu-latest | 4 | Dependency policy | Same as ci.yml `cargo-deny` | step summary | `lane.ci_deny` | manifest changes / weekly / `security-audit` label (PR #155 routing) | release/ci |
+| `Cargo Deny Security` | push main + PR + weekly cron + dispatch | no (job-if requires `security-audit` or `full-ci` label) | no | ubuntu-latest | 4 | Dependency policy | Same as ci.yml `cargo-deny` | step summary | `lane.ci_deny` | manifest changes / weekly / `security-audit` label (routed in PR #155) | release/ci |
 
 ## ripr.yml — advisory reachable-mutant exposure analysis (added in PR #153, v1 stub)
 
@@ -94,34 +94,36 @@ doctrine.
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | `smoke` | push main + PR (Rust-diff) | yes | no | ubuntu-latest | 4 | PR-fast parser robustness | Parser fuzz target panic / OOM on a touched parser surface | step summary (no-op when no parser surface touched) | smoke subset of `lane.fuzz_quick` | PR fast advisory | policy |
 
-## property-testing.yml — bounded smoke + broad nightly
+## property-testing.yml — broad property tests (label-gated)
 
 | Job | Trigger | Default PR? | Blocking | Runner | Base LEM | Intent | Failure mode caught | Evidence | duplicate_of | Target lane | Owner |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `Property Testing` | push main + PR | yes (broad form today) | no | ubuntu-latest | 20 | Schema/property invariant | Invariant breaks under randomized input | step summary | — | PR fast (smoke 16-64 cases on selected invariants in PR #154) + PR-targeted (risk-pack scope at elevated cases in PR #155) + nightly (full sweep in PR #155) | policy |
+| `Property Testing` | push main + PR | no (job-if requires `property-tests` or `full-ci` label, routed in PR #155) | no | ubuntu-latest | 20 | Schema/property invariant | Invariant breaks under randomized input | step summary | `lane.property_smoke` (bounded subset on default PR) | PR-targeted (`property-tests` label) + nightly cron | policy |
 
-## bdd-testing.yml — bounded smoke + broad nightly
+## bdd-testing.yml — broad BDD matrix (label-gated)
 
-| Job | Trigger | Default PR? | Blocking | Runner | Base LEM | Intent | Failure mode caught | Evidence | duplicate_of | Target lane | Owner |
-|---|---|---|---|---|---|---|---|---|---|---|---|
-| `BDD & Property Tests` | push + PR | yes (full form today) | no | ubuntu-latest | 8 | CLI/user-flow behavior proof | testkit BDD scenario regression | step summary | — | PR fast (1-2 critical-flow smokes in PR #154) | policy |
-| `Ingest Crate Tests` | push + PR | yes (full form today) | no | ubuntu-latest | 8 | Source adapter behavior | Per-adapter regression | step summary | — | PR-targeted (`source-adapter` risk pack in PR #155) | policy |
-| `Render, Trust, and Contract Crates` | push + PR | yes (full form today) | no | ubuntu-latest | 8 | Stable contract + trust surface behavior | Contract/trust regression | step summary | — | PR-targeted (relevant risk packs in PR #155) | policy |
-| `Optional Surface Tests` | push + PR | yes (full form today) | no | ubuntu-latest | 4 | Optional feature behavior | `team` / `merge` / `workstreams` regression | step summary | — | PR-targeted in PR #155 | policy |
-| `App Tests` | push + PR | yes (full form today) | no | ubuntu-latest | 8 | App feature surface behavior | `--no-default-features` and `--all-features` divergence | step summary | — | PR-targeted (`cli/product` risk pack in PR #155) | policy |
-
-## fuzzing.yml — touched-target smoke + nightly extended
+All jobs share a `job-if` that requires `bdd` or `full-ci` label on PRs (routed in PR #155); push main and dispatch run unconditionally.
 
 | Job | Trigger | Default PR? | Blocking | Runner | Base LEM | Intent | Failure mode caught | Evidence | duplicate_of | Target lane | Owner |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `Quick Fuzz (CI)` | push main + PR | yes (all 9 targets today) | no | ubuntu-latest | 10 | Parser robustness | Crash on small inputs across 9 parser surfaces | crash artifacts on failure | — | PR fast (touched-target only at 30-90s in PR #154) + PR-targeted (`parsers` risk pack in PR #155) + nightly (full 9-target matrix in PR #155) | policy |
+| `BDD & Property Tests` | push main + PR (labeled/sync/reopened) | no (`bdd` or `full-ci` label) | no | ubuntu-latest | 8 | CLI/user-flow behavior proof | testkit BDD scenario regression | step summary | `lane.bdd_smoke` (critical-flow smoke on default PR) | PR-targeted (`bdd` label) | policy |
+| `Ingest Crate Tests` | push main + PR (labeled/sync/reopened) | no (`bdd` or `full-ci` label) | no | ubuntu-latest | 8 | Source adapter behavior | Per-adapter regression | step summary | — | PR-targeted (`source-adapter` risk pack, routed in PR #155) | policy |
+| `Render, Trust, and Contract Crates` | push main + PR (labeled/sync/reopened) | no (`bdd` or `full-ci` label) | no | ubuntu-latest | 8 | Stable contract + trust surface behavior | Contract/trust regression | step summary | — | PR-targeted (relevant risk packs, routed in PR #155) | policy |
+| `Optional Surface Tests` | push main + PR (labeled/sync/reopened) | no (`bdd` or `full-ci` label) | no | ubuntu-latest | 4 | Optional feature behavior | `team` / `merge` / `workstreams` regression | step summary | — | PR-targeted (routed in PR #155) | policy |
+| `App Tests` | push main + PR (labeled/sync/reopened) | no (`bdd` or `full-ci` label) | no | ubuntu-latest | 8 | App feature surface behavior | `--no-default-features` and `--all-features` divergence | step summary | — | PR-targeted (`cli/product` risk pack, routed in PR #155) | policy |
+
+## fuzzing.yml — broad fuzz quick + nightly extended (label-gated)
+
+| Job | Trigger | Default PR? | Blocking | Runner | Base LEM | Intent | Failure mode caught | Evidence | duplicate_of | Target lane | Owner |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| `Quick Fuzz (CI)` | push main + PR | no (job-if requires `fuzz` or `full-ci` label, routed in PR #155) | no | ubuntu-latest | 10 | Parser robustness | Crash on small inputs across 9 parser surfaces | crash artifacts on failure | `lane.fuzz_smoke` (touched-target subset on default PR) | PR-targeted (`fuzz` label) | policy |
 | `Extended Fuzz (matrix)` | nightly cron + dispatch | no | no | ubuntu-latest | 540 (60min × 9) | Parser robustness (deep) | Crash with significant fuzz budget | corpus + crash artifacts | — | nightly | policy |
 
 ## mutation-testing.yml — already correctly off PR
 
 | Job | Trigger | Default PR? | Blocking | Runner | Base LEM | Intent | Failure mode caught | Evidence | duplicate_of | Target lane | Owner |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `Mutation Testing` | PR=skipped, Mon weekly cron, dispatch | no | no | ubuntu-latest | 120 | Test-strength evidence | Surviving mutants in trust surfaces | mutants report artifact (30d) | — | nightly + label / risk pack (targeted in PR #155) + release-readiness snapshot (PR #155) | policy |
+| `Mutation Testing` | PR (labeled/sync/reopened) + Mon weekly cron + dispatch | no (job-if requires `mutation` or `full-ci` label, routed in PR #155) | no | ubuntu-latest | 120 | Test-strength evidence | Surviving mutants in trust surfaces | mutants report artifact (30d) | — | nightly cron + PR-targeted (`mutation` label) | policy |
 
 ## coverage.yml — already correctly off default PR
 
