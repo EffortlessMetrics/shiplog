@@ -52,8 +52,12 @@ on the relevant lanes.
 | `CI / Check (ubuntu-latest)` | `ci.yml` | Primary Rust correctness gate |
 | `CI / Check (windows-latest)` | `ci.yml` | Cross-platform parity (covered by `ci-exception-0001`) |
 | `CI / cargo-deny` | `ci.yml` | Dependency policy |
-| `CI / MSRV (1.95)` | `ci.yml` | MSRV regression (renamed from `MSRV (1.92)` in PR #145; consider dropping in PR #147 when redundant) |
+| `CI / Policy gates` | `ci.yml` (added in PR #165) | Policy ledger enforcement: schemas + 10 blocking-allowlist file/lint/panic checks |
 | `pr-plan / forecast` | `pr-plan.yml` (added in PR #146) | LEM forecast + risk-pack receipt |
+
+The `MSRV (1.95)` job that previously appeared here was dropped in PR
+#164 as redundant compile coverage with `Check (ubuntu-latest)` (both
+pin `toolchain: 1.95.0`).
 
 These should **not** be required:
 
