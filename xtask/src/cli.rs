@@ -84,6 +84,11 @@ enum Command {
     /// `policy/ci-lanes.toml`, and `labels` entries resolve to labels
     /// in `policy/ci-budget.toml [labels]`.
     CheckRiskPackIntegrity(FilePolicyModeArgs),
+
+    /// Verify `[lane.*]` entries in `policy/ci-lanes.toml` resolve to
+    /// real workflow files and (where set) real job display names.
+    /// Catches stale `workflow`/`workflow_name`/`job_name` references.
+    CheckLaneMappings(FilePolicyModeArgs),
 }
 
 #[derive(Debug, Args)]
@@ -278,6 +283,9 @@ impl Cli {
             }
             Command::CheckRiskPackIntegrity(args) => {
                 tasks::check_risk_pack_integrity::run(&workspace_root, parse_mode(&args.mode)?)
+            }
+            Command::CheckLaneMappings(args) => {
+                tasks::check_lane_mappings::run(&workspace_root, parse_mode(&args.mode)?)
             }
         }
     }

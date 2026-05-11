@@ -136,3 +136,6 @@ jobs:
 
       - name: check-risk-pack-integrity (blocking)
         run: cargo xtask check-risk-pack-integrity --mode blocking-allowlist
+
+      - name: check-lane-mappings (blocking)
+        run: cargo xtask check-lane-mappings --mode blocking-allowlist

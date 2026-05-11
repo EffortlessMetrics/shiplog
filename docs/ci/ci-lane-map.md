@@ -5,6 +5,14 @@ it costs, and how it is routed. This is the human-readable companion to
 [`policy/ci-lanes.toml`](../../policy/ci-lanes.toml). When the two disagree,
 the TOML is authoritative; this doc explains it.
 
+Referential integrity of every `[lane.*]` entry is machine-checked by
+`cargo xtask check-lane-mappings` (run in the `Policy gates` CI job): for
+each lane that declares `workflow`/`workflow_name`/`job_name`, the
+checker verifies the workflow file exists, its top-level `name:` matches,
+and the declared job display name resolves to a real job in the file.
+Workflow-catchall lanes (`workflow_name` set, `job_name` omitted) are
+explicitly accepted.
+
 It is added in PR #142 (Phase 1 — machine-readable roadmap) and is the
 anti-duplication map: every workflow/job declares one **intent**, and any
 duplicate intent declares `duplicate_of`. See
