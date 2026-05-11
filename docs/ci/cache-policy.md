@@ -45,16 +45,22 @@ artifacts the PR doesn't need.
 
 | Lane | `shared-key` | Saves on `main`? | Restores on PR? |
 |---|---|---|---|
+| `lane.pr_plan` | `pr-plan` | yes | yes |
 | `lane.ci_check` Ubuntu | `check-ubuntu-latest` | yes | yes |
 | `lane.ci_check_windows` | `check-windows-latest` | yes | yes |
 | `lane.ci_deny` | `deny` | yes | yes |
 | `lane.ci_policy` | `policy` | yes | yes |
+| `lane.ci_actuals` | `ci-actuals` | yes | yes |
 | `lane.coverage` | `coverage-1.95` (renamed from `coverage-1.92` in PR #145) | yes (only on push main per coverage.yml current logic) | yes (label-gated) |
-| `lane.bdd` (4 jobs) | `bdd-<job>` | yes | yes |
+| `lane.bdd_smoke` | `bdd-smoke` | yes | yes |
+| `lane.bdd` (5 jobs) | `bdd-testkit`, `bdd-ingest`, `bdd-render-trust`, `bdd-optional`, `bdd-app` | yes | yes |
+| `lane.property_smoke` | `property-smoke` | yes | yes |
 | `lane.property` | `property` | yes | yes |
-| `lane.fuzz_*` | `fuzz` (separate from main workspace) | yes | yes |
+| `lane.fuzz_smoke` | `fuzz-smoke` | yes | yes |
+| `lane.fuzz_*` | `fuzz` (shared between `fuzzing.yml` quick + scheduled jobs; separate from main workspace) | yes | yes |
 | `lane.mutation_*` | `mutation` | yes | n/a (off PR) |
-| `lane.release_*` | `release-preflight`, `release-build-<target>` | n/a (tag-only) | n/a |
+| `lane.release_preflight` | `release-preflight` (Swatinem) | n/a (tag-only) | n/a |
+| `build-binary` matrix | `actions/cache@v5` direct keys keyed on `${{ runner.os }}` + target + `hashFiles('**/Cargo.lock')` | n/a (tag-only) | n/a |
 
 ### `actions/cache` direct keys
 
