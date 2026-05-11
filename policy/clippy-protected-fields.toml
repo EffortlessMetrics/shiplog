@@ -1,0 +1,206 @@
+schema_version = 1
+policy = "clippy-protected-fields"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+# Scaffold for `clippy::disallowed_fields`. The lint is currently
+# `[[planned]]` in `policy/clippy-lints.toml` and is NOT activated by this
+# file. The six classes below come from `docs/CLIPPY_PROTECTED_FIELDS.md`
+# (#188) and encode the boundary, invariant, and field candidates for each
+# seam. Entries are intentionally scaffolded; the exact field set for each
+# class is finalised in the per-class refactor PR that introduces the
+# accessor surface, and `clippy.toml` only gains a `disallowed_fields`
+# entry after that refactor lands.
+#
+# Per-entry shape:
+#
+#   id                    Stable identifier for cross-reference. cpf-NNNN.
+#   slug                  Short kebab-case name (matches the section in the doc).
+#   title                 Human-readable class name.
+#   invariant             What the accessor protects. One or two sentences.
+#   boundary_crate        Crate that owns the accessor surface for this class.
+#                         "mixed" if the seam crosses crates and each crate
+#                         owns its share.
+#   boundary_module       Module path under the boundary crate. May be a
+#                         pattern (e.g. "shiplog-redact::*").
+#   accessor_pattern      One-line description of the accessor shape that
+#                         callers must go through.
+#   failure_mode          The kind of regression the lint catches if the
+#                         accessor is bypassed.
+#   field_candidates      List of known or suspected protected fields, in
+#                         the form "<type>::<field>". Use the literal
+#                         string "TODO: …" when the exact field set is not
+#                         yet known. The list is finalised when the
+#                         accessor-refactor PR for this class lands.
+#   activation_status     One of:
+#                           - "scaffolded"           — class documented, fields
+#                                                      listed/TODO, no accessor
+#                                                      refactor yet.
+#                           - "accessor-ready"       — accessors landed in
+#                                                      source; lint activation
+#                                                      PR is the next step.
+#                           - "lint-active"          — `clippy::disallowed_fields`
+#                                                      entry covers this class
+#                                                      and is enforced in CI.
+#   next_action           One-line description of the next PR for this class.
+#   owner                 Workspace crate / sub-team that signs up for the
+#                         accessor refactor and lint activation.
+#   reason                One-sentence pointer to the doc section that
+#                         carries the full design rationale.
+#   created               ISO-8601 date the scaffold entry landed.
+#   review_after          ISO-8601 date by which activation readiness
+#                         should be reassessed.
+#   expires               "permanent" — class scaffolds remain documented
+#                         even after the lint activates; the entry stops
+#                         being load-bearing only when the entire seam is
+#                         removed from the codebase.
+#
+# Validation:
+#   `cargo xtask check-policy-schemas` verifies the common header
+#   (`schema_version`, `policy`, `owner`, `status`). Per-entry shape is
+#   not yet enforced by a checker — the dedicated `disallowed_fields`
+#   ledger checker is a follow-up PR that lands alongside the first
+#   accessor refactor (see `docs/CLIPPY_PROTECTED_FIELDS.md` activation
+#   ladder, step 3).
+#
+# See:
+#   docs/CLIPPY_PROTECTED_FIELDS.md  Seam doctrine + activation ladder.
+#   docs/CLIPPY_POLICY.md            Overall Clippy policy.
+#   docs/POLICY_ALLOWLISTS.md        Common header schema.
+#   policy/clippy-lints.toml         `[[planned]] disallowed_fields`.
+
+[[class]]
+id = "cpf-0001"
+slug = "redaction-internals"
+title = "Redaction internals"
+invariant = "Alias maps, HMAC key material, and profile descriptor state must never be exposed in raw form. Internal name → alias mappings stay private; lookups go through accessors that return the alias plus the redaction profile it was minted under."
+boundary_crate = "shiplog-redact"
+boundary_module = "shiplog-redact::*"
+accessor_pattern = "Public types expose accessors (e.g. `alias_for`, `profile_of_alias`); raw `aliases` / `key_material` style fields are private."
+failure_mode = "A renderer reads `redactor.aliases` directly and emits the inner real name to a manager- or public-profile bundle. The redaction profile leak goes unnoticed because no test exercises the raw read path."
+field_candidates = [
+  "DeterministicAliasStore::key",
+  "DeterministicAliasStore::cache",
+  "TODO: HMAC key material field on the public redactor type once the engine wiring is finalised",
+  "TODO: profile descriptor internals on the projector type",
+]
+activation_status = "scaffolded"
+next_action = "Audit the public surface of `shiplog-redact` for `pub` fields on alias / key / profile types and confirm the candidate list is exhaustive. No source change in this PR."
+owner = "shiplog-redact"
+reason = "See docs/CLIPPY_PROTECTED_FIELDS.md#1-redaction-internals for the seam doctrine and failure mode."
+created = "2026-05-11"
+review_after = "2026-11-11"
+expires = "permanent"
+
+[[class]]
+id = "cpf-0002"
+slug = "bundle-paths"
+title = "Bundle paths"
+invariant = "Paths recorded in `bundle.manifest.json` and `share.manifest.json` must be relative to the run directory, must not include the run-dir prefix itself, and must never include absolute paths from the producer's filesystem. Accessors normalise on write and validate on read."
+boundary_crate = "shiplog-bundle"
+boundary_module = "shiplog-bundle::*"
+accessor_pattern = "`BundleManifest` / `ShareManifest` expose `entries()` returning normalised relative paths; raw `path: PathBuf` style fields on manifest entries and the run-artifact path helpers are private."
+failure_mode = "A test uses a producer-local absolute path; the path leaks into the manifest; another machine cannot verify the bundle because the path is invalid there."
+field_candidates = [
+  "RunArtifactPaths::out_dir",
+  "TODO: BundleManifest entries' `path` field once manifest types exist",
+  "TODO: ShareManifest entries' `path` field once manifest types exist",
+  "TODO: file checksum receipt `path` field on zip-archive entry types",
+]
+activation_status = "scaffolded"
+next_action = "Land bundle/share manifest types; revisit candidate list against the actual struct shape before scheduling the accessor refactor."
+owner = "shiplog-bundle"
+reason = "See docs/CLIPPY_PROTECTED_FIELDS.md#2-bundle-paths for the seam doctrine and failure mode."
+created = "2026-05-11"
+review_after = "2026-11-11"
+expires = "permanent"
+
+[[class]]
+id = "cpf-0003"
+slug = "trust-receipts"
+title = "Trust receipts"
+invariant = "Hashes, signatures, and provenance receipts written to `intake.report.json`, `share.manifest.json`, and `bundle.manifest.json` must be computed via the canonical accessor on the source struct. Two callers that recompute the same receipt for the same input must produce byte-identical bytes."
+boundary_crate = "mixed"
+boundary_module = "shiplog-engine::intake_report, shiplog-bundle::manifest, shiplog-cache::receipt"
+accessor_pattern = "Each receipt-emitting crate owns the canonical `compute_receipt()` accessor on its receipt type; raw `hash: [u8; 32]` style fields are private."
+failure_mode = "One caller hashes the canonical fields; a second caller hashes a slightly different field order; the two receipts disagree for the same logical input and consumers diverge."
+field_candidates = [
+  "TODO: intake report receipt fields on `shiplog-engine::intake_report` once the type lands",
+  "TODO: bundle/share manifest receipt fields on `shiplog-bundle::manifest` once types land",
+  "TODO: cache receipt fields on `shiplog-cache::receipt` once the type lands",
+]
+activation_status = "scaffolded"
+next_action = "Introduce the receipt types (some are not yet in the codebase); revisit candidate list as each type lands. Refactor is genuine, not just an audit."
+owner = "shiplog-engine"
+reason = "See docs/CLIPPY_PROTECTED_FIELDS.md#3-trust-receipts for the seam doctrine and failure mode."
+created = "2026-05-11"
+review_after = "2026-11-11"
+expires = "permanent"
+
+[[class]]
+id = "cpf-0004"
+slug = "source-opaque-ids"
+title = "Source opaque IDs"
+invariant = "Provider-specific identifiers (GitHub `node_id`, GitLab project IDs, Jira issue keys, Linear UUIDs, opaque `local_git` ref names) must be aliased before they cross a redaction profile boundary. Accessors return the aliased form for non-internal profiles and the raw form only when an `Internal` profile is explicitly requested."
+boundary_crate = "mixed"
+boundary_module = "shiplog-ingest-*, shiplog-schema, shiplog-redact"
+accessor_pattern = "`shiplog-ingest-*` crates own the raw IDs (deserialised from API responses); `shiplog-schema` owns the canonical wrapped types; `shiplog-redact` is the only consumer that touches the raw form, and only to mint the alias."
+failure_mode = "A public-profile render reads `event.github_node_id` directly; the rendered packet leaks the GitHub-internal `node_id` that should have been aliased."
+field_candidates = [
+  "TODO: `node_id` / `id` style fields on per-source raw response structs in `shiplog-ingest-github` (currently `pub`)",
+  "TODO: equivalent fields on `shiplog-ingest-gitlab`, `shiplog-ingest-jira`, `shiplog-ingest-linear` raw response structs once those adapters exist",
+  "TODO: opaque ref-name fields on `shiplog-ingest-git` and `shiplog-ingest-manual`",
+  "TODO: opaque-ID fields on the `*Event` types in `shiplog-schema` once wrapping is finalised",
+]
+activation_status = "scaffolded"
+next_action = "Inventory current `pub` opaque-ID fields across `shiplog-ingest-*` and `shiplog-schema`; populate the candidate list before scheduling the accessor refactor. This is the largest class by surface area."
+owner = "shiplog-ingest-github"
+reason = "See docs/CLIPPY_PROTECTED_FIELDS.md#4-source-opaque-ids for the seam doctrine and failure mode."
+created = "2026-05-11"
+review_after = "2026-11-11"
+expires = "permanent"
+
+[[class]]
+id = "cpf-0005"
+slug = "cache-internals"
+title = "Cache internals"
+invariant = "The SQLite-backed `shiplog-cache` exposes a query API; the raw `rusqlite::Connection`, the schema-version row, and the cache-key construction layout must be private. Cache key construction goes through `CacheKey::new(...)` which centralises the cache namespace + version + hash algorithm."
+boundary_crate = "shiplog-cache"
+boundary_module = "shiplog-cache::*"
+accessor_pattern = "Public surface: `ApiCache::get`, `ApiCache::put`, `ApiCache::stats`, etc. Private: connection handle, default TTL, max-size, and the cache-key raw layout."
+failure_mode = "A new ingest adapter borrows `cache.connection` directly to run a custom SQL query; the cache schema migrates in a future release; the custom query breaks silently."
+field_candidates = [
+  "ApiCache::conn",
+  "ApiCache::default_ttl",
+  "ApiCache::max_size_bytes",
+  "TODO: schema-version row once persisted (currently inline DDL in `ApiCache::open`)",
+  "TODO: `CacheKey` raw layout fields once the type gains internal state (unit struct today)",
+]
+activation_status = "scaffolded"
+next_action = "Smallest refactor class per the activation ladder (most surface already private). The next implementation PR is the accessor confirmation pass for `shiplog-cache`."
+owner = "shiplog-cache"
+reason = "See docs/CLIPPY_PROTECTED_FIELDS.md#5-cache-internals for the seam doctrine and failure mode."
+created = "2026-05-11"
+review_after = "2026-11-11"
+expires = "permanent"
+
+[[class]]
+id = "cpf-0006"
+slug = "policy-ledger-metadata"
+title = "Policy ledger metadata"
+invariant = "Every `policy/*.toml` ledger carries a common header (`schema_version`, `policy`, `owner`, `status`). The header lives in a shared `Ledger<Body>` wrapper in `xtask::policy`; downstream consumers (the `cargo xtask check-*` checkers) access the body via the wrapper's accessor, never by destructuring the raw `toml::Table`."
+boundary_crate = "xtask"
+boundary_module = "xtask::policy"
+accessor_pattern = "The wrapper struct owns the header validation; checkers read `ledger.body()` and never reach for `ledger.raw_table` or destructure the `toml::Table` directly."
+failure_mode = "A new checker forgets to validate the common header and silently accepts an unversioned ledger. Drift in the header schema becomes invisible because individual checkers don't enforce it consistently."
+field_candidates = [
+  "TODO: `Ledger<Body>::raw_table` once the consolidated wrapper exists",
+  "TODO: per-checker raw `toml::Table` fields that are currently re-parsed in each task module under `xtask::tasks::*`",
+]
+activation_status = "scaffolded"
+next_action = "Consolidate the per-checker header parsing into the shared `Ledger<Body>` wrapper in `xtask::policy`; revisit candidate list against the actual wrapper shape before scheduling lint activation."
+owner = "policy"
+reason = "See docs/CLIPPY_PROTECTED_FIELDS.md#6-policy-ledger-metadata for the seam doctrine and failure mode."
+created = "2026-05-11"
+review_after = "2026-11-11"
+expires = "permanent"
