@@ -90,8 +90,6 @@ cargo publish -p <crate>
 
 ## Known non-blockers
 
-- `lane.ci_msrv` is redundant with `lane.ci_check` while toolchain pin ==
-  MSRV; candidate to drop in a follow-up.
 - `clippy::disallowed_fields` is `[[planned]]` until protected seams are
   configured.
 - ripr is a v1 stub.

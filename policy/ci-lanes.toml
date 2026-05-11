@@ -63,18 +63,6 @@ workflow = ".github/workflows/ci.yml"
 workflow_name = "CI"
 job_name = "cargo-deny"
 
-[lane.ci_msrv]
-description = "Workspace compiles on declared MSRV."
-intent = "Rust correctness (MSRV)"
-runner = "ubuntu_24_04"
-base_lem = 5
-default_pr = true
-blocking = true
-workflow = ".github/workflows/ci.yml"
-workflow_name = "CI"
-job_name = "MSRV (1.95)"
-note = "Redundant with lane.ci_check while toolchain pin == MSRV; candidate to drop in PR #147."
-
 # ── Standalone security workflow (label-gated; duplicate of ci_deny) ──
 
 [lane.ci_security]
