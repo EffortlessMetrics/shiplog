@@ -10,6 +10,16 @@ Labels on a PR change which lanes run. There are two kinds:
 This is the human contract. The machine-readable label list lives in
 [`policy/ci-budget.toml`](../../policy/ci-budget.toml) under `[labels]`.
 
+The `enforced` vs `declared but not enforced today` split is itself a
+machine-checked invariant: `cargo xtask check-label-enforcement` parses
+`policy/ci-budget.toml [labels]`, scans `.github/workflows/*.yml` for
+`contains(github.event.pull_request.labels.*.name, '<label>')`
+references, and fails if a label moves between categories without
+updating `[labels_enforcement].declared_only`. The check runs in the
+`Policy gates` job on every PR. See
+[`policy/ci-budget.toml`](../../policy/ci-budget.toml) for the
+declared-only list.
+
 ## Spend authorization
 
 | Label | Tier | Effect |

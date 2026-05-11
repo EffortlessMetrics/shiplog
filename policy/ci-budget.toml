@@ -38,6 +38,31 @@ bdd = "bdd"
 security_audit = "security-audit"
 release_check = "release-check"
 
+# Labels that are declared in [labels] but not currently consulted by any
+# workflow job-level `if:` block. `cargo xtask check-label-enforcement`
+# enforces that every entry in [labels] is either consulted by at least
+# one workflow `if:` or listed here.
+#
+# - `ripr` / `ripr-waive`: ripr.yml is paths-driven (Rust diffs), not
+#   label-driven. Honoring these labels is part of the real ripr
+#   integration follow-up release; the v0.5.0 lane is a stub.
+# - `release-check`: release.yml triggers on tag push / workflow_dispatch
+#   only. There is no PR-time release-check pathway today.
+# - `ci-budget-ack` / `ci-budget-override`: spend-authorization labels
+#   consumed by `pr-plan / forecast` as advisory metadata. The PR plan
+#   warns on tier breach today; hard enforcement is a follow-up release
+#   decision.
+#
+# See docs/ci/labels.md for the human-readable categorisation.
+[labels_enforcement]
+declared_only = [
+  "ripr",
+  "ripr-waive",
+  "release-check",
+  "ci-budget-ack",
+  "ci-budget-override",
+]
+
 # Costs LEM does not cover. These are real spend the budget plan should
 # eventually account for but cannot capture in wall-clock minutes alone.
 # See docs/ci/lem-budgeting.md for the discussion; PR #148 may extend the
