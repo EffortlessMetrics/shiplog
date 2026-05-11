@@ -49,18 +49,54 @@ status = "advisory"
 #                                                      private inner struct
 #                                                      that external code
 #                                                      cannot name. The lint's
-#                                                      target path (`<PublicType>::*`)
-#                                                      no longer matches any
+#                                                      target path
+#                                                      (`<PublicType>::*`) no
+#                                                      longer matches any
 #                                                      internal access in the
-#                                                      owning crate, so
-#                                                      activation will not
-#                                                      require per-method
-#                                                      `#[expect]`. Lint
-#                                                      activation is the next
-#                                                      step.
+#                                                      owning crate.
+#                                                      *Probe required* before
+#                                                      activation: see
+#                                                      `"type-enforced"`.
+#                           - "type-enforced"        — activation probe found
+#                                                      that
+#                                                      `clippy::disallowed_fields`
+#                                                      emits config-level
+#                                                      metadata warnings
+#                                                      ("does not refer to a
+#                                                      reachable field") for
+#                                                      paths that no longer
+#                                                      resolve to live fields,
+#                                                      and those warnings
+#                                                      cannot be suppressed
+#                                                      under `-D warnings`.
+#                                                      So once the
+#                                                      inner-struct refactor
+#                                                      lands, the lint is the
+#                                                      wrong tool. The
+#                                                      protection mechanism for
+#                                                      a `"type-enforced"`
+#                                                      class is: (a) the type
+#                                                      system (the inner type
+#                                                      is private and cannot
+#                                                      be named externally),
+#                                                      and (b) optionally a
+#                                                      future `xtask` checker
+#                                                      that scans the public
+#                                                      API surface of the
+#                                                      owning crate for
+#                                                      regressions
+#                                                      (`pub fn raw_*`,
+#                                                      `pub` items on the
+#                                                      inner type, etc.).
 #                           - "lint-active"          — `clippy::disallowed_fields`
 #                                                      entry covers this class
 #                                                      and is enforced in CI.
+#                                                      Reserved for classes
+#                                                      whose protected fields
+#                                                      genuinely live on a
+#                                                      `pub` type (inner-struct
+#                                                      pattern not practical
+#                                                      for the class).
 #   next_action           One-line description of the next PR for this class.
 #   owner                 Workspace crate / sub-team that signs up for the
 #                         accessor refactor and lint activation.
@@ -188,19 +224,31 @@ boundary_crate = "shiplog-cache"
 boundary_module = "shiplog-cache::*"
 accessor_pattern = "Public surface: `ApiCache::{open, open_read_only, open_in_memory, with_ttl, with_max_size, get, set, set_with_ttl, contains, cleanup_expired, count_older_than, cleanup_older_than, clear, stats, inspect}`. The raw fields live on the private `ApiCacheInner` struct that `ApiCache` wraps; external code cannot name `ApiCacheInner`."
 failure_mode = "A new ingest adapter adds a `pub fn raw_connection(&self) -> &Connection` accessor on `ApiCache` to run a custom SQL query; the cache schema migrates in a future release; the custom query breaks silently. The protected paths below capture this — any caller that adds such an accessor would have to expose the raw `Connection` via an `ApiCache::*` field, which is the lint target."
-# Verified twice:
-#   - #192 (origin/main 2026-05-11): every `.conn` access was inside
+# Verified three times during 2026-05-11:
+#   - #192: every `.conn` access was inside
 #     `crates/shiplog-cache/src/sqlite.rs` impl blocks; no caller
 #     outside `shiplog-cache` reached the raw state. That proved the
 #     seam was external-call-site clean.
-#   - The activation probe on this same date discovered that
-#     `clippy::disallowed_fields` is path-scope-blind: it fires on every
-#     `self.conn` access, including inside the owning impl. So the
-#     activation could not ship as a one-line `clippy.toml` change
-#     without also reshaping the owning impl. The inner-struct refactor
-#     in THIS PR moves the protected fields onto a private
-#     `ApiCacheInner` struct so that activation can target `ApiCache::*`
-#     without flagging any internal access.
+#   - First activation probe (post-#192): discovered that
+#     `clippy::disallowed_fields` is path-scope-blind — it fires on
+#     every `self.conn` access including inside the owning `impl`. So
+#     the activation could not ship as a one-line `clippy.toml`
+#     change without reshaping the owning impl.
+#   - #194: inner-struct refactor moved `{conn, default_ttl,
+#     max_size_bytes}` onto a private `ApiCacheInner`; `ApiCache`
+#     became a thin wrapper holding `inner: ApiCacheInner`. Public
+#     API unchanged.
+#   - Second activation probe (post-#194): adding the three
+#     `ApiCache::*` paths to `disallowed-fields` produces
+#     `"does not refer to a reachable field"` config-level warnings —
+#     not silent acceptance, not a hard error. Those warnings fail
+#     under `-D warnings` and cannot be suppressed by `#[expect]` /
+#     `#[allow]` (they are not tied to a numbered lint). So
+#     `disallowed_fields` is the wrong tool for a class that has gone
+#     through the inner-struct refactor. Cache-internals advances to
+#     `"type-enforced"`; the type system + a future ledger-driven
+#     xtask checker on public API surfaces are the protection
+#     mechanism going forward.
 field_candidates = [
   "ApiCache::conn",
   "ApiCache::default_ttl",
@@ -208,8 +256,8 @@ field_candidates = [
   "TODO: future schema-version row, if added (today: inline DDL in `ApiCache::open`)",
   "TODO: future `CacheKey` internal-state fields, if added (today: unit struct in `crates/shiplog-cache/src/key.rs`)",
 ]
-activation_status = "clippy-ready"
-next_action = "Next PR adds the three `ApiCache::*` paths above to the `disallowed-fields` array in `clippy.toml`, flips `[workspace.lints.clippy].disallowed_fields = \"deny\"`, and moves the `clippy::disallowed_fields` entry in `policy/clippy-lints.toml` from `[[planned]]` to `[[active]]`. The inner-struct split here means activation requires no `#[expect]` annotations and no `policy/clippy-exceptions.toml` entries."
+activation_status = "type-enforced"
+next_action = "Type-system protection is sufficient for cache-internals as of #194. The activation probe (post-#194) found that adding the three `ApiCache::*` paths to `clippy.toml`'s `disallowed-fields` array emits config-level metadata warnings (\"does not refer to a reachable field\") because the inner-struct refactor moved the fields off `ApiCache`. Those warnings fail under `-D warnings` and cannot be suppressed via `#[expect]`. Activating `clippy::disallowed_fields` for this class is therefore not the right move; the lint is the wrong tool once a class goes fully type-enforced. The recommended next protection layer is a generic ledger-driven `xtask` checker that scans the public API surface of each class's `boundary_crate` for regressions (`pub fn raw_*` accessors, `pub` items on the protected inner type, etc.). That checker is a separate engineering item; it does not block any other class's progress on the ladder."
 owner = "shiplog-cache"
 reason = "See docs/CLIPPY_PROTECTED_FIELDS.md#5-cache-internals for the seam doctrine and failure mode."
 created = "2026-05-11"

@@ -139,11 +139,18 @@ level = "warn"
 class = "collections"
 reason = "Prefer `sort_by_key(|x| std::cmp::Reverse(...))` over comparator closures. The two existing sites were fixed inline in PR #145."
 
-# ── Held until protected fields are configured ─────────────────────────
+# ── Tier-2: only activate per class where the inner-struct refactor is
+#    not practical and the protected field genuinely lives on a `pub` type.
+#    For classes that go fully private via inner-struct (e.g. cache-internals
+#    in #194), the type system is the protection mechanism and a future
+#    ledger-driven `xtask` checker handles the public-API regression path.
+#    See docs/CLIPPY_PROTECTED_FIELDS.md activation ladder and the
+#    post-#194 probe finding recorded against `cpf-0005` in
+#    `policy/clippy-protected-fields.toml`. ────────────────────────────
 
 [[planned]]
 name = "clippy::disallowed_fields"
 level = "deny"
 activate_when_msrv = "1.95"
 class = "architecture"
-reason = "Ban direct field access across protected seams. Held until at least one class is refactored to use accessors and the matching protected-fields ledger lands. See docs/CLIPPY_PROTECTED_FIELDS.md for the six protected classes (redaction internals, bundle paths, trust receipts, source opaque IDs, cache internals, policy ledger metadata) and the activation ladder. Lint is activated incrementally — one class at a time — to avoid a 100+ finding cliff."
+reason = "Ban direct field access across protected seams. Tier-2 tool: only applicable to classes that genuinely keep protected raw fields on a `pub` type. For classes that take the inner-struct refactor path (move raw fields onto a private inner type that external code cannot name), the lint produces config-level `\"does not refer to a reachable field\"` warnings against the now-nonexistent public field paths — see the post-#194 activation probe recorded in `cpf-0005`. cache-internals is `\"type-enforced\"` (no lint needed); the lint stays `[[planned]]` against the possibility that one of the remaining five classes (redaction internals, bundle paths, trust receipts, source opaque IDs, policy ledger metadata) keeps protected fields on a `pub` type after its own refactor pass. Activation is per-class, never workspace-wide."
