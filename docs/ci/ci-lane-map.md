@@ -39,7 +39,7 @@ doctrine.
 | `Check (ubuntu-latest)` | push main + PR | yes | yes | ubuntu-latest | 12 | Rust correctness | Type/borrow errors, lint regressions, doc-test failure, broken release build, broken canary publish | step summary | — | PR fast | release/ci |
 | `Check (windows-latest)` | push main + PR | yes | yes | windows-latest | 36 | Rust correctness (Windows parity) | Windows-only regressions before tag | step summary | — | PR fast (with `ci-exception-0001`) | release/ci |
 | `cargo-deny` | push main + PR | yes | yes | ubuntu-latest | 4 | Dependency policy | Disallowed bans/licenses/sources/advisories | step summary | — | PR fast | release/ci |
-| `MSRV (1.95)` | push main + PR | yes | yes | ubuntu-latest | 5 | Rust correctness (MSRV) | MSRV regression | step summary | `lane.ci_check` (while pin == MSRV) | candidate to drop in PR #147 | release/ci |
+| `Policy gates` | push main + PR | yes | yes | ubuntu-latest | 3 | Policy ledger enforcement | Drift in any of the 18 policy ledgers (schemas, lint-policy, clippy-exceptions, no-panic-family, file-policy + 6 companions) | step output | — | PR fast | release/ci |
 
 ## release.yml — tag-triggered release pipeline
 
