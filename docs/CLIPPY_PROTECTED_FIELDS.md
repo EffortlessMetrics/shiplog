@@ -84,10 +84,10 @@ Each class below lists:
 `disallowed_fields` is not activated by this document. The planned sequence:
 
 1. **PR #188**: wrote this document; cross-linked from `policy/clippy-lints.toml` (the existing `[[planned]]` entry's `reason` field). No lint config, no Rust code change.
-2. **This PR**: scaffold `policy/clippy-protected-fields.toml`. The TOML lists the protected fields per class without yet wiring them into `clippy.toml`. `cargo xtask check-policy-schemas` accepts the new ledger.
-3. **Next PR**: pick the smallest protected class (likely **cache internals** — already mostly private, smallest refactor) and add accessors where missing. Verify with `cargo expand` / call-site grep that no production caller still touches the raw fields. Add focused tests asserting the accessor invariant.
-4. **PR after that**: activate `clippy::disallowed_fields` for the first class only (e.g. `clippy.toml` lists the protected fields from that one class). Run full clippy/test/doc gate. Existing exceptions go in `policy/clippy-exceptions.toml` with policy IDs and expiry dates.
-5. **Subsequent PRs**: repeat steps 3–4 per class until all six are protected and the lint covers every class.
+2. **PR #190**: scaffolded `policy/clippy-protected-fields.toml` with six `[[class]]` entries (one per class above). `cargo xtask check-policy-schemas` accepts the new ledger; lint remains `[[planned]]`.
+3. **This PR**: cache-internals accessor pass. Verified by call-site grep that no caller outside `crates/shiplog-cache/src/sqlite.rs` reaches into `ApiCache::{conn, default_ttl, max_size_bytes}`; advanced the ledger entry `cpf-0005` from `activation_status = "scaffolded"` to `"accessor-ready"`; added a rustdoc citation on `ApiCache` so future contributors do not introduce a raw-connection escape hatch. No `clippy.toml` change.
+4. **Next PR**: activate `clippy::disallowed_fields` for cache-internals only (`clippy.toml` lists the three `ApiCache` fields from `cpf-0005`). Run full clippy/test/doc gate. No existing production callers reach the raw fields, so the activation is expected not to require entries in `policy/clippy-exceptions.toml`.
+5. **Subsequent PRs**: repeat the accessor pass + per-class activation for the remaining five classes in approximate refactor-size order (bundle-paths, policy-ledger-metadata, redaction-internals, trust-receipts, source-opaque-ids).
 
 The constraint at every step: **never activate the lint without a working accessor surface**. A direct activation against the current surface would produce 100+ findings on day one, drown the operator in exceptions, and either ship broken or grind to a halt. The ladder makes the protection real one class at a time.
 

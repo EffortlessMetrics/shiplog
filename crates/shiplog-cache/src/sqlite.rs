@@ -11,6 +11,14 @@ use crate::expiry::{CacheExpiryWindow, now_rfc3339};
 use crate::stats::CacheStats;
 
 /// Cache for API responses backed by a local SQLite database.
+///
+/// The `conn`, `default_ttl`, and `max_size_bytes` fields are intentionally
+/// private — they are the cache-internals seam tracked as `cpf-0005` in
+/// [`policy/clippy-protected-fields.toml`](../../../../policy/clippy-protected-fields.toml).
+/// External callers must use the public methods on this type; adding a
+/// `raw_connection` (or similar) accessor would re-introduce the failure
+/// mode the seam guards against (custom SQL queries silently breaking on a
+/// future schema migration).
 #[derive(Debug)]
 pub struct ApiCache {
     conn: Connection,

@@ -164,20 +164,25 @@ expires = "permanent"
 id = "cpf-0005"
 slug = "cache-internals"
 title = "Cache internals"
-invariant = "The SQLite-backed `shiplog-cache` exposes a query API; the raw `rusqlite::Connection`, the schema-version row, and the cache-key construction layout must be private. Cache key construction goes through `CacheKey::new(...)` which centralises the cache namespace + version + hash algorithm."
+invariant = "The SQLite-backed `shiplog-cache` exposes a query API; the raw `rusqlite::Connection`, default TTL state, and any future cache-key internal layout must be private. Cache key construction goes through the `CacheKey::*` builders which centralise the cache namespace + version + hash algorithm."
 boundary_crate = "shiplog-cache"
 boundary_module = "shiplog-cache::*"
-accessor_pattern = "Public surface: `ApiCache::get`, `ApiCache::put`, `ApiCache::stats`, etc. Private: connection handle, default TTL, max-size, and the cache-key raw layout."
-failure_mode = "A new ingest adapter borrows `cache.connection` directly to run a custom SQL query; the cache schema migrates in a future release; the custom query breaks silently."
+accessor_pattern = "Public surface: `ApiCache::{open, open_read_only, open_in_memory, with_ttl, with_max_size, get, set, set_with_ttl, contains, cleanup_expired, count_older_than, cleanup_older_than, clear, stats, inspect}`. Private: connection handle, default TTL, max-size."
+failure_mode = "A new ingest adapter borrows `cache.conn` directly to run a custom SQL query; the cache schema migrates in a future release; the custom query breaks silently."
+# Verified via grep on origin/main 2026-05-11: every `.conn` access is
+# inside `crates/shiplog-cache/src/sqlite.rs` impl blocks; no external
+# caller bypasses the accessor surface. The three protected fields are
+# already private. The `TODO` entries below remain as guards against
+# future schema additions, not present-day debt.
 field_candidates = [
   "ApiCache::conn",
   "ApiCache::default_ttl",
   "ApiCache::max_size_bytes",
-  "TODO: schema-version row once persisted (currently inline DDL in `ApiCache::open`)",
-  "TODO: `CacheKey` raw layout fields once the type gains internal state (unit struct today)",
+  "TODO: future schema-version row, if added (today: inline DDL in `ApiCache::open`)",
+  "TODO: future `CacheKey` internal-state fields, if added (today: unit struct in `crates/shiplog-cache/src/key.rs`)",
 ]
-activation_status = "scaffolded"
-next_action = "Smallest refactor class per the activation ladder (most surface already private). The next implementation PR is the accessor confirmation pass for `shiplog-cache`."
+activation_status = "accessor-ready"
+next_action = "Next PR activates `clippy::disallowed_fields` in `clippy.toml` for this class only (`ApiCache::{conn, default_ttl, max_size_bytes}`). Run full clippy/test/doc gate. No production callers currently reach raw fields, so activation should not require entries in `policy/clippy-exceptions.toml`."
 owner = "shiplog-cache"
 reason = "See docs/CLIPPY_PROTECTED_FIELDS.md#5-cache-internals for the seam doctrine and failure mode."
 created = "2026-05-11"
