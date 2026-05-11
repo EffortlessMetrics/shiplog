@@ -39,7 +39,6 @@ This doc is the human reference.
       {"id": "lane.ci_check", "selected_by": "default_pr"},
       {"id": "lane.ci_check_windows", "selected_by": "default_pr"},
       {"id": "lane.ci_deny", "selected_by": "default_pr"},
-      {"id": "lane.ci_msrv", "selected_by": "default_pr"},
       {"id": "lane.droid_review", "selected_by": "default_pr"}
     ],
     "skipped_lanes": [
