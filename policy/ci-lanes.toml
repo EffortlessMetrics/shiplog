@@ -243,6 +243,8 @@ base_lem = 4
 default_pr = true
 blocking = false
 workflow = ".github/workflows/ripr.yml"
+workflow_name = "ripr"
+job_name = "advisory"
 labels = ["ripr", "ripr-waive"]
 outputs = ["target/ripr/ripr.json", "target/ripr/ripr.sarif"]
 
