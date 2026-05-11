@@ -11,25 +11,48 @@ migration step.
 ## The headline
 
 ```text
-Today  (post-#142):  4 required checks on `main`  (CI / Check ubuntu, CI / Check windows, CI / cargo-deny, CI / MSRV)
-Target (post-#155):  5 required checks on `main`  (the same 4, plus `pr-plan / forecast`; MSRV optionally dropped if redundant)
+Today  (post-v0.5.0):  0 required checks on `main`
+                       (`main` is not branch-protected; verified via
+                       /repos/EffortlessMetrics/shiplog/branches/main/protection)
+Target (steady state): 5 required checks on `main`
+                       (CI / Check ubuntu, CI / Check windows,
+                        CI / cargo-deny, CI / Policy gates,
+                        pr-plan / forecast)
 ```
+
+The v0.5.0 ladder (#140–#157) shipped without enabling GitHub
+branch-protection on `main`. The migration rules below describe how
+required-check changes **must** be sequenced once protection is
+enabled — they are forward-looking guidance, not a retrospective
+changelog of changes that have already been applied.
 
 Required-check renames and additions happen at specific points in the
 ladder. Required-check removals happen as separate PRs after the lane
 they replace has been observed stable.
 
-## Today (post-#145)
+## Today (post-v0.5.0)
 
-| Required check | Source | Notes |
+`main` is not branch-protected; no required checks are enforced at the
+GitHub level. When protection is enabled, the target set is what
+`policy/ci-lanes.toml` marks `blocking = true` for `default_pr = true`
+lanes:
+
+| Required check (target) | Source | Notes |
 |---|---|---|
 | `CI / Check (ubuntu-latest)` | `ci.yml` | Primary correctness gate |
 | `CI / Check (windows-latest)` | `ci.yml` | Cross-platform parity |
 | `CI / cargo-deny` | `ci.yml` | Dependency policy |
-| `CI / MSRV (1.95)` | `ci.yml` | MSRV regression (renamed from `MSRV (1.92)` in PR #145) |
+| `CI / Policy gates` | `ci.yml` (added in PR #165) | Policy ledger enforcement: schemas + 10 blocking-allowlist file/lint/panic checks |
+| `pr-plan / forecast` | `pr-plan.yml` (added in PR #146; never enforced as required during v0.5.0) | LEM forecast + risk-pack receipt |
 
-PRs #140–#143 did not touch branch protection. PR #145 (this rename)
-required a same-merge branch-protection update.
+The `CI / MSRV (1.95)` check previously appeared here; it was dropped
+in PR #164 as redundant compile coverage with `Check (ubuntu-latest)`.
+
+PRs #140–#143 did not touch branch protection. PR #145 (the
+MSRV-rename PR below) would have required a same-merge
+branch-protection update **if `main` had been protected at the time**;
+because protection was never enabled during the v0.5.0 ladder, no
+actual GitHub setting changes were performed.
 
 ## At PR #145 (MSRV bump 1.92 → 1.95)
 
