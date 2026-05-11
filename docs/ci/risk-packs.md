@@ -9,6 +9,12 @@ The machine-readable mapping lives in
 the human explanation: what each pack means, why it exists, and what it
 costs.
 
+Referential integrity of every `selected_lanes` and `labels` entry is
+enforced by `cargo xtask check-risk-pack-integrity` (run in the
+`Policy gates` CI job). The checker fails if a risk pack references a
+lane that is not declared in `policy/ci-lanes.toml` or a label that is
+not declared in `policy/ci-budget.toml [labels]`.
+
 ## Why packs exist
 
 Risk packs encode "if you change X, you probably want Y." Without packs:

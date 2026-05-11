@@ -133,3 +133,6 @@ jobs:
 
       - name: check-label-enforcement (blocking)
         run: cargo xtask check-label-enforcement --mode blocking-allowlist
+
+      - name: check-risk-pack-integrity (blocking)
+        run: cargo xtask check-risk-pack-integrity --mode blocking-allowlist

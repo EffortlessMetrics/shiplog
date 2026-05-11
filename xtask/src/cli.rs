@@ -78,6 +78,12 @@ enum Command {
     /// Verify routing labels declared in `policy/ci-budget.toml [labels]`
     /// against actual consumption by workflow job-level `if:` blocks.
     CheckLabelEnforcement(FilePolicyModeArgs),
+
+    /// Verify `policy/ci-risk-packs.toml` referential integrity:
+    /// `selected_lanes` entries resolve to `[lane.*]` tables in
+    /// `policy/ci-lanes.toml`, and `labels` entries resolve to labels
+    /// in `policy/ci-budget.toml [labels]`.
+    CheckRiskPackIntegrity(FilePolicyModeArgs),
 }
 
 #[derive(Debug, Args)]
@@ -269,6 +275,9 @@ impl Cli {
             }
             Command::CheckLabelEnforcement(args) => {
                 tasks::check_label_enforcement::run(&workspace_root, parse_mode(&args.mode)?)
+            }
+            Command::CheckRiskPackIntegrity(args) => {
+                tasks::check_risk_pack_integrity::run(&workspace_root, parse_mode(&args.mode)?)
             }
         }
     }
