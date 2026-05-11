@@ -13,15 +13,18 @@
 //!   behavior (config-driven runs, multi-source merging, share commands,
 //!   rerun semantics, schema-contract verification) already lives in
 //!   `cli_integration.rs`; this file does not duplicate it.
-//! - They drive `shiplog intake --last-6-months --no-open` from an empty
-//!   temp directory with every provider token cleared. PR 2 of the ladder
-//!   (`feat(intake)`) will add coverage for the default-window case
-//!   without the explicit `--last-6-months` flag.
+//! - Tests in the "happy-path scaffold" group drive `shiplog intake
+//!   --last-6-months --no-open` from an empty temp directory with every
+//!   provider token cleared. Tests in the "edge defaults" group probe the
+//!   remaining contract clauses (default time window without the explicit
+//!   flag, source-selection visibility, the truly-zero-sources-succeeded
+//!   exit case).
 //!
 //! See the ladder in `docs/product/rapid-first-intake.md` § 5 for the
 //! full PR sequence.
 
 use assert_cmd::Command;
+use chrono::{Duration, NaiveDate, Utc};
 use std::fs;
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
@@ -144,4 +147,173 @@ fn cold_start_succeeds_with_needs_evidence_readiness_when_no_events() {
             .is_some_and(|text| text.contains("No events collected"))),
         "rapid-first-intake.md § 3 readiness contract: the readiness summary must surface the missing-evidence gap so the reviewer sees it before forming an opinion (needs_attention={needs_attention:?})"
     );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Edge defaults
+// ─────────────────────────────────────────────────────────────────────────
+//
+// PR 2 of the rapid-first-intake ladder probes the contract clauses the
+// PR 1 tests above did not cover: the time-window default when the user
+// does not pass `--last-6-months`, the source-decision visibility in the
+// intake report without `--explain`, and the exit-status branch where
+// literally zero sources succeed.
+
+/// § 3 — time-window default. The doc promises a six-month window ending
+/// today when the user does not pass an explicit window flag. The window
+/// recorded in `intake.report.json` after `shiplog intake --no-open` from
+/// an empty directory must therefore land within a small tolerance of
+/// "today minus six months" through "today".
+#[test]
+fn cold_start_default_window_resolves_to_six_months_when_flag_omitted() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+
+    Command::from_std(std::process::Command::new(env!("CARGO_BIN_EXE_shiplog")))
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args(["intake", "--out", out.to_str().unwrap(), "--no-open"])
+        .assert()
+        .success();
+
+    let run = first_run_dir(&out);
+    let report: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(run.join("intake.report.json")).unwrap()).unwrap();
+
+    let since = NaiveDate::parse_from_str(report["window"]["since"].as_str().unwrap(), "%Y-%m-%d")
+        .expect("window.since must be ISO YYYY-MM-DD");
+    let until = NaiveDate::parse_from_str(report["window"]["until"].as_str().unwrap(), "%Y-%m-%d")
+        .expect("window.until must be ISO YYYY-MM-DD");
+
+    let today = Utc::now().date_naive();
+    let span_days = (until - since).num_days();
+
+    // Six months is 180 ± 4 calendar days depending on which months the
+    // window crosses; the doc's contract is "six months", not "182 days
+    // exactly", so allow a small calendar-bound tolerance.
+    assert!(
+        (176..=186).contains(&span_days),
+        "rapid-first-intake.md § 3 time-window default: cold-start window without --last-6-months should span ~6 months, got {span_days} days (since={since}, until={until})"
+    );
+
+    // `until` should land at or very near today; allow ±2 days for
+    // timezone / midnight rollover.
+    let until_offset = (today - until).num_days().abs();
+    assert!(
+        until_offset <= 2,
+        "rapid-first-intake.md § 3 time-window default: window.until should be today (±2 days), got {until} vs today {today} (offset={until_offset})"
+    );
+
+    // `since` should be roughly today minus six months. Use 180 ± 4 days.
+    let expected_since = today - Duration::days(180);
+    let since_offset = (expected_since - since).num_days().abs();
+    assert!(
+        since_offset <= 6,
+        "rapid-first-intake.md § 3 time-window default: window.since should be ~6 months before today, got {since} vs expected ~{expected_since} (offset={since_offset})"
+    );
+}
+
+/// § 3 — source-selection visibility. The intake report must record a
+/// `source_decisions` entry per source even when `--explain` is not
+/// passed: a reviewer reading `intake.report.json` should see which
+/// sources were considered, which were skipped, and the reason for each
+/// skip, without having to rerun with a different flag.
+#[test]
+fn cold_start_intake_report_records_source_decisions_without_explain() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+
+    cold_start_cmd(tmp.path(), &out).assert().success();
+
+    let run = first_run_dir(&out);
+    let report: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(run.join("intake.report.json")).unwrap()).unwrap();
+
+    let decisions = report["source_decisions"]
+        .as_array()
+        .expect("rapid-first-intake.md § 3: intake.report.json must expose source_decisions");
+
+    assert!(
+        !decisions.is_empty(),
+        "rapid-first-intake.md § 3 source-selection visibility: source_decisions must be populated even without --explain (got empty array)"
+    );
+
+    // The auto-scaffolded `manual_events.yaml` must show up as an
+    // `included` decision; the absent provider tokens must show up as
+    // `skipped` decisions with a reason. The reviewer reading the report
+    // alone must be able to answer "what did shiplog do, and why?"
+    let manual_included = decisions.iter().any(|entry| {
+        entry["source"]
+            .as_str()
+            .is_some_and(|s| s.eq_ignore_ascii_case("manual"))
+            && entry["decision"].as_str() == Some("included")
+    });
+    assert!(
+        manual_included,
+        "rapid-first-intake.md § 3 source-selection visibility: the scaffolded manual source must appear as decision=\"included\" in source_decisions (decisions={decisions:?})"
+    );
+
+    let any_skipped_with_reason = decisions.iter().any(|entry| {
+        entry["decision"].as_str() == Some("skipped")
+            && entry["reason"]
+                .as_str()
+                .is_some_and(|reason| !reason.is_empty())
+    });
+    assert!(
+        any_skipped_with_reason,
+        "rapid-first-intake.md § 3 source-selection visibility: with all provider tokens cleared, at least one source must be reported as decision=\"skipped\" with a non-empty reason — not silently ignored (decisions={decisions:?})"
+    );
+}
+
+/// § 3 — exit-status: the truly-zero-sources branch. The PR 1 test
+/// `cold_start_succeeds_with_needs_evidence_readiness_when_no_events`
+/// pins the success-exit branch (manual source succeeded with zero
+/// events). This test pins the complementary clause from the doc's
+/// contract — "Non-zero only when zero sources succeeded" — by writing
+/// a `shiplog.toml` that enables a single remote source (GitHub) with no
+/// token available and disables manual, so every source either skips or
+/// fails. The intake command must exit non-zero in that case.
+///
+/// This is not strictly a "cold-start" run (the user has a pre-existing
+/// `shiplog.toml`), but it pins the exit-status half of the cold-start
+/// contract that PR 1 could not engineer from a literal empty directory.
+#[test]
+fn intake_exits_non_zero_when_zero_sources_succeeded() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+
+    fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[defaults]
+window = "year:2025"
+
+[sources.github]
+enabled = true
+user = "octocat"
+
+[sources.manual]
+enabled = false
+"#,
+    )
+    .unwrap();
+
+    Command::from_std(std::process::Command::new(env!("CARGO_BIN_EXE_shiplog")))
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args([
+            "intake",
+            "--out",
+            out.to_str().unwrap(),
+            "--no-open",
+            "--year",
+            "2025",
+        ])
+        .assert()
+        .failure();
 }
