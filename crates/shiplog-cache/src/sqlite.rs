@@ -12,15 +12,36 @@ use crate::stats::CacheStats;
 
 /// Cache for API responses backed by a local SQLite database.
 ///
-/// The `conn`, `default_ttl`, and `max_size_bytes` fields are intentionally
-/// private — they are the cache-internals seam tracked as `cpf-0005` in
+/// This is the public facade for the cache-internals seam tracked as
+/// `cpf-0005` in
 /// [`policy/clippy-protected-fields.toml`](../../../../policy/clippy-protected-fields.toml).
 /// External callers must use the public methods on this type; adding a
 /// `raw_connection` (or similar) accessor would re-introduce the failure
-/// mode the seam guards against (custom SQL queries silently breaking on a
-/// future schema migration).
+/// mode the seam guards against (custom SQL queries silently breaking on
+/// a future schema migration).
+///
+/// The protected raw fields live on the private `ApiCacheInner`
+/// struct that this type wraps. The split exists so that
+/// `clippy::disallowed_fields` can target the *public* paths
+/// (`ApiCache::*`) when the lint activates in a follow-up PR, while
+/// internal methods continue to access their working state via the
+/// private inner type without tripping the lint.
 #[derive(Debug)]
 pub struct ApiCache {
+    inner: ApiCacheInner,
+}
+
+/// Private storage for [`ApiCache`]'s raw fields.
+///
+/// The `conn`, `default_ttl`, and `max_size_bytes` fields are the
+/// cache-internals seam (`cpf-0005`); they live here, not on
+/// `ApiCache`, so that the `clippy::disallowed_fields` activation in a
+/// follow-up PR can target `ApiCache::*` without flagging this type's
+/// own impl methods. External code cannot name `ApiCacheInner` (it is
+/// not re-exported), so no caller outside this module can reach the
+/// raw state.
+#[derive(Debug)]
+struct ApiCacheInner {
     conn: Connection,
     default_ttl: Duration,
     #[allow(dead_code)]
@@ -56,9 +77,11 @@ impl ApiCache {
         )?;
 
         Ok(Self {
-            conn,
-            default_ttl: Duration::hours(24),
-            max_size_bytes: None,
+            inner: ApiCacheInner {
+                conn,
+                default_ttl: Duration::hours(24),
+                max_size_bytes: None,
+            },
         })
     }
 
@@ -68,9 +91,11 @@ impl ApiCache {
             .context("open cache database read-only")?;
 
         Ok(Self {
-            conn,
-            default_ttl: Duration::hours(24),
-            max_size_bytes: None,
+            inner: ApiCacheInner {
+                conn,
+                default_ttl: Duration::hours(24),
+                max_size_bytes: None,
+            },
         })
     }
 
@@ -89,21 +114,23 @@ impl ApiCache {
         )?;
 
         Ok(Self {
-            conn,
-            default_ttl: Duration::hours(24),
-            max_size_bytes: None,
+            inner: ApiCacheInner {
+                conn,
+                default_ttl: Duration::hours(24),
+                max_size_bytes: None,
+            },
         })
     }
 
     /// Set the default TTL for cache entries.
     pub fn with_ttl(mut self, ttl: Duration) -> Self {
-        self.default_ttl = ttl;
+        self.inner.default_ttl = ttl;
         self
     }
 
     /// Create a cache with a maximum size limit.
     pub fn with_max_size(mut self, max_size_bytes: u64) -> Self {
-        self.max_size_bytes = Some(max_size_bytes);
+        self.inner.max_size_bytes = Some(max_size_bytes);
         self
     }
 
@@ -112,6 +139,7 @@ impl ApiCache {
         let now = now_rfc3339();
 
         let row: Option<String> = self
+            .inner
             .conn
             .query_row(
                 "SELECT data FROM cache_entries WHERE key = ?1 AND expires_at > ?2",
@@ -132,7 +160,7 @@ impl ApiCache {
 
     /// Store a value in the cache.
     pub fn set<T: Serialize>(&self, key: &str, value: &T) -> Result<()> {
-        self.set_with_ttl(key, value, self.default_ttl)
+        self.set_with_ttl(key, value, self.inner.default_ttl)
     }
 
     /// Store a value with a custom TTL.
@@ -141,7 +169,7 @@ impl ApiCache {
         let data = serde_json::to_string(value)
             .with_context(|| format!("serialize value for key: {key}"))?;
 
-        self.conn.execute(
+        self.inner.conn.execute(
             "INSERT OR REPLACE INTO cache_entries (key, data, cached_at, expires_at) VALUES (?1, ?2, ?3, ?4)",
             params![
                 key,
@@ -158,7 +186,7 @@ impl ApiCache {
     pub fn contains(&self, key: &str) -> Result<bool> {
         let now = now_rfc3339();
 
-        let count: i64 = self.conn.query_row(
+        let count: i64 = self.inner.conn.query_row(
             "SELECT COUNT(*) FROM cache_entries WHERE key = ?1 AND expires_at > ?2",
             params![key, now],
             |row| row.get(0),
@@ -171,7 +199,7 @@ impl ApiCache {
     pub fn cleanup_expired(&self) -> Result<usize> {
         let now = now_rfc3339();
 
-        let deleted = self.conn.execute(
+        let deleted = self.inner.conn.execute(
             "DELETE FROM cache_entries WHERE expires_at <= ?1",
             params![now],
         )?;
@@ -182,7 +210,7 @@ impl ApiCache {
     /// Count entries cached before the given cutoff.
     pub fn count_older_than(&self, cutoff: DateTime<Utc>) -> Result<usize> {
         let cutoff = cutoff.to_rfc3339();
-        let count: i64 = self.conn.query_row(
+        let count: i64 = self.inner.conn.query_row(
             "SELECT COUNT(*) FROM cache_entries WHERE cached_at < ?1",
             params![cutoff],
             |row| row.get(0),
@@ -193,7 +221,7 @@ impl ApiCache {
     /// Remove entries cached before the given cutoff.
     pub fn cleanup_older_than(&self, cutoff: DateTime<Utc>) -> Result<usize> {
         let cutoff = cutoff.to_rfc3339();
-        let deleted = self.conn.execute(
+        let deleted = self.inner.conn.execute(
             "DELETE FROM cache_entries WHERE cached_at < ?1",
             params![cutoff],
         )?;
@@ -202,7 +230,7 @@ impl ApiCache {
 
     /// Clear all entries from the cache.
     pub fn clear(&self) -> Result<()> {
-        self.conn.execute("DELETE FROM cache_entries", [])?;
+        self.inner.conn.execute("DELETE FROM cache_entries", [])?;
         Ok(())
     }
 
@@ -210,21 +238,22 @@ impl ApiCache {
     pub fn stats(&self) -> Result<CacheStats> {
         let now = now_rfc3339();
 
-        let total: i64 = self
-            .conn
-            .query_row("SELECT COUNT(*) FROM cache_entries", [], |row| row.get(0))?;
+        let total: i64 =
+            self.inner
+                .conn
+                .query_row("SELECT COUNT(*) FROM cache_entries", [], |row| row.get(0))?;
 
-        let expired: i64 = self.conn.query_row(
+        let expired: i64 = self.inner.conn.query_row(
             "SELECT COUNT(*) FROM cache_entries WHERE expires_at <= ?1",
             params![now],
             |row| row.get(0),
         )?;
 
-        let size_bytes: i64 =
-            self.conn
-                .query_row("SELECT SUM(LENGTH(data)) FROM cache_entries", [], |row| {
-                    Ok(row.get::<_, Option<i64>>(0).unwrap_or(Some(0)).unwrap_or(0))
-                })?;
+        let size_bytes: i64 = self.inner.conn.query_row(
+            "SELECT SUM(LENGTH(data)) FROM cache_entries",
+            [],
+            |row| Ok(row.get::<_, Option<i64>>(0).unwrap_or(Some(0)).unwrap_or(0)),
+        )?;
 
         Ok(CacheStats::from_raw_counts(total, expired, size_bytes))
     }
@@ -233,12 +262,14 @@ impl ApiCache {
     pub fn inspect(&self) -> Result<CacheInspection> {
         let stats = self.stats()?;
         let oldest_cached_at =
-            self.conn
+            self.inner
+                .conn
                 .query_row("SELECT MIN(cached_at) FROM cache_entries", [], |row| {
                     row.get::<_, Option<String>>(0)
                 })?;
         let newest_cached_at =
-            self.conn
+            self.inner
+                .conn
                 .query_row("SELECT MAX(cached_at) FROM cache_entries", [], |row| {
                     row.get::<_, Option<String>>(0)
                 })?;
