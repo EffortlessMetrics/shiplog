@@ -1,6 +1,6 @@
 # Clippy Protected Field Seams
 
-This document defines the **protected field seams** that `clippy::disallowed_fields` will eventually enforce. The lint itself is currently `[[planned]]` in [`policy/clippy-lints.toml`](../policy/clippy-lints.toml) — held until the seams documented here are scaffolded ([`policy/clippy-protected-fields.toml`](../policy/clippy-protected-fields.toml), planned for a follow-up PR) and at least one seam has been refactored to use accessors (planned for the PR after that).
+This document defines the **protected field seams** that `clippy::disallowed_fields` will eventually enforce. The lint itself is currently `[[planned]]` in [`policy/clippy-lints.toml`](../policy/clippy-lints.toml) — held until the seams documented here are scaffolded (now landed at [`policy/clippy-protected-fields.toml`](../policy/clippy-protected-fields.toml)) and at least one seam has been refactored to use accessors (planned for the next PR).
 
 This is doc-only. **No lint is activated by this document.** It exists to anchor the design conversation before any of the downstream activations land.
 
@@ -83,9 +83,9 @@ Each class below lists:
 
 `disallowed_fields` is not activated by this document. The planned sequence:
 
-1. **This PR**: write this document; cross-link from `policy/clippy-lints.toml` (the existing `[[planned]]` entry's `reason` field). No lint config, no Rust code change.
-2. **Next PR (#189 in the original plan; renumbered to next available)**: scaffold `policy/clippy-protected-fields.toml`. The TOML lists the protected fields per class without yet wiring them into `clippy.toml`. `cargo xtask check-policy-schemas` accepts the new ledger.
-3. **PR after that**: pick the smallest protected class (likely **cache internals** — already mostly private, smallest refactor) and add accessors where missing. Verify with `cargo expand` / call-site grep that no production caller still touches the raw fields. Add focused tests asserting the accessor invariant.
+1. **PR #188**: wrote this document; cross-linked from `policy/clippy-lints.toml` (the existing `[[planned]]` entry's `reason` field). No lint config, no Rust code change.
+2. **This PR**: scaffold `policy/clippy-protected-fields.toml`. The TOML lists the protected fields per class without yet wiring them into `clippy.toml`. `cargo xtask check-policy-schemas` accepts the new ledger.
+3. **Next PR**: pick the smallest protected class (likely **cache internals** — already mostly private, smallest refactor) and add accessors where missing. Verify with `cargo expand` / call-site grep that no production caller still touches the raw fields. Add focused tests asserting the accessor invariant.
 4. **PR after that**: activate `clippy::disallowed_fields` for the first class only (e.g. `clippy.toml` lists the protected fields from that one class). Run full clippy/test/doc gate. Existing exceptions go in `policy/clippy-exceptions.toml` with policy IDs and expiry dates.
 5. **Subsequent PRs**: repeat steps 3–4 per class until all six are protected and the lint covers every class.
 
@@ -99,6 +99,7 @@ The constraint at every step: **never activate the lint without a working access
 
 ## See also
 
+- [`policy/clippy-protected-fields.toml`](../policy/clippy-protected-fields.toml) — the scaffolded ledger that encodes the six classes above per-entry (id, slug, invariant, boundary, accessor pattern, field candidates, activation status).
 - [`policy/clippy-lints.toml`](../policy/clippy-lints.toml) — the current Clippy lint ledger, where `clippy::disallowed_fields` lives as a `[[planned]]` entry until the protected-fields scaffold lands.
 - [`docs/CLIPPY_POLICY.md`](CLIPPY_POLICY.md) — overall Clippy doctrine, lint ratchets, suppression style.
 - [`docs/POLICY_ALLOWLISTS.md`](POLICY_ALLOWLISTS.md) — the common header schema every policy ledger shares (the "policy ledger metadata" seam above).
