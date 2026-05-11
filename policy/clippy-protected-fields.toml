@@ -36,9 +36,28 @@ status = "advisory"
 #                           - "scaffolded"           — class documented, fields
 #                                                      listed/TODO, no accessor
 #                                                      refactor yet.
-#                           - "accessor-ready"       — accessors landed in
-#                                                      source; lint activation
-#                                                      PR is the next step.
+#                           - "accessor-ready"       — external-call-site grep
+#                                                      shows no caller bypasses
+#                                                      the public API; the seam
+#                                                      may still need an
+#                                                      inner-struct split
+#                                                      before `disallowed_fields`
+#                                                      can target it without
+#                                                      flagging the owning impl.
+#                           - "clippy-ready"         — protected raw fields
+#                                                      have been moved onto a
+#                                                      private inner struct
+#                                                      that external code
+#                                                      cannot name. The lint's
+#                                                      target path (`<PublicType>::*`)
+#                                                      no longer matches any
+#                                                      internal access in the
+#                                                      owning crate, so
+#                                                      activation will not
+#                                                      require per-method
+#                                                      `#[expect]`. Lint
+#                                                      activation is the next
+#                                                      step.
 #                           - "lint-active"          — `clippy::disallowed_fields`
 #                                                      entry covers this class
 #                                                      and is enforced in CI.
@@ -167,13 +186,21 @@ title = "Cache internals"
 invariant = "The SQLite-backed `shiplog-cache` exposes a query API; the raw `rusqlite::Connection`, default TTL state, and any future cache-key internal layout must be private. Cache key construction goes through the `CacheKey::*` builders which centralise the cache namespace + version + hash algorithm."
 boundary_crate = "shiplog-cache"
 boundary_module = "shiplog-cache::*"
-accessor_pattern = "Public surface: `ApiCache::{open, open_read_only, open_in_memory, with_ttl, with_max_size, get, set, set_with_ttl, contains, cleanup_expired, count_older_than, cleanup_older_than, clear, stats, inspect}`. Private: connection handle, default TTL, max-size."
-failure_mode = "A new ingest adapter borrows `cache.conn` directly to run a custom SQL query; the cache schema migrates in a future release; the custom query breaks silently."
-# Verified via grep on origin/main 2026-05-11: every `.conn` access is
-# inside `crates/shiplog-cache/src/sqlite.rs` impl blocks; no external
-# caller bypasses the accessor surface. The three protected fields are
-# already private. The `TODO` entries below remain as guards against
-# future schema additions, not present-day debt.
+accessor_pattern = "Public surface: `ApiCache::{open, open_read_only, open_in_memory, with_ttl, with_max_size, get, set, set_with_ttl, contains, cleanup_expired, count_older_than, cleanup_older_than, clear, stats, inspect}`. The raw fields live on the private `ApiCacheInner` struct that `ApiCache` wraps; external code cannot name `ApiCacheInner`."
+failure_mode = "A new ingest adapter adds a `pub fn raw_connection(&self) -> &Connection` accessor on `ApiCache` to run a custom SQL query; the cache schema migrates in a future release; the custom query breaks silently. The protected paths below capture this — any caller that adds such an accessor would have to expose the raw `Connection` via an `ApiCache::*` field, which is the lint target."
+# Verified twice:
+#   - #192 (origin/main 2026-05-11): every `.conn` access was inside
+#     `crates/shiplog-cache/src/sqlite.rs` impl blocks; no caller
+#     outside `shiplog-cache` reached the raw state. That proved the
+#     seam was external-call-site clean.
+#   - The activation probe on this same date discovered that
+#     `clippy::disallowed_fields` is path-scope-blind: it fires on every
+#     `self.conn` access, including inside the owning impl. So the
+#     activation could not ship as a one-line `clippy.toml` change
+#     without also reshaping the owning impl. The inner-struct refactor
+#     in THIS PR moves the protected fields onto a private
+#     `ApiCacheInner` struct so that activation can target `ApiCache::*`
+#     without flagging any internal access.
 field_candidates = [
   "ApiCache::conn",
   "ApiCache::default_ttl",
@@ -181,8 +208,8 @@ field_candidates = [
   "TODO: future schema-version row, if added (today: inline DDL in `ApiCache::open`)",
   "TODO: future `CacheKey` internal-state fields, if added (today: unit struct in `crates/shiplog-cache/src/key.rs`)",
 ]
-activation_status = "accessor-ready"
-next_action = "Next PR activates `clippy::disallowed_fields` in `clippy.toml` for this class only (`ApiCache::{conn, default_ttl, max_size_bytes}`). Run full clippy/test/doc gate. No production callers currently reach raw fields, so activation should not require entries in `policy/clippy-exceptions.toml`."
+activation_status = "clippy-ready"
+next_action = "Next PR adds the three `ApiCache::*` paths above to the `disallowed-fields` array in `clippy.toml`, flips `[workspace.lints.clippy].disallowed_fields = \"deny\"`, and moves the `clippy::disallowed_fields` entry in `policy/clippy-lints.toml` from `[[planned]]` to `[[active]]`. The inner-struct split here means activation requires no `#[expect]` annotations and no `policy/clippy-exceptions.toml` entries."
 owner = "shiplog-cache"
 reason = "See docs/CLIPPY_PROTECTED_FIELDS.md#5-cache-internals for the seam doctrine and failure mode."
 created = "2026-05-11"
