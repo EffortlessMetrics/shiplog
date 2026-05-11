@@ -27,6 +27,21 @@ workflow_name = "PR Plan"
 job_name = "forecast"
 outputs = ["target/ci/ci-plan.json"]
 
+# ── CI actuals (added in PR #148; fires on workflow_run completions) ───
+
+[lane.ci_actuals]
+description = "Per-workflow_run CI cost emitter: joins job timings to lanes, emits target/ci/ci-actuals.json."
+intent = "visibility"
+runner = "ubuntu_24_04"
+base_lem = 2
+default_pr = false
+blocking = false
+workflow = ".github/workflows/ci-actuals.yml"
+workflow_name = "CI Actuals"
+job_name = "collect"
+outputs = ["target/ci/ci-actuals.json"]
+note = "Fires on workflow_run completion for 16 instrumented workflows (trigger list expanded in PR #169 to include bounded smoke lanes + ripr). default_pr is false because the lane is workflow_run-driven, not PR-event-driven, but effectively runs once per PR per upstream workflow completion."
+
 # ── ci.yml jobs (PR-fast required gate) ────────────────────────────────
 
 [lane.ci_check]

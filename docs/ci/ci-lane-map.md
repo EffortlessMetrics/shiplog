@@ -32,6 +32,18 @@ doctrine.
 `Base LEM` is the steady-state estimate. Actuals are recorded in
 [`ci-actuals.md`](ci-actuals.md) once PR #148 lands.
 
+## pr-plan.yml — advisory LEM PR plan (added in PR #146)
+
+| Job | Trigger | Default PR? | Blocking | Runner | Base LEM | Intent | Failure mode caught | Evidence | duplicate_of | Target lane | Owner |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| `forecast` | PR + dispatch | yes | no | ubuntu-latest | 1 | LEM forecast + lane selection visibility | Unexpected lane selection, missing risk-pack routing, budget breach | `target/ci/ci-plan.json` (ci-plan v1 schema) + step summary | — | PR fast advisory | release/ci |
+
+## ci-actuals.yml — LEM actuals emitter (added in PR #148)
+
+| Job | Trigger | Default PR? | Blocking | Runner | Base LEM | Intent | Failure mode caught | Evidence | duplicate_of | Target lane | Owner |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| `collect` | workflow_run completion for 16 instrumented workflows | indirect (per upstream completion) | no | ubuntu-latest | 2 | LEM feedback loop | (advisory) per-lane actual_lem vs estimated_lem drift, plus `lane.unknown` mappings if `policy/ci-lanes.toml` and live workflow drift | `target/ci/ci-actuals.json` (ci-actuals v1 schema) per upstream run | — | post-workflow | release/ci |
+
 ## ci.yml — primary PR correctness gate
 
 | Job | Trigger | Default PR? | Blocking | Runner | Base LEM | Intent | Failure mode caught | Evidence | duplicate_of | Target lane | Owner |
@@ -57,6 +69,30 @@ doctrine.
 | Job | Trigger | Default PR? | Blocking | Runner | Base LEM | Intent | Failure mode caught | Evidence | duplicate_of | Target lane | Owner |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | `Cargo Deny Security` | push main+develop + PR + weekly cron + dispatch | yes (PR) | no | ubuntu-latest | 4 | Dependency policy | Same as ci.yml `cargo-deny` | step summary | `lane.ci_deny` | manifest changes / weekly / `security-audit` label (PR #155 routing) | release/ci |
+
+## ripr.yml — advisory reachable-mutant exposure analysis (added in PR #153, v1 stub)
+
+| Job | Trigger | Default PR? | Blocking | Runner | Base LEM | Intent | Failure mode caught | Evidence | duplicate_of | Target lane | Owner |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| `advisory` | PR + dispatch (Rust-diff) | yes | no | ubuntu-latest | 4 | Oracle-gap detection | (planned, currently stub) Untested mutations exposed by the diff | `target/ripr/ripr.json` (v1 schema) + `target/ripr/ripr.sarif` (SARIF 2.1.0) | — | PR fast advisory | policy |
+
+## bdd-smoke.yml — bounded BDD smoke (added in PR #154)
+
+| Job | Trigger | Default PR? | Blocking | Runner | Base LEM | Intent | Failure mode caught | Evidence | duplicate_of | Target lane | Owner |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| `smoke` | push main + PR | yes | no | ubuntu-latest | 6 | PR-fast acceptance smoke | Multi-source merge + render contract regression | step summary | smoke subset of `lane.bdd` | PR fast advisory | policy |
+
+## property-smoke.yml — bounded property smoke (added in PR #154)
+
+| Job | Trigger | Default PR? | Blocking | Runner | Base LEM | Intent | Failure mode caught | Evidence | duplicate_of | Target lane | Owner |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| `smoke` | push main + PR | yes | no | ubuntu-latest | 5 | PR-fast invariant smoke | Foundation crate property regression (shiplog-ids, schema, coverage, redact) at PROPTEST_CASES=64 | step summary | smoke subset of `lane.property` | PR fast advisory | policy |
+
+## fuzz-smoke.yml — touched-target quick fuzz (added in PR #154)
+
+| Job | Trigger | Default PR? | Blocking | Runner | Base LEM | Intent | Failure mode caught | Evidence | duplicate_of | Target lane | Owner |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| `smoke` | push main + PR (Rust-diff) | yes | no | ubuntu-latest | 4 | PR-fast parser robustness | Parser fuzz target panic / OOM on a touched parser surface | step summary (no-op when no parser surface touched) | smoke subset of `lane.fuzz_quick` | PR fast advisory | policy |
 
 ## property-testing.yml — bounded smoke + broad nightly
 
@@ -102,16 +138,6 @@ doctrine.
 | `droid-security-scan.yml` | `droid-security-scan` | Mon weekly + dispatch | no | no | external_ai_review (4×) | 20 | Advisory weekly security scan | policy |
 
 See [`bot-review-policy.md`](bot-review-policy.md) for the bot review policy.
-
-## Planned lanes (not yet present)
-
-| Workflow / lane | Added in | Intent |
-|---|---|---|
-| `pr-plan.yml` | PR #146 | LEM forecast + lane selection visibility (writes `target/ci/ci-plan.json`) |
-| `ripr.yml` | PR #153 | Reachable-mutant exposure analysis (advisory) |
-| (new bounded-smoke jobs in `bdd-testing.yml` / `property-testing.yml` / `fuzzing.yml`) | PR #154 | Bounded stochastic PR-fast lane |
-| (label-gated routing in `bdd-testing.yml` / `property-testing.yml` / `fuzzing.yml` / `mutation-testing.yml`) | PR #155 | Broad lane routing |
-| ci-actuals emitter | PR #148 | LEM feedback loop (writes `target/ci/ci-actuals.json`) |
 
 ## See also
 
