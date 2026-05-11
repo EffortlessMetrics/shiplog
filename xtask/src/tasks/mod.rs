@@ -1,3 +1,4 @@
+pub mod check_label_enforcement;
 pub mod check_policy_schemas;
 pub mod ci_actuals;
 pub mod ci_plan;

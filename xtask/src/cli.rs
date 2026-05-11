@@ -74,6 +74,10 @@ enum Command {
 
     /// Verify the panic-family baseline (`policy/no-panic-baseline.toml`).
     CheckNoPanicFamily(FilePolicyModeArgs),
+
+    /// Verify routing labels declared in `policy/ci-budget.toml [labels]`
+    /// against actual consumption by workflow job-level `if:` blocks.
+    CheckLabelEnforcement(FilePolicyModeArgs),
 }
 
 #[derive(Debug, Args)]
@@ -262,6 +266,9 @@ impl Cli {
             },
             Command::CheckNoPanicFamily(args) => {
                 tasks::no_panic::check_no_panic_family(&workspace_root, parse_mode(&args.mode)?)
+            }
+            Command::CheckLabelEnforcement(args) => {
+                tasks::check_label_enforcement::run(&workspace_root, parse_mode(&args.mode)?)
             }
         }
     }

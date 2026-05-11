@@ -130,3 +130,6 @@ jobs:
 
       - name: check-network-policy (blocking)
         run: cargo xtask check-network-policy --mode blocking-allowlist
+
+      - name: check-label-enforcement (blocking)
+        run: cargo xtask check-label-enforcement --mode blocking-allowlist
