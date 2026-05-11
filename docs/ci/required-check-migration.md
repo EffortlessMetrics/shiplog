@@ -56,75 +56,109 @@ actual GitHub setting changes were performed.
 
 ## At PR #145 (MSRV bump 1.92 → 1.95)
 
-The MSRV job in `ci.yml` is renamed from `MSRV (1.92)` to `MSRV (1.95)`
-when its toolchain pin changes. **This is a required-check rename**, which
-is destructive: GitHub treats the new check name as a new check.
+The MSRV job in `ci.yml` was renamed from `MSRV (1.92)` to `MSRV (1.95)`
+when its toolchain pin changed. **This is a required-check rename**, which
+is destructive under enabled branch protection: GitHub treats the new
+check name as a new check.
 
 | Required check | Action | Why |
 |---|---|---|
 | `CI / MSRV (1.92)` | rename to `CI / MSRV (1.95)` | Toolchain pin matches workspace MSRV |
 
-PR #145 must update branch protection in the same merge so the rename
-does not leave PRs blocked on a check that no longer exists. The PR
-description includes the branch-protection settings change as a sub-step.
+Under enabled protection, PR #145 would have required a same-merge
+branch-protection settings update so the rename did not leave PRs
+blocked on a check that no longer existed. Because `main` was not
+protected at the time, the rename shipped without a settings update.
+The check was subsequently removed in PR #164 (see below).
 
 ## At PR #146 (advisory LEM PR plan)
 
-Adds the `pr-plan` workflow, which writes `target/ci/ci-plan.json` and a
-GitHub step summary.
+Added the `pr-plan` workflow, which writes `target/ci/ci-plan.json` and
+a GitHub step summary.
 
 | Required check | Action | Why |
 |---|---|---|
-| `pr-plan / forecast` | **add** as required | Forces every PR to carry a plan + LEM forecast |
+| `pr-plan / forecast` | **add** as required (when protection is enabled) | Forces every PR to carry a plan + LEM forecast |
 
-Adding a required check is non-destructive (no rename), but the first PR
-to be merged after `pr-plan / forecast` becomes required must have run
-the workflow. Do this after the workflow has been live on `main` for at
-least one PR cycle.
+Adding a required check is non-destructive (no rename), but the first
+PR merged after `pr-plan / forecast` becomes required must have run
+the workflow. Wait until the workflow has been live on `main` for at
+least one PR cycle before adding it.
 
-## At PR #147 (cache normalization)
+`pr-plan / forecast` has been live since PR #146 merged; it is
+required-eligible but has not been added to branch-protection settings
+(branch protection is not enabled on `main`).
 
-Optional removal: `CI / MSRV (1.95)` becomes redundant with
-`CI / Check (ubuntu-latest)` because the `Check` job already compiles on
-the toolchain pin (which now equals MSRV).
+## At PR #164 (MSRV job removal)
+
+`CI / MSRV (1.95)` was redundant with `CI / Check (ubuntu-latest)`
+because the `Check` job already compiled on the toolchain pin (which
+equalled MSRV). The original v0.5.0 plan noted this as an optional
+follow-up to PR #147 (cache normalization); it was carved out into its
+own dedicated PR after v0.5.0 shipped.
 
 | Required check | Action | Why |
 |---|---|---|
-| `CI / MSRV (1.95)` | optionally remove | Redundant with `Check` while toolchain pin == MSRV |
+| `CI / MSRV (1.95)` | **removed** | Redundant with `Check` while toolchain pin == MSRV |
 
-This is a removal, which is non-destructive but should not happen in the
-same PR as the cache change. Track as a follow-up if PR #147 reviewers
-want it pulled out.
+This is a removal, which is non-destructive (no rename, no new check
+name). Because `main` was not protected at the time, no branch-protection
+settings update was required.
+
+## At PR #165 (Policy gates job)
+
+Added a `Policy gates` job to `ci.yml` that runs all 11 `cargo xtask
+check-*` policy ledger gates (`check-policy-schemas` plus 10
+`--mode blocking-allowlist` checks).
+
+| Required check | Action | Why |
+|---|---|---|
+| `CI / Policy gates` | **add** as required (when protection is enabled) | Catches drift in any of the 18 policy ledgers |
+
+`CI / Policy gates` has been live since PR #165 merged; it is
+required-eligible but has not been added to branch-protection settings
+(branch protection is not enabled on `main`).
 
 ## At PR #154 (bounded stochastic PR-fast lane)
 
-Adds bounded smoke jobs to `bdd-testing.yml`, `property-testing.yml`,
-`fuzzing.yml`. These bounded jobs are required-eligible.
+Added bounded smoke jobs in their own dedicated workflows:
+`bdd-smoke.yml`, `property-smoke.yml`, `fuzz-smoke.yml`. These bounded
+jobs are required-eligible.
 
 | Required check | Action | Why |
 |---|---|---|
-| `BDD Testing / smoke` (or similar) | add as required (after one cycle on `main`) | Critical-flow CLI smoke is cheap PR-fast signal |
-| `Property Testing / smoke` (or similar) | add as required (after one cycle on `main`) | Bounded property invariants are cheap PR-fast signal |
-| `Fuzzing / touched-target smoke` (or similar) | add as required (after one cycle on `main`) | Touched-parser robustness is cheap PR-fast signal |
+| `BDD Smoke / smoke` | add as required (when protection is enabled) | Critical-flow CLI smoke is cheap PR-fast signal |
+| `Property Smoke / smoke` | add as required (when protection is enabled) | Bounded property invariants are cheap PR-fast signal |
+| `Fuzz Smoke / smoke` | add as required (when protection is enabled) | Touched-parser robustness is cheap PR-fast signal |
 
-The exact check names are decided in PR #154's design.
+Lanes for these are `[lane.bdd_smoke]`, `[lane.property_smoke]`, and
+`[lane.fuzz_smoke]` in `policy/ci-lanes.toml`. All three are live and
+required-eligible; none are enforced via branch-protection settings
+(branch protection is not enabled on `main`).
 
 ## At PR #155 (broad lane routing)
 
-Removes the broad-sweep jobs from default-PR (they move to nightly +
-label). The leaf jobs that exist today (full BDD matrix, full property
-sweep, all-9-targets fuzz) become PR-skipped-by-policy unless a label
-matches.
+Routed the broad-sweep jobs off default-PR (moved to nightly cron +
+label). The leaf jobs (full BDD matrix, full property sweep,
+all-9-targets fuzz, mutation testing, standalone security cargo-deny,
+coverage) now have job-level `if:` blocks that require a matching
+label (`bdd`, `property-tests`, `fuzz`, `mutation`, `security-audit`,
+`coverage`, or `full-ci`) on PRs. Without the label, the leaf reports
+**`skipped`** with category `label-absent` (see
+[`skipped-by-policy.md`](skipped-by-policy.md)).
 
 | Required check | Action | Why |
 |---|---|---|
-| `BDD Testing / *` (broad jobs) | **must not be required** before this PR | They move to nightly + label routing; required-check would deadlock label-less PRs |
-| `Property Testing` (broad) | **must not be required** before this PR | Same |
-| `Quick Fuzz (CI)` (full matrix) | **must not be required** before this PR | Same |
+| `BDD Testing / *` (broad jobs) | **must not be required** under any protection setting | Label-gated; required-check would deadlock label-less PRs |
+| `Property Testing` (broad) | **must not be required** | Same |
+| `Quick Fuzz (CI)` (full matrix) | **must not be required** | Same |
+| `Mutation Testing` | **must not be required** | Label-gated + weekly cron |
+| `Cargo Deny Security` (security.yml) | **must not be required** | Label-gated; duplicate of `CI / cargo-deny` on PR |
+| `Codecov Coverage` | **must not be required** | Label-gated; push-main + label only |
 
-If branch protection currently includes any of these as required, the
-PR must remove them in the same merge. Today (post-#142) they are not
-required, so this is a non-issue.
+`main` is not branch-protected today, so the "must not be required"
+guidance is forward-looking: it applies when/if protection is enabled
+and is a constraint on what required-checks list to choose.
 
 ## Avoiding pending-check deadlocks
 
