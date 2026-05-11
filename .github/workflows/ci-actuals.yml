@@ -90,13 +90,24 @@ jobs:
           echo "Fetched $(jq '.jobs | length' target/ci/jobs.json) jobs."
 
       - name: Run CI actuals
+        # Pass run-id / workflow-name / head-sha as explicit CLI flags rather
+        # than relying on the env block. GitHub Actions pre-sets `GITHUB_*` env
+        # vars to the *currently running* workflow (this CI Actuals run), and
+        # step-level `env:` overrides do not reliably reach the cargo process
+        # for built-in `GITHUB_*` vars. Without this, every job that completed
+        # in the upstream workflow lands in `lane.unknown` because the
+        # workflow_name lookup compares against the actuals workflow's own
+        # name ("CI Actuals") instead of the completed workflow's name ("CI",
+        # "BDD Testing", etc.). `GITHUB_PR_NUMBER` is still env-fed because
+        # the xtask reads it manually with empty-tolerance (#159) and clap's
+        # `--pr-number` flag cannot accept an empty string for `Option<u32>`.
         env:
-          GITHUB_RUN_ID: ${{ github.event.workflow_run.id }}
-          GITHUB_WORKFLOW: ${{ github.event.workflow_run.name }}
-          GITHUB_SHA: ${{ github.event.workflow_run.head_sha }}
           GITHUB_PR_NUMBER: ${{ steps.pr.outputs.pr_number }}
         run: |
           cargo xtask ci actuals \
+            --run-id "${{ github.event.workflow_run.id }}" \
+            --workflow-name "${{ github.event.workflow_run.name }}" \
+            --head-sha "${{ github.event.workflow_run.head_sha }}" \
             --input target/ci/jobs.json \
             --output target/ci/ci-actuals.json
 
