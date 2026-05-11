@@ -1,0 +1,104 @@
+# Clippy Protected Field Seams
+
+This document defines the **protected field seams** that `clippy::disallowed_fields` will eventually enforce. The lint itself is currently `[[planned]]` in [`policy/clippy-lints.toml`](../policy/clippy-lints.toml) — held until the seams documented here are scaffolded ([`policy/clippy-protected-fields.toml`](../policy/clippy-protected-fields.toml), planned for a follow-up PR) and at least one seam has been refactored to use accessors (planned for the PR after that).
+
+This is doc-only. **No lint is activated by this document.** It exists to anchor the design conversation before any of the downstream activations land.
+
+## Why protected fields
+
+The `disallowed_fields` lint bans **direct field access** on selected types. The point is not to forbid struct fields generally — most fields are fine to read directly. The point is to enforce that certain *load-bearing* fields can only be touched through an accessor that maintains an invariant.
+
+In shiplog, every protected seam is something that has historically caused, or can plausibly cause, a class of bug where:
+
+- A reader assumes the field's raw value is safe to expose.
+- A writer assumes the field can be overwritten in isolation.
+- A refactor renames or reshapes the field and downstream surfaces silently desync.
+
+The accessor layer documents the invariant once and forces every caller through it.
+
+## Protected field classes
+
+Each class below lists:
+
+- **Invariant** — what the field carries that the accessor protects.
+- **Boundary** — which module / crate owns the accessor.
+- **Today's surface** — where the field actually lives in the current codebase (or expected to be added; flagged when uncertain).
+- **Failure mode without the accessor** — the kind of regression the lint catches.
+
+### 1. Redaction internals
+
+| Slot | Value |
+| --- | --- |
+| Invariant | Alias maps, key material, and profile state must never be exposed in raw form. Internal name → alias mappings stay private; lookups go through the accessor that returns the alias plus the redaction profile it was minted under. |
+| Boundary | `shiplog-redact` crate. Public types expose accessors (`alias_for`, `profile_of_alias`, etc.); raw `aliases: HashMap<…>` / `key_material: Vec<u8>` style fields are private. |
+| Today's surface | `shiplog-redact::*` — alias caches, HMAC-SHA256 key state, profile descriptor structs. |
+| Failure mode | A renderer reads `redactor.aliases` directly and emits the inner real name to a manager- or public-profile bundle. The redaction profile leak goes unnoticed because no test exercises the raw read path. |
+
+### 2. Bundle paths
+
+| Slot | Value |
+| --- | --- |
+| Invariant | Paths recorded in `bundle.manifest.json` and `share.manifest.json` must be relative to the run directory, must not include the run-dir prefix itself, and must never include absolute paths from the producer's filesystem. Accessors normalise on write and validate on read. |
+| Boundary | `shiplog-bundle` crate. `BundleManifest` / `ShareManifest` expose `entries()` returning normalised relative paths; raw `path: PathBuf` style fields are private. |
+| Today's surface | `shiplog-bundle::*` — manifest entries, file checksum receipts, zip-archive path lists. |
+| Failure mode | A test uses a producer-local absolute path; the path leaks into the manifest; another machine cannot verify the bundle because the path is invalid there. |
+
+### 3. Trust receipts
+
+| Slot | Value |
+| --- | --- |
+| Invariant | Hashes, signatures, and provenance receipts written to `intake.report.json`, `share.manifest.json`, and `bundle.manifest.json` must be computed via the canonical accessor on the source struct. Two callers that recompute the same receipt must produce byte-identical bytes. |
+| Boundary | The receipt-emitting crate (varies by receipt type): `shiplog-engine` for intake reports, `shiplog-bundle` for bundle/share manifests, `shiplog-cache` for cache receipts. Each owns the canonical `compute_receipt()` accessor; raw `hash: [u8; 32]` style fields are private. |
+| Today's surface | Mixed: `shiplog-engine::intake_report`, `shiplog-bundle::manifest`, `shiplog-cache::receipt` (some types here may need to be introduced rather than refactored). |
+| Failure mode | One caller hashes the canonical fields; a second caller hashes a slightly different field order; the two receipts disagree for the same logical input and consumers diverge. |
+
+### 4. Source opaque IDs
+
+| Slot | Value |
+| --- | --- |
+| Invariant | Provider-specific identifiers (GitHub `node_id`, GitLab project IDs, Jira issue keys, Linear UUIDs, opaque `local_git` ref names) must be aliased before they cross a redaction profile boundary. Accessors return the aliased form for non-internal profiles and the raw form only when an `Internal` profile is explicitly requested. |
+| Boundary | `shiplog-ingest-*` crates own the raw IDs (deserialised from API responses); `shiplog-schema` owns the canonical wrapped types; `shiplog-redact` is the only consumer that touches the raw form, and only to mint the alias. |
+| Today's surface | The `*Event` types in `shiplog-schema` plus the per-source raw response structs in `shiplog-ingest-{github,gitlab,jira,linear,git,manual}`. The opaque-ID fields are currently `pub` in many of these structs (event flow predates this lint), so the refactor work in #191 is genuine, not just an audit. |
+| Failure mode | A public-profile render reads `event.github_node_id` directly; the rendered packet leaks the GitHub-internal `node_id` that should have been aliased. |
+
+### 5. Cache internals
+
+| Slot | Value |
+| --- | --- |
+| Invariant | The SQLite-backed `shiplog-cache` exposes a query API; the raw `rusqlite::Connection`, the schema-version row, and the cache-key construction layout must be private. Cache key construction goes through `CacheKey::new(...)` which centralises the cache-namespace + version + hash algorithm. |
+| Boundary | `shiplog-cache` crate. Public surface: `Cache::get`, `Cache::put`, `Cache::stats`, etc. Private: `Connection`, `schema_version`, `CacheKey::raw`. |
+| Today's surface | `shiplog-cache::*` — already mostly private; the lint protects the boundary from regressing as new accessors are added. |
+| Failure mode | A new ingest adapter borrows `cache.connection` directly to run a custom SQL query; the cache schema migrates in a future release; the custom query breaks silently. |
+
+### 6. Policy ledger metadata
+
+| Slot | Value |
+| --- | --- |
+| Invariant | Every `policy/*.toml` ledger carries a common header (`schema_version`, `policy`, `owner`, `status`). The header lives in a shared `Ledger<Body>` wrapper in `xtask::policy`; downstream consumers (the `cargo xtask check-*` checkers) access the body via the wrapper's accessor, never by destructuring the raw `toml::Table`. |
+| Boundary | `xtask::policy` module (in the `xtask` crate). The wrapper struct owns the header validation; checkers read `ledger.body()` and never reach for `ledger.raw_table`. |
+| Today's surface | `xtask::policy::*`. The wrapper exists implicitly today (each checker re-parses the header); a future refactor consolidates it. |
+| Failure mode | A new checker forgets to validate the common header and silently accepts an unversioned ledger. Drift in the header schema becomes invisible because individual checkers don't enforce it consistently. |
+
+## Activation ladder
+
+`disallowed_fields` is not activated by this document. The planned sequence:
+
+1. **This PR**: write this document; cross-link from `policy/clippy-lints.toml` (the existing `[[planned]]` entry's `reason` field). No lint config, no Rust code change.
+2. **Next PR (#189 in the original plan; renumbered to next available)**: scaffold `policy/clippy-protected-fields.toml`. The TOML lists the protected fields per class without yet wiring them into `clippy.toml`. `cargo xtask check-policy-schemas` accepts the new ledger.
+3. **PR after that**: pick the smallest protected class (likely **cache internals** — already mostly private, smallest refactor) and add accessors where missing. Verify with `cargo expand` / call-site grep that no production caller still touches the raw fields. Add focused tests asserting the accessor invariant.
+4. **PR after that**: activate `clippy::disallowed_fields` for the first class only (e.g. `clippy.toml` lists the protected fields from that one class). Run full clippy/test/doc gate. Existing exceptions go in `policy/clippy-exceptions.toml` with policy IDs and expiry dates.
+5. **Subsequent PRs**: repeat steps 3–4 per class until all six are protected and the lint covers every class.
+
+The constraint at every step: **never activate the lint without a working accessor surface**. A direct activation against the current surface would produce 100+ findings on day one, drown the operator in exceptions, and either ship broken or grind to a halt. The ladder makes the protection real one class at a time.
+
+## Out of scope
+
+- **Test-side carveouts.** Per the operating contract, tests do not get blanket Clippy carveouts. Where a test legitimately reaches into a protected field (e.g. asserting an alias map state), use `#[expect(clippy::disallowed_fields, reason = "policy:test/...")]` with a policy ID, not a `#[allow(...)]`.
+- **`pub(crate)` vs accessor.** Some seams may end up as `pub(crate)` rather than full accessors — that's fine for boundaries that don't need a normalising step, as long as the lint config and `clippy-protected-fields.toml` match what was actually chosen.
+- **External types.** Foreign struct fields (from `serde_json::Value`, `rusqlite::Row`, etc.) are not protected by this lint. The boundary is at the shiplog crate edge.
+
+## See also
+
+- [`policy/clippy-lints.toml`](../policy/clippy-lints.toml) — the current Clippy lint ledger, where `clippy::disallowed_fields` lives as a `[[planned]]` entry until the protected-fields scaffold lands.
+- [`docs/CLIPPY_POLICY.md`](CLIPPY_POLICY.md) — overall Clippy doctrine, lint ratchets, suppression style.
+- [`docs/POLICY_ALLOWLISTS.md`](POLICY_ALLOWLISTS.md) — the common header schema every policy ledger shares (the "policy ledger metadata" seam above).

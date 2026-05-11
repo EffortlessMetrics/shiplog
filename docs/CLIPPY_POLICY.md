@@ -131,5 +131,8 @@ sweep is a follow-up release.
 - [`NO_PANIC_POLICY.md`](NO_PANIC_POLICY.md) — companion policy for panic-family
   shapes.
 - [`FILE_POLICY.md`](FILE_POLICY.md) — companion policy for non-Rust files.
+- [`CLIPPY_PROTECTED_FIELDS.md`](CLIPPY_PROTECTED_FIELDS.md) — the six
+  protected field classes that `clippy::disallowed_fields` will eventually
+  enforce, and the staged activation ladder.
 - [`ci/rust-1.95-rollout.md`](ci/rust-1.95-rollout.md) — the rollout map and
   PR ladder that introduces this policy.
