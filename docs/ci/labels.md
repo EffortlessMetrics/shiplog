@@ -25,17 +25,17 @@ decision.
 
 ## Routing toggles
 
-| Label | Effect |
-|-------|--------|
-| `ripr` | Force `ripr` analysis on a PR that would otherwise skip it (e.g. docs-only PR that touches a build script). |
-| `ripr-waive` | Suppress `ripr` advisory output for this PR. Use when the finding is known and tracked in [`policy/ripr-suppressions.toml`](../../policy/ripr-suppressions.toml). |
-| `coverage` | Run the coverage lane on PR. |
-| `mutation` | Run targeted mutation on PR (per matched risk-pack scope). |
-| `property-tests` | Run the broad property-test sweep on PR (overrides bounded smoke). |
-| `fuzz` | Run the full fuzz matrix on PR (overrides touched-target smoke). |
-| `bdd` | Run the broader BDD scope on PR (overrides critical-flow smoke). |
-| `security-audit` | Run the standalone `security.yml` workflow on PR (otherwise routed to manifest changes / weekly). |
-| `release-check` | Run the release preflight (`package-proof.sh`, `publish-dry-run.sh`) on PR. |
+| Label | Status | Effect |
+|-------|--------|--------|
+| `coverage` | enforced (coverage.yml job-if) | Run the coverage lane on PR. |
+| `mutation` | enforced (mutation-testing.yml job-if) | Run targeted mutation on PR (per matched risk-pack scope). |
+| `property-tests` | enforced (property-testing.yml job-if) | Run the broad property-test sweep on PR (overrides bounded smoke). |
+| `fuzz` | enforced (fuzzing.yml job-if) | Run the full fuzz matrix on PR (overrides touched-target smoke). |
+| `bdd` | enforced (bdd-testing.yml job-if) | Run the broader BDD scope on PR (overrides critical-flow smoke). |
+| `security-audit` | enforced (security.yml job-if) | Run the standalone `security.yml` workflow on PR (otherwise routed to manifest changes / weekly). |
+| `ripr` | declared but **not enforced today** | Intended to force `ripr` analysis on a PR that would otherwise skip it. Declared in `policy/ci-budget.toml [labels].ripr_force` and `[lane.ripr_advisory].labels` (`policy/ci-lanes.toml`), but `ripr.yml` is currently paths-driven (`apps/**`, `crates/**`, `xtask/**`, `Cargo.toml`, `Cargo.lock`, `ripr.toml`, `policy/ripr-suppressions.toml`), not label-driven. Routing planned for the real ripr integration follow-up release. |
+| `ripr-waive` | declared but **not enforced today** | Intended to suppress `ripr` advisory output. The label name lives in `policy/ci-budget.toml [labels].ripr_waive` and `[lane.ripr_advisory].labels`, but the v0.5.0 stub `ripr.yml` emits its artifacts unconditionally on path match. Suppressions are tracked in [`policy/ripr-suppressions.toml`](../../policy/ripr-suppressions.toml); honoring the label is part of the real ripr integration follow-up release. |
+| `release-check` | declared but **not enforced today** | Intended to run the release preflight (`package-proof.sh` + `publish-dry-run.sh`) on PR. Declared in `policy/ci-budget.toml [labels].release_check`, but `release.yml` only triggers on tag push and `workflow_dispatch` — no label-gated PR path exists. Adding a PR-time release-check workflow is a follow-up. |
 
 ## What a label is not
 
