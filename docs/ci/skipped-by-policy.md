@@ -78,17 +78,32 @@ absence.
 | `nightly-only` | release engineer | Cannot override on PR; the PR plan can opt-in to a one-off via `dispatch` |
 | `release-only` | release engineer | Cannot override on PR |
 | `ripr-waived` | reviewer | Remove the `ripr-waive` label if the waiver no longer applies |
-| `duplicate` | release/ci | Should not occur after PR #155 routes the duplicate `security.yml` lane |
+| `duplicate` | release/ci | Should not occur on default PR since PR #155 routed `security.yml`'s `Cargo Deny Security` job behind the `security-audit` / `full-ci` label |
 
-## What this PR adds
+## Implementation status
 
-PR #142 adds the documented contract. Implementation:
+This contract landed in v0.5.0:
 
-- PR #146 emits skip categories in the PR plan + step summary.
-- PR #148 records skips in `target/ci/ci-actuals.json` against the v1
-  schema.
-- PR #155 wires the actual `if:` conditions in workflow YAML so skips
-  happen with explicit reasons rather than via `if: false` hacks.
+- **PR #142** — documented contract (this file plus the related operating
+  contracts).
+- **PR #146** — `pr-plan / forecast` emits skip categories in the PR plan
+  step summary and the `target/ci/ci-plan.json` receipt.
+- **PR #148** — `CI Actuals / collect` records skips in
+  `target/ci/ci-actuals.json` against the v1 schema (`skip_reason` +
+  `skip_detail` fields).
+- **PR #155** — wired the actual `if:` conditions in workflow YAML so
+  skips happen with explicit label-gating rather than via `if: false`
+  hacks. Job-level `if:` blocks in `bdd-testing.yml`,
+  `property-testing.yml`, `fuzzing.yml`, `mutation-testing.yml`,
+  `security.yml`, and `coverage.yml` check for the matching routing
+  label or `full-ci`.
+
+The `target/ci/ci-actuals.json` lane mapping itself was further
+hardened in **PR #167** (pass `workflow_run.*` as explicit CLI flags so
+every job categorises against the correct policy lane instead of
+`lane.unknown`) and **PR #169** (extend the `workflow_run` trigger list
+to include the bounded smoke lanes + `ripr` so their actuals are
+captured).
 
 ## See also
 
