@@ -210,21 +210,49 @@ pub fn check_file_policy(workspace_root: &Path, mode: Mode) -> Result<()> {
         }
     }
 
-    // Broad-glob-reason check: any allow with a wildcard glob should declare
-    // a `broad_glob_reason`.
-    for entry in &parsed {
-        if let Some(g) = &entry.glob
-            && (g.contains("**") || g.contains('*'))
-            && entry.broad_glob_reason.is_none()
-        {
-            findings.push(Finding {
-                kind: "broad-glob-without-reason".to_string(),
-                detail: format!("allow glob {g:?} should set `broad_glob_reason`"),
-            });
-        }
-    }
+    findings.extend(check_broad_glob_justifications(&parsed));
 
     report("check-file-policy", &findings, mode)
+}
+
+/// Returns true if a glob pattern is considered "broad" — it contains a
+/// wildcard component (`*` or `**`) and therefore matches more than a
+/// single named path. Narrow globs (literal paths via the `path` field,
+/// or `glob` entries with no wildcards) don't require a
+/// `broad_glob_reason`.
+fn is_broad_glob(g: &str) -> bool {
+    g.contains("**") || g.contains('*')
+}
+
+/// Validate that every allow entry whose `glob` is broad declares a
+/// non-empty, non-whitespace `broad_glob_reason`. The original check
+/// only required the field to be present, which let `""` and `"  "`
+/// pass silently — degrading the auditor receipt from "deliberate
+/// justification" to "field exists."
+fn check_broad_glob_justifications(entries: &[AllowGlob]) -> Vec<Finding> {
+    let mut findings = Vec::new();
+    for entry in entries {
+        let Some(g) = entry.glob.as_deref() else {
+            continue;
+        };
+        if !is_broad_glob(g) {
+            continue;
+        }
+        match entry.broad_glob_reason.as_deref() {
+            None => findings.push(Finding {
+                kind: "broad-glob-without-reason".to_string(),
+                detail: format!("allow glob {g:?} should set `broad_glob_reason`"),
+            }),
+            Some(reason) if reason.trim().is_empty() => findings.push(Finding {
+                kind: "broad-glob-empty-reason".to_string(),
+                detail: format!(
+                    "allow glob {g:?} has an empty / whitespace-only `broad_glob_reason`; explain why a narrower set of paths is not viable"
+                ),
+            }),
+            Some(_) => {}
+        }
+    }
+    findings
 }
 
 // ────────────────────────────────────────────────────────────────────────
@@ -709,5 +737,89 @@ created = "2026-05-09"
         );
         assert_eq!(extract_uses("name: foo"), None);
         assert_eq!(extract_uses("uses:"), None);
+    }
+
+    fn allow(glob: Option<&str>, reason: Option<&str>) -> AllowGlob {
+        AllowGlob {
+            glob: glob.map(String::from),
+            path: None,
+            broad_glob_reason: reason.map(String::from),
+        }
+    }
+
+    #[test]
+    fn broad_glob_check_accepts_narrow_glob_without_reason() {
+        let entries = [allow(Some("Cargo.toml"), None)];
+        assert!(check_broad_glob_justifications(&entries).is_empty());
+    }
+
+    #[test]
+    fn broad_glob_check_accepts_path_field_without_reason() {
+        // `path = "..."` (not `glob`) is implicitly narrow; the check
+        // should never fire on it.
+        let entries = [AllowGlob {
+            glob: None,
+            path: Some(String::from("LICENSE")),
+            broad_glob_reason: None,
+        }];
+        assert!(check_broad_glob_justifications(&entries).is_empty());
+    }
+
+    #[test]
+    fn broad_glob_check_accepts_broad_glob_with_meaningful_reason() {
+        let entries = [allow(
+            Some("docs/**"),
+            Some("Docs tree; per-file enumeration adds no review value."),
+        )];
+        assert!(check_broad_glob_justifications(&entries).is_empty());
+    }
+
+    #[test]
+    fn broad_glob_check_rejects_broad_glob_without_reason() {
+        let entries = [allow(Some("docs/**"), None)];
+        let findings = check_broad_glob_justifications(&entries);
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].kind, "broad-glob-without-reason");
+    }
+
+    #[test]
+    fn broad_glob_check_rejects_empty_reason() {
+        let entries = [allow(Some("docs/**"), Some(""))];
+        let findings = check_broad_glob_justifications(&entries);
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].kind, "broad-glob-empty-reason");
+    }
+
+    #[test]
+    fn broad_glob_check_rejects_whitespace_only_reason() {
+        let entries = [allow(Some("docs/**"), Some("   \n\t "))];
+        let findings = check_broad_glob_justifications(&entries);
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].kind, "broad-glob-empty-reason");
+    }
+
+    #[test]
+    fn broad_glob_check_distinguishes_single_star_from_double() {
+        // Both single-`*` and `**` count as broad. A glob like
+        // `scripts/*.sh` is broad even without `**`.
+        let entries = [allow(Some("scripts/*.sh"), None)];
+        let findings = check_broad_glob_justifications(&entries);
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].kind, "broad-glob-without-reason");
+    }
+
+    #[test]
+    fn broad_glob_check_accumulates_multiple_findings() {
+        let entries = [
+            allow(Some("docs/**"), None),                // missing
+            allow(Some("LICENSE-*"), Some("   ")),       // empty
+            allow(Some("Cargo.toml"), None),             // narrow, OK
+            allow(Some("**/*.rs"), Some("Rust files.")), // OK
+        ];
+        let findings = check_broad_glob_justifications(&entries);
+        assert_eq!(findings.len(), 2);
+        let kinds: Vec<&str> = findings.iter().map(|f| f.kind.as_str()).collect();
+        assert!(kinds.contains(&"broad-glob-without-reason"));
+        assert!(kinds.contains(&"broad-glob-empty-reason"));
     }
 }
