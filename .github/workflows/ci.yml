@@ -81,3 +81,52 @@ jobs:
 
       - name: cargo deny check
         run: cargo deny check
+
+  policy:
+    name: Policy gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.95.0"
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "policy"
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: check-policy-schemas
+        run: cargo xtask check-policy-schemas
+
+      - name: check-lint-policy (blocking)
+        run: cargo xtask check-lint-policy --mode blocking-allowlist
+
+      - name: check-clippy-exceptions (blocking)
+        run: cargo xtask check-clippy-exceptions --mode blocking-allowlist
+
+      - name: check-no-panic-family (blocking)
+        run: cargo xtask check-no-panic-family --mode blocking-allowlist
+
+      - name: check-file-policy (blocking)
+        run: cargo xtask check-file-policy --mode blocking-allowlist
+
+      - name: check-generated (blocking)
+        run: cargo xtask check-generated --mode blocking-allowlist
+
+      - name: check-executable-files (blocking)
+        run: cargo xtask check-executable-files --mode blocking-allowlist
+
+      - name: check-workflows (blocking)
+        run: cargo xtask check-workflows --mode blocking-allowlist
+
+      - name: check-dependency-surfaces (blocking)
+        run: cargo xtask check-dependency-surfaces --mode blocking-allowlist
+
+      - name: check-process-policy (blocking)
+        run: cargo xtask check-process-policy --mode blocking-allowlist
+
+      - name: check-network-policy (blocking)
+        run: cargo xtask check-network-policy --mode blocking-allowlist

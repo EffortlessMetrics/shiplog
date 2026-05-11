@@ -63,6 +63,17 @@ workflow = ".github/workflows/ci.yml"
 workflow_name = "CI"
 job_name = "cargo-deny"
 
+[lane.ci_policy]
+description = "Policy ledger enforcement: schemas + 10 blocking-allowlist checks."
+intent = "policy enforcement"
+runner = "ubuntu_24_04"
+base_lem = 3
+default_pr = true
+blocking = true
+workflow = ".github/workflows/ci.yml"
+workflow_name = "CI"
+job_name = "Policy gates"
+
 # ── Standalone security workflow (label-gated; duplicate of ci_deny) ──
 
 [lane.ci_security]

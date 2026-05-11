@@ -48,6 +48,7 @@ artifacts the PR doesn't need.
 | `lane.ci_check` Ubuntu | `check-ubuntu-latest` | yes | yes |
 | `lane.ci_check_windows` | `check-windows-latest` | yes | yes |
 | `lane.ci_deny` | `deny` | yes | yes |
+| `lane.ci_policy` | `policy` | yes | yes |
 | `lane.coverage` | `coverage-1.95` (renamed from `coverage-1.92` in PR #145) | yes (only on push main per coverage.yml current logic) | yes (label-gated) |
 | `lane.bdd` (4 jobs) | `bdd-<job>` | yes | yes |
 | `lane.property` | `property` | yes | yes |
