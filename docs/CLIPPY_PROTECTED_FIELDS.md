@@ -97,6 +97,17 @@ Each class below lists:
 
 The constraint at every step: **never activate the lint without a working accessor surface**. A direct activation against the current surface would produce 100+ findings on day one, drown the operator in exceptions, and either ship broken or grind to a halt. The ladder makes the protection real one class at a time.
 
+## Per-class audit progress
+
+| Class | Status | Notes |
+|---|---|---|
+| `cpf-0001` redaction-internals | `scaffolded` | Awaiting audit. |
+| `cpf-0002` bundle-paths | `scaffolded` (audited) | Audit landed post-#204: `RunArtifactPaths::out_dir` is de facto private (no external caller reads it; could be tightened to `pub(crate)` in a small follow-up). Bundle/share manifest entry types do not yet exist in the codebase — when they land, apply the inner-struct pattern from day one rather than retrofitting it. `disallowed_fields` activation unlikely to be the right tool per the cache-internals tier-2 framing. See `cpf-0002` audit-history comment in `policy/clippy-protected-fields.toml`. |
+| `cpf-0003` trust-receipts | `scaffolded` | Awaiting audit. Receipt types do not all exist in the codebase yet. |
+| `cpf-0004` source-opaque-ids | `scaffolded` | Awaiting audit. Largest class by surface area; many `pub` opaque-ID fields on per-source raw response structs today. |
+| `cpf-0005` cache-internals | `type-enforced` | Audit + refactor + probe complete: #192 → #194 → #196. Type system is the protection mechanism; lint not activated. |
+| `cpf-0006` policy-ledger-metadata | `scaffolded` | Awaiting audit. Wrapper type does not yet exist in the codebase. |
+
 ## Out of scope
 
 - **Test-side carveouts.** Per the operating contract, tests do not get blanket Clippy carveouts. Where a test legitimately reaches into a protected field (e.g. asserting an alias map state), use `#[expect(clippy::disallowed_fields, reason = "policy:test/...")]` with a policy ID, not a `#[allow(...)]`.
