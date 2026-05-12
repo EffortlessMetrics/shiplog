@@ -154,16 +154,41 @@ title = "Bundle paths"
 invariant = "Paths recorded in `bundle.manifest.json` and `share.manifest.json` must be relative to the run directory, must not include the run-dir prefix itself, and must never include absolute paths from the producer's filesystem. Accessors normalise on write and validate on read."
 boundary_crate = "shiplog-bundle"
 boundary_module = "shiplog-bundle::*"
-accessor_pattern = "`BundleManifest` / `ShareManifest` expose `entries()` returning normalised relative paths; raw `path: PathBuf` style fields on manifest entries and the run-artifact path helpers are private."
+accessor_pattern = "`BundleManifest` / `ShareManifest` expose `entries()` returning normalised relative paths; raw `path: PathBuf` style fields on manifest entries and the run-artifact path helpers are private. The cache-internals lesson applies: when these types land, the raw fields should live on a private inner struct from day one so `disallowed_fields` is the right tool only if a public path field is unavoidable."
 failure_mode = "A test uses a producer-local absolute path; the path leaks into the manifest; another machine cannot verify the bundle because the path is invalid there."
+# Audited 2026-05-12 (post-#204):
+#   - `RunArtifactPaths::out_dir` is declared `pub PathBuf` but is
+#     functionally private already. Workspace grep finds zero sites
+#     outside `crates/shiplog-bundle/` reading `.out_dir` from a
+#     `RunArtifactPaths` instance; every external caller constructs via
+#     `RunArtifactPaths::new(...)` and uses the accessor methods
+#     (`packet_md`, `ledger_events`, `coverage_manifest`,
+#     `bundle_manifest`, `redaction_aliases`, `profile_packet`).
+#     Tightening the field visibility to `pub(crate)` would not break
+#     any caller — this is a candidate for a small visibility-tightening
+#     follow-up PR, separate from any `disallowed_fields` activation.
+#   - The `\.out_dir` hits in `apps/shiplog/src/main.rs` resolve to
+#     `RunOutputs::out_dir` in `shiplog-engine`, a different type with
+#     the same field name. `RunOutputs::out_dir` carries the producer-
+#     local run-directory path which callers legitimately compose
+#     artifact paths from; it is not the "manifest entry path leaks
+#     producer-local absolute" failure mode this seam guards against,
+#     so it is intentionally NOT a `cpf-0002` candidate.
+#   - The bundle / share manifest entry types named in the doc do not
+#     yet exist in the codebase. The protected `path` fields on those
+#     types are therefore TODOs: nothing to enforce against today, and
+#     the audit history above is recorded so that when those types
+#     land, the per-class refactor pass uses the cache-internals
+#     inner-struct pattern from day one rather than retrofitting it
+#     after a probe like cache-internals (#192) needed.
 field_candidates = [
-  "RunArtifactPaths::out_dir",
-  "TODO: BundleManifest entries' `path` field once manifest types exist",
-  "TODO: ShareManifest entries' `path` field once manifest types exist",
-  "TODO: file checksum receipt `path` field on zip-archive entry types",
+  "RunArtifactPaths::out_dir (de facto private — no external caller reads it; tighten to pub(crate) in a follow-up PR)",
+  "TODO: BundleManifest entries' `path` field once manifest types exist (apply inner-struct pattern from day one)",
+  "TODO: ShareManifest entries' `path` field once manifest types exist (apply inner-struct pattern from day one)",
+  "TODO: file checksum receipt `path` field on zip-archive entry types (apply inner-struct pattern from day one)",
 ]
 activation_status = "scaffolded"
-next_action = "Land bundle/share manifest types; revisit candidate list against the actual struct shape before scheduling the accessor refactor."
+next_action = "Two follow-up PRs, each small: (a) `refactor(bundle): tighten RunArtifactPaths::out_dir to pub(crate)` — visibility-tightening only, no behavior change, no `disallowed_fields` activation (the field has no external readers per the audit above); (b) when the bundle/share manifest entry types land, the per-class refactor pass uses the inner-struct pattern from day one (cache-internals doctrine) so the protected path fields are never on a `pub` type to begin with. `disallowed_fields` activation for this class is unlikely to be the right tool — see the post-#194 probe that established the tier-2 framing for cache-internals."
 owner = "shiplog-bundle"
 reason = "See docs/CLIPPY_PROTECTED_FIELDS.md#2-bundle-paths for the seam doctrine and failure mode."
 created = "2026-05-11"
