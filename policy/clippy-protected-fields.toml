@@ -325,17 +325,50 @@ expires = "permanent"
 id = "cpf-0006"
 slug = "policy-ledger-metadata"
 title = "Policy ledger metadata"
-invariant = "Every `policy/*.toml` ledger carries a common header (`schema_version`, `policy`, `owner`, `status`). The header lives in a shared `Ledger<Body>` wrapper in `xtask::policy`; downstream consumers (the `cargo xtask check-*` checkers) access the body via the wrapper's accessor, never by destructuring the raw `toml::Table`."
+invariant = "Every `policy/*.toml` ledger carries a common header (`schema_version`, `policy`, `owner`, `status`). The header is validated by a dedicated gate checker (`cargo xtask check-policy-schemas`) that runs in `blocking-allowlist` mode on every PR. Within `xtask`, the loader returns a `LoadedPolicy` wrapper carrying the parsed header and the raw `toml::Table`; checkers either use the wrapper's fields or roll their own typed loaders for per-ledger sections."
 boundary_crate = "xtask"
 boundary_module = "xtask::policy"
-accessor_pattern = "The wrapper struct owns the header validation; checkers read `ledger.body()` and never reach for `ledger.raw_table` or destructure the `toml::Table` directly."
+accessor_pattern = "Two structural pillars: (a) `xtask` is `publish = false` — no external crate can depend on `xtask` or reach `LoadedPolicy`; (b) `cargo xtask check-policy-schemas` is the dedicated header-validation gate that runs on every PR. Within the crate, `LoadedPolicy::{path, header, raw}` are currently `pub` (could be tightened to `pub(crate)` in a follow-up mirroring #208's `RunArtifactPaths::out_dir` change)."
 failure_mode = "A new checker forgets to validate the common header and silently accepts an unversioned ledger. Drift in the header schema becomes invisible because individual checkers don't enforce it consistently."
+# Audited 2026-05-12 (post-#210):
+#   - The wrapper type `LoadedPolicy` exists in `xtask/src/policy.rs`
+#     with fields `path: PathBuf`, `header: PolicyHeader`, and
+#     `raw: toml::Table`. All three are declared `pub`.
+#   - `xtask` is declared `publish = false` in its Cargo.toml (it is
+#     a dev-only crate per its `description`). External code outside
+#     the shiplog workspace cannot depend on `xtask` or name
+#     `LoadedPolicy` — the crate boundary is structurally type-
+#     enforced regardless of within-crate visibility.
+#   - Within `xtask`, only two checkers touch the wrapper directly:
+#     `policy_report::run` uses `entry.raw` and `entry.header.{status,
+#     owner}`; `check_policy_schemas::run` uses `entry.header.{policy,
+#     schema_version, status, owner}`. Every other checker (e.g.
+#     `check_risk_pack_integrity`, `check_lane_mappings`,
+#     `check_actuals_coverage`, `clippy_policy`, `file_policy`) rolls
+#     its own typed loader (`toml::from_str::<MyType>(text)`) and
+#     never goes through `LoadedPolicy::raw`.
+#   - The dedicated `cargo xtask check-policy-schemas` gate runs on
+#     every PR in `blocking-allowlist` mode and verifies every
+#     `policy/*.toml` declares a well-formed header. The failure
+#     mode the doc describes ("a new checker forgets to validate the
+#     common header and silently accepts an unversioned ledger") is
+#     therefore not failure-of-the-wrapper but failure-of-the-gate-
+#     wiring; the gate IS the protection mechanism.
+#
+# The seam is type-enforced at the workspace boundary (publish=false)
+# AND procedurally enforced within the workspace (dedicated gate).
+# `clippy::disallowed_fields` would add no value here for the same
+# reason it added no value for cache-internals after #194: the lint's
+# protection scope (cross-crate path-based detection of raw field
+# access) is already covered by stronger mechanisms.
 field_candidates = [
-  "TODO: `Ledger<Body>::raw_table` once the consolidated wrapper exists",
-  "TODO: per-checker raw `toml::Table` fields that are currently re-parsed in each task module under `xtask::tasks::*`",
+  "LoadedPolicy::raw (pub; only read by policy_report::run within xtask; xtask is publish=false so externally unreachable; tightening to pub(crate) is a candidate follow-up)",
+  "LoadedPolicy::header (pub; only read by 2 within-crate checkers; same crate-boundary protection)",
+  "LoadedPolicy::path (pub; same protection)",
+  "TODO: future per-ledger typed body wrappers, if consolidated from the current pattern where each checker rolls its own loader — apply pub(crate) fields from day one",
 ]
-activation_status = "scaffolded"
-next_action = "Consolidate the per-checker header parsing into the shared `Ledger<Body>` wrapper in `xtask::policy`; revisit candidate list against the actual wrapper shape before scheduling lint activation."
+activation_status = "type-enforced"
+next_action = "Two structural pillars already protect this seam: `xtask` `publish = false` (crate-boundary) and the dedicated `check-policy-schemas` gate (procedural). A tiny visibility-tightening follow-up could narrow `LoadedPolicy::{path, header, raw}` from `pub` to `pub(crate)` (mirroring #208's pattern for `RunArtifactPaths::out_dir`); the audit established this would not break any within-crate caller. `clippy::disallowed_fields` is the wrong tool for this class — same reason as cpf-0005 post-#194: the lint's scope is already covered. A future ledger-driven `xtask check-protected-fields` checker (optional step 6 in the activation ladder doc) would catch a regression like a future `pub fn raw_table(&self) -> &toml::Table` accessor on `LoadedPolicy`."
 owner = "policy"
 reason = "See docs/CLIPPY_PROTECTED_FIELDS.md#6-policy-ledger-metadata for the seam doctrine and failure mode."
 created = "2026-05-11"
