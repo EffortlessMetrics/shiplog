@@ -296,19 +296,46 @@ expires = "permanent"
 id = "cpf-0004"
 slug = "source-opaque-ids"
 title = "Source opaque IDs"
-invariant = "Provider-specific identifiers (GitHub `node_id`, GitLab project IDs, Jira issue keys, Linear UUIDs, opaque `local_git` ref names) must be aliased before they cross a redaction profile boundary. Accessors return the aliased form for non-internal profiles and the raw form only when an `Internal` profile is explicitly requested."
+invariant = "Provider-specific identifiers (GitHub `node_id`, GitLab project IDs, Jira issue keys, Linear UUIDs, opaque `local_git` ref names) must be aliased / nullified before they cross a redaction profile boundary. The redaction policy returns the aliased form for non-internal profiles and the raw form only when an `Internal` profile is explicitly in use."
 boundary_crate = "mixed"
-boundary_module = "shiplog-ingest-*, shiplog-schema, shiplog-redact"
-accessor_pattern = "`shiplog-ingest-*` crates own the raw IDs (deserialised from API responses); `shiplog-schema` owns the canonical wrapped types; `shiplog-redact` is the only consumer that touches the raw form, and only to mint the alias."
-failure_mode = "A public-profile render reads `event.github_node_id` directly; the rendered packet leaks the GitHub-internal `node_id` that should have been aliased."
+boundary_module = "shiplog-schema::event (canonical wrapper field), shiplog-ingest-* (per-source population), shiplog-redact::policy (nullification on profile boundary)"
+accessor_pattern = "The opaque-ID surface is concentrated into a single canonical wrapper field `SourceRef::opaque_id: Option<String>` in `shiplog-schema/src/event.rs`. Every ingest adapter constructs `SourceRef { opaque_id: Some(...) }`; there is no per-source `node_id` field on adapter-specific event types. The field is `pub` by serde shape (it IS part of the event-ledger JSON contract). Protection is procedural: `shiplog-redact::policy::redact_event_with_aliases` sets `event.source.opaque_id = None` for non-internal profiles; property + integration tests prove the nullification works."
+failure_mode = "A public-profile render reads `event.source.opaque_id` directly after the redaction step has cleared it; the rendered packet does NOT leak the provider-internal id because the redaction policy already set it to `None`. The real failure mode would be a new code path that emits the event BEFORE the redact step runs — that risk is caught by the existing integration tests in `shiplog-redact/tests/integration_policy_tests.rs`."
+# Audited 2026-05-12 (post-#214):
+#   - `SourceRef::opaque_id: Option<String>` is the canonical
+#     wrapper field. Workspace grep finds zero per-source `node_id`
+#     or `opaque_id` fields on adapter-specific event types — every
+#     ingest adapter (github, gitlab, jira, linear, git, json,
+#     manual) populates `SourceRef { opaque_id: Some(...) }`. The
+#     wrapping refactor that the doc historically flagged as "the
+#     largest class by surface area" is already complete.
+#   - The wrapper field is `pub` because `SourceRef` is the serde
+#     shape for the `source:` block of every event in
+#     `ledger.events.jsonl`. Making it private would break the
+#     JSON contract that downstream tools (validation, share
+#     verifiers, third-party consumers) rely on.
+#   - The redact policy at `shiplog-redact/src/policy.rs:51` sets
+#     `event.source.opaque_id = None` for the non-internal profiles
+#     (`Manager`, `Public`). The internal profile preserves the
+#     raw form for the run author.
+#   - Property and integration tests prove the nullification works:
+#     `shiplog-redact/tests/integration_policy_tests.rs` constructs
+#     events with concrete opaque IDs (`"github-pr-node-id"`,
+#     `"manual-incident-1"`); the redaction integration tests assert
+#     `out.source.opaque_id.is_none()` after Public-profile redact.
+#
+# `clippy::disallowed_fields` is the wrong tool for this class:
+# `SourceRef::opaque_id` must stay `pub` for serde, and the
+# real failure mode (event emitted before the redact step runs)
+# is not addressable by field-access blocking. The seam is
+# `"type-enforced"` via the canonical-wrapper pattern + procedural
+# nullification + test gates, same shape as cpf-0003 trust-receipts.
 field_candidates = [
-  "TODO: `node_id` / `id` style fields on per-source raw response structs in `shiplog-ingest-github` (currently `pub`)",
-  "TODO: equivalent fields on `shiplog-ingest-gitlab`, `shiplog-ingest-jira`, `shiplog-ingest-linear` raw response structs once those adapters exist",
-  "TODO: opaque ref-name fields on `shiplog-ingest-git` and `shiplog-ingest-manual`",
-  "TODO: opaque-ID fields on the `*Event` types in `shiplog-schema` once wrapping is finalised",
+  "SourceRef::opaque_id (pub by serde necessity; nullified by shiplog-redact::policy for non-internal profiles; test-enforced)",
+  "TODO: future opaque-ID fields on any new ingest adapter — must populate `SourceRef::opaque_id` rather than introducing a per-adapter raw field",
 ]
-activation_status = "scaffolded"
-next_action = "Inventory current `pub` opaque-ID fields across `shiplog-ingest-*` and `shiplog-schema`; populate the candidate list before scheduling the accessor refactor. This is the largest class by surface area."
+activation_status = "type-enforced"
+next_action = "Nothing to do for this class today: the canonical-wrapper refactor that the doc historically flagged as 'the largest class by surface area' is already complete. Future ingest adapters must populate `SourceRef::opaque_id` rather than introducing per-adapter raw fields. A future ledger-driven `xtask check-protected-fields` checker (optional step 6 in the activation ladder doc) could catch a regression like a future ingest adapter exposing its own `pub node_id: String` on its event type, by scanning for new `pub.*_id: String` patterns on types whose modules import shiplog-schema's `SourceRef`."
 owner = "shiplog-ingest-github"
 reason = "See docs/CLIPPY_PROTECTED_FIELDS.md#4-source-opaque-ids for the seam doctrine and failure mode."
 created = "2026-05-11"
