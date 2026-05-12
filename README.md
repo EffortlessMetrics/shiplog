@@ -98,7 +98,10 @@ renders a packet, runs review inspection, and prints next commands. The
 underlying workflow is still **collect → curate → render** when you want more
 control.
 
-For deadline use, see
+For a first-time, empty-directory walkthrough — commands, expected output
+files, how to read the rendered pack, and what `## Source Freshness` means —
+see [docs/guides/rapid-first-intake.md](docs/guides/rapid-first-intake.md).
+For deadline use with an established setup, see
 [docs/guides/review-deadline.md](docs/guides/review-deadline.md). For a
 practical review-cycle walkthrough, see
 [docs/guides/review-cycle.md](docs/guides/review-cycle.md). For the complete

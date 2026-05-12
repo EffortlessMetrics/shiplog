@@ -1,8 +1,11 @@
 # Rapid First-Intake Review Pack — Product Definition
 
 > **Audience:** product/engineering decisions about the cold-start path.
-> **Companion docs:** [`docs/guides/review-deadline.md`](../guides/review-deadline.md)
-> (how-to today), [`docs/guides/review-cycle.md`](../guides/review-cycle.md)
+> **Companion docs:** [`docs/guides/rapid-first-intake.md`](../guides/rapid-first-intake.md)
+> (how-to companion to this product doc — the worked first-run path),
+> [`docs/guides/review-deadline.md`](../guides/review-deadline.md)
+> (how-to for users with an established setup),
+> [`docs/guides/review-cycle.md`](../guides/review-cycle.md)
 > (how-to for repeat cycles), [`README.md`](../../README.md) (quick start).
 
 This document defines what the **rapid first-intake review pack** should be —
@@ -353,6 +356,9 @@ lane:
 ## See also
 
 - [`README.md`](../../README.md) — top-level quick start and feature list.
+- [`docs/guides/rapid-first-intake.md`](../guides/rapid-first-intake.md) —
+  worked first-run example: commands, expected output files, and how to
+  read the rendered pack.
 - [`docs/guides/review-deadline.md`](../guides/review-deadline.md) — how-to
   for deadline-driven use today.
 - [`docs/guides/review-cycle.md`](../guides/review-cycle.md) — how-to for
