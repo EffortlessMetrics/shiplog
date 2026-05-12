@@ -401,6 +401,7 @@ fn ingest_output_clone() {
     let output = IngestOutput {
         events: vec![make_pr_event("1")],
         coverage: make_coverage("user"),
+        freshness: Vec::new(),
     };
     let cloned = output.clone();
     assert_eq!(cloned.events.len(), 1);
@@ -412,6 +413,7 @@ fn ingest_output_debug() {
     let output = IngestOutput {
         events: vec![],
         coverage: make_coverage("debug_user"),
+        freshness: Vec::new(),
     };
     let debug = format!("{:?}", output);
     assert!(debug.contains("IngestOutput"));
@@ -437,6 +439,7 @@ fn ingest_output_with_coverage_slices() {
     let output = IngestOutput {
         events: vec![],
         coverage: cov,
+        freshness: Vec::new(),
     };
     assert_eq!(output.coverage.slices.len(), 1);
     assert_eq!(output.coverage.slices[0].total_count, 50);
@@ -451,6 +454,7 @@ fn ingest_output_partial_completeness() {
     let output = IngestOutput {
         events: vec![],
         coverage: cov,
+        freshness: Vec::new(),
     };
     assert_eq!(output.coverage.completeness, Completeness::Partial);
     assert_eq!(output.coverage.warnings.len(), 1);
@@ -481,6 +485,7 @@ fn pipeline_ingest_cluster_render_redact() {
             Ok(IngestOutput {
                 events: vec![make_pr_event("p1"), make_review_event("r1")],
                 coverage: make_coverage("octocat"),
+                freshness: Vec::new(),
             })
         }
     }

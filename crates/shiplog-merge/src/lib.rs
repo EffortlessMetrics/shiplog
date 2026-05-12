@@ -131,12 +131,14 @@ pub fn merge_ingest_outputs(
     let mut all_slices: Vec<CoverageSlice> = Vec::new();
     let mut input_event_count = 0usize;
 
+    let mut all_freshness = Vec::new();
     for ingest in ingest_outputs {
         input_event_count += ingest.events.len();
         event_groups.push(ingest.events.clone());
         all_sources.extend(ingest.coverage.sources.clone());
         all_warnings.extend(ingest.coverage.warnings.clone());
         all_slices.extend(ingest.coverage.slices.clone());
+        all_freshness.extend(ingest.freshness.clone());
     }
 
     let merged_events = merge_events(event_groups, &resolution.into());
@@ -188,6 +190,7 @@ pub fn merge_ingest_outputs(
         ingest_output: IngestOutput {
             events: merged_events,
             coverage,
+            freshness: all_freshness,
         },
         report,
     })
@@ -211,6 +214,7 @@ pub fn merge_ingest_outputs_legacy(
     let mut all_sources: Vec<String> = Vec::new();
     let mut all_warnings: Vec<String> = Vec::new();
     let mut all_slices: Vec<shiplog_schema::coverage::CoverageSlice> = Vec::new();
+    let mut all_freshness: Vec<shiplog_schema::freshness::SourceFreshness> = Vec::new();
 
     let base_output = &ingest_outputs[0];
     let window = base_output.coverage.window.clone();
@@ -225,6 +229,7 @@ pub fn merge_ingest_outputs_legacy(
         all_sources.extend(ingest.coverage.sources.clone());
         all_warnings.extend(ingest.coverage.warnings.clone());
         all_slices.extend(ingest.coverage.slices.clone());
+        all_freshness.extend(ingest.freshness.clone());
     }
 
     let mut merged_events: Vec<EventEnvelope> = Vec::new();
@@ -278,6 +283,7 @@ pub fn merge_ingest_outputs_legacy(
     Ok(IngestOutput {
         events: merged_events,
         coverage,
+        freshness: all_freshness,
     })
 }
 
@@ -602,6 +608,7 @@ mod tests {
                 make_event("b", Utc.with_ymd_and_hms(2025, 1, 1, 1, 0, 0).unwrap()),
             ],
             coverage: coverage(2, Completeness::Partial, "github", "a.warning"),
+            freshness: Vec::new(),
         };
         let ingest_b = IngestOutput {
             events: vec![
@@ -609,6 +616,7 @@ mod tests {
                 make_event("c", Utc.with_ymd_and_hms(2025, 1, 1, 3, 0, 0).unwrap()),
             ],
             coverage: coverage(2, Completeness::Complete, "local_git", "b.warning"),
+            freshness: Vec::new(),
         };
 
         let merged =
@@ -728,6 +736,7 @@ mod tests {
                 Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap(),
             )],
             coverage: coverage(1, Completeness::Complete, "github", ""),
+            freshness: Vec::new(),
         };
         let merged = merge_ingest_outputs(&[ingest], ConflictResolution::PreferFirst).unwrap();
         assert_eq!(merged.ingest_output.events.len(), 1);
@@ -742,6 +751,7 @@ mod tests {
                 Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap(),
             )],
             coverage: coverage(1, Completeness::Complete, "github", ""),
+            freshness: Vec::new(),
         };
         let ingest_b = IngestOutput {
             events: vec![make_event(
@@ -749,6 +759,7 @@ mod tests {
                 Utc.with_ymd_and_hms(2025, 1, 2, 0, 0, 0).unwrap(),
             )],
             coverage: coverage(1, Completeness::Complete, "local_git", ""),
+            freshness: Vec::new(),
         };
         let merged =
             merge_ingest_outputs(&[ingest_a, ingest_b], ConflictResolution::PreferFirst).unwrap();
@@ -771,6 +782,7 @@ mod tests {
         let ingest = IngestOutput {
             events: vec![make_event("a", t)],
             coverage: coverage(1, Completeness::Complete, "github", ""),
+            freshness: Vec::new(),
         };
         let merged =
             merge_ingest_outputs_legacy(&[ingest.clone(), ingest], ConflictResolution::PreferFirst)
@@ -797,10 +809,12 @@ mod tests {
         let ingest_a = IngestOutput {
             events: vec![make_event("a", t1), make_event("shared", t1)],
             coverage: coverage(2, Completeness::Complete, "github", "warn-a"),
+            freshness: Vec::new(),
         };
         let ingest_b = IngestOutput {
             events: vec![make_event("shared", t2), make_event("b", t2)],
             coverage: coverage(2, Completeness::Complete, "local_git", "warn-b"),
+            freshness: Vec::new(),
         };
         let merged =
             merge_ingest_outputs(&[ingest_a, ingest_b], ConflictResolution::PreferMostRecent)

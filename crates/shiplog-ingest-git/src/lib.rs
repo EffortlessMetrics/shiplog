@@ -13,6 +13,7 @@ use shiplog_schema::event::{
     Actor, EventEnvelope, EventKind, EventPayload, PullRequestEvent, PullRequestState, RepoRef,
     RepoVisibility, SourceRef, SourceSystem,
 };
+use shiplog_schema::freshness::{FreshnessStatus, SourceFreshness};
 use std::path::{Path, PathBuf};
 
 /// Local git repository ingestor.
@@ -296,9 +297,10 @@ impl Ingestor for LocalGitIngestor {
         };
 
         // Create coverage manifest
+        let fetched_at = Utc::now();
         let coverage = CoverageManifest {
             run_id: run_id.clone(),
-            generated_at: Utc::now(),
+            generated_at: fetched_at,
             user: "local".to_string(),
             window: TimeWindow {
                 since: self.since,
@@ -311,7 +313,20 @@ impl Ingestor for LocalGitIngestor {
             completeness: Completeness::Complete,
         };
 
-        Ok(IngestOutput { events, coverage })
+        let freshness = vec![SourceFreshness {
+            source: "local_git".to_string(),
+            status: FreshnessStatus::Fresh,
+            cache_hits: 0,
+            cache_misses: 0,
+            fetched_at: Some(fetched_at),
+            reason: None,
+        }];
+
+        Ok(IngestOutput {
+            events,
+            coverage,
+            freshness,
+        })
     }
 }
 

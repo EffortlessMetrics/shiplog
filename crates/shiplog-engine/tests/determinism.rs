@@ -47,6 +47,7 @@ fn test_ingest() -> IngestOutput {
     IngestOutput {
         events: test_events(),
         coverage: test_coverage(),
+        freshness: Vec::new(),
     }
 }
 

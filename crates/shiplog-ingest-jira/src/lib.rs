@@ -397,6 +397,7 @@ impl Ingestor for JiraIngestor {
         Ok(IngestOutput {
             events,
             coverage: cov,
+            freshness: Vec::new(),
         })
     }
 }

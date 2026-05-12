@@ -79,6 +79,7 @@ fn test_ingest(events: Vec<EventEnvelope>) -> IngestOutput {
             warnings: vec![],
             completeness: Completeness::Complete,
         },
+        freshness: Vec::new(),
     }
 }
 

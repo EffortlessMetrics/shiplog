@@ -21,6 +21,7 @@
     "included_sources",
     "skipped_sources",
     "source_decisions",
+    "source_freshness",
     "repair_sources",
     "curation_notes",
     "good",
@@ -89,6 +90,12 @@
       "type": "array",
       "items": {
         "$ref": "#/$defs/source_decision"
+      }
+    },
+    "source_freshness": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/source_freshness"
       }
     },
     "repair_sources": {
@@ -298,6 +305,51 @@
             },
             "hint_lines": {
               "$ref": "#/$defs/string_array"
+            }
+          }
+        }
+      ]
+    },
+    "source_freshness": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "required": [
+            "source",
+            "status",
+            "cache_hits",
+            "cache_misses"
+          ],
+          "properties": {
+            "source": {
+              "type": "string",
+              "minLength": 1
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "fresh",
+                "cached",
+                "stale",
+                "skipped",
+                "unavailable"
+              ]
+            },
+            "cache_hits": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "cache_misses": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "observed_at": {
+              "type": "string"
+            },
+            "reason": {
+              "type": "string"
             }
           }
         }

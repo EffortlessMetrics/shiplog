@@ -293,6 +293,7 @@ fn assert_golden_intake_report(run_dir: &Path, readiness: &str) -> (String, serd
         "included_sources",
         "skipped_sources",
         "source_decisions",
+        "source_freshness",
         "repair_sources",
         "good",
         "needs_attention",

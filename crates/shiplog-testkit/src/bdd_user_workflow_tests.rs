@@ -75,7 +75,11 @@ mod user_workflow_tests {
                 let coverage: CoverageManifest =
                     serde_json::from_slice(ctx.data.get("coverage").unwrap()).unwrap();
 
-                let ingest = IngestOutput { events, coverage };
+                let ingest = IngestOutput {
+                    events,
+                    coverage,
+                    freshness: Vec::new(),
+                };
                 let dir = tempfile::tempdir().unwrap();
                 let out_dir = dir.path().join("happy_path_run");
 
@@ -233,7 +237,11 @@ mod user_workflow_tests {
                         shiplog_workstreams::write_workstreams(&curated_path, &ws).unwrap();
 
                         let coverage = make_coverage("testuser", Completeness::Complete);
-                        let ingest = IngestOutput { events, coverage };
+                        let ingest = IngestOutput {
+                            events,
+                            coverage,
+                            freshness: Vec::new(),
+                        };
                         let engine = build_engine();
                         let (outputs, ws_source) = engine
                             .run(
@@ -465,7 +473,11 @@ mod user_workflow_tests {
                 let coverage: CoverageManifest =
                     serde_json::from_slice(ctx.data.get("coverage").unwrap()).unwrap();
 
-                let ingest = IngestOutput { events, coverage };
+                let ingest = IngestOutput {
+                    events,
+                    coverage,
+                    freshness: Vec::new(),
+                };
                 let dir = tempfile::tempdir().unwrap();
                 let out_dir = dir.path().join("empty_run");
 

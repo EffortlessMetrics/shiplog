@@ -612,6 +612,7 @@ impl Ingestor for GitlabIngestor {
         Ok(IngestOutput {
             events,
             coverage: cov,
+            freshness: Vec::new(),
         })
     }
 }

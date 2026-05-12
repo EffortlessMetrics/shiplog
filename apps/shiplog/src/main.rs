@@ -1776,6 +1776,7 @@ struct IntakeReport {
     included_sources: Vec<IntakeReportIncludedSource>,
     skipped_sources: Vec<IntakeReportSkippedSource>,
     source_decisions: Vec<IntakeReportSourceDecision>,
+    source_freshness: Vec<IntakeReportSourceFreshness>,
     repair_sources: Vec<IntakeReportRepairSource>,
     curation_notes: Vec<String>,
     good: Vec<String>,
@@ -1787,6 +1788,18 @@ struct IntakeReport {
     next_commands: Vec<String>,
     actions: Vec<IntakeReportAction>,
     artifacts: Vec<IntakeReportArtifact>,
+}
+
+#[derive(Debug, Serialize)]
+struct IntakeReportSourceFreshness {
+    source: String,
+    status: String,
+    cache_hits: u64,
+    cache_misses: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    observed_at: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    reason: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -2436,6 +2449,9 @@ fn build_intake_report(
         &next_commands,
     );
 
+    let source_freshness =
+        build_source_freshness_report(&result.configured.successes, &result.configured.failures);
+
     Ok(IntakeReport {
         schema_version: 1,
         run_id: run_id.clone(),
@@ -2478,6 +2494,7 @@ fn build_intake_report(
             })
             .collect(),
         source_decisions: intake_source_decision_reports(explanations),
+        source_freshness,
         repair_sources,
         curation_notes,
         good,
@@ -2719,7 +2736,33 @@ Manager and public profiles fail closed and are produced via `shiplog share` wit
     out.push_str("- Coverage and skipped sources: `coverage.manifest.json`\n");
     out.push_str("- Event ledger (provenance per claim): `ledger.events.jsonl`\n");
     out.push_str("- Bundle integrity (SHA256 per file): `bundle.manifest.json`\n");
+    out.push_str(
+        "- Per-source freshness (cache vs fresh fetch): see `## Source Freshness` below.\n",
+    );
     out.push_str("- Full artifact list with paths: see `## Artifacts` below.\n\n");
+
+    out.push_str("## Source Freshness\n\n");
+    if report.source_freshness.is_empty() {
+        out.push_str(
+            "- No freshness data recorded for this run. Sources that ran successfully are \
+implicitly fresh; see `## Skipped Sources` and `## Source Decisions` for the rest.\n",
+        );
+    } else {
+        for entry in &report.source_freshness {
+            let detail = match (entry.cache_hits, entry.cache_misses, &entry.observed_at) {
+                (0, 0, Some(at)) => format!(" (observed at {at})"),
+                (0, 0, None) => String::new(),
+                (h, m, Some(at)) => format!(" (cache: {h} hit / {m} miss; observed at {at})"),
+                (h, m, None) => format!(" (cache: {h} hit / {m} miss)"),
+            };
+            out.push_str(&format!("- **{}**: {}{detail}", entry.source, entry.status));
+            if let Some(reason) = &entry.reason {
+                out.push_str(&format!(" — {reason}"));
+            }
+            out.push('\n');
+        }
+    }
+    out.push('\n');
 
     out.push_str("## Included Sources\n\n");
     if report.included_sources.is_empty() {
@@ -2884,6 +2927,7 @@ const INTAKE_REPORT_REQUIRED_FIELDS: &[&str] = &[
     "included_sources",
     "skipped_sources",
     "source_decisions",
+    "source_freshness",
     "repair_sources",
     "curation_notes",
     "good",
@@ -2900,6 +2944,7 @@ const INTAKE_REPORT_ARRAY_FIELDS: &[&str] = &[
     "included_sources",
     "skipped_sources",
     "source_decisions",
+    "source_freshness",
     "repair_sources",
     "curation_notes",
     "good",
@@ -3276,6 +3321,10 @@ fn validate_report_items(report: &serde_json::Value) -> Result<()> {
         (
             "source_decisions",
             &["source", "decision", "reason", "hint_label", "hint_lines"][..],
+        ),
+        (
+            "source_freshness",
+            &["source", "status", "cache_hits", "cache_misses"][..],
         ),
         ("repair_sources", &["source", "reason", "commands"][..]),
         (
@@ -3666,6 +3715,36 @@ fn intake_source_decision_reports(
             }
         })
         .collect()
+}
+
+fn build_source_freshness_report(
+    successes: &[(String, IngestOutput)],
+    failures: &[ConfiguredSourceFailure],
+) -> Vec<IntakeReportSourceFreshness> {
+    let mut out = Vec::new();
+    for (_configured_name, ingest) in successes {
+        for entry in &ingest.freshness {
+            out.push(IntakeReportSourceFreshness {
+                source: entry.source.clone(),
+                status: entry.status.as_label().to_string(),
+                cache_hits: entry.cache_hits,
+                cache_misses: entry.cache_misses,
+                observed_at: entry.fetched_at.map(|ts| ts.to_rfc3339()),
+                reason: entry.reason.clone(),
+            });
+        }
+    }
+    for failure in failures {
+        out.push(IntakeReportSourceFreshness {
+            source: display_source_label(&failure.name),
+            status: "unavailable".to_string(),
+            cache_hits: 0,
+            cache_misses: 0,
+            observed_at: None,
+            reason: Some(failure.error.clone()),
+        });
+    }
+    out
 }
 
 fn intake_repair_source_reports(

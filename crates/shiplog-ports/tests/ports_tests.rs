@@ -32,6 +32,7 @@ impl Ingestor for MockIngestor {
                 warnings: vec![],
                 completeness: Completeness::Complete,
             },
+            freshness: Vec::new(),
         })
     }
 }
@@ -302,6 +303,7 @@ fn ingest_output_with_events() {
             warnings: vec![],
             completeness: Completeness::Complete,
         },
+        freshness: Vec::new(),
     };
 
     assert_eq!(output.events.len(), 1);

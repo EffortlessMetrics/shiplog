@@ -94,6 +94,7 @@ fn make_ingest(events: Vec<EventEnvelope>) -> IngestOutput {
     IngestOutput {
         events,
         coverage: make_coverage(),
+        freshness: Vec::new(),
     }
 }
 

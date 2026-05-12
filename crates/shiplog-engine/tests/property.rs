@@ -30,7 +30,11 @@ proptest! {
         let dir = tempfile::tempdir().unwrap();
         let out = dir.path().join("prop_run");
         let engine = engine();
-        let ingest = IngestOutput { events, coverage };
+        let ingest = IngestOutput {
+            events,
+            coverage,
+            freshness: Vec::new(),
+        };
         // We only care that it doesn't panic; errors are acceptable.
         let _ = engine.run(
             ingest,
@@ -51,7 +55,11 @@ proptest! {
         let dir = tempfile::tempdir().unwrap();
         let out = dir.path().join("prop_artifacts");
         let engine = engine();
-        let ingest = IngestOutput { events, coverage };
+        let ingest = IngestOutput {
+            events,
+            coverage,
+            freshness: Vec::new(),
+        };
 
         if let Ok((outputs, _)) = engine.run(
             ingest,
@@ -79,7 +87,11 @@ proptest! {
         let out = dir.path().join("prop_ledger");
         let engine = engine();
         let event_count = events.len();
-        let ingest = IngestOutput { events, coverage };
+        let ingest = IngestOutput {
+            events,
+            coverage,
+            freshness: Vec::new(),
+        };
 
         if let Ok((outputs, _)) = engine.run(
             ingest,
@@ -105,7 +117,11 @@ proptest! {
         let out = dir.path().join("prop_coverage");
         let engine = engine();
         let expected_user = coverage.user.clone();
-        let ingest = IngestOutput { events, coverage };
+        let ingest = IngestOutput {
+            events,
+            coverage,
+            freshness: Vec::new(),
+        };
 
         if let Ok((outputs, _)) = engine.run(
             ingest,
@@ -130,7 +146,11 @@ proptest! {
         let dir = tempfile::tempdir().unwrap();
         let out = dir.path().join("prop_import");
         let engine = engine();
-        let ingest = IngestOutput { events, coverage };
+        let ingest = IngestOutput {
+            events,
+            coverage,
+            freshness: Vec::new(),
+        };
         let _ = engine.import(
             ingest,
             "proptester",
@@ -150,7 +170,11 @@ proptest! {
     ) {
         let engine = engine();
         let count = events.len();
-        let ingest = IngestOutput { events, coverage };
+        let ingest = IngestOutput {
+            events,
+            coverage,
+            freshness: Vec::new(),
+        };
 
         let merged = engine.merge(
             vec![ingest],

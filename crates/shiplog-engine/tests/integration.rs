@@ -44,6 +44,7 @@ fn make_ingest(events: Vec<EventEnvelope>) -> IngestOutput {
     IngestOutput {
         events,
         coverage: make_coverage("tester", "integration_run"),
+        freshness: Vec::new(),
     }
 }
 
@@ -863,10 +864,12 @@ fn merge_deduplicates_identical_events() {
     let ingest1 = IngestOutput {
         events: vec![event.clone()],
         coverage: cov.clone(),
+        freshness: Vec::new(),
     };
     let ingest2 = IngestOutput {
         events: vec![event],
         coverage: make_coverage("tester", "merge2"),
+        freshness: Vec::new(),
     };
 
     let merged = engine
@@ -886,10 +889,12 @@ fn merge_combines_distinct_events() {
     let ingest1 = IngestOutput {
         events: vec![pr_event("acme/foo", 1, "first")],
         coverage: make_coverage("tester", "m1"),
+        freshness: Vec::new(),
     };
     let ingest2 = IngestOutput {
         events: vec![pr_event("acme/bar", 2, "second")],
         coverage: make_coverage("tester", "m2"),
+        freshness: Vec::new(),
     };
 
     let merged = engine

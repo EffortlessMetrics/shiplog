@@ -9,11 +9,15 @@
 use anyhow::Result;
 use shiplog_schema::coverage::CoverageManifest;
 use shiplog_schema::event::EventEnvelope;
+use shiplog_schema::freshness::SourceFreshness;
 use shiplog_schema::workstream::WorkstreamsFile;
 
 /// Output of an ingestion run.
 ///
-/// The tool treats these as immutable receipts.
+/// The tool treats these as immutable receipts. `freshness` carries
+/// per-source attribution for cache hits vs fresh fetches; adapters
+/// that have no notion of freshness (or do not yet emit it) may leave
+/// the vector empty.
 ///
 /// # Examples
 ///
@@ -39,6 +43,7 @@ use shiplog_schema::workstream::WorkstreamsFile;
 ///         warnings: vec![],
 ///         completeness: Completeness::Complete,
 ///     },
+///     freshness: vec![],
 /// };
 /// assert!(output.events.is_empty());
 /// ```
@@ -48,6 +53,11 @@ pub struct IngestOutput {
     pub events: Vec<EventEnvelope>,
     /// Coverage manifest describing what was queried and fetched.
     pub coverage: CoverageManifest,
+    /// Per-source freshness receipts produced by the adapter. Adapters
+    /// that don't yet emit freshness leave this empty; callers must
+    /// tolerate `freshness.is_empty()` and fall back to other signals
+    /// (source decisions, coverage) for those sources.
+    pub freshness: Vec<SourceFreshness>,
 }
 
 /// Basic ingestion trait.

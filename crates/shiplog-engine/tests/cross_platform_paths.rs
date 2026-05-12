@@ -40,6 +40,7 @@ fn make_ingest(events: Vec<EventEnvelope>) -> IngestOutput {
     IngestOutput {
         events,
         coverage: make_coverage("tester", "cross_plat_run"),
+        freshness: Vec::new(),
     }
 }
 

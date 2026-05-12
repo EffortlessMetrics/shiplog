@@ -4,9 +4,11 @@
 //! them through the [`shiplog_ports::Ingestor`] interface.
 
 use anyhow::{Context, Result};
+use chrono::Utc;
 use shiplog_ports::{IngestOutput, Ingestor};
 use shiplog_schema::coverage::CoverageManifest;
 use shiplog_schema::event::EventEnvelope;
+use shiplog_schema::freshness::{FreshnessStatus, SourceFreshness};
 use std::path::PathBuf;
 
 /// Simple adapter that ingests JSONL events + a JSON coverage manifest.
@@ -40,7 +42,19 @@ impl Ingestor for JsonIngestor {
     fn ingest(&self) -> Result<IngestOutput> {
         let events = read_events(&self.events_path)?;
         let coverage = read_coverage(&self.coverage_path)?;
-        Ok(IngestOutput { events, coverage })
+        let freshness = vec![SourceFreshness {
+            source: "json_import".to_string(),
+            status: FreshnessStatus::Fresh,
+            cache_hits: 0,
+            cache_misses: 0,
+            fetched_at: Some(Utc::now()),
+            reason: None,
+        }];
+        Ok(IngestOutput {
+            events,
+            coverage,
+            freshness,
+        })
     }
 }
 

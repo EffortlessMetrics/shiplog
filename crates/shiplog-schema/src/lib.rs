@@ -59,5 +59,7 @@ pub mod bundle;
 pub mod coverage;
 /// Core event model: envelopes, payloads, actors, and source provenance.
 pub mod event;
+/// Per-source freshness receipts for cache/fetch attribution.
+pub mod freshness;
 /// Workstream definitions and the top-level workstreams file format.
 pub mod workstream;

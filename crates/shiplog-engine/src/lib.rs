@@ -778,7 +778,11 @@ mod tests {
             warnings: vec![],
             completeness: Completeness::Complete,
         };
-        IngestOutput { events, coverage }
+        IngestOutput {
+            events,
+            coverage,
+            freshness: Vec::new(),
+        }
     }
 
     fn test_engine() -> Engine<'static> {

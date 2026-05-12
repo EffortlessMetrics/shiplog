@@ -265,6 +265,7 @@ pub fn multi_source_merge_coverage() -> Scenario {
                     Completeness::Partial,
                     Some("github coverage warning"),
                 ),
+                freshness: Vec::new(),
             };
             let input_b = IngestOutput {
                 events: vec![source_event(
@@ -280,6 +281,7 @@ pub fn multi_source_merge_coverage() -> Scenario {
                     Completeness::Complete,
                     Some("local_git coverage warning"),
                 ),
+                freshness: Vec::new(),
             };
             let input_c = IngestOutput {
                 events: vec![source_event(
@@ -291,6 +293,7 @@ pub fn multi_source_merge_coverage() -> Scenario {
                     3,
                 )],
                 coverage: coverage_for("manual", Completeness::Complete, None),
+                freshness: Vec::new(),
             };
 
             let merged = merge_ingest_outputs(
@@ -419,10 +422,12 @@ pub fn multi_source_merge_conflicts() -> Scenario {
             let input_a = IngestOutput {
                 events: vec![older],
                 coverage: coverage_for("github", Completeness::Complete, None),
+                freshness: Vec::new(),
             };
             let input_b = IngestOutput {
                 events: vec![newer],
                 coverage: coverage_for("local_git", Completeness::Complete, None),
+                freshness: Vec::new(),
             };
             let merged =
                 merge_ingest_outputs(&[input_a, input_b], ConflictResolution::PreferMostRecent)
@@ -785,10 +790,12 @@ pub fn multi_source_merge_pipeline_contract() -> Scenario {
                 let input_a = IngestOutput {
                     events: vec![event_a, event_c],
                     coverage: coverage_a,
+                    freshness: Vec::new(),
                 };
                 let input_b = IngestOutput {
                     events: vec![event_b],
                     coverage: coverage_b,
+                    freshness: Vec::new(),
                 };
 
                 let merged =

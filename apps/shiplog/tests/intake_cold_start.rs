@@ -268,6 +268,60 @@ fn cold_start_intake_report_records_source_decisions_without_explain() {
     );
 }
 
+/// § Cache freshness receipt. The intake report must record per-source
+/// freshness so a first-time reviewer can answer "Is this fresh?" without
+/// reading the cache directly. On a cold-start run with an empty cache,
+/// the scaffolded manual source must report status="fresh" — there is
+/// nothing in the cache to mark cached, and the manual ingest path reads
+/// the YAML file from disk every run.
+#[test]
+fn cold_start_intake_report_records_source_freshness_per_source() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+
+    cold_start_cmd(tmp.path(), &out).assert().success();
+
+    let run = first_run_dir(&out);
+    let report: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(run.join("intake.report.json")).unwrap()).unwrap();
+
+    let freshness = report["source_freshness"]
+        .as_array()
+        .expect("intake.report.json must expose a source_freshness array");
+    assert!(
+        !freshness.is_empty(),
+        "freshness receipt: source_freshness must be populated on cold-start runs (got empty array)"
+    );
+
+    let manual_fresh = freshness.iter().any(|entry| {
+        entry["source"].as_str() == Some("manual") && entry["status"].as_str() == Some("fresh")
+    });
+    assert!(
+        manual_fresh,
+        "freshness receipt: cold-start manual source must report status=\"fresh\" (freshness={freshness:?})"
+    );
+
+    // No source should be `cached` on cold-start: the cache is empty so
+    // every adapter that uses it either misses (=> Fresh) or doesn't use
+    // it at all. A `cached` status here would mean we lied about the
+    // first-run state.
+    let cached_on_cold_start = freshness
+        .iter()
+        .any(|entry| entry["status"].as_str() == Some("cached"));
+    assert!(
+        !cached_on_cold_start,
+        "freshness receipt: no source should report status=\"cached\" on a cold-start run (freshness={freshness:?})"
+    );
+
+    // The rendered markdown must include the freshness block as well.
+    let report_md = fs::read_to_string(run.join("intake.report.md"))
+        .expect("intake.report.md must exist after a successful cold-start run");
+    assert!(
+        report_md.contains("## Source Freshness"),
+        "freshness receipt: intake.report.md must include a `## Source Freshness` section (missing)"
+    );
+}
+
 /// § 3 — exit-status: the truly-zero-sources branch. The PR 1 test
 /// `cold_start_succeeds_with_needs_evidence_readiness_when_no_events`
 /// pins the success-exit branch (manual source succeeded with zero

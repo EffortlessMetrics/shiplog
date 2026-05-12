@@ -276,6 +276,7 @@ fn load_member_output(
         IngestOutput {
             events: filtered,
             coverage,
+            freshness: Vec::new(),
         },
         warnings,
     )))

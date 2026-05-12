@@ -89,6 +89,7 @@ fn make_ingest(events: Vec<EventEnvelope>) -> IngestOutput {
     IngestOutput {
         events,
         coverage: make_coverage("tester", "e2e_run"),
+        freshness: Vec::new(),
     }
 }
 
@@ -418,7 +419,11 @@ fn empty_coverage_slices_produces_valid_output() {
     let events = vec![pr_event("acme/foo", 1, "feature")];
     let mut coverage = make_coverage("tester", "empty_slices_run");
     coverage.slices = vec![];
-    let ingest = IngestOutput { events, coverage };
+    let ingest = IngestOutput {
+        events,
+        coverage,
+        freshness: Vec::new(),
+    };
 
     let dir = tempfile::tempdir().unwrap();
     let out = dir.path().join("empty_slices");

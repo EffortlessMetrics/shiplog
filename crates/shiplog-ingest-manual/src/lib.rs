@@ -7,6 +7,7 @@ use anyhow::Result;
 use chrono::Utc;
 use shiplog_ports::{IngestOutput, Ingestor};
 use shiplog_schema::coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow};
+use shiplog_schema::freshness::{FreshnessStatus, SourceFreshness};
 use std::path::Path;
 
 pub mod events;
@@ -82,11 +83,12 @@ impl Ingestor for ManualIngestor {
     fn ingest(&self) -> Result<IngestOutput> {
         if !self.events_path.exists() {
             // Return empty output if file doesn't exist
+            let observed_at = Utc::now();
             return Ok(IngestOutput {
                 events: Vec::new(),
                 coverage: CoverageManifest {
                     run_id: shiplog_ids::RunId::now("manual"),
-                    generated_at: Utc::now(),
+                    generated_at: observed_at,
                     user: self.user.clone(),
                     window: self.window.clone(),
                     mode: "manual".to_string(),
@@ -105,15 +107,27 @@ impl Ingestor for ManualIngestor {
                     )],
                     completeness: Completeness::Unknown,
                 },
+                freshness: vec![SourceFreshness {
+                    source: "manual".to_string(),
+                    status: FreshnessStatus::Unavailable,
+                    cache_hits: 0,
+                    cache_misses: 0,
+                    fetched_at: Some(observed_at),
+                    reason: Some(format!(
+                        "manual events file not found at {:?}",
+                        self.events_path
+                    )),
+                }],
             });
         }
 
         let file = read_manual_events(&self.events_path)?;
         let (events, warnings) = events_in_window(&file.events, &self.user, &self.window);
 
+        let observed_at = Utc::now();
         let coverage = CoverageManifest {
             run_id: shiplog_ids::RunId::now("manual"),
-            generated_at: Utc::now(),
+            generated_at: observed_at,
             user: self.user.clone(),
             window: self.window.clone(),
             mode: "manual".to_string(),
@@ -130,7 +144,20 @@ impl Ingestor for ManualIngestor {
             completeness: Completeness::Complete,
         };
 
-        Ok(IngestOutput { events, coverage })
+        let freshness = vec![SourceFreshness {
+            source: "manual".to_string(),
+            status: FreshnessStatus::Fresh,
+            cache_hits: 0,
+            cache_misses: 0,
+            fetched_at: Some(observed_at),
+            reason: None,
+        }];
+
+        Ok(IngestOutput {
+            events,
+            coverage,
+            freshness,
+        })
     }
 }
 
@@ -225,6 +252,43 @@ mod tests {
             output.events[0].source.opaque_id,
             Some("inside".to_string())
         );
+        // Freshness receipt: the manual source reads a YAML file from
+        // disk every run, so a successful ingest always reports Fresh
+        // with an observed_at timestamp. There is no cache wired to
+        // ManualIngestor, so hits/misses stay at zero.
+        assert_eq!(
+            output.freshness.len(),
+            1,
+            "manual ingest must emit exactly one freshness receipt per run"
+        );
+        let entry = &output.freshness[0];
+        assert_eq!(entry.source, "manual");
+        assert!(matches!(entry.status, FreshnessStatus::Fresh));
+        assert_eq!(entry.cache_hits, 0);
+        assert_eq!(entry.cache_misses, 0);
+        assert!(entry.fetched_at.is_some());
+        assert!(entry.reason.is_none());
+    }
+
+    #[test]
+    fn ingest_missing_events_file_emits_unavailable_freshness() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("does_not_exist.yaml");
+
+        let ing = ManualIngestor::new(
+            &path,
+            "testuser".to_string(),
+            NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
+            NaiveDate::from_ymd_opt(2025, 4, 1).unwrap(),
+        );
+
+        let output = ing.ingest().unwrap();
+        assert_eq!(output.events.len(), 0);
+        assert_eq!(output.freshness.len(), 1);
+        let entry = &output.freshness[0];
+        assert_eq!(entry.source, "manual");
+        assert!(matches!(entry.status, FreshnessStatus::Unavailable));
+        assert!(entry.reason.is_some());
     }
 
     #[test]

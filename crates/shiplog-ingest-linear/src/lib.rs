@@ -502,6 +502,7 @@ impl Ingestor for LinearIngestor {
         Ok(IngestOutput {
             events,
             coverage: cov,
+            freshness: Vec::new(),
         })
     }
 }
