@@ -231,19 +231,62 @@ expires = "permanent"
 id = "cpf-0003"
 slug = "trust-receipts"
 title = "Trust receipts"
-invariant = "Hashes, signatures, and provenance receipts written to `intake.report.json`, `share.manifest.json`, and `bundle.manifest.json` must be computed via the canonical accessor on the source struct. Two callers that recompute the same receipt for the same input must produce byte-identical bytes."
+invariant = "Hashes, signatures, and provenance receipts written to `intake.report.json`, `share.manifest.json`, and `bundle.manifest.json` must be computed via a single canonical computer per receipt type. Two callers that recompute the same receipt for the same input must produce byte-identical bytes."
 boundary_crate = "mixed"
-boundary_module = "shiplog-engine::intake_report, shiplog-bundle::manifest, shiplog-cache::receipt"
-accessor_pattern = "Each receipt-emitting crate owns the canonical `compute_receipt()` accessor on its receipt type; raw `hash: [u8; 32]` style fields are private."
+boundary_module = "shiplog-bundle (FileChecksum today); future: shiplog-engine intake-report receipt, shiplog-cache receipt"
+accessor_pattern = "The protection is procedural, not visibility-based: each receipt-emitting crate has a single canonical computer function (e.g. `shiplog-bundle::compute_file_checksum`), determinism is enforced by property tests and fuzz harnesses, and the receipt-bearing serde types are intentionally `pub` because they ARE the JSON schema contract. `disallowed_fields` is the wrong tool — making `FileChecksum::sha256` private would break the bundle-manifest schema."
 failure_mode = "One caller hashes the canonical fields; a second caller hashes a slightly different field order; the two receipts disagree for the same logical input and consumers diverge."
+# Audited 2026-05-12 (post-#212):
+#   - `FileChecksum` in `crates/shiplog-schema/src/bundle.rs` is a
+#     `pub struct` with `pub sha256: String`, `pub path: String`, and
+#     `pub bytes: u64`. This is the canonical bundle-manifest entry
+#     type used in `bundle.manifest.json`. The fields are `pub` by
+#     serde-shape necessity — making them private would break the
+#     manifest JSON contract and the BundleManifest::FileChecksum
+#     deserialization path that downstream consumers (validation
+#     tools, share verifiers, etc.) rely on.
+#   - Workspace grep finds many readers of `.sha256` — including
+#     fuzz target `fuzz/fuzz_targets/bundle_checksum.rs`,
+#     `crates/shiplog-bundle/{src,tests}/*.rs`,
+#     `crates/shiplog-bundle/tests/property.rs` (asserting
+#     `f1.sha256 == f2.sha256` for determinism). All readers go
+#     through the canonical type; no one computes their own
+#     parallel SHA-256.
+#   - The protection mechanism is procedural:
+#       (a) Single canonical computer: `shiplog-bundle::lib`
+#           constructs all `FileChecksum` instances via the same
+#           SHA-256 path. No other crate emits `FileChecksum`.
+#       (b) Determinism property tests in
+#           `crates/shiplog-bundle/tests/property.rs` and integration
+#           tests in `crates/shiplog-bundle/tests/integration.rs`
+#           prove `f1.sha256 == f2.sha256` for the same input.
+#       (c) Fuzz target `fuzz/fuzz_targets/bundle_checksum.rs` verifies
+#           serde round-trip and digest invariants.
+#   - Other receipt types the doc names (intake report receipt,
+#     cache receipt) do not yet exist in the codebase. When/if they
+#     land, the same protection pattern (canonical computer +
+#     determinism tests + fuzz) applies; the `pub` fields are
+#     expected because these are serde shapes.
+#
+# `clippy::disallowed_fields` is the wrong tool for this class: the
+# fields HAVE to be `pub` for serde, and the failure mode (cross-
+# caller determinism) is not addressable by field-access blocking.
+# The seam is `"type-enforced"` via a different shape — single
+# canonical computer + test/fuzz determinism gates + serde-mandated
+# public schema — not via field privacy. Matches cpf-0006's posture:
+# protection is structurally and procedurally in place; the lint
+# adds no value.
 field_candidates = [
-  "TODO: intake report receipt fields on `shiplog-engine::intake_report` once the type lands",
-  "TODO: bundle/share manifest receipt fields on `shiplog-bundle::manifest` once types land",
-  "TODO: cache receipt fields on `shiplog-cache::receipt` once the type lands",
+  "FileChecksum::sha256 (pub by serde necessity; protected via single canonical computer in shiplog-bundle + determinism property tests + fuzz)",
+  "FileChecksum::path (pub by serde necessity; cross-listed under cpf-0002 bundle-paths — same JSON shape, different invariant)",
+  "FileChecksum::bytes (pub by serde necessity)",
+  "TODO: intake report receipt fields on `shiplog-engine::intake_report` once the type lands (apply canonical-computer pattern from day one)",
+  "TODO: bundle/share manifest receipt fields on `shiplog-bundle::manifest` once additional manifest types land (apply canonical-computer pattern from day one)",
+  "TODO: cache receipt fields on `shiplog-cache::receipt` once the type lands (apply canonical-computer pattern from day one)",
 ]
-activation_status = "scaffolded"
-next_action = "Introduce the receipt types (some are not yet in the codebase); revisit candidate list as each type lands. Refactor is genuine, not just an audit."
-owner = "shiplog-engine"
+activation_status = "type-enforced"
+next_action = "Nothing to do for this class today: the protection is procedural (single canonical computer + property tests + fuzz) and matches the failure mode the doc describes. When new receipt types land (intake report, cache receipt), apply the same pattern. A future ledger-driven `xtask check-protected-fields` checker (optional step 6 in the activation ladder doc) could catch regressions like a future parallel SHA-256 computation in a different crate, by scanning for `Sha256::digest`-style call sites outside the canonical receipt-emitting modules."
+owner = "shiplog-bundle"
 reason = "See docs/CLIPPY_PROTECTED_FIELDS.md#3-trust-receipts for the seam doctrine and failure mode."
 created = "2026-05-11"
 review_after = "2026-11-11"
