@@ -214,6 +214,75 @@ the full label table including routing labels (`ripr`, `ripr-waive`,
 - **Using a macOS runner where Linux would suffice.** 10× multiplier; only
   worth it for genuine macOS-specific parity.
 
+## Agent-dispatch scale and CI watching
+
+LEM measures GitHub-billed minutes; the GitHub REST API rate limit is a
+separate budget that becomes the binding constraint when agents watch CI in
+parallel. The math:
+
+```text
+gh run watch:       polls every 3 seconds
+50-minute CI run:   ~1000 API calls per watch
+auth REST limit:    5000 calls / hour (per token)
+```
+
+At N parallel watches, the budget is consumed in roughly
+`5000 / (1000 * N / 60)` minutes:
+
+| Parallel watches | Time to lockout (minutes) |
+| ---------------: | ------------------------: |
+| 1                | ~300 (effectively safe)   |
+| 5                | ~6                        |
+| 20               | <2 (rate-limited essentially immediately) |
+
+At the agent-dispatch scale this repo operates under (~20 parallel threads),
+default `gh run watch` is a structural lockout, not a curiosity.
+
+Adaptive-backoff polling (10s → 20s → 30s → 60s → 120s) costs ~41 API calls
+for the same 50-minute run, so 20 parallel watches cost ~820 calls per
+watch-wave — well under the 5000/hr budget.
+
+**Bucket distinction.** REST and GraphQL have independent 5000/hr buckets:
+
+- `gh api repos/{owner}/{repo}/actions/runs/{id}` — REST `core`. Use this for
+  status polling.
+- `gh run view --json`, `gh pr view --json`, `gh issue view --json`,
+  `gh pr merge --json` — GraphQL. Separate budget; safe to use alongside
+  REST polling.
+
+Polling status via `gh api` keeps the GraphQL budget free for the
+`gh pr ... --json` calls the same watch loop will make at the end.
+
+**Recommendation.** Any "wait for CI" task in this repo should use an
+adaptive-backoff REST poller. The `~/.claude/skills/ci-watch/` skill is the
+canonical implementation; this repo does not mirror the skill itself, but
+contributors and agents doing CI watching should follow the same pattern:
+
+```bash
+RUN_ID=...
+REPO=EffortlessMetrics/shiplog
+bash -c '
+  set -u
+  start=$(date +%s)
+  while :; do
+    out=$(gh api "repos/'"$REPO"'/actions/runs/'"$RUN_ID"'" -q "{status, conclusion}")
+    status=$(echo "$out" | jq -r .status)
+    conclusion=$(echo "$out" | jq -r .conclusion)
+    if [ "$status" = "completed" ]; then
+      echo "run completed: conclusion=$conclusion"
+      [ "$conclusion" = "success" ] && exit 0 || exit 1
+    fi
+    elapsed=$(( $(date +%s) - start ))
+    if   [ $elapsed -lt 30 ];  then sleep 10
+    elif [ $elapsed -lt 120 ]; then sleep 20
+    elif [ $elapsed -lt 300 ]; then sleep 30
+    elif [ $elapsed -lt 900 ]; then sleep 60
+    else                            sleep 120
+    fi
+  done
+'
+```
+
 ## See also
 
 - [`cost-and-verification-policy.md`](cost-and-verification-policy.md) — the
