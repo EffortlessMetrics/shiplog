@@ -16,9 +16,20 @@ pub const PROFILE_MANAGER: &str = "manager";
 pub const PROFILE_PUBLIC: &str = "public";
 
 /// Paths for a complete shiplog run output directory.
+///
+/// `out_dir` is `pub(crate)` rather than `pub` because the
+/// bundle-paths protected seam (`cpf-0002` in
+/// [`policy/clippy-protected-fields.toml`](../../../../policy/clippy-protected-fields.toml))
+/// guards against producer-local paths leaking into manifests.
+/// External callers reach the run-directory components via the
+/// accessor methods on this type (`packet_md`, `ledger_events`,
+/// `coverage_manifest`, `bundle_manifest`, `redaction_aliases`,
+/// `profile_packet`). The post-#206 audit confirmed zero external
+/// callers read this field directly, so tightening visibility is a
+/// no-behavior-change refactor.
 #[derive(Debug, Clone)]
 pub struct RunArtifactPaths {
-    pub out_dir: PathBuf,
+    pub(crate) out_dir: PathBuf,
 }
 
 impl RunArtifactPaths {
