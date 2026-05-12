@@ -1,6 +1,5 @@
 ---
 source: crates/shiplog-render-md/tests/output_quality.rs
-assertion_line: 480
 expression: md
 ---
 # Summary
@@ -14,6 +13,11 @@ expression: md
 **Coverage:** Complete
 
 **Sources:** GitHub
+
+## Executive Summary
+
+- **API Platform** — 2 PRs, 1 review, 0 manual events
+- **Web Frontend** — 1 PR, 0 reviews, 0 manual events
 
 ## Workstreams
 

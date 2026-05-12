@@ -1,6 +1,5 @@
 ---
 source: crates/shiplog-render-md/tests/format_stability.rs
-assertion_line: 239
 expression: result
 ---
 # Summary
@@ -14,6 +13,11 @@ expression: result
 **Coverage:** Complete
 
 **Sources:** GitHub
+
+## Executive Summary
+
+- **Widgets Core** — 2 PRs, 0 reviews, 0 manual events
+- **Infrastructure** — 2 PRs, 0 reviews, 0 manual events
 
 ## Workstreams
 

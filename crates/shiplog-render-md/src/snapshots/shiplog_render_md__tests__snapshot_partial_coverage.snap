@@ -1,6 +1,5 @@
 ---
 source: crates/shiplog-render-md/src/lib.rs
-assertion_line: 1065
 expression: result
 ---
 # Summary
@@ -17,6 +16,12 @@ expression: result
 
 **Warnings:**
   - ⚠️ API rate limit hit
+
+## Executive Summary
+
+- **Feature** — 1 PR, 0 reviews, 0 manual events
+
+_Skipped sources and gaps: see `## Coverage and Limits` for the receipted list._
 
 ## Workstreams
 

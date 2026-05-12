@@ -1,6 +1,5 @@
 ---
 source: crates/shiplog-render-md/tests/snapshot.rs
-assertion_line: 109
 expression: result
 ---
 # Summary
@@ -14,6 +13,10 @@ expression: result
 **Coverage:** Complete
 
 **Sources:** GitHub
+
+## Executive Summary
+
+- **[REDACTED]** — 2 PRs, 0 reviews, 0 manual events
 
 ## Workstreams
 

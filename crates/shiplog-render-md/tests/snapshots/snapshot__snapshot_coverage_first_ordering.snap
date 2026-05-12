@@ -1,6 +1,5 @@
 ---
 source: crates/shiplog-render-md/tests/snapshot.rs
-assertion_line: 634
 expression: result
 ---
 ## Coverage and Limits
@@ -32,6 +31,10 @@ Details:
 **Coverage:** Complete
 
 **Sources:** GitHub
+
+## Executive Summary
+
+- **Test Work** — 1 PR, 0 reviews, 0 manual events
 
 ## Workstreams
 

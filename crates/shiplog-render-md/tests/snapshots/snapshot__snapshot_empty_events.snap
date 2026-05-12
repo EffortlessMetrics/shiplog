@@ -1,6 +1,5 @@
 ---
 source: crates/shiplog-render-md/tests/snapshot.rs
-assertion_line: 35
 expression: result
 ---
 # Summary
@@ -14,6 +13,10 @@ expression: result
 **Coverage:** Complete
 
 **Sources:** GitHub
+
+## Executive Summary
+
+_No workstreams yet — no evidence has been clustered into a workstream._
 
 ## Workstreams
 
