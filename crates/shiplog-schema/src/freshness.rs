@@ -122,7 +122,7 @@ mod tests {
     }
 
     #[test]
-    fn source_freshness_round_trips_through_json() {
+    fn source_freshness_round_trips_through_json() -> serde_json::Result<()> {
         let receipt = SourceFreshness {
             source: "github".into(),
             status: FreshnessStatus::Cached,
@@ -131,14 +131,16 @@ mod tests {
             fetched_at: None,
             reason: None,
         };
-        let json = serde_json::to_string(&receipt).unwrap();
-        let back: SourceFreshness = serde_json::from_str(&json).unwrap();
+        let json = serde_json::to_string(&receipt)?;
+        let back: SourceFreshness = serde_json::from_str(&json)?;
         assert_eq!(back, receipt);
+        Ok(())
     }
 
     #[test]
-    fn status_serialises_as_snake_case() {
-        let json = serde_json::to_string(&FreshnessStatus::Unavailable).unwrap();
+    fn status_serialises_as_snake_case() -> serde_json::Result<()> {
+        let json = serde_json::to_string(&FreshnessStatus::Unavailable)?;
         assert_eq!(json, "\"unavailable\"");
+        Ok(())
     }
 }

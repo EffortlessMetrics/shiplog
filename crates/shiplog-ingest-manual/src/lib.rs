@@ -271,24 +271,24 @@ mod tests {
     }
 
     #[test]
-    fn ingest_missing_events_file_emits_unavailable_freshness() {
-        let temp = tempfile::tempdir().unwrap();
+    fn ingest_missing_events_file_emits_unavailable_freshness() -> anyhow::Result<()> {
+        let temp = tempfile::tempdir()?;
         let path = temp.path().join("does_not_exist.yaml");
 
-        let ing = ManualIngestor::new(
-            &path,
-            "testuser".to_string(),
-            NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
-            NaiveDate::from_ymd_opt(2025, 4, 1).unwrap(),
-        );
+        let since = NaiveDate::from_ymd_opt(2025, 1, 1)
+            .ok_or_else(|| anyhow::anyhow!("since date construction"))?;
+        let until = NaiveDate::from_ymd_opt(2025, 4, 1)
+            .ok_or_else(|| anyhow::anyhow!("until date construction"))?;
+        let ing = ManualIngestor::new(&path, "testuser".to_string(), since, until);
 
-        let output = ing.ingest().unwrap();
+        let output = ing.ingest()?;
         assert_eq!(output.events.len(), 0);
         assert_eq!(output.freshness.len(), 1);
         let entry = &output.freshness[0];
         assert_eq!(entry.source, "manual");
         assert!(matches!(entry.status, FreshnessStatus::Unavailable));
         assert!(entry.reason.is_some());
+        Ok(())
     }
 
     #[test]

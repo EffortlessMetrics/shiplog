@@ -1095,16 +1095,17 @@ mod tests {
     // value in the cache manually).
 
     #[test]
-    fn freshness_counters_start_at_zero() {
-        let ing = make_ingestor("octocat").with_in_memory_cache().unwrap();
+    fn freshness_counters_start_at_zero() -> anyhow::Result<()> {
+        let ing = make_ingestor("octocat").with_in_memory_cache()?;
         assert_eq!(ing.cache_hits.load(Ordering::Relaxed), 0);
         assert_eq!(ing.cache_misses.load(Ordering::Relaxed), 0);
+        Ok(())
     }
 
     #[test]
-    fn freshness_status_cached_when_only_hits_observed() {
+    fn freshness_status_cached_when_only_hits_observed() -> anyhow::Result<()> {
         // Status rule: cache present, hits > 0, misses == 0 => Cached.
-        let ing = make_ingestor("octocat").with_in_memory_cache().unwrap();
+        let ing = make_ingestor("octocat").with_in_memory_cache()?;
         ing.cache_hits.fetch_add(3, Ordering::Relaxed);
         let hits = ing.cache_hits.load(Ordering::Relaxed);
         let misses = ing.cache_misses.load(Ordering::Relaxed);
@@ -1114,12 +1115,13 @@ mod tests {
             FreshnessStatus::Fresh
         };
         assert!(matches!(status, FreshnessStatus::Cached));
+        Ok(())
     }
 
     #[test]
-    fn freshness_status_fresh_when_any_miss_observed() {
+    fn freshness_status_fresh_when_any_miss_observed() -> anyhow::Result<()> {
         // Status rule: cache present, any miss => Fresh.
-        let ing = make_ingestor("octocat").with_in_memory_cache().unwrap();
+        let ing = make_ingestor("octocat").with_in_memory_cache()?;
         ing.cache_hits.fetch_add(2, Ordering::Relaxed);
         ing.cache_misses.fetch_add(1, Ordering::Relaxed);
         let hits = ing.cache_hits.load(Ordering::Relaxed);
@@ -1130,6 +1132,7 @@ mod tests {
             FreshnessStatus::Fresh
         };
         assert!(matches!(status, FreshnessStatus::Fresh));
+        Ok(())
     }
 
     #[test]
