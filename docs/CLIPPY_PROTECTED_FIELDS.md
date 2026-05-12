@@ -1,8 +1,46 @@
 # Clippy Protected Field Seams
 
-This document defines the **protected field seams** that `clippy::disallowed_fields` will eventually enforce. The lint itself is currently `[[planned]]` in [`policy/clippy-lints.toml`](../policy/clippy-lints.toml) — held until the seams documented here are scaffolded (now landed at [`policy/clippy-protected-fields.toml`](../policy/clippy-protected-fields.toml)) and at least one seam has been refactored to use accessors (planned for the next PR).
+This document defines the **protected field seams** that `clippy::disallowed_fields` was originally scoped to enforce. The lint remains `[[planned]]` in [`policy/clippy-lints.toml`](../policy/clippy-lints.toml) — intentionally, not as backlog. See [Outcome (as of #216)](#outcome-as-of-216) for the per-class result and the doctrine the ladder converged on.
 
-This is doc-only. **No lint is activated by this document.** It exists to anchor the design conversation before any of the downstream activations land.
+This is doc-only. **No lint is activated by this document.** The classes below remain the canonical reference for the seams and the failure modes they guard against; the per-class audit history (with dated findings) lives in [`policy/clippy-protected-fields.toml`](../policy/clippy-protected-fields.toml).
+
+## Outcome (as of #216)
+
+The six-class protected-fields ladder is complete for the current codebase. Every class evaluated through the ladder reached `"type-enforced"` — except `cpf-0002` bundle-paths, where the reachable surface (`RunArtifactPaths::out_dir`) was tightened to `pub(crate)` in [#207](https://github.com/EffortlessMetrics/shiplog/pull/207) and the remaining work waits for manifest entry types that do not yet exist in the codebase.
+
+| Class | Status | Protection mechanism |
+|---|---|---|
+| `cpf-0001` redaction-internals | `type-enforced` | Internal alias-store type is `pub(crate)`; structural privacy from day one. |
+| `cpf-0002` bundle-paths | `scaffolded` | `RunArtifactPaths::out_dir` tightened to `pub(crate)` in #207; manifest entry types do not yet exist. |
+| `cpf-0003` trust-receipts | `type-enforced` | Single canonical computer in `shiplog-bundle` + determinism property tests + fuzz harness. |
+| `cpf-0004` source-opaque-ids | `type-enforced` | Canonical `SourceRef::opaque_id` wrapper + procedural nullification in `shiplog-redact::policy` + integration tests. |
+| `cpf-0005` cache-internals | `type-enforced` | Inner-struct refactor in #194 made raw fields unreachable; `ApiCacheInner` is private. |
+| `cpf-0006` policy-ledger-metadata | `type-enforced` | `xtask` is `publish = false` (crate-boundary) + dedicated `check-policy-schemas` gate (procedural). |
+
+### Doctrine
+
+The ladder converged on three rules for choosing a protection mechanism:
+
+1. **Prefer structure / type enforcement.** Make the type unreachable — private inner struct, `pub(crate)` wrapper, crate `publish = false`. When the type cannot be named externally, the field cannot be read by path; the lint is moot.
+2. **Use `clippy::disallowed_fields` only when protected raw fields must remain reachable on a `pub` type.** Once a class takes the inner-struct route, the lint emits non-suppressible `"does not refer to a reachable field"` warnings against the now-nonexistent paths (see `cpf-0005` activation-probe history). The lint is a tier-2 tool, applicable only when the type's `pub` shape is non-negotiable (e.g. serde schema requirement) — and even then, procedural protection (canonical computer + determinism tests) often fits the failure mode better.
+3. **Use `xtask` only for semantic / cross-file invariants.** A future ledger-driven `xtask check-protected-fields` checker could catch real cross-file shapes (e.g. a new `pub fn raw_*` accessor on a protected boundary type) — not patterns Clippy can already catch within a single file.
+
+### Do not re-open
+
+- **`clippy::disallowed_fields` activation.** No class currently needs it activated. The entry stays `[[planned]]` against the possibility that a future class keeps protected fields on a `pub` type. Re-running an activation probe against the current codebase will re-derive the same `"does not refer to a reachable field"` finding recorded in `cpf-0005`.
+- **Per-class audits.** Every class has a dated audit-history block in `policy/clippy-protected-fields.toml`. The audits are the receipt; do not re-run them without a code change that actually shifts a class's posture.
+
+### Open follow-ups
+
+These are real but **not** currently in flight; do not pre-emptively pick them up:
+
+- **`cpf-0002` bundle-paths.** Waits for the bundle / share manifest entry types to land. When they do, apply the inner-struct pattern from day one rather than retrofitting it post hoc (the cache-internals lesson from #192 → #194).
+- **`LoadedPolicy` visibility tightening.** Optional `pub` → `pub(crate)` tightening on `xtask::policy::LoadedPolicy::{path, header, raw}`. The `cpf-0006` audit established this would not break any within-crate caller. Mirrors #208's `RunArtifactPaths::out_dir` change.
+- **Ledger-driven `xtask check-protected-fields`.** Optional step 6 in the activation ladder. Only justify it when a future regression demonstrates a real cross-file shape Clippy cannot catch — speculative scaffolding is out of scope.
+
+### Final audit PR
+
+[#216](https://github.com/EffortlessMetrics/shiplog/pull/216) closed the loop: `cpf-0004` source-opaque-ids advanced to `type-enforced`, completing the six-class ladder. Each class's audit-history block in `policy/clippy-protected-fields.toml` carries the dated finding and the PR that recorded it.
 
 ## Why protected fields
 
@@ -94,6 +132,8 @@ Each class below lists:
    - decide whether the class can take the inner-struct route (preferred) or must keep protected fields on a `pub` type;
    - inner-struct refactor where applicable → advance to `"type-enforced"`;
    - `disallowed_fields` activation where the inner-struct route is not practical → advance to `"lint-active"`.
+
+   **Status as of #216:** complete. All five classes completed step 7 across #209 → #216; the per-class outcomes are summarised in [Outcome (as of #216)](#outcome-as-of-216). No class needed `"lint-active"` — each one either took the inner-struct / `pub(crate)` route or had its protection satisfied procedurally (canonical computer, dedicated gate). The next protection layer is the optional ledger-driven `xtask` checker described in step 6, deferred until a real regression justifies it.
 
 The constraint at every step: **never activate the lint without a working accessor surface**. A direct activation against the current surface would produce 100+ findings on day one, drown the operator in exceptions, and either ship broken or grind to a halt. The ladder makes the protection real one class at a time.
 
