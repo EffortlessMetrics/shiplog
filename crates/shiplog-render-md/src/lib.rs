@@ -337,6 +337,104 @@ fn render_summary(
         }
         out.push('\n');
     }
+
+    render_executive_summary(out, events, workstreams, coverage);
+}
+
+/// Workstream-by-workstream one-liner overview. The doc contract
+/// (`docs/product/rapid-first-intake.md` § 4.1) calls for a 5–15 line
+/// executive summary block driven by workstream titles and event counts,
+/// with explicit gaps called out inline and a cross-reference to the
+/// skipped-items section when coverage warnings exist.
+fn render_executive_summary(
+    out: &mut String,
+    events: &[EventEnvelope],
+    workstreams: &WorkstreamsFile,
+    coverage: &CoverageManifest,
+) {
+    out.push_str("## Executive Summary\n\n");
+
+    if workstreams.workstreams.is_empty() {
+        out.push_str(
+            "_No workstreams yet — no evidence has been clustered into a workstream._\n\n",
+        );
+    } else {
+        let by_id: HashMap<&str, &EventEnvelope> =
+            events.iter().map(|e| (e.id.0.as_str(), e)).collect();
+
+        // Cap at 15 lines to honor the doc's 5–15 line ceiling: list the
+        // first 14 workstreams in full, then a "+ N more" line if needed.
+        const MAX_LINES: usize = 14;
+        let total = workstreams.workstreams.len();
+        let shown = total.min(MAX_LINES);
+
+        for ws in workstreams.workstreams.iter().take(shown) {
+            let ws_pr = ws
+                .events
+                .iter()
+                .filter(|id| {
+                    by_id
+                        .get(id.0.as_str())
+                        .is_some_and(|e| matches!(e.kind, EventKind::PullRequest))
+                })
+                .count();
+            let ws_review = ws
+                .events
+                .iter()
+                .filter(|id| {
+                    by_id
+                        .get(id.0.as_str())
+                        .is_some_and(|e| matches!(e.kind, EventKind::Review))
+                })
+                .count();
+            let ws_manual = ws
+                .events
+                .iter()
+                .filter(|id| {
+                    by_id
+                        .get(id.0.as_str())
+                        .is_some_and(|e| matches!(e.kind, EventKind::Manual))
+                })
+                .count();
+
+            let counts = format!(
+                "{}, {}, {}",
+                count_label(ws_pr, "PR", "PRs"),
+                count_label(ws_review, "review", "reviews"),
+                count_label(ws_manual, "manual event", "manual events"),
+            );
+
+            let mut gaps: Vec<&str> = Vec::new();
+            if ws.events.is_empty() {
+                gaps.push("no events");
+            }
+            if ws.receipts.is_empty() && !ws.events.is_empty() {
+                gaps.push("no anchor receipts");
+            }
+            let gap_suffix = if gaps.is_empty() {
+                String::new()
+            } else {
+                format!(" — _gap: {}_", gaps.join("; "))
+            };
+
+            out.push_str(&format!("- **{}** — {}{}\n", ws.title, counts, gap_suffix));
+        }
+
+        if total > shown {
+            out.push_str(&format!(
+                "- _+ {} more workstream{}; see `## Workstreams` below for the full list._\n",
+                total - shown,
+                if total - shown == 1 { "" } else { "s" }
+            ));
+        }
+        out.push('\n');
+    }
+
+    if !coverage.warnings.is_empty() {
+        out.push_str(
+            "_Skipped sources and gaps: see `## Coverage and Limits` for the receipted list._\n\n",
+        );
+    }
 }
 
 fn render_workstreams(out: &mut String, events: &[EventEnvelope], workstreams: &WorkstreamsFile) {

@@ -1,6 +1,5 @@
 ---
 source: crates/shiplog-render-md/tests/format_stability.rs
-assertion_line: 342
 expression: result
 ---
 # Summary
@@ -18,6 +17,12 @@ expression: result
 **Warnings:**
   - ⚠️ API rate limit hit during ingestion
   - ⚠️ Some repositories may be missing
+
+## Executive Summary
+
+- **Partial Work** — 1 PR, 0 reviews, 0 manual events
+
+_Skipped sources and gaps: see `## Coverage and Limits` for the receipted list._
 
 ## Workstreams
 

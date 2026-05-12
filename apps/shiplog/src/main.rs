@@ -2710,6 +2710,17 @@ fn render_intake_report_markdown(report: &IntakeReport) -> String {
     out.push_str(&format!("Config: `{}`\n\n", report.config_path));
     out.push_str(&format!("Packet: `{}`\n\n", report.packet_path));
 
+    out.push_str(
+        "Redaction profile: `internal` — no aliasing applied; this report is for the run author. \
+Manager and public profiles fail closed and are produced via `shiplog share` with `SHIPLOG_REDACT_KEY` set.\n\n",
+    );
+
+    out.push_str("## Where to Look\n\n");
+    out.push_str("- Coverage and skipped sources: `coverage.manifest.json`\n");
+    out.push_str("- Event ledger (provenance per claim): `ledger.events.jsonl`\n");
+    out.push_str("- Bundle integrity (SHA256 per file): `bundle.manifest.json`\n");
+    out.push_str("- Full artifact list with paths: see `## Artifacts` below.\n\n");
+
     out.push_str("## Included Sources\n\n");
     if report.included_sources.is_empty() {
         out.push_str("- None\n");

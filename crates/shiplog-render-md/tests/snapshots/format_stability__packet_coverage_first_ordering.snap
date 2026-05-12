@@ -1,6 +1,5 @@
 ---
 source: crates/shiplog-render-md/tests/format_stability.rs
-assertion_line: 273
 expression: result
 ---
 ## Coverage and Limits
@@ -32,6 +31,10 @@ Details:
 **Coverage:** Complete
 
 **Sources:** GitHub
+
+## Executive Summary
+
+- **Initial Work** — 1 PR, 0 reviews, 0 manual events
 
 ## Workstreams
 
