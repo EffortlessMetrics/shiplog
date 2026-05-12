@@ -106,7 +106,7 @@ The constraint at every step: **never activate the lint without a working access
 | `cpf-0003` trust-receipts | `scaffolded` | Awaiting audit. Receipt types do not all exist in the codebase yet. |
 | `cpf-0004` source-opaque-ids | `scaffolded` | Awaiting audit. Largest class by surface area; many `pub` opaque-ID fields on per-source raw response structs today. |
 | `cpf-0005` cache-internals | `type-enforced` | Audit + refactor + probe complete: #192 → #194 → #196. Type system is the protection mechanism; lint not activated. |
-| `cpf-0006` policy-ledger-metadata | `scaffolded` | Awaiting audit. Wrapper type does not yet exist in the codebase. |
+| `cpf-0006` policy-ledger-metadata | `type-enforced` | Audit landed post-#210: the wrapper type `LoadedPolicy` does exist in `xtask::policy`. Two structural pillars protect the seam: (a) `xtask` is `publish = false`, so external code cannot depend on the crate or reach the type; (b) `cargo xtask check-policy-schemas` is the dedicated header-validation gate that runs in `blocking-allowlist` mode on every PR. `LoadedPolicy::{path, header, raw}` are currently `pub` within `xtask` — a tiny `pub(crate)` tightening (mirroring #208's `RunArtifactPaths::out_dir` change) is framed as a candidate follow-up. `disallowed_fields` is the wrong tool for this class. See `cpf-0006` audit-history comment in `policy/clippy-protected-fields.toml`. |
 
 ## Out of scope
 
