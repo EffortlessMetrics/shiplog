@@ -101,7 +101,7 @@ The constraint at every step: **never activate the lint without a working access
 
 | Class | Status | Notes |
 |---|---|---|
-| `cpf-0001` redaction-internals | `scaffolded` | Awaiting audit. |
+| `cpf-0001` redaction-internals | `type-enforced` | Audit landed post-#208: `DeterministicAliasStore` is `pub(crate)`, so external code cannot name the type; the two protected fields (`key: Vec<u8>` HMAC material and `cache: Mutex<BTreeMap<…>>` alias cache) are implicitly private. The public facade `DeterministicRedactor` holds the alias store as a private field and exposes only accessors. The seam was designed with the right shape from day one — no inner-struct refactor needed. Matches the post-#196 posture of cache-internals via a different path (structural privacy from the start, not retrofit). See `cpf-0001` audit-history comment in `policy/clippy-protected-fields.toml`. |
 | `cpf-0002` bundle-paths | `scaffolded` (audited, partially tightened) | Audit landed post-#204 in #206: `RunArtifactPaths::out_dir` was de facto private (no external caller reads it). Visibility-tightening follow-up landed in #207 (`pub` → `pub(crate)`). Bundle/share manifest entry types do not yet exist in the codebase — when they land, apply the inner-struct pattern from day one rather than retrofitting it. `disallowed_fields` activation unlikely to be the right tool per the cache-internals tier-2 framing. See `cpf-0002` audit-history comment in `policy/clippy-protected-fields.toml`. |
 | `cpf-0003` trust-receipts | `scaffolded` | Awaiting audit. Receipt types do not all exist in the codebase yet. |
 | `cpf-0004` source-opaque-ids | `scaffolded` | Awaiting audit. Largest class by surface area; many `pub` opaque-ID fields on per-source raw response structs today. |

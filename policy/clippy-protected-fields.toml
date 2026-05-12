@@ -131,16 +131,47 @@ title = "Redaction internals"
 invariant = "Alias maps, HMAC key material, and profile descriptor state must never be exposed in raw form. Internal name → alias mappings stay private; lookups go through accessors that return the alias plus the redaction profile it was minted under."
 boundary_crate = "shiplog-redact"
 boundary_module = "shiplog-redact::*"
-accessor_pattern = "Public types expose accessors (e.g. `alias_for`, `profile_of_alias`); raw `aliases` / `key_material` style fields are private."
+accessor_pattern = "The internal alias-store type is `pub(crate)`, so external code cannot name it. Its fields are implicitly private. The public facade `DeterministicRedactor` holds the alias store as an implicitly private field and exposes accessors (`alias`, `load_cache`, `save_cache`, `redact_events`, `redact_workstreams`). All free functions in `policy.rs` and `projector.rs` are `pub(crate)`."
 failure_mode = "A renderer reads `redactor.aliases` directly and emits the inner real name to a manager- or public-profile bundle. The redaction profile leak goes unnoticed because no test exercises the raw read path."
+# Audited 2026-05-12 (post-#208):
+#   - `DeterministicAliasStore` (the type carrying alias map + HMAC key
+#     material) is declared `pub(crate)` in
+#     `crates/shiplog-redact/src/alias.rs`. External code outside
+#     `shiplog-redact` cannot name the type, so cannot construct it
+#     and cannot read its fields by path.
+#   - The two protected fields on `DeterministicAliasStore` —
+#     `key: Vec<u8>` (HMAC key material) and `cache:
+#     Mutex<BTreeMap<String, String>>` (alias cache) — carry no
+#     `pub` keyword and are implicitly private.
+#   - `DeterministicRedactor` is the `pub struct` facade. Its single
+#     field `aliases: DeterministicAliasStore` is implicitly private.
+#     External code reaches alias state only via the type's public
+#     methods (`alias`, `load_cache`, `save_cache`, `redact_events`,
+#     `redact_workstreams`).
+#   - `RedactionProfile` is a `pub enum` of variant tags
+#     (`Internal`, `Manager`, `Public`) with no internal struct state
+#     to protect; not a `disallowed_fields` candidate.
+#   - Every free function in `policy.rs` and `projector.rs` is
+#     `pub(crate)` (`redact_event_with_aliases`,
+#     `redact_events_with_aliases`, `redact_workstream_with_aliases`,
+#     `redact_workstreams_with_aliases`, `project_events_with_aliases`,
+#     `project_workstreams_with_aliases`); the public API surface is
+#     entirely on `DeterministicRedactor`.
+#
+# The seam was designed with the right shape from day one — no
+# inner-struct refactor (#194-style) was ever needed. Redaction-
+# internals advances directly from `"scaffolded"` to `"type-enforced"`,
+# matching the post-#196 posture of cache-internals (`cpf-0005`) via
+# a different path: structural privacy from the start, not retrofit.
 field_candidates = [
-  "DeterministicAliasStore::key",
-  "DeterministicAliasStore::cache",
-  "TODO: HMAC key material field on the public redactor type once the engine wiring is finalised",
-  "TODO: profile descriptor internals on the projector type",
+  "DeterministicAliasStore::key (implicitly private; container type is pub(crate); type-enforced)",
+  "DeterministicAliasStore::cache (implicitly private; container type is pub(crate); type-enforced)",
+  "DeterministicRedactor::aliases (implicitly private on the pub facade; only reachable via accessors)",
+  "TODO: future HMAC key material fields on any new redactor type, if added (apply inner-struct pattern from day one to preserve this posture)",
+  "TODO: future profile descriptor fields, if state is added to a profile type beyond the current variant tag (apply inner-struct pattern from day one)",
 ]
-activation_status = "scaffolded"
-next_action = "Audit the public surface of `shiplog-redact` for `pub` fields on alias / key / profile types and confirm the candidate list is exhaustive. No source change in this PR."
+activation_status = "type-enforced"
+next_action = "Nothing to do for this class today: type system already enforces the seam. If any new state-bearing redaction type lands in the future (e.g. an explicit profile descriptor struct), apply the inner-struct pattern from day one — see the post-#196 cache-internals tier-2 framing. A future ledger-driven `xtask check-protected-fields` checker (framed as optional step 6 in `docs/CLIPPY_PROTECTED_FIELDS.md`) would scan for regressions like a future `pub fn raw_aliases(&self) -> &BTreeMap<...>` accessor on `DeterministicRedactor`."
 owner = "shiplog-redact"
 reason = "See docs/CLIPPY_PROTECTED_FIELDS.md#1-redaction-internals for the seam doctrine and failure mode."
 created = "2026-05-11"
