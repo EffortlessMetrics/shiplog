@@ -868,6 +868,7 @@ struct ReviewUser {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::TimeZone;
     use proptest::prelude::*;
 
     // ── helpers ──────────────────────────────────────────────────────────
@@ -1148,6 +1149,146 @@ mod tests {
             FreshnessStatus::Fresh
         };
         assert!(matches!(status, FreshnessStatus::Fresh));
+    }
+
+    // -- warm-rerun cache behavior --
+    //
+    // These tests pin the contract that a second `shiplog intake` run
+    // against a populated cache reports `cached` freshness. We exercise
+    // `fetch_pr_details` directly because (a) it is the cache-aware
+    // entry point the rest of the adapter funnels through, and
+    // (b) its cache-hit branch returns before any HTTP work — so the
+    // test can pre-seed the cache at the canonical key, hand
+    // `fetch_pr_details` a constructed `Client` that is never actually
+    // used, and observe the counter / status derivation that the
+    // intake report's `source_freshness` block reads from. The
+    // miss-then-fresh transition is also pinned here at the cache
+    // primitive layer (cache.get returns None → set value → cache.get
+    // returns Some); the miss branch of `fetch_pr_details` itself
+    // requires a working HTTP endpoint (or a recorded-fixtures harness)
+    // and is therefore deferred to a follow-up integration fixture.
+    //
+    // TODO(follow-up): once a recorded-fixtures HTTP harness lands
+    // (e.g. `wiremock` or a pre-recorded cassette in `fuzz/` style),
+    // extend these to drive a full fresh-then-cached round trip
+    // through `ingest()` and assert on `IngestOutput.freshness`.
+
+    fn make_pr_details() -> anyhow::Result<PullRequestDetails> {
+        let ts = Utc
+            .with_ymd_and_hms(2025, 5, 1, 12, 0, 0)
+            .single()
+            .ok_or_else(|| anyhow!("Utc.with_ymd_and_hms returned an ambiguous timestamp"))?;
+        Ok(PullRequestDetails {
+            title: "warm-rerun fixture".into(),
+            created_at: ts,
+            merged_at: Some(ts),
+            additions: 10,
+            deletions: 2,
+            changed_files: 3,
+            base: PullBase {
+                repo: PullRepo {
+                    full_name: "acme/widgets".into(),
+                    html_url: "https://github.com/acme/widgets".into(),
+                    private_field: false,
+                },
+            },
+        })
+    }
+
+    fn no_op_client() -> Result<Client> {
+        // The cache-hit branch of fetch_pr_details returns before
+        // touching the client, so the configured user-agent is the
+        // only thing we need to make this a well-formed Client.
+        // No network call is performed in any of the tests below.
+        Client::builder()
+            .user_agent("shiplog-warm-rerun-test")
+            .build()
+            .map_err(Into::into)
+    }
+
+    #[test]
+    fn warm_rerun_fetch_pr_details_records_cache_hit_without_network() -> anyhow::Result<()> {
+        let ing = make_ingestor("octocat").with_in_memory_cache()?;
+        let url = "https://api.github.com/repos/acme/widgets/pulls/1";
+
+        // Simulate "the first intake run already populated this entry"
+        // by writing to the cache directly using the same canonical
+        // CacheKey the fetch path constructs.
+        let key = CacheKey::pr_details(url);
+        let seeded = make_pr_details()?;
+        let cache = ing
+            .cache
+            .as_ref()
+            .ok_or_else(|| anyhow!("in-memory cache was just attached"))?;
+        cache.set(&key, &seeded)?;
+
+        // First lookup on the SECOND intake run hits the cache. The
+        // hit branch in fetch_pr_details returns before calling
+        // get_json, so the no-op client is never invoked.
+        let client = no_op_client()?;
+        let got = ing.fetch_pr_details(&client, url)?;
+        assert_eq!(got.title, seeded.title);
+        assert_eq!(ing.cache_hits.load(Ordering::Relaxed), 1);
+        assert_eq!(ing.cache_misses.load(Ordering::Relaxed), 0);
+
+        // Second lookup in the same run hits again (a real run can
+        // request the same PR twice if details and reviews both refer
+        // to it, depending on configuration). Counter must keep
+        // climbing; the "no misses" invariant is what makes the status
+        // Cached.
+        let got_again = ing.fetch_pr_details(&client, url)?;
+        assert_eq!(got_again.title, seeded.title);
+        assert_eq!(ing.cache_hits.load(Ordering::Relaxed), 2);
+        assert_eq!(ing.cache_misses.load(Ordering::Relaxed), 0);
+
+        // Status derivation mirrors the rule baked into
+        // GithubIngestor::ingest: cache present, any hit, zero miss
+        // => Cached.
+        let hits = ing.cache_hits.load(Ordering::Relaxed);
+        let misses = ing.cache_misses.load(Ordering::Relaxed);
+        let status = if ing.cache.is_some() && hits > 0 && misses == 0 {
+            FreshnessStatus::Cached
+        } else {
+            FreshnessStatus::Fresh
+        };
+        assert!(
+            matches!(status, FreshnessStatus::Cached),
+            "warm rerun with fully populated cache must derive Cached, got {status:?}"
+        );
+        assert_eq!(status.as_label(), "cached");
+        Ok(())
+    }
+
+    #[test]
+    fn warm_rerun_cache_primitive_round_trips_miss_then_hit() -> anyhow::Result<()> {
+        // Pin the fresh-vs-cached primitive on the cache itself: a
+        // first lookup against an empty cache returns None (so the
+        // adapter would increment cache_misses and fetch live), and a
+        // subsequent lookup after `set` returns the seeded value (so
+        // the adapter would increment cache_hits). This is what backs
+        // the warm-rerun status transition; the assertions above prove
+        // the adapter increments correctly when fed a hit, and these
+        // assertions prove the cache layer itself behaves the way the
+        // adapter assumes.
+        let ing = make_ingestor("octocat").with_in_memory_cache()?;
+        let cache = ing
+            .cache
+            .as_ref()
+            .ok_or_else(|| anyhow!("in-memory cache was just attached"))?;
+        let key = CacheKey::pr_details("https://api.github.com/repos/acme/widgets/pulls/2");
+
+        let cold: Option<PullRequestDetails> = cache.get(&key)?;
+        assert!(
+            cold.is_none(),
+            "first lookup against an empty cache must miss"
+        );
+
+        let value = make_pr_details()?;
+        cache.set(&key, &value)?;
+        let warm: Option<PullRequestDetails> = cache.get(&key)?;
+        let warm = warm.ok_or_else(|| anyhow!("second lookup after set must hit"))?;
+        assert_eq!(warm.title, value.title);
+        Ok(())
     }
 
     // -- api_url --
