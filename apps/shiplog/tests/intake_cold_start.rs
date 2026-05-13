@@ -284,9 +284,9 @@ fn cold_start_intake_report_records_source_decisions_without_explain() {
     // `skipped` decisions with a reason. The reviewer reading the report
     // alone must be able to answer "what did shiplog do, and why?"
     let manual_included = decisions.iter().any(|entry| {
-        entry["source"]
-            .as_str()
-            .is_some_and(|s| s.eq_ignore_ascii_case("manual"))
+        entry["source"].as_str() == Some("manual")
+            && entry["source_key"].as_str() == Some("manual")
+            && entry["source_label"].as_str() == Some("Manual")
             && entry["decision"].as_str() == Some("included")
     });
     assert!(
@@ -332,7 +332,10 @@ fn cold_start_intake_report_records_source_freshness_per_source() {
     );
 
     let manual_fresh = freshness.iter().any(|entry| {
-        entry["source"].as_str() == Some("manual") && entry["status"].as_str() == Some("fresh")
+        entry["source"].as_str() == Some("manual")
+            && entry["source_key"].as_str() == Some("manual")
+            && entry["source_label"].as_str() == Some("Manual")
+            && entry["status"].as_str() == Some("fresh")
     });
     assert!(
         manual_fresh,
