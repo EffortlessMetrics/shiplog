@@ -88,6 +88,44 @@ fn cold_start_one_command_emits_required_artifacts() {
     }
 }
 
+/// § 2 / § 3 — terminal next-step footer. A first-time user should not
+/// have to inspect the filesystem to know where the review pack went or
+/// what command to run next. The stdout footer must point at the run
+/// directory, latest-open commands, and the missing-evidence repair loop.
+#[test]
+fn cold_start_stdout_prints_review_pack_next_steps() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+
+    let assert = cold_start_cmd(tmp.path(), &out).assert().success();
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+
+    let run = first_run_dir(&out);
+    assert!(
+        stdout.contains("Review pack written to:"),
+        "rapid-first-intake.md § 2: intake stdout must name where the review pack was written. stdout:\n{stdout}"
+    );
+    assert!(
+        stdout.contains(&run.display().to_string()),
+        "rapid-first-intake.md § 2: intake stdout must include the concrete run directory {}. stdout:\n{stdout}",
+        run.display()
+    );
+    assert!(
+        stdout.contains("shiplog open intake-report") && stdout.contains("--latest"),
+        "rapid-first-intake.md § 2: intake stdout must include the latest intake-report open command. stdout:\n{stdout}"
+    );
+    assert!(
+        stdout.contains("shiplog open packet") && stdout.contains("--latest"),
+        "rapid-first-intake.md § 2: intake stdout must include the latest packet open command. stdout:\n{stdout}"
+    );
+    assert!(
+        stdout.contains("Needs evidence:")
+            && stdout.contains("shiplog journal add")
+            && stdout.contains("shiplog intake --last-6-months --explain"),
+        "rapid-first-intake.md § 3: Needs evidence stdout must include the repair loop. stdout:\n{stdout}"
+    );
+}
+
 /// § 3 — config scaffolding default. From a literal empty directory, the
 /// cold-start command must create the starter `shiplog.toml` and
 /// `manual_events.yaml` so the user does not need to run `shiplog init`

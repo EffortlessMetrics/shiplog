@@ -75,7 +75,7 @@ fn install_to_first_pack_smoke() {
     // `cargo install shiplog` or a release download. `CARGO_BIN_EXE_shiplog`
     // points at the cargo-built artifact for this workspace, which is
     // byte-identical to a `cargo install` output for the same toolchain.
-    Command::from_std(std::process::Command::new(env!("CARGO_BIN_EXE_shiplog")))
+    let assert = Command::from_std(std::process::Command::new(env!("CARGO_BIN_EXE_shiplog")))
         .current_dir(tmp.path())
         .env_remove("GITHUB_TOKEN")
         .env_remove("GITLAB_TOKEN")
@@ -90,8 +90,25 @@ fn install_to_first_pack_smoke() {
         ])
         .assert()
         .success();
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
 
     let run = first_run_dir(&out);
+    assert!(
+        stdout.contains("Review pack written to:"),
+        "smoke: intake stdout must include the review-pack footer. stdout:\n{stdout}"
+    );
+    assert!(
+        stdout.contains("shiplog open intake-report") && stdout.contains("--latest"),
+        "smoke: intake stdout must point at the latest intake report. stdout:\n{stdout}"
+    );
+    assert!(
+        stdout.contains("shiplog open packet") && stdout.contains("--latest"),
+        "smoke: intake stdout must point at the latest packet. stdout:\n{stdout}"
+    );
+    assert!(
+        stdout.contains("Needs evidence:") && stdout.contains("shiplog journal add"),
+        "smoke: Needs evidence stdout must include the manual-evidence repair hint. stdout:\n{stdout}"
+    );
 
     // (a) The two artifacts the user opens first must exist. Without
     // them, no framing assertion below is meaningful.

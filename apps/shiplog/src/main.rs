@@ -2191,6 +2191,8 @@ fn run_intake(args: IntakeArgs) -> Result<()> {
     )?;
     let report = build_intake_report(&result, &out, &args.config, &intake_plan.explanations)?;
     write_intake_report(&result.outputs.out_dir, &report)?;
+    let include_footer_out = intake_footer_should_include_out(args.out.as_ref(), &config_model);
+    let include_footer_config = intake_footer_should_include_config(&args.config);
 
     println!("Review intake complete.");
     if config_setup.created {
@@ -2237,6 +2239,14 @@ fn run_intake(args: IntakeArgs) -> Result<()> {
     print_review(&result.outputs.out_dir, false)?;
     println!();
     print_intake_readiness_report(&report);
+    println!();
+    print_intake_next_step_footer(
+        &report,
+        &out,
+        &args.config,
+        include_footer_out,
+        include_footer_config,
+    );
 
     if args.no_open {
         println!();
@@ -2252,6 +2262,88 @@ fn run_intake(args: IntakeArgs) -> Result<()> {
     }
 
     Ok(())
+}
+
+fn print_intake_next_step_footer(
+    report: &IntakeReport,
+    out_dir: &Path,
+    config_path: &Path,
+    include_out: bool,
+    include_config: bool,
+) {
+    println!("Review pack written to: {}", report.run_dir);
+    println!();
+    println!("Next:");
+    println!(
+        "  {}",
+        intake_open_latest_command("intake-report", out_dir, include_out)
+    );
+    println!(
+        "  {}",
+        intake_open_latest_command("packet", out_dir, include_out)
+    );
+
+    if report.readiness == "Needs evidence" {
+        println!();
+        println!("Needs evidence:");
+        println!("  Add manual evidence:");
+        println!("    shiplog journal add");
+        println!("  Then rerun:");
+        println!(
+            "    {}",
+            intake_rerun_command(config_path, out_dir, include_config, include_out)
+        );
+    }
+}
+
+fn intake_open_latest_command(target: &str, out_dir: &Path, include_out: bool) -> String {
+    if include_out {
+        format!(
+            "shiplog open {target} --out {} --latest",
+            quote_cli_value(&out_dir.display().to_string())
+        )
+    } else {
+        format!("shiplog open {target} --latest")
+    }
+}
+
+fn intake_rerun_command(
+    config_path: &Path,
+    out_dir: &Path,
+    include_config: bool,
+    include_out: bool,
+) -> String {
+    let mut command = "shiplog intake --last-6-months --explain".to_string();
+    if include_config {
+        command.push_str(" --config ");
+        command.push_str(&quote_cli_value(&config_path.display().to_string()));
+    }
+    if include_out {
+        command.push_str(" --out ");
+        command.push_str(&quote_cli_value(&out_dir.display().to_string()));
+    }
+    command
+}
+
+fn intake_footer_should_include_out(args_out: Option<&PathBuf>, config: &ShiplogConfig) -> bool {
+    args_out.is_some()
+        || config
+            .defaults
+            .out
+            .as_deref()
+            .is_some_and(|path| !is_default_out_setting(path))
+}
+
+fn intake_footer_should_include_config(config_path: &Path) -> bool {
+    normalize_cli_path_token(config_path) != CONFIG_FILENAME
+}
+
+fn is_default_out_setting(path: &Path) -> bool {
+    matches!(normalize_cli_path_token(path).as_str(), "out" | "./out")
+}
+
+fn normalize_cli_path_token(path: &Path) -> String {
+    path.to_string_lossy().replace('\\', "/")
 }
 
 fn build_intake_report(
