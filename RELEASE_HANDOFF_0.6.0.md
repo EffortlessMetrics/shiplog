@@ -64,6 +64,12 @@ Publishing requires explicit approval and `CARGO_REGISTRY_TOKEN`.
 CARGO_REGISTRY_TOKEN=<token> bash scripts/publish-v0.6.0.sh
 ```
 
+Release closure note: the shipped release used this script through
+`shiplog-ingest-linear`; publishing then paused because `shiplog-team` was
+listed before `shiplog-merge`. The release driver resumed manually with
+`shiplog-merge`, `shiplog-engine`, `shiplog-team`, and `shiplog`. The script is
+now corrected on `main`.
+
 ## Post-Tag Smoke
 
 ```bash
@@ -75,8 +81,7 @@ scripts/release-install-smoke.ps1 -Version v0.6.0
 
 - Protected-fields and `disallowed_fields` stay out of this lane.
 - `source` remains as a report v1 compatibility alias next to `source_key`.
-- Archive `.shiplog/goals/active.toml` after the release ships or is
-  superseded.
+- `.shiplog/goals/active.toml` was archived after the release shipped.
 
 ## Rollback
 

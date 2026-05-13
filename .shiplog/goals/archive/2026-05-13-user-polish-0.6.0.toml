@@ -37,7 +37,7 @@ final_proof_commands = [
 ]
 
 known_gaps = [
-  "scripts/publish-v0.6.0.sh listed shiplog-team before shiplog-merge; release driver resumed manually with shiplog-merge, shiplog-engine, shiplog-team, and shiplog.",
+  "scripts/publish-v0.6.0.sh listed shiplog-team before shiplog-merge during release; release driver resumed manually with shiplog-merge, shiplog-engine, shiplog-team, and shiplog, and main now corrects the script order.",
   "Windows PowerShell without Microsoft.PowerShell.Utility.Get-FileHash could not run release-install-smoke.ps1; pwsh ran it successfully.",
 ]
 
