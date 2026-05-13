@@ -27,6 +27,7 @@ completed_prs = [
   "https://github.com/EffortlessMetrics/shiplog/pull/235",
   "https://github.com/EffortlessMetrics/shiplog/pull/236",
   "https://github.com/EffortlessMetrics/shiplog/pull/237",
+  "https://github.com/EffortlessMetrics/shiplog/pull/238",
 ]
 
 rules = [
@@ -126,7 +127,8 @@ rollback = "Revert open-latest resolution and any footer command text that depen
 [[work_item]]
 id = "source-identity-canonicalization"
 title = "feat(report): canonicalize source identities in intake.report.json"
-status = "ready"
+status = "done"
+pr = "https://github.com/EffortlessMetrics/shiplog/pull/238"
 plan_section = "PR 3: Source Identity Canonicalization"
 specs = [
   "SHIPLOG-SPEC-0002-intake-report-v1",
@@ -147,8 +149,7 @@ rollback = "Revert report writer, schema/docs, and tests together."
 [[work_item]]
 id = "skipped-source-freshness"
 title = "feat(report): include skipped sources in source_freshness"
-status = "blocked"
-blocked_by = ["source-identity-canonicalization"]
+status = "ready"
 plan_section = "PR 4: Skipped Sources In Freshness"
 adrs = [
   "SHIPLOG-ADR-0001-ingest-output-is-receipt-boundary",
