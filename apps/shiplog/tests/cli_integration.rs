@@ -5924,6 +5924,65 @@ fn open_packet_latest_prints_packet_path_when_forced() {
 }
 
 #[test]
+fn open_packet_latest_selects_lexicographically_newest_run() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path();
+    let newest = "2026-05-13T09-00-00Z-newest";
+    let older = "2026-05-12T09-00-00Z-older";
+
+    write_minimal_open_run(out, newest, "newest packet");
+    std::thread::sleep(std::time::Duration::from_millis(25));
+    write_minimal_open_run(out, older, "older packet");
+
+    shiplog_cmd()
+        .args([
+            "open",
+            "packet",
+            "--out",
+            out.to_str().unwrap(),
+            "--latest",
+            "--print-path",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(newest))
+        .stdout(predicate::str::contains("packet.md"))
+        .stdout(predicate::str::contains(older).not());
+}
+
+#[test]
+fn open_latest_without_runs_prints_intake_command_to_create_one() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("missing runs");
+    let out_arg = out.to_str().unwrap();
+
+    shiplog_cmd()
+        .args([
+            "open",
+            "packet",
+            "--out",
+            out_arg,
+            "--latest",
+            "--print-path",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("No run directories found"))
+        .stderr(predicate::str::contains(
+            "shiplog intake --last-6-months --explain",
+        ))
+        .stderr(predicate::str::contains("--out"))
+        .stderr(predicate::str::contains(out_arg));
+}
+
+fn write_minimal_open_run(out: &Path, run_id: &str, packet_body: &str) {
+    let run = out.join(run_id);
+    std::fs::create_dir_all(&run).unwrap();
+    std::fs::write(run.join("ledger.events.jsonl"), "").unwrap();
+    std::fs::write(run.join("packet.md"), packet_body).unwrap();
+}
+
+#[test]
 fn open_workstreams_latest_prints_effective_workstreams_path_when_forced() {
     let tmp = TempDir::new().unwrap();
     collect_json_into(tmp.path());

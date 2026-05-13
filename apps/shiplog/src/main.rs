@@ -12336,28 +12336,10 @@ fn load_run_summary(run_dir: &Path) -> Result<RunSummary> {
 }
 
 fn discover_run_dirs(out_dir: &Path) -> Result<Vec<PathBuf>> {
-    if !out_dir.exists() {
-        anyhow::bail!("Output directory {:?} does not exist.", out_dir);
-    }
-
-    let mut runs: Vec<_> = std::fs::read_dir(out_dir)?
-        .filter_map(|entry| entry.ok())
-        .filter(|entry| entry.path().is_dir())
-        .filter(|entry| entry.path().join("ledger.events.jsonl").exists())
-        .collect();
-
-    runs.sort_by(|a, b| {
-        let a_meta = a.metadata().and_then(|meta| meta.modified()).ok();
-        let b_meta = b.metadata().and_then(|meta| meta.modified()).ok();
-        b_meta.cmp(&a_meta)
-    });
-
-    let runs: Vec<_> = runs.into_iter().map(|entry| entry.path()).collect();
-    if runs.is_empty() {
-        anyhow::bail!("No run directories found in {:?}", out_dir);
-    }
-
-    Ok(runs)
+    Ok(run_dir_entries_latest_first(out_dir)?
+        .into_iter()
+        .map(|entry| entry.path())
+        .collect())
 }
 
 fn modified_time_label(path: &Path) -> String {
@@ -13972,8 +13954,13 @@ fn try_open_path(path: &Path) -> bool {
 }
 
 fn find_most_recent_run(out_dir: &Path) -> Result<PathBuf> {
+    let mut runs = run_dir_entries_latest_first(out_dir)?;
+    Ok(runs.remove(0).path())
+}
+
+fn run_dir_entries_latest_first(out_dir: &Path) -> Result<Vec<std::fs::DirEntry>> {
     if !out_dir.exists() {
-        anyhow::bail!("Output directory {:?} does not exist.", out_dir);
+        anyhow::bail!("{}", missing_latest_run_message(out_dir));
     }
 
     let mut runs: Vec<_> = std::fs::read_dir(out_dir)?
@@ -13982,17 +13969,30 @@ fn find_most_recent_run(out_dir: &Path) -> Result<PathBuf> {
         .filter(|e| e.path().join("ledger.events.jsonl").exists())
         .collect();
 
-    // Sort by modified time, most recent first
-    runs.sort_by(|a, b| {
-        let a_meta = a.metadata().and_then(|m| m.modified()).ok();
-        let b_meta = b.metadata().and_then(|m| m.modified()).ok();
-        b_meta.cmp(&a_meta)
-    });
+    runs.sort_by_key(|entry| std::cmp::Reverse(entry.file_name()));
 
-    runs.into_iter()
-        .next()
-        .map(|e| e.path())
-        .ok_or_else(|| anyhow::anyhow!("No run directories found in {:?}", out_dir))
+    if runs.is_empty() {
+        anyhow::bail!("{}", missing_latest_run_message(out_dir));
+    }
+
+    Ok(runs)
+}
+
+fn missing_latest_run_message(out_dir: &Path) -> String {
+    format!(
+        "No run directories found in {}. Create one with: {}",
+        out_dir.display(),
+        intake_create_run_command_for_out(out_dir)
+    )
+}
+
+fn intake_create_run_command_for_out(out_dir: &Path) -> String {
+    let mut command = "shiplog intake --last-6-months --explain".to_string();
+    if !is_default_out_setting(out_dir) {
+        command.push_str(" --out ");
+        command.push_str(&quote_cli_value(&out_dir.display().to_string()));
+    }
+    command
 }
 
 fn resolve_render_run_dir(out_dir: &Path, run: Option<String>, latest: bool) -> Result<PathBuf> {
