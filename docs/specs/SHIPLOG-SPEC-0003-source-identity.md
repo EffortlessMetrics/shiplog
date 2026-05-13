@@ -1,0 +1,210 @@
+# SHIPLOG-SPEC-0003: Source Identity
+
+Status: proposed
+Owner: product/schema
+Created: 2026-05-13
+Related proposal:
+[`SHIPLOG-PROP-0001-user-polish-release`](../proposals/SHIPLOG-PROP-0001-user-polish-release.md)
+Related report spec:
+[`SHIPLOG-SPEC-0002-intake-report-v1`](SHIPLOG-SPEC-0002-intake-report-v1.md)
+
+## Purpose
+
+This spec defines source identity for intake reports. The goal is that
+machine-readable JSON uses stable source keys while human-facing Markdown uses
+friendly display labels.
+
+This unblocks skipped-source freshness, cross-section joins, and future agent
+flows without test-local normalization helpers.
+
+## Current Problem
+
+Today the same conceptual source can appear under different strings:
+
+```text
+source_freshness[].source = github / git / json_import
+source_decisions[].source = GitHub / Local git / JSON
+included/skipped sources  = display labels
+```
+
+Issue
+[#223](https://github.com/EffortlessMetrics/shiplog/issues/223) records the
+problem. Issue
+[#229](https://github.com/EffortlessMetrics/shiplog/issues/229) records why
+skipped-source freshness was deferred until identity is settled.
+
+The failure mode is not cosmetic. A report consumer cannot join freshness and
+decision entries reliably without reproducing shiplog's private
+normalization/display-label rules.
+
+## Decision
+
+JSON uses canonical machine keys. Markdown uses display labels.
+
+The preferred JSON shape for every source-facing report entry is:
+
+```json
+{
+  "source_key": "github",
+  "source_label": "GitHub"
+}
+```
+
+`source_key` is the join key. `source_label` is display-only. Markdown renders
+`source_label` or computes an equivalent label from `source_key`; it must not
+expose raw implementation aliases when a friendly label exists.
+
+## Canonical Source Keys
+
+Canonical source keys are lower-case ASCII identifiers using snake case.
+
+Initial vocabulary:
+
+```text
+github
+gitlab
+jira
+linear
+manual
+json
+git
+unknown
+```
+
+Compatibility aliases that may appear in older reports or adapter-local
+receipts:
+
+```text
+json_import -> json
+jsonimport   -> json
+local_git    -> git
+localgit     -> git
+```
+
+New source keys require:
+
+- schema vocabulary update;
+- display-label mapping;
+- tests for every report section that emits source identity;
+- docs update in this spec or a linked successor spec.
+
+## Source Labels
+
+Display labels are human-facing strings. Initial labels:
+
+```text
+github  -> GitHub
+gitlab  -> GitLab
+jira    -> Jira
+linear  -> Linear
+manual  -> Manual
+json    -> JSON
+git     -> Local git
+unknown -> Unknown
+```
+
+Labels can change for readability without changing the machine key, but a label
+change should update Markdown snapshots and user-facing docs when visible.
+
+## Report Sections
+
+The source identity shape applies to:
+
+```text
+included_sources[]
+skipped_sources[]
+source_decisions[]
+source_freshness[]
+repair_sources[]
+```
+
+After implementation, each entry should expose `source_key` and `source_label`.
+Legacy `source` may be retained temporarily only if the schema/docs specify the
+migration behavior and readers are told whether it is a key or label.
+
+The long-term contract is:
+
+- JSON joins on `source_key`;
+- JSON can display `source_label` without recomputing labels;
+- Markdown shows friendly labels;
+- validators reject unknown `source_key` values unless the schema explicitly
+  allows extension keys.
+
+## Freshness And Skipped Sources
+
+Skipped sources in `source_freshness` depend on this spec.
+
+The intended follow-up order is:
+
+1. Canonicalize source identity in report JSON.
+2. Add skipped configured sources to `source_freshness`.
+3. Prove `source_decisions` and `source_freshness` join on `source_key`.
+
+Do not implement skipped-source freshness by adding new display-label
+normalization in tests. That preserves the bug this spec is meant to remove.
+
+## Acceptance Criteria
+
+The source identity implementation is complete when:
+
+- every source-facing JSON report entry carries `source_key`;
+- every source-facing JSON report entry carries `source_label` or has a
+  documented compatibility reason not to;
+- `source_key` validates against the canonical vocabulary;
+- `source_decisions` and `source_freshness` join directly on `source_key`;
+- tests no longer need report-local normalization helpers to compare source
+  sections;
+- Markdown still renders friendly labels;
+- skipped-source freshness can be implemented without naming drift;
+- historical v1 reports either keep validating or have a documented migration
+  path.
+
+## Proof Mapping
+
+Current evidence:
+
+- [`docs/conventions.md`](../conventions.md#conventions-under-discussion)
+  records the inconsistency as an unsettled convention.
+- [`apps/shiplog/src/main.rs`](../../apps/shiplog/src/main.rs) contains the
+  current private `normalized_source_key` and `display_source_label` helpers.
+- [`contracts/schemas/intake-report.v1.schema.json`](../../contracts/schemas/intake-report.v1.schema.json)
+  currently accepts non-empty `source` strings but does not enforce vocabulary.
+- [`apps/shiplog/tests/intake_cold_start.rs`](../../apps/shiplog/tests/intake_cold_start.rs)
+  currently checks first-run source decisions and freshness.
+- [`apps/shiplog/tests/cli_integration.rs`](../../apps/shiplog/tests/cli_integration.rs)
+  contains report shape and source-array assertions that must move to the new
+  identity contract when behavior changes.
+
+Useful validation commands for the implementation PR:
+
+```bash
+cargo test -p shiplog --test intake_cold_start
+cargo test -p shiplog --test cli_integration -- intake
+cargo test -p shiplog --test cli_integration -- report
+cargo xtask check-policy-schemas
+cargo xtask check-file-policy --mode blocking-allowlist
+git diff --check
+```
+
+## Compatibility Notes
+
+This spec records a target contract; it does not change current JSON output.
+
+The implementation PR must decide whether canonical source identity is a
+compatible v1 extension or a schema-version bump. If `source` remains in v1 for
+compatibility, the schema docs must say whether `source` is deprecated, whether
+it mirrors `source_key` or `source_label`, and how readers should prioritize
+the fields.
+
+## Non-Goals
+
+This spec does not define:
+
+- freshness statuses;
+- cache hit/miss semantics;
+- source adapter configuration names;
+- provider-specific account identity;
+- source opaque ID redaction.
+
+Source opaque IDs remain covered by the protected-fields audit trail and
+redaction policy, not by this source-name contract.
