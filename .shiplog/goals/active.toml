@@ -26,6 +26,7 @@ completed_prs = [
   "https://github.com/EffortlessMetrics/shiplog/pull/234",
   "https://github.com/EffortlessMetrics/shiplog/pull/235",
   "https://github.com/EffortlessMetrics/shiplog/pull/236",
+  "https://github.com/EffortlessMetrics/shiplog/pull/237",
 ]
 
 rules = [
@@ -108,7 +109,8 @@ rollback = "Revert footer rendering and stdout assertions together."
 [[work_item]]
 id = "open-latest"
 title = "feat(open): improve latest artifact discovery"
-status = "ready"
+status = "done"
+pr = "https://github.com/EffortlessMetrics/shiplog/pull/237"
 plan_section = "PR 2: Latest Artifact Opening"
 specs = ["SHIPLOG-SPEC-0001-rapid-first-intake"]
 issues = []
@@ -124,8 +126,7 @@ rollback = "Revert open-latest resolution and any footer command text that depen
 [[work_item]]
 id = "source-identity-canonicalization"
 title = "feat(report): canonicalize source identities in intake.report.json"
-status = "blocked"
-blocked_by = ["open-latest"]
+status = "ready"
 plan_section = "PR 3: Source Identity Canonicalization"
 specs = [
   "SHIPLOG-SPEC-0002-intake-report-v1",
