@@ -14,6 +14,7 @@ crates=(
     shiplog-ids
     shiplog-schema
     shiplog-ports
+    shiplog-merge
     shiplog-coverage
     shiplog-cache
     shiplog-redact
@@ -29,9 +30,8 @@ crates=(
     shiplog-ingest-gitlab
     shiplog-ingest-jira
     shiplog-ingest-linear
-    shiplog-team
-    shiplog-merge
     shiplog-engine
+    shiplog-team
     shiplog
 )
 
