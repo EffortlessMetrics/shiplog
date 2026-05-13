@@ -251,7 +251,7 @@ proof before it lands.
 - `SHIPLOG-SPEC-0003-source-identity` owns canonical machine source keys and
   display labels.
 - `SHIPLOG-SPEC-0004-freshness-and-cache` owns `fresh`, `cached`, `skipped`,
-  `unavailable`, and reserved `stale` semantics.
+  `unavailable`, and `stale` semantics.
 - `SHIPLOG-SPEC-0005-open-latest` owns deterministic latest-artifact
   discovery.
 - `SHIPLOG-SPEC-0007-evidence-repair-loop` owns the full "what now?" repair
