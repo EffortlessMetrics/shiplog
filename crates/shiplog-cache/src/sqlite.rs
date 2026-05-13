@@ -374,8 +374,8 @@ mod tests {
     }
 
     #[test]
-    fn lookup_distinguishes_fresh_stale_and_miss() {
-        let cache = ApiCache::open_in_memory().unwrap();
+    fn lookup_distinguishes_fresh_stale_and_miss() -> Result<()> {
+        let cache = ApiCache::open_in_memory()?;
 
         let fresh = TestData {
             name: "fresh".to_string(),
@@ -386,31 +386,25 @@ mod tests {
             count: 2,
         };
 
-        cache
-            .set_with_ttl("fresh", &fresh, Duration::seconds(60))
-            .unwrap();
-        cache
-            .set_with_ttl("stale", &stale, Duration::seconds(-1))
-            .unwrap();
+        cache.set_with_ttl("fresh", &fresh, Duration::seconds(60))?;
+        cache.set_with_ttl("stale", &stale, Duration::seconds(-1))?;
 
         assert_eq!(
-            cache.lookup::<TestData>("fresh").unwrap(),
+            cache.lookup::<TestData>("fresh")?,
             CacheLookup::Fresh(fresh)
         );
         assert_eq!(
-            cache.lookup::<TestData>("stale").unwrap(),
+            cache.lookup::<TestData>("stale")?,
             CacheLookup::Stale(stale)
         );
-        assert_eq!(
-            cache.lookup::<TestData>("missing").unwrap(),
-            CacheLookup::Miss
-        );
+        assert_eq!(cache.lookup::<TestData>("missing")?, CacheLookup::Miss);
 
-        let filtered: Option<TestData> = cache.get("stale").unwrap();
+        let filtered: Option<TestData> = cache.get("stale")?;
         assert!(
             filtered.is_none(),
             "ApiCache::get should continue filtering expired rows"
         );
+        Ok(())
     }
 
     #[test]
