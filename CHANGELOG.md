@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-05-13
+
+shiplog 0.6.0 is the **user-polish review-pack release**. It turns the first
+intake path into a receipt-backed control loop: run intake, open the latest
+report or packet, see which sources worked or were skipped, understand
+freshness, and get the next repair command without rediscovering context.
+
+### Added
+
+- Added post-intake next-step output with the run directory, latest-artifact
+  open commands, and repair/rerun guidance when evidence is still missing
+  (#236).
+- Added deterministic latest-run opening for `shiplog open intake-report
+  --latest`, `shiplog open packet --latest`, and `shiplog open out --latest`
+  (#237).
+- Added skipped-source freshness rows so `source_freshness` and
+  `source_decisions` agree on configured sources that could not run, including
+  reason text for repair guidance (#243).
+- Added `CacheLookup::{Fresh, Stale, Miss}` and wired GitHub freshness so
+  `stale` is emitted only from a proven expired cache row (#244).
+
+### Changed
+
+- Canonicalized intake-report source identity: machine-readable JSON now emits
+  `source_key` plus `source_label`, while Markdown keeps reviewer-friendly
+  labels. The legacy `source` field remains as a v1 compatibility alias
+  (#238).
+- Bumped all workspace packages and internal path dependency requirements from
+  `0.5.0` to `0.6.0`.
+
+### Documentation
+
+- Added the user-polish source-of-truth stack: proposal, first-intake/report
+  specs, source-identity/freshness/open/latest/share/repair/CI-economics
+  contracts, ADRs, implementation plan, and active goal manifest (#230-#235).
+- Added this release readiness/handoff set for the 0.6.0 user-polish lane.
+
+### Tests
+
+- Added recorded GitHub HTTP fixtures that prove a full first run is `fresh`
+  and a second run against the same cache is `cached`, without live network
+  access (#245).
+
 ## [0.5.0] - 2026-05-10
 
 shiplog 0.5.0 is **Operational Review Rescue + Rust 1.95 quality floor +

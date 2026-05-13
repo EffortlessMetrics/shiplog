@@ -98,10 +98,11 @@ known field sets need not.
 
 ## Forward-receipt convention (reserved enum variants with epistemic comments)
 
-The `FreshnessStatus` enum in
+The `FreshnessStatus::Stale` lane is the model for this convention. Before
+`CacheLookup` existed, the enum in
 [`crates/shiplog-schema/src/freshness.rs`](../crates/shiplog-schema/src/freshness.rs)
-reserves a `Stale` variant that no adapter emits today. The module doc and
-the variant doc state explicitly *why* it is not emitted:
+reserved a `Stale` variant that no adapter could emit honestly. The module doc
+and the variant doc stated explicitly *why* it was not emitted:
 
 ```rust
 //! The taxonomy is intentionally narrow in v1: `Fresh`, `Cached`, `Skipped`,
@@ -113,11 +114,11 @@ the variant doc state explicitly *why* it is not emitted:
 //! `shiplog-cache` is the follow-up that unlocks stale-fallback reporting.
 ```
 
-This is a **forward receipt**: the schema commits to a future shape so
-consumers cannot be surprised when it lands. The cost is one enum variant and
-one schema entry; the benefit is that the future state is named and reserved
-*today*, with a written explanation of the epistemic constraint that
-currently prevents emitting it. Tracked under issue
+That was a **forward receipt**: the schema committed to a future shape so
+consumers would not be surprised when it landed. The cost was one enum variant
+and one schema entry; the benefit was that the future state was named and
+reserved with a written explanation of the epistemic constraint that prevented
+emitting it. Tracked under issue
 [#224](https://github.com/EffortlessMetrics/shiplog/issues/224)
 (`CacheLookup::{Fresh, Stale, Miss}`).
 
@@ -127,13 +128,14 @@ when an unknown shape appears. The forward-receipt convention addresses
 something different — *announcing a specific known future shape* and the
 constraint that prevents emitting it today.
 
-The comment that explains why-not-yet is load-bearing. Without it, a future
-contributor reading `FreshnessStatus::Stale` will see an enum arm that no
-match expression reaches and either delete it as dead code or fake an
-emission. The comment is what makes the reservation honest: it gives the
-next reader the reason the variant exists, the dependency that has to land
-first, and the name of the issue tracking that dependency. The forward
-receipt only works while the comment is intact.
+The comment that explains why-not-yet is load-bearing while the receipt is
+reserved. Once the proof API lands, update the comment in the same PR that
+starts emitting the value. Without that update, a future contributor can
+misread the enum arm as still-reserved or emit it from a guess. The comment is
+what makes the reservation honest: it gives the next reader the reason the
+variant exists, the dependency that has to land first, and the name of the
+issue tracking that dependency. The forward receipt only works while the
+comment is intact and current.
 
 When adding a new enum that has a clear future state behind a known
 dependency, prefer the forward-receipt shape with an epistemic comment over
@@ -184,12 +186,10 @@ is a reader who wonders why `5`.
 
 ## Conventions under discussion
 
-Source-name canonicalization across the `intake.report.json` sections is
-currently inconsistent. `source_freshness` entries use lowercase internal
-keys (`"github"`, `"manual"`); `source_decisions` entries use display labels.
-The intended canonical form is being worked out under issue
-[#223](https://github.com/EffortlessMetrics/shiplog/issues/223). This doc
-will document the canonical form once the issue is resolved.
+Source-name canonicalization across `intake.report.json` now follows the
+source-identity contract: source-facing entries carry `source_key` for joins
+and `source_label` for display. See
+[`SHIPLOG-SPEC-0003-source-identity`](specs/SHIPLOG-SPEC-0003-source-identity.md).
 
 ## See also
 

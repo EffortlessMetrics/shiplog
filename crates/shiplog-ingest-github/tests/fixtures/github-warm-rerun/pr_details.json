@@ -1,0 +1,15 @@
+{
+  "title": "Warm rerun fixture",
+  "created_at": "2025-01-15T10:00:00Z",
+  "merged_at": "2025-01-16T11:00:00Z",
+  "additions": 42,
+  "deletions": 7,
+  "changed_files": 3,
+  "base": {
+    "repo": {
+      "full_name": "acme/widgets",
+      "html_url": "https://github.com/acme/widgets",
+      "private": false
+    }
+  }
+}
