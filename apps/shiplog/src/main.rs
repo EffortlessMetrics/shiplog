@@ -13964,6 +13964,7 @@ fn display_source_label(source: &str) -> String {
         "manual" => "Manual".to_string(),
         "json" => "JSON".to_string(),
         "git" => "Local git".to_string(),
+        "redaction" => "Redaction".to_string(),
         "unknown" => "Unknown".to_string(),
         other => other.to_string(),
     }
