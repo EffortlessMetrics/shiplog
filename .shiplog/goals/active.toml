@@ -31,6 +31,7 @@ completed_prs = [
   "https://github.com/EffortlessMetrics/shiplog/pull/243",
   "https://github.com/EffortlessMetrics/shiplog/pull/244",
   "https://github.com/EffortlessMetrics/shiplog/pull/245",
+  "https://github.com/EffortlessMetrics/shiplog/pull/246",
 ]
 
 rules = [
@@ -210,7 +211,8 @@ rollback = "Remove fixtures and tests without loosening live-network guards."
 [[work_item]]
 id = "release-prep"
 title = "release: prepare user-polish release"
-status = "ready"
+status = "done"
+pr = "https://github.com/EffortlessMetrics/shiplog/pull/246"
 plan_section = "PR 7: User-Polish Release Prep"
 issues = []
 commands = [
