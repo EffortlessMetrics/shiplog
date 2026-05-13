@@ -40,7 +40,6 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
-
 mod intake_report_builder;
 use intake_report_builder::build_intake_report;
 
@@ -1796,6 +1795,8 @@ struct IntakeReport {
 #[derive(Debug, Serialize)]
 struct IntakeReportSourceFreshness {
     source: String,
+    source_key: String,
+    source_label: String,
     status: String,
     cache_hits: u64,
     cache_misses: u64,
@@ -1818,9 +1819,18 @@ struct IntakeReportWindow {
     label: String,
 }
 
+#[derive(Debug, Clone)]
+struct IntakeReportSourceIdentity {
+    source: String,
+    source_key: String,
+    source_label: String,
+}
+
 #[derive(Debug, Serialize)]
 struct IntakeReportIncludedSource {
     source: String,
+    source_key: String,
+    source_label: String,
     event_count: usize,
     summary: String,
 }
@@ -1828,12 +1838,16 @@ struct IntakeReportIncludedSource {
 #[derive(Debug, Serialize)]
 struct IntakeReportSkippedSource {
     source: String,
+    source_key: String,
+    source_label: String,
     reason: String,
 }
 
 #[derive(Debug, Serialize)]
 struct IntakeReportSourceDecision {
     source: String,
+    source_key: String,
+    source_label: String,
     decision: String,
     reason: String,
     hint_label: Option<String>,
@@ -1843,6 +1857,8 @@ struct IntakeReportSourceDecision {
 #[derive(Debug, Serialize)]
 struct IntakeReportRepairSource {
     source: String,
+    source_key: String,
+    source_label: String,
     kind: String,
     reason: String,
     commands: Vec<String>,
@@ -2361,7 +2377,7 @@ fn intake_report_actions(
 
     for repair in repair_sources {
         for command in &repair.commands {
-            let source_token = action_token(&repair.source);
+            let source_token = action_token(&repair.source_key);
             let action_index = repair_action_index_by_source
                 .entry(source_token.clone())
                 .and_modify(|value| *value += 1)
@@ -2372,7 +2388,7 @@ fn intake_report_actions(
                 IntakeReportAction {
                     id: format!("action_repair_{source_token}_{action_index}"),
                     kind: "repair_source".to_string(),
-                    label: format!("Repair {}", repair.source),
+                    label: format!("Repair {}", repair.source_label),
                     command: command.clone(),
                     writes: action_writes(command),
                     risk: action_risk(command).to_string(),
@@ -2510,7 +2526,7 @@ fn print_intake_readiness_report(report: &IntakeReport) {
         println!();
         println!("Repair sources:");
         for repair in &report.repair_sources {
-            println!("- {}: {}", repair.source, repair.reason);
+            println!("- {}: {}", repair.source_label, repair.reason);
             println!("  kind: {}", repair.kind);
             for command in &repair.commands {
                 println!("  {command}");
@@ -2586,7 +2602,10 @@ implicitly fresh; see `## Skipped Sources` and `## Source Decisions` for the res
                 (h, m, Some(at)) => format!(" (cache: {h} hit / {m} miss; observed at {at})"),
                 (h, m, None) => format!(" (cache: {h} hit / {m} miss)"),
             };
-            out.push_str(&format!("- **{}**: {}{detail}", entry.source, entry.status));
+            out.push_str(&format!(
+                "- **{}**: {}{detail}",
+                entry.source_label, entry.status
+            ));
             if let Some(reason) = &entry.reason {
                 out.push_str(&format!(" — {reason}"));
             }
@@ -2602,7 +2621,7 @@ implicitly fresh; see `## Skipped Sources` and `## Source Decisions` for the res
         for source in &report.included_sources {
             out.push_str(&format!(
                 "- {}: {}\n",
-                source.source,
+                source.source_label,
                 event_count_phrase(source.event_count)
             ));
         }
@@ -2614,7 +2633,7 @@ implicitly fresh; see `## Skipped Sources` and `## Source Decisions` for the res
         out.push_str("- None\n");
     } else {
         for skipped in &report.skipped_sources {
-            out.push_str(&format!("- {}: {}\n", skipped.source, skipped.reason));
+            out.push_str(&format!("- {}: {}\n", skipped.source_label, skipped.reason));
         }
     }
     out.push('\n');
@@ -2626,7 +2645,7 @@ implicitly fresh; see `## Skipped Sources` and `## Source Decisions` for the res
         for decision in &report.source_decisions {
             out.push_str(&format!(
                 "- {}: {}, {}\n",
-                decision.source, decision.decision, decision.reason
+                decision.source_label, decision.decision, decision.reason
             ));
             if let Some(label) = &decision.hint_label {
                 out.push_str(&format!("  - {label}:\n"));
@@ -2643,7 +2662,7 @@ implicitly fresh; see `## Skipped Sources` and `## Source Decisions` for the res
         out.push_str("- None\n");
     } else {
         for repair in &report.repair_sources {
-            out.push_str(&format!("- {}: {}\n", repair.source, repair.reason));
+            out.push_str(&format!("- {}: {}\n", repair.source_label, repair.reason));
             out.push_str(&format!("  - kind: `{}`\n", repair.kind));
             for command in &repair.commands {
                 out.push_str(&format!("  - {command}\n"));
@@ -2803,6 +2822,9 @@ const INTAKE_REPORT_SECRET_SENTINELS: &[&str] = &[
     "stable-test-key",
     "do-not-leak",
     "super-secret",
+];
+const INTAKE_SOURCE_KEY_VALUES: &[&str] = &[
+    "github", "gitlab", "jira", "linear", "manual", "json", "git", "unknown",
 ];
 const INTAKE_REPAIR_KIND_VALUES: &[&str] = &[
     "missing_token",
@@ -3180,6 +3202,16 @@ fn validate_report_items(report: &serde_json::Value) -> Result<()> {
             for key in object.keys() {
                 ensure_field_name_not_secret_bearing(key)?;
             }
+            if matches!(
+                field,
+                "included_sources"
+                    | "skipped_sources"
+                    | "source_decisions"
+                    | "source_freshness"
+                    | "repair_sources"
+            ) {
+                validate_optional_report_source_identity(field, item)?;
+            }
             if field == "repair_sources" {
                 validate_optional_repair_kind(item)?;
             } else if field == "top_fixups" {
@@ -3193,6 +3225,27 @@ fn validate_report_items(report: &serde_json::Value) -> Result<()> {
             .ok_or_else(|| anyhow::anyhow!("intake report field \"actions\" must be an array"))?;
         for item in actions {
             validate_report_action(item)?;
+        }
+    }
+
+    Ok(())
+}
+
+fn validate_optional_report_source_identity(field: &str, item: &serde_json::Value) -> Result<()> {
+    if let Some(source_key) = item.get("source_key") {
+        let Some(source_key) = source_key.as_str() else {
+            anyhow::bail!("intake report {field} source_key must be a string")
+        };
+        if !INTAKE_SOURCE_KEY_VALUES.contains(&source_key) {
+            anyhow::bail!("intake report {field} source_key {source_key:?} is not supported")
+        }
+    }
+    if let Some(source_label) = item.get("source_label") {
+        let Some(source_label) = source_label.as_str() else {
+            anyhow::bail!("intake report {field} source_label must be a string")
+        };
+        if source_label.is_empty() {
+            anyhow::bail!("intake report {field} source_label must not be empty")
         }
     }
 
@@ -3530,12 +3583,15 @@ fn intake_source_decision_reports(
     explanations
         .iter()
         .map(|explanation| {
+            let identity = intake_report_source_identity(&explanation.name);
             let hint = intake_source_hint(explanation);
             let (hint_label, hint_lines) = hint
                 .map(|hint| (Some(hint.label.to_string()), hint.lines))
                 .unwrap_or((None, Vec::new()));
             IntakeReportSourceDecision {
-                source: display_source_label(&explanation.name),
+                source: identity.source,
+                source_key: identity.source_key,
+                source_label: identity.source_label,
                 decision: match explanation.decision {
                     IntakeSourceDecision::Included => "included".to_string(),
                     IntakeSourceDecision::Skipped => "skipped".to_string(),
@@ -3551,31 +3607,79 @@ fn intake_source_decision_reports(
 fn build_source_freshness_report(
     successes: &[(String, IngestOutput)],
     failures: &[ConfiguredSourceFailure],
+    explanations: &[IntakeSourceExplanation],
 ) -> Vec<IntakeReportSourceFreshness> {
     let mut out = Vec::new();
+    let mut seen = BTreeSet::new();
     for (_configured_name, ingest) in successes {
         for entry in &ingest.freshness {
-            out.push(IntakeReportSourceFreshness {
-                source: entry.source.clone(),
-                status: entry.status.as_label().to_string(),
-                cache_hits: entry.cache_hits,
-                cache_misses: entry.cache_misses,
-                observed_at: entry.fetched_at.map(|ts| ts.to_rfc3339()),
-                reason: entry.reason.clone(),
-            });
+            push_intake_report_source_freshness(
+                &mut out,
+                &mut seen,
+                &entry.source,
+                entry.status.as_label(),
+                entry.cache_hits,
+                entry.cache_misses,
+                entry.fetched_at.map(|ts| ts.to_rfc3339()),
+                entry.reason.clone(),
+            );
         }
     }
     for failure in failures {
-        out.push(IntakeReportSourceFreshness {
-            source: display_source_label(&failure.name),
-            status: "unavailable".to_string(),
-            cache_hits: 0,
-            cache_misses: 0,
-            observed_at: None,
-            reason: Some(failure.error.clone()),
-        });
+        push_intake_report_source_freshness(
+            &mut out,
+            &mut seen,
+            &failure.name,
+            "unavailable",
+            0,
+            0,
+            None,
+            Some(failure.error.clone()),
+        );
+    }
+    for explanation in explanations
+        .iter()
+        .filter(|explanation| matches!(explanation.decision, IntakeSourceDecision::Skipped))
+    {
+        push_intake_report_source_freshness(
+            &mut out,
+            &mut seen,
+            &explanation.name,
+            "skipped",
+            0,
+            0,
+            None,
+            Some(explanation.reason.clone()),
+        );
     }
     out
+}
+
+fn push_intake_report_source_freshness(
+    out: &mut Vec<IntakeReportSourceFreshness>,
+    seen: &mut BTreeSet<String>,
+    source: &str,
+    status: &str,
+    cache_hits: u64,
+    cache_misses: u64,
+    observed_at: Option<String>,
+    reason: Option<String>,
+) {
+    let identity = intake_report_source_identity(source);
+    if !seen.insert(identity.source_key.clone()) {
+        return;
+    }
+
+    out.push(IntakeReportSourceFreshness {
+        source: identity.source,
+        source_key: identity.source_key,
+        source_label: identity.source_label,
+        status: status.to_string(),
+        cache_hits,
+        cache_misses,
+        observed_at,
+        reason,
+    });
 }
 
 fn intake_repair_source_reports(
@@ -3626,9 +3730,12 @@ fn push_intake_repair_source_report(
     let kind = classify_intake_repair_kind(name, reason)
         .as_str()
         .to_string();
+    let identity = intake_report_source_identity(name);
 
     reports.push(IntakeReportRepairSource {
-        source: display_source_label(name),
+        source: identity.source,
+        source_key: identity.source_key,
+        source_label: identity.source_label,
         kind,
         reason: reason.to_string(),
         commands: hint.lines,
@@ -5171,7 +5278,7 @@ fn print_doctor_repair_plan(config_path: &Path, items: &[IntakeReportRepairSourc
 
     println!("Repair actions:");
     for item in items {
-        println!("- {} [{}]: {}", item.source, item.kind, item.reason);
+        println!("- {} [{}]: {}", item.source_label, item.kind, item.reason);
         println!("  Fix:");
         for command in &item.commands {
             println!("    {command}");
@@ -5186,8 +5293,12 @@ fn push_doctor_repair_item(
     reason: impl Into<String>,
     commands: Vec<String>,
 ) {
+    let source = source.into();
+    let identity = intake_report_source_identity(&source);
     items.push(IntakeReportRepairSource {
-        source: source.into(),
+        source: identity.source,
+        source_key: identity.source_key,
+        source_label: identity.source_label,
         kind: kind.as_str().to_string(),
         reason: reason.into(),
         commands,
@@ -12075,28 +12186,10 @@ fn load_run_summary(run_dir: &Path) -> Result<RunSummary> {
 }
 
 fn discover_run_dirs(out_dir: &Path) -> Result<Vec<PathBuf>> {
-    if !out_dir.exists() {
-        anyhow::bail!("Output directory {:?} does not exist.", out_dir);
-    }
-
-    let mut runs: Vec<_> = std::fs::read_dir(out_dir)?
-        .filter_map(|entry| entry.ok())
-        .filter(|entry| entry.path().is_dir())
-        .filter(|entry| entry.path().join("ledger.events.jsonl").exists())
-        .collect();
-
-    runs.sort_by(|a, b| {
-        let a_meta = a.metadata().and_then(|meta| meta.modified()).ok();
-        let b_meta = b.metadata().and_then(|meta| meta.modified()).ok();
-        b_meta.cmp(&a_meta)
-    });
-
-    let runs: Vec<_> = runs.into_iter().map(|entry| entry.path()).collect();
-    if runs.is_empty() {
-        anyhow::bail!("No run directories found in {:?}", out_dir);
-    }
-
-    Ok(runs)
+    Ok(run_dir_entries_latest_first(out_dir)?
+        .into_iter()
+        .map(|entry| entry.path())
+        .collect())
 }
 
 fn modified_time_label(path: &Path) -> String {
@@ -13623,6 +13716,15 @@ fn normalized_source_key(source: &str) -> String {
     }
 }
 
+fn intake_report_source_identity(source: &str) -> IntakeReportSourceIdentity {
+    let source_key = normalized_source_key(source);
+    IntakeReportSourceIdentity {
+        source: source_key.clone(),
+        source_label: display_source_label(&source_key),
+        source_key,
+    }
+}
+
 fn display_source_label(source: &str) -> String {
     match normalized_source_key(source).as_str() {
         "github" => "GitHub".to_string(),
@@ -13632,6 +13734,7 @@ fn display_source_label(source: &str) -> String {
         "manual" => "Manual".to_string(),
         "json" => "JSON".to_string(),
         "git" => "Local git".to_string(),
+        "redaction" => "Redaction".to_string(),
         "unknown" => "Unknown".to_string(),
         other => other.to_string(),
     }
@@ -13711,8 +13814,13 @@ fn try_open_path(path: &Path) -> bool {
 }
 
 fn find_most_recent_run(out_dir: &Path) -> Result<PathBuf> {
+    let mut runs = run_dir_entries_latest_first(out_dir)?;
+    Ok(runs.remove(0).path())
+}
+
+fn run_dir_entries_latest_first(out_dir: &Path) -> Result<Vec<std::fs::DirEntry>> {
     if !out_dir.exists() {
-        anyhow::bail!("Output directory {:?} does not exist.", out_dir);
+        anyhow::bail!("{}", missing_latest_run_message(out_dir));
     }
 
     let mut runs: Vec<_> = std::fs::read_dir(out_dir)?
@@ -13721,17 +13829,30 @@ fn find_most_recent_run(out_dir: &Path) -> Result<PathBuf> {
         .filter(|e| e.path().join("ledger.events.jsonl").exists())
         .collect();
 
-    // Sort by modified time, most recent first
-    runs.sort_by(|a, b| {
-        let a_meta = a.metadata().and_then(|m| m.modified()).ok();
-        let b_meta = b.metadata().and_then(|m| m.modified()).ok();
-        b_meta.cmp(&a_meta)
-    });
+    runs.sort_by_key(|entry| std::cmp::Reverse(entry.file_name()));
 
-    runs.into_iter()
-        .next()
-        .map(|e| e.path())
-        .ok_or_else(|| anyhow::anyhow!("No run directories found in {:?}", out_dir))
+    if runs.is_empty() {
+        anyhow::bail!("{}", missing_latest_run_message(out_dir));
+    }
+
+    Ok(runs)
+}
+
+fn missing_latest_run_message(out_dir: &Path) -> String {
+    format!(
+        "No run directories found in {}. Create one with: {}",
+        out_dir.display(),
+        intake_create_run_command_for_out(out_dir)
+    )
+}
+
+fn intake_create_run_command_for_out(out_dir: &Path) -> String {
+    let mut command = "shiplog intake --last-6-months --explain".to_string();
+    if !is_default_out_setting(out_dir) {
+        command.push_str(" --out ");
+        command.push_str(&quote_cli_value(&out_dir.display().to_string()));
+    }
+    command
 }
 
 fn resolve_render_run_dir(out_dir: &Path, run: Option<String>, latest: bool) -> Result<PathBuf> {

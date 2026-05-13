@@ -1,6 +1,6 @@
 [package]
 name = "shiplog-ports"
-version = "0.5.0"
+version = "0.6.0"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
@@ -15,14 +15,14 @@ categories = ["development-tools", "rust-patterns"]
 
 [dependencies]
 anyhow.workspace = true
-shiplog-schema = { path = "../shiplog-schema", version = "0.5.0" }
+shiplog-schema = { path = "../shiplog-schema", version = "0.6.0" }
 
 [dev-dependencies]
 chrono.workspace = true
 tokio.workspace = true
 proptest.workspace = true
-shiplog-ids = { path = "../shiplog-ids", version = "0.5.0" }
-shiplog-schema = { path = "../shiplog-schema", version = "0.5.0" }
+shiplog-ids = { path = "../shiplog-ids", version = "0.6.0" }
+shiplog-schema = { path = "../shiplog-schema", version = "0.6.0" }
 
 [lints]
 workspace = true

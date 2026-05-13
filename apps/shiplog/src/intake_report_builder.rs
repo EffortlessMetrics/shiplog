@@ -47,8 +47,11 @@ pub(crate) fn build_intake_report(
         &share_commands,
         &next_commands,
     );
-    let source_freshness =
-        build_source_freshness_report(&result.configured.successes, &result.configured.failures);
+    let source_freshness = build_source_freshness_report(
+        &result.configured.successes,
+        &result.configured.failures,
+        explanations,
+    );
 
     Ok(IntakeReport {
         schema_version: 1,
@@ -338,14 +341,19 @@ fn build_included_sources(result: &ConfiguredRunResult) -> Vec<IntakeReportInclu
         .configured
         .successes
         .iter()
-        .map(|(name, ingest)| IntakeReportIncludedSource {
-            source: display_source_label(name),
-            event_count: ingest.events.len(),
-            summary: format!(
-                "{} collected {}",
-                display_source_label(name),
-                event_count_phrase(ingest.events.len())
-            ),
+        .map(|(name, ingest)| {
+            let identity = intake_report_source_identity(name);
+            IntakeReportIncludedSource {
+                source: identity.source,
+                source_key: identity.source_key,
+                source_label: identity.source_label.clone(),
+                event_count: ingest.events.len(),
+                summary: format!(
+                    "{} collected {}",
+                    identity.source_label,
+                    event_count_phrase(ingest.events.len())
+                ),
+            }
         })
         .collect()
 }
@@ -355,9 +363,14 @@ fn build_skipped_sources(result: &ConfiguredRunResult) -> Vec<IntakeReportSkippe
         .configured
         .failures
         .iter()
-        .map(|failure| IntakeReportSkippedSource {
-            source: display_source_label(&failure.name),
-            reason: failure.error.clone(),
+        .map(|failure| {
+            let identity = intake_report_source_identity(&failure.name);
+            IntakeReportSkippedSource {
+                source: identity.source,
+                source_key: identity.source_key,
+                source_label: identity.source_label,
+                reason: failure.error.clone(),
+            }
         })
         .collect()
 }

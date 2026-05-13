@@ -188,13 +188,13 @@ git diff --check
 
 ## Compatibility Notes
 
-This spec records a target contract; it does not change current JSON output.
+Canonical source identity landed as a compatible v1 extension. Current writers
+emit `source_key` and `source_label` on source-facing report entries, and retain
+`source` as a compatibility alias that mirrors `source_key`. Older v1 reports
+may only have `source`, and some historical reports used display labels there.
 
-The implementation PR must decide whether canonical source identity is a
-compatible v1 extension or a schema-version bump. If `source` remains in v1 for
-compatibility, the schema docs must say whether `source` is deprecated, whether
-it mirrors `source_key` or `source_label`, and how readers should prioritize
-the fields.
+Readers should join on `source_key` when present, fall back to normalizing
+`source` when it is absent, and display `source_label` when present.
 
 ## Non-Goals
 

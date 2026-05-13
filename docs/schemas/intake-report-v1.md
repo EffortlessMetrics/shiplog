@@ -91,6 +91,35 @@ usable evidence. `source_decisions` explains why intake included or skipped a
 source. `repair_sources` carries copy-ready setup and rerun commands for skipped
 or unusable sources.
 
+Current writers include canonical source identity fields on every source-facing
+entry:
+
+```text
+source
+source_key
+source_label
+```
+
+`source_key` is the machine join key. It uses the canonical vocabulary:
+
+```text
+github
+gitlab
+jira
+linear
+manual
+json
+git
+unknown
+```
+
+`source_label` is display text for Markdown, terminal output, and reviewer UI.
+For v1 compatibility, `source` is retained and mirrors `source_key` in reports
+written by current shiplog versions. Older v1 reports may only have `source`,
+and may use display labels there. Readers should prefer `source_key` when it is
+present, fall back to normalizing `source` when it is absent, and display
+`source_label` when it is present.
+
 Current writers include a v1-compatible `repair_sources[].kind` classifier for
 source repair loops. Older v1 reports may not have this optional field, so
 readers should fall back to the human-readable `reason` when it is absent.

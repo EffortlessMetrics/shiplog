@@ -155,10 +155,9 @@ skipped
 unavailable
 ```
 
-`stale` is a reserved forward receipt. It must not be emitted until the cache
-can distinguish stale hits from misses. The durable decision belongs in the
-future stale/cache ADR and freshness/cache spec; this spec only records that the
-v1 schema already reserves the vocabulary.
+`stale` may be emitted only when the cache API proves a stale hit. A report
+writer must not infer `stale` from a miss, because a miss can mean an absent
+row, purged row, expired row hidden by a legacy lookup, or different key.
 
 ## Markdown Report Contract
 

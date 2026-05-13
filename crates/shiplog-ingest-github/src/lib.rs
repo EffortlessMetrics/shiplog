@@ -8,8 +8,7 @@ use chrono::{DateTime, NaiveDate, Utc};
 use reqwest::blocking::Client;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
-use shiplog_cache::ApiCache;
-use shiplog_cache::CacheKey;
+use shiplog_cache::{ApiCache, CacheKey, CacheLookup};
 use shiplog_coverage::{day_windows, month_windows, week_windows, window_len_days};
 use shiplog_ids::{EventId, RunId};
 use shiplog_ports::{IngestOutput, Ingestor};
@@ -51,6 +50,9 @@ pub struct GithubIngestor {
     /// Equivalent to "live API calls performed under the cache". See
     /// [`Self::cache_hits`] above.
     cache_misses: AtomicU64,
+    /// Adapter-local stale-hit counter. Incremented when `ApiCache::lookup`
+    /// returns an expired row that this adapter uses.
+    cache_stale_hits: AtomicU64,
 }
 
 impl GithubIngestor {
@@ -85,6 +87,7 @@ impl GithubIngestor {
             cache: None,
             cache_hits: AtomicU64::new(0),
             cache_misses: AtomicU64::new(0),
+            cache_stale_hits: AtomicU64::new(0),
         }
     }
 
@@ -276,18 +279,16 @@ impl Ingestor for GithubIngestor {
         //   - cache not configured => Fresh.
         let hits = self.cache_hits.load(Ordering::Relaxed);
         let misses = self.cache_misses.load(Ordering::Relaxed);
-        let status = if self.cache.is_some() && hits > 0 && misses == 0 {
-            FreshnessStatus::Cached
-        } else {
-            FreshnessStatus::Fresh
-        };
+        let stale_hits = self.cache_stale_hits.load(Ordering::Relaxed);
+        let (status, reason) =
+            github_freshness_status(self.cache.is_some(), hits, misses, stale_hits);
         let freshness = vec![SourceFreshness {
             source: "github".to_string(),
             status,
             cache_hits: hits,
             cache_misses: misses,
             fetched_at: Some(fetched_at),
-            reason: None,
+            reason,
         }];
 
         Ok(IngestOutput {
@@ -678,11 +679,20 @@ impl GithubIngestor {
         // Check cache first
         let cache_key = CacheKey::pr_details(pr_api_url);
         if let Some(ref cache) = self.cache {
-            if let Some(cached) = cache.get::<PullRequestDetails>(&cache_key)? {
-                self.cache_hits.fetch_add(1, Ordering::Relaxed);
-                return Ok(cached);
+            match cache.lookup::<PullRequestDetails>(&cache_key)? {
+                CacheLookup::Fresh(cached) => {
+                    self.cache_hits.fetch_add(1, Ordering::Relaxed);
+                    return Ok(cached);
+                }
+                CacheLookup::Stale(cached) => {
+                    self.cache_hits.fetch_add(1, Ordering::Relaxed);
+                    self.cache_stale_hits.fetch_add(1, Ordering::Relaxed);
+                    return Ok(cached);
+                }
+                CacheLookup::Miss => {
+                    self.cache_misses.fetch_add(1, Ordering::Relaxed);
+                }
             }
-            self.cache_misses.fetch_add(1, Ordering::Relaxed);
         }
 
         // Fetch from API
@@ -710,23 +720,31 @@ impl GithubIngestor {
 
             // Try to get from cache first
             let page_reviews: Vec<PullRequestReview> = if let Some(ref cache) = self.cache {
-                if let Some(cached) = cache.get::<Vec<PullRequestReview>>(&cache_key)? {
-                    self.cache_hits.fetch_add(1, Ordering::Relaxed);
-                    cached
-                } else {
-                    self.cache_misses.fetch_add(1, Ordering::Relaxed);
-                    // Not in cache, fetch from API
-                    let reviews: Vec<PullRequestReview> = self.get_json(
-                        client,
-                        &url,
-                        &[
-                            ("per_page", per_page.to_string()),
-                            ("page", page.to_string()),
-                        ],
-                    )?;
-                    // Store in cache
-                    cache.set(&cache_key, &reviews)?;
-                    reviews
+                match cache.lookup::<Vec<PullRequestReview>>(&cache_key)? {
+                    CacheLookup::Fresh(cached) => {
+                        self.cache_hits.fetch_add(1, Ordering::Relaxed);
+                        cached
+                    }
+                    CacheLookup::Stale(cached) => {
+                        self.cache_hits.fetch_add(1, Ordering::Relaxed);
+                        self.cache_stale_hits.fetch_add(1, Ordering::Relaxed);
+                        cached
+                    }
+                    CacheLookup::Miss => {
+                        self.cache_misses.fetch_add(1, Ordering::Relaxed);
+                        // Not in cache, fetch from API
+                        let reviews: Vec<PullRequestReview> = self.get_json(
+                            client,
+                            &url,
+                            &[
+                                ("per_page", per_page.to_string()),
+                                ("page", page.to_string()),
+                            ],
+                        )?;
+                        // Store in cache
+                        cache.set(&cache_key, &reviews)?;
+                        reviews
+                    }
                 }
             } else {
                 // No cache configured, fetch directly
@@ -783,6 +801,25 @@ fn build_url_with_params(base: &str, params: &[(&str, String)]) -> Result<Url> {
         }
     }
     Ok(url)
+}
+
+fn github_freshness_status(
+    cache_configured: bool,
+    cache_hits: u64,
+    cache_misses: u64,
+    cache_stale_hits: u64,
+) -> (FreshnessStatus, Option<String>) {
+    if cache_configured && cache_stale_hits > 0 {
+        return (
+            FreshnessStatus::Stale,
+            Some("one or more expired cache entries were used".to_string()),
+        );
+    }
+    if cache_configured && cache_hits > 0 && cache_misses == 0 {
+        return (FreshnessStatus::Cached, None);
+    }
+
+    (FreshnessStatus::Fresh, None)
 }
 
 fn repo_from_repo_url(repo_api_url: &str, html_base: &str) -> (String, String) {
@@ -870,6 +907,11 @@ mod tests {
     use super::*;
     use chrono::TimeZone;
     use proptest::prelude::*;
+    use std::io::{ErrorKind, Read, Write};
+    use std::net::{TcpListener, TcpStream};
+    use std::sync::{Arc, Mutex};
+    use std::thread::{self, JoinHandle};
+    use std::time::{Duration as StdDuration, Instant};
 
     // ── helpers ──────────────────────────────────────────────────────────
 
@@ -1100,6 +1142,7 @@ mod tests {
         let ing = make_ingestor("octocat").with_in_memory_cache()?;
         assert_eq!(ing.cache_hits.load(Ordering::Relaxed), 0);
         assert_eq!(ing.cache_misses.load(Ordering::Relaxed), 0);
+        assert_eq!(ing.cache_stale_hits.load(Ordering::Relaxed), 0);
         Ok(())
     }
 
@@ -1110,12 +1153,11 @@ mod tests {
         ing.cache_hits.fetch_add(3, Ordering::Relaxed);
         let hits = ing.cache_hits.load(Ordering::Relaxed);
         let misses = ing.cache_misses.load(Ordering::Relaxed);
-        let status = if ing.cache.is_some() && hits > 0 && misses == 0 {
-            FreshnessStatus::Cached
-        } else {
-            FreshnessStatus::Fresh
-        };
+        let stale_hits = ing.cache_stale_hits.load(Ordering::Relaxed);
+        let (status, reason) =
+            github_freshness_status(ing.cache.is_some(), hits, misses, stale_hits);
         assert!(matches!(status, FreshnessStatus::Cached));
+        assert!(reason.is_none());
         Ok(())
     }
 
@@ -1127,12 +1169,32 @@ mod tests {
         ing.cache_misses.fetch_add(1, Ordering::Relaxed);
         let hits = ing.cache_hits.load(Ordering::Relaxed);
         let misses = ing.cache_misses.load(Ordering::Relaxed);
-        let status = if ing.cache.is_some() && hits > 0 && misses == 0 {
-            FreshnessStatus::Cached
-        } else {
-            FreshnessStatus::Fresh
-        };
+        let stale_hits = ing.cache_stale_hits.load(Ordering::Relaxed);
+        let (status, reason) =
+            github_freshness_status(ing.cache.is_some(), hits, misses, stale_hits);
         assert!(matches!(status, FreshnessStatus::Fresh));
+        assert!(reason.is_none());
+        Ok(())
+    }
+
+    #[test]
+    fn freshness_status_stale_when_stale_hit_observed() -> anyhow::Result<()> {
+        // Status rule: any stale row used by the adapter makes the
+        // source stale, even if other cache lookups hit or miss.
+        let ing = make_ingestor("octocat").with_in_memory_cache()?;
+        ing.cache_hits.fetch_add(2, Ordering::Relaxed);
+        ing.cache_misses.fetch_add(1, Ordering::Relaxed);
+        ing.cache_stale_hits.fetch_add(1, Ordering::Relaxed);
+        let hits = ing.cache_hits.load(Ordering::Relaxed);
+        let misses = ing.cache_misses.load(Ordering::Relaxed);
+        let stale_hits = ing.cache_stale_hits.load(Ordering::Relaxed);
+        let (status, reason) =
+            github_freshness_status(ing.cache.is_some(), hits, misses, stale_hits);
+        assert!(matches!(status, FreshnessStatus::Stale));
+        assert_eq!(
+            reason.as_deref(),
+            Some("one or more expired cache entries were used")
+        );
         Ok(())
     }
 
@@ -1143,12 +1205,11 @@ mod tests {
         let ing = make_ingestor("octocat");
         let hits = ing.cache_hits.load(Ordering::Relaxed);
         let misses = ing.cache_misses.load(Ordering::Relaxed);
-        let status = if ing.cache.is_some() && hits > 0 && misses == 0 {
-            FreshnessStatus::Cached
-        } else {
-            FreshnessStatus::Fresh
-        };
+        let stale_hits = ing.cache_stale_hits.load(Ordering::Relaxed);
+        let (status, reason) =
+            github_freshness_status(ing.cache.is_some(), hits, misses, stale_hits);
         assert!(matches!(status, FreshnessStatus::Fresh));
+        assert!(reason.is_none());
     }
 
     // -- warm-rerun cache behavior --
@@ -1246,16 +1307,273 @@ mod tests {
         // => Cached.
         let hits = ing.cache_hits.load(Ordering::Relaxed);
         let misses = ing.cache_misses.load(Ordering::Relaxed);
-        let status = if ing.cache.is_some() && hits > 0 && misses == 0 {
-            FreshnessStatus::Cached
-        } else {
-            FreshnessStatus::Fresh
-        };
+        let stale_hits = ing.cache_stale_hits.load(Ordering::Relaxed);
+        let (status, reason) =
+            github_freshness_status(ing.cache.is_some(), hits, misses, stale_hits);
         assert!(
             matches!(status, FreshnessStatus::Cached),
             "warm rerun with fully populated cache must derive Cached, got {status:?}"
         );
+        assert!(reason.is_none());
         assert_eq!(status.as_label(), "cached");
+        Ok(())
+    }
+
+    #[test]
+    fn expired_cache_entry_records_stale_hit_without_network() -> anyhow::Result<()> {
+        let ing = make_ingestor("octocat").with_in_memory_cache()?;
+        let url = "https://api.github.com/repos/acme/widgets/pulls/3";
+        let key = CacheKey::pr_details(url);
+        let seeded = make_pr_details()?;
+        let cache = ing
+            .cache
+            .as_ref()
+            .ok_or_else(|| anyhow!("in-memory cache was just attached"))?;
+        cache.set_with_ttl(&key, &seeded, chrono::Duration::seconds(-1))?;
+
+        let client = no_op_client()?;
+        let got = ing.fetch_pr_details(&client, url)?;
+        assert_eq!(got.title, seeded.title);
+        assert_eq!(ing.cache_hits.load(Ordering::Relaxed), 1);
+        assert_eq!(ing.cache_misses.load(Ordering::Relaxed), 0);
+        assert_eq!(ing.cache_stale_hits.load(Ordering::Relaxed), 1);
+
+        let (status, reason) = github_freshness_status(
+            ing.cache.is_some(),
+            ing.cache_hits.load(Ordering::Relaxed),
+            ing.cache_misses.load(Ordering::Relaxed),
+            ing.cache_stale_hits.load(Ordering::Relaxed),
+        );
+        assert!(matches!(status, FreshnessStatus::Stale));
+        assert_eq!(
+            reason.as_deref(),
+            Some("one or more expired cache entries were used")
+        );
+        assert_eq!(status.as_label(), "stale");
+        Ok(())
+    }
+
+    struct RecordedGithubServer {
+        base_url: String,
+        requests: Arc<Mutex<Vec<String>>>,
+        handle: Option<JoinHandle<anyhow::Result<()>>>,
+    }
+
+    impl RecordedGithubServer {
+        fn start(expected_requests: usize) -> anyhow::Result<Self> {
+            let listener = TcpListener::bind("127.0.0.1:0").context("bind fixture server")?;
+            listener
+                .set_nonblocking(true)
+                .context("set fixture server nonblocking")?;
+            let base_url = format!("http://{}", listener.local_addr()?);
+            let requests = Arc::new(Mutex::new(Vec::new()));
+            let thread_requests = Arc::clone(&requests);
+            let thread_base_url = base_url.clone();
+            let handle = thread::spawn(move || {
+                replay_github_fixtures(
+                    listener,
+                    &thread_base_url,
+                    thread_requests,
+                    expected_requests,
+                )
+            });
+
+            Ok(Self {
+                base_url,
+                requests,
+                handle: Some(handle),
+            })
+        }
+
+        fn base_url(&self) -> String {
+            self.base_url.clone()
+        }
+
+        fn finish(mut self) -> anyhow::Result<Vec<String>> {
+            if let Some(handle) = self.handle.take() {
+                handle
+                    .join()
+                    .map_err(|_| anyhow!("recorded fixture server thread panicked"))??;
+            }
+            self.requests
+                .lock()
+                .map_err(|_| anyhow!("recorded fixture request log was poisoned"))
+                .map(|requests| requests.clone())
+        }
+    }
+
+    fn replay_github_fixtures(
+        listener: TcpListener,
+        base_url: &str,
+        requests: Arc<Mutex<Vec<String>>>,
+        expected_requests: usize,
+    ) -> anyhow::Result<()> {
+        let deadline = Instant::now() + StdDuration::from_secs(10);
+
+        while fixture_request_count(&requests)? < expected_requests {
+            match listener.accept() {
+                Ok((mut stream, _peer)) => {
+                    let request_line = handle_recorded_github_request(&mut stream, base_url)?;
+                    requests
+                        .lock()
+                        .map_err(|_| anyhow!("recorded fixture request log was poisoned"))?
+                        .push(request_line);
+                }
+                Err(err) if err.kind() == ErrorKind::WouldBlock => {
+                    if Instant::now() > deadline {
+                        return Err(anyhow!(
+                            "recorded fixture server expected {expected_requests} requests, saw {}",
+                            fixture_request_count(&requests)?
+                        ));
+                    }
+                    thread::sleep(StdDuration::from_millis(10));
+                }
+                Err(err) => return Err(err).context("accept recorded GitHub fixture request"),
+            }
+        }
+
+        Ok(())
+    }
+
+    fn fixture_request_count(requests: &Arc<Mutex<Vec<String>>>) -> anyhow::Result<usize> {
+        requests
+            .lock()
+            .map_err(|_| anyhow!("recorded fixture request log was poisoned"))
+            .map(|requests| requests.len())
+    }
+
+    fn handle_recorded_github_request(
+        stream: &mut TcpStream,
+        base_url: &str,
+    ) -> anyhow::Result<String> {
+        let mut buf = [0_u8; 4096];
+        let mut received = Vec::new();
+        loop {
+            let n = stream
+                .read(&mut buf)
+                .context("read recorded GitHub fixture request")?;
+            if n == 0 {
+                break;
+            }
+            received.extend_from_slice(&buf[..n]);
+            if received.windows(4).any(|window| window == b"\r\n\r\n") {
+                break;
+            }
+            if received.len() > 64 * 1024 {
+                return Err(anyhow!("recorded GitHub fixture request was too large"));
+            }
+        }
+
+        let request = String::from_utf8_lossy(&received);
+        let request_line = request
+            .lines()
+            .next()
+            .ok_or_else(|| anyhow!("recorded GitHub fixture request had no request line"))?
+            .to_string();
+        let target = request_line
+            .split_whitespace()
+            .nth(1)
+            .ok_or_else(|| anyhow!("recorded GitHub fixture request had no target"))?;
+        let (status, body) = recorded_github_fixture_response(target, base_url);
+        let response = format!(
+            "HTTP/1.1 {status}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+            body.len()
+        );
+        stream
+            .write_all(response.as_bytes())
+            .context("write recorded GitHub fixture response")?;
+        stream
+            .flush()
+            .context("flush recorded GitHub fixture response")?;
+        Ok(request_line)
+    }
+
+    fn recorded_github_fixture_response(target: &str, base_url: &str) -> (&'static str, String) {
+        let body = if target.starts_with("/search/issues?")
+            && target_has_query_param(target, "per_page", "1")
+        {
+            include_str!("../tests/fixtures/github-warm-rerun/search_meta.json")
+        } else if target.starts_with("/search/issues?")
+            && target_has_query_param(target, "per_page", "100")
+        {
+            include_str!("../tests/fixtures/github-warm-rerun/search_items.json")
+        } else if target == "/repos/acme/widgets/pulls/1" {
+            include_str!("../tests/fixtures/github-warm-rerun/pr_details.json")
+        } else {
+            r#"{"message":"unexpected recorded fixture request"}"#
+        };
+        let status = if body.contains("unexpected recorded fixture request") {
+            "404 Not Found"
+        } else {
+            "200 OK"
+        };
+        (status, body.replace("__API_BASE__", base_url))
+    }
+
+    fn target_has_query_param(target: &str, key: &str, value: &str) -> bool {
+        target
+            .split_once('?')
+            .map(|(_path, query)| {
+                query.split('&').any(|pair| {
+                    pair.split_once('=')
+                        .map(|(k, v)| k == key && v == value)
+                        .unwrap_or(false)
+                })
+            })
+            .unwrap_or(false)
+    }
+
+    #[test]
+    fn recorded_http_fixtures_prove_full_fresh_then_cached_ingest() -> anyhow::Result<()> {
+        let server = RecordedGithubServer::start(5)?;
+        let cache_dir = tempfile::tempdir().context("create fixture cache dir")?;
+
+        let mut cold = make_ingestor("octocat").with_cache(cache_dir.path())?;
+        cold.api_base = server.base_url();
+        let cold_output = cold.ingest()?;
+        assert_eq!(cold_output.events.len(), 1);
+        let cold_freshness = cold_output
+            .freshness
+            .first()
+            .ok_or_else(|| anyhow!("cold fixture ingest did not emit source freshness"))?;
+        assert!(
+            matches!(cold_freshness.status, FreshnessStatus::Fresh),
+            "first recorded fixture run should be fresh, got {}",
+            cold_freshness.status.as_label()
+        );
+        assert_eq!(cold_freshness.cache_hits, 0);
+        assert_eq!(cold_freshness.cache_misses, 1);
+
+        let mut warm = make_ingestor("octocat").with_cache(cache_dir.path())?;
+        warm.api_base = server.base_url();
+        let warm_output = warm.ingest()?;
+        assert_eq!(warm_output.events.len(), 1);
+        let warm_freshness = warm_output
+            .freshness
+            .first()
+            .ok_or_else(|| anyhow!("warm fixture ingest did not emit source freshness"))?;
+        assert!(
+            matches!(warm_freshness.status, FreshnessStatus::Cached),
+            "second recorded fixture run should be cached, got {}",
+            warm_freshness.status.as_label()
+        );
+        assert_eq!(warm_freshness.cache_hits, 1);
+        assert_eq!(warm_freshness.cache_misses, 0);
+
+        let requests = server.finish()?;
+        let search_requests = requests
+            .iter()
+            .filter(|line| line.contains("/search/issues?"))
+            .count();
+        let detail_requests = requests
+            .iter()
+            .filter(|line| line.contains("/repos/acme/widgets/pulls/1"))
+            .count();
+        assert_eq!(search_requests, 4);
+        assert_eq!(
+            detail_requests, 1,
+            "warm run must serve PR details from cache instead of replaying HTTP"
+        );
         Ok(())
     }
 

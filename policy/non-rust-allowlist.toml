@@ -231,6 +231,18 @@ created = "2026-05-09"
 expires = "permanent"
 
 [[allow]]
+id = "non-rust-crate-github-recorded-fixtures"
+glob = "crates/shiplog-ingest-github/tests/fixtures/**"
+category = "test_fixture"
+language = "json"
+owner = "policy"
+reason = "Synthetic recorded GitHub HTTP fixtures used to prove warm-rerun freshness without live network."
+broad_glob_reason = "One scenario directory per recorded GitHub fixture; fixtures are inert JSON reviewed with the focused tests that consume them."
+created = "2026-05-13"
+review_after = "2026-11-13"
+expires = "permanent"
+
+[[allow]]
 id = "non-rust-snapshots"
 glob = "**/snapshots/**"
 category = "test_snapshot"

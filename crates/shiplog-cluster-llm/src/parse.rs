@@ -1,10 +1,13 @@
 use anyhow::{Context, Result};
 use chrono::Utc;
 use serde::Deserialize;
-use shiplog_ids::WorkstreamId;
-use shiplog_schema::event::{EventEnvelope, EventKind};
-use shiplog_schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
-use std::collections::BTreeSet;
+use shiplog_schema::event::EventEnvelope;
+use shiplog_schema::workstream::WorkstreamsFile;
+mod claims;
+mod stats;
+mod workstreams;
+
+const MAX_RECEIPTS_PER_WORKSTREAM: usize = 10;
 
 #[derive(Deserialize)]
 struct LlmResponse {
@@ -12,14 +15,14 @@ struct LlmResponse {
 }
 
 #[derive(Deserialize)]
-struct LlmWorkstream {
-    title: String,
-    summary: Option<String>,
+pub(super) struct LlmWorkstream {
+    pub(super) title: String,
+    pub(super) summary: Option<String>,
     #[serde(default)]
-    tags: Vec<String>,
-    event_indices: Vec<usize>,
+    pub(super) tags: Vec<String>,
+    pub(super) event_indices: Vec<usize>,
     #[serde(default)]
-    receipt_indices: Vec<usize>,
+    pub(super) receipt_indices: Vec<usize>,
 }
 
 /// Parse the LLM response payload into a `WorkstreamsFile`.
@@ -32,89 +35,14 @@ pub fn parse_llm_response(json_str: &str, events: &[EventEnvelope]) -> Result<Wo
     let resp: LlmResponse =
         serde_json::from_str(json_str).context("parse LLM clustering response")?;
 
-    let mut claimed: BTreeSet<usize> = BTreeSet::new();
-    let mut workstreams = Vec::new();
+    let mut claims = claims::ClaimTracker::new(events.len());
+    let mut workstreams =
+        workstreams::build_claimed_workstreams(resp.workstreams, events, &mut claims);
 
-    for (ws_idx, llm_ws) in resp.workstreams.into_iter().enumerate() {
-        let mut valid_indices: Vec<usize> = Vec::new();
-        for i in llm_ws.event_indices {
-            if i < events.len() && !claimed.contains(&i) {
-                claimed.insert(i);
-                valid_indices.push(i);
-            }
-        }
-
-        if valid_indices.is_empty() {
-            continue;
-        }
-
-        let valid_receipts: Vec<usize> = llm_ws
-            .receipt_indices
-            .into_iter()
-            .filter(|i| valid_indices.contains(i))
-            .take(10)
-            .collect();
-
-        let id = WorkstreamId::from_parts(["llm", &ws_idx.to_string()]);
-        let mut stats = WorkstreamStats::zero();
-        let mut event_ids = Vec::new();
-        let mut receipt_ids = Vec::new();
-
-        for &i in &valid_indices {
-            let ev = &events[i];
-            event_ids.push(ev.id.clone());
-            match ev.kind {
-                EventKind::PullRequest => stats.pull_requests += 1,
-                EventKind::Review => stats.reviews += 1,
-                EventKind::Manual => stats.manual_events += 1,
-            }
-        }
-
-        for &i in &valid_receipts {
-            receipt_ids.push(events[i].id.clone());
-        }
-
-        workstreams.push(Workstream {
-            id,
-            title: llm_ws.title,
-            summary: llm_ws.summary,
-            tags: llm_ws.tags,
-            stats,
-            events: event_ids,
-            receipts: receipt_ids,
-        });
-    }
-
-    let orphans: Vec<usize> = (0..events.len()).filter(|i| !claimed.contains(i)).collect();
-
-    if !orphans.is_empty() {
-        let id = WorkstreamId::from_parts(["llm", "uncategorized"]);
-        let mut stats = WorkstreamStats::zero();
-        let mut event_ids = Vec::new();
-        let mut receipt_ids = Vec::new();
-
-        for &i in &orphans {
-            let ev = &events[i];
-            event_ids.push(ev.id.clone());
-            match ev.kind {
-                EventKind::PullRequest => stats.pull_requests += 1,
-                EventKind::Review => stats.reviews += 1,
-                EventKind::Manual => stats.manual_events += 1,
-            }
-            if receipt_ids.len() < 10 {
-                receipt_ids.push(ev.id.clone());
-            }
-        }
-
-        workstreams.push(Workstream {
-            id,
-            title: "Uncategorized".to_string(),
-            summary: Some("Events not assigned to any thematic workstream".to_string()),
-            tags: vec!["uncategorized".to_string()],
-            stats,
-            events: event_ids,
-            receipts: receipt_ids,
-        });
+    if let Some(uncategorized) =
+        workstreams::build_uncategorized_workstream(events, &claims.orphan_indices())
+    {
+        workstreams.push(uncategorized);
     }
 
     Ok(WorkstreamsFile {
