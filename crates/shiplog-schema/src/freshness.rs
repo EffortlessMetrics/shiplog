@@ -8,12 +8,9 @@
 //! the final per-source freshness rollup in `intake.report.{md,json}`.
 //!
 //! The taxonomy is intentionally narrow in v1: `Fresh`, `Cached`, `Skipped`,
-//! and `Unavailable` (see the `FreshnessStatus` enum below). A `Stale` state is reserved
-//! but not emitted today because the SQLite cache filters expired rows out
-//! of `ApiCache::get` (the `expires_at > now` predicate), so adapters cannot
-//! honestly distinguish stale-hit from cache-miss without a new lookup
-//! return type. Adding a `CacheLookup::{Fresh, Stale, Miss}` enum to
-//! `shiplog-cache` is the follow-up that unlocks stale-fallback reporting.
+//! `Unavailable`, and `Stale` (see the `FreshnessStatus` enum below).
+//! `Stale` is emitted only when an adapter receives a proven expired cache row
+//! through `shiplog-cache`'s `CacheLookup::Stale(_)` result.
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -65,13 +62,9 @@ pub struct SourceFreshness {
 
 /// Per-source freshness classification.
 ///
-/// `Stale` is reserved for a future follow-up: today the SQLite cache
-/// filters expired rows in `ApiCache::get`, so adapters cannot
-/// distinguish stale-hit from miss. Adding a `CacheLookup` enum to the
-/// cache (returning `Fresh(T) | Stale(T) | Miss`) is the follow-up that
-/// unlocks the `Stale` arm; until then, expired rows manifest as
-/// `Cached: false` plus a fresh fetch (or as `Unavailable` if the fetch
-/// also fails).
+/// `Stale` is emitted only from a proven stale cache lookup. Adapters must not
+/// infer it from a miss, because a miss can mean no row, an expired row that was
+/// purged, or a different cache key.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum FreshnessStatus {
@@ -81,10 +74,7 @@ pub enum FreshnessStatus {
     /// All data for this source was served from a valid (unexpired)
     /// cache entry. No fresh fetch happened.
     Cached,
-    /// The source was reserved-for-future-use: the cache served data
-    /// past its TTL because a live fetch was not possible. **Reserved
-    /// for a future PR; not emitted by any adapter today.** See the
-    /// module doc for the `CacheLookup` follow-up.
+    /// The cache served data past its TTL from a proven stale row.
     Stale,
     /// The source was intentionally not attempted this run (e.g.
     /// configuration omitted it, or credentials were absent and the

@@ -7,7 +7,7 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 use std::path::Path;
 
-use crate::expiry::{CacheExpiryWindow, now_rfc3339};
+use crate::expiry::{CacheExpiryWindow, is_valid, now_rfc3339, parse_rfc3339_utc};
 use crate::stats::CacheStats;
 
 /// Cache for API responses backed by a local SQLite database.
@@ -54,6 +54,17 @@ pub struct CacheInspection {
     pub stats: CacheStats,
     pub oldest_cached_at: Option<String>,
     pub newest_cached_at: Option<String>,
+}
+
+/// Result of looking up a cache entry without hiding expired rows.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum CacheLookup<T> {
+    /// A present, unexpired cache row.
+    Fresh(T),
+    /// A present, expired cache row.
+    Stale(T),
+    /// No cache row exists for the key.
+    Miss,
 }
 
 impl ApiCache {
@@ -155,6 +166,36 @@ impl ApiCache {
                 Ok(Some(value))
             }
             None => Ok(None),
+        }
+    }
+
+    /// Look up a cached value and distinguish fresh hit, stale hit, and miss.
+    pub fn lookup<T: DeserializeOwned>(&self, key: &str) -> Result<CacheLookup<T>> {
+        let now = Utc::now();
+
+        let row: Option<(String, String)> = self
+            .inner
+            .conn
+            .query_row(
+                "SELECT data, expires_at FROM cache_entries WHERE key = ?1",
+                params![key],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .optional()?;
+
+        let Some((data, expires_at)) = row else {
+            return Ok(CacheLookup::Miss);
+        };
+
+        let value: T = serde_json::from_str(&data)
+            .with_context(|| format!("deserialize cached value for key: {key}"))?;
+        let expires_at = parse_rfc3339_utc(&expires_at)
+            .with_context(|| format!("parse cached expiry for key: {key}"))?;
+
+        if is_valid(expires_at, now) {
+            Ok(CacheLookup::Fresh(value))
+        } else {
+            Ok(CacheLookup::Stale(value))
         }
     }
 
@@ -330,6 +371,46 @@ mod tests {
 
         let result: Option<TestData> = cache.get("key1").unwrap();
         assert!(result.is_none());
+    }
+
+    #[test]
+    fn lookup_distinguishes_fresh_stale_and_miss() {
+        let cache = ApiCache::open_in_memory().unwrap();
+
+        let fresh = TestData {
+            name: "fresh".to_string(),
+            count: 1,
+        };
+        let stale = TestData {
+            name: "stale".to_string(),
+            count: 2,
+        };
+
+        cache
+            .set_with_ttl("fresh", &fresh, Duration::seconds(60))
+            .unwrap();
+        cache
+            .set_with_ttl("stale", &stale, Duration::seconds(-1))
+            .unwrap();
+
+        assert_eq!(
+            cache.lookup::<TestData>("fresh").unwrap(),
+            CacheLookup::Fresh(fresh)
+        );
+        assert_eq!(
+            cache.lookup::<TestData>("stale").unwrap(),
+            CacheLookup::Stale(stale)
+        );
+        assert_eq!(
+            cache.lookup::<TestData>("missing").unwrap(),
+            CacheLookup::Miss
+        );
+
+        let filtered: Option<TestData> = cache.get("stale").unwrap();
+        assert!(
+            filtered.is_none(),
+            "ApiCache::get should continue filtering expired rows"
+        );
     }
 
     #[test]

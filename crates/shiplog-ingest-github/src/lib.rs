@@ -8,8 +8,7 @@ use chrono::{DateTime, NaiveDate, Utc};
 use reqwest::blocking::Client;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
-use shiplog_cache::ApiCache;
-use shiplog_cache::CacheKey;
+use shiplog_cache::{ApiCache, CacheKey, CacheLookup};
 use shiplog_coverage::{day_windows, month_windows, week_windows, window_len_days};
 use shiplog_ids::{EventId, RunId};
 use shiplog_ports::{IngestOutput, Ingestor};
@@ -51,6 +50,9 @@ pub struct GithubIngestor {
     /// Equivalent to "live API calls performed under the cache". See
     /// [`Self::cache_hits`] above.
     cache_misses: AtomicU64,
+    /// Adapter-local stale-hit counter. Incremented when `ApiCache::lookup`
+    /// returns an expired row that this adapter uses.
+    cache_stale_hits: AtomicU64,
 }
 
 impl GithubIngestor {
@@ -85,6 +87,7 @@ impl GithubIngestor {
             cache: None,
             cache_hits: AtomicU64::new(0),
             cache_misses: AtomicU64::new(0),
+            cache_stale_hits: AtomicU64::new(0),
         }
     }
 
@@ -276,18 +279,16 @@ impl Ingestor for GithubIngestor {
         //   - cache not configured => Fresh.
         let hits = self.cache_hits.load(Ordering::Relaxed);
         let misses = self.cache_misses.load(Ordering::Relaxed);
-        let status = if self.cache.is_some() && hits > 0 && misses == 0 {
-            FreshnessStatus::Cached
-        } else {
-            FreshnessStatus::Fresh
-        };
+        let stale_hits = self.cache_stale_hits.load(Ordering::Relaxed);
+        let (status, reason) =
+            github_freshness_status(self.cache.is_some(), hits, misses, stale_hits);
         let freshness = vec![SourceFreshness {
             source: "github".to_string(),
             status,
             cache_hits: hits,
             cache_misses: misses,
             fetched_at: Some(fetched_at),
-            reason: None,
+            reason,
         }];
 
         Ok(IngestOutput {
@@ -678,11 +679,20 @@ impl GithubIngestor {
         // Check cache first
         let cache_key = CacheKey::pr_details(pr_api_url);
         if let Some(ref cache) = self.cache {
-            if let Some(cached) = cache.get::<PullRequestDetails>(&cache_key)? {
-                self.cache_hits.fetch_add(1, Ordering::Relaxed);
-                return Ok(cached);
+            match cache.lookup::<PullRequestDetails>(&cache_key)? {
+                CacheLookup::Fresh(cached) => {
+                    self.cache_hits.fetch_add(1, Ordering::Relaxed);
+                    return Ok(cached);
+                }
+                CacheLookup::Stale(cached) => {
+                    self.cache_hits.fetch_add(1, Ordering::Relaxed);
+                    self.cache_stale_hits.fetch_add(1, Ordering::Relaxed);
+                    return Ok(cached);
+                }
+                CacheLookup::Miss => {
+                    self.cache_misses.fetch_add(1, Ordering::Relaxed);
+                }
             }
-            self.cache_misses.fetch_add(1, Ordering::Relaxed);
         }
 
         // Fetch from API
@@ -710,23 +720,31 @@ impl GithubIngestor {
 
             // Try to get from cache first
             let page_reviews: Vec<PullRequestReview> = if let Some(ref cache) = self.cache {
-                if let Some(cached) = cache.get::<Vec<PullRequestReview>>(&cache_key)? {
-                    self.cache_hits.fetch_add(1, Ordering::Relaxed);
-                    cached
-                } else {
-                    self.cache_misses.fetch_add(1, Ordering::Relaxed);
-                    // Not in cache, fetch from API
-                    let reviews: Vec<PullRequestReview> = self.get_json(
-                        client,
-                        &url,
-                        &[
-                            ("per_page", per_page.to_string()),
-                            ("page", page.to_string()),
-                        ],
-                    )?;
-                    // Store in cache
-                    cache.set(&cache_key, &reviews)?;
-                    reviews
+                match cache.lookup::<Vec<PullRequestReview>>(&cache_key)? {
+                    CacheLookup::Fresh(cached) => {
+                        self.cache_hits.fetch_add(1, Ordering::Relaxed);
+                        cached
+                    }
+                    CacheLookup::Stale(cached) => {
+                        self.cache_hits.fetch_add(1, Ordering::Relaxed);
+                        self.cache_stale_hits.fetch_add(1, Ordering::Relaxed);
+                        cached
+                    }
+                    CacheLookup::Miss => {
+                        self.cache_misses.fetch_add(1, Ordering::Relaxed);
+                        // Not in cache, fetch from API
+                        let reviews: Vec<PullRequestReview> = self.get_json(
+                            client,
+                            &url,
+                            &[
+                                ("per_page", per_page.to_string()),
+                                ("page", page.to_string()),
+                            ],
+                        )?;
+                        // Store in cache
+                        cache.set(&cache_key, &reviews)?;
+                        reviews
+                    }
                 }
             } else {
                 // No cache configured, fetch directly
@@ -783,6 +801,25 @@ fn build_url_with_params(base: &str, params: &[(&str, String)]) -> Result<Url> {
         }
     }
     Ok(url)
+}
+
+fn github_freshness_status(
+    cache_configured: bool,
+    cache_hits: u64,
+    cache_misses: u64,
+    cache_stale_hits: u64,
+) -> (FreshnessStatus, Option<String>) {
+    if cache_configured && cache_stale_hits > 0 {
+        return (
+            FreshnessStatus::Stale,
+            Some("one or more expired cache entries were used".to_string()),
+        );
+    }
+    if cache_configured && cache_hits > 0 && cache_misses == 0 {
+        return (FreshnessStatus::Cached, None);
+    }
+
+    (FreshnessStatus::Fresh, None)
 }
 
 fn repo_from_repo_url(repo_api_url: &str, html_base: &str) -> (String, String) {
@@ -1100,6 +1137,7 @@ mod tests {
         let ing = make_ingestor("octocat").with_in_memory_cache()?;
         assert_eq!(ing.cache_hits.load(Ordering::Relaxed), 0);
         assert_eq!(ing.cache_misses.load(Ordering::Relaxed), 0);
+        assert_eq!(ing.cache_stale_hits.load(Ordering::Relaxed), 0);
         Ok(())
     }
 
@@ -1110,12 +1148,11 @@ mod tests {
         ing.cache_hits.fetch_add(3, Ordering::Relaxed);
         let hits = ing.cache_hits.load(Ordering::Relaxed);
         let misses = ing.cache_misses.load(Ordering::Relaxed);
-        let status = if ing.cache.is_some() && hits > 0 && misses == 0 {
-            FreshnessStatus::Cached
-        } else {
-            FreshnessStatus::Fresh
-        };
+        let stale_hits = ing.cache_stale_hits.load(Ordering::Relaxed);
+        let (status, reason) =
+            github_freshness_status(ing.cache.is_some(), hits, misses, stale_hits);
         assert!(matches!(status, FreshnessStatus::Cached));
+        assert!(reason.is_none());
         Ok(())
     }
 
@@ -1127,12 +1164,32 @@ mod tests {
         ing.cache_misses.fetch_add(1, Ordering::Relaxed);
         let hits = ing.cache_hits.load(Ordering::Relaxed);
         let misses = ing.cache_misses.load(Ordering::Relaxed);
-        let status = if ing.cache.is_some() && hits > 0 && misses == 0 {
-            FreshnessStatus::Cached
-        } else {
-            FreshnessStatus::Fresh
-        };
+        let stale_hits = ing.cache_stale_hits.load(Ordering::Relaxed);
+        let (status, reason) =
+            github_freshness_status(ing.cache.is_some(), hits, misses, stale_hits);
         assert!(matches!(status, FreshnessStatus::Fresh));
+        assert!(reason.is_none());
+        Ok(())
+    }
+
+    #[test]
+    fn freshness_status_stale_when_stale_hit_observed() -> anyhow::Result<()> {
+        // Status rule: any stale row used by the adapter makes the
+        // source stale, even if other cache lookups hit or miss.
+        let ing = make_ingestor("octocat").with_in_memory_cache()?;
+        ing.cache_hits.fetch_add(2, Ordering::Relaxed);
+        ing.cache_misses.fetch_add(1, Ordering::Relaxed);
+        ing.cache_stale_hits.fetch_add(1, Ordering::Relaxed);
+        let hits = ing.cache_hits.load(Ordering::Relaxed);
+        let misses = ing.cache_misses.load(Ordering::Relaxed);
+        let stale_hits = ing.cache_stale_hits.load(Ordering::Relaxed);
+        let (status, reason) =
+            github_freshness_status(ing.cache.is_some(), hits, misses, stale_hits);
+        assert!(matches!(status, FreshnessStatus::Stale));
+        assert_eq!(
+            reason.as_deref(),
+            Some("one or more expired cache entries were used")
+        );
         Ok(())
     }
 
@@ -1143,12 +1200,11 @@ mod tests {
         let ing = make_ingestor("octocat");
         let hits = ing.cache_hits.load(Ordering::Relaxed);
         let misses = ing.cache_misses.load(Ordering::Relaxed);
-        let status = if ing.cache.is_some() && hits > 0 && misses == 0 {
-            FreshnessStatus::Cached
-        } else {
-            FreshnessStatus::Fresh
-        };
+        let stale_hits = ing.cache_stale_hits.load(Ordering::Relaxed);
+        let (status, reason) =
+            github_freshness_status(ing.cache.is_some(), hits, misses, stale_hits);
         assert!(matches!(status, FreshnessStatus::Fresh));
+        assert!(reason.is_none());
     }
 
     // -- warm-rerun cache behavior --
@@ -1246,16 +1302,49 @@ mod tests {
         // => Cached.
         let hits = ing.cache_hits.load(Ordering::Relaxed);
         let misses = ing.cache_misses.load(Ordering::Relaxed);
-        let status = if ing.cache.is_some() && hits > 0 && misses == 0 {
-            FreshnessStatus::Cached
-        } else {
-            FreshnessStatus::Fresh
-        };
+        let stale_hits = ing.cache_stale_hits.load(Ordering::Relaxed);
+        let (status, reason) =
+            github_freshness_status(ing.cache.is_some(), hits, misses, stale_hits);
         assert!(
             matches!(status, FreshnessStatus::Cached),
             "warm rerun with fully populated cache must derive Cached, got {status:?}"
         );
+        assert!(reason.is_none());
         assert_eq!(status.as_label(), "cached");
+        Ok(())
+    }
+
+    #[test]
+    fn expired_cache_entry_records_stale_hit_without_network() -> anyhow::Result<()> {
+        let ing = make_ingestor("octocat").with_in_memory_cache()?;
+        let url = "https://api.github.com/repos/acme/widgets/pulls/3";
+        let key = CacheKey::pr_details(url);
+        let seeded = make_pr_details()?;
+        let cache = ing
+            .cache
+            .as_ref()
+            .ok_or_else(|| anyhow!("in-memory cache was just attached"))?;
+        cache.set_with_ttl(&key, &seeded, chrono::Duration::seconds(-1))?;
+
+        let client = no_op_client()?;
+        let got = ing.fetch_pr_details(&client, url)?;
+        assert_eq!(got.title, seeded.title);
+        assert_eq!(ing.cache_hits.load(Ordering::Relaxed), 1);
+        assert_eq!(ing.cache_misses.load(Ordering::Relaxed), 0);
+        assert_eq!(ing.cache_stale_hits.load(Ordering::Relaxed), 1);
+
+        let (status, reason) = github_freshness_status(
+            ing.cache.is_some(),
+            ing.cache_hits.load(Ordering::Relaxed),
+            ing.cache_misses.load(Ordering::Relaxed),
+            ing.cache_stale_hits.load(Ordering::Relaxed),
+        );
+        assert!(matches!(status, FreshnessStatus::Stale));
+        assert_eq!(
+            reason.as_deref(),
+            Some("one or more expired cache entries were used")
+        );
+        assert_eq!(status.as_label(), "stale");
         Ok(())
     }
 
