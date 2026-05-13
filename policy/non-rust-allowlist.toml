@@ -416,6 +416,17 @@ broad_glob_reason = "Tooling-specific config tree; structure mirrors Factory Dro
 created = "2026-05-10"
 expires = "permanent"
 
+[[allow]]
+id = "non-rust-shiplog-goals"
+glob = ".shiplog/goals/**"
+category = "agent_config"
+language = "mixed"
+owner = "docs"
+reason = "Repo-local active goal manifests that tell Codex/Droid which proposal, spec, ADR, plan, and proof commands own the current lane. This is agent control-plane state, not product runtime config."
+broad_glob_reason = "One active manifest plus archived lane manifests live under this tree; each manifest is inert TOML or Markdown and is reviewed through the linked specs/plans."
+created = "2026-05-13"
+expires = "permanent"
+
 # ── Git metadata ───────────────────────────────────────────────────────
 
 [[allow]]
