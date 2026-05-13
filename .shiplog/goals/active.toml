@@ -24,6 +24,8 @@ completed_prs = [
   "https://github.com/EffortlessMetrics/shiplog/pull/232",
   "https://github.com/EffortlessMetrics/shiplog/pull/233",
   "https://github.com/EffortlessMetrics/shiplog/pull/234",
+  "https://github.com/EffortlessMetrics/shiplog/pull/235",
+  "https://github.com/EffortlessMetrics/shiplog/pull/236",
 ]
 
 rules = [
@@ -77,7 +79,8 @@ purpose = "stale freshness requires CacheLookup proof"
 [[work_item]]
 id = "cli-next-step-footer"
 title = "feat(cli): print next-step commands after intake"
-status = "ready"
+status = "done"
+pr = "https://github.com/EffortlessMetrics/shiplog/pull/236"
 plan_section = "PR 1: CLI Next-Step Footer"
 specs = [
   "SHIPLOG-SPEC-0001-rapid-first-intake",
@@ -105,8 +108,7 @@ rollback = "Revert footer rendering and stdout assertions together."
 [[work_item]]
 id = "open-latest"
 title = "feat(open): improve latest artifact discovery"
-status = "blocked"
-blocked_by = ["cli-next-step-footer"]
+status = "ready"
 plan_section = "PR 2: Latest Artifact Opening"
 specs = ["SHIPLOG-SPEC-0001-rapid-first-intake"]
 issues = []
