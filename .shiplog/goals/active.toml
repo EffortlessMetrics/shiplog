@@ -28,6 +28,7 @@ completed_prs = [
   "https://github.com/EffortlessMetrics/shiplog/pull/236",
   "https://github.com/EffortlessMetrics/shiplog/pull/237",
   "https://github.com/EffortlessMetrics/shiplog/pull/238",
+  "https://github.com/EffortlessMetrics/shiplog/pull/243",
 ]
 
 rules = [
@@ -149,7 +150,8 @@ rollback = "Revert report writer, schema/docs, and tests together."
 [[work_item]]
 id = "skipped-source-freshness"
 title = "feat(report): include skipped sources in source_freshness"
-status = "ready"
+status = "done"
+pr = "https://github.com/EffortlessMetrics/shiplog/pull/243"
 plan_section = "PR 4: Skipped Sources In Freshness"
 adrs = [
   "SHIPLOG-ADR-0001-ingest-output-is-receipt-boundary",
@@ -169,8 +171,7 @@ rollback = "Revert skipped freshness population while keeping source identity ca
 [[work_item]]
 id = "cachelookup-stale"
 title = "feat(cache): add CacheLookup for stale freshness"
-status = "blocked"
-blocked_by = ["skipped-source-freshness"]
+status = "ready"
 plan_section = "PR 5: CacheLookup And Stale"
 adrs = [
   "SHIPLOG-ADR-0001-ingest-output-is-receipt-boundary",
