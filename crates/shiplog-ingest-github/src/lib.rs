@@ -907,6 +907,11 @@ mod tests {
     use super::*;
     use chrono::TimeZone;
     use proptest::prelude::*;
+    use std::io::{ErrorKind, Read, Write};
+    use std::net::{TcpListener, TcpStream};
+    use std::sync::{Arc, Mutex};
+    use std::thread::{self, JoinHandle};
+    use std::time::{Duration as StdDuration, Instant};
 
     // ── helpers ──────────────────────────────────────────────────────────
 
@@ -1345,6 +1350,230 @@ mod tests {
             Some("one or more expired cache entries were used")
         );
         assert_eq!(status.as_label(), "stale");
+        Ok(())
+    }
+
+    struct RecordedGithubServer {
+        base_url: String,
+        requests: Arc<Mutex<Vec<String>>>,
+        handle: Option<JoinHandle<anyhow::Result<()>>>,
+    }
+
+    impl RecordedGithubServer {
+        fn start(expected_requests: usize) -> anyhow::Result<Self> {
+            let listener = TcpListener::bind("127.0.0.1:0").context("bind fixture server")?;
+            listener
+                .set_nonblocking(true)
+                .context("set fixture server nonblocking")?;
+            let base_url = format!("http://{}", listener.local_addr()?);
+            let requests = Arc::new(Mutex::new(Vec::new()));
+            let thread_requests = Arc::clone(&requests);
+            let thread_base_url = base_url.clone();
+            let handle = thread::spawn(move || {
+                replay_github_fixtures(
+                    listener,
+                    &thread_base_url,
+                    thread_requests,
+                    expected_requests,
+                )
+            });
+
+            Ok(Self {
+                base_url,
+                requests,
+                handle: Some(handle),
+            })
+        }
+
+        fn base_url(&self) -> String {
+            self.base_url.clone()
+        }
+
+        fn finish(mut self) -> anyhow::Result<Vec<String>> {
+            if let Some(handle) = self.handle.take() {
+                handle
+                    .join()
+                    .map_err(|_| anyhow!("recorded fixture server thread panicked"))??;
+            }
+            self.requests
+                .lock()
+                .map_err(|_| anyhow!("recorded fixture request log was poisoned"))
+                .map(|requests| requests.clone())
+        }
+    }
+
+    fn replay_github_fixtures(
+        listener: TcpListener,
+        base_url: &str,
+        requests: Arc<Mutex<Vec<String>>>,
+        expected_requests: usize,
+    ) -> anyhow::Result<()> {
+        let deadline = Instant::now() + StdDuration::from_secs(10);
+
+        while fixture_request_count(&requests)? < expected_requests {
+            match listener.accept() {
+                Ok((mut stream, _peer)) => {
+                    let request_line = handle_recorded_github_request(&mut stream, base_url)?;
+                    requests
+                        .lock()
+                        .map_err(|_| anyhow!("recorded fixture request log was poisoned"))?
+                        .push(request_line);
+                }
+                Err(err) if err.kind() == ErrorKind::WouldBlock => {
+                    if Instant::now() > deadline {
+                        return Err(anyhow!(
+                            "recorded fixture server expected {expected_requests} requests, saw {}",
+                            fixture_request_count(&requests)?
+                        ));
+                    }
+                    thread::sleep(StdDuration::from_millis(10));
+                }
+                Err(err) => return Err(err).context("accept recorded GitHub fixture request"),
+            }
+        }
+
+        Ok(())
+    }
+
+    fn fixture_request_count(requests: &Arc<Mutex<Vec<String>>>) -> anyhow::Result<usize> {
+        requests
+            .lock()
+            .map_err(|_| anyhow!("recorded fixture request log was poisoned"))
+            .map(|requests| requests.len())
+    }
+
+    fn handle_recorded_github_request(
+        stream: &mut TcpStream,
+        base_url: &str,
+    ) -> anyhow::Result<String> {
+        let mut buf = [0_u8; 4096];
+        let mut received = Vec::new();
+        loop {
+            let n = stream
+                .read(&mut buf)
+                .context("read recorded GitHub fixture request")?;
+            if n == 0 {
+                break;
+            }
+            received.extend_from_slice(&buf[..n]);
+            if received.windows(4).any(|window| window == b"\r\n\r\n") {
+                break;
+            }
+            if received.len() > 64 * 1024 {
+                return Err(anyhow!("recorded GitHub fixture request was too large"));
+            }
+        }
+
+        let request = String::from_utf8_lossy(&received);
+        let request_line = request
+            .lines()
+            .next()
+            .ok_or_else(|| anyhow!("recorded GitHub fixture request had no request line"))?
+            .to_string();
+        let target = request_line
+            .split_whitespace()
+            .nth(1)
+            .ok_or_else(|| anyhow!("recorded GitHub fixture request had no target"))?;
+        let (status, body) = recorded_github_fixture_response(target, base_url);
+        let response = format!(
+            "HTTP/1.1 {status}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+            body.len()
+        );
+        stream
+            .write_all(response.as_bytes())
+            .context("write recorded GitHub fixture response")?;
+        stream
+            .flush()
+            .context("flush recorded GitHub fixture response")?;
+        Ok(request_line)
+    }
+
+    fn recorded_github_fixture_response(target: &str, base_url: &str) -> (&'static str, String) {
+        let body = if target.starts_with("/search/issues?")
+            && target_has_query_param(target, "per_page", "1")
+        {
+            include_str!("../tests/fixtures/github-warm-rerun/search_meta.json")
+        } else if target.starts_with("/search/issues?")
+            && target_has_query_param(target, "per_page", "100")
+        {
+            include_str!("../tests/fixtures/github-warm-rerun/search_items.json")
+        } else if target == "/repos/acme/widgets/pulls/1" {
+            include_str!("../tests/fixtures/github-warm-rerun/pr_details.json")
+        } else {
+            r#"{"message":"unexpected recorded fixture request"}"#
+        };
+        let status = if body.contains("unexpected recorded fixture request") {
+            "404 Not Found"
+        } else {
+            "200 OK"
+        };
+        (status, body.replace("__API_BASE__", base_url))
+    }
+
+    fn target_has_query_param(target: &str, key: &str, value: &str) -> bool {
+        target
+            .split_once('?')
+            .map(|(_path, query)| {
+                query.split('&').any(|pair| {
+                    pair.split_once('=')
+                        .map(|(k, v)| k == key && v == value)
+                        .unwrap_or(false)
+                })
+            })
+            .unwrap_or(false)
+    }
+
+    #[test]
+    fn recorded_http_fixtures_prove_full_fresh_then_cached_ingest() -> anyhow::Result<()> {
+        let server = RecordedGithubServer::start(5)?;
+        let cache_dir = tempfile::tempdir().context("create fixture cache dir")?;
+
+        let mut cold = make_ingestor("octocat").with_cache(cache_dir.path())?;
+        cold.api_base = server.base_url();
+        let cold_output = cold.ingest()?;
+        assert_eq!(cold_output.events.len(), 1);
+        let cold_freshness = cold_output
+            .freshness
+            .first()
+            .ok_or_else(|| anyhow!("cold fixture ingest did not emit source freshness"))?;
+        assert!(
+            matches!(cold_freshness.status, FreshnessStatus::Fresh),
+            "first recorded fixture run should be fresh, got {}",
+            cold_freshness.status.as_label()
+        );
+        assert_eq!(cold_freshness.cache_hits, 0);
+        assert_eq!(cold_freshness.cache_misses, 1);
+
+        let mut warm = make_ingestor("octocat").with_cache(cache_dir.path())?;
+        warm.api_base = server.base_url();
+        let warm_output = warm.ingest()?;
+        assert_eq!(warm_output.events.len(), 1);
+        let warm_freshness = warm_output
+            .freshness
+            .first()
+            .ok_or_else(|| anyhow!("warm fixture ingest did not emit source freshness"))?;
+        assert!(
+            matches!(warm_freshness.status, FreshnessStatus::Cached),
+            "second recorded fixture run should be cached, got {}",
+            warm_freshness.status.as_label()
+        );
+        assert_eq!(warm_freshness.cache_hits, 1);
+        assert_eq!(warm_freshness.cache_misses, 0);
+
+        let requests = server.finish()?;
+        let search_requests = requests
+            .iter()
+            .filter(|line| line.contains("/search/issues?"))
+            .count();
+        let detail_requests = requests
+            .iter()
+            .filter(|line| line.contains("/repos/acme/widgets/pulls/1"))
+            .count();
+        assert_eq!(search_requests, 4);
+        assert_eq!(
+            detail_requests, 1,
+            "warm run must serve PR details from cache instead of replaying HTTP"
+        );
         Ok(())
     }
 

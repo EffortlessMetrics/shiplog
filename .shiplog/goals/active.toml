@@ -30,6 +30,7 @@ completed_prs = [
   "https://github.com/EffortlessMetrics/shiplog/pull/238",
   "https://github.com/EffortlessMetrics/shiplog/pull/243",
   "https://github.com/EffortlessMetrics/shiplog/pull/244",
+  "https://github.com/EffortlessMetrics/shiplog/pull/245",
 ]
 
 rules = [
@@ -193,7 +194,8 @@ rollback = "Revert cache API, adapter stale path, and tests together."
 [[work_item]]
 id = "recorded-http-fixtures"
 title = "test(harness): add recorded HTTP fixtures for full warm-rerun"
-status = "ready"
+status = "done"
+pr = "https://github.com/EffortlessMetrics/shiplog/pull/245"
 plan_section = "PR 6: Recorded HTTP Fixtures"
 issues = ["https://github.com/EffortlessMetrics/shiplog/issues/225"]
 commands = [
@@ -208,8 +210,7 @@ rollback = "Remove fixtures and tests without loosening live-network guards."
 [[work_item]]
 id = "release-prep"
 title = "release: prepare user-polish release"
-status = "blocked"
-blocked_by = ["recorded-http-fixtures"]
+status = "ready"
 plan_section = "PR 7: User-Polish Release Prep"
 issues = []
 commands = [
