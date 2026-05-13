@@ -3,7 +3,10 @@
 Status: proposed
 Owner: product/docs
 Created: 2026-05-13
-Target release: 0.7.0
+Target release: after 0.7.0 crate-surface contraction
+Superseding note: `SHIPLOG-PROP-0003-crate-surface-contraction` moves the next
+release lane to public crate-surface correction. Evidence Repair Loop remains
+the next product lane after report, CLI, journal, and source modules are stable.
 
 ## Summary
 
@@ -220,9 +223,9 @@ Land the lane in small semantic PRs:
 1. This proposal:
    `docs/proposals/SHIPLOG-PROP-0002-evidence-repair-loop.md`.
 2. Evidence repair loop spec:
-   `docs/specs/SHIPLOG-SPEC-0004-evidence-repair-loop.md`.
+   `docs/specs/SHIPLOG-SPEC-0005-evidence-repair-loop.md`.
 3. Repair-action ADR:
-   `docs/adr/SHIPLOG-ADR-0004-repair-actions-are-receipt-derived.md`.
+   `docs/adr/SHIPLOG-ADR-0005-repair-actions-are-receipt-derived.md`.
 4. Implementation plan and active goal:
    `plans/evidence-repair/implementation-plan.md` and
    `.shiplog/goals/active.toml`.
