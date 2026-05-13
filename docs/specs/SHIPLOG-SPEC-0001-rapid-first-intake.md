@@ -84,6 +84,12 @@ On the first run, shiplog must:
 - write output under `./out/<run_id>/`, where the run directory is sortable and
   does not overwrite prior runs.
 
+`run_id` is an opaque shiplog run identifier, but it must sort
+lexicographically in creation order for runs written to the same `out`
+directory. The exact string shape is an implementation detail; latest-run
+selection must depend on deterministic ordering rules, not on a human guessing
+the identifier format.
+
 ### Source Selection
 
 The first run should attempt every source that has enough configuration or
@@ -120,8 +126,9 @@ receipts.
 ### Readiness
 
 Readiness must be honest. A first run with no collected events is not a broken
-run if at least one source succeeded structurally, such as the scaffolded manual
-source reading an empty file. It must exit successfully and report:
+run if at least one source completed without an ingest error, such as the
+scaffolded manual source reading an empty file and returning zero events. It
+must exit successfully and report:
 
 ```text
 Needs evidence
@@ -130,7 +137,8 @@ Needs evidence
 The report must explain the missing-evidence gap in plain language so a user or
 reviewer sees it before treating the packet as complete.
 
-The command exits non-zero only when zero sources succeeded.
+The command exits non-zero only when zero sources completed without an ingest
+error.
 
 ### Report Framing
 
@@ -169,9 +177,10 @@ A change preserves this spec when:
   `ledger.events.jsonl`, `coverage.manifest.json`,
   `workstreams.suggested.yaml`, and `bundle.manifest.json`;
 - `readiness` is `Needs evidence` when the run collected zero events but at
-  least one source succeeded;
-- zero-source-success runs exit non-zero;
-- `source_decisions` is populated even when `--explain` is omitted;
+  least one source completed without an ingest error;
+- runs where zero sources completed without an ingest error exit non-zero;
+- `source_decisions` is populated in the report without requiring
+  `--explain`;
 - skipped sources carry reasons;
 - `source_freshness` is populated;
 - no cold-start source reports `cached`;
@@ -206,6 +215,7 @@ cargo test -p shiplog --test intake_cold_start
 cargo test -p shiplog --test front_door_first_pack_smoke
 cargo xtask check-policy-schemas
 cargo xtask check-file-policy --mode blocking-allowlist
+rg -n "packet.md|intake.report.md|intake.report.json|ledger.events.jsonl|coverage.manifest.json|workstreams.suggested.yaml|bundle.manifest.json" docs/product/rapid-first-intake.md docs/guides/rapid-first-intake.md docs/specs/SHIPLOG-SPEC-0001-rapid-first-intake.md apps/shiplog/tests/intake_cold_start.rs
 git diff --check
 ```
 
@@ -214,10 +224,12 @@ Proof gaps to close when behavior changes:
 - if the terminal next-step footer changes, add stdout assertions for the
   `open ... --latest` commands and missing-evidence repair loop;
 - if required artifact names change, update this spec, the product doc, guide,
-  and the cold-start artifact assertions together. The supporting receipt
-  artifacts (`ledger.events.jsonl`, `workstreams.suggested.yaml`,
-  `bundle.manifest.json`) are documented here and in the guide; add explicit
-  test assertions if their first-run presence changes;
+  and the cold-start artifact assertions together. The current automated
+  cold-start test asserts the first-open artifacts and coverage manifest; the
+  supporting receipt artifacts (`ledger.events.jsonl`,
+  `workstreams.suggested.yaml`, `bundle.manifest.json`) are documented here and
+  in the guide, and changes to them need either new test assertions or an
+  explicit proof note in the PR;
 - if source identity changes, route the contract through
   `SHIPLOG-SPEC-0003-source-identity` instead of adding local normalization to
   first-run tests.
