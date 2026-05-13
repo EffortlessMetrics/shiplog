@@ -1,11 +1,47 @@
 id = "shiplog-user-polish"
 title = "Shiplog user-polish release"
-status = "active"
+status = "completed"
 owner = "codex"
 created = "2026-05-13"
+archived = "2026-05-13"
+completed = "2026-05-13"
+archive_reason = "0.6.0 shipped: tag pushed, crates published, GitHub release created, release smokes passed."
 
 proposal = "docs/proposals/SHIPLOG-PROP-0001-user-polish-release.md"
 plan = "plans/user-polish/implementation-plan.md"
+
+release_version = "0.6.0"
+release_tag = "v0.6.0"
+release_commit = "d719a8ee9104d974d9920fc99703f917af533147"
+release_github_url = "https://github.com/EffortlessMetrics/shiplog/releases/tag/v0.6.0"
+release_workflow_run = "https://github.com/EffortlessMetrics/shiplog/actions/runs/25801647529"
+release_crates_io = "https://crates.io/crates/shiplog/0.6.0"
+
+final_proof_commands = [
+  "bash scripts/package-version-audit.sh",
+  "bash scripts/package-boundary-audit.sh",
+  "cargo test -p shiplog --test intake_cold_start",
+  "cargo test -p shiplog --test front_door_first_pack_smoke",
+  "cargo test -p shiplog --test cli_integration -- intake",
+  "cargo test -p shiplog --test cli_integration -- report",
+  "cargo test -p shiplog-cache",
+  "cargo test -p shiplog-ingest-github",
+  "cargo clippy --workspace --all-targets --all-features --locked -- -D warnings",
+  "cargo xtask check-policy-schemas",
+  "cargo xtask check-file-policy --mode blocking-allowlist",
+  "cargo xtask check-executable-files --mode blocking-allowlist",
+  "git diff --check",
+  "gh run watch 25801647529 --exit-status",
+  "bash scripts/release-install-smoke.sh v0.6.0",
+  "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/release-install-smoke.ps1 -Version v0.6.0",
+]
+
+known_gaps = [
+  "scripts/publish-v0.6.0.sh listed shiplog-team before shiplog-merge; release driver resumed manually with shiplog-merge, shiplog-engine, shiplog-team, and shiplog.",
+  "Windows PowerShell without Microsoft.PowerShell.Utility.Get-FileHash could not run release-install-smoke.ps1; pwsh ran it successfully.",
+]
+
+next_lane = "Evidence Repair Loop"
 
 objective = """
 Make shiplog easy to use from empty directory to defensible review pack:
