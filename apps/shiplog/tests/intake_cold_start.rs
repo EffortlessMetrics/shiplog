@@ -342,6 +342,37 @@ fn cold_start_intake_report_records_source_freshness_per_source() {
         "freshness receipt: cold-start manual source must report status=\"fresh\" (freshness={freshness:?})"
     );
 
+    for source_key in ["github", "gitlab", "jira", "linear", "git", "json"] {
+        assert!(
+            freshness.iter().any(|entry| {
+                entry["source"].as_str() == Some(source_key)
+                    && entry["source_key"].as_str() == Some(source_key)
+                    && entry["status"].as_str() == Some("skipped")
+                    && entry["reason"]
+                        .as_str()
+                        .is_some_and(|reason| !reason.is_empty())
+            }),
+            "freshness receipt: cold-start skipped source {source_key:?} must report status=\"skipped\" with a reason (freshness={freshness:?})"
+        );
+    }
+
+    let mut source_keys = freshness
+        .iter()
+        .map(|entry| {
+            entry["source_key"]
+                .as_str()
+                .expect("source_freshness entries should expose source_key")
+        })
+        .collect::<Vec<_>>();
+    let source_key_count = source_keys.len();
+    source_keys.sort_unstable();
+    source_keys.dedup();
+    assert_eq!(
+        source_keys.len(),
+        source_key_count,
+        "freshness receipt: source_freshness must not duplicate source_key rows (freshness={freshness:?})"
+    );
+
     // No source should be `cached` on cold-start: the cache is empty so
     // every adapter that uses it either misses (=> Fresh) or doesn't use
     // it at all. A `cached` status here would mean we lied about the
@@ -360,6 +391,10 @@ fn cold_start_intake_report_records_source_freshness_per_source() {
     assert!(
         report_md.contains("## Source Freshness"),
         "freshness receipt: intake.report.md must include a `## Source Freshness` section (missing)"
+    );
+    assert!(
+        report_md.contains("- **GitHub**: skipped"),
+        "freshness receipt: intake.report.md must show skipped source freshness rows"
     );
 }
 

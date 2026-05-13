@@ -2558,8 +2558,11 @@ fn build_intake_report(
         &next_commands,
     );
 
-    let source_freshness =
-        build_source_freshness_report(&result.configured.successes, &result.configured.failures);
+    let source_freshness = build_source_freshness_report(
+        &result.configured.successes,
+        &result.configured.failures,
+        explanations,
+    );
 
     Ok(IntakeReport {
         schema_version: 1,
@@ -3879,37 +3882,79 @@ fn intake_source_decision_reports(
 fn build_source_freshness_report(
     successes: &[(String, IngestOutput)],
     failures: &[ConfiguredSourceFailure],
+    explanations: &[IntakeSourceExplanation],
 ) -> Vec<IntakeReportSourceFreshness> {
     let mut out = Vec::new();
+    let mut seen = BTreeSet::new();
     for (_configured_name, ingest) in successes {
         for entry in &ingest.freshness {
-            let identity = intake_report_source_identity(&entry.source);
-            out.push(IntakeReportSourceFreshness {
-                source: identity.source,
-                source_key: identity.source_key,
-                source_label: identity.source_label,
-                status: entry.status.as_label().to_string(),
-                cache_hits: entry.cache_hits,
-                cache_misses: entry.cache_misses,
-                observed_at: entry.fetched_at.map(|ts| ts.to_rfc3339()),
-                reason: entry.reason.clone(),
-            });
+            push_intake_report_source_freshness(
+                &mut out,
+                &mut seen,
+                &entry.source,
+                entry.status.as_label(),
+                entry.cache_hits,
+                entry.cache_misses,
+                entry.fetched_at.map(|ts| ts.to_rfc3339()),
+                entry.reason.clone(),
+            );
         }
     }
     for failure in failures {
-        let identity = intake_report_source_identity(&failure.name);
-        out.push(IntakeReportSourceFreshness {
-            source: identity.source,
-            source_key: identity.source_key,
-            source_label: identity.source_label,
-            status: "unavailable".to_string(),
-            cache_hits: 0,
-            cache_misses: 0,
-            observed_at: None,
-            reason: Some(failure.error.clone()),
-        });
+        push_intake_report_source_freshness(
+            &mut out,
+            &mut seen,
+            &failure.name,
+            "unavailable",
+            0,
+            0,
+            None,
+            Some(failure.error.clone()),
+        );
+    }
+    for explanation in explanations
+        .iter()
+        .filter(|explanation| matches!(explanation.decision, IntakeSourceDecision::Skipped))
+    {
+        push_intake_report_source_freshness(
+            &mut out,
+            &mut seen,
+            &explanation.name,
+            "skipped",
+            0,
+            0,
+            None,
+            Some(explanation.reason.clone()),
+        );
     }
     out
+}
+
+fn push_intake_report_source_freshness(
+    out: &mut Vec<IntakeReportSourceFreshness>,
+    seen: &mut BTreeSet<String>,
+    source: &str,
+    status: &str,
+    cache_hits: u64,
+    cache_misses: u64,
+    observed_at: Option<String>,
+    reason: Option<String>,
+) {
+    let identity = intake_report_source_identity(source);
+    if !seen.insert(identity.source_key.clone()) {
+        return;
+    }
+
+    out.push(IntakeReportSourceFreshness {
+        source: identity.source,
+        source_key: identity.source_key,
+        source_label: identity.source_label,
+        status: status.to_string(),
+        cache_hits,
+        cache_misses,
+        observed_at,
+        reason,
+    });
 }
 
 fn intake_repair_source_reports(
