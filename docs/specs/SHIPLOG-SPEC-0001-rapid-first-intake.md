@@ -164,8 +164,10 @@ A change preserves this spec when:
 
 - `shiplog intake --last-6-months --explain` works from an empty directory;
 - the run creates starter `shiplog.toml` and `manual_events.yaml`;
-- the run creates the required artifacts under a new `out/<run_id>/`;
-- `intake.report.md` and `intake.report.json` exist beside `packet.md`;
+- the run creates all required artifacts under a new `out/<run_id>/`:
+  `packet.md`, `intake.report.md`, `intake.report.json`,
+  `ledger.events.jsonl`, `coverage.manifest.json`,
+  `workstreams.suggested.yaml`, and `bundle.manifest.json`;
 - `readiness` is `Needs evidence` when the run collected zero events but at
   least one source succeeded;
 - zero-source-success runs exit non-zero;
