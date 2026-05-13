@@ -1,0 +1,219 @@
+id = "shiplog-user-polish"
+title = "Shiplog user-polish release"
+status = "active"
+owner = "codex"
+created = "2026-05-13"
+
+proposal = "docs/proposals/SHIPLOG-PROP-0001-user-polish-release.md"
+plan = "plans/user-polish/implementation-plan.md"
+
+objective = """
+Make shiplog easy to use from empty directory to defensible review pack:
+clear intake output, latest-artifact opening, canonical report JSON, honest
+freshness semantics, safe sharing posture, repair guidance, and release proof.
+"""
+
+north_star = """
+Shiplog's product receipts and development receipts have the same shape:
+claim, source, freshness, proof, gaps, and next action.
+"""
+
+completed_prs = [
+  "https://github.com/EffortlessMetrics/shiplog/pull/230",
+  "https://github.com/EffortlessMetrics/shiplog/pull/231",
+  "https://github.com/EffortlessMetrics/shiplog/pull/232",
+  "https://github.com/EffortlessMetrics/shiplog/pull/233",
+  "https://github.com/EffortlessMetrics/shiplog/pull/234",
+]
+
+rules = [
+  "Specs define behavior. Plans define PR order. Guides teach users. Ledgers record proof and exceptions.",
+  "Do not reopen protected-fields or disallowed_fields.",
+  "Do not implement skipped-source freshness before source identity canonicalization.",
+  "Do not emit stale until ApiCache exposes CacheLookup::{Fresh, Stale, Miss}.",
+  "Every PR carries scope, expected files, behavior change, validation, rollback, and follow-up.",
+]
+
+end_state = [
+  "shiplog intake prints useful next-step commands after a successful run",
+  "shiplog open intake-report --latest and shiplog open packet --latest work reliably",
+  "intake.report.json source identities are canonical and joinable",
+  "source_freshness includes honest fresh/cached/skipped/unavailable states with reasons where required",
+  "stale is emitted only after CacheLookup can prove stale rows",
+  "recorded fixtures prove warm rerun freshness without live network",
+  "release notes separate user-facing improvements from internal proof work",
+]
+
+[[linked_spec]]
+id = "SHIPLOG-SPEC-0001-rapid-first-intake"
+path = "docs/specs/SHIPLOG-SPEC-0001-rapid-first-intake.md"
+purpose = "first-run intake contract and proof mapping"
+
+[[linked_spec]]
+id = "SHIPLOG-SPEC-0002-intake-report-v1"
+path = "docs/specs/SHIPLOG-SPEC-0002-intake-report-v1.md"
+purpose = "intake report JSON and Markdown contract"
+
+[[linked_spec]]
+id = "SHIPLOG-SPEC-0003-source-identity"
+path = "docs/specs/SHIPLOG-SPEC-0003-source-identity.md"
+purpose = "canonical source keys and display labels"
+
+[[linked_adr]]
+id = "SHIPLOG-ADR-0001-ingest-output-is-receipt-boundary"
+path = "docs/adr/SHIPLOG-ADR-0001-ingest-output-is-receipt-boundary.md"
+purpose = "adapter-local receipt ownership"
+
+[[linked_adr]]
+id = "SHIPLOG-ADR-0002-machine-source-keys-vs-display-labels"
+path = "docs/adr/SHIPLOG-ADR-0002-machine-source-keys-vs-display-labels.md"
+purpose = "JSON machine keys and Markdown display labels"
+
+[[linked_adr]]
+id = "SHIPLOG-ADR-0003-stale-requires-cachelookup"
+path = "docs/adr/SHIPLOG-ADR-0003-stale-requires-cachelookup.md"
+purpose = "stale freshness requires CacheLookup proof"
+
+[[work_item]]
+id = "cli-next-step-footer"
+title = "feat(cli): print next-step commands after intake"
+status = "ready"
+plan_section = "PR 1: CLI Next-Step Footer"
+specs = [
+  "SHIPLOG-SPEC-0001-rapid-first-intake",
+  "SHIPLOG-SPEC-0002-intake-report-v1",
+]
+issues = [
+  "https://github.com/EffortlessMetrics/shiplog/issues/197",
+  "https://github.com/EffortlessMetrics/shiplog/issues/203",
+]
+expected_files = [
+  "apps/shiplog/src/main.rs",
+  "apps/shiplog/tests/intake_cold_start.rs",
+  "apps/shiplog/tests/front_door_first_pack_smoke.rs",
+  "docs/guides/rapid-first-intake.md",
+]
+commands = [
+  "cargo test -p shiplog --test intake_cold_start",
+  "cargo test -p shiplog --test front_door_first_pack_smoke",
+  "cargo xtask check-policy-schemas",
+  "cargo xtask check-file-policy --mode blocking-allowlist",
+  "git diff --check",
+]
+rollback = "Revert footer rendering and stdout assertions together."
+
+[[work_item]]
+id = "open-latest"
+title = "feat(open): improve latest artifact discovery"
+status = "blocked"
+blocked_by = ["cli-next-step-footer"]
+plan_section = "PR 2: Latest Artifact Opening"
+specs = ["SHIPLOG-SPEC-0001-rapid-first-intake"]
+issues = []
+commands = [
+  "cargo test -p shiplog --test cli_integration -- open",
+  "cargo test -p shiplog --test intake_cold_start",
+  "cargo xtask check-policy-schemas",
+  "cargo xtask check-file-policy --mode blocking-allowlist",
+  "git diff --check",
+]
+rollback = "Revert open-latest resolution and any footer command text that depends on it."
+
+[[work_item]]
+id = "source-identity-canonicalization"
+title = "feat(report): canonicalize source identities in intake.report.json"
+status = "blocked"
+blocked_by = ["open-latest"]
+plan_section = "PR 3: Source Identity Canonicalization"
+specs = [
+  "SHIPLOG-SPEC-0002-intake-report-v1",
+  "SHIPLOG-SPEC-0003-source-identity",
+]
+adrs = ["SHIPLOG-ADR-0002-machine-source-keys-vs-display-labels"]
+issues = ["https://github.com/EffortlessMetrics/shiplog/issues/223"]
+commands = [
+  "cargo test -p shiplog --test intake_cold_start",
+  "cargo test -p shiplog --test cli_integration -- intake",
+  "cargo test -p shiplog --test cli_integration -- report",
+  "cargo xtask check-policy-schemas",
+  "cargo xtask check-file-policy --mode blocking-allowlist",
+  "git diff --check",
+]
+rollback = "Revert report writer, schema/docs, and tests together."
+
+[[work_item]]
+id = "skipped-source-freshness"
+title = "feat(report): include skipped sources in source_freshness"
+status = "blocked"
+blocked_by = ["source-identity-canonicalization"]
+plan_section = "PR 4: Skipped Sources In Freshness"
+adrs = [
+  "SHIPLOG-ADR-0001-ingest-output-is-receipt-boundary",
+  "SHIPLOG-ADR-0002-machine-source-keys-vs-display-labels",
+]
+issues = ["https://github.com/EffortlessMetrics/shiplog/issues/229"]
+commands = [
+  "cargo test -p shiplog --test intake_cold_start",
+  "cargo test -p shiplog --test cli_integration -- intake",
+  "cargo test -p shiplog --test cli_integration -- report",
+  "cargo xtask check-policy-schemas",
+  "cargo xtask check-file-policy --mode blocking-allowlist",
+  "git diff --check",
+]
+rollback = "Revert skipped freshness population while keeping source identity canonicalization."
+
+[[work_item]]
+id = "cachelookup-stale"
+title = "feat(cache): add CacheLookup for stale freshness"
+status = "blocked"
+blocked_by = ["skipped-source-freshness"]
+plan_section = "PR 5: CacheLookup And Stale"
+adrs = [
+  "SHIPLOG-ADR-0001-ingest-output-is-receipt-boundary",
+  "SHIPLOG-ADR-0003-stale-requires-cachelookup",
+]
+issues = ["https://github.com/EffortlessMetrics/shiplog/issues/224"]
+commands = [
+  "cargo test -p shiplog-cache",
+  "cargo test -p shiplog-ingest-github",
+  "cargo test -p shiplog --test cli_integration -- intake",
+  "cargo xtask check-policy-schemas",
+  "cargo xtask check-file-policy --mode blocking-allowlist",
+  "git diff --check",
+]
+rollback = "Revert cache API, adapter stale path, and tests together."
+
+[[work_item]]
+id = "recorded-http-fixtures"
+title = "test(harness): add recorded HTTP fixtures for full warm-rerun"
+status = "blocked"
+blocked_by = ["cachelookup-stale"]
+plan_section = "PR 6: Recorded HTTP Fixtures"
+issues = ["https://github.com/EffortlessMetrics/shiplog/issues/225"]
+commands = [
+  "cargo test -p shiplog --test cli_integration -- intake",
+  "cargo test -p shiplog-ingest-github",
+  "cargo xtask check-policy-schemas",
+  "cargo xtask check-file-policy --mode blocking-allowlist",
+  "git diff --check",
+]
+rollback = "Remove fixtures and tests without loosening live-network guards."
+
+[[work_item]]
+id = "release-prep"
+title = "release: prepare user-polish release"
+status = "blocked"
+blocked_by = ["recorded-http-fixtures"]
+plan_section = "PR 7: User-Polish Release Prep"
+issues = []
+commands = [
+  "cargo test -p shiplog --test intake_cold_start",
+  "cargo test -p shiplog --test front_door_first_pack_smoke",
+  "cargo test -p shiplog --test cli_integration -- intake",
+  "cargo test -p shiplog --test cli_integration -- report",
+  "cargo clippy --workspace --all-targets --all-features --locked -- -D warnings",
+  "cargo xtask check-policy-schemas",
+  "cargo xtask check-file-policy --mode blocking-allowlist",
+  "git diff --check",
+]
+rollback = "Revert release notes or checklist changes only."
