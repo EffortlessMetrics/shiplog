@@ -266,6 +266,158 @@ snippet = "let with_merge_out = with_merge.ingest().unwrap();"
 count = 1
 
 [[entry]]
+path = "apps/shiplog/src/ingest/jira.rs"
+family = "panic"
+selector_kind = "macro-call"
+selector_callee = "panic"
+snippet = 'panic!("Expected Manual payload");'
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/jira.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = ".unwrap()"
+count = 6
+
+[[entry]]
+path = "apps/shiplog/src/ingest/jira.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = ".unwrap();"
+count = 4
+
+[[entry]]
+path = "apps/shiplog/src/ingest/jira.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = 'IssueStatus::from_str("closed").unwrap(),'
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/jira.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = 'IssueStatus::from_str("in_progress").unwrap(),'
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/jira.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),"
+count = 10
+
+[[entry]]
+path = "apps/shiplog/src/ingest/jira.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),"
+count = 10
+
+[[entry]]
+path = "apps/shiplog/src/ingest/jira.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "NaiveDate::from_ymd_opt(2025, 3, 1).unwrap(),"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/jira.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "NaiveDate::from_ymd_opt(2025, 4, 1).unwrap(),"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/jira.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "Some(NaiveDate::from_ymd_opt(2025, 3, 12).unwrap())"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/jira.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = 'assert_eq!(IssueStatus::from_str("all").unwrap(), IssueStatus::All);'
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/jira.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = 'assert_eq!(IssueStatus::from_str("done").unwrap(), IssueStatus::Done);'
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/jira.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = 'assert_eq!(IssueStatus::from_str("open").unwrap(), IssueStatus::Open);'
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/jira.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let events = ing.issues_to_events(issues).unwrap();"
+count = 2
+
+[[entry]]
+path = "apps/shiplog/src/ingest/jira.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let events = ing.issues_to_events(response.issues).unwrap();"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/jira.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let response: JiraSearchResponse = serde_json::from_value(payload).unwrap();"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/jira.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let temp = tempfile::tempdir().unwrap();"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/jira.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "response.issues[0].fields.issuetype.as_ref().unwrap().name,"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/jira.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "response.issues[0].fields.priority.as_ref().unwrap().name,"
+count = 1
+
+[[entry]]
 path = "apps/shiplog/src/ingest/linear.rs"
 family = "panic"
 selector_kind = "macro-call"
@@ -2167,158 +2319,6 @@ family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
 snippet = "let user: GitlabUser = serde_json::from_str(json).unwrap();"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-jira/src/lib.rs"
-family = "panic"
-selector_kind = "macro-call"
-selector_callee = "panic"
-snippet = 'panic!("Expected Manual payload");'
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-jira/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = ".unwrap()"
-count = 6
-
-[[entry]]
-path = "crates/shiplog-ingest-jira/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = ".unwrap();"
-count = 4
-
-[[entry]]
-path = "crates/shiplog-ingest-jira/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = 'IssueStatus::from_str("closed").unwrap(),'
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-jira/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = 'IssueStatus::from_str("in_progress").unwrap(),'
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-jira/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),"
-count = 10
-
-[[entry]]
-path = "crates/shiplog-ingest-jira/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),"
-count = 10
-
-[[entry]]
-path = "crates/shiplog-ingest-jira/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "NaiveDate::from_ymd_opt(2025, 3, 1).unwrap(),"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-jira/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "NaiveDate::from_ymd_opt(2025, 4, 1).unwrap(),"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-jira/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "Some(NaiveDate::from_ymd_opt(2025, 3, 12).unwrap())"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-jira/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = 'assert_eq!(IssueStatus::from_str("all").unwrap(), IssueStatus::All);'
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-jira/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = 'assert_eq!(IssueStatus::from_str("done").unwrap(), IssueStatus::Done);'
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-jira/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = 'assert_eq!(IssueStatus::from_str("open").unwrap(), IssueStatus::Open);'
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-jira/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let events = ing.issues_to_events(issues).unwrap();"
-count = 2
-
-[[entry]]
-path = "crates/shiplog-ingest-jira/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let events = ing.issues_to_events(response.issues).unwrap();"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-jira/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let response: JiraSearchResponse = serde_json::from_value(payload).unwrap();"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-jira/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let temp = tempfile::tempdir().unwrap();"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-jira/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "response.issues[0].fields.issuetype.as_ref().unwrap().name,"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-jira/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "response.issues[0].fields.priority.as_ref().unwrap().name,"
 count = 1
 
 [[entry]]

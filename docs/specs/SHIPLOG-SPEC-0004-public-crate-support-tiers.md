@@ -161,7 +161,7 @@ contract those PRs must satisfy.
 | `shiplog-ingest-json` | `internal-module` | no | Inline JSON import adapter; 0.6 published versions become `historical-0.6`. |
 | `shiplog-ingest-manual` | `internal-module` | no | Inline manual evidence adapter; 0.6 published versions become `historical-0.6`. |
 | `shiplog-ingest-gitlab` | `internal-module` | no | Inline GitLab adapter; 0.6 published versions become `historical-0.6`. |
-| `shiplog-ingest-jira` | `internal-module` | no | Inline Jira adapter; 0.6 published versions become `historical-0.6`. |
+| `shiplog-ingest-jira` | `historical-0.6` / `internal-module` | no | Collapsed into `shiplog::ingest::jira`; 0.6 published versions become `historical-0.6`. |
 | `shiplog-ingest-linear` | `historical-0.6` / `internal-module` | no | Collapsed into `shiplog::ingest::linear`; 0.6 published versions become `historical-0.6`. |
 | `shiplog-cluster-llm` | `internal-module` | no | Inline optional LLM support; 0.6 published versions become `historical-0.6`. |
 | `shiplog-team` | `internal-module` | no | Inline team support; 0.6 published versions become `historical-0.6`. |

@@ -45,7 +45,8 @@
 # apps/shiplog/src/ingest/git.rs
 #                      - local git-log ingest adapter
 # shiplog-ingest-gitlab - GitLab API adapter
-# shiplog-ingest-jira   - Jira API adapter
+# apps/shiplog/src/ingest/jira.rs
+#                      - Jira API adapter
 # apps/shiplog/src/ingest/linear.rs
 #                      - Linear API adapter
 # shiplog-cluster-llm   - optional LLM-assisted workstream clustering

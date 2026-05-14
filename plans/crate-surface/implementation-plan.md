@@ -59,6 +59,8 @@ Landed:
   `plans(crate-surface): add implementation plan and active goal`
 - [#260](https://github.com/EffortlessMetrics/shiplog/pull/260):
   `refactor(crate): inline local git adapter`
+- [#261](https://github.com/EffortlessMetrics/shiplog/pull/261):
+  `refactor(crate): inline linear adapter`
 
 The remaining risk is dependency leakage: `shiplog` can be publish-allowed but
 still resolve historical 0.6 implementation crates if versioned path

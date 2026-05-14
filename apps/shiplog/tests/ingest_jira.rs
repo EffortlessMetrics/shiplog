@@ -1,7 +1,7 @@
-//! Comprehensive tests for shiplog-ingest-jira: parsing, construction, edge cases.
+//! Comprehensive tests for the Jira ingest module: parsing, construction, edge cases.
 
 use chrono::NaiveDate;
-use shiplog_ingest_jira::{IssueStatus, JiraIngestor};
+use shiplog::ingest::jira::{IssueStatus, JiraIngestor};
 use std::str::FromStr;
 
 // ── Helpers ─────────────────────────────────────────────────────────────────

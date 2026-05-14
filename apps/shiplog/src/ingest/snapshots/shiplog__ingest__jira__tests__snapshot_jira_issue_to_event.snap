@@ -1,5 +1,5 @@
 ---
-source: crates/shiplog-ingest-jira/src/lib.rs
+source: apps/shiplog/src/ingest/jira.rs
 expression: events
 ---
 - id: 0df65ced71c9ea1b113d19df1be0c3f63a458da5c02ec4f2ebc9e602030d378c
