@@ -79,6 +79,8 @@ Landed:
   `refactor(crate): inline engine support`
 - [#273](https://github.com/EffortlessMetrics/shiplog/pull/273):
   `refactor(crate): inline bundle support`
+- [#275](https://github.com/EffortlessMetrics/shiplog/pull/275):
+  `refactor(crate): inline redaction support`
 
 The remaining risk is dependency leakage: `shiplog` can be publish-allowed but
 still resolve historical 0.6 implementation crates if versioned path
@@ -207,7 +209,7 @@ refactor(crate): inline remaining product trust support
 
 Scope:
 
-- `shiplog-bundle` is complete; move `shiplog-redact`,
+- `shiplog-bundle` and `shiplog-redact` are complete; move
   `shiplog-workstreams`, `shiplog-merge`, and `shiplog-team` in small slices.
 - Treat `shiplog-engine` as complete; product orchestration support moved into
   `shiplog::engine` in #271.
@@ -217,9 +219,9 @@ Scope:
 Expected files:
 
 - `apps/shiplog/Cargo.toml`
-- `apps/shiplog/src/{redact,workstreams,merge,team}/**`
+- `apps/shiplog/src/{workstreams,merge,team}/**`
 - `apps/shiplog/tests/**`
-- `crates/shiplog-{redact,workstreams,merge,team}/**`
+- `crates/shiplog-{workstreams,merge,team}/**`
 - `docs/release/0.7-crate-surface.md`
 
 Behavior change:
