@@ -3,6 +3,7 @@ use std::path::PathBuf;
 
 use crate::*;
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn handle(
     source: CollectSource,
     out: Option<PathBuf>,

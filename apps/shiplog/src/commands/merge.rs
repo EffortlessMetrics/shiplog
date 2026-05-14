@@ -3,6 +3,7 @@ use std::path::PathBuf;
 
 use crate::*;
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn handle(
     inputs: Vec<PathBuf>,
     out: PathBuf,
