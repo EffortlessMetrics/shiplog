@@ -275,11 +275,11 @@ replace_pattern = true
 
 #### Template Rendering
 ```toml
-[crates.shiplog-team]
+[modules."shiplog::team"]
 minimum_score = 80
 timeout = "120s"
 
-[crates.shiplog-team.mutants]
+[modules."shiplog::team".mutants]
 replace_bool = true
 replace_match = true
 replace_pattern = true
@@ -403,7 +403,7 @@ To run mutation tests for ROADMAP features:
 cargo mutants -p shiplog-ingest-gitlab
 cargo mutants -p shiplog-ingest-jira
 cargo mutants -p shiplog-ingest-linear
-cargo mutants -p shiplog-team
+cargo mutants -p shiplog
 # Plugin mutation tests belong with the eventual owner crate/API if plugin support is promoted.
 
 # Run mutation tests for all crates

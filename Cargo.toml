@@ -14,8 +14,6 @@ members = [
 
   # Optional feature surfaces
   "crates/shiplog-cluster-llm",
-  "crates/shiplog-team",
-  "crates/shiplog-merge",
 
   # Dev-only support
   "crates/shiplog-testkit",

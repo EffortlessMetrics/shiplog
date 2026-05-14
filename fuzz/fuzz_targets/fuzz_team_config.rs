@@ -1,11 +1,11 @@
-//! Fuzz harness for team YAML config parsing (shiplog-team)
+//! Fuzz harness for team YAML config parsing.
 //!
 //! Deserializes arbitrary YAML into `TeamConfig` and exercises helper methods.
 
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use shiplog_team::TeamConfig;
+use shiplog::team::TeamConfig;
 
 fuzz_target!(|data: &[u8]| {
     let input = match std::str::from_utf8(data) {

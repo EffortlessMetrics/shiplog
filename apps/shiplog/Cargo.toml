@@ -36,7 +36,6 @@ itertools.workspace = true
 zip.workspace = true
 git2 = "0.20"
 mutants.workspace = true
-shiplog-merge = { path = "../../crates/shiplog-merge", version = "0.6.0" }
 shiplog-workstreams = { path = "../../crates/shiplog-workstreams", version = "0.6.0" }
 shiplog-ports = { path = "../../crates/shiplog-ports", version = "0.6.0" }
 shiplog-schema = { path = "../../crates/shiplog-schema", version = "0.6.0" }

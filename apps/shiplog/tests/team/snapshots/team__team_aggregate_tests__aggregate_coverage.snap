@@ -1,6 +1,6 @@
 ---
-source: crates/shiplog-team/tests/team_aggregate_tests.rs
-assertion_line: 414
+source: apps/shiplog/tests/team/team_aggregate_tests.rs
+assertion_line: 426
 expression: "serde_json::to_string_pretty(&cov_json).unwrap()"
 ---
 {

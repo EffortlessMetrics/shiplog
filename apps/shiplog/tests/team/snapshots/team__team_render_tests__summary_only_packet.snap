@@ -1,5 +1,5 @@
 ---
-source: crates/shiplog-team/tests/team_render_tests.rs
+source: apps/shiplog/tests/team/team_render_tests.rs
 assertion_line: 306
 expression: packet
 ---

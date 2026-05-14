@@ -182,7 +182,10 @@ jobs:
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Test optional surface crates
-        run: cargo test -p shiplog-workstreams -p shiplog-team -p shiplog-merge -- --test-threads=4
+        run: |
+          cargo test -p shiplog-workstreams -- --test-threads=4
+          cargo test -p shiplog --test merge -- --test-threads=4
+          cargo test -p shiplog --test team -- --test-threads=4
 
   app-tests:
     name: App Tests

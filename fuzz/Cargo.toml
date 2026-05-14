@@ -15,7 +15,6 @@ shiplog-ids = { path = "../crates/shiplog-ids" }
 shiplog = { path = "../apps/shiplog" }
 shiplog-ports = { path = "../crates/shiplog-ports", version = "0.6.0" }
 shiplog-cluster-llm = { path = "../crates/shiplog-cluster-llm", version = "0.6.0" }
-shiplog-team = { path = "../crates/shiplog-team" }
 sha2 = "0.10.9"
 hex = "0.4.3"
 chrono = "0.4.44"

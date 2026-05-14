@@ -51,18 +51,6 @@ publish = false
 reason = "Optional implementation support, not a supported public package."
 
 [[package]]
-name = "shiplog-team"
-tier = "internal-module"
-publish = false
-reason = "Team support remains product-internal unless promoted by ADR."
-
-[[package]]
-name = "shiplog-merge"
-tier = "internal-module"
-publish = false
-reason = "Merge support remains product-internal unless promoted by ADR."
-
-[[package]]
 name = "shiplog-testkit"
 tier = "dev-only"
 publish = false
@@ -143,3 +131,13 @@ reason = "0.6 bundle/checksum crate collapsed into shiplog::bundle."
 name = "shiplog-redact"
 tier = "historical-0.6"
 reason = "0.6 redaction crate collapsed into shiplog::redact."
+
+[[historical]]
+name = "shiplog-merge"
+tier = "historical-0.6"
+reason = "0.6 merge crate collapsed into shiplog::merge."
+
+[[historical]]
+name = "shiplog-team"
+tier = "historical-0.6"
+reason = "0.6 team aggregation crate collapsed into shiplog::team."

@@ -2,7 +2,7 @@
 //!
 //! The team crate keeps a narrow API boundary:
 //! - Read multiple member ledgers from disk
-//! - Merge them with the shared `shiplog-merge` pipeline
+//! - Merge them with the shared `shiplog::merge` pipeline
 //! - Emit a deterministic, sectioned aggregate summary
 
 use anyhow::{Context, Result, anyhow};
@@ -15,9 +15,9 @@ use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-use crate::core::TeamConfig;
-use crate::render::{self, TeamAggregateResult, TeamMemberSummary};
-use shiplog_merge::{ConflictResolution, merge_ingest_outputs};
+use crate::merge::{ConflictResolution, merge_ingest_outputs};
+use crate::team::core::TeamConfig;
+use crate::team::render::{self, TeamAggregateResult, TeamMemberSummary};
 
 /// Stable output artifact locations from team packet generation.
 #[derive(Debug, Clone)]

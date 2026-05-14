@@ -1,13 +1,13 @@
-//! Integration tests for shiplog-team: aggregation, I/O, edge cases.
+//! Integration tests for shiplog::team: aggregation, I/O, edge cases.
 
 use chrono::{NaiveDate, TimeZone, Utc};
+use shiplog::team::{TeamAggregator, TeamConfig, write_team_outputs};
 use shiplog_ids::EventId;
 use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
 use shiplog_schema::event::{
     Actor, EventEnvelope, EventKind, EventPayload, PullRequestEvent, PullRequestState, RepoRef,
     RepoVisibility, SourceRef, SourceSystem,
 };
-use shiplog_team::{TeamAggregator, TeamConfig, write_team_outputs};
 use std::io::Write;
 use std::path::Path;
 

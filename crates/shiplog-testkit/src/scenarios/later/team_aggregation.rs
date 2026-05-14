@@ -7,14 +7,14 @@ use crate::bdd::Scenario;
 use crate::bdd::assertions::*;
 use chrono::{NaiveDate, TimeZone, Utc};
 use serde_json::Value;
+use shiplog::team::TeamAggregator;
+use shiplog::team::{TeamConfig, parse_alias_list, parse_csv_list, resolve_team_config};
 use shiplog_ids::{EventId, RunId};
 use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
 use shiplog_schema::event::{
     Actor, EventEnvelope, EventKind, EventPayload, PullRequestEvent, PullRequestState, RepoRef,
     RepoVisibility, SourceRef, SourceSystem,
 };
-use shiplog_team::TeamAggregator;
-use shiplog_team::{TeamConfig, parse_alias_list, parse_csv_list, resolve_team_config};
 use std::collections::HashMap;
 use std::io::Write;
 use std::path::Path;
@@ -114,7 +114,7 @@ fn write_member_ledger(
 fn aggregate_and_render(
     cfg: TeamConfig,
     root: &Path,
-) -> Result<(shiplog_team::TeamAggregateResult, String), String> {
+) -> Result<(shiplog::team::TeamAggregateResult, String), String> {
     let aggregator = TeamAggregator::new(cfg);
     let result = aggregator
         .aggregate(root)
