@@ -55,6 +55,10 @@ Landed:
   `docs(release): document 0.6 crate surface as historical`
 - [#258](https://github.com/EffortlessMetrics/shiplog/pull/258):
   `docs(adr): make json schemas the public contract`
+- [#259](https://github.com/EffortlessMetrics/shiplog/pull/259):
+  `plans(crate-surface): add implementation plan and active goal`
+- [#260](https://github.com/EffortlessMetrics/shiplog/pull/260):
+  `refactor(crate): inline local git adapter`
 
 The remaining risk is dependency leakage: `shiplog` can be publish-allowed but
 still resolve historical 0.6 implementation crates if versioned path
@@ -75,8 +79,8 @@ Scope:
 
 - Move source adapter code from `crates/shiplog-ingest-*` into
   `apps/shiplog/src/ingest/` owner modules in reviewable slices.
-- Start with `shiplog-ingest-git`, because it has no live-network fixture
-  surface and is not referenced by engine or testkit tests.
+- Continue from the landed `shiplog-ingest-git` slice, then collapse remaining
+  source adapters in reviewable order.
 - Migrate adapter tests or keep equivalent product tests in the new package
   location.
 - Preserve recorded GitHub fixture proof.

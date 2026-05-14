@@ -1835,8 +1835,10 @@ dependencies = [
  "anyhow",
  "chrono",
  "clap",
+ "git2",
  "hex",
  "itertools",
+ "mutants",
  "regex",
  "reqwest",
  "serde",
@@ -1845,18 +1847,17 @@ dependencies = [
  "shiplog-cache",
  "shiplog-engine",
  "shiplog-ids",
- "shiplog-ingest-git",
  "shiplog-ingest-github",
  "shiplog-ingest-gitlab",
  "shiplog-ingest-jira",
  "shiplog-ingest-json",
- "shiplog-ingest-linear",
  "shiplog-ingest-manual",
  "shiplog-ports",
  "shiplog-redact",
  "shiplog-schema",
  "shiplog-workstreams",
  "toml",
+ "url",
 ]
 
 [[package]]
@@ -1961,19 +1962,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "shiplog-ingest-git"
-version = "0.6.0"
-dependencies = [
- "anyhow",
- "chrono",
- "git2",
- "mutants",
- "shiplog-ids",
- "shiplog-ports",
- "shiplog-schema",
-]
-
-[[package]]
 name = "shiplog-ingest-github"
 version = "0.6.0"
 dependencies = [
@@ -2036,24 +2024,6 @@ dependencies = [
  "serde_json",
  "shiplog-ports",
  "shiplog-schema",
-]
-
-[[package]]
-name = "shiplog-ingest-linear"
-version = "0.6.0"
-dependencies = [
- "anyhow",
- "chrono",
- "mutants",
- "reqwest",
- "serde",
- "serde_json",
- "shiplog-cache",
- "shiplog-coverage",
- "shiplog-ids",
- "shiplog-ports",
- "shiplog-schema",
- "url",
 ]
 
 [[package]]

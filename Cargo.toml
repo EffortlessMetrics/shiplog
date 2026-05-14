@@ -23,7 +23,6 @@ members = [
   "crates/shiplog-ingest-manual",
   "crates/shiplog-ingest-gitlab",
   "crates/shiplog-ingest-jira",
-  "crates/shiplog-ingest-linear",
 
   # Optional feature surfaces
   "crates/shiplog-cluster-llm",
