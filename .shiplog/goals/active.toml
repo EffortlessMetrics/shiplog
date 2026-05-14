@@ -71,7 +71,7 @@ done_when = "Spec defines repair item shape, receipt inputs, CLI behavior, safet
 [[work_item]]
 id = "repair-actions-adr"
 title = "docs(adr): record receipt-derived repair actions"
-status = "pending"
+status = "completed"
 expected_files = [
   "docs/adr/SHIPLOG-ADR-0006-repair-actions-are-receipt-derived.md",
 ]
