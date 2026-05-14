@@ -62,6 +62,11 @@ number = 295
 title = "plans(evidence-repair): sequence repair loop work"
 url = "https://github.com/EffortlessMetrics/shiplog/pull/295"
 
+[[completed_pr]]
+number = 296
+title = "feat(report): add receipt-derived repair items"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/296"
+
 [[work_item]]
 id = "repair-loop-spec"
 title = "docs(spec): define evidence repair loop contract"
