@@ -50,7 +50,7 @@ meaning = "Crate boundaries are stable enough to resume product-quality work."
 [[work_item]]
 id = "repair-loop-spec"
 title = "docs(spec): define evidence repair loop contract"
-status = "ready"
+status = "completed"
 expected_files = [
   "docs/specs/SHIPLOG-SPEC-0005-evidence-repair-loop.md",
   "docs/proposals/SHIPLOG-PROP-0002-evidence-repair-loop.md",
