@@ -12,8 +12,8 @@ use shiplog_schema::event::*;
 use std::io::Write;
 use std::path::Path;
 
-const FILE_LEDGER_EVENTS_JSONL: &str = "ledger.events.jsonl";
-const FILE_COVERAGE_MANIFEST_JSON: &str = "coverage.manifest.json";
+mod support;
+use support::{FILE_COVERAGE_MANIFEST_JSON, FILE_LEDGER_EVENTS_JSONL};
 
 fn make_event(repo: &str, id: &str) -> EventEnvelope {
     EventEnvelope {

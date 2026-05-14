@@ -1,5 +1,6 @@
 //! Test utilities for shiplog crates.
 
+use anyhow::Context;
 use chrono::{TimeZone, Utc};
 use shiplog_ids::EventId;
 use shiplog_ports::Renderer;
@@ -18,6 +19,24 @@ pub mod scenarios {
     pub mod user_workflows;
     pub mod v02x;
     pub mod v03x;
+}
+
+/// Parse newline-delimited JSON event envelopes for lower-level fixture tests.
+///
+/// The product JSON adapter lives in the `shiplog` package. Lower-level crates
+/// use this dev-only helper so their tests do not depend back on the CLI crate.
+pub fn parse_events_jsonl_fixture(text: &str, source: &str) -> anyhow::Result<Vec<EventEnvelope>> {
+    let mut events = Vec::new();
+    for (index, line) in text.lines().enumerate() {
+        if line.trim().is_empty() {
+            continue;
+        }
+        events.push(
+            serde_json::from_str(line)
+                .with_context(|| format!("parse event json line {} in {source}", index + 1))?,
+        );
+    }
+    Ok(events)
 }
 
 /// Minimal Markdown renderer for engine and workflow tests.

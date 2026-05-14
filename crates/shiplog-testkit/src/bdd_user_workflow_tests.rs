@@ -48,14 +48,9 @@ mod user_workflow_tests {
     }
 
     fn parse_events_jsonl_for_test(text: &str, source: &str) -> Result<(), String> {
-        for (i, line) in text.lines().enumerate() {
-            if line.trim().is_empty() {
-                continue;
-            }
-            serde_json::from_str::<shiplog_schema::event::EventEnvelope>(line)
-                .map_err(|err| format!("parse event json line {} in {source}: {err}", i + 1))?;
-        }
-        Ok(())
+        crate::parse_events_jsonl_fixture(text, source)
+            .map(|_| ())
+            .map_err(|err| format!("{err:#}"))
     }
 
     // ====================================================================

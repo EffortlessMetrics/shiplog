@@ -16,6 +16,7 @@ use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
 use shiplog_schema::event::*;
 use shiplog_schema::workstream::WorkstreamsFile;
 use shiplog_testkit::TestMarkdownRenderer as MarkdownRenderer;
+use shiplog_testkit::parse_events_jsonl_fixture;
 use shiplog_workstreams::RepoClusterer;
 use shiplog_workstreams::WorkstreamManager;
 use std::io::Write;
@@ -95,11 +96,8 @@ fn make_ingest(events: Vec<EventEnvelope>) -> IngestOutput {
 
 fn read_json_fixture_ingest(events_path: &Path, coverage_path: &Path) -> IngestOutput {
     let events_text = std::fs::read_to_string(events_path).unwrap();
-    let events = events_text
-        .lines()
-        .filter(|line| !line.trim().is_empty())
-        .map(|line| serde_json::from_str(line).unwrap())
-        .collect();
+    let events =
+        parse_events_jsonl_fixture(&events_text, &events_path.display().to_string()).unwrap();
     let coverage_text = std::fs::read_to_string(coverage_path).unwrap();
     let coverage: CoverageManifest = serde_json::from_str(&coverage_text).unwrap();
     IngestOutput {
