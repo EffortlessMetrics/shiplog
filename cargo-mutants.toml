@@ -44,7 +44,8 @@
 # shiplog-ingest-manual - manual YAML ingest adapter
 # apps/shiplog/src/ingest/git.rs
 #                      - local git-log ingest adapter
-# shiplog-ingest-gitlab - GitLab API adapter
+# apps/shiplog/src/ingest/gitlab.rs
+#                      - GitLab API adapter
 # apps/shiplog/src/ingest/jira.rs
 #                      - Jira API adapter
 # apps/shiplog/src/ingest/linear.rs

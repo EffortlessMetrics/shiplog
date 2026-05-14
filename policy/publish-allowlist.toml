@@ -93,12 +93,6 @@ publish = false
 reason = "Manual evidence adapter; no public plugin or adapter API exists yet."
 
 [[package]]
-name = "shiplog-ingest-gitlab"
-tier = "internal-module"
-publish = false
-reason = "Source adapter; no public plugin or adapter API exists yet."
-
-[[package]]
 name = "shiplog-cluster-llm"
 tier = "internal-module"
 publish = false
@@ -152,3 +146,8 @@ reason = "0.6 source adapter crate collapsed into shiplog::ingest::linear."
 name = "shiplog-ingest-jira"
 tier = "historical-0.6"
 reason = "0.6 source adapter crate collapsed into shiplog::ingest::jira."
+
+[[historical]]
+name = "shiplog-ingest-gitlab"
+tier = "historical-0.6"
+reason = "0.6 source adapter crate collapsed into shiplog::ingest::gitlab."

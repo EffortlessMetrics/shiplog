@@ -1,4 +1,4 @@
-use shiplog_ingest_gitlab::MrState;
+use shiplog::ingest::gitlab::MrState;
 
 #[test]
 fn mr_state_as_str() {

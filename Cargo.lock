@@ -2287,7 +2287,6 @@ dependencies = [
  "shiplog-engine",
  "shiplog-ids",
  "shiplog-ingest-github",
- "shiplog-ingest-gitlab",
  "shiplog-ingest-json",
  "shiplog-ingest-manual",
  "shiplog-ports",
@@ -2401,26 +2400,6 @@ dependencies = [
 
 [[package]]
 name = "shiplog-ingest-github"
-version = "0.6.0"
-dependencies = [
- "anyhow",
- "chrono",
- "mutants",
- "proptest",
- "reqwest",
- "serde",
- "serde_json",
- "shiplog-cache",
- "shiplog-coverage",
- "shiplog-ids",
- "shiplog-ports",
- "shiplog-schema",
- "tempfile",
- "url",
-]
-
-[[package]]
-name = "shiplog-ingest-gitlab"
 version = "0.6.0"
 dependencies = [
  "anyhow",
