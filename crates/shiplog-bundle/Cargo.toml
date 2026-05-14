@@ -5,6 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 authors.workspace = true
+publish = false
 description = "Bundle manifest and profile-scoped zip writer for shiplog run directories."
 readme = "README.md"
 documentation = "https://docs.rs/shiplog-bundle"

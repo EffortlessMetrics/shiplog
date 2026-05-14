@@ -5,6 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 authors.workspace = true
+publish = false
 description = "Local git repository ingestor for shiplog: collect commit history directly from local git repositories."
 readme = "README.md"
 documentation = "https://docs.rs/shiplog-ingest-git"

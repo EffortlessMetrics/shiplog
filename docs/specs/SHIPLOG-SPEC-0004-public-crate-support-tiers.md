@@ -81,6 +81,7 @@ known external Rust consumer.
 Contract:
 
 - must not be published by 0.7 release tooling;
+- must set `publish = false` while it remains a package manifest;
 - should become modules inside the `shiplog` package or unpublished workspace
   support;
 - may keep SRP structure through Rust modules, feature modules, or private
@@ -191,6 +192,8 @@ The support-tier model is complete when:
 - publish eligibility follows the tier table in this spec;
 - future public crates require an ADR;
 - release tooling can enforce an explicit publish allowlist;
+- package manifests cannot remain publishable when policy marks the package
+  non-public;
 - historical 0.6 crates are documented without routine yanking;
 - the `shiplog-schema` keep-or-inline decision is recorded before 0.7 release
   prep;
@@ -219,6 +222,8 @@ Expected follow-up proof:
 - release-tooling allowlist check via
   [`policy/publish-allowlist.toml`](../../policy/publish-allowlist.toml) and
   [`scripts/package-boundary-audit.sh`](../../scripts/package-boundary-audit.sh);
+- Cargo manifest `publish = false` checks for policy-disabled workspace
+  packages;
 - publish dry-run proof for allowed public crates only;
 - first-run intake/open/report tests after crate collapse.
 
