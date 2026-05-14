@@ -152,6 +152,11 @@ number = 271
 title = "refactor(crate): inline engine support"
 url = "https://github.com/EffortlessMetrics/shiplog/pull/271"
 
+[[completed_pr]]
+number = 273
+title = "refactor(crate): inline bundle support"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/273"
+
 [[work_item]]
 id = "ingest-adapter-collapse"
 title = "refactor(crate): inline ingest adapters into shiplog"
@@ -167,6 +172,7 @@ expected_files = [
   "docs/release/0.7-crate-surface.md",
 ]
 commands = [
+  "cargo test -p shiplog --test bundle",
   "cargo test -p shiplog --test intake_cold_start",
   "cargo test -p shiplog --test front_door_first_pack_smoke",
   "cargo test -p shiplog --test cli_integration -- intake",
