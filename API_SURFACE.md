@@ -132,6 +132,7 @@ The 0.7 contraction is in progress:
 - `shiplog-cache` has been inlined as `shiplog::cache`.
 - `shiplog-coverage` has been inlined as `shiplog::coverage`.
 - `shiplog-bundle` has been inlined as `shiplog::bundle`.
+- `shiplog-redact` has been inlined as `shiplog::redact`.
 - Remaining implementation packages are classified by
   [`SHIPLOG-SPEC-0004`](docs/specs/SHIPLOG-SPEC-0004-public-crate-support-tiers.md)
   and the 0.7 crate-surface audit.

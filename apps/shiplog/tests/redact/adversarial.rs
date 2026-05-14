@@ -1,9 +1,9 @@
-//! Adversarial and negative-input tests for shiplog-redact.
+//! Adversarial and negative-input tests for shiplog::redact.
 
 use chrono::Utc;
+use shiplog::redact::{DeterministicRedactor, RedactionProfile};
 use shiplog_ids::EventId;
 use shiplog_ports::Redactor;
-use shiplog_redact::{DeterministicRedactor, RedactionProfile};
 use shiplog_schema::event::*;
 
 fn make_event(title: &str, repo: &str) -> EventEnvelope {

@@ -194,7 +194,7 @@ Always review snapshot diffs carefully before committing. Snapshot changes shoul
 Used for invariants that must never regress (ID determinism, redaction leak detection, coverage slicing). Example:
 
 ```bash
-cargo test -p shiplog-redact   # Runs proptest-based leak detection
+cargo test -p shiplog --test redact   # Runs proptest-based leak detection
 ```
 
 When writing property tests, watch for shrunk failure cases — they reveal the minimal reproducer.

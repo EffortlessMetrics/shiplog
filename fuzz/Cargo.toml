@@ -12,7 +12,6 @@ libfuzzer-sys = "0.4"
 shiplog-workstreams = { path = "../crates/shiplog-workstreams" }
 shiplog-schema = { path = "../crates/shiplog-schema" }
 shiplog-ids = { path = "../crates/shiplog-ids" }
-shiplog-redact = { path = "../crates/shiplog-redact" }
 shiplog = { path = "../apps/shiplog" }
 shiplog-ports = { path = "../crates/shiplog-ports", version = "0.6.0" }
 shiplog-cluster-llm = { path = "../crates/shiplog-cluster-llm", version = "0.6.0" }

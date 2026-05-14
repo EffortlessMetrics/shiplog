@@ -1,4 +1,4 @@
-//! Property tests for shiplog-redact
+//! Property tests for shiplog::redact.
 //!
 //! This module contains property-based tests for redaction invariants
 //! (privacy guarantees across profiles).
@@ -19,7 +19,7 @@ proptest! {
         events in strategy_event_vec(20),
         key_bytes in proptest::collection::vec(any::<u8>(), 1..32)
     ) {
-        let r = shiplog_redact::DeterministicRedactor::new(&key_bytes);
+        let r = shiplog::redact::DeterministicRedactor::new(&key_bytes);
         let redacted = r.redact_events(&events, "public").unwrap();
 
         prop_assert_eq!(events.len(), redacted.len());
@@ -56,7 +56,7 @@ proptest! {
         ws_file in strategy_workstreams_file(),
         key_bytes in proptest::collection::vec(any::<u8>(), 1..32)
     ) {
-        let r = shiplog_redact::DeterministicRedactor::new(&key_bytes);
+        let r = shiplog::redact::DeterministicRedactor::new(&key_bytes);
         let redacted = r.redact_workstreams(&ws_file, "public").unwrap();
 
         prop_assert_eq!(ws_file.workstreams.len(), redacted.workstreams.len());
@@ -82,7 +82,7 @@ proptest! {
         events in strategy_event_vec(20),
         key_bytes in proptest::collection::vec(any::<u8>(), 1..32)
     ) {
-        let r = shiplog_redact::DeterministicRedactor::new(&key_bytes);
+        let r = shiplog::redact::DeterministicRedactor::new(&key_bytes);
         let redacted = r.redact_events(&events, "manager").unwrap();
 
         prop_assert_eq!(events.len(), redacted.len());
@@ -112,7 +112,7 @@ proptest! {
         events in strategy_event_vec(20),
         key_bytes in proptest::collection::vec(any::<u8>(), 1..32)
     ) {
-        let r = shiplog_redact::DeterministicRedactor::new(&key_bytes);
+        let r = shiplog::redact::DeterministicRedactor::new(&key_bytes);
         let redacted = r.redact_events(&events, "internal").unwrap();
 
         prop_assert_eq!(events, redacted);
@@ -124,8 +124,8 @@ proptest! {
         events in strategy_event_vec(20),
         key_bytes in proptest::collection::vec(any::<u8>(), 1..32)
     ) {
-        let r1 = shiplog_redact::DeterministicRedactor::new(&key_bytes);
-        let r2 = shiplog_redact::DeterministicRedactor::new(&key_bytes);
+        let r1 = shiplog::redact::DeterministicRedactor::new(&key_bytes);
+        let r2 = shiplog::redact::DeterministicRedactor::new(&key_bytes);
 
         let out1 = r1.redact_events(&events, "public").unwrap();
         let out2 = r2.redact_events(&events, "public").unwrap();
@@ -145,7 +145,7 @@ proptest! {
         events in strategy_event_vec(10),
         key_bytes in proptest::collection::vec(any::<u8>(), 1..32)
     ) {
-        let r = shiplog_redact::DeterministicRedactor::new(&key_bytes);
+        let r = shiplog::redact::DeterministicRedactor::new(&key_bytes);
         let once = r.redact_events(&events, "public").unwrap();
         let twice = r.redact_events(&once, "public").unwrap();
 
@@ -177,7 +177,7 @@ proptest! {
         events in strategy_event_vec(10),
         key_bytes in proptest::collection::vec(any::<u8>(), 1..32)
     ) {
-        let r = shiplog_redact::DeterministicRedactor::new(&key_bytes);
+        let r = shiplog::redact::DeterministicRedactor::new(&key_bytes);
         let once = r.redact_events(&events, "manager").unwrap();
         let twice = r.redact_events(&once, "manager").unwrap();
 
@@ -203,7 +203,7 @@ proptest! {
         key_bytes in proptest::collection::vec(any::<u8>(), 1..32),
         profile in prop_oneof![Just("internal"), Just("manager"), Just("public")]
     ) {
-        let r = shiplog_redact::DeterministicRedactor::new(&key_bytes);
+        let r = shiplog::redact::DeterministicRedactor::new(&key_bytes);
         let redacted = r.redact_events(&events, profile).unwrap();
         prop_assert_eq!(events.len(), redacted.len());
     }
@@ -214,7 +214,7 @@ proptest! {
         ws_file in strategy_workstreams_file(),
         key_bytes in proptest::collection::vec(any::<u8>(), 1..32)
     ) {
-        let r = shiplog_redact::DeterministicRedactor::new(&key_bytes);
+        let r = shiplog::redact::DeterministicRedactor::new(&key_bytes);
         let once = r.redact_workstreams(&ws_file, "public").unwrap();
         let twice = r.redact_workstreams(&once, "public").unwrap();
 
@@ -230,7 +230,7 @@ proptest! {
         events in strategy_event_vec(10),
         key_bytes in proptest::collection::vec(any::<u8>(), 1..32)
     ) {
-        let r = shiplog_redact::DeterministicRedactor::new(&key_bytes);
+        let r = shiplog::redact::DeterministicRedactor::new(&key_bytes);
         let redacted = r.redact_events(&events, "public").unwrap();
         let redacted_json = serde_json::to_string(&redacted).unwrap();
 
@@ -251,7 +251,7 @@ proptest! {
         events in strategy_event_vec(10),
         key_bytes in proptest::collection::vec(any::<u8>(), 1..32)
     ) {
-        let r = shiplog_redact::DeterministicRedactor::new(&key_bytes);
+        let r = shiplog::redact::DeterministicRedactor::new(&key_bytes);
         let redacted = r.redact_events(&events, "public").unwrap();
         let redacted_json = serde_json::to_string(&redacted).unwrap();
 
@@ -279,8 +279,8 @@ proptest! {
         key_b in proptest::collection::vec(any::<u8>(), 1..32)
     ) {
         prop_assume!(key_a != key_b);
-        let r_a = shiplog_redact::DeterministicRedactor::new(&key_a);
-        let r_b = shiplog_redact::DeterministicRedactor::new(&key_b);
+        let r_a = shiplog::redact::DeterministicRedactor::new(&key_a);
+        let r_b = shiplog::redact::DeterministicRedactor::new(&key_b);
 
         let out_a = r_a.redact_events(&events, "public").unwrap();
         let out_b = r_b.redact_events(&events, "public").unwrap();
@@ -303,7 +303,7 @@ proptest! {
         events in strategy_event_vec(10),
         key_bytes in proptest::collection::vec(any::<u8>(), 1..32)
     ) {
-        let r = shiplog_redact::DeterministicRedactor::new(&key_bytes);
+        let r = shiplog::redact::DeterministicRedactor::new(&key_bytes);
         let redacted = r.redact_events(&events, "public").unwrap();
 
         for (orig, red) in events.iter().zip(redacted.iter()) {
@@ -317,8 +317,8 @@ proptest! {
         events in strategy_event_vec(15),
         key_bytes in proptest::collection::vec(any::<u8>(), 1..32)
     ) {
-        let r1 = shiplog_redact::DeterministicRedactor::new(&key_bytes);
-        let r2 = shiplog_redact::DeterministicRedactor::new(&key_bytes);
+        let r1 = shiplog::redact::DeterministicRedactor::new(&key_bytes);
+        let r2 = shiplog::redact::DeterministicRedactor::new(&key_bytes);
 
         let out1 = r1.redact_events(&events, "manager").unwrap();
         let out2 = r2.redact_events(&events, "manager").unwrap();
@@ -333,7 +333,7 @@ proptest! {
         key_bytes in proptest::collection::vec(any::<u8>(), 1..32),
         profile in prop_oneof![Just("internal"), Just("manager"), Just("public")]
     ) {
-        let r = shiplog_redact::DeterministicRedactor::new(&key_bytes);
+        let r = shiplog::redact::DeterministicRedactor::new(&key_bytes);
         let redacted = r.redact_events(&events, profile).unwrap();
 
         prop_assert_eq!(events.len(), redacted.len());

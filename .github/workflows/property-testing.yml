@@ -73,8 +73,8 @@ jobs:
       - name: Run property tests for shiplog-schema
         run: cargo test -p shiplog-schema -- --test-threads=4
 
-      - name: Run property tests for shiplog-redact
-        run: cargo test -p shiplog-redact -- --test-threads=4
+      - name: Run property tests for shiplog redaction module
+        run: cargo test -p shiplog --test redact -- --test-threads=4
 
       - name: Run property tests for shiplog coverage module
         run: cargo test -p shiplog --test coverage_property -- --test-threads=4
@@ -118,7 +118,7 @@ jobs:
           echo "## Tested Crates" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog-ids" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog-schema" >> $GITHUB_STEP_SUMMARY
-          echo "- shiplog-redact" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog::redact" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog::coverage" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog-workstreams" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog::cache" >> $GITHUB_STEP_SUMMARY

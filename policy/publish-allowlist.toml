@@ -45,12 +45,6 @@ publish = false
 reason = "Workstream support should collapse into owner modules."
 
 [[package]]
-name = "shiplog-redact"
-tier = "internal-module"
-publish = false
-reason = "Redaction support remains product-internal unless promoted by ADR."
-
-[[package]]
 name = "shiplog-cluster-llm"
 tier = "internal-module"
 publish = false
@@ -144,3 +138,8 @@ reason = "0.6 product orchestration crate collapsed into shiplog::engine."
 name = "shiplog-bundle"
 tier = "historical-0.6"
 reason = "0.6 bundle/checksum crate collapsed into shiplog::bundle."
+
+[[historical]]
+name = "shiplog-redact"
+tier = "historical-0.6"
+reason = "0.6 redaction crate collapsed into shiplog::redact."

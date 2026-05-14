@@ -6,9 +6,9 @@
 use chrono::{NaiveDate, TimeZone, Utc};
 use shiplog::bundle::{DIR_PROFILES, FILE_PACKET_MD, PROFILE_MANAGER, PROFILE_PUBLIC};
 use shiplog::engine::Engine;
+use shiplog::redact::DeterministicRedactor;
 use shiplog_ids::RunId;
 use shiplog_ports::{IngestOutput, Redactor, Renderer, WorkstreamClusterer};
-use shiplog_redact::DeterministicRedactor;
 use shiplog_schema::bundle::BundleProfile;
 use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
 use shiplog_schema::event::*;

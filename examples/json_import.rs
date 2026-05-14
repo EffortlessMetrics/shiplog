@@ -7,9 +7,9 @@
 use anyhow::{Context, Result};
 use shiplog::engine::Engine;
 use shiplog::ingest::json::JsonIngestor;
+use shiplog::redact::DeterministicRedactor;
 use shiplog::render::md::MarkdownRenderer;
 use shiplog_ports::Ingestor;
-use shiplog_redact::DeterministicRedactor;
 use shiplog_schema::bundle::BundleProfile;
 use shiplog_workstreams::RepoClusterer;
 use std::path::PathBuf;

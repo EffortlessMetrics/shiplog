@@ -1,6 +1,6 @@
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
+use shiplog::redact::DeterministicRedactor;
 use shiplog_ports::Redactor;
-use shiplog_redact::DeterministicRedactor;
 use shiplog_schema::event::EventEnvelope;
 use std::hint::black_box;
 

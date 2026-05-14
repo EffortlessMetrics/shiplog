@@ -1,8 +1,8 @@
 //! Profile-string projection dispatch for shiplog redaction.
 
-use crate::policy::{redact_events_with_aliases, redact_workstreams_with_aliases};
-use crate::profile::RedactionProfile;
-use crate::repo::AliasResolver;
+use super::policy::{redact_events_with_aliases, redact_workstreams_with_aliases};
+use super::profile::RedactionProfile;
+use super::repo::AliasResolver;
 use shiplog_schema::event::EventEnvelope;
 use shiplog_schema::workstream::WorkstreamsFile;
 

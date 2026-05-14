@@ -825,7 +825,7 @@ status = "advisory"
 [[risk_pack]]
 id = "redaction-privacy"
 description = "redaction"
-paths = ["crates/shiplog-redact/**"]
+paths = ["apps/shiplog/src/redact/**", "apps/shiplog/tests/redact/**"]
 labels = ["mutation"]
 selected_lanes = ["mutation_targeted"]
 
@@ -876,7 +876,7 @@ selected_lanes = []
     #[test]
     fn redaction_change_routes_targeted_mutation() {
         let dir = fixture_workspace();
-        let plan = run_plan(dir.path(), vec!["crates/shiplog-redact/src/lib.rs"], vec![]);
+        let plan = run_plan(dir.path(), vec!["apps/shiplog/src/redact/mod.rs"], vec![]);
         let pack_ids: Vec<&str> = plan
             .selection
             .risk_packs

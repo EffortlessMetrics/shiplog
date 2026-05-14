@@ -7,9 +7,9 @@
 mod user_workflow_tests {
     use chrono::{NaiveDate, Utc};
     use shiplog::engine::{Engine, WorkstreamSource};
+    use shiplog::redact::DeterministicRedactor;
     use shiplog_ids::RunId;
     use shiplog_ports::{IngestOutput, Redactor, WorkstreamClusterer};
-    use shiplog_redact::DeterministicRedactor;
     use shiplog_schema::bundle::BundleProfile;
     use shiplog_schema::coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow};
     use shiplog_testkit::TestMarkdownRenderer as MarkdownRenderer;

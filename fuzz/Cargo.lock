@@ -1849,7 +1849,6 @@ dependencies = [
  "shiplog-ids",
  "shiplog-merge",
  "shiplog-ports",
- "shiplog-redact",
  "shiplog-schema",
  "shiplog-workstreams",
  "toml",
@@ -1888,7 +1887,6 @@ dependencies = [
  "shiplog-cluster-llm",
  "shiplog-ids",
  "shiplog-ports",
- "shiplog-redact",
  "shiplog-schema",
  "shiplog-team",
  "shiplog-workstreams",
@@ -1920,19 +1918,6 @@ name = "shiplog-ports"
 version = "0.6.0"
 dependencies = [
  "anyhow",
- "shiplog-schema",
-]
-
-[[package]]
-name = "shiplog-redact"
-version = "0.6.0"
-dependencies = [
- "anyhow",
- "hex",
- "serde",
- "serde_json",
- "sha2 0.11.0",
- "shiplog-ports",
  "shiplog-schema",
 ]
 

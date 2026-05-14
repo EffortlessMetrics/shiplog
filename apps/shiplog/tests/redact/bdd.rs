@@ -1,4 +1,4 @@
-//! BDD-style integration tests for shiplog-redact.
+//! BDD-style integration tests for shiplog::redact.
 //!
 //! Each test follows the Given / When / Then pattern using the
 //! `shiplog_testkit::bdd::Scenario` runner.
@@ -6,9 +6,9 @@
 use shiplog_testkit::bdd::Scenario;
 
 use chrono::Utc;
+use shiplog::redact::DeterministicRedactor;
 use shiplog_ids::{EventId, WorkstreamId};
 use shiplog_ports::Redactor;
-use shiplog_redact::DeterministicRedactor;
 use shiplog_schema::event::*;
 use shiplog_schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
 

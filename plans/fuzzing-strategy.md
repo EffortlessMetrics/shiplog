@@ -217,9 +217,9 @@ pub struct BundleManifest
 
 ### 9. Redaction Alias Cache JSON
 
-**Location:** [`crates/shiplog-redact/src/lib.rs`](../crates/shiplog-redact/src/lib.rs:72)
+**Location:** [`apps/shiplog/src/redact/mod.rs`](../apps/shiplog/src/redact/mod.rs)
 
-**Input Format:** JSON serialization of [`AliasCache`](../crates/shiplog-redact/src/lib.rs:37)
+**Input Format:** JSON serialization of the private alias-cache shape consumed by `shiplog::redact`.
 
 **Attack Surface:**
 - Serde JSON deserialization
@@ -229,7 +229,7 @@ pub struct BundleManifest
 
 **Critical Code Paths:**
 ```rust
-// crates/shiplog-redact/src/lib.rs:72-89
+// apps/shiplog/src/redact/mod.rs
 pub fn load_cache(&self, path: &Path) -> Result<()>
 ```
 
@@ -438,7 +438,7 @@ fuzz_target!(|data: &[u8]| {
 
 ### Harness 7: Redaction Alias Cache Parsing
 
-**Target:** [`AliasCache`](../crates/shiplog-redact/src/lib.rs:37) deserialization
+**Target:** `shiplog::redact::DeterministicRedactor::load_cache` alias-cache deserialization
 
 **Harness Signature:**
 ```rust
@@ -447,7 +447,11 @@ use libfuzzer_sys::fuzz_target;
 
 fuzz_target!(|data: &[u8]| {
     if let Ok(text) = std::str::from_utf8(data) {
-        let _ = serde_json::from_str::<shiplog_redact::AliasCache>(text);
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("redaction.aliases.json");
+        std::fs::write(&path, text).unwrap();
+        let redactor = shiplog::redact::DeterministicRedactor::new(b"fuzz");
+        let _ = redactor.load_cache(&path);
     }
 });
 ```

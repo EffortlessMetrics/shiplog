@@ -1,9 +1,9 @@
-//! Integration tests for shiplog-redact facade policy behavior.
+//! Integration tests for shiplog::redact facade policy behavior.
 
 use chrono::Utc;
+use shiplog::redact::{DeterministicRedactor, RedactionProfile};
 use shiplog_ids::{EventId, WorkstreamId};
 use shiplog_ports::Redactor;
-use shiplog_redact::{DeterministicRedactor, RedactionProfile};
 use shiplog_schema::event::*;
 use shiplog_schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
 

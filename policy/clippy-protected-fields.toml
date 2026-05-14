@@ -22,7 +22,7 @@ status = "advisory"
 #                         "mixed" if the seam crosses crates and each crate
 #                         owns its share.
 #   boundary_module       Module path under the boundary crate. May be a
-#                         pattern (e.g. "shiplog-redact::*").
+#                         pattern (e.g. "shiplog::redact::*").
 #   accessor_pattern      One-line description of the accessor shape that
 #                         callers must go through.
 #   failure_mode          The kind of regression the lint catches if the
@@ -129,15 +129,15 @@ id = "cpf-0001"
 slug = "redaction-internals"
 title = "Redaction internals"
 invariant = "Alias maps, HMAC key material, and profile descriptor state must never be exposed in raw form. Internal name → alias mappings stay private; lookups go through accessors that return the alias plus the redaction profile it was minted under."
-boundary_crate = "shiplog-redact"
-boundary_module = "shiplog-redact::*"
+boundary_crate = "shiplog"
+boundary_module = "shiplog::redact::*"
 accessor_pattern = "The internal alias-store type is `pub(crate)`, so external code cannot name it. Its fields are implicitly private. The public facade `DeterministicRedactor` holds the alias store as an implicitly private field and exposes accessors (`alias`, `load_cache`, `save_cache`, `redact_events`, `redact_workstreams`). All free functions in `policy.rs` and `projector.rs` are `pub(crate)`."
 failure_mode = "A renderer reads `redactor.aliases` directly and emits the inner real name to a manager- or public-profile bundle. The redaction profile leak goes unnoticed because no test exercises the raw read path."
 # Audited 2026-05-12 (post-#208):
 #   - `DeterministicAliasStore` (the type carrying alias map + HMAC key
 #     material) is declared `pub(crate)` in
-#     `crates/shiplog-redact/src/alias.rs`. External code outside
-#     `shiplog-redact` cannot name the type, so cannot construct it
+#     `apps/shiplog/src/redact/alias.rs`. External code outside
+#     `shiplog::redact` cannot name the type, so cannot construct it
 #     and cannot read its fields by path.
 #   - The two protected fields on `DeterministicAliasStore` —
 #     `key: Vec<u8>` (HMAC key material) and `cache:
@@ -172,7 +172,7 @@ field_candidates = [
 ]
 activation_status = "type-enforced"
 next_action = "Nothing to do for this class today: type system already enforces the seam. If any new state-bearing redaction type lands in the future (e.g. an explicit profile descriptor struct), apply the inner-struct pattern from day one — see the post-#196 cache-internals tier-2 framing. A future ledger-driven `xtask check-protected-fields` checker (framed as optional step 6 in `docs/CLIPPY_PROTECTED_FIELDS.md`) would scan for regressions like a future `pub fn raw_aliases(&self) -> &BTreeMap<...>` accessor on `DeterministicRedactor`."
-owner = "shiplog-redact"
+owner = "shiplog::redact"
 reason = "See docs/CLIPPY_PROTECTED_FIELDS.md#1-redaction-internals for the seam doctrine and failure mode."
 created = "2026-05-11"
 review_after = "2026-11-11"
@@ -298,9 +298,9 @@ slug = "source-opaque-ids"
 title = "Source opaque IDs"
 invariant = "Provider-specific identifiers (GitHub `node_id`, GitLab project IDs, Jira issue keys, Linear UUIDs, opaque `local_git` ref names) must be aliased / nullified before they cross a redaction profile boundary. The redaction policy returns the aliased form for non-internal profiles and the raw form only when an `Internal` profile is explicitly in use."
 boundary_crate = "mixed"
-boundary_module = "shiplog-schema::event (canonical wrapper field), shiplog-ingest-* (per-source population), shiplog-redact::policy (nullification on profile boundary)"
-accessor_pattern = "The opaque-ID surface is concentrated into a single canonical wrapper field `SourceRef::opaque_id: Option<String>` in `shiplog-schema/src/event.rs`. Every ingest adapter constructs `SourceRef { opaque_id: Some(...) }`; there is no per-source `node_id` field on adapter-specific event types. The field is `pub` by serde shape (it IS part of the event-ledger JSON contract). Protection is procedural: `shiplog-redact::policy::redact_event_with_aliases` sets `event.source.opaque_id = None` for non-internal profiles; property + integration tests prove the nullification works."
-failure_mode = "A public-profile render reads `event.source.opaque_id` directly after the redaction step has cleared it; the rendered packet does NOT leak the provider-internal id because the redaction policy already set it to `None`. The real failure mode would be a new code path that emits the event BEFORE the redact step runs — that risk is caught by the existing integration tests in `shiplog-redact/tests/integration_policy_tests.rs`."
+boundary_module = "shiplog-schema::event (canonical wrapper field), shiplog::ingest::* (per-source population), shiplog::redact::policy (nullification on profile boundary)"
+accessor_pattern = "The opaque-ID surface is concentrated into a single canonical wrapper field `SourceRef::opaque_id: Option<String>` in `shiplog-schema/src/event.rs`. Every ingest adapter constructs `SourceRef { opaque_id: Some(...) }`; there is no per-source `node_id` field on adapter-specific event types. The field is `pub` by serde shape (it IS part of the event-ledger JSON contract). Protection is procedural: `shiplog::redact::policy::redact_event_with_aliases` sets `event.source.opaque_id = None` for non-internal profiles; property + integration tests prove the nullification works."
+failure_mode = "A public-profile render reads `event.source.opaque_id` directly after the redaction step has cleared it; the rendered packet does NOT leak the provider-internal id because the redaction policy already set it to `None`. The real failure mode would be a new code path that emits the event BEFORE the redact step runs — that risk is caught by the existing integration tests in `apps/shiplog/tests/redact/integration_policy_tests.rs`."
 # Audited 2026-05-12 (post-#214):
 #   - `SourceRef::opaque_id: Option<String>` is the canonical
 #     wrapper field. Workspace grep finds zero per-source `node_id`
@@ -314,12 +314,12 @@ failure_mode = "A public-profile render reads `event.source.opaque_id` directly 
 #     `ledger.events.jsonl`. Making it private would break the
 #     JSON contract that downstream tools (validation, share
 #     verifiers, third-party consumers) rely on.
-#   - The redact policy at `shiplog-redact/src/policy.rs:51` sets
+#   - The redact policy at `apps/shiplog/src/redact/policy.rs` sets
 #     `event.source.opaque_id = None` for the non-internal profiles
 #     (`Manager`, `Public`). The internal profile preserves the
 #     raw form for the run author.
 #   - Property and integration tests prove the nullification works:
-#     `shiplog-redact/tests/integration_policy_tests.rs` constructs
+#     `apps/shiplog/tests/redact/integration_policy_tests.rs` constructs
 #     events with concrete opaque IDs (`"github-pr-node-id"`,
 #     `"manual-incident-1"`); the redaction integration tests assert
 #     `out.source.opaque_id.is_none()` after Public-profile redact.
@@ -331,7 +331,7 @@ failure_mode = "A public-profile render reads `event.source.opaque_id` directly 
 # `"type-enforced"` via the canonical-wrapper pattern + procedural
 # nullification + test gates, same shape as cpf-0003 trust-receipts.
 field_candidates = [
-  "SourceRef::opaque_id (pub by serde necessity; nullified by shiplog-redact::policy for non-internal profiles; test-enforced)",
+  "SourceRef::opaque_id (pub by serde necessity; nullified by shiplog::redact::policy for non-internal profiles; test-enforced)",
   "TODO: future opaque-ID fields on any new ingest adapter — must populate `SourceRef::opaque_id` rather than introducing a per-adapter raw field",
 ]
 activation_status = "type-enforced"

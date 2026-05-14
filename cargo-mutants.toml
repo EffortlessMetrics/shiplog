@@ -18,7 +18,8 @@
 # shiplog-schema        - canonical event model, coverage types, bundle metadata
 # shiplog-ids           - SHA-256 deterministic ID generation
 # shiplog-ports         - trait definitions (Ingestor, Renderer, Redactor, Clusterer)
-# shiplog-redact        - HMAC-SHA-256 redaction orchestrator
+# apps/shiplog/src/redact
+#                       - HMAC-SHA-256 redaction orchestrator
 # apps/shiplog/src/coverage
 #                       - slicing, completeness, time-window logic
 # apps/shiplog/src/bundle

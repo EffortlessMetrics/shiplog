@@ -1,12 +1,12 @@
-//! Edge case tests for shiplog-redact.
+//! Edge case tests for shiplog::redact.
 //!
 //! Covers: very long strings, unicode in all fields, empty strings,
 //! profile differentiation, and redaction consistency across calls.
 
 use chrono::{NaiveDate, Utc};
+use shiplog::redact::DeterministicRedactor;
 use shiplog_ids::{EventId, WorkstreamId};
 use shiplog_ports::Redactor;
-use shiplog_redact::DeterministicRedactor;
 use shiplog_schema::event::*;
 use shiplog_schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
 

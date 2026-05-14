@@ -15,15 +15,15 @@ mod profile;
 mod projector;
 mod repo;
 
-use alias::DeterministicAliasStore;
-use projector::{project_events_with_aliases, project_workstreams_with_aliases};
+use self::alias::DeterministicAliasStore;
+use self::projector::{project_events_with_aliases, project_workstreams_with_aliases};
 
 /// Default filename for the alias cache (`redaction.aliases.json`).
 ///
 /// # Examples
 ///
 /// ```
-/// use shiplog_redact::CACHE_FILENAME;
+/// use shiplog::redact::CACHE_FILENAME;
 ///
 /// assert_eq!(CACHE_FILENAME, "redaction.aliases.json");
 /// ```
@@ -34,7 +34,7 @@ pub use alias::CACHE_FILENAME;
 /// # Examples
 ///
 /// ```
-/// use shiplog_redact::RedactionProfile;
+/// use shiplog::redact::RedactionProfile;
 ///
 /// let p = RedactionProfile::from_profile_str("manager");
 /// assert_eq!(p.as_str(), "manager");
@@ -55,7 +55,7 @@ pub use profile::RedactionProfile;
 /// # Examples
 ///
 /// ```
-/// use shiplog_redact::DeterministicRedactor;
+/// use shiplog::redact::DeterministicRedactor;
 ///
 /// let redactor = DeterministicRedactor::new(b"my-secret-key");
 /// // The redactor is now ready to redact events and workstreams
@@ -74,7 +74,7 @@ impl DeterministicRedactor {
     /// # Examples
     ///
     /// ```
-    /// use shiplog_redact::DeterministicRedactor;
+    /// use shiplog::redact::DeterministicRedactor;
     ///
     /// let r1 = DeterministicRedactor::new(b"key-a");
     /// let r2 = DeterministicRedactor::new(b"key-a");
@@ -91,7 +91,7 @@ impl DeterministicRedactor {
     /// # Examples
     ///
     /// ```
-    /// use shiplog_redact::DeterministicRedactor;
+    /// use shiplog::redact::DeterministicRedactor;
     /// use std::path::Path;
     ///
     /// let p = DeterministicRedactor::cache_path(Path::new("/out/run_1"));
@@ -106,7 +106,7 @@ impl DeterministicRedactor {
     /// # Examples
     ///
     /// ```rust,no_run
-    /// use shiplog_redact::DeterministicRedactor;
+    /// use shiplog::redact::DeterministicRedactor;
     /// use std::path::Path;
     ///
     /// let r = DeterministicRedactor::new(b"key");
@@ -122,7 +122,7 @@ impl DeterministicRedactor {
     /// # Examples
     ///
     /// ```rust,no_run
-    /// use shiplog_redact::DeterministicRedactor;
+    /// use shiplog::redact::DeterministicRedactor;
     /// use std::path::Path;
     ///
     /// let r = DeterministicRedactor::new(b"key");

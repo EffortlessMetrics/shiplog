@@ -1,7 +1,7 @@
 //! Profile-based structural redaction policy.
 
-use crate::profile::RedactionProfile;
-use crate::repo::{AliasResolver, redact_repo_public};
+use super::profile::RedactionProfile;
+use super::repo::{AliasResolver, redact_repo_public};
 use shiplog_schema::event::{EventEnvelope, EventPayload};
 use shiplog_schema::workstream::{Workstream, WorkstreamsFile};
 

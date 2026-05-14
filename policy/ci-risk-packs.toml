@@ -12,7 +12,8 @@ status = "advisory"
 id = "redaction-privacy"
 description = "Redaction trust surface and privacy-sensitive code paths."
 paths = [
-  "crates/shiplog-redact/**",
+  "apps/shiplog/src/redact/**",
+  "apps/shiplog/tests/redact/**",
   "apps/shiplog/src/bundle/**",
   "apps/shiplog/tests/bundle/**",
   "apps/shiplog/src/**/share*.rs",
