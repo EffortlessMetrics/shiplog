@@ -266,6 +266,158 @@ snippet = "let with_merge_out = with_merge.ingest().unwrap();"
 count = 1
 
 [[entry]]
+path = "apps/shiplog/src/ingest/linear.rs"
+family = "panic"
+selector_kind = "macro-call"
+selector_callee = "panic"
+snippet = 'panic!("Expected Manual payload");'
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/linear.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = '"backlog".parse::<IssueStatus>().unwrap(),'
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/linear.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = '"cancelled".parse::<IssueStatus>().unwrap(),'
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/linear.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = '"in_progress".parse::<IssueStatus>().unwrap(),'
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/linear.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = ".unwrap()"
+count = 6
+
+[[entry]]
+path = "apps/shiplog/src/ingest/linear.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = ".unwrap();"
+count = 2
+
+[[entry]]
+path = "apps/shiplog/src/ingest/linear.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),"
+count = 11
+
+[[entry]]
+path = "apps/shiplog/src/ingest/linear.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),"
+count = 11
+
+[[entry]]
+path = "apps/shiplog/src/ingest/linear.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "Some(NaiveDate::from_ymd_opt(2025, 1, 18).unwrap())"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/linear.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = 'assert_eq!("all".parse::<IssueStatus>().unwrap(), IssueStatus::All);'
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/linear.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = 'assert_eq!("done".parse::<IssueStatus>().unwrap(), IssueStatus::Done);'
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/linear.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = 'assert_eq!("todo".parse::<IssueStatus>().unwrap(), IssueStatus::Todo);'
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/linear.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = 'assert_eq!(issues[0].project.as_ref().unwrap().key, "INFRA");'
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/linear.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = 'assert_eq!(issues[0].state.as_ref().unwrap().type_, "completed");'
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/linear.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let connection = response.data.unwrap().data.unwrap().issues.unwrap();"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/linear.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let events = ing.issues_to_events(issues).unwrap();"
+count = 3
+
+[[entry]]
+path = "apps/shiplog/src/ingest/linear.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let issues = connection.nodes.unwrap();"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/linear.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let temp = tempfile::tempdir().unwrap();"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/linear.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "serde_json::from_value(payload).unwrap();"
+count = 1
+
+[[entry]]
 path = "apps/shiplog/src/main.rs"
 family = "expect"
 selector_kind = "method-call"
