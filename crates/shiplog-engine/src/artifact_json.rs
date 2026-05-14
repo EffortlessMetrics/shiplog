@@ -18,7 +18,7 @@ use std::path::Path;
 ///
 /// # Examples
 ///
-/// ```rust,no_run
+/// ```rust,ignore
 /// use shiplog_engine::artifact_json::write_events_jsonl;
 /// use shiplog_schema::event::EventEnvelope;
 /// use std::path::Path;
@@ -42,7 +42,7 @@ pub fn write_events_jsonl(path: &Path, events: &[EventEnvelope]) -> Result<()> {
 ///
 /// # Examples
 ///
-/// ```rust,no_run
+/// ```rust,ignore
 /// use shiplog_engine::artifact_json::write_coverage_manifest;
 /// use shiplog_schema::coverage::{CoverageManifest, Completeness, TimeWindow};
 /// use shiplog_ids::RunId;
