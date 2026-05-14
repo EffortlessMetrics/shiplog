@@ -132,6 +132,11 @@ number = 265
 title = "refactor(crate): inline github adapter"
 url = "https://github.com/EffortlessMetrics/shiplog/pull/265"
 
+[[completed_pr]]
+number = 266
+title = "refactor(crate): inline json adapter"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/266"
+
 [[work_item]]
 id = "ingest-adapter-collapse"
 title = "refactor(crate): inline ingest adapters into shiplog"
@@ -152,6 +157,7 @@ commands = [
   "cargo test -p shiplog --test cli_integration -- intake",
   "cargo test -p shiplog --test cli_integration -- report",
   "cargo test -p shiplog ingest::github::tests::recorded_http_fixtures_prove_full_fresh_then_cached_ingest",
+  "cargo test -p shiplog --test ingest_json",
   "cargo xtask check-policy-schemas",
   "cargo xtask check-file-policy --mode blocking-allowlist",
   "git diff --check",

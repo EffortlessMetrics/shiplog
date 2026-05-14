@@ -1,10 +1,10 @@
-//! Error-path and error message quality tests for shiplog-ingest-json.
+//! Error-path and error message quality tests for shiplog JSON ingest module.
 //!
 //! Verifies that error messages include context (file paths, line numbers),
 //! error chains preserve original causes, and partial/corrupt data is
 //! handled gracefully.
 
-use shiplog_ingest_json::{JsonIngestor, parse_events_jsonl};
+use shiplog::ingest::json::{JsonIngestor, parse_events_jsonl};
 use shiplog_ports::Ingestor;
 
 // ---------------------------------------------------------------------------
@@ -35,16 +35,17 @@ fn parse_error_includes_source_name_in_context() {
 #[test]
 fn error_chain_preserves_serde_cause() {
     let err = parse_events_jsonl("{\"bad\": true}", "chain-test").unwrap_err();
-    let chain: Vec<String> = err.chain().map(|e| e.to_string()).collect();
-    // Should have at least 2 levels: our context + serde error
+    let msg = err.to_string();
     assert!(
-        chain.len() >= 2,
-        "error chain should have context + cause: {chain:?}"
+        msg.contains("line 1"),
+        "top-level should mention line: {msg:?}"
     );
+    let source = std::error::Error::source(&err).map(|cause| cause.to_string());
     assert!(
-        chain[0].contains("line 1"),
-        "top-level should mention line: {:?}",
-        chain[0]
+        source
+            .as_deref()
+            .is_some_and(|cause| cause.contains("missing field")),
+        "error source should preserve serde cause: {source:?}"
     );
 }
 

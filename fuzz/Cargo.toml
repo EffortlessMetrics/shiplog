@@ -9,7 +9,6 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = "0.4"
-shiplog-ingest-json = { path = "../crates/shiplog-ingest-json" }
 shiplog-workstreams = { path = "../crates/shiplog-workstreams" }
 shiplog-schema = { path = "../crates/shiplog-schema" }
 shiplog-ids = { path = "../crates/shiplog-ids" }

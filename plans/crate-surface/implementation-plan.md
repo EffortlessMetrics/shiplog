@@ -65,6 +65,10 @@ Landed:
   `refactor(crate): inline jira adapter`
 - [#263](https://github.com/EffortlessMetrics/shiplog/pull/263):
   `refactor(crate): inline gitlab adapter`
+- [#264](https://github.com/EffortlessMetrics/shiplog/pull/264):
+  `refactor(crate): inline manual adapter`
+- [#265](https://github.com/EffortlessMetrics/shiplog/pull/265):
+  `refactor(crate): inline github adapter`
 
 The remaining risk is dependency leakage: `shiplog` can be publish-allowed but
 still resolve historical 0.6 implementation crates if versioned path
@@ -117,6 +121,7 @@ cargo test -p shiplog --test front_door_first_pack_smoke
 cargo test -p shiplog --test cli_integration -- intake
 cargo test -p shiplog --test cli_integration -- report
 cargo test -p shiplog ingest::github::tests::recorded_http_fixtures_prove_full_fresh_then_cached_ingest
+cargo test -p shiplog --test ingest_json
 cargo xtask check-policy-schemas
 cargo xtask check-file-policy --mode blocking-allowlist
 git diff --check

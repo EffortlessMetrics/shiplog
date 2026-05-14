@@ -9,17 +9,18 @@ use chrono::{NaiveDate, TimeZone, Utc};
 use shiplog_bundle::{DIR_PROFILES, FILE_PACKET_MD, PROFILE_MANAGER, PROFILE_PUBLIC};
 use shiplog_engine::{Engine, WorkstreamSource};
 use shiplog_ids::RunId;
-use shiplog_ingest_json::JsonIngestor;
-use shiplog_ports::{IngestOutput, Ingestor, Redactor, Renderer, WorkstreamClusterer};
+use shiplog_ports::{IngestOutput, Redactor, Renderer, WorkstreamClusterer};
 use shiplog_redact::DeterministicRedactor;
 use shiplog_schema::bundle::BundleProfile;
 use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
 use shiplog_schema::event::*;
 use shiplog_schema::workstream::WorkstreamsFile;
 use shiplog_testkit::TestMarkdownRenderer as MarkdownRenderer;
+use shiplog_testkit::parse_events_jsonl_fixture;
 use shiplog_workstreams::RepoClusterer;
 use shiplog_workstreams::WorkstreamManager;
 use std::io::Write;
+use std::path::Path;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -93,6 +94,19 @@ fn make_ingest(events: Vec<EventEnvelope>) -> IngestOutput {
     }
 }
 
+fn read_json_fixture_ingest(events_path: &Path, coverage_path: &Path) -> IngestOutput {
+    let events_text = std::fs::read_to_string(events_path).unwrap();
+    let events =
+        parse_events_jsonl_fixture(&events_text, &events_path.display().to_string()).unwrap();
+    let coverage_text = std::fs::read_to_string(coverage_path).unwrap();
+    let coverage: CoverageManifest = serde_json::from_str(&coverage_text).unwrap();
+    IngestOutput {
+        events,
+        coverage,
+        freshness: Vec::new(),
+    }
+}
+
 fn make_engine() -> Engine<'static> {
     let renderer: &'static dyn Renderer = Box::leak(Box::new(MarkdownRenderer::new()));
     let clusterer: &'static dyn WorkstreamClusterer = Box::leak(Box::new(RepoClusterer));
@@ -118,11 +132,10 @@ fn full_json_ingest_and_render_pipeline() {
         .join("../..")
         .join("examples/fixture");
 
-    let ingestor = JsonIngestor {
-        events_path: fixture_dir.join("ledger.events.jsonl"),
-        coverage_path: fixture_dir.join("coverage.manifest.json"),
-    };
-    let ingest = ingestor.ingest().unwrap();
+    let ingest = read_json_fixture_ingest(
+        &fixture_dir.join("ledger.events.jsonl"),
+        &fixture_dir.join("coverage.manifest.json"),
+    );
 
     assert_eq!(ingest.events.len(), 3, "fixture has 3 events");
     assert_eq!(ingest.coverage.user, "octo");
@@ -183,11 +196,7 @@ fn round_trip_events_and_coverage_integrity() {
     let cov_path = tmp.path().join("coverage.json");
     std::fs::write(&cov_path, serde_json::to_string_pretty(&cov).unwrap()).unwrap();
 
-    let ingestor = JsonIngestor {
-        events_path,
-        coverage_path: cov_path,
-    };
-    let ingest = ingestor.ingest().unwrap();
+    let ingest = read_json_fixture_ingest(&events_path, &cov_path);
     assert_eq!(ingest.events.len(), 3);
 
     let out = tmp.path().join("output");

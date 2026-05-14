@@ -47,6 +47,12 @@ mod user_workflow_tests {
         Engine::new(renderer, clusterer, redactor)
     }
 
+    fn parse_events_jsonl_for_test(text: &str, source: &str) -> Result<(), String> {
+        crate::parse_events_jsonl_fixture(text, source)
+            .map(|_| ())
+            .map_err(|err| format!("{err:#}"))
+    }
+
     // ====================================================================
     // Scenario 1: Happy Path JSON Import
     // ====================================================================
@@ -420,7 +426,7 @@ mod user_workflow_tests {
             .when("parsing the JSONL content", |ctx| {
                 let content =
                     String::from_utf8(ctx.data.get("jsonl_content").unwrap().clone()).unwrap();
-                let result = shiplog_ingest_json::parse_events_jsonl(&content, "test-malformed");
+                let result = parse_events_jsonl_for_test(&content, "test-malformed");
                 match result {
                     Ok(_) => {
                         ctx.flags.insert("error_has_line_number".to_string(), false);

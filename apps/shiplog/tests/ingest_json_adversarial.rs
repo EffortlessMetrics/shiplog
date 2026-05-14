@@ -1,8 +1,8 @@
-//! Adversarial and negative-input tests for shiplog-ingest-json (parse_events_jsonl).
+//! Adversarial and negative-input tests for shiplog JSON ingest module (parse_events_jsonl).
 
 use serde_json::json;
+use shiplog::ingest::json::parse_events_jsonl;
 use shiplog_ids::EventId;
-use shiplog_ingest_json::parse_events_jsonl;
 use shiplog_schema::event::*;
 
 /// Build a minimal valid JSONL line.

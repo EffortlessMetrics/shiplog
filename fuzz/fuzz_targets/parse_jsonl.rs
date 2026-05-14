@@ -1,12 +1,12 @@
 //! Fuzz harness for JSONL ingestion (ledger.events.jsonl)
 //!
 //! This harness tests the robustness of the JSONL parser against malformed input.
-//! Target: `shiplog_ingest_json` line parser
+//! Target: `shiplog::ingest::json` line parser
 
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use shiplog_ingest_json::parse_events_jsonl;
+use shiplog::ingest::json::parse_events_jsonl;
 
 fuzz_target!(|data: &[u8]| {
     // Ensure the input is valid UTF-8

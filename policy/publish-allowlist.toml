@@ -75,12 +75,6 @@ publish = false
 reason = "Cache/freshness support remains internal unless a public cache API exists."
 
 [[package]]
-name = "shiplog-ingest-json"
-tier = "internal-module"
-publish = false
-reason = "Import adapter; JSON schemas are the public machine contract."
-
-[[package]]
 name = "shiplog-cluster-llm"
 tier = "internal-module"
 publish = false
@@ -149,3 +143,8 @@ reason = "0.6 manual evidence adapter crate collapsed into shiplog::ingest::manu
 name = "shiplog-ingest-github"
 tier = "historical-0.6"
 reason = "0.6 source adapter crate collapsed into shiplog::ingest::github."
+
+[[historical]]
+name = "shiplog-ingest-json"
+tier = "historical-0.6"
+reason = "0.6 JSON import adapter crate collapsed into shiplog::ingest::json."

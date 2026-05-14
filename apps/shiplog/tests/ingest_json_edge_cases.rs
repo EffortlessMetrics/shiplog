@@ -1,16 +1,18 @@
-//! Edge-case tests for shiplog-ingest-json.
+//! Edge-case tests for shiplog JSON ingest module.
 //!
 //! Covers malformed JSONL lines, mixed event types, very large events,
 //! and empty lines in JSONL files.
 
 use chrono::{NaiveDate, Utc};
-use shiplog_bundle::{FILE_COVERAGE_MANIFEST_JSON, FILE_LEDGER_EVENTS_JSONL};
+use shiplog::ingest::json::{JsonIngestor, parse_events_jsonl};
 use shiplog_ids::{EventId, RunId};
-use shiplog_ingest_json::{JsonIngestor, parse_events_jsonl};
 use shiplog_ports::Ingestor;
 use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
 use shiplog_schema::event::*;
 use std::io::Write;
+
+mod support;
+use support::{FILE_COVERAGE_MANIFEST_JSON, FILE_LEDGER_EVENTS_JSONL};
 
 // ── Helpers ──────────────────────────────────────────────────────────────
 
