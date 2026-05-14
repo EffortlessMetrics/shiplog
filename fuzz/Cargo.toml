@@ -11,7 +11,6 @@ cargo-fuzz = true
 libfuzzer-sys = "0.4"
 shiplog-ingest-json = { path = "../crates/shiplog-ingest-json" }
 shiplog-ingest-github = { path = "../crates/shiplog-ingest-github" }
-shiplog-ingest-manual = { path = "../crates/shiplog-ingest-manual" }
 shiplog-workstreams = { path = "../crates/shiplog-workstreams" }
 shiplog-schema = { path = "../crates/shiplog-schema" }
 shiplog-ids = { path = "../crates/shiplog-ids" }

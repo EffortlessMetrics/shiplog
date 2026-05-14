@@ -1843,13 +1843,13 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+ "serde_yaml_ng",
  "sha2 0.11.0",
  "shiplog-cache",
  "shiplog-engine",
  "shiplog-ids",
  "shiplog-ingest-github",
  "shiplog-ingest-json",
- "shiplog-ingest-manual",
  "shiplog-ports",
  "shiplog-redact",
  "shiplog-schema",
@@ -1942,7 +1942,6 @@ dependencies = [
  "shiplog-ids",
  "shiplog-ingest-github",
  "shiplog-ingest-json",
- "shiplog-ingest-manual",
  "shiplog-ports",
  "shiplog-redact",
  "shiplog-schema",
@@ -1984,18 +1983,6 @@ dependencies = [
  "anyhow",
  "chrono",
  "serde_json",
- "shiplog-ports",
- "shiplog-schema",
-]
-
-[[package]]
-name = "shiplog-ingest-manual"
-version = "0.6.0"
-dependencies = [
- "anyhow",
- "chrono",
- "serde_yaml_ng",
- "shiplog-ids",
  "shiplog-ports",
  "shiplog-schema",
 ]

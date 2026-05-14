@@ -1,7 +1,7 @@
 //! BDD-style integration tests for the manual event ingestor.
 
 use chrono::{NaiveDate, Utc};
-use shiplog_ingest_manual::{ManualIngestor, create_entry, write_manual_events};
+use shiplog::ingest::manual::{ManualIngestor, create_entry, write_manual_events};
 use shiplog_ports::Ingestor;
 use shiplog_schema::event::{ManualDate, ManualEventType, ManualEventsFile};
 use shiplog_testkit::bdd::assertions::{assert_eq, assert_present, assert_true};

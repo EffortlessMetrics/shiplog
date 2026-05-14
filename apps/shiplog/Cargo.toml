@@ -25,6 +25,7 @@ regex.workspace = true
 reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+serde_yaml.workspace = true
 url.workspace = true
 hex.workspace = true
 sha2.workspace = true
@@ -35,7 +36,6 @@ mutants.workspace = true
 shiplog-engine = { path = "../../crates/shiplog-engine", version = "0.6.0" }
 shiplog-ingest-github = { path = "../../crates/shiplog-ingest-github", version = "0.6.0" }
 shiplog-ingest-json = { path = "../../crates/shiplog-ingest-json", version = "0.6.0" }
-shiplog-ingest-manual = { path = "../../crates/shiplog-ingest-manual", version = "0.6.0" }
 shiplog-cache = { path = "../../crates/shiplog-cache", version = "0.6.0" }
 shiplog-workstreams = { path = "../../crates/shiplog-workstreams", version = "0.6.0" }
 shiplog-redact = { path = "../../crates/shiplog-redact", version = "0.6.0" }
@@ -46,16 +46,14 @@ shiplog-cluster-llm = { path = "../../crates/shiplog-cluster-llm", version = "0.
 
 [dev-dependencies]
 tempfile.workspace = true
-serde_yaml.workspace = true
 anyhow.workspace = true
 chrono.workspace = true
 assert_cmd.workspace = true
 predicates.workspace = true
-insta.workspace = true
+insta = { workspace = true, features = ["redactions"] }
 proptest.workspace = true
 shiplog-engine = { path = "../../crates/shiplog-engine", version = "0.6.0" }
 shiplog-ingest-json = { path = "../../crates/shiplog-ingest-json", version = "0.6.0" }
-shiplog-ingest-manual = { path = "../../crates/shiplog-ingest-manual", version = "0.6.0" }
 shiplog-ports = { path = "../../crates/shiplog-ports", version = "0.6.0" }
 shiplog-schema = { path = "../../crates/shiplog-schema", version = "0.6.0" }
 shiplog-redact = { path = "../../crates/shiplog-redact", version = "0.6.0" }

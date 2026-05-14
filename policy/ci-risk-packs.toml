@@ -59,6 +59,8 @@ id = "source-adapter"
 description = "Source ingest adapters."
 paths = [
   "crates/shiplog-ingest-*/**",
+  "apps/shiplog/src/ingest/**",
+  "apps/shiplog/tests/ingest_*.rs",
 ]
 labels = ["bdd"]
 selected_lanes = ["bdd", "mutation_targeted"]
@@ -67,7 +69,8 @@ selected_lanes = ["bdd", "mutation_targeted"]
 id = "manual-journal"
 description = "Manual event capture and journal commands."
 paths = [
-  "crates/shiplog-ingest-manual/**",
+  "apps/shiplog/src/ingest/manual/**",
+  "apps/shiplog/tests/ingest_manual*.rs",
   "apps/shiplog/src/**/journal*.rs",
 ]
 labels = ["property-tests"]

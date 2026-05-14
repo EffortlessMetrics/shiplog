@@ -41,7 +41,8 @@
 #
 # shiplog-ingest-github - GitHub API adapter
 # shiplog-ingest-json   - JSONL import adapter
-# shiplog-ingest-manual - manual YAML ingest adapter
+# apps/shiplog/src/ingest/manual
+#                      - manual YAML ingest adapter
 # apps/shiplog/src/ingest/git.rs
 #                      - local git-log ingest adapter
 # apps/shiplog/src/ingest/gitlab.rs

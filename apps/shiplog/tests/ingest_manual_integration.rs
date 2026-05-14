@@ -1,7 +1,9 @@
 //! Integration test proving manual ingest delegates to the manual event contract.
 
 use chrono::NaiveDate;
-use shiplog_ingest_manual::{ManualIngestor, create_empty_file, create_entry, write_manual_events};
+use shiplog::ingest::manual::{
+    ManualIngestor, create_empty_file, create_entry, write_manual_events,
+};
 use shiplog_ports::Ingestor;
 use tempfile::tempdir;
 

@@ -63,6 +63,8 @@ Landed:
   `refactor(crate): inline linear adapter`
 - [#262](https://github.com/EffortlessMetrics/shiplog/pull/262):
   `refactor(crate): inline jira adapter`
+- [#263](https://github.com/EffortlessMetrics/shiplog/pull/263):
+  `refactor(crate): inline gitlab adapter`
 
 The remaining risk is dependency leakage: `shiplog` can be publish-allowed but
 still resolve historical 0.6 implementation crates if versioned path

@@ -874,6 +874,446 @@ snippet = "serde_json::from_value(payload).unwrap();"
 count = 1
 
 [[entry]]
+path = "apps/shiplog/src/ingest/manual/events.rs"
+family = "expect"
+selector_kind = "method-call"
+selector_callee = "Option/Result::expect"
+snippet = '.expect("NaiveDate -> NaiveDateTime conversion should be valid")'
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/events.rs"
+family = "panic"
+selector_kind = "macro-call"
+selector_callee = "panic"
+snippet = 'panic!("expected Manual payload");'
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/events.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = ".prop_map(|offset| NaiveDate::from_num_days_from_ce_opt(offset).unwrap())"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/events.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "ManualDate::Single(NaiveDate::from_ymd_opt(2025, 1, 1).unwrap()),"
+count = 9
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/events.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "ManualDate::Single(NaiveDate::from_ymd_opt(2025, 1, 15).unwrap()),"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/events.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "ManualDate::Single(NaiveDate::from_ymd_opt(2025, 2, 1).unwrap()),"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/events.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "ManualDate::Single(NaiveDate::from_ymd_opt(2025, 2, 15).unwrap()),"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/events.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "ManualDate::Single(NaiveDate::from_ymd_opt(2025, 3, 1).unwrap()),"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/events.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "ManualDate::Single(NaiveDate::from_ymd_opt(2025, 3, 15).unwrap()),"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/events.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "ManualDate::Single(NaiveDate::from_ymd_opt(2025, 6, 15).unwrap()),"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/events.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "end: NaiveDate::from_ymd_opt(2025, 1, 20).unwrap(),"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/events.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "end: NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/events.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "end: NaiveDate::from_ymd_opt(2025, 2, 3).unwrap(),"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/events.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "end: NaiveDate::from_ymd_opt(2025, 2, 5).unwrap(),"
+count = 2
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/events.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "end: NaiveDate::from_ymd_opt(2025, 3, 5).unwrap(),"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/events.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "end: NaiveDate::from_ymd_opt(2025, 4, 1).unwrap(),"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/events.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let d = ManualDate::Single(NaiveDate::from_ymd_opt(2025, 1, 1).unwrap());"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/events.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let d = NaiveDate::from_ymd_opt(2025, 6, 15).unwrap();"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/events.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let e = NaiveDate::from_ymd_opt(2025, 1, 31).unwrap();"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/events.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let read = read_manual_events(&path).unwrap();"
+count = 3
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/events.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let s = NaiveDate::from_ymd_opt(2025, 1, 1).unwrap();"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/events.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let temp = tempfile::tempdir().unwrap();"
+count = 4
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/events.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "since: NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),"
+count = 6
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/events.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "since: NaiveDate::from_ymd_opt(2025, 1, 15).unwrap(),"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/events.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "since: NaiveDate::from_ymd_opt(2025, 3, 1).unwrap(),"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/events.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "start: NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/events.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "start: NaiveDate::from_ymd_opt(2025, 1, 10).unwrap(),"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/events.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "start: NaiveDate::from_ymd_opt(2025, 1, 25).unwrap(),"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/events.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "start: NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),"
+count = 2
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/events.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "start: NaiveDate::from_ymd_opt(2025, 3, 1).unwrap(),"
+count = 2
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/events.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = 'std::fs::write(&path, "not: [valid: yaml: {{{").unwrap();'
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/events.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "until: NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),"
+count = 6
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/events.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "until: NaiveDate::from_ymd_opt(2025, 2, 15).unwrap(),"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/events.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "until: NaiveDate::from_ymd_opt(2025, 4, 1).unwrap(),"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/events.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "write_manual_events(&path, &file).unwrap();"
+count = 3
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/mod.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),"
+count = 2
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/mod.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "NaiveDate::from_ymd_opt(2025, 3, 1).unwrap(),"
+count = 8
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/mod.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "NaiveDate::from_ymd_opt(2025, 4, 1).unwrap(),"
+count = 10
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/mod.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "date: ManualDate::Single(NaiveDate::from_ymd_opt(2025, 2, 28).unwrap()),"
+count = 2
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/mod.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "date: ManualDate::Single(NaiveDate::from_ymd_opt(2025, 3, 1).unwrap()),"
+count = 2
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/mod.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "date: ManualDate::Single(NaiveDate::from_ymd_opt(2025, 3, 15).unwrap()),"
+count = 2
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/mod.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "date: ManualDate::Single(NaiveDate::from_ymd_opt(2025, 4, 1).unwrap()),"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/mod.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "date: ManualDate::Single(NaiveDate::from_ymd_opt(2025, 6, 15).unwrap()),"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/mod.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "end: NaiveDate::from_ymd_opt(2025, 3, 15).unwrap(),"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/mod.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "end: NaiveDate::from_ymd_opt(2025, 4, 15).unwrap(),"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/mod.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "end: NaiveDate::from_ymd_opt(2025, 6, 1).unwrap(),"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/mod.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let output = ing.ingest().unwrap();"
+count = 9
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/mod.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let output2 = ing2.ingest().unwrap();"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/mod.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let read = read_manual_events(&path).unwrap();"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/mod.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let temp = tempfile::tempdir().unwrap();"
+count = 10
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/mod.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "start: NaiveDate::from_ymd_opt(2025, 2, 15).unwrap(),"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/mod.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "start: NaiveDate::from_ymd_opt(2025, 3, 15).unwrap(),"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/mod.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "start: NaiveDate::from_ymd_opt(2025, 5, 1).unwrap(),"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/mod.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "write_manual_events(&path, &file).unwrap();"
+count = 9
+
+[[entry]]
+path = "apps/shiplog/src/ingest/manual/mod.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "write_manual_events(&path, &file2).unwrap();"
+count = 1
+
+[[entry]]
 path = "apps/shiplog/src/main.rs"
 family = "expect"
 selector_kind = "method-call"
@@ -2415,446 +2855,6 @@ family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
 snippet = 'writeln!(f, "{}", serde_json::to_string(&ev2).unwrap()).unwrap();'
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/events.rs"
-family = "expect"
-selector_kind = "method-call"
-selector_callee = "Option/Result::expect"
-snippet = '.expect("NaiveDate -> NaiveDateTime conversion should be valid")'
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/events.rs"
-family = "panic"
-selector_kind = "macro-call"
-selector_callee = "panic"
-snippet = 'panic!("expected Manual payload");'
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/events.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = ".prop_map(|offset| NaiveDate::from_num_days_from_ce_opt(offset).unwrap())"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/events.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "ManualDate::Single(NaiveDate::from_ymd_opt(2025, 1, 1).unwrap()),"
-count = 9
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/events.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "ManualDate::Single(NaiveDate::from_ymd_opt(2025, 1, 15).unwrap()),"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/events.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "ManualDate::Single(NaiveDate::from_ymd_opt(2025, 2, 1).unwrap()),"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/events.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "ManualDate::Single(NaiveDate::from_ymd_opt(2025, 2, 15).unwrap()),"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/events.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "ManualDate::Single(NaiveDate::from_ymd_opt(2025, 3, 1).unwrap()),"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/events.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "ManualDate::Single(NaiveDate::from_ymd_opt(2025, 3, 15).unwrap()),"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/events.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "ManualDate::Single(NaiveDate::from_ymd_opt(2025, 6, 15).unwrap()),"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/events.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "end: NaiveDate::from_ymd_opt(2025, 1, 20).unwrap(),"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/events.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "end: NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/events.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "end: NaiveDate::from_ymd_opt(2025, 2, 3).unwrap(),"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/events.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "end: NaiveDate::from_ymd_opt(2025, 2, 5).unwrap(),"
-count = 2
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/events.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "end: NaiveDate::from_ymd_opt(2025, 3, 5).unwrap(),"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/events.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "end: NaiveDate::from_ymd_opt(2025, 4, 1).unwrap(),"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/events.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let d = ManualDate::Single(NaiveDate::from_ymd_opt(2025, 1, 1).unwrap());"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/events.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let d = NaiveDate::from_ymd_opt(2025, 6, 15).unwrap();"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/events.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let e = NaiveDate::from_ymd_opt(2025, 1, 31).unwrap();"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/events.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let read = read_manual_events(&path).unwrap();"
-count = 3
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/events.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let s = NaiveDate::from_ymd_opt(2025, 1, 1).unwrap();"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/events.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let temp = tempfile::tempdir().unwrap();"
-count = 4
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/events.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "since: NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),"
-count = 6
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/events.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "since: NaiveDate::from_ymd_opt(2025, 1, 15).unwrap(),"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/events.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "since: NaiveDate::from_ymd_opt(2025, 3, 1).unwrap(),"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/events.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "start: NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/events.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "start: NaiveDate::from_ymd_opt(2025, 1, 10).unwrap(),"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/events.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "start: NaiveDate::from_ymd_opt(2025, 1, 25).unwrap(),"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/events.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "start: NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),"
-count = 2
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/events.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "start: NaiveDate::from_ymd_opt(2025, 3, 1).unwrap(),"
-count = 2
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/events.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = 'std::fs::write(&path, "not: [valid: yaml: {{{").unwrap();'
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/events.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "until: NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),"
-count = 6
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/events.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "until: NaiveDate::from_ymd_opt(2025, 2, 15).unwrap(),"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/events.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "until: NaiveDate::from_ymd_opt(2025, 4, 1).unwrap(),"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/events.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "write_manual_events(&path, &file).unwrap();"
-count = 3
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),"
-count = 2
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "NaiveDate::from_ymd_opt(2025, 3, 1).unwrap(),"
-count = 8
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "NaiveDate::from_ymd_opt(2025, 4, 1).unwrap(),"
-count = 10
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "date: ManualDate::Single(NaiveDate::from_ymd_opt(2025, 2, 28).unwrap()),"
-count = 2
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "date: ManualDate::Single(NaiveDate::from_ymd_opt(2025, 3, 1).unwrap()),"
-count = 2
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "date: ManualDate::Single(NaiveDate::from_ymd_opt(2025, 3, 15).unwrap()),"
-count = 2
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "date: ManualDate::Single(NaiveDate::from_ymd_opt(2025, 4, 1).unwrap()),"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "date: ManualDate::Single(NaiveDate::from_ymd_opt(2025, 6, 15).unwrap()),"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "end: NaiveDate::from_ymd_opt(2025, 3, 15).unwrap(),"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "end: NaiveDate::from_ymd_opt(2025, 4, 15).unwrap(),"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "end: NaiveDate::from_ymd_opt(2025, 6, 1).unwrap(),"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let output = ing.ingest().unwrap();"
-count = 9
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let output2 = ing2.ingest().unwrap();"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let read = read_manual_events(&path).unwrap();"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let temp = tempfile::tempdir().unwrap();"
-count = 10
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "start: NaiveDate::from_ymd_opt(2025, 2, 15).unwrap(),"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "start: NaiveDate::from_ymd_opt(2025, 3, 15).unwrap(),"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "start: NaiveDate::from_ymd_opt(2025, 5, 1).unwrap(),"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "write_manual_events(&path, &file).unwrap();"
-count = 9
-
-[[entry]]
-path = "crates/shiplog-ingest-manual/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "write_manual_events(&path, &file2).unwrap();"
 count = 1
 
 [[entry]]

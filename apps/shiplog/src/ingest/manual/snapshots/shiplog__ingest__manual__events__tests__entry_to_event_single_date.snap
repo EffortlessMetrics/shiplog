@@ -1,5 +1,5 @@
 ---
-source: crates/shiplog-ingest-manual/src/events.rs
+source: apps/shiplog/src/ingest/manual/events.rs
 assertion_line: 547
 expression: ev
 ---

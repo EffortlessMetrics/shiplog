@@ -30,7 +30,6 @@ examine_globs = [
   "crates/shiplog-workstream-layout/src/**/*.rs",
   "crates/shiplog-ingest-github/src/**/*.rs",
   "crates/shiplog-ingest-json/src/**/*.rs",
-  "crates/shiplog-ingest-manual/src/**/*.rs",
   "crates/shiplog-cache/src/**/*.rs",
   "crates/shiplog-template/src/**/*.rs",
   "crates/shiplog-merge/src/**/*.rs",

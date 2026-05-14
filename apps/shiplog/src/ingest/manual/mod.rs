@@ -29,7 +29,7 @@ pub use events::{
 /// # Examples
 ///
 /// ```rust,no_run
-/// use shiplog_ingest_manual::ManualIngestor;
+/// use shiplog::ingest::manual::ManualIngestor;
 /// use shiplog_ports::Ingestor;
 /// use chrono::NaiveDate;
 ///
@@ -55,7 +55,7 @@ impl ManualIngestor {
     /// # Examples
     ///
     /// ```
-    /// use shiplog_ingest_manual::ManualIngestor;
+    /// use shiplog::ingest::manual::ManualIngestor;
     /// use chrono::NaiveDate;
     ///
     /// let ingestor = ManualIngestor::new(

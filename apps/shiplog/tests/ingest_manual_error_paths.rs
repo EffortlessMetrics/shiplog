@@ -1,10 +1,10 @@
-//! Error-path and error message quality tests for shiplog-ingest-manual.
+//! Error-path and error message quality tests for the manual ingest module.
 //!
 //! Verifies that YAML parse errors include context, invalid field values
 //! produce clear messages, and corrupt files don't cause panics.
 
 use chrono::NaiveDate;
-use shiplog_ingest_manual::{ManualIngestor, read_manual_events, write_manual_events};
+use shiplog::ingest::manual::{ManualIngestor, read_manual_events, write_manual_events};
 use shiplog_ports::Ingestor;
 
 fn date(y: i32, m: u32, d: u32) -> NaiveDate {
@@ -92,7 +92,7 @@ fn write_to_nonexistent_directory_returns_error() {
     // Drop the temp dir so even the root is gone
     let kept = deep_path.clone();
     drop(temp);
-    let file = shiplog_ingest_manual::create_empty_file();
+    let file = shiplog::ingest::manual::create_empty_file();
     let result = write_manual_events(&kept, &file);
     assert!(result.is_err(), "writing to nonexistent dir should fail");
 }

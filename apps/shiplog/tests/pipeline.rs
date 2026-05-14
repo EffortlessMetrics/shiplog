@@ -3,10 +3,10 @@
 
 use anyhow::Result;
 use chrono::{NaiveDate, Utc};
+use shiplog::ingest::manual::{ManualIngestor, write_manual_events};
 use shiplog::render::md::MarkdownRenderer;
 use shiplog_engine::{ConflictResolution, Engine, WorkstreamSource};
 use shiplog_ingest_json::JsonIngestor;
-use shiplog_ingest_manual::ManualIngestor;
 use shiplog_ports::{IngestOutput, Ingestor, Redactor, Renderer, WorkstreamClusterer};
 use shiplog_redact::DeterministicRedactor;
 use shiplog_schema::bundle::BundleProfile;
@@ -158,7 +158,7 @@ fn multi_source_json_plus_manual_combined_output() -> Result<()> {
             impact: Some("Reduced error rate from 5% to 0.1%".to_string()),
         }],
     };
-    shiplog_ingest_manual::write_manual_events(&manual_path, &manual_file)?;
+    write_manual_events(&manual_path, &manual_file)?;
 
     // Ingest from both sources
     let json_ingest = fixture_ingest();

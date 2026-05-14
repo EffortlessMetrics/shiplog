@@ -1,11 +1,11 @@
-//! Edge-case tests for shiplog-ingest-manual.
+//! Edge-case tests for the manual ingest module.
 //!
 //! Covers YAML parsing edge cases (malformed dates, missing fields, extra
 //! fields), multiple event types in one file, unicode in descriptions,
 //! and empty events files.
 
 use chrono::{NaiveDate, Utc};
-use shiplog_ingest_manual::{ManualIngestor, read_manual_events, write_manual_events};
+use shiplog::ingest::manual::{ManualIngestor, read_manual_events, write_manual_events};
 use shiplog_ports::Ingestor;
 use shiplog_schema::event::{
     Link, ManualDate, ManualEventEntry, ManualEventType, ManualEventsFile,
