@@ -1846,7 +1846,6 @@ dependencies = [
  "serde_json",
  "serde_yaml_ng",
  "sha2 0.11.0",
- "shiplog-coverage",
  "shiplog-engine",
  "shiplog-ids",
  "shiplog-ports",
@@ -1888,14 +1887,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "shiplog-coverage"
-version = "0.6.0"
-dependencies = [
- "chrono",
- "shiplog-schema",
-]
-
-[[package]]
 name = "shiplog-engine"
 version = "0.6.0"
 dependencies = [
@@ -1925,7 +1916,6 @@ dependencies = [
  "sha2 0.10.9",
  "shiplog",
  "shiplog-cluster-llm",
- "shiplog-coverage",
  "shiplog-ids",
  "shiplog-ports",
  "shiplog-redact",

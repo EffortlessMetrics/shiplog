@@ -3,7 +3,7 @@
 //! Exercises coverage domain logic through Given/When/Then scenarios.
 
 use chrono::NaiveDate;
-use shiplog_coverage::{day_windows, month_windows, window_len_days};
+use shiplog::coverage::{day_windows, month_windows, window_len_days};
 use shiplog_schema::coverage::{Completeness, CoverageSlice, TimeWindow};
 use shiplog_testkit::bdd::Scenario;
 use shiplog_testkit::bdd::assertions::*;
@@ -517,7 +517,7 @@ fn week_windows_partition_correctly() {
         .when("week windows are generated", |ctx| {
             let since = NaiveDate::from_ymd_opt(2025, 3, 3).unwrap();
             let until = NaiveDate::from_ymd_opt(2025, 3, 17).unwrap();
-            let windows = shiplog_coverage::week_windows(since, until);
+            let windows = shiplog::coverage::week_windows(since, until);
 
             ctx.numbers
                 .insert("window_count".into(), windows.len() as u64);

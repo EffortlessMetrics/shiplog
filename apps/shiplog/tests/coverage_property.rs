@@ -4,7 +4,7 @@
 
 use chrono::NaiveDate;
 use proptest::prelude::*;
-use shiplog_coverage::{day_windows, month_windows, week_windows, window_len_days};
+use shiplog::coverage::{day_windows, month_windows, week_windows, window_len_days};
 use shiplog_schema::coverage::TimeWindow;
 use shiplog_testkit::proptest::strategy_naive_date;
 

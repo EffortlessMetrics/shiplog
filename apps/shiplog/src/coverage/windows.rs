@@ -9,7 +9,7 @@ use shiplog_schema::coverage::TimeWindow;
 ///
 /// ```
 /// use chrono::NaiveDate;
-/// use shiplog_coverage::month_windows;
+/// use shiplog::coverage::month_windows;
 ///
 /// let since = NaiveDate::from_ymd_opt(2025, 1, 15).unwrap();
 /// let until = NaiveDate::from_ymd_opt(2025, 3, 2).unwrap();
@@ -50,7 +50,7 @@ pub fn month_windows(since: NaiveDate, until: NaiveDate) -> Vec<TimeWindow> {
 ///
 /// ```
 /// use chrono::NaiveDate;
-/// use shiplog_coverage::week_windows;
+/// use shiplog::coverage::week_windows;
 ///
 /// let since = NaiveDate::from_ymd_opt(2025, 1, 1).unwrap();
 /// let until = NaiveDate::from_ymd_opt(2025, 1, 15).unwrap();
@@ -89,7 +89,7 @@ pub fn week_windows(since: NaiveDate, until: NaiveDate) -> Vec<TimeWindow> {
 ///
 /// ```
 /// use chrono::NaiveDate;
-/// use shiplog_coverage::day_windows;
+/// use shiplog::coverage::day_windows;
 ///
 /// let since = NaiveDate::from_ymd_opt(2025, 1, 1).unwrap();
 /// let until = NaiveDate::from_ymd_opt(2025, 1, 4).unwrap();
@@ -125,7 +125,7 @@ pub fn day_windows(since: NaiveDate, until: NaiveDate) -> Vec<TimeWindow> {
 ///
 /// ```
 /// use chrono::NaiveDate;
-/// use shiplog_coverage::window_len_days;
+/// use shiplog::coverage::window_len_days;
 /// use shiplog_schema::coverage::TimeWindow;
 ///
 /// let w = TimeWindow {

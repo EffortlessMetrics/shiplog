@@ -2279,6 +2279,7 @@ dependencies = [
  "assert_cmd",
  "chrono",
  "clap",
+ "criterion",
  "git2",
  "hex",
  "insta",
@@ -2294,7 +2295,6 @@ dependencies = [
  "serde_yaml_ng",
  "sha2 0.11.0",
  "shiplog-cluster-llm",
- "shiplog-coverage",
  "shiplog-engine",
  "shiplog-ids",
  "shiplog-ports",
@@ -2339,21 +2339,6 @@ dependencies = [
  "shiplog-ports",
  "shiplog-schema",
  "shiplog-workstreams",
-]
-
-[[package]]
-name = "shiplog-coverage"
-version = "0.6.0"
-dependencies = [
- "anyhow",
- "chrono",
- "criterion",
- "insta",
- "proptest",
- "serde_json",
- "shiplog-ids",
- "shiplog-schema",
- "shiplog-testkit",
 ]
 
 [[package]]
@@ -2480,7 +2465,6 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml_ng",
- "shiplog-coverage",
  "shiplog-engine",
  "shiplog-ids",
  "shiplog-merge",

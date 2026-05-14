@@ -44,9 +44,9 @@ PR plan + the always-on PR-fast lanes (which are still gated by the
 | `bundle-share` | Bundle integrity, share manifests, share verification | `crates/shiplog-bundle/**`, `apps/shiplog/src/**/share*.rs`, `apps/shiplog/src/**/manifest*.rs` | `mutation` | `mutation_targeted` |
 | `report-schema` | Intake report schema, agent pack export, contracts/schemas | `contracts/schemas/**`, `crates/shiplog-engine/src/**/report*.rs`, `crates/shiplog-engine/src/**/intake*.rs`, `apps/shiplog/src/**/report*.rs` | `property-tests` | `property` |
 | `schema-ids` | Stable contract crates (schema, ids, ports) | `crates/shiplog-schema/**`, `crates/shiplog-ids/**`, `crates/shiplog-ports/**` | `mutation` | `mutation_targeted`, `property` |
-| `source-adapter` | Source ingest adapters | `crates/shiplog-ingest-*/**`, `apps/shiplog/src/ingest/**`, `apps/shiplog/tests/ingest_*.rs` | `bdd` | `bdd`, `mutation_targeted` |
+| `source-adapter` | Source ingest adapters | `apps/shiplog/src/ingest/**`, `apps/shiplog/tests/ingest_*.rs` | `bdd` | `bdd`, `mutation_targeted` |
 | `manual-journal` | Manual event capture and journal commands | `apps/shiplog/src/ingest/manual/**`, `apps/shiplog/tests/ingest_manual*.rs`, `apps/shiplog/src/**/journal*.rs` | `property-tests` | `property` |
-| `period-window` | Period and window resolution, named periods | `crates/shiplog-coverage/src/**/period*.rs`, `crates/shiplog-coverage/src/**/window*.rs`, `apps/shiplog/src/**/period*.rs` | `property-tests` | `property` |
+| `period-window` | Period and window resolution, named periods | `apps/shiplog/src/coverage/**/period*.rs`, `apps/shiplog/src/coverage/**/window*.rs`, `apps/shiplog/src/**/period*.rs` | `property-tests` | `property` |
 | `cli-product` | CLI / user-flow surface | `apps/shiplog/**` | `bdd` | `bdd` |
 | `release-package` | Release scripts, release.yml, package metadata, version alignment | `scripts/**`, `.github/workflows/release.yml`, `Cargo.toml`, `**/Cargo.toml` | `release-check` | `release_preflight` |
 | `policy-workflows` | Policy ledgers, xtask, GitHub Actions workflows | `policy/**`, `xtask/**`, `.github/workflows/**` | `full-ci` | `pr_plan`, `ci_check`, `ci_check_windows`, `ci_deny`, `ci_policy` |

@@ -1,5 +1,5 @@
 use chrono::NaiveDate;
-use shiplog_coverage::window_len_days;
+use shiplog::coverage::window_len_days;
 use shiplog_schema::coverage::TimeWindow;
 
 #[test]

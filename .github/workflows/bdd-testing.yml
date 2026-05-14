@@ -112,7 +112,14 @@ jobs:
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Test ingest crates
-        run: cargo test -p shiplog-ingest-gitlab -p shiplog-ingest-jira -p shiplog-ingest-linear -p shiplog-ingest-github -p shiplog-ingest-git -p shiplog-ingest-manual -p shiplog-ingest-json -- --test-threads=4
+        run: |
+          cargo test -p shiplog --test ingest_gitlab -- --test-threads=4
+          cargo test -p shiplog --test ingest_jira -- --test-threads=4
+          cargo test -p shiplog --test ingest_linear -- --test-threads=4
+          cargo test -p shiplog --test ingest_github_integration -- --test-threads=4
+          cargo test -p shiplog --test ingest_git -- --test-threads=4
+          cargo test -p shiplog --test ingest_manual_integration -- --test-threads=4
+          cargo test -p shiplog --test ingest_json -- --test-threads=4
 
   render-and-trust-tests:
     name: Render, Trust, and Contract Crates
@@ -139,7 +146,11 @@ jobs:
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Test stable contracts and trust surfaces
-        run: cargo test -p shiplog-ids -p shiplog-schema -p shiplog-ports -p shiplog-coverage -p shiplog-cache -p shiplog-workstreams -p shiplog-redact -p shiplog-bundle -p shiplog-engine -p shiplog-cluster-llm -- --test-threads=4
+        run: |
+          cargo test -p shiplog-ids -p shiplog-schema -p shiplog-ports -p shiplog-workstreams -p shiplog-redact -p shiplog-bundle -p shiplog-engine -p shiplog-cluster-llm -- --test-threads=4
+          cargo test -p shiplog --test coverage_integration -- --test-threads=4
+          cargo test -p shiplog --test cache -- --test-threads=4
+          cargo test -p shiplog --test cache_expiry -- --test-threads=4
 
   optional-surface-tests:
     name: Optional Surface Tests

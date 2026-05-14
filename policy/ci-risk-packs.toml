@@ -58,7 +58,7 @@ selected_lanes = ["mutation_targeted", "property"]
 id = "source-adapter"
 description = "Source ingest adapters."
 paths = [
-  "crates/shiplog-ingest-*/**",
+  "apps/shiplog/src/ingest/**",
   "apps/shiplog/src/ingest/**",
   "apps/shiplog/tests/ingest_*.rs",
 ]
@@ -80,8 +80,8 @@ selected_lanes = ["property"]
 id = "period-window"
 description = "Period and window resolution, named periods in shiplog.toml."
 paths = [
-  "crates/shiplog-coverage/src/**/period*.rs",
-  "crates/shiplog-coverage/src/**/window*.rs",
+  "apps/shiplog/src/coverage/**/period*.rs",
+  "apps/shiplog/src/coverage/**/window*.rs",
   "apps/shiplog/src/**/period*.rs",
 ]
 labels = ["property-tests"]

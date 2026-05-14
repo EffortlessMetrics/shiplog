@@ -1,5 +1,5 @@
 use chrono::NaiveDate;
-use shiplog_coverage::month_windows;
+use shiplog::coverage::month_windows;
 
 #[test]
 fn month_windows_is_empty_for_empty_range() {

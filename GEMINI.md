@@ -6,7 +6,7 @@
 
 ## Architecture
 
-This project is a module-first Rust workspace following **Clean Architecture** principles (Ports & Adapters). Public crates are reserved for product/API contracts, trust surfaces, real adapters, or heavy optional boundaries. New implementation seams should start as owner modules; see [`API_SURFACE.md`](API_SURFACE.md) before adding or promoting package boundaries.
+This project is a module-first Rust workspace following **Clean Architecture** principles (Ports & Adapters). Public crates are reserved for deliberate external contracts. The 0.7 contraction lane is collapsing earlier implementation crates into owner modules; new implementation seams should start as owner modules. See [`API_SURFACE.md`](API_SURFACE.md) before adding or promoting package boundaries.
 
 ### Workspace Structure
 
@@ -17,17 +17,15 @@ This project is a module-first Rust workspace following **Clean Architecture** p
         *   `shiplog-ports`: Trait definitions (Ingestor, Renderer, Redactor, WorkstreamClusterer).
         *   `shiplog-engine`: Orchestration logic (ingest → normalize → cluster → render).
         *   `shiplog-workstreams`: Logic for clustering events into workstreams.
-        *   `shiplog-coverage`: Logic for slicing and completeness reporting.
         *   `shiplog-ids`: Type-safe stable ID generation (SHA256-based).
         *   `shiplog-redact`: Deterministic HMAC-SHA256 redaction (internal/manager/public profiles).
+        *   Coverage/time-window support now lives under `apps/shiplog/src/coverage`.
     *   **Adapters (Infrastructure):**
-        *   `shiplog-ingest-github`: GitHub API adapter (adaptive date slicing, SQLite caching).
-        *   `shiplog-ingest-json`: JSONL import adapter.
-        *   `shiplog-ingest-manual`: Manual entry adapter (YAML-based non-GitHub events).
-        *   `shiplog-render-md`: Markdown renderer (uses `insta` for snapshots).
-        *   `shiplog-render-json`: JSON renderer.
+        *   Source adapters live under `apps/shiplog/src/ingest/`.
+        *   Markdown rendering lives under `apps/shiplog/src/render/`.
+        *   JSON artifact writing lives in the engine artifact writer for this contraction slice.
         *   `shiplog-bundle`: Zip export functionality.
-        *   `shiplog-cache`: SQLite-backed API response caching (TTL-based, reduces GitHub API calls).
+        *   Cache support lives under `apps/shiplog/src/cache/`.
     *   **Clustering:**
         *   `shiplog-cluster-llm`: Optional LLM-assisted workstream clustering (feature-gated in CLI).
     *   **Testing:**

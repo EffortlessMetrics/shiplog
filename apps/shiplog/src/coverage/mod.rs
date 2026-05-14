@@ -1,13 +1,13 @@
 #![warn(missing_docs)]
 //! Date-window utilities for coverage and ingestion slicing.
 //!
-//! This crate owns the coverage-facing windowing primitives that keep query
+//! This module owns the coverage-facing windowing primitives that keep query
 //! windows explicit, contiguous, and auditable.
 //!
 //! # Examples
 //!
 //! ```
-//! use shiplog_coverage::{month_windows, week_windows, day_windows, window_len_days};
+//! use shiplog::coverage::{month_windows, week_windows, day_windows, window_len_days};
 //! use chrono::NaiveDate;
 //!
 //! let since = NaiveDate::from_ymd_opt(2025, 1, 1).unwrap();

@@ -45,12 +45,6 @@ publish = false
 reason = "Product orchestration support, not a forward public import surface."
 
 [[package]]
-name = "shiplog-coverage"
-tier = "internal-module"
-publish = false
-reason = "Coverage support should collapse into owner modules."
-
-[[package]]
 name = "shiplog-workstreams"
 tier = "internal-module"
 publish = false
@@ -147,3 +141,8 @@ reason = "0.6 JSON import adapter crate collapsed into shiplog::ingest::json."
 name = "shiplog-cache"
 tier = "historical-0.6"
 reason = "0.6 cache/freshness crate collapsed into shiplog::cache."
+
+[[historical]]
+name = "shiplog-coverage"
+tier = "historical-0.6"
+reason = "0.6 coverage/time-window crate collapsed into shiplog::coverage."

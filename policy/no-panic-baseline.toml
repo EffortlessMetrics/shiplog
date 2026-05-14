@@ -2498,7 +2498,7 @@ snippet = "let result = parse_llm_response(&json.to_string(), &events).unwrap();
 count = 7
 
 [[entry]]
-path = "crates/shiplog-coverage/benches/coverage.rs"
+path = "apps/shiplog/benches/coverage.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2506,7 +2506,7 @@ snippet = "let since = NaiveDate::from_ymd_opt(2023, 1, 1).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-coverage/benches/coverage.rs"
+path = "apps/shiplog/benches/coverage.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2514,7 +2514,7 @@ snippet = "let since = NaiveDate::from_ymd_opt(2025, 1, 1).unwrap();"
 count = 7
 
 [[entry]]
-path = "crates/shiplog-coverage/benches/coverage.rs"
+path = "apps/shiplog/benches/coverage.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2522,7 +2522,7 @@ snippet = "let since = NaiveDate::from_ymd_opt(2025, 1, 15).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-coverage/benches/coverage.rs"
+path = "apps/shiplog/benches/coverage.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2530,7 +2530,7 @@ snippet = "let until = NaiveDate::from_ymd_opt(2025, 2, 1).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-coverage/benches/coverage.rs"
+path = "apps/shiplog/benches/coverage.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2538,7 +2538,7 @@ snippet = "let until = NaiveDate::from_ymd_opt(2025, 4, 1).unwrap();"
 count = 3
 
 [[entry]]
-path = "crates/shiplog-coverage/benches/coverage.rs"
+path = "apps/shiplog/benches/coverage.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2546,7 +2546,7 @@ snippet = "let until = NaiveDate::from_ymd_opt(2025, 6, 20).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-coverage/benches/coverage.rs"
+path = "apps/shiplog/benches/coverage.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2554,7 +2554,7 @@ snippet = "let until = NaiveDate::from_ymd_opt(2026, 1, 1).unwrap();"
 count = 3
 
 [[entry]]
-path = "crates/shiplog-coverage/benches/coverage.rs"
+path = "apps/shiplog/benches/coverage.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2562,7 +2562,7 @@ snippet = "let year_since = NaiveDate::from_ymd_opt(2025, 1, 1).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-coverage/benches/coverage.rs"
+path = "apps/shiplog/benches/coverage.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2570,7 +2570,7 @@ snippet = "let year_until = NaiveDate::from_ymd_opt(2026, 1, 1).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-coverage/src/windows.rs"
+path = "apps/shiplog/src/coverage/windows.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2578,7 +2578,7 @@ snippet = "NaiveDate::from_ymd_opt(ny, nm, 1).unwrap()"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-coverage/src/windows.rs"
+path = "apps/shiplog/src/coverage/windows.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"

@@ -5,7 +5,7 @@
 
 use anyhow::Result;
 use chrono::NaiveDate;
-use shiplog_coverage::{day_windows, month_windows, week_windows, window_len_days};
+use shiplog::coverage::{day_windows, month_windows, week_windows, window_len_days};
 use shiplog_schema::coverage::{Completeness, CoverageSlice, TimeWindow};
 use shiplog_testkit::bdd::builders::CoverageBuilder;
 

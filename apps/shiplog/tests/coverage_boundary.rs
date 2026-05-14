@@ -3,7 +3,7 @@
 //! Covers 0%/100% coverage, single-event completeness, and very large event counts.
 
 use chrono::NaiveDate;
-use shiplog_coverage::{day_windows, month_windows, week_windows, window_len_days};
+use shiplog::coverage::{day_windows, month_windows, week_windows, window_len_days};
 use shiplog_schema::coverage::{Completeness, CoverageSlice, TimeWindow};
 use shiplog_testkit::bdd::builders::CoverageBuilder;
 

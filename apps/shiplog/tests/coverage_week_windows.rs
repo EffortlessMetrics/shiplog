@@ -1,5 +1,5 @@
 use chrono::{Datelike, NaiveDate, Weekday};
-use shiplog_coverage::week_windows;
+use shiplog::coverage::week_windows;
 
 #[test]
 fn week_windows_is_empty_for_empty_range() {

@@ -74,7 +74,7 @@ jobs:
           }
           cargo mutants -p shiplog-schema --timeout 180 --copy-target=false || fail=1
           cargo mutants -p shiplog-redact --timeout 180 --copy-target=false || fail=1
-          run_mutants_keepalive shiplog-coverage 600 || fail=1
+          echo "shiplog::coverage is inlined; covered by the shiplog package mutation target."
           cargo mutants -p shiplog-ids --timeout 120 --copy-target=false || fail=1
           cargo mutants -p shiplog-ports --timeout 120 --copy-target=false || fail=1
           cargo mutants -p shiplog-bundle --timeout 150 --copy-target=false || fail=1
@@ -89,7 +89,7 @@ jobs:
           echo "Testing Tier 2: pipeline and output crates..."
           cargo mutants -p shiplog-engine --timeout 150 --copy-target=false || fail=1
           cargo mutants -p shiplog-workstreams --timeout 150 --copy-target=false || fail=1
-          cargo mutants -p shiplog-cache --timeout 120 --copy-target=false || fail=1
+          echo "shiplog::cache is inlined; covered by the shiplog package mutation target."
           cargo mutants -p shiplog-merge --timeout 120 --copy-target=false || fail=1
           exit $fail
 
@@ -100,13 +100,7 @@ jobs:
           set +e
           fail=0
           echo "Testing Tier 3: adapters and optional boundaries..."
-          cargo mutants -p shiplog-ingest-github --timeout 120 --copy-target=false || fail=1
-          cargo mutants -p shiplog-ingest-json --timeout 120 --copy-target=false || fail=1
-          cargo mutants -p shiplog-ingest-manual --timeout 120 --copy-target=false || fail=1
-          cargo mutants -p shiplog-ingest-git --timeout 120 --copy-target=false || fail=1
-          cargo mutants -p shiplog-ingest-gitlab --timeout 120 --copy-target=false || fail=1
-          cargo mutants -p shiplog-ingest-jira --timeout 120 --copy-target=false || fail=1
-          cargo mutants -p shiplog-ingest-linear --timeout 120 --copy-target=false || fail=1
+          echo "Source adapters are inlined; covered by the shiplog package mutation target."
           cargo mutants -p shiplog-cluster-llm --timeout 120 --copy-target=false || fail=1
           cargo mutants -p shiplog-team --timeout 120 --copy-target=false || fail=1
           cargo mutants -p shiplog --timeout 120 --copy-target=false || fail=1

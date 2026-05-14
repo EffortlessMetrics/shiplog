@@ -1,5 +1,5 @@
 ---
-source: crates/shiplog-coverage/tests/format_stability.rs
+source: apps/shiplog/tests/coverage_format_stability.rs
 expression: slice
 ---
 {

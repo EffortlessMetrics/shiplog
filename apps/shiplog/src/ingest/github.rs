@@ -4,12 +4,12 @@
 //! completeness when search caps or incomplete API responses are detected.
 
 use crate::cache::{ApiCache, CacheKey, CacheLookup};
+use crate::coverage::{day_windows, month_windows, week_windows, window_len_days};
 use anyhow::{Context, Result, anyhow};
 use chrono::{DateTime, NaiveDate, Utc};
 use reqwest::blocking::Client;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
-use shiplog_coverage::{day_windows, month_windows, week_windows, window_len_days};
 use shiplog_ids::{EventId, RunId};
 use shiplog_ports::{IngestOutput, Ingestor};
 use shiplog_schema::coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow};

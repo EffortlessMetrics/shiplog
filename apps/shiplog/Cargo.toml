@@ -35,7 +35,6 @@ itertools.workspace = true
 git2 = "0.20"
 mutants.workspace = true
 shiplog-engine = { path = "../../crates/shiplog-engine", version = "0.6.0" }
-shiplog-coverage = { path = "../../crates/shiplog-coverage", version = "0.6.0" }
 shiplog-workstreams = { path = "../../crates/shiplog-workstreams", version = "0.6.0" }
 shiplog-redact = { path = "../../crates/shiplog-redact", version = "0.6.0" }
 shiplog-ports = { path = "../../crates/shiplog-ports", version = "0.6.0" }
@@ -49,8 +48,9 @@ anyhow.workspace = true
 chrono.workspace = true
 assert_cmd.workspace = true
 predicates.workspace = true
-insta = { workspace = true, features = ["redactions"] }
+insta = { workspace = true, features = ["json", "redactions"] }
 proptest.workspace = true
+criterion.workspace = true
 shiplog-engine = { path = "../../crates/shiplog-engine", version = "0.6.0" }
 shiplog-ports = { path = "../../crates/shiplog-ports", version = "0.6.0" }
 shiplog-schema = { path = "../../crates/shiplog-schema", version = "0.6.0" }
@@ -70,6 +70,10 @@ path = "../../examples/custom_renderer.rs"
 [[example]]
 name = "redaction"
 path = "../../examples/redaction.rs"
+
+[[bench]]
+name = "coverage"
+harness = false
 
 [lints]
 workspace = true

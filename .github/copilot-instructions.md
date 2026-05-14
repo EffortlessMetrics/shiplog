@@ -51,17 +51,17 @@ This is a module-first Rust workspace following Clean Architecture boundaries. T
 - crates/shiplog-ids — ID types and helpers (SHA256-based deterministic IDs)
 - crates/shiplog-schema — canonical event model (the data spine)
 - crates/shiplog-ports — trait definitions (Ingestor, Renderer, Redactor, WorkstreamClusterer)
-- crates/shiplog-coverage — slicing and completeness reporting
+- apps/shiplog/src/coverage — slicing and completeness reporting
 - crates/shiplog-workstreams — clustering + editable YAML overrides
 - crates/shiplog-redact — deterministic HMAC-SHA256 redaction (internal/manager/public profiles)
 - apps/shiplog/src/render/md — Markdown renderer (snapshot-tested with insta)
 - crates/shiplog-engine/src/artifact_json.rs — JSON artifact writer during the contraction slice
 - crates/shiplog-bundle — checksums + optional zip export
 - crates/shiplog-engine — orchestration (ingest → normalize → cluster → render)
-- crates/shiplog-ingest-json — JSONL adapter
-- crates/shiplog-ingest-github — GitHub adapter (adaptive date slicing, SQLite caching)
-- crates/shiplog-ingest-manual — manual ingest adapter (YAML-based non-GitHub events)
-- crates/shiplog-cache — SQLite-backed API response caching (TTL-based, reduces GitHub API calls)
+- apps/shiplog/src/ingest/json.rs — JSONL adapter
+- apps/shiplog/src/ingest/github.rs — GitHub adapter (adaptive date slicing, SQLite caching)
+- apps/shiplog/src/ingest/manual — manual ingest adapter (YAML-based non-GitHub events)
+- apps/shiplog/src/cache — SQLite-backed API response caching (TTL-based, reduces GitHub API calls)
 - crates/shiplog-testkit — shared test fixtures and utilities
 - crates/shiplog-cluster-llm — optional LLM-assisted workstream clustering (feature-gated in CLI)
 - apps/shiplog — CLI entrypoint (subcommands: collect, render, refresh, import, run)

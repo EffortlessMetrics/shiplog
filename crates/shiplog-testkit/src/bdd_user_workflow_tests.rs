@@ -550,8 +550,20 @@ mod user_workflow_tests {
                 let since = NaiveDate::from_ymd_opt(2025, 1, 1).unwrap();
                 let until = NaiveDate::from_ymd_opt(2025, 4, 1).unwrap();
 
-                // Build month windows using coverage crate
-                let windows = shiplog_coverage::month_windows(since, until);
+                let windows = [
+                    TimeWindow {
+                        since,
+                        until: NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),
+                    },
+                    TimeWindow {
+                        since: NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),
+                        until: NaiveDate::from_ymd_opt(2025, 3, 1).unwrap(),
+                    },
+                    TimeWindow {
+                        since: NaiveDate::from_ymd_opt(2025, 3, 1).unwrap(),
+                        until,
+                    },
+                ];
 
                 // Create slices: first two complete, third partial
                 let mut slices = Vec::new();

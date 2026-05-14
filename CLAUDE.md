@@ -40,25 +40,25 @@ Key CLI flags:
 
 ## Architecture
 
-Module-first Rust workspace (edition 2024, MSRV 1.95) following **Clean Architecture / ports-and-adapters**. Public crates represent product/API contracts, trust surfaces, real adapters, or heavy optional boundaries; implementation seams should start as modules inside an owning crate. The CLI (`apps/shiplog`) drives `shiplog-engine`, which orchestrates: ingest → cluster → redact → render. See `API_SURFACE.md` before adding or promoting package boundaries.
+Module-first Rust workspace (edition 2024, MSRV 1.95) following **Clean Architecture / ports-and-adapters**. Public crates are deliberate external contracts; implementation seams should start as modules inside an owning crate. The 0.7 contraction lane is reducing earlier implementation crates into owner modules. The CLI (`apps/shiplog`) drives the product flow and currently composes remaining internal workspace support plus inlined ingest/render/cache/coverage modules. See `API_SURFACE.md` before adding or promoting package boundaries.
 
 ### Dependency layers (top → bottom)
 
 ```
 apps/shiplog (CLI, clap)
   └─ shiplog-engine (orchestration)
-       ├─ Ingest adapters: shiplog-ingest-github, shiplog-ingest-json, shiplog-ingest-manual
+       ├─ Ingest adapters: apps/shiplog/src/ingest/*
        ├─ shiplog-workstreams (clustering + user-curated YAML)
        ├─ shiplog-cluster-llm (optional LLM-assisted clustering, feature-gated)
        ├─ shiplog-redact (deterministic HMAC-SHA256 aliasing, 3 profiles)
-       ├─ shiplog-render-md, shiplog-render-json
+       ├─ apps/shiplog/src/render + engine artifact writer
        └─ shiplog-bundle (zip + SHA256 checksums)
   Shared foundations:
        shiplog-ports (trait definitions: Ingestor, Renderer, Redactor, WorkstreamClusterer)
        shiplog-schema (canonical event model, EventKind, manifests)
        shiplog-ids (deterministic SHA256-based EventId, RunId, WorkstreamId)
-       shiplog-coverage (time windows, completeness tracking)
-       shiplog-cache (SQLite-backed API response cache, rusqlite bundled)
+       apps/shiplog/src/coverage (time windows, completeness tracking)
+       apps/shiplog/src/cache (SQLite-backed API response cache, rusqlite bundled)
        shiplog-testkit (fixture builders for tests)
 ```
 
@@ -104,8 +104,8 @@ Prefix public packages with `shiplog-` and a role suffix: `-schema`, `-ports`, `
 | Tier | Crates | Notes |
 |------|--------|-------|
 | Stable contracts | `shiplog-ids`, `shiplog-schema`, `shiplog-ports` | No adapter deps |
-| Trust surfaces | `shiplog-coverage`, `shiplog-redact`, `shiplog-bundle`, `shiplog-workstreams`, `shiplog-cache`, `shiplog-render-*` | Depend on foundation |
-| Adapters | `shiplog-ingest-*` | Depend on foundation and ports |
+| Trust surfaces | `shiplog-redact`, `shiplog-bundle`, `shiplog-workstreams`; inlined `shiplog::coverage`, `shiplog::cache`, `shiplog::render::*` | Depend on foundation |
+| Adapters | `shiplog::ingest::*` | Depend on foundation and ports |
 | Orchestration | `shiplog-engine` | Wires adapters via ports |
 | App | `shiplog` (CLI) | Feature-gates: `llm` (default off) |
 | Test-only | `shiplog-testkit` | `publish = false` |
@@ -113,4 +113,4 @@ Prefix public packages with `shiplog-` and a role suffix: `-schema`, `-ports`, `
 
 ### Publishing
 
-All crates publish to crates.io except `shiplog-testkit`. Publish in dependency order (foundation → adapters → engine → CLI). Dry-run: `cargo publish -p <crate> --dry-run`.
+0.7 release tooling publishes only the supported public surface from `policy/publish-allowlist.toml` by default. Workspace membership is not publish eligibility. Dry-run the allowed surface through the package proof scripts rather than publishing every workspace member.

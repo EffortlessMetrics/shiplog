@@ -2,7 +2,7 @@
 
 use chrono::NaiveDate;
 use libfuzzer_sys::fuzz_target;
-use shiplog_coverage::{day_windows, month_windows, week_windows};
+use shiplog::coverage::{day_windows, month_windows, week_windows};
 
 fn check_partition(
     windows: &[shiplog_schema::coverage::TimeWindow],

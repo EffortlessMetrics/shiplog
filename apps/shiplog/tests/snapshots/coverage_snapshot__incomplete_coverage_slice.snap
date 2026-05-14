@@ -1,5 +1,5 @@
 ---
-source: crates/shiplog-coverage/tests/snapshot.rs
+source: apps/shiplog/tests/coverage_snapshot.rs
 assertion_line: 56
 expression: slice
 ---

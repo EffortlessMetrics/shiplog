@@ -606,7 +606,6 @@ external contract. Adapters depend on ports and schema, never the reverse.
 | `shiplog-engine` | Internal orchestration support during contraction |
 | `shiplog-ports` | Internal trait definitions until a plugin/API ADR exists |
 | `shiplog-ids` | Internal deterministic ID helpers during contraction |
-| `shiplog-coverage` | Internal time windows and completeness tracking |
 | `shiplog-workstreams` | Internal workstream clustering and curated YAML workflow |
 | `shiplog-merge` | Internal multi-source merge helpers |
 | `shiplog-cluster-llm` | Internal optional LLM-assisted semantic clustering |
@@ -617,10 +616,11 @@ external contract. Adapters depend on ports and schema, never the reverse.
 
 Markdown rendering now lives under `shiplog::render::md`. Source adapters live
 under `shiplog::ingest`, and cache/freshness support lives under
-`shiplog::cache`. JSON artifact writing lives under the engine artifact writer
-for this contraction slice. Internal implementation seams live under owner
-packages as modules. New boundaries start as modules and are promoted to public
-crates only when they pass the public crate test in `SHIPLOG-SPEC-0004`.
+`shiplog::cache`. Coverage and date-window support lives under
+`shiplog::coverage`. JSON artifact writing lives under the engine artifact
+writer for this contraction slice. Internal implementation seams live under
+owner packages as modules. New boundaries start as modules and are promoted to
+public crates only when they pass the public crate test in `SHIPLOG-SPEC-0004`.
 
 ## LLM clustering
 

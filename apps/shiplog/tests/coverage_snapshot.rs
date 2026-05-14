@@ -4,7 +4,7 @@
 //! ensuring format stability across changes.
 
 use chrono::NaiveDate;
-use shiplog_coverage::{month_windows, window_len_days};
+use shiplog::coverage::{month_windows, window_len_days};
 use shiplog_schema::coverage::{CoverageSlice, TimeWindow};
 
 #[test]

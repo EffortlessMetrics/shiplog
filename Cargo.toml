@@ -11,7 +11,6 @@ members = [
 
   # Product and trust surfaces
   "crates/shiplog-engine",
-  "crates/shiplog-coverage",
   "crates/shiplog-workstreams",
   "crates/shiplog-redact",
   "crates/shiplog-bundle",

@@ -16,14 +16,14 @@ name: Fuzz Smoke
 #
 # Path-to-target map (ordered to match the actual fuzz targets in
 # fuzz/fuzz_targets/):
-#   crates/shiplog-cache/                                -> parse_jsonl
+#   apps/shiplog/src/cache/                              -> parse_jsonl
 #   crates/shiplog-engine/src/ledger.rs                  -> parse_jsonl
 #   crates/shiplog-workstreams/                          -> parse_workstreams
-#   crates/shiplog-ingest-github/                        -> parse_github_api
-#   crates/shiplog-ingest-gitlab/                        -> parse_gitlab_api
-#   crates/shiplog-ingest-jira/                          -> parse_jira_linear_api
-#   crates/shiplog-ingest-linear/                        -> parse_jira_linear_api
-#   crates/shiplog-ingest-manual/                        -> parse_manual_events
+#   apps/shiplog/src/ingest/github.rs                    -> parse_github_api
+#   apps/shiplog/src/ingest/gitlab.rs                    -> parse_gitlab_api
+#   apps/shiplog/src/ingest/jira.rs                      -> parse_jira_linear_api
+#   apps/shiplog/src/ingest/linear.rs                    -> parse_jira_linear_api
+#   apps/shiplog/src/ingest/manual/                      -> parse_manual_events
 #   apps/shiplog/src/template.rs (any template parsing)  -> parse_template
 #   crates/shiplog-engine/src/config.rs                  -> parse_config
 #   crates/shiplog-plugin-manifest/                      -> parse_plugin_manifest
@@ -71,22 +71,22 @@ jobs:
           echo "$changed" | sed 's/^/  /'
 
           targets=()
-          if echo "$changed" | grep -qE '^crates/shiplog-(cache|engine)/'; then
+          if echo "$changed" | grep -qE '^apps/shiplog/src/cache/|^crates/shiplog-engine/'; then
             targets+=("parse_jsonl")
           fi
           if echo "$changed" | grep -qE '^crates/shiplog-workstreams/'; then
             targets+=("parse_workstreams")
           fi
-          if echo "$changed" | grep -qE '^crates/shiplog-ingest-github/'; then
+          if echo "$changed" | grep -qE '^apps/shiplog/src/ingest/github\.rs'; then
             targets+=("parse_github_api")
           fi
-          if echo "$changed" | grep -qE '^crates/shiplog-ingest-gitlab/'; then
+          if echo "$changed" | grep -qE '^apps/shiplog/src/ingest/gitlab\.rs'; then
             targets+=("parse_gitlab_api")
           fi
-          if echo "$changed" | grep -qE '^crates/shiplog-ingest-(jira|linear)/'; then
+          if echo "$changed" | grep -qE '^apps/shiplog/src/ingest/(jira|linear)\.rs'; then
             targets+=("parse_jira_linear_api")
           fi
-          if echo "$changed" | grep -qE '^crates/shiplog-ingest-manual/'; then
+          if echo "$changed" | grep -qE '^apps/shiplog/src/ingest/manual/'; then
             targets+=("parse_manual_events")
           fi
           if echo "$changed" | grep -qE '^crates/shiplog-engine/src/config\.rs|^apps/shiplog/src/.*config'; then
