@@ -69,12 +69,6 @@ publish = false
 reason = "Bundle support remains product-internal unless promoted by ADR."
 
 [[package]]
-name = "shiplog-cache"
-tier = "internal-module"
-publish = false
-reason = "Cache/freshness support remains internal unless a public cache API exists."
-
-[[package]]
 name = "shiplog-cluster-llm"
 tier = "internal-module"
 publish = false
@@ -148,3 +142,8 @@ reason = "0.6 source adapter crate collapsed into shiplog::ingest::github."
 name = "shiplog-ingest-json"
 tier = "historical-0.6"
 reason = "0.6 JSON import adapter crate collapsed into shiplog::ingest::json."
+
+[[historical]]
+name = "shiplog-cache"
+tier = "historical-0.6"
+reason = "0.6 cache/freshness crate collapsed into shiplog::cache."

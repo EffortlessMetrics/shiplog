@@ -15,7 +15,6 @@ members = [
   "crates/shiplog-workstreams",
   "crates/shiplog-redact",
   "crates/shiplog-bundle",
-  "crates/shiplog-cache",
 
   # Optional feature surfaces
   "crates/shiplog-cluster-llm",
@@ -64,6 +63,7 @@ assert_cmd = "2.2.1"
 predicates = "3.1.3"
 mutants = "0.0.4"
 criterion = { version = "0.8", features = ["html_reports"] }
+rusqlite = { version = "0.39.0", features = ["bundled", "chrono", "serde_json"] }
 
 [workspace.lints.rust]
 # deny rather than forbid so narrow crates can document intentional exceptions.

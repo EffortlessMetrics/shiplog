@@ -1,7 +1,7 @@
-//! Integration tests for the shiplog-cache facade crate.
+//! Integration tests for the shiplog cache facade module.
 
 use chrono::Duration;
-use shiplog_cache::{ApiCache, CacheKey, CacheStats};
+use shiplog::cache::{ApiCache, CacheKey, CacheStats};
 
 // ------------------------------------------------------------------
 // Re-export smoke tests
@@ -227,7 +227,7 @@ fn snapshot_cache_stats_from_reexport() {
 
 mod prop {
     use proptest::prelude::*;
-    use shiplog_cache::CacheStats;
+    use shiplog::cache::CacheStats;
 
     proptest! {
         #[test]

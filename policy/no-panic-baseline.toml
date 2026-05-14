@@ -2298,7 +2298,7 @@ snippet = "write_zip(dir.path(), &zip_path, &BundleProfile::Public).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-cache/src/expiry.rs"
+path = "apps/shiplog/src/cache/expiry.rs"
 family = "expect"
 selector_kind = "method-call"
 selector_callee = "Option/Result::expect"
@@ -2306,7 +2306,7 @@ snippet = 'DateTime::<Utc>::from_timestamp(secs, 0).expect("valid timestamp")'
 count = 1
 
 [[entry]]
-path = "crates/shiplog-cache/src/expiry.rs"
+path = "apps/shiplog/src/cache/expiry.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2314,7 +2314,7 @@ snippet = "let parsed_cached = parse_rfc3339_utc(&window.cached_at_rfc3339()).un
 count = 1
 
 [[entry]]
-path = "crates/shiplog-cache/src/expiry.rs"
+path = "apps/shiplog/src/cache/expiry.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2322,7 +2322,7 @@ snippet = "let parsed_expires = parse_rfc3339_utc(&window.expires_at_rfc3339()).
 count = 1
 
 [[entry]]
-path = "crates/shiplog-cache/src/sqlite.rs"
+path = "apps/shiplog/src/cache/sqlite.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2330,7 +2330,7 @@ snippet = ".unwrap()"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-cache/src/sqlite.rs"
+path = "apps/shiplog/src/cache/sqlite.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2338,7 +2338,7 @@ snippet = ".unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-cache/src/sqlite.rs"
+path = "apps/shiplog/src/cache/sqlite.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2346,7 +2346,7 @@ snippet = 'assert!(!cache.contains("key1").unwrap());'
 count = 1
 
 [[entry]]
-path = "crates/shiplog-cache/src/sqlite.rs"
+path = "apps/shiplog/src/cache/sqlite.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2354,7 +2354,7 @@ snippet = 'assert!(cache.contains("key1").unwrap());'
 count = 1
 
 [[entry]]
-path = "crates/shiplog-cache/src/sqlite.rs"
+path = "apps/shiplog/src/cache/sqlite.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2362,7 +2362,7 @@ snippet = "assert!(cache.stats().unwrap().is_empty());"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-cache/src/sqlite.rs"
+path = "apps/shiplog/src/cache/sqlite.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2370,7 +2370,7 @@ snippet = "assert_eq!(cache.cleanup_older_than(cutoff).unwrap(), 2);"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-cache/src/sqlite.rs"
+path = "apps/shiplog/src/cache/sqlite.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2378,7 +2378,7 @@ snippet = "assert_eq!(cache.count_older_than(cutoff).unwrap(), 2);"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-cache/src/sqlite.rs"
+path = "apps/shiplog/src/cache/sqlite.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2386,7 +2386,7 @@ snippet = "cache.clear().unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-cache/src/sqlite.rs"
+path = "apps/shiplog/src/cache/sqlite.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2394,7 +2394,7 @@ snippet = 'cache.set("key1", &"one").unwrap();'
 count = 1
 
 [[entry]]
-path = "crates/shiplog-cache/src/sqlite.rs"
+path = "apps/shiplog/src/cache/sqlite.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2402,7 +2402,7 @@ snippet = 'cache.set("key1", &data).unwrap();'
 count = 5
 
 [[entry]]
-path = "crates/shiplog-cache/src/sqlite.rs"
+path = "apps/shiplog/src/cache/sqlite.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2410,7 +2410,7 @@ snippet = 'cache.set("key2", &"two").unwrap();'
 count = 1
 
 [[entry]]
-path = "crates/shiplog-cache/src/sqlite.rs"
+path = "apps/shiplog/src/cache/sqlite.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2418,7 +2418,7 @@ snippet = 'cache.set("key2", &data).unwrap();'
 count = 2
 
 [[entry]]
-path = "crates/shiplog-cache/src/sqlite.rs"
+path = "apps/shiplog/src/cache/sqlite.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2426,7 +2426,7 @@ snippet = 'cache.set("old1", &"one").unwrap();'
 count = 1
 
 [[entry]]
-path = "crates/shiplog-cache/src/sqlite.rs"
+path = "apps/shiplog/src/cache/sqlite.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2434,7 +2434,7 @@ snippet = 'cache.set("old2", &"two").unwrap();'
 count = 1
 
 [[entry]]
-path = "crates/shiplog-cache/src/sqlite.rs"
+path = "apps/shiplog/src/cache/sqlite.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2442,7 +2442,7 @@ snippet = "let cache = ApiCache::open_in_memory().unwrap();"
 count = 7
 
 [[entry]]
-path = "crates/shiplog-cache/src/sqlite.rs"
+path = "apps/shiplog/src/cache/sqlite.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2450,7 +2450,7 @@ snippet = "let deleted = cache.cleanup_expired().unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-cache/src/sqlite.rs"
+path = "apps/shiplog/src/cache/sqlite.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2458,7 +2458,7 @@ snippet = "let inspection = cache.inspect().unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-cache/src/sqlite.rs"
+path = "apps/shiplog/src/cache/sqlite.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2466,7 +2466,7 @@ snippet = 'let result: Option<TestData> = cache.get("key1").unwrap();'
 count = 4
 
 [[entry]]
-path = "crates/shiplog-cache/src/sqlite.rs"
+path = "apps/shiplog/src/cache/sqlite.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"

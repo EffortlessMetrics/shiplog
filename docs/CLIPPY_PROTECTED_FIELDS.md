@@ -86,8 +86,8 @@ Each class below lists:
 | Slot | Value |
 | --- | --- |
 | Invariant | Hashes, signatures, and provenance receipts written to `intake.report.json`, `share.manifest.json`, and `bundle.manifest.json` must be computed via the canonical accessor on the source struct. Two callers that recompute the same receipt must produce byte-identical bytes. |
-| Boundary | The receipt-emitting crate (varies by receipt type): `shiplog-engine` for intake reports, `shiplog-bundle` for bundle/share manifests, `shiplog-cache` for cache receipts. Each owns the canonical `compute_receipt()` accessor; raw `hash: [u8; 32]` style fields are private. |
-| Today's surface | Mixed: `shiplog-engine::intake_report`, `shiplog-bundle::manifest`, `shiplog-cache::receipt` (some types here may need to be introduced rather than refactored). |
+| Boundary | The receipt-emitting owner module (varies by receipt type): `shiplog-engine` for intake reports, `shiplog-bundle` for bundle/share manifests, `shiplog::cache` for cache receipts. Each owns the canonical `compute_receipt()` accessor; raw `hash: [u8; 32]` style fields are private. |
+| Today's surface | Mixed: `shiplog-engine::intake_report`, `shiplog-bundle::manifest`, `shiplog::cache::receipt` (some types here may need to be introduced rather than refactored). |
 | Failure mode | One caller hashes the canonical fields; a second caller hashes a slightly different field order; the two receipts disagree for the same logical input and consumers diverge. |
 
 ### 4. Source opaque IDs
@@ -103,9 +103,9 @@ Each class below lists:
 
 | Slot | Value |
 | --- | --- |
-| Invariant | The SQLite-backed `shiplog-cache` exposes a query API; the raw `rusqlite::Connection`, the schema-version row, and the cache-key construction layout must be private. Cache key construction goes through `CacheKey::new(...)` which centralises the cache-namespace + version + hash algorithm. |
-| Boundary | `shiplog-cache` crate. Public surface: `Cache::get`, `Cache::put`, `Cache::stats`, etc. Private: `Connection`, `schema_version`, `CacheKey::raw`. |
-| Today's surface | `shiplog-cache::*` — already mostly private; the lint protects the boundary from regressing as new accessors are added. |
+| Invariant | The SQLite-backed `shiplog::cache` module exposes a query API; the raw `rusqlite::Connection`, the schema-version row, and the cache-key construction layout must be private. Cache key construction goes through `CacheKey::new(...)` which centralises the cache-namespace + version + hash algorithm. |
+| Boundary | `shiplog::cache` module. Public surface: `ApiCache::get`, `ApiCache::set`, `ApiCache::stats`, etc. Private: `Connection`, `schema_version`, `CacheKey::raw`. |
+| Today's surface | `shiplog::cache::*` — already mostly private; the lint protects the boundary from regressing as new accessors are added. |
 | Failure mode | A new ingest adapter borrows `cache.connection` directly to run a custom SQL query; the cache schema migrates in a future release; the custom query breaks silently. |
 
 ### 6. Policy ledger metadata

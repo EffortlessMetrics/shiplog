@@ -7,8 +7,8 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 use std::path::Path;
 
-use crate::expiry::{CacheExpiryWindow, is_valid, now_rfc3339, parse_rfc3339_utc};
-use crate::stats::CacheStats;
+use super::expiry::{CacheExpiryWindow, is_valid, now_rfc3339, parse_rfc3339_utc};
+use super::stats::CacheStats;
 
 /// Cache for API responses backed by a local SQLite database.
 ///
@@ -325,7 +325,7 @@ impl ApiCache {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::CacheKey;
+    use crate::cache::CacheKey;
 
     #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq, Clone)]
     struct TestData {

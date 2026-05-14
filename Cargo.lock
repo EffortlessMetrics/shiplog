@@ -2288,11 +2288,11 @@ dependencies = [
  "proptest",
  "regex",
  "reqwest",
+ "rusqlite",
  "serde",
  "serde_json",
  "serde_yaml_ng",
  "sha2 0.11.0",
- "shiplog-cache",
  "shiplog-cluster-llm",
  "shiplog-coverage",
  "shiplog-engine",
@@ -2322,21 +2322,6 @@ dependencies = [
  "shiplog-schema",
  "tempfile",
  "zip",
-]
-
-[[package]]
-name = "shiplog-cache"
-version = "0.6.0"
-dependencies = [
- "anyhow",
- "chrono",
- "insta",
- "proptest",
- "rusqlite",
- "serde",
- "serde_json",
- "shiplog-testkit",
- "tempfile",
 ]
 
 [[package]]

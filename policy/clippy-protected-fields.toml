@@ -233,7 +233,7 @@ slug = "trust-receipts"
 title = "Trust receipts"
 invariant = "Hashes, signatures, and provenance receipts written to `intake.report.json`, `share.manifest.json`, and `bundle.manifest.json` must be computed via a single canonical computer per receipt type. Two callers that recompute the same receipt for the same input must produce byte-identical bytes."
 boundary_crate = "mixed"
-boundary_module = "shiplog-bundle (FileChecksum today); future: shiplog-engine intake-report receipt, shiplog-cache receipt"
+boundary_module = "shiplog-bundle (FileChecksum today); future: shiplog-engine intake-report receipt, shiplog::cache receipt"
 accessor_pattern = "The protection is procedural, not visibility-based: each receipt-emitting crate has a single canonical computer function (e.g. `shiplog-bundle::compute_file_checksum`), determinism is enforced by property tests and fuzz harnesses, and the receipt-bearing serde types are intentionally `pub` because they ARE the JSON schema contract. `disallowed_fields` is the wrong tool — making `FileChecksum::sha256` private would break the bundle-manifest schema."
 failure_mode = "One caller hashes the canonical fields; a second caller hashes a slightly different field order; the two receipts disagree for the same logical input and consumers diverge."
 # Audited 2026-05-12 (post-#212):
@@ -282,7 +282,7 @@ field_candidates = [
   "FileChecksum::bytes (pub by serde necessity)",
   "TODO: intake report receipt fields on `shiplog-engine::intake_report` once the type lands (apply canonical-computer pattern from day one)",
   "TODO: bundle/share manifest receipt fields on `shiplog-bundle::manifest` once additional manifest types land (apply canonical-computer pattern from day one)",
-  "TODO: cache receipt fields on `shiplog-cache::receipt` once the type lands (apply canonical-computer pattern from day one)",
+  "TODO: cache receipt fields on `shiplog::cache::receipt` once the type lands (apply canonical-computer pattern from day one)",
 ]
 activation_status = "type-enforced"
 next_action = "Nothing to do for this class today: the protection is procedural (single canonical computer + property tests + fuzz) and matches the failure mode the doc describes. When new receipt types land (intake report, cache receipt), apply the same pattern. A future ledger-driven `xtask check-protected-fields` checker (optional step 6 in the activation ladder doc) could catch regressions like a future parallel SHA-256 computation in a different crate, by scanning for `Sha256::digest`-style call sites outside the canonical receipt-emitting modules."
@@ -346,9 +346,9 @@ expires = "permanent"
 id = "cpf-0005"
 slug = "cache-internals"
 title = "Cache internals"
-invariant = "The SQLite-backed `shiplog-cache` exposes a query API; the raw `rusqlite::Connection`, default TTL state, and any future cache-key internal layout must be private. Cache key construction goes through the `CacheKey::*` builders which centralise the cache namespace + version + hash algorithm."
-boundary_crate = "shiplog-cache"
-boundary_module = "shiplog-cache::*"
+invariant = "The SQLite-backed `shiplog::cache` module exposes a query API; the raw `rusqlite::Connection`, default TTL state, and any future cache-key internal layout must be private. Cache key construction goes through the `CacheKey::*` builders which centralise the cache namespace + version + hash algorithm."
+boundary_crate = "shiplog"
+boundary_module = "shiplog::cache::*"
 accessor_pattern = "Public surface: `ApiCache::{open, open_read_only, open_in_memory, with_ttl, with_max_size, get, set, set_with_ttl, contains, cleanup_expired, count_older_than, cleanup_older_than, clear, stats, inspect}`. The raw fields live on the private `ApiCacheInner` struct that `ApiCache` wraps; external code cannot name `ApiCacheInner`."
 failure_mode = "A new ingest adapter adds a `pub fn raw_connection(&self) -> &Connection` accessor on `ApiCache` to run a custom SQL query; the cache schema migrates in a future release; the custom query breaks silently. The protected paths below capture this — any caller that adds such an accessor would have to expose the raw `Connection` via an `ApiCache::*` field, which is the lint target."
 # Verified three times during 2026-05-11:
@@ -381,11 +381,11 @@ field_candidates = [
   "ApiCache::default_ttl",
   "ApiCache::max_size_bytes",
   "TODO: future schema-version row, if added (today: inline DDL in `ApiCache::open`)",
-  "TODO: future `CacheKey` internal-state fields, if added (today: unit struct in `crates/shiplog-cache/src/key.rs`)",
+  "TODO: future `CacheKey` internal-state fields, if added (today: unit struct in `apps/shiplog/src/cache/key.rs`)",
 ]
 activation_status = "type-enforced"
 next_action = "Type-system protection is sufficient for cache-internals as of #194. The activation probe (post-#194) found that adding the three `ApiCache::*` paths to `clippy.toml`'s `disallowed-fields` array emits config-level metadata warnings (\"does not refer to a reachable field\") because the inner-struct refactor moved the fields off `ApiCache`. Those warnings fail under `-D warnings` and cannot be suppressed via `#[expect]`. Activating `clippy::disallowed_fields` for this class is therefore not the right move; the lint is the wrong tool once a class goes fully type-enforced. The recommended next protection layer is a generic ledger-driven `xtask` checker that scans the public API surface of each class's `boundary_crate` for regressions (`pub fn raw_*` accessors, `pub` items on the protected inner type, etc.). That checker is a separate engineering item; it does not block any other class's progress on the ladder."
-owner = "shiplog-cache"
+owner = "shiplog::cache"
 reason = "See docs/CLIPPY_PROTECTED_FIELDS.md#5-cache-internals for the seam doctrine and failure mode."
 created = "2026-05-11"
 review_after = "2026-11-11"

@@ -3,13 +3,13 @@
 //! Collects MR/review events, tracks coverage slices, and marks partial
 //! completeness when search caps or incomplete API responses are detected.
 
+use crate::cache::ApiCache;
+use crate::cache::CacheKey;
 use anyhow::{Context, Result, anyhow};
 use chrono::{DateTime, NaiveDate, Utc};
 use reqwest::blocking::Client;
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
-use shiplog_cache::ApiCache;
-use shiplog_cache::CacheKey;
 use shiplog_ids::{EventId, RunId};
 use shiplog_ports::{IngestOutput, Ingestor};
 use shiplog_schema::coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow};

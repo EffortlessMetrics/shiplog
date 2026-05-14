@@ -11,6 +11,7 @@ use regex::{Regex, RegexBuilder};
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use shiplog::cache::ApiCache;
 use shiplog::ingest::git::LocalGitIngestor;
 use shiplog::ingest::github::GithubIngestor;
 use shiplog::ingest::gitlab::{GitlabIngestor, MrState};
@@ -23,7 +24,6 @@ use shiplog::ingest::manual::{
 use shiplog::render::md::{
     AppendixMode, MarkdownRenderOptions, MarkdownRenderer, SectionOrder, format_receipt_markdown,
 };
-use shiplog_cache::ApiCache;
 use shiplog_engine::{ConflictResolution, Engine, WorkstreamSource};
 use shiplog_ids::{EventId, WorkstreamId};
 use shiplog_ports::{IngestOutput, Ingestor, Redactor, Renderer};
@@ -8431,7 +8431,7 @@ fn selected_cache_sources(sources: &[CacheSource]) -> Vec<CacheSource> {
     selected
 }
 
-fn print_cache_stats(source: CacheSource, path: &Path, stats: &shiplog_cache::CacheStats) {
+fn print_cache_stats(source: CacheSource, path: &Path, stats: &shiplog::cache::CacheStats) {
     println!("{}:", source.as_str());
     println!("  path: {}", path.display());
     println!(

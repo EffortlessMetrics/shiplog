@@ -1,4 +1,4 @@
-//! Fuzz harness for cache key generation (`shiplog-cache`).
+//! Fuzz harness for cache key generation (`shiplog::cache`).
 //!
 //! Feeds arbitrary strings and integers into every `CacheKey` constructor,
 //! asserting that the expected prefix is always present.
@@ -6,7 +6,7 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use shiplog_cache::CacheKey;
+use shiplog::cache::CacheKey;
 
 fuzz_target!(|data: &[u8]| {
     if data.len() < 8 {

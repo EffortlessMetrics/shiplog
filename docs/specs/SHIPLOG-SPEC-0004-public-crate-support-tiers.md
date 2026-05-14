@@ -153,7 +153,7 @@ contract those PRs must satisfy.
 | `shiplog-workstreams` | `internal-module` | no | Inline workstream support; 0.6 published versions become `historical-0.6`. |
 | `shiplog-redact` | `internal-module` | no | Inline redaction support while preserving fail-closed behavior; 0.6 published versions become `historical-0.6`. |
 | `shiplog-bundle` | `internal-module` | no | Inline bundle support; 0.6 published versions become `historical-0.6`. |
-| `shiplog-cache` | `internal-module` | no | Inline cache/freshness support unless a future ADR creates a public cache API; 0.6 published versions become `historical-0.6`. |
+| `shiplog-cache` | `historical-0.6` / `internal-module` | no | Collapsed into `shiplog::cache`; 0.6 published versions become `historical-0.6`. |
 | `shiplog-render-md` | `historical-0.6` / `internal-module` | no | Collapsed into `shiplog::render::md`; 0.6 published versions become `historical-0.6`. |
 | `shiplog-render-json` | `historical-0.6` / `internal-module` | no | Collapsed into the engine artifact writer for this contraction slice; 0.6 published versions become `historical-0.6`. |
 | `shiplog-ingest-github` | `historical-0.6` / `internal-module` | no | Collapsed into `shiplog::ingest::github`; 0.6 published versions become `historical-0.6`. |

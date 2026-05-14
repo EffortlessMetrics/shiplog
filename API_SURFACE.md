@@ -22,9 +22,9 @@ The mental model is: human narrative, machine receipts.
 ## Forward Public Surface
 
 - `shiplog`: CLI product and composition root.
-- `shiplog-schema`: transitional typed Rust schema surface. It remains public
-  only if a follow-up ADR records a typed-contract reason or known external Rust
-  consumer.
+
+No other crate is public-supported for 0.7. `shiplog-schema` is internal;
+JSON schemas under `contracts/schemas/` are the public machine contract.
 
 The primary user path is still `cargo install shiplog --locked`.
 
@@ -66,7 +66,7 @@ nearest owning crate unless a later PR deliberately promotes them.
 - JSON artifact writing: `crates/shiplog-engine/src/artifact_json.rs` until
   engine is collapsed or the writer moves to the final owner module.
 - Redaction internals: profile, policy, projector, repo, alias.
-- Cache internals: key, stats, expiry, sqlite.
+- Cache internals: `shiplog::cache::{key, stats, expiry, sqlite}`.
 - Date windows and coverage calculations.
 - Output layout and bundle assembly.
 - Team phases: core, aggregate, render, template.
@@ -129,6 +129,8 @@ The 0.7 contraction is in progress:
 - `shiplog-render-md` has been inlined as `shiplog::render::md`.
 - `shiplog-render-json` has been inlined into the engine artifact writer for
   this contraction slice.
+- Source adapters have been inlined under `shiplog::ingest`.
+- `shiplog-cache` has been inlined as `shiplog::cache`.
 - Remaining implementation packages are classified by
   [`SHIPLOG-SPEC-0004`](docs/specs/SHIPLOG-SPEC-0004-public-crate-support-tiers.md)
   and the 0.7 crate-surface audit.
