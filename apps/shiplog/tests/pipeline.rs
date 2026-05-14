@@ -3,12 +3,12 @@
 
 use anyhow::Result;
 use chrono::{NaiveDate, Utc};
+use shiplog::render::md::MarkdownRenderer;
 use shiplog_engine::{ConflictResolution, Engine, WorkstreamSource};
 use shiplog_ingest_json::JsonIngestor;
 use shiplog_ingest_manual::ManualIngestor;
 use shiplog_ports::{IngestOutput, Ingestor, Redactor, Renderer, WorkstreamClusterer};
 use shiplog_redact::DeterministicRedactor;
-use shiplog_render_md::MarkdownRenderer;
 use shiplog_schema::bundle::BundleProfile;
 use shiplog_schema::coverage::CoverageManifest;
 use shiplog_schema::event::{ManualDate, ManualEventEntry, ManualEventType, ManualEventsFile};

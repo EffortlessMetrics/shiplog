@@ -1,5 +1,0 @@
----
-source: crates/shiplog-render-json/tests/format_stability.rs
-expression: text
----
-{"id":"af6344469ff026bc52665e313f55e3a841d5eeb8c0e617fd0e03de7e4bc02421","kind":"Manual","occurred_at":"2025-06-01T12:00:00Z","actor":{"login":"oncall-eng","id":null},"repo":{"full_name":"acme/widgets","html_url":null,"visibility":"Unknown"},"payload":{"type":"Manual","data":{"event_type":"Incident","title":"P1 incident response","description":"Responded to production outage affecting payments","started_at":"2025-03-15","ended_at":"2025-03-16","impact":"Reduced MTTR by 50%"}},"tags":["incident","oncall"],"links":[{"label":"postmortem","url":"https://wiki.internal/incident-42"}],"source":{"system":"manual","url":null,"opaque_id":null}}

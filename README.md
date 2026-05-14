@@ -35,7 +35,7 @@ shiplog is not an analytics dashboard. It is not AI-generated narrative. It prod
 - 🔒 **Deterministic keyed SHA-256 redaction** — three profiles (internal / manager / public) with stable aliases
 - ✅ **Coverage-first design** — every claim backed by receipts; gaps explicitly flagged in the coverage manifest
 - 📦 **Zip bundling with checksums** — SHA256 manifest for integrity verification
-- 🏗️ **Module-first clean architecture** — public crates for contracts, trust surfaces, adapters, and optional dependency boundaries
+- 🏗️ **Module-first architecture** — supported public package surface is being contracted for 0.7; internal seams live as modules
 
 ## Installation
 
@@ -547,9 +547,11 @@ shiplog render --latest --redact-key my-stable-secret --zip --bundle-profile man
 ## Architecture
 
 shiplog is a module-first Rust workspace following clean architecture (ports and adapters).
-Public crates represent contracts, trust surfaces, real adapters, and optional dependency
-boundaries; internal implementation seams live under their owning crates. See
-[API_SURFACE.md](API_SURFACE.md) for the package boundary doctrine.
+The supported public package surface is being contracted for 0.7. Internal
+implementation seams live under their owning packages unless a spec and ADR
+promote them to supported external contracts. See [API_SURFACE.md](API_SURFACE.md)
+and [docs/release/0.7-crate-surface.md](docs/release/0.7-crate-surface.md) for
+the package boundary doctrine.
 
 ### Data flow
 
@@ -579,8 +581,8 @@ external contract. Adapters depend on ports and schema, never the reverse.
           |                  |                  |
   +-------v------+  +-------v------+  +--------v-------+
   | Ingest       |  | Process      |  | Output         |
-  | - github     |  | - workstreams|  | - render-md    |
-  | - git        |  | - redact     |  | - render-json  |
+  | - github     |  | - workstreams|  | - markdown     |
+  | - git        |  | - redact     |  | - artifact json|
   | - json       |  | - cluster-llm|  | - bundle       |
   | - manual     |  | - team/merge |  |                |
   +--------------+  +--------------+  +----------------+
@@ -595,38 +597,31 @@ external contract. Adapters depend on ports and schema, never the reverse.
                     +------------------+
 ```
 
-### Public Surface
+### Workspace Surface During 0.7 Contraction
 
 | Crate | Role |
 |-------|------|
-| `shiplog` | CLI entrypoint (clap) |
-| `shiplog-engine` | Orchestration: ingest, cluster, redact, render |
-| `shiplog-ports` | Trait definitions: `Ingestor`, `Renderer`, `Redactor`, `WorkstreamClusterer` |
-| `shiplog-schema` | Canonical event model, `EventKind`, manifests |
-| `shiplog-ids` | Deterministic SHA256-based `EventId`, `RunId`, `WorkstreamId` |
-| `shiplog-coverage` | Time windows, completeness tracking |
-| `shiplog-cache` | SQLite-backed API response cache |
-| `shiplog-ingest-github` | GitHub PR and review ingestion with adaptive slicing |
-| `shiplog-ingest-git` | Local git commit ingestion for `collect git`, `refresh git`, and `run git` |
-| `shiplog-ingest-json` | Import from canonical JSON artifacts |
-| `shiplog-ingest-manual` | YAML-based manual event ingestion |
-| `shiplog-ingest-gitlab` | GitLab MR and review ingestion adapter |
-| `shiplog-ingest-jira` | Jira issue ingestion adapter |
-| `shiplog-ingest-linear` | Linear issue ingestion adapter |
-| `shiplog-workstreams` | Workstream clustering and user-curated YAML workflow |
-| `shiplog-merge` | Multi-source merge helpers used by the engine |
-| `shiplog-cluster-llm` | Optional LLM-assisted semantic clustering |
-| `shiplog-team` | Team aggregation support |
-| `shiplog-redact` | Deterministic keyed SHA-256 redaction across three profiles |
-| `shiplog-render-md` | Markdown packet renderer |
-| `shiplog-render-json` | JSON output renderer |
-| `shiplog-bundle` | Zip archives with SHA256 checksum manifests |
+| `shiplog` | Supported CLI entrypoint and default public package surface |
+| `shiplog-schema` | Transitional typed Rust schema surface pending ADR |
+| `shiplog-engine` | Internal orchestration support during contraction |
+| `shiplog-ports` | Internal trait definitions until a plugin/API ADR exists |
+| `shiplog-ids` | Internal deterministic ID helpers during contraction |
+| `shiplog-coverage` | Internal time windows and completeness tracking |
+| `shiplog-cache` | Internal SQLite-backed API response cache |
+| `shiplog-ingest-*` | Internal source adapters until a plugin/API ADR exists |
+| `shiplog-workstreams` | Internal workstream clustering and curated YAML workflow |
+| `shiplog-merge` | Internal multi-source merge helpers |
+| `shiplog-cluster-llm` | Internal optional LLM-assisted semantic clustering |
+| `shiplog-team` | Internal team aggregation support |
+| `shiplog-redact` | Internal deterministic keyed SHA-256 redaction support |
+| `shiplog-bundle` | Internal zip archive and checksum support |
 | `shiplog-testkit` | Shared test fixtures (not published) |
 
-Internal implementation seams live under owner crates as modules. New boundaries
-start as modules and are promoted to public crates only when they become stable
-contracts, trust surfaces, real adapters, or heavy optional boundaries.
-`publish = false` is reserved for dev-only packages.
+Markdown rendering now lives under `shiplog::render::md`. JSON artifact writing
+lives under the engine artifact writer for this contraction slice. Internal
+implementation seams live under owner packages as modules. New boundaries start
+as modules and are promoted to public crates only when they pass the public crate
+test in `SHIPLOG-SPEC-0004`.
 
 ## LLM clustering
 
@@ -653,7 +648,7 @@ LLM clustering is feature-gated and off by default. It falls back to repository-
 - [API_SURFACE](API_SURFACE.md) -- Public crate boundary doctrine.
 - [ROADMAP](ROADMAP.md) -- What is planned, what is next, and what is out of scope.
 - [CONTRIBUTING](CONTRIBUTING.md) -- Setup, conventions, and how to submit changes.
-- [docs.rs/shiplog](https://docs.rs/shiplog) -- API documentation for all published crates.
+- [docs.rs/shiplog](https://docs.rs/shiplog) -- API documentation for the supported CLI package.
 
 ### Policy doctrine (v0.5.0+)
 

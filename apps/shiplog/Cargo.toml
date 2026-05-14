@@ -28,6 +28,7 @@ serde_json.workspace = true
 hex.workspace = true
 sha2.workspace = true
 toml.workspace = true
+itertools.workspace = true
 shiplog-engine = { path = "../../crates/shiplog-engine", version = "0.6.0" }
 shiplog-ingest-github = { path = "../../crates/shiplog-ingest-github", version = "0.6.0" }
 shiplog-ingest-git = { path = "../../crates/shiplog-ingest-git", version = "0.6.0" }
@@ -37,7 +38,6 @@ shiplog-ingest-linear = { path = "../../crates/shiplog-ingest-linear", version =
 shiplog-ingest-json = { path = "../../crates/shiplog-ingest-json", version = "0.6.0" }
 shiplog-ingest-manual = { path = "../../crates/shiplog-ingest-manual", version = "0.6.0" }
 shiplog-cache = { path = "../../crates/shiplog-cache", version = "0.6.0" }
-shiplog-render-md = { path = "../../crates/shiplog-render-md", version = "0.6.0" }
 shiplog-workstreams = { path = "../../crates/shiplog-workstreams", version = "0.6.0" }
 shiplog-redact = { path = "../../crates/shiplog-redact", version = "0.6.0" }
 shiplog-ports = { path = "../../crates/shiplog-ports", version = "0.6.0" }
@@ -52,14 +52,17 @@ anyhow.workspace = true
 chrono.workspace = true
 assert_cmd.workspace = true
 predicates.workspace = true
+insta.workspace = true
+proptest.workspace = true
 shiplog-engine = { path = "../../crates/shiplog-engine", version = "0.6.0" }
 shiplog-ingest-json = { path = "../../crates/shiplog-ingest-json", version = "0.6.0" }
 shiplog-ingest-manual = { path = "../../crates/shiplog-ingest-manual", version = "0.6.0" }
 shiplog-ports = { path = "../../crates/shiplog-ports", version = "0.6.0" }
 shiplog-schema = { path = "../../crates/shiplog-schema", version = "0.6.0" }
-shiplog-render-md = { path = "../../crates/shiplog-render-md", version = "0.6.0" }
 shiplog-redact = { path = "../../crates/shiplog-redact", version = "0.6.0" }
 shiplog-workstreams = { path = "../../crates/shiplog-workstreams", version = "0.6.0" }
+shiplog-ids = { path = "../../crates/shiplog-ids", version = "0.6.0" }
+shiplog-testkit = { path = "../../crates/shiplog-testkit" }
 
 [[example]]
 name = "json_import"

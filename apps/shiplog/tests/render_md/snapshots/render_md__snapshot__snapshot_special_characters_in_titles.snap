@@ -1,0 +1,109 @@
+---
+source: apps/shiplog/tests/render_md/snapshot.rs
+expression: result
+---
+# Summary
+
+**Window:** 2025-Q1
+
+**Workstreams:** 2
+
+**Events:** 4 PRs, 0 reviews, 0 manual events
+
+**Coverage:** Complete
+
+**Sources:** GitHub
+
+## Executive Summary
+
+- **Special Characters** — 2 PRs, 0 reviews, 0 manual events
+- **Unicode & Emoji** — 2 PRs, 0 reviews, 0 manual events
+
+## Workstreams
+
+### Special Characters
+
+Workstream with tricky titles
+
+**Evidence anchors**
+
+- [PR] Fix <script>alert('xss')</script> injection (1970-01-01) — [owner/repo](https://github.com/owner/repo/pull/1)
+- [PR] Handle `backtick` & "quotes" in titles (1970-01-01) — [owner/repo](https://github.com/owner/repo/pull/2)
+
+**Suggested claim prompts**
+
+- What changed for users, operators, or maintainers?
+- Which risk, delay, or repeated work did this reduce?
+- Which evidence anchor best proves the change?
+- What follow-up or gap should a reviewer know about?
+
+_PRs: 2, Reviews: 0, Manual: 0_
+
+### Unicode & Emoji
+
+**Evidence anchors**
+
+- [PR] Support émojis 🎉 and ünïcödé (1970-01-01) — [owner/repo](https://github.com/owner/repo/pull/3)
+- [PR] Pipes | and [brackets] and (parens) (1970-01-01) — [owner/repo](https://github.com/owner/repo/pull/4)
+
+**Suggested claim prompts**
+
+- What changed for users, operators, or maintainers?
+- Which risk, delay, or repeated work did this reduce?
+- Which evidence anchor best proves the change?
+- What follow-up or gap should a reviewer know about?
+
+_PRs: 2, Reviews: 0, Manual: 0_
+
+## Receipts
+
+### Workstream: Special Characters
+
+- [PR] Fix <script>alert('xss')</script> injection (1970-01-01) — [owner/repo](https://github.com/owner/repo/pull/1)
+- [PR] Handle `backtick` & "quotes" in titles (1970-01-01) — [owner/repo](https://github.com/owner/repo/pull/2)
+
+### Workstream: Unicode & Emoji
+
+- [PR] Support émojis 🎉 and ünïcödé (1970-01-01) — [owner/repo](https://github.com/owner/repo/pull/3)
+- [PR] Pipes | and [brackets] and (parens) (1970-01-01) — [owner/repo](https://github.com/owner/repo/pull/4)
+
+## Coverage and Limits
+
+Included:
+- GitHub: 4 events
+- Fetched events: not reported by query slices
+
+Skipped:
+- None recorded
+
+Known gaps:
+- None recorded
+
+Details:
+- **Date window:** 2025-01-01 to 2025-04-01
+- **Mode:** merged
+- **Sources:** GitHub
+- **Completeness:** Complete
+
+## Appendix: All Receipts
+
+### Special Characters
+
+- [PR] Fix <script>alert('xss')</script> injection (1970-01-01) — [owner/repo](https://github.com/owner/repo/pull/1)
+- [PR] Handle `backtick` & "quotes" in titles (1970-01-01) — [owner/repo](https://github.com/owner/repo/pull/2)
+
+### Unicode & Emoji
+
+- [PR] Support émojis 🎉 and ünïcödé (1970-01-01) — [owner/repo](https://github.com/owner/repo/pull/3)
+- [PR] Pipes | and [brackets] and (parens) (1970-01-01) — [owner/repo](https://github.com/owner/repo/pull/4)
+
+---
+
+## File Artifacts
+
+- `packet.md` (this review packet)
+- `ledger.events.jsonl` (canonical events)
+- `coverage.manifest.json` (completeness + slicing)
+- `workstreams.suggested.yaml` (auto-generated workstream suggestions)
+- `workstreams.yaml` (curated workstreams, created after edits)
+- `bundle.manifest.json` (artifact manifest and checksums)

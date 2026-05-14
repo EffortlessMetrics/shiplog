@@ -1,0 +1,111 @@
+---
+source: apps/shiplog/tests/render_md/output_quality.rs
+expression: md
+---
+# Summary
+
+**Window:** 2025-Q1
+
+**Workstreams:** 2
+
+**Events:** 3 PRs, 1 review, 0 manual events
+
+**Coverage:** Complete
+
+**Sources:** GitHub
+
+## Executive Summary
+
+- **API Platform** — 2 PRs, 1 review, 0 manual events
+- **Web Frontend** — 1 PR, 0 reviews, 0 manual events
+
+## Workstreams
+
+### API Platform
+
+Backend API improvements
+
+**Evidence anchors**
+
+- [PR] API auth endpoint (1970-01-01) — [acme/api](https://github.com/acme/api/pull/1)
+- [PR] API rate limiting (1970-01-01) — [acme/api](https://github.com/acme/api/pull/2)
+- [Review] approved (1970-01-01) — [acme/api](https://github.com/acme/api/pull/1)
+
+**Suggested claim prompts**
+
+- What changed for users, operators, or maintainers?
+- Which risk, delay, or repeated work did this reduce?
+- Which evidence anchor best proves the change?
+- What follow-up or gap should a reviewer know about?
+
+_PRs: 2, Reviews: 1, Manual: 0_
+
+### Web Frontend
+
+Dashboard improvements
+
+**Evidence anchors**
+
+- [PR] Dashboard redesign (1970-01-01) — [acme/web](https://github.com/acme/web/pull/3)
+
+**Suggested claim prompts**
+
+- What changed for users, operators, or maintainers?
+- Which risk, delay, or repeated work did this reduce?
+- Which evidence anchor best proves the change?
+- What follow-up or gap should a reviewer know about?
+
+_PRs: 1, Reviews: 0, Manual: 0_
+
+## Receipts
+
+### Workstream: API Platform
+
+- [PR] API auth endpoint (1970-01-01) — [acme/api](https://github.com/acme/api/pull/1)
+- [PR] API rate limiting (1970-01-01) — [acme/api](https://github.com/acme/api/pull/2)
+- [Review] approved (1970-01-01) — [acme/api](https://github.com/acme/api/pull/1)
+
+### Workstream: Web Frontend
+
+- [PR] Dashboard redesign (1970-01-01) — [acme/web](https://github.com/acme/web/pull/3)
+
+## Coverage and Limits
+
+Included:
+- GitHub: 4 events
+- Fetched events: not reported by query slices
+
+Skipped:
+- None recorded
+
+Known gaps:
+- None recorded
+
+Details:
+- **Date window:** 2025-01-01 to 2025-04-01
+- **Mode:** merged
+- **Sources:** GitHub
+- **Completeness:** Complete
+
+## Appendix: All Receipts
+
+### API Platform
+
+- [PR] API auth endpoint (1970-01-01) — [acme/api](https://github.com/acme/api/pull/1)
+- [PR] API rate limiting (1970-01-01) — [acme/api](https://github.com/acme/api/pull/2)
+- [Review] approved (1970-01-01) — [acme/api](https://github.com/acme/api/pull/1)
+
+### Web Frontend
+
+- [PR] Dashboard redesign (1970-01-01) — [acme/web](https://github.com/acme/web/pull/3)
+
+---
+
+## File Artifacts
+
+- `packet.md` (this review packet)
+- `ledger.events.jsonl` (canonical events)
+- `coverage.manifest.json` (completeness + slicing)
+- `workstreams.suggested.yaml` (auto-generated workstream suggestions)
+- `workstreams.yaml` (curated workstreams, created after edits)
+- `bundle.manifest.json` (artifact manifest and checksums)

@@ -9,12 +9,12 @@ mod user_workflow_tests {
     use crate::bdd::assertions::*;
     use crate::pr_event;
 
+    use crate::TestMarkdownRenderer as MarkdownRenderer;
     use chrono::{NaiveDate, Utc};
     use shiplog_engine::{Engine, WorkstreamSource};
     use shiplog_ids::RunId;
     use shiplog_ports::{IngestOutput, Redactor, WorkstreamClusterer};
     use shiplog_redact::DeterministicRedactor;
-    use shiplog_render_md::MarkdownRenderer;
     use shiplog_schema::bundle::BundleProfile;
     use shiplog_schema::coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow};
     use shiplog_workstreams::RepoClusterer;
@@ -40,7 +40,7 @@ mod user_workflow_tests {
 
     fn build_engine() -> Engine<'static> {
         let renderer: &'static dyn shiplog_ports::Renderer =
-            Box::leak(Box::new(MarkdownRenderer::default()));
+            Box::leak(Box::new(MarkdownRenderer::new()));
         let clusterer: &'static dyn WorkstreamClusterer = Box::leak(Box::new(RepoClusterer));
         let redactor: &'static dyn Redactor =
             Box::leak(Box::new(DeterministicRedactor::new(b"bdd-test-key")));

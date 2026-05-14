@@ -11,6 +11,9 @@ use regex::{Regex, RegexBuilder};
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use shiplog::render::md::{
+    AppendixMode, MarkdownRenderOptions, MarkdownRenderer, SectionOrder, format_receipt_markdown,
+};
 use shiplog_cache::ApiCache;
 use shiplog_engine::{ConflictResolution, Engine, WorkstreamSource};
 use shiplog_ids::{EventId, WorkstreamId};
@@ -25,9 +28,6 @@ use shiplog_ingest_manual::{
 };
 use shiplog_ports::{IngestOutput, Ingestor, Redactor, Renderer};
 use shiplog_redact::DeterministicRedactor;
-use shiplog_render_md::{
-    AppendixMode, MarkdownRenderOptions, MarkdownRenderer, SectionOrder, format_receipt_markdown,
-};
 use shiplog_schema::{
     bundle::BundleProfile,
     coverage::{CoverageManifest, TimeWindow},

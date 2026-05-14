@@ -8,7 +8,7 @@
 
 use libfuzzer_sys::fuzz_target;
 use shiplog_ports::Renderer;
-use shiplog_render_md::MarkdownRenderer;
+use shiplog::render::md::MarkdownRenderer;
 use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
 use shiplog_schema::event::{
     Actor, EventEnvelope, EventKind, EventPayload, Link, PullRequestEvent, PullRequestState,
@@ -206,7 +206,7 @@ fuzz_target!(|data: &[u8]| {
     let renderer = if order_sel == 0 {
         MarkdownRenderer::new()
     } else {
-        MarkdownRenderer::new().with_section_order(shiplog_render_md::SectionOrder::CoverageFirst)
+        MarkdownRenderer::new().with_section_order(shiplog::render::md::SectionOrder::CoverageFirst)
     };
 
     // Must not panic

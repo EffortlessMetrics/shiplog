@@ -25,8 +25,6 @@ packages=(
   shiplog-bundle
   shiplog-workstreams
   shiplog-merge
-  shiplog-render-md
-  shiplog-render-json
   shiplog-ingest-json
   shiplog-ingest-manual
   shiplog-ingest-git

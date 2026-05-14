@@ -1,0 +1,91 @@
+---
+source: apps/shiplog/tests/render_md/format_stability.rs
+expression: result
+---
+# Summary
+
+**Window:** 2025-Q1
+
+**Workstreams:** 1
+
+**Events:** 1 PR, 0 reviews, 0 manual events
+
+**Coverage:** Partial
+
+**Sources:** GitHub
+
+**Warnings:**
+  - ⚠️ API rate limit hit during ingestion
+  - ⚠️ Some repositories may be missing
+
+## Executive Summary
+
+- **Partial Work** — 1 PR, 0 reviews, 0 manual events
+
+_Skipped sources and gaps: see `## Coverage and Limits` for the receipted list._
+
+## Workstreams
+
+### Partial Work
+
+**Evidence anchors**
+
+- [PR] Some work (2025-06-01) — [acme/widgets](https://github.com/acme/widgets/pull/1)
+
+**Suggested claim prompts**
+
+- What changed for users, operators, or maintainers?
+- Which risk, delay, or repeated work did this reduce?
+- Which evidence anchor best proves the change?
+- What follow-up or gap should a reviewer know about?
+
+_PRs: 1, Reviews: 0, Manual: 0_
+
+## Receipts
+
+### Workstream: Partial Work
+
+- [PR] Some work (2025-06-01) — [acme/widgets](https://github.com/acme/widgets/pull/1)
+
+## Coverage and Limits
+
+Included:
+- GitHub: 1 event
+- Query slices: 2 slices, fetched 130 of 230 reported results
+
+Skipped:
+- None recorded
+
+Known gaps:
+- Overall completeness is Partial
+- API rate limit hit during ingestion
+- Some repositories may be missing
+- 1 query slice reported incomplete results
+- 1 query slice fetched fewer results than reported
+
+Details:
+- **Date window:** 2025-01-01 to 2025-04-01
+- **Mode:** merged
+- **Sources:** GitHub
+- **Completeness:** Partial
+- **Query slices:** 2
+  - ⚠️ 1 slices had incomplete results
+  - **Slicing applied (API caps):**
+    - is:pr author:octocat merged:2025-01-01..2025-02-01: fetched 100/200 (50%)
+
+## Appendix: All Receipts
+
+### Partial Work
+
+- [PR] Some work (2025-06-01) — [acme/widgets](https://github.com/acme/widgets/pull/1)
+
+---
+
+## File Artifacts
+
+- `packet.md` (this review packet)
+- `ledger.events.jsonl` (canonical events)
+- `coverage.manifest.json` (completeness + slicing)
+- `workstreams.suggested.yaml` (auto-generated workstream suggestions)
+- `workstreams.yaml` (curated workstreams, created after edits)
+- `bundle.manifest.json` (artifact manifest and checksums)

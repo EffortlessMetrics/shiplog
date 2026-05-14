@@ -2,8 +2,11 @@
 
 use chrono::{TimeZone, Utc};
 use shiplog_ids::EventId;
+use shiplog_ports::Renderer;
+use shiplog_schema::coverage::CoverageManifest;
 use shiplog_schema::coverage::TimeWindow;
 use shiplog_schema::event::*;
+use shiplog_schema::workstream::WorkstreamsFile;
 
 pub mod bdd;
 pub mod bdd_scenarios;
@@ -15,6 +18,54 @@ pub mod scenarios {
     pub mod user_workflows;
     pub mod v02x;
     pub mod v03x;
+}
+
+/// Minimal Markdown renderer for engine and workflow tests.
+///
+/// Product Markdown lives in the `shiplog` package. The testkit keeps this
+/// small renderer so lower-level engine tests do not depend on the CLI package
+/// just to prove pipeline orchestration.
+#[derive(Debug, Default)]
+pub struct TestMarkdownRenderer;
+
+impl TestMarkdownRenderer {
+    /// Create a test renderer.
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Renderer for TestMarkdownRenderer {
+    fn render_packet_markdown(
+        &self,
+        user: &str,
+        window_label: &str,
+        events: &[EventEnvelope],
+        workstreams: &WorkstreamsFile,
+        coverage: &CoverageManifest,
+    ) -> anyhow::Result<String> {
+        let mut out = String::new();
+        out.push_str(&format!("# Test Packet for {user}\n\n"));
+        out.push_str(&format!("Window: {window_label}\n"));
+        out.push_str(&format!("Coverage: {:?}\n\n", coverage.completeness));
+        out.push_str("## Workstreams\n");
+        for workstream in &workstreams.workstreams {
+            out.push_str(&format!("- {}\n", workstream.title));
+        }
+        out.push_str("\n## Events\n");
+        for event in events {
+            let title = match &event.payload {
+                EventPayload::PullRequest(pr) => &pr.title,
+                EventPayload::Review(review) => &review.pull_title,
+                EventPayload::Manual(manual) => &manual.title,
+            };
+            out.push_str(&format!(
+                "- {:?}: {} from {:?} - {}\n",
+                event.kind, event.repo.full_name, event.source.system, title
+            ));
+        }
+        Ok(out)
+    }
 }
 
 #[cfg(test)]

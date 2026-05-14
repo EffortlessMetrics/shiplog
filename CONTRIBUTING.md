@@ -25,15 +25,15 @@ All workspace crates should build and pass tests on a clean checkout.
 ## Project structure
 
 shiplog is a module-first Rust workspace following Clean Architecture (Ports & Adapters).
-Public crates are reserved for stable contracts, trust surfaces, real adapters, and
-heavy optional dependency boundaries. Internal implementation seams belong under their
-owning crate as modules. See [API_SURFACE.md](API_SURFACE.md) before adding or promoting
-a package.
+The supported public package surface is being contracted for 0.7. Internal
+implementation seams belong under their owning package as modules unless a spec
+and ADR promote them. See [API_SURFACE.md](API_SURFACE.md) before adding or
+promoting a package.
 
 | Tier | Examples | Role |
 |------|----------|------|
 | Stable contracts | `shiplog-ids`, `shiplog-schema`, `shiplog-ports` | Core types and traits, no adapter dependencies |
-| Trust surfaces | `shiplog-coverage`, `shiplog-redact`, `shiplog-bundle`, `shiplog-workstreams`, `shiplog-render-*`, `shiplog-cache` | User-visible evidence, privacy, and output behavior |
+| Trust surfaces | coverage, redaction, bundle, workstreams, render, cache modules | User-visible evidence, privacy, and output behavior under owner packages |
 | Adapters | `shiplog-ingest-*` | External-system or stable-import boundaries |
 | Orchestration | `shiplog-engine` | Wires adapters together via ports |
 | App | `shiplog` (in `apps/shiplog`) | CLI entrypoint (composition root) |
@@ -78,11 +78,10 @@ The core pipeline is synchronous. If you need async (e.g., for a new HTTP-based 
 
 ### Module-first boundaries
 
-Start a new boundary as a module under the nearest owning crate. Promote it to a
-new `shiplog-*` crate only when it is a stable public contract, a trust surface,
-a real external adapter boundary, or a heavy optional dependency/privacy boundary.
-Follow the naming convention only after that promotion is justified:
-`shiplog-ingest-*` for sources and `shiplog-render-*` for output formats.
+Start a new boundary as a module under the nearest owning package. Promote it to
+a new `shiplog-*` crate only when it passes the public crate test in
+`SHIPLOG-SPEC-0004` and has an ADR. Naming conventions follow only after that
+promotion is justified.
 
 ### Keep it simple
 
@@ -111,7 +110,10 @@ boundary in the PR description.
 
 ### Other crate types
 
-For renderers (`shiplog-render-*`), follow the same pattern but implement the `Renderer` trait. For utility code, prefer an owner module. Do not add generic `shiplog-*` crates for data structures, queues, counters, parsers, normalizers, or helper functions.
+For renderers, prefer an owner module such as `apps/shiplog/src/render/` and
+implement the `Renderer` trait there. For utility code, prefer an owner module.
+Do not add generic `shiplog-*` crates for data structures, queues, counters,
+parsers, normalizers, or helper functions.
 
 General steps for any new crate:
 
@@ -139,9 +141,10 @@ cargo test --workspace
 ### Running tests for a single crate
 
 ```bash
-cargo test -p shiplog-render-md
-cargo test -p shiplog-render-md -- --nocapture  # See stdout
-cargo test -p shiplog-render-md my_test -- --exact  # Single test
+cargo test -p shiplog
+cargo test -p shiplog --test render_md
+cargo test -p shiplog --test render_md -- --nocapture  # See stdout
+cargo test -p shiplog --test render_md my_test -- --exact  # Single test
 ```
 
 ### Unit tests
@@ -171,17 +174,17 @@ Snapshot tests use the `insta` crate with YAML format. Used extensively in rende
 **Reviewing snapshots:**
 
 ```bash
-cargo insta review -p shiplog-render-md
+cargo insta review -p shiplog
 ```
 
 **Updating snapshots** when you intentionally change output:
 
 ```bash
 # Unix
-INSTA_UPDATE=auto cargo test -p shiplog-render-md
+INSTA_UPDATE=auto cargo test -p shiplog --test render_md
 
 # PowerShell
-$env:INSTA_UPDATE='auto'; cargo test -p shiplog-render-md
+$env:INSTA_UPDATE='auto'; cargo test -p shiplog --test render_md
 ```
 
 Always review snapshot diffs carefully before committing. Snapshot changes should reflect intentional output modifications, not accidental regressions.

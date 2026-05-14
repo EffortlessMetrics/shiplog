@@ -2270,7 +2270,10 @@ dependencies = [
  "chrono",
  "clap",
  "hex",
+ "insta",
+ "itertools 0.14.0",
  "predicates",
+ "proptest",
  "regex",
  "reqwest",
  "serde",
@@ -2290,8 +2293,8 @@ dependencies = [
  "shiplog-ingest-manual",
  "shiplog-ports",
  "shiplog-redact",
- "shiplog-render-md",
  "shiplog-schema",
+ "shiplog-testkit",
  "shiplog-workstreams",
  "tempfile",
  "toml",
@@ -2367,6 +2370,7 @@ version = "0.6.0"
 dependencies = [
  "anyhow",
  "chrono",
+ "insta",
  "proptest",
  "serde_json",
  "serde_yaml_ng",
@@ -2376,8 +2380,6 @@ dependencies = [
  "shiplog-merge",
  "shiplog-ports",
  "shiplog-redact",
- "shiplog-render-json",
- "shiplog-render-md",
  "shiplog-schema",
  "shiplog-testkit",
  "shiplog-workstreams",
@@ -2574,38 +2576,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "shiplog-render-json"
-version = "0.6.0"
-dependencies = [
- "anyhow",
- "chrono",
- "insta",
- "proptest",
- "serde_json",
- "shiplog-ids",
- "shiplog-schema",
- "shiplog-testkit",
- "tempfile",
-]
-
-[[package]]
-name = "shiplog-render-md"
-version = "0.6.0"
-dependencies = [
- "anyhow",
- "chrono",
- "insta",
- "itertools 0.14.0",
- "proptest",
- "shiplog-ids",
- "shiplog-ports",
- "shiplog-schema",
- "shiplog-testkit",
- "shiplog-workstreams",
- "tempfile",
-]
-
-[[package]]
 name = "shiplog-schema"
 version = "0.6.0"
 dependencies = [
@@ -2656,8 +2626,6 @@ dependencies = [
  "shiplog-merge",
  "shiplog-ports",
  "shiplog-redact",
- "shiplog-render-json",
- "shiplog-render-md",
  "shiplog-schema",
  "shiplog-team",
  "shiplog-workstreams",

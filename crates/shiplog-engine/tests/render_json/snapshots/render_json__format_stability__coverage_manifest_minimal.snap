@@ -1,0 +1,18 @@
+---
+source: crates/shiplog-engine/tests/render_json/format_stability.rs
+expression: text
+---
+{
+  "run_id": "min",
+  "generated_at": "2025-06-01T12:00:00Z",
+  "user": "u",
+  "window": {
+    "since": "2025-01-01",
+    "until": "2025-01-02"
+  },
+  "mode": "created",
+  "sources": [],
+  "slices": [],
+  "warnings": [],
+  "completeness": "Unknown"
+}
