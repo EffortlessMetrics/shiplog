@@ -336,7 +336,7 @@ field_candidates = [
 ]
 activation_status = "type-enforced"
 next_action = "Nothing to do for this class today: the canonical-wrapper refactor that the doc historically flagged as 'the largest class by surface area' is already complete. Future ingest adapters must populate `SourceRef::opaque_id` rather than introducing per-adapter raw fields. A future ledger-driven `xtask check-protected-fields` checker (optional step 6 in the activation ladder doc) could catch a regression like a future ingest adapter exposing its own `pub node_id: String` on its event type, by scanning for new `pub.*_id: String` patterns on types whose modules import shiplog-schema's `SourceRef`."
-owner = "shiplog-ingest-github"
+owner = "shiplog::ingest::github"
 reason = "See docs/CLIPPY_PROTECTED_FIELDS.md#4-source-opaque-ids for the seam doctrine and failure mode."
 created = "2026-05-11"
 review_after = "2026-11-11"

@@ -232,7 +232,7 @@ expires = "permanent"
 
 [[allow]]
 id = "non-rust-crate-github-recorded-fixtures"
-glob = "crates/shiplog-ingest-github/tests/fixtures/**"
+glob = "apps/shiplog/tests/fixtures/github-warm-rerun/**"
 category = "test_fixture"
 language = "json"
 owner = "policy"

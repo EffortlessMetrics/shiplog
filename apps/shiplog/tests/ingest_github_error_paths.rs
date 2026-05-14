@@ -1,10 +1,10 @@
-//! Error-path tests for the shiplog-ingest-github crate.
+//! Error-path tests for the GitHub ingest module.
 //!
 //! Exercises date validation, query building, URL parsing, and deserialization
 //! edge cases without making real network calls.
 
 use chrono::NaiveDate;
-use shiplog_ingest_github::GithubIngestor;
+use shiplog::ingest::github::GithubIngestor;
 use shiplog_ports::Ingestor;
 
 fn date(y: i32, m: u32, d: u32) -> NaiveDate {

@@ -1,9 +1,9 @@
-//! Integration tests for shiplog-ingest-github public API.
+//! Integration tests for the GitHub ingest module.
 //!
 //! These tests exercise the public interface without making real network calls.
 
 use chrono::NaiveDate;
-use shiplog_ingest_github::GithubIngestor;
+use shiplog::ingest::github::GithubIngestor;
 use shiplog_ports::Ingestor;
 
 fn date(y: i32, m: u32, d: u32) -> NaiveDate {

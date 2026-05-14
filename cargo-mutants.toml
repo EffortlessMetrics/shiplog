@@ -39,7 +39,8 @@
 # External-system adapters and feature-gated integration surfaces.
 # ============================================================================
 #
-# shiplog-ingest-github - GitHub API adapter
+# apps/shiplog/src/ingest/github.rs
+#                      - GitHub API adapter
 # shiplog-ingest-json   - JSONL import adapter
 # apps/shiplog/src/ingest/manual
 #                      - manual YAML ingest adapter

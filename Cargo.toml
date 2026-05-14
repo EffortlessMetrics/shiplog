@@ -18,7 +18,6 @@ members = [
   "crates/shiplog-cache",
 
   # Source adapters
-  "crates/shiplog-ingest-github",
   "crates/shiplog-ingest-json",
 
   # Optional feature surfaces
