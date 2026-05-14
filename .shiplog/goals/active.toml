@@ -52,6 +52,11 @@ number = 293
 title = "docs(spec): define evidence repair loop"
 url = "https://github.com/EffortlessMetrics/shiplog/pull/293"
 
+[[completed_pr]]
+number = 294
+title = "docs(adr): make repair actions receipt-derived"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/294"
+
 [[work_item]]
 id = "repair-loop-spec"
 title = "docs(spec): define evidence repair loop contract"
