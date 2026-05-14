@@ -148,7 +148,7 @@ contract those PRs must satisfy.
 | `shiplog-schema` | `internal-module` | no | Keep Rust schema types internal; JSON schemas are the public machine contract. |
 | `shiplog-ids` | `internal-module` | no | Inline or make unpublished support; 0.6 published versions become `historical-0.6`. |
 | `shiplog-ports` | `internal-module` | no | Keep private until a plugin/API ADR exists; 0.6 published versions become `historical-0.6`. |
-| `shiplog-engine` | `internal-module` | no | Inline into product internals; 0.6 published versions become `historical-0.6`. |
+| `shiplog-engine` | `historical-0.6` / `internal-module` | no | Collapsed into `shiplog::engine`; 0.6 published versions become `historical-0.6`. |
 | `shiplog-coverage` | `historical-0.6` / `internal-module` | no | Collapsed into `shiplog::coverage`; 0.6 published versions become `historical-0.6`. |
 | `shiplog-workstreams` | `internal-module` | no | Inline workstream support; 0.6 published versions become `historical-0.6`. |
 | `shiplog-redact` | `internal-module` | no | Inline redaction support while preserving fail-closed behavior; 0.6 published versions become `historical-0.6`. |

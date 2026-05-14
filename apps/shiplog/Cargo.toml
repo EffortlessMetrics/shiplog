@@ -16,6 +16,7 @@ categories = ["command-line-utilities", "development-tools"]
 [features]
 default = []
 llm = ["dep:shiplog-cluster-llm"]
+merge-pipeline = []
 
 [dependencies]
 anyhow.workspace = true
@@ -34,7 +35,8 @@ toml.workspace = true
 itertools.workspace = true
 git2 = "0.20"
 mutants.workspace = true
-shiplog-engine = { path = "../../crates/shiplog-engine", version = "0.6.0" }
+shiplog-bundle = { path = "../../crates/shiplog-bundle", version = "0.6.0" }
+shiplog-merge = { path = "../../crates/shiplog-merge", version = "0.6.0" }
 shiplog-workstreams = { path = "../../crates/shiplog-workstreams", version = "0.6.0" }
 shiplog-redact = { path = "../../crates/shiplog-redact", version = "0.6.0" }
 shiplog-ports = { path = "../../crates/shiplog-ports", version = "0.6.0" }
@@ -51,7 +53,6 @@ predicates.workspace = true
 insta = { workspace = true, features = ["json", "redactions"] }
 proptest.workspace = true
 criterion.workspace = true
-shiplog-engine = { path = "../../crates/shiplog-engine", version = "0.6.0" }
 shiplog-ports = { path = "../../crates/shiplog-ports", version = "0.6.0" }
 shiplog-schema = { path = "../../crates/shiplog-schema", version = "0.6.0" }
 shiplog-redact = { path = "../../crates/shiplog-redact", version = "0.6.0" }

@@ -1846,8 +1846,9 @@ dependencies = [
  "serde_json",
  "serde_yaml_ng",
  "sha2 0.11.0",
- "shiplog-engine",
+ "shiplog-bundle",
  "shiplog-ids",
+ "shiplog-merge",
  "shiplog-ports",
  "shiplog-redact",
  "shiplog-schema",
@@ -1882,23 +1883,6 @@ dependencies = [
  "serde_json",
  "shiplog-ids",
  "shiplog-ports",
- "shiplog-schema",
- "shiplog-workstreams",
-]
-
-[[package]]
-name = "shiplog-engine"
-version = "0.6.0"
-dependencies = [
- "anyhow",
- "chrono",
- "serde_json",
- "serde_yaml_ng",
- "shiplog-bundle",
- "shiplog-ids",
- "shiplog-merge",
- "shiplog-ports",
- "shiplog-redact",
  "shiplog-schema",
  "shiplog-workstreams",
 ]

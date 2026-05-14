@@ -573,7 +573,7 @@ external contract. Adapters depend on ports and schema, never the reverse.
                     +--------+---------+
                              |
                     +--------v---------+
-                    |  shiplog-engine   |
+                    |  shiplog::engine   |
                     |  (orchestration)  |
                     +--------+---------+
                              |
@@ -599,11 +599,11 @@ external contract. Adapters depend on ports and schema, never the reverse.
 
 ### Workspace Surface During 0.7 Contraction
 
-| Crate | Role |
+| Surface | Role |
 |-------|------|
 | `shiplog` | Supported CLI entrypoint and default public package surface |
 | `shiplog-schema` | Internal typed schema support; JSON schemas are the public machine contract |
-| `shiplog-engine` | Internal orchestration support during contraction |
+| `shiplog::engine` | Internal orchestration support during contraction |
 | `shiplog-ports` | Internal trait definitions until a plugin/API ADR exists |
 | `shiplog-ids` | Internal deterministic ID helpers during contraction |
 | `shiplog-workstreams` | Internal workstream clustering and curated YAML workflow |

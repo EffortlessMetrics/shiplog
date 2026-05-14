@@ -34,8 +34,8 @@ no-panic, `permissions` for workflows).
 schema_version = "1.0"
 
 [[entry]]
-path = "crates/shiplog-engine/src/intake.rs"
-owner = "shiplog-engine"
+path = "apps/shiplog/src/intake_report_builder.rs"
+owner = "shiplog::engine"
 reason = "Intake config can lack a report_dir when the user has not run init; we surface this through the doctor flow."
 expiry = "2026-09-01"
 ```
@@ -46,7 +46,7 @@ Field rules:
   where the policy explicitly says so (e.g. `tests/**/*.json`); single-file
   paths are preferred for blast-radius reasons.
 - `owner` — the crate or sub-team that takes responsibility. Use the
-  workspace package name (`shiplog-engine`, `shiplog-redact`, etc.) when the
+  workspace package name (`shiplog::engine`, `shiplog-redact`, etc.) when the
   finding lives in that package, or one of: `release`, `policy`, `ci`,
   `docs`.
 - `reason` — one or two sentences. Explain the situation, not the
@@ -66,7 +66,7 @@ use `#[expect(..., reason = "...")]` rather than `#[allow(..., ...)]`:
 ```rust
 #[expect(
     clippy::needless_pass_by_value,
-    reason = "kept until shiplog-engine cleanup; tracked in policy/clippy-debt.toml",
+    reason = "kept until shiplog::engine cleanup; tracked in policy/clippy-debt.toml",
 )]
 fn render_packet(events: Vec<Event>) -> Packet { /* ... */ }
 ```
@@ -81,7 +81,7 @@ cite the policy entry:
 ```rust
 #[expect(
     clippy::cognitive_complexity,
-    reason = "see policy/clippy-exceptions.toml#shiplog-engine.collect_multi",
+    reason = "see policy/clippy-exceptions.toml#shiplog::engine.collect_multi",
 )]
 fn collect_multi(/* ... */) -> Result<Run> { /* ... */ }
 ```

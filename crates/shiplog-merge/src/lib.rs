@@ -199,7 +199,7 @@ pub fn merge_ingest_outputs(
 /// Merge multiple ingest outputs using the pre-existing engine fallback behavior.
 ///
 /// Kept here to preserve CLI compatibility when the `merge-pipeline` feature
-/// is disabled in `shiplog-engine`.
+/// is disabled in `shiplog::engine`.
 pub fn merge_ingest_outputs_legacy(
     ingest_outputs: &[IngestOutput],
     resolution: ConflictResolution,

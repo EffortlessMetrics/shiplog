@@ -39,12 +39,6 @@ publish = false
 reason = "Internal traits until a plugin or adapter API is specified."
 
 [[package]]
-name = "shiplog-engine"
-tier = "internal-module"
-publish = false
-reason = "Product orchestration support, not a forward public import surface."
-
-[[package]]
 name = "shiplog-workstreams"
 tier = "internal-module"
 publish = false
@@ -146,3 +140,8 @@ reason = "0.6 cache/freshness crate collapsed into shiplog::cache."
 name = "shiplog-coverage"
 tier = "historical-0.6"
 reason = "0.6 coverage/time-window crate collapsed into shiplog::coverage."
+
+[[historical]]
+name = "shiplog-engine"
+tier = "historical-0.6"
+reason = "0.6 product orchestration crate collapsed into shiplog::engine."

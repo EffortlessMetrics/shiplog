@@ -63,8 +63,7 @@ These are implementation seams, not package promises. They should live under the
 nearest owning crate unless a later PR deliberately promotes them.
 
 - Markdown rendering: `shiplog::render::md`.
-- JSON artifact writing: `crates/shiplog-engine/src/artifact_json.rs` until
-  engine is collapsed or the writer moves to the final owner module.
+- JSON artifact writing: `apps/shiplog/src/engine/artifact_json.rs`.
 - Redaction internals: profile, policy, projector, repo, alias.
 - Cache internals: `shiplog::cache::{key, stats, expiry, sqlite}`.
 - Date windows and coverage calculations: `shiplog::coverage`.

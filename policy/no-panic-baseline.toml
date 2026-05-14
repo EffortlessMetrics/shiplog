@@ -2586,7 +2586,7 @@ snippet = "cursor = cursor.succ_opt().unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-engine/src/artifact_json.rs"
+path = "apps/shiplog/src/engine/artifact_json.rs"
 family = "panic"
 selector_kind = "macro-call"
 selector_callee = "panic"
@@ -2594,7 +2594,7 @@ snippet = '.unwrap_or_else(|e| panic!("line {i} failed to parse: {e}"));'
 count = 1
 
 [[entry]]
-path = "crates/shiplog-engine/src/artifact_json.rs"
+path = "apps/shiplog/src/engine/artifact_json.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2602,7 +2602,7 @@ snippet = "created_at: Utc.timestamp_opt(0, 0).unwrap(),"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-engine/src/artifact_json.rs"
+path = "apps/shiplog/src/engine/artifact_json.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2610,7 +2610,7 @@ snippet = "generated_at: Utc.timestamp_opt(0, 0).unwrap(),"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-engine/src/artifact_json.rs"
+path = "apps/shiplog/src/engine/artifact_json.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2618,7 +2618,7 @@ snippet = "let dir = tempfile::tempdir().unwrap();"
 count = 4
 
 [[entry]]
-path = "crates/shiplog-engine/src/artifact_json.rs"
+path = "apps/shiplog/src/engine/artifact_json.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2626,7 +2626,7 @@ snippet = "let loaded: CoverageManifest = serde_json::from_str(&text).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-engine/src/artifact_json.rs"
+path = "apps/shiplog/src/engine/artifact_json.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2634,7 +2634,7 @@ snippet = "let text = std::fs::read_to_string(&path).unwrap();"
 count = 4
 
 [[entry]]
-path = "crates/shiplog-engine/src/artifact_json.rs"
+path = "apps/shiplog/src/engine/artifact_json.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2642,7 +2642,7 @@ snippet = "merged_at: Some(Utc.timestamp_opt(0, 0).unwrap()),"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-engine/src/artifact_json.rs"
+path = "apps/shiplog/src/engine/artifact_json.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2650,7 +2650,7 @@ snippet = "occurred_at: Utc.timestamp_opt(0, 0).unwrap(),"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-engine/src/artifact_json.rs"
+path = "apps/shiplog/src/engine/artifact_json.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2658,7 +2658,7 @@ snippet = "since: NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),"
 count = 2
 
 [[entry]]
-path = "crates/shiplog-engine/src/artifact_json.rs"
+path = "apps/shiplog/src/engine/artifact_json.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2666,7 +2666,7 @@ snippet = "until: NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),"
 count = 2
 
 [[entry]]
-path = "crates/shiplog-engine/src/artifact_json.rs"
+path = "apps/shiplog/src/engine/artifact_json.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2674,7 +2674,7 @@ snippet = "write_coverage_manifest(&path, &cov).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-engine/src/artifact_json.rs"
+path = "apps/shiplog/src/engine/artifact_json.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2682,7 +2682,7 @@ snippet = "write_events_jsonl(&path, &[]).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-engine/src/artifact_json.rs"
+path = "apps/shiplog/src/engine/artifact_json.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2690,7 +2690,7 @@ snippet = "write_events_jsonl(&path, &events).unwrap();"
 count = 2
 
 [[entry]]
-path = "crates/shiplog-engine/src/lib.rs"
+path = "apps/shiplog/src/engine/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2698,7 +2698,7 @@ snippet = ".unwrap();"
 count = 3
 
 [[entry]]
-path = "crates/shiplog-engine/src/lib.rs"
+path = "apps/shiplog/src/engine/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2706,7 +2706,7 @@ snippet = "created_at: Utc.timestamp_opt(0, 0).unwrap(),"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-engine/src/lib.rs"
+path = "apps/shiplog/src/engine/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2714,7 +2714,7 @@ snippet = "generated_at: Utc.timestamp_opt(0, 0).unwrap(),"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-engine/src/lib.rs"
+path = "apps/shiplog/src/engine/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2722,7 +2722,7 @@ snippet = "let dir = tempfile::tempdir().unwrap();"
 count = 4
 
 [[entry]]
-path = "crates/shiplog-engine/src/lib.rs"
+path = "apps/shiplog/src/engine/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2730,7 +2730,7 @@ snippet = "merged_at: Some(Utc.timestamp_opt(0, 0).unwrap()),"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-engine/src/lib.rs"
+path = "apps/shiplog/src/engine/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2738,7 +2738,7 @@ snippet = "occurred_at: Utc.timestamp_opt(0, 0).unwrap(),"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-engine/src/lib.rs"
+path = "apps/shiplog/src/engine/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2746,7 +2746,7 @@ snippet = "outputs.zip_path.as_ref().unwrap().exists(),"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-engine/src/lib.rs"
+path = "apps/shiplog/src/engine/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2754,7 +2754,7 @@ snippet = "since: NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),"
 count = 2
 
 [[entry]]
-path = "crates/shiplog-engine/src/lib.rs"
+path = "apps/shiplog/src/engine/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"

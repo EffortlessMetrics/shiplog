@@ -86,8 +86,8 @@ Each class below lists:
 | Slot | Value |
 | --- | --- |
 | Invariant | Hashes, signatures, and provenance receipts written to `intake.report.json`, `share.manifest.json`, and `bundle.manifest.json` must be computed via the canonical accessor on the source struct. Two callers that recompute the same receipt must produce byte-identical bytes. |
-| Boundary | The receipt-emitting owner module (varies by receipt type): `shiplog-engine` for intake reports, `shiplog-bundle` for bundle/share manifests, `shiplog::cache` for cache receipts. Each owns the canonical `compute_receipt()` accessor; raw `hash: [u8; 32]` style fields are private. |
-| Today's surface | Mixed: `shiplog-engine::intake_report`, `shiplog-bundle::manifest`, `shiplog::cache::receipt` (some types here may need to be introduced rather than refactored). |
+| Boundary | The receipt-emitting owner module (varies by receipt type): `shiplog::engine` for intake reports, `shiplog-bundle` for bundle/share manifests, `shiplog::cache` for cache receipts. Each owns the canonical `compute_receipt()` accessor; raw `hash: [u8; 32]` style fields are private. |
+| Today's surface | Mixed: `shiplog::engine::intake_report`, `shiplog-bundle::manifest`, `shiplog::cache::receipt` (some types here may need to be introduced rather than refactored). |
 | Failure mode | One caller hashes the canonical fields; a second caller hashes a slightly different field order; the two receipts disagree for the same logical input and consumers diverge. |
 
 ### 4. Source opaque IDs

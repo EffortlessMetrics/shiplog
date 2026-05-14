@@ -8,7 +8,7 @@ Purpose: Provide concise, repo-specific guidance for Copilot sessions so suggest
 
 Build
 - Build the entire workspace: `cargo build --workspace`
-- Build a single crate: `cargo build -p <crate-name>` (example: `cargo build -p shiplog-engine`)
+- Build a single crate: `cargo build -p <crate-name>` (example: `cargo build -p shiplog::engine`)
 - Release build: `cargo build --workspace --release`
 
 Run CLI examples (from README)
@@ -55,9 +55,9 @@ This is a module-first Rust workspace following Clean Architecture boundaries. T
 - crates/shiplog-workstreams — clustering + editable YAML overrides
 - crates/shiplog-redact — deterministic HMAC-SHA256 redaction (internal/manager/public profiles)
 - apps/shiplog/src/render/md — Markdown renderer (snapshot-tested with insta)
-- crates/shiplog-engine/src/artifact_json.rs — JSON artifact writer during the contraction slice
+- apps/shiplog/src/engine/artifact_json.rs — JSON artifact writer during the contraction slice
 - crates/shiplog-bundle — checksums + optional zip export
-- crates/shiplog-engine — orchestration (ingest → normalize → cluster → render)
+- apps/shiplog/src/engine — orchestration (ingest → normalize → cluster → render)
 - apps/shiplog/src/ingest/json.rs — JSONL adapter
 - apps/shiplog/src/ingest/github.rs — GitHub adapter (adaptive date slicing, SQLite caching)
 - apps/shiplog/src/ingest/manual — manual ingest adapter (YAML-based non-GitHub events)

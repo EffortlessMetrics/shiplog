@@ -5,9 +5,9 @@
 //!   cargo run -p shiplog --example json_import
 
 use anyhow::{Context, Result};
+use shiplog::engine::Engine;
 use shiplog::ingest::json::JsonIngestor;
 use shiplog::render::md::MarkdownRenderer;
-use shiplog_engine::Engine;
 use shiplog_ports::Ingestor;
 use shiplog_redact::DeterministicRedactor;
 use shiplog_schema::bundle::BundleProfile;

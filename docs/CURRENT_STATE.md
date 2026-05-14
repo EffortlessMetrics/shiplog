@@ -161,7 +161,7 @@ Stable contracts:
 
 Product and trust surfaces:
 
-- `shiplog-engine`
+- `shiplog::engine`
 - `shiplog-coverage`
 - `shiplog-workstreams`
 - `shiplog-redact`

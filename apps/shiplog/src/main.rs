@@ -12,6 +12,7 @@ use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use shiplog::cache::ApiCache;
+use shiplog::engine::{ConflictResolution, Engine, WorkstreamSource};
 use shiplog::ingest::git::LocalGitIngestor;
 use shiplog::ingest::github::GithubIngestor;
 use shiplog::ingest::gitlab::{GitlabIngestor, MrState};
@@ -24,7 +25,6 @@ use shiplog::ingest::manual::{
 use shiplog::render::md::{
     AppendixMode, MarkdownRenderOptions, MarkdownRenderer, SectionOrder, format_receipt_markdown,
 };
-use shiplog_engine::{ConflictResolution, Engine, WorkstreamSource};
 use shiplog_ids::{EventId, WorkstreamId};
 use shiplog_ports::{IngestOutput, Ingestor, Redactor, Renderer};
 use shiplog_redact::DeterministicRedactor;
@@ -1907,7 +1907,7 @@ struct ConfiguredSourceOutputs {
 #[derive(Debug)]
 struct ConfiguredRunResult {
     configured: ConfiguredSourceOutputs,
-    outputs: shiplog_engine::RunOutputs,
+    outputs: shiplog::engine::RunOutputs,
     ws_source: WorkstreamSource,
     run_id: String,
     window: ResolvedWindow,
@@ -8120,7 +8120,7 @@ fn default_appendix_for_profile(
     }
 }
 
-fn render_existing_run(args: RenderExistingArgs<'_>) -> Result<shiplog_engine::RunOutputs> {
+fn render_existing_run(args: RenderExistingArgs<'_>) -> Result<shiplog::engine::RunOutputs> {
     let clusterer: Box<dyn shiplog_ports::WorkstreamClusterer> = Box::new(RepoClusterer);
     let renderer = Box::new(ModeMarkdownRenderer::new(
         args.mode,
@@ -8671,7 +8671,7 @@ fn event_count_phrase(count: usize) -> String {
     format!("{count} {noun}")
 }
 
-fn print_outputs(outputs: &shiplog_engine::RunOutputs, ws_source: WorkstreamSource) {
+fn print_outputs(outputs: &shiplog::engine::RunOutputs, ws_source: WorkstreamSource) {
     println!(
         "- {} ({})",
         outputs.packet_md.display(),
@@ -8695,7 +8695,7 @@ fn print_outputs(outputs: &shiplog_engine::RunOutputs, ws_source: WorkstreamSour
     }
 }
 
-fn print_outputs_simple(outputs: &shiplog_engine::RunOutputs) {
+fn print_outputs_simple(outputs: &shiplog::engine::RunOutputs) {
     println!("- {}", outputs.packet_md.display());
     println!("- {}", outputs.workstreams_yaml.display());
     println!("- {}", outputs.ledger_events_jsonl.display());
@@ -8711,7 +8711,7 @@ fn print_outputs_simple(outputs: &shiplog_engine::RunOutputs) {
 }
 
 fn print_share_outputs(
-    outputs: &shiplog_engine::RunOutputs,
+    outputs: &shiplog::engine::RunOutputs,
     bundle_profile: &BundleProfile,
     manifest_path: &Path,
 ) {
@@ -8731,7 +8731,7 @@ fn print_share_outputs(
 }
 
 fn write_share_manifest(
-    outputs: &shiplog_engine::RunOutputs,
+    outputs: &shiplog::engine::RunOutputs,
     bundle_profile: &BundleProfile,
     redaction_key: &RedactionKey,
 ) -> Result<PathBuf> {

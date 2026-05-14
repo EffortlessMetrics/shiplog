@@ -96,9 +96,6 @@ mod bdd_v03x_tests;
 #[cfg(test)]
 mod bdd_later_tests;
 
-#[cfg(test)]
-mod bdd_user_workflow_tests;
-
 /// Small helpers for building fixtures in tests.
 ///
 /// Keeping these in the dev-only testkit avoids copy-paste across

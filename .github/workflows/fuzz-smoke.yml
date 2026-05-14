@@ -17,7 +17,7 @@ name: Fuzz Smoke
 # Path-to-target map (ordered to match the actual fuzz targets in
 # fuzz/fuzz_targets/):
 #   apps/shiplog/src/cache/                              -> parse_jsonl
-#   crates/shiplog-engine/src/ledger.rs                  -> parse_jsonl
+#   apps/shiplog/src/engine/                             -> parse_jsonl
 #   crates/shiplog-workstreams/                          -> parse_workstreams
 #   apps/shiplog/src/ingest/github.rs                    -> parse_github_api
 #   apps/shiplog/src/ingest/gitlab.rs                    -> parse_gitlab_api
@@ -25,7 +25,7 @@ name: Fuzz Smoke
 #   apps/shiplog/src/ingest/linear.rs                    -> parse_jira_linear_api
 #   apps/shiplog/src/ingest/manual/                      -> parse_manual_events
 #   apps/shiplog/src/template.rs (any template parsing)  -> parse_template
-#   crates/shiplog-engine/src/config.rs                  -> parse_config
+#   apps/shiplog/src/**/config*.rs                       -> parse_config
 #   crates/shiplog-plugin-manifest/                      -> parse_plugin_manifest
 
 on:
@@ -71,7 +71,7 @@ jobs:
           echo "$changed" | sed 's/^/  /'
 
           targets=()
-          if echo "$changed" | grep -qE '^apps/shiplog/src/cache/|^crates/shiplog-engine/'; then
+          if echo "$changed" | grep -qE '^apps/shiplog/src/cache/|^apps/shiplog/src/engine/'; then
             targets+=("parse_jsonl")
           fi
           if echo "$changed" | grep -qE '^crates/shiplog-workstreams/'; then
@@ -89,7 +89,7 @@ jobs:
           if echo "$changed" | grep -qE '^apps/shiplog/src/ingest/manual/'; then
             targets+=("parse_manual_events")
           fi
-          if echo "$changed" | grep -qE '^crates/shiplog-engine/src/config\.rs|^apps/shiplog/src/.*config'; then
+          if echo "$changed" | grep -qE '^apps/shiplog/src/.*config'; then
             targets+=("parse_config")
           fi
           if echo "$changed" | grep -qE 'template\.rs|^apps/shiplog/templates/'; then

@@ -15,7 +15,7 @@ This project is a module-first Rust workspace following **Clean Architecture** p
     *   **Core Domain:**
         *   `shiplog-schema`: Canonical event model (the data spine).
         *   `shiplog-ports`: Trait definitions (Ingestor, Renderer, Redactor, WorkstreamClusterer).
-        *   `shiplog-engine`: Orchestration logic (ingest → normalize → cluster → render).
+        *   `shiplog::engine`: Orchestration logic (ingest → normalize → cluster → render).
         *   `shiplog-workstreams`: Logic for clustering events into workstreams.
         *   `shiplog-ids`: Type-safe stable ID generation (SHA256-based).
         *   `shiplog-redact`: Deterministic HMAC-SHA256 redaction (internal/manager/public profiles).

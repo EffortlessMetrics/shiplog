@@ -58,7 +58,7 @@ automatically.
 
 ```rust
 // Good — reason cited, automatically caught when no longer needed.
-#[expect(clippy::needless_pass_by_value, reason = "kept until shiplog-engine cleanup; tracked in policy/clippy-debt.toml")]
+#[expect(clippy::needless_pass_by_value, reason = "kept until shiplog::engine cleanup; tracked in policy/clippy-debt.toml")]
 fn render_packet(events: Vec<Event>) -> Packet { /* ... */ }
 
 // Not allowed.

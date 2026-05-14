@@ -10,7 +10,6 @@ members = [
   "crates/shiplog-ports",
 
   # Product and trust surfaces
-  "crates/shiplog-engine",
   "crates/shiplog-workstreams",
   "crates/shiplog-redact",
   "crates/shiplog-bundle",

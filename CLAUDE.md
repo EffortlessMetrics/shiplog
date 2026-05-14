@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 cargo build --workspace                  # Build all crates
-cargo build -p <crate-name>             # Build a single crate (e.g., shiplog-engine)
+cargo build -p <crate-name>             # Build a single crate (e.g., shiplog::engine)
 cargo test --workspace                   # Run all tests
 cargo test -p <crate-name>              # Test a single crate
 cargo test -p <crate-name> <test_name>  # Run a specific test
@@ -46,7 +46,7 @@ Module-first Rust workspace (edition 2024, MSRV 1.95) following **Clean Architec
 
 ```
 apps/shiplog (CLI, clap)
-  └─ shiplog-engine (orchestration)
+  └─ shiplog::engine (orchestration)
        ├─ Ingest adapters: apps/shiplog/src/ingest/*
        ├─ shiplog-workstreams (clustering + user-curated YAML)
        ├─ shiplog-cluster-llm (optional LLM-assisted clustering, feature-gated)
@@ -89,7 +89,7 @@ Outputs go under `out/<run_id>/`: `packet.md`, `ledger.events.jsonl`, `coverage.
 ### Testing conventions
 
 - Unit tests live next to the crate or owner module they verify.
-- Snapshot tests (`insta`, YAML format) in `shiplog-render-md` — review snapshot diffs carefully.
+- Snapshot tests (`insta`, YAML format) in `shiplog::render` and `shiplog::engine` - review snapshot diffs carefully.
 - Property-based tests (`proptest`) in `shiplog-redact` for redaction leak detection.
 - Shared fixtures via `shiplog-testkit::fixtures` to avoid cross-crate duplication.
 - BDD-style test infrastructure in `shiplog-testkit::bdd` for scenario-driven integration tests.
@@ -97,7 +97,7 @@ Outputs go under `out/<run_id>/`: `packet.md`, `ledger.events.jsonl`, `coverage.
 
 ### Boundary convention
 
-Prefix public packages with `shiplog-` and a role suffix: `-schema`, `-ports`, `-ingest-*`, `-render-*`, `-engine`. New orthogonal responsibilities should become module folders first. Promote a module to a crate only when it is a stable contract, a trust surface, a real adapter boundary, or a heavy/risky optional boundary.
+Prefix public packages with `shiplog-` only when a boundary has earned an external contract. New orthogonal responsibilities should become module folders first. Promote a module to a crate only when it is a stable contract, a trust surface, a real adapter boundary, or a heavy/risky optional boundary.
 
 ### Crate tiers
 
@@ -106,7 +106,7 @@ Prefix public packages with `shiplog-` and a role suffix: `-schema`, `-ports`, `
 | Stable contracts | `shiplog-ids`, `shiplog-schema`, `shiplog-ports` | No adapter deps |
 | Trust surfaces | `shiplog-redact`, `shiplog-bundle`, `shiplog-workstreams`; inlined `shiplog::coverage`, `shiplog::cache`, `shiplog::render::*` | Depend on foundation |
 | Adapters | `shiplog::ingest::*` | Depend on foundation and ports |
-| Orchestration | `shiplog-engine` | Wires adapters via ports |
+| Orchestration | `shiplog::engine` | Wires adapters via ports |
 | App | `shiplog` (CLI) | Feature-gates: `llm` (default off) |
 | Test-only | `shiplog-testkit` | `publish = false` |
 | Owner modules | Internal SRP seams inside their owning crates | Not separate packages |

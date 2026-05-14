@@ -28,7 +28,8 @@
 # Orchestration, curation, output, and supported reusable product behavior.
 # ============================================================================
 #
-# shiplog-engine        - orchestration (ingest -> cluster -> render)
+# apps/shiplog/src/engine
+#                       - orchestration (ingest -> cluster -> render)
 # shiplog-workstreams   - workstream facade (curated + suggested)
 # apps/shiplog/src/render
 #                      - Markdown and JSON renderers (snapshot-tested)

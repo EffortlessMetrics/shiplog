@@ -36,8 +36,8 @@ id = "report-schema"
 description = "Intake report schema, agent pack export, contracts/schemas."
 paths = [
   "contracts/schemas/**",
-  "crates/shiplog-engine/src/**/report*.rs",
-  "crates/shiplog-engine/src/**/intake*.rs",
+  "apps/shiplog/src/engine/**",
+  "apps/shiplog/src/**/intake*.rs",
   "apps/shiplog/src/**/report*.rs",
 ]
 labels = ["property-tests"]

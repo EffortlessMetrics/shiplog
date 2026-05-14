@@ -87,7 +87,7 @@ jobs:
           set +e
           fail=0
           echo "Testing Tier 2: pipeline and output crates..."
-          cargo mutants -p shiplog-engine --timeout 150 --copy-target=false || fail=1
+          echo "shiplog::engine is inlined; covered by the shiplog package mutation target."
           cargo mutants -p shiplog-workstreams --timeout 150 --copy-target=false || fail=1
           echo "shiplog::cache is inlined; covered by the shiplog package mutation target."
           cargo mutants -p shiplog-merge --timeout 120 --copy-target=false || fail=1

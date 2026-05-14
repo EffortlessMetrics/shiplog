@@ -1,0 +1,4 @@
+---
+source: apps/shiplog/tests/render_json/snapshot.rs
+expression: text
+---

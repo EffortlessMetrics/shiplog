@@ -45,7 +45,7 @@ shape:
 
 ```toml
 [[entry]]
-path = "crates/shiplog-engine/src/intake.rs"
+path = "apps/shiplog/src/intake_report_builder.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option::unwrap"
