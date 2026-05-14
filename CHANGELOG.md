@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-05-14
+
+shiplog 0.7.0 is the **crate-surface contraction release**. It preserves the
+0.6.0 first-run review-pack behavior while making the forward crates.io support
+surface intentional: `shiplog` is the supported public package, and the former
+0.6 implementation crates are historical surfaces rather than ongoing public
+APIs.
+
+### Changed
+
+- Collapsed the former render, ingest, cache, coverage, engine, bundle,
+  redaction, merge, team, workstream, LLM, ID, schema, and port implementation
+  crates into SRP modules inside the `shiplog` package while preserving
+  first-run intake/open/report behavior (#254, #260-#267, #269, #271, #273,
+  #275, #277, #279, #281).
+- Kept JSON schemas under `contracts/schemas/` as the public machine contract
+  and made Rust schema types internal to `shiplog` for 0.7 (#258, #281).
+- Bumped all workspace packages and internal path dependency requirements from
+  `0.6.0` to `0.7.0`.
+
+### Release
+
+- Added the 0.7 crate-surface source-of-truth stack: proposal, support-tier
+  spec, SRP-module ADR, crate-surface audit, implementation plan, and active
+  goal (#250-#253, #259).
+- Added the 0.6 historical crate-surface receipt and kept those crates
+  available as historical/transitional artifacts rather than yanking them as
+  routine cleanup (#257).
+- Enforced the 0.7 publish allowlist and package dependency closure so release
+  tooling publishes only `shiplog` by default and fails if unsupported
+  historical or non-public workspace packages re-enter the forward publish
+  graph (#255, #256, #283).
+
 ## [0.6.0] - 2026-05-13
 
 shiplog 0.6.0 is the **user-polish review-pack release**. It turns the first
@@ -493,7 +526,10 @@ rollout map and the 18-PR ladder (#140–#157).
 - Basic workspace configuration with Cargo
 - MIT/Apache-2.0 dual licensing
 
-[Unreleased]: https://github.com/EffortlessMetrics/shiplog/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/EffortlessMetrics/shiplog/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/EffortlessMetrics/shiplog/compare/v0.6.0...v0.7.0
+[0.6.0]: https://github.com/EffortlessMetrics/shiplog/compare/v0.5.0...v0.6.0
+[0.5.0]: https://github.com/EffortlessMetrics/shiplog/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/EffortlessMetrics/shiplog/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/EffortlessMetrics/shiplog/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/EffortlessMetrics/shiplog/compare/v0.2.0...v0.2.1
