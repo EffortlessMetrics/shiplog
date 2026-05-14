@@ -2074,7 +2074,7 @@ snippet = "submitted_at: Utc.with_ymd_and_hms(2025, 1, 2, 9, 0, 0).unwrap(),"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-bundle/src/layout.rs"
+path = "apps/shiplog/src/bundle/layout.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2082,7 +2082,7 @@ snippet = "let name = p.file_name().unwrap().to_string_lossy();"
 count = 2
 
 [[entry]]
-path = "crates/shiplog-bundle/src/layout.rs"
+path = "apps/shiplog/src/bundle/layout.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2090,7 +2090,7 @@ snippet = 'proptest::string::string_regex("[a-z]{1,5}(/[a-z]{1,5}){0,3}").unwrap
 count = 1
 
 [[entry]]
-path = "crates/shiplog-bundle/src/lib.rs"
+path = "apps/shiplog/src/bundle/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2098,7 +2098,7 @@ snippet = ".map(|i| archive.name_for_index(i).unwrap().to_string())"
 count = 2
 
 [[entry]]
-path = "crates/shiplog-bundle/src/lib.rs"
+path = "apps/shiplog/src/bundle/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2106,7 +2106,7 @@ snippet = ".unwrap();"
 count = 3
 
 [[entry]]
-path = "crates/shiplog-bundle/src/lib.rs"
+path = "apps/shiplog/src/bundle/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2114,7 +2114,7 @@ snippet = "let archive = zip::ZipArchive::new(file).unwrap();"
 count = 2
 
 [[entry]]
-path = "crates/shiplog-bundle/src/lib.rs"
+path = "apps/shiplog/src/bundle/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2122,7 +2122,7 @@ snippet = "let digest = sha256_file(&path).unwrap();"
 count = 2
 
 [[entry]]
-path = "crates/shiplog-bundle/src/lib.rs"
+path = "apps/shiplog/src/bundle/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2130,7 +2130,7 @@ snippet = "let dir = tempfile::tempdir().unwrap();"
 count = 10
 
 [[entry]]
-path = "crates/shiplog-bundle/src/lib.rs"
+path = "apps/shiplog/src/bundle/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2138,7 +2138,7 @@ snippet = "let file = File::open(&zip_path).unwrap();"
 count = 2
 
 [[entry]]
-path = "crates/shiplog-bundle/src/lib.rs"
+path = "apps/shiplog/src/bundle/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2146,7 +2146,7 @@ snippet = "let files = walk_files(dir.path(), &BundleProfile::Internal).unwrap()
 count = 1
 
 [[entry]]
-path = "crates/shiplog-bundle/src/lib.rs"
+path = "apps/shiplog/src/bundle/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2154,7 +2154,7 @@ snippet = "let files = walk_files(dir.path(), &BundleProfile::Manager).unwrap();
 count = 1
 
 [[entry]]
-path = "crates/shiplog-bundle/src/lib.rs"
+path = "apps/shiplog/src/bundle/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2162,7 +2162,7 @@ snippet = "let files = walk_files(dir.path(), &BundleProfile::Public).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-bundle/src/lib.rs"
+path = "apps/shiplog/src/bundle/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2170,7 +2170,7 @@ snippet = "let files = walk_files(dir.path(), &profile).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-bundle/src/lib.rs"
+path = "apps/shiplog/src/bundle/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2178,7 +2178,7 @@ snippet = "let manifest = write_bundle_manifest(dir.path(), &run_id, &BundleProf
 count = 1
 
 [[entry]]
-path = "crates/shiplog-bundle/src/lib.rs"
+path = "apps/shiplog/src/bundle/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2186,7 +2186,7 @@ snippet = "std::fs::create_dir_all(&mgr).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-bundle/src/lib.rs"
+path = "apps/shiplog/src/bundle/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2194,7 +2194,7 @@ snippet = "std::fs::create_dir_all(&pub_dir).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-bundle/src/lib.rs"
+path = "apps/shiplog/src/bundle/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2202,7 +2202,7 @@ snippet = 'std::fs::write(&path, "").unwrap();'
 count = 1
 
 [[entry]]
-path = "crates/shiplog-bundle/src/lib.rs"
+path = "apps/shiplog/src/bundle/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2210,7 +2210,7 @@ snippet = 'std::fs::write(&path, "hello world").unwrap();'
 count = 1
 
 [[entry]]
-path = "crates/shiplog-bundle/src/lib.rs"
+path = "apps/shiplog/src/bundle/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2218,7 +2218,7 @@ snippet = 'std::fs::write(dir.join(FILE_COVERAGE_MANIFEST_JSON), "{}").unwrap();
 count = 1
 
 [[entry]]
-path = "crates/shiplog-bundle/src/lib.rs"
+path = "apps/shiplog/src/bundle/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2226,7 +2226,7 @@ snippet = 'std::fs::write(dir.join(FILE_LEDGER_EVENTS_JSONL), "").unwrap();'
 count = 1
 
 [[entry]]
-path = "crates/shiplog-bundle/src/lib.rs"
+path = "apps/shiplog/src/bundle/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2234,7 +2234,7 @@ snippet = 'std::fs::write(dir.join(FILE_PACKET_MD), "# Packet").unwrap();'
 count = 1
 
 [[entry]]
-path = "crates/shiplog-bundle/src/lib.rs"
+path = "apps/shiplog/src/bundle/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2242,7 +2242,7 @@ snippet = 'std::fs::write(dir.path().join(FILE_LEDGER_EVENTS_JSONL), "").unwrap(
 count = 2
 
 [[entry]]
-path = "crates/shiplog-bundle/src/lib.rs"
+path = "apps/shiplog/src/bundle/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2250,7 +2250,7 @@ snippet = 'std::fs::write(dir.path().join(FILE_PACKET_MD), "# Packet").unwrap();
 count = 3
 
 [[entry]]
-path = "crates/shiplog-bundle/src/lib.rs"
+path = "apps/shiplog/src/bundle/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2258,7 +2258,7 @@ snippet = 'std::fs::write(dir.path().join(FILE_REDACTION_ALIASES_JSON), "{}").un
 count = 1
 
 [[entry]]
-path = "crates/shiplog-bundle/src/lib.rs"
+path = "apps/shiplog/src/bundle/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2266,7 +2266,7 @@ snippet = 'std::fs::write(mgr.join(FILE_PACKET_MD), "# Manager").unwrap();'
 count = 1
 
 [[entry]]
-path = "crates/shiplog-bundle/src/lib.rs"
+path = "apps/shiplog/src/bundle/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2274,7 +2274,7 @@ snippet = 'std::fs::write(pub_dir.join(FILE_PACKET_MD), "# Public").unwrap();'
 count = 1
 
 [[entry]]
-path = "crates/shiplog-bundle/src/lib.rs"
+path = "apps/shiplog/src/bundle/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2282,7 +2282,7 @@ snippet = "write_bundle_manifest(dir.path(), &run_id, &BundleProfile::Internal).
 count = 1
 
 [[entry]]
-path = "crates/shiplog-bundle/src/lib.rs"
+path = "apps/shiplog/src/bundle/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2290,7 +2290,7 @@ snippet = "write_zip(dir.path(), &zip_path, &BundleProfile::Internal).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-bundle/src/lib.rs"
+path = "apps/shiplog/src/bundle/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"

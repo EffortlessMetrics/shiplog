@@ -153,38 +153,23 @@ fixup title/detail/command.
 
 ## Public Crate Surface
 
-Stable contracts:
+The 0.7 contraction lane makes `shiplog` the supported public package surface.
+Implementation seams are moving into owner modules unless a spec and ADR
+promote them to external Rust APIs. JSON schemas under `contracts/schemas/`
+remain the public machine contract.
 
-- `shiplog-ids`
-- `shiplog-schema`
-- `shiplog-ports`
-
-Product and trust surfaces:
+Inlined product and trust modules include:
 
 - `shiplog::engine`
-- `shiplog-coverage`
-- `shiplog-workstreams`
-- `shiplog-redact`
-- `shiplog-bundle`
-- `shiplog-cache`
-- `shiplog-render-md`
-- `shiplog-render-json`
-- `shiplog-merge`
+- `shiplog::coverage`
+- `shiplog::cache`
+- `shiplog::bundle`
+- `shiplog::render::md`
+- `shiplog::engine::artifact_json`
+- `shiplog::ingest::*`
 
-Source adapters:
-
-- `shiplog-ingest-github`
-- `shiplog-ingest-git`
-- `shiplog-ingest-json`
-- `shiplog-ingest-manual`
-- `shiplog-ingest-gitlab`
-- `shiplog-ingest-jira`
-- `shiplog-ingest-linear`
-
-Optional feature surfaces:
-
-- `shiplog-cluster-llm`
-- `shiplog-team`
+Remaining internal support packages are tracked by
+[`docs/release/0.7-crate-surface.md`](release/0.7-crate-surface.md).
 
 Dev-only tooling:
 
@@ -225,5 +210,5 @@ surface area: provider edge cases that affect first-run intake, stricter public
 packet safety checks where redaction rules make them testable, and follow-on
 release/distribution polish. Documented mutation baselines now include
 `shiplog-coverage`, `shiplog-ids`, `shiplog-schema`, `shiplog-redact`,
-`shiplog-bundle`, and a `shiplog-ports` no-target scan, recorded in
+`shiplog::bundle`, and a `shiplog-ports` no-target scan, recorded in
 [`docs/ci/mutation.md`](ci/mutation.md).

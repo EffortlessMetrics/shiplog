@@ -56,7 +56,7 @@ This is a module-first Rust workspace following Clean Architecture boundaries. T
 - crates/shiplog-redact — deterministic HMAC-SHA256 redaction (internal/manager/public profiles)
 - apps/shiplog/src/render/md — Markdown renderer (snapshot-tested with insta)
 - apps/shiplog/src/engine/artifact_json.rs — JSON artifact writer during the contraction slice
-- crates/shiplog-bundle — checksums + optional zip export
+- apps/shiplog/src/bundle — checksums + optional zip export
 - apps/shiplog/src/engine — orchestration (ingest → normalize → cluster → render)
 - apps/shiplog/src/ingest/json.rs — JSONL adapter
 - apps/shiplog/src/ingest/github.rs — GitHub adapter (adaptive date slicing, SQLite caching)

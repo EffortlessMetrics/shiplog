@@ -21,7 +21,8 @@
 # shiplog-redact        - HMAC-SHA-256 redaction orchestrator
 # apps/shiplog/src/coverage
 #                       - slicing, completeness, time-window logic
-# shiplog-bundle        - zip export and bundle manifests
+# apps/shiplog/src/bundle
+#                       - zip export and bundle manifests
 
 # ============================================================================
 # Tier 2: Product pipeline - target score >= 80%

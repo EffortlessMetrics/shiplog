@@ -1,6 +1,6 @@
 use anyhow::Result;
-use shiplog_bundle::*;
-use shiplog_bundle::{write_bundle_manifest, write_zip};
+use shiplog::bundle::*;
+use shiplog::bundle::{write_bundle_manifest, write_zip};
 use shiplog_ids::RunId;
 use shiplog_schema::bundle::{BundleManifest, BundleProfile};
 use std::collections::HashMap;

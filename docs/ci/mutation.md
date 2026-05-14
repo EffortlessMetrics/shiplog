@@ -33,7 +33,7 @@ Recorded Tier 1 baselines:
 | `shiplog-ports` | `74d095d` | 0 | 0 | 0 | 0 | no mutation targets |
 | `shiplog-schema` | `77dc752` | 33 | 27 | 0 | 6 | clean baseline |
 | `shiplog-redact` | `812c45b` + policy cleanup | 35 | 26 | 0 | 9 | clean baseline |
-| `shiplog-bundle` | `f18b23d` + zip/hash cleanup | 22 | 21 | 0 | 1 | clean baseline |
+| `shiplog::bundle` | `f18b23d` + zip/hash cleanup | 22 | 21 | 0 | 1 | historical baseline from the former `shiplog-bundle` crate |
 
 The local PowerShell receipts used:
 
@@ -66,12 +66,12 @@ shiplog-schema:
 shiplog-redact:
 35 mutants tested in 2m: 26 caught, 9 unviable
 
-shiplog-bundle:
+shiplog::bundle:
 22 mutants tested in 2m: 21 caught, 1 unviable
 ```
 
 The generated `missed.txt` files for `shiplog::coverage`, `shiplog-ids`,
-`shiplog-schema`, `shiplog-redact`, and `shiplog-bundle` were empty, so there
+`shiplog-schema`, `shiplog-redact`, and `shiplog::bundle` were empty, so there
 were no surviving mutants for these crates in the baseline runs.
 
 The first `shiplog-redact` scan found two equivalent survivors in batch-level

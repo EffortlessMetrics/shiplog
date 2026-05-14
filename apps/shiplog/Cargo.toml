@@ -33,9 +33,9 @@ hex.workspace = true
 sha2.workspace = true
 toml.workspace = true
 itertools.workspace = true
+zip.workspace = true
 git2 = "0.20"
 mutants.workspace = true
-shiplog-bundle = { path = "../../crates/shiplog-bundle", version = "0.6.0" }
 shiplog-merge = { path = "../../crates/shiplog-merge", version = "0.6.0" }
 shiplog-workstreams = { path = "../../crates/shiplog-workstreams", version = "0.6.0" }
 shiplog-redact = { path = "../../crates/shiplog-redact", version = "0.6.0" }

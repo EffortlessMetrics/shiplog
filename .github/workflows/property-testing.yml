@@ -87,8 +87,8 @@ jobs:
           cargo test -p shiplog --test cache -- --test-threads=4
           cargo test -p shiplog --test cache_expiry -- --test-threads=4
 
-      - name: Run property tests for shiplog-bundle
-        run: cargo test -p shiplog-bundle -- --test-threads=4
+      - name: Run property tests for shiplog bundle module
+        run: cargo test -p shiplog --test bundle -- --test-threads=4
 
       - name: Run property tests for shiplog engine module
         run: cargo test -p shiplog --test engine_property -- --test-threads=4
@@ -122,7 +122,7 @@ jobs:
           echo "- shiplog::coverage" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog-workstreams" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog::cache" >> $GITHUB_STEP_SUMMARY
-          echo "- shiplog-bundle" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog::bundle" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog::engine" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog::ingest::manual" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog render::md module" >> $GITHUB_STEP_SUMMARY

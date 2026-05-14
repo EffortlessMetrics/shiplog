@@ -1,4 +1,4 @@
-use shiplog_bundle::*;
+use shiplog::bundle::*;
 use std::path::{Path, PathBuf};
 
 #[test]

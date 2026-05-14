@@ -67,7 +67,7 @@ nearest owning crate unless a later PR deliberately promotes them.
 - Redaction internals: profile, policy, projector, repo, alias.
 - Cache internals: `shiplog::cache::{key, stats, expiry, sqlite}`.
 - Date windows and coverage calculations: `shiplog::coverage`.
-- Output layout and bundle assembly.
+- Output layout and bundle assembly: `shiplog::bundle`.
 - Team phases: core, aggregate, render, template.
 - Workstream phases: cluster, layout, receipt policy.
 - LLM prompt/parse helpers.
@@ -131,6 +131,7 @@ The 0.7 contraction is in progress:
 - Source adapters have been inlined under `shiplog::ingest`.
 - `shiplog-cache` has been inlined as `shiplog::cache`.
 - `shiplog-coverage` has been inlined as `shiplog::coverage`.
+- `shiplog-bundle` has been inlined as `shiplog::bundle`.
 - Remaining implementation packages are classified by
   [`SHIPLOG-SPEC-0004`](docs/specs/SHIPLOG-SPEC-0004-public-crate-support-tiers.md)
   and the 0.7 crate-surface audit.

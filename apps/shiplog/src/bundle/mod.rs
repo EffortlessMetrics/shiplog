@@ -48,7 +48,7 @@ fn is_scoped_include(rel_path: &str, profile: &BundleProfile) -> bool {
 /// # Examples
 ///
 /// ```rust,no_run
-/// use shiplog_bundle::write_bundle_manifest;
+/// use shiplog::bundle::write_bundle_manifest;
 /// use shiplog_ids::RunId;
 /// use shiplog_schema::bundle::BundleProfile;
 /// use std::path::Path;
@@ -104,7 +104,7 @@ pub fn write_bundle_manifest(
 /// # Examples
 ///
 /// ```rust,no_run
-/// use shiplog_bundle::write_zip;
+/// use shiplog::bundle::write_zip;
 /// use shiplog_schema::bundle::BundleProfile;
 /// use std::path::Path;
 ///

@@ -2,8 +2,8 @@
 
 use anyhow::Result;
 use chrono::{NaiveDate, TimeZone, Utc};
+use shiplog::bundle::{DIR_PROFILES, FILE_PACKET_MD, PROFILE_MANAGER, PROFILE_PUBLIC};
 use shiplog::engine::{Engine, WorkstreamSource};
-use shiplog_bundle::{DIR_PROFILES, FILE_PACKET_MD, PROFILE_MANAGER, PROFILE_PUBLIC};
 use shiplog_ids::RunId;
 use shiplog_ports::{IngestOutput, Redactor, Renderer, WorkstreamClusterer};
 use shiplog_redact::DeterministicRedactor;

@@ -77,7 +77,7 @@ jobs:
           echo "shiplog::coverage is inlined; covered by the shiplog package mutation target."
           cargo mutants -p shiplog-ids --timeout 120 --copy-target=false || fail=1
           cargo mutants -p shiplog-ports --timeout 120 --copy-target=false || fail=1
-          cargo mutants -p shiplog-bundle --timeout 150 --copy-target=false || fail=1
+          echo "shiplog::bundle is inlined; covered by the shiplog package mutation target."
           exit $fail
 
       - name: Run mutation tests for Tier 2 crates

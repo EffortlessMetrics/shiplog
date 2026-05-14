@@ -74,7 +74,7 @@ These crates contain core data structures and invariants that must be thoroughly
 These crates implement core pipeline functionality:
 
 - **[`shiplog-engine`](../crates/shiplog-engine/)**: Orchestration engine
-- **[`shiplog-bundle`](../crates/shiplog-bundle/)**: Bundle writing and manifest generation
+- **`shiplog::bundle`** (`../apps/shiplog/src/bundle/`): Bundle writing and manifest generation
 - **[`shiplog-workstreams`](../crates/shiplog-workstreams/)**: Workstream management
 - **[`shiplog-ports`](../crates/shiplog-ports/)**: Trait definitions
 

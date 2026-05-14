@@ -4,8 +4,8 @@
 //! using real APIs and file I/O to verify behavior.
 
 use chrono::{NaiveDate, TimeZone, Utc};
+use shiplog::bundle::{DIR_PROFILES, FILE_PACKET_MD, PROFILE_PUBLIC};
 use shiplog::engine::Engine;
-use shiplog_bundle::{DIR_PROFILES, FILE_PACKET_MD, PROFILE_PUBLIC};
 use shiplog_ids::{EventId, WorkstreamId};
 use shiplog_ports::IngestOutput;
 use shiplog_redact::DeterministicRedactor;

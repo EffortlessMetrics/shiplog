@@ -24,7 +24,7 @@ This project is a module-first Rust workspace following **Clean Architecture** p
         *   Source adapters live under `apps/shiplog/src/ingest/`.
         *   Markdown rendering lives under `apps/shiplog/src/render/`.
         *   JSON artifact writing lives in the engine artifact writer for this contraction slice.
-        *   `shiplog-bundle`: Zip export functionality.
+        *   Bundle export functionality lives under `apps/shiplog/src/bundle`.
         *   Cache support lives under `apps/shiplog/src/cache/`.
     *   **Clustering:**
         *   `shiplog-cluster-llm`: Optional LLM-assisted workstream clustering (feature-gated in CLI).

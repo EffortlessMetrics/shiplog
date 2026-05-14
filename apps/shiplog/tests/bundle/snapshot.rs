@@ -1,5 +1,5 @@
-use shiplog_bundle::write_bundle_manifest;
-use shiplog_bundle::*;
+use shiplog::bundle::write_bundle_manifest;
+use shiplog::bundle::*;
 use shiplog_ids::RunId;
 use shiplog_schema::bundle::BundleProfile;
 use std::fs;

@@ -12,7 +12,6 @@ members = [
   # Product and trust surfaces
   "crates/shiplog-workstreams",
   "crates/shiplog-redact",
-  "crates/shiplog-bundle",
 
   # Optional feature surfaces
   "crates/shiplog-cluster-llm",

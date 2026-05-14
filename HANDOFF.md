@@ -27,22 +27,13 @@ contracts. The rule is:
 
 > Public crates for true product/API contracts; SRP module folders for internal implementation seams.
 
-#### Stable integration surface (treat as public API)
+#### Supported public surface
 
-- **`shiplog-schema`** - canonical types + JSONL/JSON contracts
-- **`shiplog-ports`** - extension traits (ingest/cluster/render/redact)
-- **`shiplog-ids`** - deterministic IDs
+- **`shiplog`** - CLI product and composition root.
 
-These are what third parties should build against.
-
-#### Supported public surfaces
-
-These can be public because they map to user-visible product behavior, trust
-surfaces, real adapter boundaries, or heavy optional boundaries:
-
-- `shiplog-engine`, `shiplog-coverage`, `shiplog-workstreams`, `shiplog-redact`, `shiplog-bundle`, `shiplog-cache`
-- `shiplog-ingest-*`, `shiplog-render-*`
-- `shiplog-cluster-llm`, `shiplog-team`, and `shiplog-merge` only while those feature boundaries remain real
+The 0.7 contraction lane treats JSON schemas under `contracts/schemas/` as the
+public machine contract. Earlier implementation crates remain historical 0.6
+artifacts unless a later ADR promotes a Rust API.
 
 #### Dev-only
 
@@ -216,23 +207,23 @@ Three render profiles:
 - CLI wires the concrete graph; it is the "composition root."
 - New internal boundaries start as owner modules, not new workspace crates.
 
-### Key crates
+### Key modules and support crates
 
-- `shiplog-schema`: canonical types + on-disk contracts
-- `shiplog-ports`: traits (`Ingestor`, `WorkstreamClusterer`, `Renderer`, `Redactor`)
-- `shiplog-ids`: stable deterministic IDs
-- `shiplog-engine`: orchestration (collect/render/refresh/import)
-- `shiplog-ingest-github`: GitHub adapter (window slicing, caching, GHES)
-- `shiplog-ingest-git`: local git repository adapter
-- `shiplog-ingest-gitlab`: GitLab adapter (MR/review events, self-hosted)
-- `shiplog-ingest-jira`: Jira adapter (issue search, status filtering)
-- `shiplog-ingest-linear`: Linear adapter (GraphQL, issue ingestion)
-- `shiplog-cache`: SQLite TTL cache for API responses
+- `shiplog-schema`: internal canonical types + on-disk contracts
+- `shiplog-ports`: internal traits (`Ingestor`, `WorkstreamClusterer`, `Renderer`, `Redactor`)
+- `shiplog-ids`: internal stable deterministic IDs
+- `shiplog::engine`: orchestration (collect/render/refresh/import)
+- `shiplog::ingest::github`: GitHub adapter (window slicing, caching, GHES)
+- `shiplog::ingest::git`: local git repository adapter
+- `shiplog::ingest::gitlab`: GitLab adapter (MR/review events, self-hosted)
+- `shiplog::ingest::jira`: Jira adapter (issue search, status filtering)
+- `shiplog::ingest::linear`: Linear adapter (GraphQL, issue ingestion)
+- `shiplog::cache`: SQLite TTL cache for API responses
 - `shiplog-workstreams`: clustering + curated/suggested semantics
 - `shiplog-redact`: deterministic redaction profiles + alias cache persistence
-- `shiplog-bundle`: manifests + zip bundles (profile-scoped)
-- `shiplog-render-md`: Markdown packet renderer (snapshot-tested)
-- `shiplog-render-json`: JSON/JSONL render outputs
+- `shiplog::bundle`: manifests + zip bundles (profile-scoped)
+- `shiplog::render::md`: Markdown packet renderer (snapshot-tested)
+- `shiplog::engine::artifact_json`: JSON/JSONL render outputs
 - `shiplog-team::template`: team packet template support as an owner module
 - `shiplog-cluster-llm`: optional semantic clustering via OpenAI-compatible endpoint
 - `shiplog-testkit`: scenario helpers (BDD) - dev-only by default
@@ -308,28 +299,12 @@ Use mutation testing on "trust surfaces":
 - Workspace version is shared; crates pin path+version internally.
 - Keep CHANGELOG accurate and explicit about contracts (especially schema/serde changes).
 
-### First-time crates.io publish strategy
+### 0.7 crates.io publish strategy
 
-Reality: the ecosystem has internal dependencies, so you must publish **in dependency order**.
-
-Suggested publish order:
-
-1. **Foundation**
-   - `shiplog-ids`
-   - `shiplog-schema`
-   - `shiplog-ports`
-2. **Adapters / modules**
-   - `shiplog-coverage`, `shiplog-cache`
-   - `shiplog-render-json`
-   - `shiplog-workstreams`, `shiplog-redact`, `shiplog-render-md`, `shiplog-bundle`
-   - `shiplog-ingest-json`, `shiplog-ingest-manual`, `shiplog-ingest-github`
-   - `shiplog-cluster-llm` (optional feature crate)
-3. **Orchestration**
-   - `shiplog-engine`
-4. **CLI**
-   - `shiplog`
-
-For the first publish, `cargo publish --dry-run` may fail until foundation crates exist on crates.io. Publish foundation first, then dry-run the next layer.
+0.7 release tooling publishes only the supported public surface from
+`policy/publish-allowlist.toml` by default. Workspace membership is not publish
+eligibility. Historical 0.6 implementation crates should not be republished
+unless a support-tier ADR explicitly promotes them.
 
 ### Binary releases (near-term)
 

@@ -1,11 +1,11 @@
-//! Cross-platform path handling tests for shiplog-bundle.
+//! Cross-platform path handling tests for shiplog::bundle.
 //!
 //! Ensures bundle manifests and zip archives handle paths with spaces,
 //! unicode, and special characters correctly on all platforms.
 
 use anyhow::Result;
-use shiplog_bundle::*;
-use shiplog_bundle::{write_bundle_manifest, write_zip};
+use shiplog::bundle::*;
+use shiplog::bundle::{write_bundle_manifest, write_zip};
 use shiplog_ids::RunId;
 use shiplog_schema::bundle::{BundleManifest, BundleProfile};
 use std::fs;

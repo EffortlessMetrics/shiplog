@@ -124,8 +124,8 @@ Risk packs (PR #146 inventory; PR #155 routing) auto-apply labels based on
 which files a PR touches:
 
 ```text
-redaction/privacy   → crates/shiplog-redact/, crates/shiplog-bundle/, profile/share code
-bundle/integrity    → crates/shiplog-bundle/, share manifest writers/verifiers
+redaction/privacy   → crates/shiplog-redact/, apps/shiplog/src/bundle/, profile/share code
+bundle/integrity    → apps/shiplog/src/bundle/, share manifest writers/verifiers
 schema/ids          → crates/shiplog-schema/, crates/shiplog-ids/, contracts/schemas/
 source adapters     → apps/shiplog/src/ingest/
 CLI/product         → apps/shiplog/

@@ -2294,7 +2294,6 @@ dependencies = [
  "serde_json",
  "serde_yaml_ng",
  "sha2 0.11.0",
- "shiplog-bundle",
  "shiplog-cluster-llm",
  "shiplog-ids",
  "shiplog-merge",
@@ -2306,22 +2305,6 @@ dependencies = [
  "tempfile",
  "toml",
  "url",
-]
-
-[[package]]
-name = "shiplog-bundle"
-version = "0.6.0"
-dependencies = [
- "anyhow",
- "chrono",
- "hex",
- "insta",
- "proptest",
- "serde_json",
- "sha2 0.11.0",
- "shiplog-ids",
- "shiplog-schema",
- "tempfile",
  "zip",
 ]
 

@@ -1,4 +1,4 @@
-//! Format stability tests for shiplog-bundle.
+//! Format stability tests for shiplog::bundle.
 //!
 //! Complements `snapshot.rs` with direct BundleManifest JSON/YAML snapshots
 //! (no filesystem dependency), minimal variants, and edge-case values.

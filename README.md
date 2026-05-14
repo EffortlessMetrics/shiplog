@@ -611,14 +611,14 @@ external contract. Adapters depend on ports and schema, never the reverse.
 | `shiplog-cluster-llm` | Internal optional LLM-assisted semantic clustering |
 | `shiplog-team` | Internal team aggregation support |
 | `shiplog-redact` | Internal deterministic keyed SHA-256 redaction support |
-| `shiplog-bundle` | Internal zip archive and checksum support |
 | `shiplog-testkit` | Shared test fixtures (not published) |
 
 Markdown rendering now lives under `shiplog::render::md`. Source adapters live
 under `shiplog::ingest`, and cache/freshness support lives under
 `shiplog::cache`. Coverage and date-window support lives under
-`shiplog::coverage`. JSON artifact writing lives under the engine artifact
-writer for this contraction slice. Internal implementation seams live under
+`shiplog::coverage`. Bundle and checksum support lives under
+`shiplog::bundle`. JSON artifact writing lives under the engine artifact writer
+for this contraction slice. Internal implementation seams live under
 owner packages as modules. New boundaries start as modules and are promoted to
 public crates only when they pass the public crate test in `SHIPLOG-SPEC-0004`.
 

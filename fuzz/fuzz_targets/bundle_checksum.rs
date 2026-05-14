@@ -1,7 +1,7 @@
 //! Fuzz harness for bundle checksum calculation.
 //!
 //! Exercises SHA-256 hashing of arbitrary content (the same algorithm used by
-//! `shiplog-bundle` for `FileChecksum` generation) and verifies invariants:
+//! `shiplog::bundle` for `FileChecksum` generation) and verifies invariants:
 //! determinism, valid hex output, and `FileChecksum` serde round-tripping.
 
 #![no_main]
@@ -11,7 +11,7 @@ use sha2::{Digest, Sha256};
 use shiplog_schema::bundle::FileChecksum;
 
 fuzz_target!(|data: &[u8]| {
-    // Compute SHA-256 of arbitrary content (mirrors shiplog-bundle::sha256_file)
+    // Compute SHA-256 of arbitrary content (mirrors shiplog::bundle::sha256_file)
     let mut hasher = Sha256::new();
     hasher.update(data);
     let digest = hex::encode(hasher.finalize());

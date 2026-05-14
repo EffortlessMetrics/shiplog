@@ -13,7 +13,8 @@ id = "redaction-privacy"
 description = "Redaction trust surface and privacy-sensitive code paths."
 paths = [
   "crates/shiplog-redact/**",
-  "crates/shiplog-bundle/**",
+  "apps/shiplog/src/bundle/**",
+  "apps/shiplog/tests/bundle/**",
   "apps/shiplog/src/**/share*.rs",
   "apps/shiplog/src/**/profile*.rs",
 ]
@@ -24,7 +25,8 @@ selected_lanes = ["mutation_targeted", "property"]
 id = "bundle-share"
 description = "Bundle integrity, share manifests, share verification."
 paths = [
-  "crates/shiplog-bundle/**",
+  "apps/shiplog/src/bundle/**",
+  "apps/shiplog/tests/bundle/**",
   "apps/shiplog/src/**/share*.rs",
   "apps/shiplog/src/**/manifest*.rs",
 ]

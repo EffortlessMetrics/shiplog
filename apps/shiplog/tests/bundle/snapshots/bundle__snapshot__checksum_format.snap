@@ -1,5 +1,5 @@
 ---
-source: crates/shiplog-bundle/tests/snapshot.rs
+source: apps/shiplog/tests/bundle/snapshot.rs
 assertion_line: 88
 expression: "checksums.join(\"\\n\")"
 ---

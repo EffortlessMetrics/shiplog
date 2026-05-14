@@ -51,12 +51,6 @@ publish = false
 reason = "Redaction support remains product-internal unless promoted by ADR."
 
 [[package]]
-name = "shiplog-bundle"
-tier = "internal-module"
-publish = false
-reason = "Bundle support remains product-internal unless promoted by ADR."
-
-[[package]]
 name = "shiplog-cluster-llm"
 tier = "internal-module"
 publish = false
@@ -145,3 +139,8 @@ reason = "0.6 coverage/time-window crate collapsed into shiplog::coverage."
 name = "shiplog-engine"
 tier = "historical-0.6"
 reason = "0.6 product orchestration crate collapsed into shiplog::engine."
+
+[[historical]]
+name = "shiplog-bundle"
+tier = "historical-0.6"
+reason = "0.6 bundle/checksum crate collapsed into shiplog::bundle."

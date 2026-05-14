@@ -3,7 +3,7 @@
 //! Exercises invalid file paths, missing directories, empty directories,
 //! and sha256 on non-existent files.
 
-use shiplog_bundle::{write_bundle_manifest, write_zip};
+use shiplog::bundle::{write_bundle_manifest, write_zip};
 use shiplog_ids::RunId;
 use shiplog_schema::bundle::BundleProfile;
 use std::fs::File;

@@ -1,5 +1,5 @@
 ---
-source: crates/shiplog-bundle/tests/format_stability.rs
+source: apps/shiplog/tests/bundle/format_stability.rs
 expression: manifest
 ---
 {
