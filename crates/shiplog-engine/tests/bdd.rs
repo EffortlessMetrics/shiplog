@@ -8,10 +8,10 @@ use shiplog_engine::{Engine, WorkstreamSource};
 use shiplog_ids::{EventId, RunId};
 use shiplog_ports::IngestOutput;
 use shiplog_redact::DeterministicRedactor;
-use shiplog_render_md::MarkdownRenderer;
 use shiplog_schema::bundle::BundleProfile;
 use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
 use shiplog_schema::event::*;
+use shiplog_testkit::TestMarkdownRenderer as MarkdownRenderer;
 use shiplog_testkit::bdd::Scenario;
 use shiplog_testkit::bdd::assertions::*;
 use shiplog_workstreams::RepoClusterer;
@@ -85,7 +85,7 @@ fn test_ingest(events: Vec<EventEnvelope>) -> IngestOutput {
 
 fn test_engine() -> Engine<'static> {
     let renderer: &'static dyn shiplog_ports::Renderer =
-        Box::leak(Box::new(MarkdownRenderer::default()));
+        Box::leak(Box::new(MarkdownRenderer::new()));
     let clusterer: &'static dyn shiplog_ports::WorkstreamClusterer =
         Box::leak(Box::new(RepoClusterer));
     let redactor: &'static dyn shiplog_ports::Redactor =

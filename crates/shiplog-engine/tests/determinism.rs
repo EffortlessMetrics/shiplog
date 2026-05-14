@@ -8,10 +8,10 @@ use shiplog_engine::Engine;
 use shiplog_ids::RunId;
 use shiplog_ports::{IngestOutput, Redactor, Renderer, WorkstreamClusterer};
 use shiplog_redact::DeterministicRedactor;
-use shiplog_render_md::MarkdownRenderer;
 use shiplog_schema::bundle::BundleProfile;
 use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
 use shiplog_schema::event::EventEnvelope;
+use shiplog_testkit::TestMarkdownRenderer as MarkdownRenderer;
 use shiplog_workstreams::RepoClusterer;
 
 const RUNS: usize = 3;
@@ -52,7 +52,7 @@ fn test_ingest() -> IngestOutput {
 }
 
 fn make_engine() -> Engine<'static> {
-    let renderer: &'static dyn Renderer = Box::leak(Box::new(MarkdownRenderer::default()));
+    let renderer: &'static dyn Renderer = Box::leak(Box::new(MarkdownRenderer::new()));
     let clusterer: &'static dyn WorkstreamClusterer = Box::leak(Box::new(RepoClusterer));
     let redactor: &'static dyn Redactor =
         Box::leak(Box::new(DeterministicRedactor::new(b"determinism-key")));

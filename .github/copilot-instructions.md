@@ -46,7 +46,7 @@ Fuzzing
 
 ## High-level architecture (big picture)
 
-This is a module-first Rust workspace following Clean Architecture boundaries. Public crates represent product/API contracts, trust surfaces, real adapters, or heavy optional boundaries; implementation seams should start as owner modules. See `API_SURFACE.md` before adding or promoting package boundaries. Key components (from Cargo.toml workspace members):
+This is a module-first Rust workspace following Clean Architecture boundaries. The supported public package surface is being contracted for 0.7; implementation seams should start as owner modules unless a spec and ADR promote them. See `API_SURFACE.md` before adding or promoting package boundaries. Key components:
 
 - crates/shiplog-ids — ID types and helpers (SHA256-based deterministic IDs)
 - crates/shiplog-schema — canonical event model (the data spine)
@@ -54,8 +54,8 @@ This is a module-first Rust workspace following Clean Architecture boundaries. P
 - crates/shiplog-coverage — slicing and completeness reporting
 - crates/shiplog-workstreams — clustering + editable YAML overrides
 - crates/shiplog-redact — deterministic HMAC-SHA256 redaction (internal/manager/public profiles)
-- crates/shiplog-render-md — Markdown renderer (snapshot-tested with insta)
-- crates/shiplog-render-json — JSON renderer
+- apps/shiplog/src/render/md — Markdown renderer (snapshot-tested with insta)
+- crates/shiplog-engine/src/artifact_json.rs — JSON artifact writer during the contraction slice
 - crates/shiplog-bundle — checksums + optional zip export
 - crates/shiplog-engine — orchestration (ingest → normalize → cluster → render)
 - crates/shiplog-ingest-json — JSONL adapter
@@ -96,9 +96,9 @@ Outputs typically produced under `out/<run_id>/` and include `packet.md`, `works
 
 ## Key conventions and patterns (repo-specific)
 
-- Crate naming: crates use the `shiplog-*` prefix; role is implied by the suffix (schema, ports, ingest-*, render-*, engine).
-- Ports & adapters: `crates/shiplog-ports` defines traits; ingest/render crates are adapters that implement those traits (dependency direction: adapters depend on ports and schema, not vice versa).
-- Module-first boundaries: keep new SRP seams as modules under the owning crate first. Promote to a crate only for stable contracts, trust surfaces, real external adapters, or heavy/risky optional boundaries.
+- Crate naming: crates use the `shiplog-*` prefix only after promotion; role is implied by the suffix (schema, ports, ingest-*, engine).
+- Ports & adapters: `crates/shiplog-ports` defines traits; adapters and renderers implement those traits while preserving dependency direction.
+- Module-first boundaries: keep new SRP seams as modules under the owning package first. Promote to a crate only when the public crate test in `SHIPLOG-SPEC-0004` is satisfied and an ADR records the decision.
 - Testing conventions:
   - Unit tests live next to the crate or owner module they verify.
   - Snapshot tests use `insta` for rendered outputs (serialize to YAML/JSON as checked-in snapshots).

@@ -7,11 +7,11 @@ use shiplog_engine::{Engine, WorkstreamSource};
 use shiplog_ids::RunId;
 use shiplog_ports::{IngestOutput, Redactor, Renderer, WorkstreamClusterer};
 use shiplog_redact::DeterministicRedactor;
-use shiplog_render_md::MarkdownRenderer;
 use shiplog_schema::bundle::BundleProfile;
 use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
 use shiplog_schema::event::*;
 use shiplog_schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
+use shiplog_testkit::TestMarkdownRenderer as MarkdownRenderer;
 use shiplog_workstreams::RepoClusterer;
 use shiplog_workstreams::WorkstreamManager;
 
@@ -49,7 +49,7 @@ fn make_ingest(events: Vec<EventEnvelope>) -> IngestOutput {
 }
 
 fn real_engine() -> Engine<'static> {
-    let renderer: &'static dyn Renderer = Box::leak(Box::new(MarkdownRenderer::default()));
+    let renderer: &'static dyn Renderer = Box::leak(Box::new(MarkdownRenderer::new()));
     let clusterer: &'static dyn WorkstreamClusterer = Box::leak(Box::new(RepoClusterer));
     let redactor: &'static dyn Redactor =
         Box::leak(Box::new(DeterministicRedactor::new(b"test-key")));
@@ -495,7 +495,7 @@ fn run_propagates_clusterer_error_when_no_workstreams_file() {
     let dir = tempfile::tempdir().unwrap();
     let out = dir.path().join("fail_cluster");
 
-    let renderer: &'static dyn Renderer = Box::leak(Box::new(MarkdownRenderer::default()));
+    let renderer: &'static dyn Renderer = Box::leak(Box::new(MarkdownRenderer::new()));
     let clusterer: &'static dyn WorkstreamClusterer = Box::leak(Box::new(FailingClusterer));
     let redactor: &'static dyn Redactor = Box::leak(Box::new(DeterministicRedactor::new(b"key")));
 
@@ -527,7 +527,7 @@ fn run_propagates_redactor_error() {
     let dir = tempfile::tempdir().unwrap();
     let out = dir.path().join("fail_redact");
 
-    let renderer: &'static dyn Renderer = Box::leak(Box::new(MarkdownRenderer::default()));
+    let renderer: &'static dyn Renderer = Box::leak(Box::new(MarkdownRenderer::new()));
     let clusterer: &'static dyn WorkstreamClusterer = Box::leak(Box::new(RepoClusterer));
     let redactor: &'static dyn Redactor = Box::leak(Box::new(FailingRedactor));
 

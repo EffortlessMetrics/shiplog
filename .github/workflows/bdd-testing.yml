@@ -139,7 +139,7 @@ jobs:
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Test stable contracts and trust surfaces
-        run: cargo test -p shiplog-ids -p shiplog-schema -p shiplog-ports -p shiplog-coverage -p shiplog-cache -p shiplog-workstreams -p shiplog-redact -p shiplog-bundle -p shiplog-render-md -p shiplog-render-json -p shiplog-cluster-llm -- --test-threads=4
+        run: cargo test -p shiplog-ids -p shiplog-schema -p shiplog-ports -p shiplog-coverage -p shiplog-cache -p shiplog-workstreams -p shiplog-redact -p shiplog-bundle -p shiplog-engine -p shiplog-cluster-llm -- --test-threads=4
 
   optional-surface-tests:
     name: Optional Surface Tests

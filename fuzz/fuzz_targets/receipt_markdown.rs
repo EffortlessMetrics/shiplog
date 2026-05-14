@@ -3,7 +3,7 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use shiplog_render_md::format_receipt_markdown;
+use shiplog::render::md::format_receipt_markdown;
 use shiplog_schema::event::{
     Actor, EventEnvelope, EventKind, EventPayload, Link, ManualEvent, ManualEventType,
     PullRequestEvent, PullRequestState, RepoRef, RepoVisibility, ReviewEvent, SourceRef,

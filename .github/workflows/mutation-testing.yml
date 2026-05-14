@@ -89,8 +89,6 @@ jobs:
           echo "Testing Tier 2: pipeline and output crates..."
           cargo mutants -p shiplog-engine --timeout 150 --copy-target=false || fail=1
           cargo mutants -p shiplog-workstreams --timeout 150 --copy-target=false || fail=1
-          cargo mutants -p shiplog-render-md --timeout 120 --copy-target=false || fail=1
-          cargo mutants -p shiplog-render-json --timeout 120 --copy-target=false || fail=1
           cargo mutants -p shiplog-cache --timeout 120 --copy-target=false || fail=1
           cargo mutants -p shiplog-merge --timeout 120 --copy-target=false || fail=1
           exit $fail

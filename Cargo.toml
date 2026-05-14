@@ -16,8 +16,6 @@ members = [
   "crates/shiplog-redact",
   "crates/shiplog-bundle",
   "crates/shiplog-cache",
-  "crates/shiplog-render-md",
-  "crates/shiplog-render-json",
 
   # Source adapters
   "crates/shiplog-ingest-github",

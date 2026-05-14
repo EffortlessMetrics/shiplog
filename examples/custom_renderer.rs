@@ -112,7 +112,7 @@ fn main() -> Result<()> {
     println!("{custom_output}");
 
     // For comparison, render the same data with the built-in Markdown renderer.
-    let md_renderer = shiplog_render_md::MarkdownRenderer::new();
+    let md_renderer = shiplog::render::md::MarkdownRenderer::new();
     let md_output = md_renderer
         .render_packet_markdown(
             "octo",

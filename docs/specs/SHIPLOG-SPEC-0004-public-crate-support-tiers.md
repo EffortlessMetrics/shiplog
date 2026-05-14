@@ -153,8 +153,8 @@ contract those PRs must satisfy.
 | `shiplog-redact` | `internal-module` | no | Inline redaction support while preserving fail-closed behavior; 0.6 published versions become `historical-0.6`. |
 | `shiplog-bundle` | `internal-module` | no | Inline bundle support; 0.6 published versions become `historical-0.6`. |
 | `shiplog-cache` | `internal-module` | no | Inline cache/freshness support unless a future ADR creates a public cache API; 0.6 published versions become `historical-0.6`. |
-| `shiplog-render-md` | `internal-module` | no | Inline Markdown rendering; 0.6 published versions become `historical-0.6`. |
-| `shiplog-render-json` | `internal-module` | no | Inline JSON rendering; 0.6 published versions become `historical-0.6`. |
+| `shiplog-render-md` | `historical-0.6` / `internal-module` | no | Collapsed into `shiplog::render::md`; 0.6 published versions become `historical-0.6`. |
+| `shiplog-render-json` | `historical-0.6` / `internal-module` | no | Collapsed into the engine artifact writer for this contraction slice; 0.6 published versions become `historical-0.6`. |
 | `shiplog-ingest-github` | `internal-module` | no | Inline GitHub adapter; 0.6 published versions become `historical-0.6`. |
 | `shiplog-ingest-git` | `internal-module` | no | Inline local git adapter; 0.6 published versions become `historical-0.6`. |
 | `shiplog-ingest-json` | `internal-module` | no | Inline JSON import adapter; 0.6 published versions become `historical-0.6`. |

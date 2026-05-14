@@ -10,13 +10,15 @@ use shiplog_bundle::{DIR_PROFILES, FILE_PACKET_MD, RunArtifactPaths, zip_path_fo
 use shiplog_bundle::{write_bundle_manifest, write_zip};
 pub use shiplog_merge::ConflictResolution;
 use shiplog_ports::{IngestOutput, Redactor, Renderer, WorkstreamClusterer};
-use shiplog_render_json::{write_coverage_manifest, write_events_jsonl};
 use shiplog_schema::bundle::BundleProfile;
 use shiplog_schema::coverage::CoverageManifest;
 use shiplog_schema::event::EventEnvelope;
 use shiplog_schema::workstream::WorkstreamsFile;
 use shiplog_workstreams::WorkstreamManager;
 use std::path::{Path, PathBuf};
+
+mod artifact_json;
+use artifact_json::{write_coverage_manifest, write_events_jsonl};
 
 /// The orchestration engine that wires ingestors, clusterers, redactors, and renderers.
 ///
@@ -787,7 +789,7 @@ mod tests {
 
     fn test_engine() -> Engine<'static> {
         let renderer: &'static dyn shiplog_ports::Renderer =
-            Box::leak(Box::new(shiplog_render_md::MarkdownRenderer::default()));
+            Box::leak(Box::new(shiplog_testkit::TestMarkdownRenderer));
         let clusterer: &'static dyn shiplog_ports::WorkstreamClusterer =
             Box::leak(Box::new(RepoClusterer));
         let redactor: &'static dyn shiplog_ports::Redactor = Box::leak(Box::new(

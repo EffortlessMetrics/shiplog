@@ -1,0 +1,5 @@
+---
+source: crates/shiplog-engine/tests/render_json/snapshot.rs
+expression: text
+---
+

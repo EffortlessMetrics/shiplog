@@ -6,6 +6,7 @@
 //! - Integration with clustering/rendering behavior
 //! - Performance characteristics on larger collections
 
+use crate::TestMarkdownRenderer as MarkdownRenderer;
 use crate::bdd::Scenario;
 use crate::bdd::assertions::*;
 #[cfg(feature = "merge_pipeline")]
@@ -16,7 +17,6 @@ use chrono::{NaiveDate, TimeZone, Utc};
 use shiplog_ids::{EventId, RunId};
 use shiplog_merge::{ConflictResolution, MergeStrategy, merge_events, merge_ingest_outputs};
 use shiplog_ports::{IngestOutput, Renderer, WorkstreamClusterer};
-use shiplog_render_md::MarkdownRenderer;
 use shiplog_schema::coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow};
 use shiplog_schema::event::{
     Actor, EventEnvelope, EventKind, EventPayload, PullRequestEvent, PullRequestState, RepoRef,
