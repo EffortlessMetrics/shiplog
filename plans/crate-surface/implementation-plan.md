@@ -87,11 +87,13 @@ Landed:
   `refactor(crate): inline workstreams and llm support`
 - [#281](https://github.com/EffortlessMetrics/shiplog/pull/281):
   `refactor(crate): inline foundation contracts`
+- [#283](https://github.com/EffortlessMetrics/shiplog/pull/283):
+  `chore(release): enforce 0.7 package dependency closure`
 
-The remaining risk is dependency-closure enforcement: the contraction now
-removes the historical 0.6 implementation packages from the `shiplog` package
-graph, but release tooling still needs to fail closed if a future change
-reintroduces unsupported package dependencies or publish targets.
+The remaining risk is release prep: the contraction removes historical 0.6
+implementation packages from the `shiplog` package graph, and release tooling
+now fails closed if a future change reintroduces unsupported package
+dependencies or publish targets.
 
 ## Sequencing
 

@@ -177,6 +177,11 @@ number = 281
 title = "refactor(crate): inline foundation contracts"
 url = "https://github.com/EffortlessMetrics/shiplog/pull/281"
 
+[[completed_pr]]
+number = 283
+title = "chore(release): enforce 0.7 package dependency closure"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/283"
+
 [[work_item]]
 id = "ingest-adapter-collapse"
 title = "refactor(crate): inline ingest adapters into shiplog"
@@ -255,7 +260,7 @@ rollback = "Restore foundation crates and imports together."
 [[work_item]]
 id = "publish-dependency-closure"
 title = "chore(release): enforce 0.7 package dependency closure"
-status = "pending"
+status = "completed"
 plan_section = "PR 5: Enforce Publish Dependency Closure"
 commands = [
   "bash scripts/package-boundary-audit.sh",
