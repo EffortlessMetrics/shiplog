@@ -172,6 +172,11 @@ number = 279
 title = "refactor(crate): inline workstreams and llm support"
 url = "https://github.com/EffortlessMetrics/shiplog/pull/279"
 
+[[completed_pr]]
+number = 281
+title = "refactor(crate): inline foundation contracts"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/281"
+
 [[work_item]]
 id = "ingest-adapter-collapse"
 title = "refactor(crate): inline ingest adapters into shiplog"
@@ -236,7 +241,7 @@ rollback = "Restore the failed slice and its imports only."
 [[work_item]]
 id = "foundation-contract-collapse"
 title = "refactor(crate): inline internal foundation contracts"
-status = "pending"
+status = "completed"
 plan_section = "PR 4: Collapse Foundation Contracts"
 commands = [
   "cargo test -p shiplog --test intake_cold_start",

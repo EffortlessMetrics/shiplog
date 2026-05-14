@@ -85,11 +85,13 @@ Landed:
   `refactor(crate): inline merge and team support`
 - [#279](https://github.com/EffortlessMetrics/shiplog/pull/279):
   `refactor(crate): inline workstreams and llm support`
+- [#281](https://github.com/EffortlessMetrics/shiplog/pull/281):
+  `refactor(crate): inline foundation contracts`
 
-The remaining risk is dependency leakage: `shiplog` can be publish-allowed but
-still resolve historical 0.6 implementation crates if versioned path
-dependencies are left in its manifest. 0.7.0 should remove that dependency graph
-rather than hide it behind the publish allowlist.
+The remaining risk is dependency-closure enforcement: the contraction now
+removes the historical 0.6 implementation packages from the `shiplog` package
+graph, but release tooling still needs to fail closed if a future change
+reintroduces unsupported package dependencies or publish targets.
 
 ## Sequencing
 
@@ -266,8 +268,8 @@ refactor(crate): inline internal foundation contracts
 
 Scope:
 
-- Move `shiplog-ids`, `shiplog-schema`, and `shiplog-ports` into internal
-  owner modules.
+- Complete. `shiplog-ids`, `shiplog-schema`, and `shiplog-ports` moved into
+  `shiplog::{ids,schema,ports}`.
 - Preserve JSON schema files under `contracts/schemas/` as the public machine
   contract.
 - Remove `shiplog` dependencies on the foundation crates.
