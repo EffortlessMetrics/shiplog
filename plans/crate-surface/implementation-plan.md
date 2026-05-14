@@ -75,6 +75,8 @@ Landed:
   `refactor(crate): inline cache support`
 - [#269](https://github.com/EffortlessMetrics/shiplog/pull/269):
   `refactor(crate): inline coverage support`
+- [#271](https://github.com/EffortlessMetrics/shiplog/pull/271):
+  `refactor(crate): inline engine support`
 
 The remaining risk is dependency leakage: `shiplog` can be publish-allowed but
 still resolve historical 0.6 implementation crates if versioned path
@@ -205,6 +207,8 @@ Scope:
 
 - Move `shiplog-bundle`, `shiplog-redact`, `shiplog-workstreams`,
   `shiplog-merge`, and `shiplog-team` in small slices.
+- Treat `shiplog-engine` as complete; product orchestration support moved into
+  `shiplog::engine` in #271.
 - Keep bundle, redaction, and workstream output shape unchanged.
 - Preserve fail-closed redaction behavior.
 
