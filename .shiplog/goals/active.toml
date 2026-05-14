@@ -137,6 +137,11 @@ number = 266
 title = "refactor(crate): inline json adapter"
 url = "https://github.com/EffortlessMetrics/shiplog/pull/266"
 
+[[completed_pr]]
+number = 267
+title = "refactor(crate): inline cache support"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/267"
+
 [[work_item]]
 id = "ingest-adapter-collapse"
 title = "refactor(crate): inline ingest adapters into shiplog"
@@ -167,7 +172,7 @@ rollback = "Restore ingest crates, shiplog manifest dependencies, imports, and m
 [[work_item]]
 id = "cache-freshness-collapse"
 title = "refactor(crate): inline cache freshness support"
-status = "ready"
+status = "completed"
 plan_section = "PR 2: Collapse Cache And Freshness Support"
 commands = [
   "cargo test -p shiplog --test cache",
@@ -183,7 +188,7 @@ rollback = "Restore shiplog-cache and adapter imports."
 [[work_item]]
 id = "product-trust-collapse"
 title = "refactor(crate): inline product trust support"
-status = "pending"
+status = "ready"
 plan_section = "PR 3: Collapse Product And Trust Support"
 commands = [
   "cargo test -p shiplog --test intake_cold_start",

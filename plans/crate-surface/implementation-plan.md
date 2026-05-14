@@ -71,6 +71,8 @@ Landed:
   `refactor(crate): inline github adapter`
 - [#266](https://github.com/EffortlessMetrics/shiplog/pull/266):
   `refactor(crate): inline json adapter`
+- [#267](https://github.com/EffortlessMetrics/shiplog/pull/267):
+  `refactor(crate): inline cache support`
 
 The remaining risk is dependency leakage: `shiplog` can be publish-allowed but
 still resolve historical 0.6 implementation crates if versioned path
