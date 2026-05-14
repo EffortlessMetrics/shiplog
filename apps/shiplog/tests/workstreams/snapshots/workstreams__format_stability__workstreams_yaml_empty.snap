@@ -1,0 +1,8 @@
+---
+source: apps/shiplog/tests/workstreams/format_stability.rs
+assertion_line: 124
+expression: text
+---
+version: 1
+generated_at: 2025-06-01T12:00:00Z
+workstreams: []

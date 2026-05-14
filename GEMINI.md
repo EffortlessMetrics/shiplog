@@ -16,7 +16,7 @@ This project is a module-first Rust workspace following **Clean Architecture** p
         *   `shiplog-schema`: Canonical event model (the data spine).
         *   `shiplog-ports`: Trait definitions (Ingestor, Renderer, Redactor, WorkstreamClusterer).
         *   `shiplog::engine`: Orchestration logic (ingest → normalize → cluster → render).
-        *   `shiplog-workstreams`: Logic for clustering events into workstreams.
+        *   `shiplog::workstreams`: Logic for clustering events into workstreams.
         *   `shiplog-ids`: Type-safe stable ID generation (SHA256-based).
         *   `shiplog::redact`: Deterministic HMAC-SHA256 redaction (internal/manager/public profiles).
         *   Coverage/time-window support now lives under `apps/shiplog/src/coverage`.
@@ -27,7 +27,7 @@ This project is a module-first Rust workspace following **Clean Architecture** p
         *   Bundle export functionality lives under `apps/shiplog/src/bundle`.
         *   Cache support lives under `apps/shiplog/src/cache/`.
     *   **Clustering:**
-        *   `shiplog-cluster-llm`: Optional LLM-assisted workstream clustering (feature-gated in CLI).
+        *   `shiplog::cluster_llm`: Optional LLM-assisted workstream clustering (feature-gated in CLI).
     *   **Testing:**
         *   `shiplog-testkit`: Shared test fixtures and utilities.
 

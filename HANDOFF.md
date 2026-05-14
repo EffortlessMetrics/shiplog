@@ -219,13 +219,13 @@ Three render profiles:
 - `shiplog::ingest::jira`: Jira adapter (issue search, status filtering)
 - `shiplog::ingest::linear`: Linear adapter (GraphQL, issue ingestion)
 - `shiplog::cache`: SQLite TTL cache for API responses
-- `shiplog-workstreams`: clustering + curated/suggested semantics
+- `shiplog::workstreams`: clustering + curated/suggested semantics
 - `shiplog::redact`: deterministic redaction profiles + alias cache persistence
 - `shiplog::bundle`: manifests + zip bundles (profile-scoped)
 - `shiplog::render::md`: Markdown packet renderer (snapshot-tested)
 - `shiplog::engine::artifact_json`: JSON/JSONL render outputs
 - `shiplog-team::template`: team packet template support as an owner module
-- `shiplog-cluster-llm`: optional semantic clustering via OpenAI-compatible endpoint
+- `shiplog::cluster_llm`: optional semantic clustering via OpenAI-compatible endpoint
 - `shiplog-testkit`: scenario helpers (BDD) - dev-only by default
 
 ---

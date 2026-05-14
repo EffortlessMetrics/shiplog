@@ -1,0 +1,6 @@
+---
+source: apps/shiplog/tests/workstreams/cluster_snapshot.rs
+assertion_line: 95
+expression: ws.workstreams
+---
+[]

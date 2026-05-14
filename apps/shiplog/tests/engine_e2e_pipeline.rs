@@ -9,6 +9,8 @@ use chrono::{NaiveDate, TimeZone, Utc};
 use shiplog::bundle::{DIR_PROFILES, FILE_PACKET_MD, PROFILE_MANAGER, PROFILE_PUBLIC};
 use shiplog::engine::{Engine, WorkstreamSource};
 use shiplog::redact::DeterministicRedactor;
+use shiplog::workstreams::RepoClusterer;
+use shiplog::workstreams::WorkstreamManager;
 use shiplog_ids::RunId;
 use shiplog_ports::{IngestOutput, Redactor, Renderer, WorkstreamClusterer};
 use shiplog_schema::bundle::BundleProfile;
@@ -17,8 +19,6 @@ use shiplog_schema::event::*;
 use shiplog_schema::workstream::WorkstreamsFile;
 use shiplog_testkit::TestMarkdownRenderer as MarkdownRenderer;
 use shiplog_testkit::parse_events_jsonl_fixture;
-use shiplog_workstreams::RepoClusterer;
-use shiplog_workstreams::WorkstreamManager;
 use std::io::Write;
 use std::path::Path;
 

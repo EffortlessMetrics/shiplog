@@ -8,11 +8,11 @@ use shiplog::ingest::json::JsonIngestor;
 use shiplog::ingest::manual::{ManualIngestor, write_manual_events};
 use shiplog::redact::DeterministicRedactor;
 use shiplog::render::md::MarkdownRenderer;
+use shiplog::workstreams::RepoClusterer;
 use shiplog_ports::{IngestOutput, Ingestor, Redactor, Renderer, WorkstreamClusterer};
 use shiplog_schema::bundle::BundleProfile;
 use shiplog_schema::coverage::CoverageManifest;
 use shiplog_schema::event::{ManualDate, ManualEventEntry, ManualEventType, ManualEventsFile};
-use shiplog_workstreams::RepoClusterer;
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
 

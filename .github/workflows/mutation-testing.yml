@@ -88,7 +88,7 @@ jobs:
           fail=0
           echo "Testing Tier 2: pipeline and output crates..."
           echo "shiplog::engine is inlined; covered by the shiplog package mutation target."
-          cargo mutants -p shiplog-workstreams --timeout 150 --copy-target=false || fail=1
+          echo "shiplog::workstreams is inlined; covered by the shiplog package mutation target."
           echo "shiplog::cache is inlined; covered by the shiplog package mutation target."
           echo "shiplog::merge is inlined; covered by the shiplog package mutation target."
           exit $fail
@@ -101,7 +101,7 @@ jobs:
           fail=0
           echo "Testing Tier 3: adapters and optional boundaries..."
           echo "Source adapters are inlined; covered by the shiplog package mutation target."
-          cargo mutants -p shiplog-cluster-llm --timeout 120 --copy-target=false || fail=1
+          echo "shiplog::cluster_llm is inlined; covered by the shiplog package mutation target."
           echo "shiplog::team is inlined; covered by the shiplog package mutation target."
           cargo mutants -p shiplog --timeout 120 --copy-target=false || fail=1
           exit $fail

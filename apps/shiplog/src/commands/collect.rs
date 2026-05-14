@@ -128,14 +128,14 @@ pub(super) fn handle(
             let window_label = window.window_label();
 
             // Check if user has curated workstreams and warn
-            if !regen && shiplog_workstreams::WorkstreamManager::has_curated(&run_dir) {
+            if !regen && shiplog::workstreams::WorkstreamManager::has_curated(&run_dir) {
                 eprintln!("Note: Using existing workstreams.yaml (user-curated).");
                 eprintln!("      Use --regen to regenerate suggestions.");
             }
 
             // If --regen, delete existing suggested workstreams so the engine regenerates them
             if regen {
-                let suggested = shiplog_workstreams::WorkstreamManager::suggested_path(&run_dir);
+                let suggested = shiplog::workstreams::WorkstreamManager::suggested_path(&run_dir);
                 if suggested.exists() {
                     std::fs::remove_file(&suggested)
                         .with_context(|| format!("remove {:?} for --regen", suggested))?;
@@ -193,14 +193,14 @@ pub(super) fn handle(
             let window_label = window.window_label();
 
             // Check if user has curated workstreams and warn
-            if !regen && shiplog_workstreams::WorkstreamManager::has_curated(&run_dir) {
+            if !regen && shiplog::workstreams::WorkstreamManager::has_curated(&run_dir) {
                 eprintln!("Note: Using existing workstreams.yaml (user-curated).");
                 eprintln!("      Use --regen to regenerate suggestions.");
             }
 
             // If --regen, delete existing suggested workstreams so the engine regenerates them
             if regen {
-                let suggested = shiplog_workstreams::WorkstreamManager::suggested_path(&run_dir);
+                let suggested = shiplog::workstreams::WorkstreamManager::suggested_path(&run_dir);
                 if suggested.exists() {
                     std::fs::remove_file(&suggested)
                         .with_context(|| format!("remove {:?} for --regen", suggested))?;
@@ -254,14 +254,14 @@ pub(super) fn handle(
             let window_label = window.window_label();
 
             // Check if user has curated workstreams and warn
-            if !regen && shiplog_workstreams::WorkstreamManager::has_curated(&run_dir) {
+            if !regen && shiplog::workstreams::WorkstreamManager::has_curated(&run_dir) {
                 eprintln!("Note: Using existing workstreams.yaml (user-curated).");
                 eprintln!("      Use --regen to regenerate suggestions.");
             }
 
             // If --regen, delete existing suggested workstreams so the engine regenerates them
             if regen {
-                let suggested = shiplog_workstreams::WorkstreamManager::suggested_path(&run_dir);
+                let suggested = shiplog::workstreams::WorkstreamManager::suggested_path(&run_dir);
                 if suggested.exists() {
                     std::fs::remove_file(&suggested)
                         .with_context(|| format!("remove {:?} for --regen", suggested))?;
@@ -313,14 +313,14 @@ pub(super) fn handle(
             let window_label = window.window_label();
 
             // Check if user has curated workstreams and warn
-            if !regen && shiplog_workstreams::WorkstreamManager::has_curated(&run_dir) {
+            if !regen && shiplog::workstreams::WorkstreamManager::has_curated(&run_dir) {
                 eprintln!("Note: Using existing workstreams.yaml (user-curated).");
                 eprintln!("      Use --regen to regenerate suggestions.");
             }
 
             // If --regen, delete existing suggested workstreams so the engine regenerates them
             if regen {
-                let suggested = shiplog_workstreams::WorkstreamManager::suggested_path(&run_dir);
+                let suggested = shiplog::workstreams::WorkstreamManager::suggested_path(&run_dir);
                 if suggested.exists() {
                     std::fs::remove_file(&suggested)
                         .with_context(|| format!("remove {:?} for --regen", suggested))?;
@@ -364,14 +364,14 @@ pub(super) fn handle(
             let run_dir = out.join(&run_id);
 
             // Check if user has curated workstreams and warn
-            if !regen && shiplog_workstreams::WorkstreamManager::has_curated(&run_dir) {
+            if !regen && shiplog::workstreams::WorkstreamManager::has_curated(&run_dir) {
                 eprintln!("Note: Using existing workstreams.yaml (user-curated).");
                 eprintln!("      Use --regen to regenerate suggestions.");
             }
 
             // If --regen, delete existing suggested workstreams so the engine regenerates them
             if regen {
-                let suggested = shiplog_workstreams::WorkstreamManager::suggested_path(&run_dir);
+                let suggested = shiplog::workstreams::WorkstreamManager::suggested_path(&run_dir);
                 if suggested.exists() {
                     std::fs::remove_file(&suggested)
                         .with_context(|| format!("remove {:?} for --regen", suggested))?;
@@ -406,14 +406,14 @@ pub(super) fn handle(
             let window_label = window.window_label();
 
             // Check if user has curated workstreams and warn
-            if !regen && shiplog_workstreams::WorkstreamManager::has_curated(&run_dir) {
+            if !regen && shiplog::workstreams::WorkstreamManager::has_curated(&run_dir) {
                 eprintln!("Note: Using existing workstreams.yaml (user-curated).");
                 eprintln!("      Use --regen to regenerate suggestions.");
             }
 
             // If --regen, delete existing suggested workstreams so the engine regenerates them
             if regen {
-                let suggested = shiplog_workstreams::WorkstreamManager::suggested_path(&run_dir);
+                let suggested = shiplog::workstreams::WorkstreamManager::suggested_path(&run_dir);
                 if suggested.exists() {
                     std::fs::remove_file(&suggested)
                         .with_context(|| format!("remove {:?} for --regen", suggested))?;
@@ -449,14 +449,14 @@ pub(super) fn handle(
             let window_label = window.window_label();
 
             // Check if user has curated workstreams and warn
-            if !regen && shiplog_workstreams::WorkstreamManager::has_curated(&run_dir) {
+            if !regen && shiplog::workstreams::WorkstreamManager::has_curated(&run_dir) {
                 eprintln!("Note: Using existing workstreams.yaml (user-curated).");
                 eprintln!("      Use --regen to regenerate suggestions.");
             }
 
             // If --regen, delete existing suggested workstreams so the engine regenerates them
             if regen {
-                let suggested = shiplog_workstreams::WorkstreamManager::suggested_path(&run_dir);
+                let suggested = shiplog::workstreams::WorkstreamManager::suggested_path(&run_dir);
                 if suggested.exists() {
                     std::fs::remove_file(&suggested)
                         .with_context(|| format!("remove {:?} for --regen", suggested))?;

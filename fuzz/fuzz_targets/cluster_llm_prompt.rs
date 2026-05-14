@@ -2,7 +2,7 @@
 
 use chrono::Utc;
 use libfuzzer_sys::fuzz_target;
-use shiplog_cluster_llm::{chunk_events, format_event_list, summarize_event, system_prompt};
+use shiplog::cluster_llm::{chunk_events, format_event_list, summarize_event, system_prompt};
 use shiplog_ids::EventId;
 use shiplog_schema::event::*;
 

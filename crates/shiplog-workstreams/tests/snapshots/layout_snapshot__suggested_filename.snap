@@ -1,6 +1,0 @@
----
-source: crates/shiplog-workstreams/tests/layout_snapshot.rs
-assertion_line: 87
-expression: "shiplog_workstreams::SUGGESTED_FILENAME"
----
-workstreams.suggested.yaml

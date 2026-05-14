@@ -48,8 +48,8 @@ Module-first Rust workspace (edition 2024, MSRV 1.95) following **Clean Architec
 apps/shiplog (CLI, clap)
   └─ shiplog::engine (orchestration)
        ├─ Ingest adapters: apps/shiplog/src/ingest/*
-       ├─ shiplog-workstreams (clustering + user-curated YAML)
-       ├─ shiplog-cluster-llm (optional LLM-assisted clustering, feature-gated)
+       ├─ shiplog::workstreams (clustering + user-curated YAML)
+       ├─ shiplog::cluster_llm (optional LLM-assisted clustering, feature-gated)
        ├─ shiplog::redact (deterministic HMAC-SHA256 aliasing, 3 profiles)
        ├─ apps/shiplog/src/render + engine artifact writer
        └─ shiplog::bundle (zip + SHA256 checksums)
@@ -104,7 +104,7 @@ Prefix public packages with `shiplog-` only when a boundary has earned an extern
 | Tier | Crates | Notes |
 |------|--------|-------|
 | Stable contracts | `shiplog-ids`, `shiplog-schema`, `shiplog-ports` | No adapter deps |
-| Trust surfaces | `shiplog::redact`, `shiplog-workstreams`; inlined `shiplog::coverage`, `shiplog::cache`, `shiplog::bundle`, `shiplog::render::*` | Depend on foundation |
+| Trust surfaces | `shiplog::redact`, `shiplog::workstreams`; inlined `shiplog::coverage`, `shiplog::cache`, `shiplog::bundle`, `shiplog::render::*` | Depend on foundation |
 | Adapters | `shiplog::ingest::*` | Depend on foundation and ports |
 | Orchestration | `shiplog::engine` | Wires adapters via ports |
 | App | `shiplog` (CLI) | Feature-gates: `llm` (default off) |

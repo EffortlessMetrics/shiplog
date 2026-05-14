@@ -9,12 +9,6 @@ members = [
   "crates/shiplog-schema",
   "crates/shiplog-ports",
 
-  # Product and trust surfaces
-  "crates/shiplog-workstreams",
-
-  # Optional feature surfaces
-  "crates/shiplog-cluster-llm",
-
   # Dev-only support
   "crates/shiplog-testkit",
   "xtask",

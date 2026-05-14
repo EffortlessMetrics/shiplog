@@ -1987,7 +1987,7 @@ let coverage = CoverageBuilder::new("alice")
 For scenarios involving external APIs (GitHub, GitLab, Jira, LLM), use mock backends:
 
 ```rust
-use shiplog_cluster_llm::MockLlmBackend;
+use shiplog::cluster_llm::MockLlmBackend;
 
 let mock_backend = MockLlmBackend::new();
 mock_backend.set_response("workstream: [1,2,3]");

@@ -39,18 +39,6 @@ publish = false
 reason = "Internal traits until a plugin or adapter API is specified."
 
 [[package]]
-name = "shiplog-workstreams"
-tier = "internal-module"
-publish = false
-reason = "Workstream support should collapse into owner modules."
-
-[[package]]
-name = "shiplog-cluster-llm"
-tier = "internal-module"
-publish = false
-reason = "Optional implementation support, not a supported public package."
-
-[[package]]
 name = "shiplog-testkit"
 tier = "dev-only"
 publish = false
@@ -141,3 +129,13 @@ reason = "0.6 merge crate collapsed into shiplog::merge."
 name = "shiplog-team"
 tier = "historical-0.6"
 reason = "0.6 team aggregation crate collapsed into shiplog::team."
+
+[[historical]]
+name = "shiplog-workstreams"
+tier = "historical-0.6"
+reason = "0.6 workstream support crate collapsed into shiplog::workstreams."
+
+[[historical]]
+name = "shiplog-cluster-llm"
+tier = "historical-0.6"
+reason = "0.6 optional LLM support crate collapsed into shiplog::cluster_llm behind the llm feature."

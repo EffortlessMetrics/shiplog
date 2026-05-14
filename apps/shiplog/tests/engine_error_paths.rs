@@ -6,6 +6,8 @@
 use anyhow::Result;
 use chrono::{NaiveDate, TimeZone, Utc};
 use shiplog::engine::Engine;
+use shiplog::workstreams::RepoClusterer;
+use shiplog::workstreams::WorkstreamManager;
 use shiplog_ids::RunId;
 use shiplog_ports::{IngestOutput, Redactor, Renderer, WorkstreamClusterer};
 use shiplog_schema::bundle::BundleProfile;
@@ -13,8 +15,6 @@ use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
 use shiplog_schema::event::*;
 use shiplog_schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
 use shiplog_testkit::TestMarkdownRenderer as MarkdownRenderer;
-use shiplog_workstreams::RepoClusterer;
-use shiplog_workstreams::WorkstreamManager;
 
 // ---------------------------------------------------------------------------
 // Stubs
@@ -217,7 +217,7 @@ fn refresh_propagates_renderer_error() {
     std::fs::create_dir_all(&out).unwrap();
 
     // Pre-write workstreams so refresh passes the "no workstreams" check
-    shiplog_workstreams::write_workstreams(
+    shiplog::workstreams::write_workstreams(
         &WorkstreamManager::curated_path(&out),
         &empty_workstreams(),
     )
@@ -251,7 +251,7 @@ fn refresh_propagates_redactor_error() {
     let out = dir.path().join("refresh_fail_redact");
     std::fs::create_dir_all(&out).unwrap();
 
-    shiplog_workstreams::write_workstreams(
+    shiplog::workstreams::write_workstreams(
         &WorkstreamManager::curated_path(&out),
         &empty_workstreams(),
     )

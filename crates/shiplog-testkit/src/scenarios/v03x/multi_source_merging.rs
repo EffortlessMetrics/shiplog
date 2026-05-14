@@ -15,6 +15,7 @@ use crate::bdd::builders::CoverageBuilder;
 use crate::bdd::builders::EventBuilder;
 use chrono::{NaiveDate, TimeZone, Utc};
 use shiplog::merge::{ConflictResolution, MergeStrategy, merge_events, merge_ingest_outputs};
+use shiplog::workstreams::RepoClusterer;
 use shiplog_ids::{EventId, RunId};
 use shiplog_ports::{IngestOutput, Renderer, WorkstreamClusterer};
 use shiplog_schema::coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow};
@@ -22,7 +23,6 @@ use shiplog_schema::event::{
     Actor, EventEnvelope, EventKind, EventPayload, PullRequestEvent, PullRequestState, RepoRef,
     RepoVisibility, SourceRef, SourceSystem,
 };
-use shiplog_workstreams::RepoClusterer;
 use std::collections::BTreeSet;
 
 fn timestamp(offset_seconds: i64) -> chrono::DateTime<chrono::Utc> {

@@ -52,7 +52,7 @@ This is a module-first Rust workspace following Clean Architecture boundaries. T
 - crates/shiplog-schema — canonical event model (the data spine)
 - crates/shiplog-ports — trait definitions (Ingestor, Renderer, Redactor, WorkstreamClusterer)
 - apps/shiplog/src/coverage — slicing and completeness reporting
-- crates/shiplog-workstreams — clustering + editable YAML overrides
+- apps/shiplog/src/workstreams — clustering + editable YAML overrides
 - crates/shiplog-redact — deterministic HMAC-SHA256 redaction (internal/manager/public profiles)
 - apps/shiplog/src/render/md — Markdown renderer (snapshot-tested with insta)
 - apps/shiplog/src/engine/artifact_json.rs — JSON artifact writer during the contraction slice
@@ -63,7 +63,7 @@ This is a module-first Rust workspace following Clean Architecture boundaries. T
 - apps/shiplog/src/ingest/manual — manual ingest adapter (YAML-based non-GitHub events)
 - apps/shiplog/src/cache — SQLite-backed API response caching (TTL-based, reduces GitHub API calls)
 - crates/shiplog-testkit — shared test fixtures and utilities
-- crates/shiplog-cluster-llm — optional LLM-assisted workstream clustering (feature-gated in CLI)
+- apps/shiplog/src/cluster_llm — optional LLM-assisted workstream clustering (feature-gated in CLI)
 - apps/shiplog — CLI entrypoint (subcommands: collect, render, refresh, import, run)
 
 Important workspace metadata
@@ -106,7 +106,7 @@ Outputs typically produced under `out/<run_id>/` and include `packet.md`, `works
   - BDD-style integration tests via `shiplog-testkit::bdd` for scenario-driven testing.
   - Fuzz harnesses live in `fuzz/` and are not part of the cargo workspace by default.
 - Redaction and safety:
-  - Redaction is deterministic and profile-based (see `shiplog-redact`).
+- Redaction is deterministic and profile-based (see `shiplog::redact`).
   - Public packets strip titles and links by default — do not assume private data is safe unless `coverage.manifest.json` shows receipts.
 - Coverage-first design: components emit receipts and a coverage manifest; missing receipts are explicitly reported rather than silently omitted.
 - Error handling: use `anyhow::Result<T>` with `.context("description")?` for error propagation. Add contextual messages with `.with_context(|| format!(...))` for dynamic info. Do not introduce `thiserror` enums or bare `.unwrap()` where `anyhow` context is expected.

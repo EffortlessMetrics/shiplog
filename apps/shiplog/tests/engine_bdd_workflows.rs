@@ -7,6 +7,8 @@ use chrono::{NaiveDate, TimeZone, Utc};
 use shiplog::bundle::{DIR_PROFILES, FILE_PACKET_MD, PROFILE_PUBLIC};
 use shiplog::engine::Engine;
 use shiplog::redact::DeterministicRedactor;
+use shiplog::workstreams::RepoClusterer;
+use shiplog::workstreams::WorkstreamManager;
 use shiplog_ids::{EventId, WorkstreamId};
 use shiplog_ports::IngestOutput;
 use shiplog_schema::bundle::BundleProfile;
@@ -16,8 +18,6 @@ use shiplog_schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
 use shiplog_testkit::TestMarkdownRenderer as MarkdownRenderer;
 use shiplog_testkit::bdd::Scenario;
 use shiplog_testkit::bdd::assertions::*;
-use shiplog_workstreams::RepoClusterer;
-use shiplog_workstreams::WorkstreamManager;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -285,7 +285,7 @@ fn scenario_workstream_curation_preserved_on_rerender() {
                     event_ids,
                 );
                 let curated_path = WorkstreamManager::curated_path(&out_dir);
-                shiplog_workstreams::write_workstreams(&curated_path, &curated).unwrap();
+                shiplog::workstreams::write_workstreams(&curated_path, &curated).unwrap();
                 ctx.strings.insert(
                     "curated_title".into(),
                     "Authentication Service Revamp".into(),
@@ -486,7 +486,7 @@ fn scenario_refresh_updates_events_preserves_workstreams() {
                 vec![EventId::from_parts(["github", "pr", "acme/app", "1"])],
             );
             let curated_path = WorkstreamManager::curated_path(&out_dir);
-            shiplog_workstreams::write_workstreams(&curated_path, &curated).unwrap();
+            shiplog::workstreams::write_workstreams(&curated_path, &curated).unwrap();
         })
         .when("refresh is called with additional events", |ctx| {
             let out_dir = ctx.path("out_dir").unwrap().to_path_buf();

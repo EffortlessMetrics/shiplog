@@ -1,0 +1,6 @@
+---
+source: apps/shiplog/tests/workstreams/layout_snapshot.rs
+assertion_line: 84
+expression: "shiplog::workstreams::SUGGESTED_FILENAME"
+---
+workstreams.suggested.yaml

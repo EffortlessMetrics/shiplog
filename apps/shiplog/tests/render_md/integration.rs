@@ -1,5 +1,6 @@
 use chrono::{NaiveDate, Utc};
 use shiplog::render::md::MarkdownRenderer;
+use shiplog::workstreams::WORKSTREAM_RECEIPT_RENDER_LIMIT;
 use shiplog_ids::{EventId, RunId, WorkstreamId};
 use shiplog_ports::Renderer;
 use shiplog_schema::{
@@ -10,7 +11,6 @@ use shiplog_schema::{
     },
     workstream::{Workstream, WorkstreamStats, WorkstreamsFile},
 };
-use shiplog_workstreams::WORKSTREAM_RECEIPT_RENDER_LIMIT;
 
 fn pull_request_event(id: &str) -> EventEnvelope {
     EventEnvelope {

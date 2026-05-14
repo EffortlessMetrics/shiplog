@@ -2474,7 +2474,7 @@ snippet = "let stats = cache.stats().unwrap();"
 count = 3
 
 [[entry]]
-path = "crates/shiplog-cluster-llm/src/lib.rs"
+path = "apps/shiplog/src/cluster_llm/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2482,7 +2482,7 @@ snippet = "let ws = clusterer.cluster(&events).unwrap();"
 count = 4
 
 [[entry]]
-path = "crates/shiplog-cluster-llm/src/parse.rs"
+path = "apps/shiplog/src/cluster_llm/parse.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2490,7 +2490,7 @@ snippet = "let result = parse_llm_response(&json.to_string(), &[]).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-cluster-llm/src/parse.rs"
+path = "apps/shiplog/src/cluster_llm/parse.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -4050,7 +4050,7 @@ snippet = "let result = engine.render(template, &ctx).unwrap();"
 count = 5
 
 [[entry]]
-path = "crates/shiplog-workstreams/src/cluster.rs"
+path = "apps/shiplog/src/workstreams/cluster.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -4058,7 +4058,7 @@ snippet = "let a = RepoClusterer.cluster(&events).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-workstreams/src/cluster.rs"
+path = "apps/shiplog/src/workstreams/cluster.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -4066,7 +4066,7 @@ snippet = "let b = RepoClusterer.cluster(&events).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-workstreams/src/cluster.rs"
+path = "apps/shiplog/src/workstreams/cluster.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -4074,7 +4074,7 @@ snippet = "let ws = RepoClusterer.cluster(&[]).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-workstreams/src/cluster.rs"
+path = "apps/shiplog/src/workstreams/cluster.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -4082,7 +4082,7 @@ snippet = "let ws = RepoClusterer.cluster(&events).unwrap();"
 count = 9
 
 [[entry]]
-path = "crates/shiplog-workstreams/src/layout.rs"
+path = "apps/shiplog/src/workstreams/layout.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -4090,7 +4090,7 @@ snippet = ".unwrap()"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-workstreams/src/layout.rs"
+path = "apps/shiplog/src/workstreams/layout.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -4098,7 +4098,7 @@ snippet = ".unwrap();"
 count = 3
 
 [[entry]]
-path = "crates/shiplog-workstreams/src/layout.rs"
+path = "apps/shiplog/src/workstreams/layout.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -4106,7 +4106,7 @@ snippet = "WorkstreamManager::load_effective(temp_dir.path(), &FakeClusterer, &[
 count = 2
 
 [[entry]]
-path = "crates/shiplog-workstreams/src/layout.rs"
+path = "apps/shiplog/src/workstreams/layout.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -4114,7 +4114,7 @@ snippet = "WorkstreamManager::write_suggested(temp_dir.path(), &ws).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-workstreams/src/layout.rs"
+path = "apps/shiplog/src/workstreams/layout.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -4122,7 +4122,7 @@ snippet = "WorkstreamManager::write_suggested(temp_dir.path(), &ws1).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-workstreams/src/layout.rs"
+path = "apps/shiplog/src/workstreams/layout.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -4130,7 +4130,7 @@ snippet = "WorkstreamManager::write_suggested(temp_dir.path(), &ws2).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-workstreams/src/layout.rs"
+path = "apps/shiplog/src/workstreams/layout.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -4138,7 +4138,7 @@ snippet = "assert_eq!(path.file_name().unwrap(), CURATED_FILENAME);"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-workstreams/src/layout.rs"
+path = "apps/shiplog/src/workstreams/layout.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -4146,7 +4146,7 @@ snippet = "assert_eq!(path.file_name().unwrap(), SUGGESTED_FILENAME);"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-workstreams/src/layout.rs"
+path = "apps/shiplog/src/workstreams/layout.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -4154,7 +4154,7 @@ snippet = "let loaded = load_or_cluster(None, &FakeClusterer, &[]).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-workstreams/src/layout.rs"
+path = "apps/shiplog/src/workstreams/layout.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -4162,7 +4162,7 @@ snippet = "let loaded = load_or_cluster(Some(&path), &FakeClusterer, &[]).unwrap
 count = 1
 
 [[entry]]
-path = "crates/shiplog-workstreams/src/layout.rs"
+path = "apps/shiplog/src/workstreams/layout.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -4170,7 +4170,7 @@ snippet = "let loaded = load_or_cluster(Some(non_existent), &FakeClusterer, &[])
 count = 1
 
 [[entry]]
-path = "crates/shiplog-workstreams/src/layout.rs"
+path = "apps/shiplog/src/workstreams/layout.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -4178,7 +4178,7 @@ snippet = "let loaded = read_workstreams(&WorkstreamManager::suggested_path(temp
 count = 1
 
 [[entry]]
-path = "crates/shiplog-workstreams/src/layout.rs"
+path = "apps/shiplog/src/workstreams/layout.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -4186,7 +4186,7 @@ snippet = "let loaded = read_workstreams(&path).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-workstreams/src/layout.rs"
+path = "apps/shiplog/src/workstreams/layout.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -4194,7 +4194,7 @@ snippet = "let loaded = read_workstreams(&suggested_path).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-workstreams/src/layout.rs"
+path = "apps/shiplog/src/workstreams/layout.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -4202,7 +4202,7 @@ snippet = "let result = WorkstreamManager::try_load(temp_dir.path()).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-workstreams/src/layout.rs"
+path = "apps/shiplog/src/workstreams/layout.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -4210,7 +4210,7 @@ snippet = "let temp_dir = tempdir().unwrap();"
 count = 10
 
 [[entry]]
-path = "crates/shiplog-workstreams/src/layout.rs"
+path = "apps/shiplog/src/workstreams/layout.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -4218,7 +4218,7 @@ snippet = 'write_workstreams(&curated, &make_workstreams("curated", "repo/c")).u
 count = 2
 
 [[entry]]
-path = "crates/shiplog-workstreams/src/layout.rs"
+path = "apps/shiplog/src/workstreams/layout.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -4226,7 +4226,7 @@ snippet = "write_workstreams(&path, &workstreams).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-workstreams/src/layout.rs"
+path = "apps/shiplog/src/workstreams/layout.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -4234,7 +4234,7 @@ snippet = "write_workstreams(&path, &ws).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-workstreams/src/layout.rs"
+path = "apps/shiplog/src/workstreams/layout.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"

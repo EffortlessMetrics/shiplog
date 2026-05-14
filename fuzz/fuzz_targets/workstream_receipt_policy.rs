@@ -2,7 +2,7 @@
 
 use libfuzzer_sys::fuzz_target;
 use shiplog_schema::event::EventKind;
-use shiplog_workstreams::{
+use shiplog::workstreams::{
     WORKSTREAM_RECEIPT_LIMIT_MANUAL, WORKSTREAM_RECEIPT_LIMIT_REVIEW,
     WORKSTREAM_RECEIPT_LIMIT_TOTAL, WORKSTREAM_RECEIPT_RENDER_LIMIT,
     should_include_cluster_receipt, should_render_receipt_at, truncate_cluster_receipts,
