@@ -266,6 +266,310 @@ snippet = "let with_merge_out = with_merge.ingest().unwrap();"
 count = 1
 
 [[entry]]
+path = "apps/shiplog/src/ingest/gitlab.rs"
+family = "panic"
+selector_kind = "macro-call"
+selector_callee = "panic"
+snippet = 'panic!("Expected PullRequest payload");'
+count = 2
+
+[[entry]]
+path = "apps/shiplog/src/ingest/gitlab.rs"
+family = "panic"
+selector_kind = "macro-call"
+selector_callee = "panic"
+snippet = 'panic!("Expected Review payload");'
+count = 2
+
+[[entry]]
+path = "apps/shiplog/src/ingest/gitlab.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = ".mrs_to_events(vec![serde_json::from_value(mr_payload).unwrap()])"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/gitlab.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = ".unwrap()"
+count = 3
+
+[[entry]]
+path = "apps/shiplog/src/ingest/gitlab.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = ".unwrap();"
+count = 16
+
+[[entry]]
+path = "apps/shiplog/src/ingest/gitlab.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),"
+count = 10
+
+[[entry]]
+path = "apps/shiplog/src/ingest/gitlab.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),"
+count = 9
+
+[[entry]]
+path = "apps/shiplog/src/ingest/gitlab.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "NaiveDate::from_ymd_opt(2025, 6, 1).unwrap(),"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/gitlab.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = 'Some("2025-03-12T17:45:00Z".parse::<DateTime<Utc>>().unwrap())'
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/gitlab.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = 'assert_eq!("all".parse::<MrState>().unwrap(), MrState::All);'
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/gitlab.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = 'assert_eq!("closed".parse::<MrState>().unwrap(), MrState::Closed);'
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/gitlab.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = 'assert_eq!("merged".parse::<MrState>().unwrap(), MrState::Merged);'
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/gitlab.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = 'assert_eq!("opened".parse::<MrState>().unwrap(), MrState::Opened);'
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/gitlab.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = 'assert_eq!(mr.project.as_ref().unwrap().path_with_namespace, "org/repo");'
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/gitlab.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = 'assert_eq!(mr.project_path().unwrap(), "platform/reliability");'
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/gitlab.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let author: GitlabAuthor = serde_json::from_str(json).unwrap();"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/gitlab.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let events = ing.mrs_to_events(vec![]).unwrap();"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/gitlab.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let events = ing.mrs_to_events(vec![mr]).unwrap();"
+count = 4
+
+[[entry]]
+path = "apps/shiplog/src/ingest/gitlab.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let events = ing.notes_to_review_events(notes, &mr).unwrap();"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/gitlab.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let events = ing.notes_to_review_events(vec![], &mr).unwrap();"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/gitlab.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let events = ing.notes_to_review_events(vec![note], &mr).unwrap();"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/gitlab.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let events = ing.notes_to_review_events(vec![self_note], &mr).unwrap();"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/gitlab.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let events = ing.notes_to_review_events(vec![system_note], &mr).unwrap();"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/gitlab.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let mr: GitlabMergeRequest = serde_json::from_value(json).unwrap();"
+count = 3
+
+[[entry]]
+path = "apps/shiplog/src/ingest/gitlab.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let mr: GitlabMergeRequest = serde_json::from_value(mr_payload.clone()).unwrap();"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/gitlab.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let mr: GitlabMergeRequest = serde_json::from_value(sample_mr_json()).unwrap();"
+count = 8
+
+[[entry]]
+path = "apps/shiplog/src/ingest/gitlab.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let note: GitlabNote = serde_json::from_value(json).unwrap();"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/gitlab.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let note: GitlabNote = serde_json::from_value(sample_note_json()).unwrap();"
+count = 2
+
+[[entry]]
+path = "apps/shiplog/src/ingest/gitlab.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let notes: Vec<GitlabNote> = serde_json::from_value(notes_payload).unwrap();"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/gitlab.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let parsed: MrState = s.parse().unwrap();"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/gitlab.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let project: GitlabProject = serde_json::from_str(json).unwrap();"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/gitlab.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let replayed = ing.collect_mr_notes(&client, 3001, 42).unwrap();"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/gitlab.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let review_events = ing.notes_to_review_events(notes, &mr).unwrap();"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/gitlab.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let same = NaiveDate::from_ymd_opt(2025, 6, 15).unwrap();"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/gitlab.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let temp = tempfile::tempdir().unwrap();"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/gitlab.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = 'let url = build_url_with_params("https://gitlab.com/api/v4/projects", &[]).unwrap();'
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/gitlab.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let url = build_url_with_params(&base, &[]).unwrap();"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/gitlab.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let user: GitlabUser = serde_json::from_str(json).unwrap();"
+count = 1
+
+[[entry]]
 path = "apps/shiplog/src/ingest/jira.rs"
 family = "panic"
 selector_kind = "macro-call"
@@ -2015,310 +2319,6 @@ family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
 snippet = "until: NaiveDate::from_ymd_opt(2025, 7, 1).unwrap(),"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-gitlab/src/lib.rs"
-family = "panic"
-selector_kind = "macro-call"
-selector_callee = "panic"
-snippet = 'panic!("Expected PullRequest payload");'
-count = 2
-
-[[entry]]
-path = "crates/shiplog-ingest-gitlab/src/lib.rs"
-family = "panic"
-selector_kind = "macro-call"
-selector_callee = "panic"
-snippet = 'panic!("Expected Review payload");'
-count = 2
-
-[[entry]]
-path = "crates/shiplog-ingest-gitlab/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = ".mrs_to_events(vec![serde_json::from_value(mr_payload).unwrap()])"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-gitlab/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = ".unwrap()"
-count = 3
-
-[[entry]]
-path = "crates/shiplog-ingest-gitlab/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = ".unwrap();"
-count = 16
-
-[[entry]]
-path = "crates/shiplog-ingest-gitlab/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),"
-count = 10
-
-[[entry]]
-path = "crates/shiplog-ingest-gitlab/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),"
-count = 9
-
-[[entry]]
-path = "crates/shiplog-ingest-gitlab/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "NaiveDate::from_ymd_opt(2025, 6, 1).unwrap(),"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-gitlab/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = 'Some("2025-03-12T17:45:00Z".parse::<DateTime<Utc>>().unwrap())'
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-gitlab/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = 'assert_eq!("all".parse::<MrState>().unwrap(), MrState::All);'
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-gitlab/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = 'assert_eq!("closed".parse::<MrState>().unwrap(), MrState::Closed);'
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-gitlab/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = 'assert_eq!("merged".parse::<MrState>().unwrap(), MrState::Merged);'
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-gitlab/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = 'assert_eq!("opened".parse::<MrState>().unwrap(), MrState::Opened);'
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-gitlab/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = 'assert_eq!(mr.project.as_ref().unwrap().path_with_namespace, "org/repo");'
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-gitlab/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = 'assert_eq!(mr.project_path().unwrap(), "platform/reliability");'
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-gitlab/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let author: GitlabAuthor = serde_json::from_str(json).unwrap();"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-gitlab/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let events = ing.mrs_to_events(vec![]).unwrap();"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-gitlab/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let events = ing.mrs_to_events(vec![mr]).unwrap();"
-count = 4
-
-[[entry]]
-path = "crates/shiplog-ingest-gitlab/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let events = ing.notes_to_review_events(notes, &mr).unwrap();"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-gitlab/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let events = ing.notes_to_review_events(vec![], &mr).unwrap();"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-gitlab/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let events = ing.notes_to_review_events(vec![note], &mr).unwrap();"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-gitlab/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let events = ing.notes_to_review_events(vec![self_note], &mr).unwrap();"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-gitlab/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let events = ing.notes_to_review_events(vec![system_note], &mr).unwrap();"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-gitlab/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let mr: GitlabMergeRequest = serde_json::from_value(json).unwrap();"
-count = 3
-
-[[entry]]
-path = "crates/shiplog-ingest-gitlab/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let mr: GitlabMergeRequest = serde_json::from_value(mr_payload.clone()).unwrap();"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-gitlab/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let mr: GitlabMergeRequest = serde_json::from_value(sample_mr_json()).unwrap();"
-count = 8
-
-[[entry]]
-path = "crates/shiplog-ingest-gitlab/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let note: GitlabNote = serde_json::from_value(json).unwrap();"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-gitlab/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let note: GitlabNote = serde_json::from_value(sample_note_json()).unwrap();"
-count = 2
-
-[[entry]]
-path = "crates/shiplog-ingest-gitlab/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let notes: Vec<GitlabNote> = serde_json::from_value(notes_payload).unwrap();"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-gitlab/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let parsed: MrState = s.parse().unwrap();"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-gitlab/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let project: GitlabProject = serde_json::from_str(json).unwrap();"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-gitlab/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let replayed = ing.collect_mr_notes(&client, 3001, 42).unwrap();"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-gitlab/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let review_events = ing.notes_to_review_events(notes, &mr).unwrap();"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-gitlab/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let same = NaiveDate::from_ymd_opt(2025, 6, 15).unwrap();"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-gitlab/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let temp = tempfile::tempdir().unwrap();"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-gitlab/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = 'let url = build_url_with_params("https://gitlab.com/api/v4/projects", &[]).unwrap();'
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-gitlab/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let url = build_url_with_params(&base, &[]).unwrap();"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-gitlab/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let user: GitlabUser = serde_json::from_str(json).unwrap();"
 count = 1
 
 [[entry]]

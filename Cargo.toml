@@ -21,7 +21,6 @@ members = [
   "crates/shiplog-ingest-github",
   "crates/shiplog-ingest-json",
   "crates/shiplog-ingest-manual",
-  "crates/shiplog-ingest-gitlab",
 
   # Optional feature surfaces
   "crates/shiplog-cluster-llm",
