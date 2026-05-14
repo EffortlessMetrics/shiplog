@@ -95,6 +95,12 @@ Landed:
   `docs(goal): record 0.7 release prep`
 - [#287](https://github.com/EffortlessMetrics/shiplog/pull/287):
   `docs(release): align 0.7 audit status`
+- [#288](https://github.com/EffortlessMetrics/shiplog/pull/288):
+  `docs(goal): record 0.7 release control receipts`
+- [#289](https://github.com/EffortlessMetrics/shiplog/pull/289):
+  `docs(release): publish 0.7 draft before smoke`
+- [#290](https://github.com/EffortlessMetrics/shiplog/pull/290):
+  `chore(release): declare release workflow permissions`
 
 The remaining risk is release execution. The contraction removes historical
 0.6 implementation packages from the `shiplog` package graph, release tooling
@@ -102,6 +108,12 @@ now fails closed if a future change reintroduces unsupported package
 dependencies or publish targets, and the 0.7.0 release handoff is ready. Tag,
 publish, GitHub release, and post-release smoke work still require explicit
 owner approval.
+
+Final preflight passed on `main` at
+`09b105894620e79432242c8cdc3cfaf54784be0e` after #290 merged. This records
+package/version proof, publish dry-run, targeted first-run tests, clippy,
+policy gates, executable-file policy, fuzz binary check, and diff hygiene as
+ready for the approval-gated release execution step.
 
 ## Sequencing
 
