@@ -111,7 +111,7 @@ and the variant doc stated explicitly *why* it was not emitted:
 //! of `ApiCache::get` (the `expires_at > now` predicate), so adapters cannot
 //! honestly distinguish stale-hit from cache-miss without a new lookup
 //! return type. Adding a `CacheLookup::{Fresh, Stale, Miss}` enum to
-//! `shiplog-cache` is the follow-up that unlocks stale-fallback reporting.
+//! `shiplog::cache` is the follow-up that unlocks stale-fallback reporting.
 ```
 
 That was a **forward receipt**: the schema committed to a future shape so

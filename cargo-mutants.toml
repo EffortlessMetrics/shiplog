@@ -31,7 +31,8 @@
 # shiplog-workstreams   - workstream facade (curated + suggested)
 # apps/shiplog/src/render
 #                      - Markdown and JSON renderers (snapshot-tested)
-# shiplog-cache         - API cache facade
+# apps/shiplog/src/cache
+#                       - API cache facade
 # shiplog-merge         - multi-source event merge and deduplication
 
 # ============================================================================

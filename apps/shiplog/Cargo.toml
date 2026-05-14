@@ -23,6 +23,7 @@ clap.workspace = true
 chrono.workspace = true
 regex.workspace = true
 reqwest.workspace = true
+rusqlite.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 serde_yaml.workspace = true
@@ -34,7 +35,6 @@ itertools.workspace = true
 git2 = "0.20"
 mutants.workspace = true
 shiplog-engine = { path = "../../crates/shiplog-engine", version = "0.6.0" }
-shiplog-cache = { path = "../../crates/shiplog-cache", version = "0.6.0" }
 shiplog-coverage = { path = "../../crates/shiplog-coverage", version = "0.6.0" }
 shiplog-workstreams = { path = "../../crates/shiplog-workstreams", version = "0.6.0" }
 shiplog-redact = { path = "../../crates/shiplog-redact", version = "0.6.0" }

@@ -10,7 +10,7 @@
 //! The taxonomy is intentionally narrow in v1: `Fresh`, `Cached`, `Skipped`,
 //! `Unavailable`, and `Stale` (see the `FreshnessStatus` enum below).
 //! `Stale` is emitted only when an adapter receives a proven expired cache row
-//! through `shiplog-cache`'s `CacheLookup::Stale(_)` result.
+//! through `shiplog::cache`'s `CacheLookup::Stale(_)` result.
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};

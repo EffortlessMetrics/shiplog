@@ -140,7 +140,7 @@ url = "https://github.com/EffortlessMetrics/shiplog/pull/266"
 [[work_item]]
 id = "ingest-adapter-collapse"
 title = "refactor(crate): inline ingest adapters into shiplog"
-status = "ready"
+status = "completed"
 plan_section = "PR 1: Collapse Ingest Adapters"
 expected_files = [
   "apps/shiplog/Cargo.toml",
@@ -167,10 +167,11 @@ rollback = "Restore ingest crates, shiplog manifest dependencies, imports, and m
 [[work_item]]
 id = "cache-freshness-collapse"
 title = "refactor(crate): inline cache freshness support"
-status = "pending"
+status = "ready"
 plan_section = "PR 2: Collapse Cache And Freshness Support"
 commands = [
-  "cargo test -p shiplog-cache",
+  "cargo test -p shiplog --test cache",
+  "cargo test -p shiplog --test cache_expiry",
   "cargo test -p shiplog --test cli_integration -- intake",
   "cargo test -p shiplog --test intake_cold_start",
   "cargo xtask check-policy-schemas",

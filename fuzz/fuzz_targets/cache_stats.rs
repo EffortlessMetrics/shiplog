@@ -1,7 +1,7 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use shiplog_cache::{BYTES_PER_MEGABYTE, CacheStats};
+use shiplog::cache::{BYTES_PER_MEGABYTE, CacheStats};
 
 fuzz_target!(|data: &[u8]| {
     let mut padded = [0u8; 24];

@@ -3,7 +3,7 @@
 use assert_cmd::Command;
 use chrono::{Duration, NaiveDate, TimeZone, Utc};
 use predicates::prelude::*;
-use shiplog_cache::ApiCache;
+use shiplog::cache::ApiCache;
 use shiplog_ids::{EventId, RunId, WorkstreamId};
 use shiplog_schema::coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow};
 use shiplog_schema::event::{
