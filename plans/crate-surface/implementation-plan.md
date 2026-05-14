@@ -73,6 +73,8 @@ Landed:
   `refactor(crate): inline json adapter`
 - [#267](https://github.com/EffortlessMetrics/shiplog/pull/267):
   `refactor(crate): inline cache support`
+- [#269](https://github.com/EffortlessMetrics/shiplog/pull/269):
+  `refactor(crate): inline coverage support`
 
 The remaining risk is dependency leakage: `shiplog` can be publish-allowed but
 still resolve historical 0.6 implementation crates if versioned path
@@ -196,22 +198,22 @@ Follow-up:
 Title:
 
 ```text
-refactor(crate): inline product trust support
+refactor(crate): inline remaining product trust support
 ```
 
 Scope:
 
-- Move `shiplog-bundle`, `shiplog-redact`, `shiplog-coverage`,
-  `shiplog-workstreams`, `shiplog-merge`, and `shiplog-team` in small slices.
-- Keep bundle, redaction, coverage, and workstream output shape unchanged.
+- Move `shiplog-bundle`, `shiplog-redact`, `shiplog-workstreams`,
+  `shiplog-merge`, and `shiplog-team` in small slices.
+- Keep bundle, redaction, and workstream output shape unchanged.
 - Preserve fail-closed redaction behavior.
 
 Expected files:
 
 - `apps/shiplog/Cargo.toml`
-- `apps/shiplog/src/{bundle,redact,coverage,workstreams,merge,team}/**`
+- `apps/shiplog/src/{bundle,redact,workstreams,merge,team}/**`
 - `apps/shiplog/tests/**`
-- `crates/shiplog-{bundle,redact,coverage,workstreams,merge,team}/**`
+- `crates/shiplog-{bundle,redact,workstreams,merge,team}/**`
 - `docs/release/0.7-crate-surface.md`
 
 Behavior change:
