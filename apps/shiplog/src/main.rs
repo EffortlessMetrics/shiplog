@@ -26,6 +26,7 @@ use shiplog::redact::DeterministicRedactor;
 use shiplog::render::md::{
     AppendixMode, MarkdownRenderOptions, MarkdownRenderer, SectionOrder, format_receipt_markdown,
 };
+use shiplog::workstreams::{RepoClusterer, WORKSTREAM_RECEIPT_RENDER_LIMIT};
 use shiplog_ids::{EventId, WorkstreamId};
 use shiplog_ports::{IngestOutput, Ingestor, Redactor, Renderer};
 use shiplog_schema::{
@@ -35,7 +36,6 @@ use shiplog_schema::{
     event::{Link, ManualDate, ManualEventEntry, ManualEventType},
     workstream::{Workstream, WorkstreamStats, WorkstreamsFile},
 };
-use shiplog_workstreams::{RepoClusterer, WORKSTREAM_RECEIPT_RENDER_LIMIT};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fs::File;
 use std::io::Read;
@@ -7536,7 +7536,7 @@ fn run_configured_multi_pipeline(
     )?;
 
     if regen {
-        let suggested = shiplog_workstreams::WorkstreamManager::suggested_path(&run_dir);
+        let suggested = shiplog::workstreams::WorkstreamManager::suggested_path(&run_dir);
         if suggested.exists() {
             std::fs::remove_file(&suggested)
                 .with_context(|| format!("remove {:?} for --regen", suggested))?;
@@ -7578,7 +7578,7 @@ fn run_configured_multi_pipeline(
 }
 
 fn preserve_prior_curated_workstreams(out: &Path, run_dir: &Path) -> Result<Option<PriorCuration>> {
-    let destination_path = shiplog_workstreams::WorkstreamManager::curated_path(run_dir);
+    let destination_path = shiplog::workstreams::WorkstreamManager::curated_path(run_dir);
     if destination_path.exists() {
         return Ok(Some(PriorCuration {
             source_run_dir: run_dir.to_path_buf(),
@@ -7628,7 +7628,7 @@ fn latest_prior_curated_workstreams(
         if !run_dir.join("ledger.events.jsonl").exists() {
             continue;
         }
-        let curated_path = shiplog_workstreams::WorkstreamManager::curated_path(&run_dir);
+        let curated_path = shiplog::workstreams::WorkstreamManager::curated_path(&run_dir);
         if !curated_path.exists() {
             continue;
         }
@@ -8240,21 +8240,21 @@ fn build_clusterer(
                     std::process::exit(1);
                 });
 
-            let backend = shiplog_cluster_llm::OpenAiCompatibleBackend {
+            let backend = shiplog::cluster_llm::OpenAiCompatibleBackend {
                 endpoint: llm_api_endpoint.to_string(),
                 api_key,
                 model: llm_model.to_string(),
                 temperature: 0.2,
                 timeout_secs: 60,
             };
-            let config = shiplog_cluster_llm::LlmConfig {
+            let config = shiplog::cluster_llm::LlmConfig {
                 api_endpoint: llm_api_endpoint.to_string(),
                 api_key: String::new(),
                 model: llm_model.to_string(),
                 ..Default::default()
             };
-            let llm = shiplog_cluster_llm::LlmClusterer::new(Box::new(backend), config);
-            Box::new(shiplog_cluster_llm::LlmWithFallback::new(llm))
+            let llm = shiplog::cluster_llm::LlmClusterer::new(Box::new(backend), config);
+            Box::new(shiplog::cluster_llm::LlmWithFallback::new(llm))
         }
         #[cfg(not(feature = "llm"))]
         {
@@ -9406,16 +9406,16 @@ enum WorkstreamsFileSource {
 fn load_effective_workstreams_for_run(
     run_dir: &Path,
 ) -> Result<(WorkstreamsFile, WorkstreamsFileSource, PathBuf)> {
-    let curated = shiplog_workstreams::WorkstreamManager::curated_path(run_dir);
+    let curated = shiplog::workstreams::WorkstreamManager::curated_path(run_dir);
     if curated.exists() {
-        let workstreams = shiplog_workstreams::WorkstreamManager::try_load(run_dir)?
+        let workstreams = shiplog::workstreams::WorkstreamManager::try_load(run_dir)?
             .ok_or_else(|| anyhow::anyhow!("curated workstreams disappeared from {run_dir:?}"))?;
         return Ok((workstreams, WorkstreamsFileSource::Curated, curated));
     }
 
-    let suggested = shiplog_workstreams::WorkstreamManager::suggested_path(run_dir);
+    let suggested = shiplog::workstreams::WorkstreamManager::suggested_path(run_dir);
     if suggested.exists() {
-        let workstreams = shiplog_workstreams::WorkstreamManager::try_load(run_dir)?
+        let workstreams = shiplog::workstreams::WorkstreamManager::try_load(run_dir)?
             .ok_or_else(|| anyhow::anyhow!("suggested workstreams disappeared from {run_dir:?}"))?;
         return Ok((workstreams, WorkstreamsFileSource::Suggested, suggested));
     }
@@ -10019,8 +10019,8 @@ fn recompute_workstream_stats(workstreams: &mut WorkstreamsFile, ledger_events: 
 }
 
 fn write_curated_workstreams(run_dir: &Path, workstreams: &WorkstreamsFile) -> Result<()> {
-    let curated_path = shiplog_workstreams::WorkstreamManager::curated_path(run_dir);
-    shiplog_workstreams::write_workstreams(&curated_path, workstreams)
+    let curated_path = shiplog::workstreams::WorkstreamManager::curated_path(run_dir);
+    shiplog::workstreams::write_workstreams(&curated_path, workstreams)
         .with_context(|| format!("write curated workstreams to {curated_path:?}"))
 }
 
@@ -10354,7 +10354,7 @@ fn load_run_compare_data(run_dir: &Path) -> Result<RunCompareData> {
     let summary = load_run_summary(run_dir)?;
     let ingest =
         load_run_ingest(run_dir).with_context(|| format!("load run {}", run_dir.display()))?;
-    let workstreams = shiplog_workstreams::WorkstreamManager::try_load(run_dir)?
+    let workstreams = shiplog::workstreams::WorkstreamManager::try_load(run_dir)?
         .unwrap_or_else(empty_workstreams_file);
 
     Ok(RunCompareData {

@@ -8,6 +8,7 @@ mod user_workflow_tests {
     use chrono::{NaiveDate, Utc};
     use shiplog::engine::{Engine, WorkstreamSource};
     use shiplog::redact::DeterministicRedactor;
+    use shiplog::workstreams::RepoClusterer;
     use shiplog_ids::RunId;
     use shiplog_ports::{IngestOutput, Redactor, WorkstreamClusterer};
     use shiplog_schema::bundle::BundleProfile;
@@ -16,7 +17,6 @@ mod user_workflow_tests {
     use shiplog_testkit::bdd::Scenario;
     use shiplog_testkit::bdd::assertions::*;
     use shiplog_testkit::pr_event;
-    use shiplog_workstreams::RepoClusterer;
 
     // -- helpers ---------------------------------------------------------
 
@@ -238,8 +238,8 @@ mod user_workflow_tests {
                         std::fs::create_dir_all(&out_dir).unwrap();
 
                         let curated_path =
-                            shiplog_workstreams::WorkstreamManager::curated_path(&out_dir);
-                        shiplog_workstreams::write_workstreams(&curated_path, &ws).unwrap();
+                            shiplog::workstreams::WorkstreamManager::curated_path(&out_dir);
+                        shiplog::workstreams::write_workstreams(&curated_path, &ws).unwrap();
 
                         let coverage = make_coverage("testuser", Completeness::Complete);
                         let ingest = IngestOutput {

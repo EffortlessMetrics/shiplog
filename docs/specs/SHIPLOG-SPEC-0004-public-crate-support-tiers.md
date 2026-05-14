@@ -150,7 +150,7 @@ contract those PRs must satisfy.
 | `shiplog-ports` | `internal-module` | no | Keep private until a plugin/API ADR exists; 0.6 published versions become `historical-0.6`. |
 | `shiplog-engine` | `historical-0.6` / `internal-module` | no | Collapsed into `shiplog::engine`; 0.6 published versions become `historical-0.6`. |
 | `shiplog-coverage` | `historical-0.6` / `internal-module` | no | Collapsed into `shiplog::coverage`; 0.6 published versions become `historical-0.6`. |
-| `shiplog-workstreams` | `internal-module` | no | Inline workstream support; 0.6 published versions become `historical-0.6`. |
+| `shiplog-workstreams` | `historical-0.6` / `internal-module` | no | Collapsed into `shiplog::workstreams`; 0.6 published versions become `historical-0.6`. |
 | `shiplog-redact` | `historical-0.6` / `internal-module` | no | Collapsed into `shiplog::redact`; 0.6 published versions become `historical-0.6`. |
 | `shiplog-bundle` | `historical-0.6` / `internal-module` | no | Collapsed into `shiplog::bundle`; 0.6 published versions become `historical-0.6`. |
 | `shiplog-cache` | `historical-0.6` / `internal-module` | no | Collapsed into `shiplog::cache`; 0.6 published versions become `historical-0.6`. |
@@ -163,7 +163,7 @@ contract those PRs must satisfy.
 | `shiplog-ingest-gitlab` | `historical-0.6` / `internal-module` | no | Collapsed into `shiplog::ingest::gitlab`; 0.6 published versions become `historical-0.6`. |
 | `shiplog-ingest-jira` | `historical-0.6` / `internal-module` | no | Collapsed into `shiplog::ingest::jira`; 0.6 published versions become `historical-0.6`. |
 | `shiplog-ingest-linear` | `historical-0.6` / `internal-module` | no | Collapsed into `shiplog::ingest::linear`; 0.6 published versions become `historical-0.6`. |
-| `shiplog-cluster-llm` | `internal-module` | no | Inline optional LLM support; 0.6 published versions become `historical-0.6`. |
+| `shiplog-cluster-llm` | `historical-0.6` / `internal-module` | no | Collapsed into `shiplog::cluster_llm` behind the `llm` feature; 0.6 published versions become `historical-0.6`. |
 | `shiplog-team` | `historical-0.6` / `internal-module` | no | Collapsed into `shiplog::team`; 0.6 published versions become `historical-0.6`. |
 | `shiplog-merge` | `historical-0.6` / `internal-module` | no | Collapsed into `shiplog::merge`; 0.6 published versions become `historical-0.6`. |
 | `shiplog-testkit` | `dev-only` | no | Keep test support unpublished. |

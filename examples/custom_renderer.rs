@@ -94,7 +94,7 @@ fn main() -> Result<()> {
     let coverage = load_fixture_coverage()?;
 
     // Cluster events into workstreams using the built-in repo clusterer.
-    let clusterer = shiplog_workstreams::RepoClusterer;
+    let clusterer = shiplog::workstreams::RepoClusterer;
     let workstreams = clusterer.cluster(&events).context("cluster events")?;
 
     // Render with our custom PlainTextRenderer.

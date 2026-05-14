@@ -6,13 +6,13 @@
 use chrono::{NaiveDate, TimeZone, Utc};
 use shiplog::engine::Engine;
 use shiplog::redact::DeterministicRedactor;
+use shiplog::workstreams::RepoClusterer;
 use shiplog_ids::RunId;
 use shiplog_ports::{IngestOutput, Redactor, Renderer, WorkstreamClusterer};
 use shiplog_schema::bundle::BundleProfile;
 use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
 use shiplog_schema::event::EventEnvelope;
 use shiplog_testkit::TestMarkdownRenderer as MarkdownRenderer;
-use shiplog_workstreams::RepoClusterer;
 
 const RUNS: usize = 3;
 

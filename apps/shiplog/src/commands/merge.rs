@@ -42,7 +42,7 @@ pub(super) fn handle(
     let run_dir = out.join(&run_id);
 
     if regen {
-        let suggested = shiplog_workstreams::WorkstreamManager::suggested_path(&run_dir);
+        let suggested = shiplog::workstreams::WorkstreamManager::suggested_path(&run_dir);
         if suggested.exists() {
             std::fs::remove_file(&suggested)
                 .with_context(|| format!("remove {:?} for --regen", suggested))?;

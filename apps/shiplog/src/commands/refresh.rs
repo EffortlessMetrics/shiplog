@@ -42,8 +42,8 @@ pub(super) fn handle(
             let ingest = ing.ingest().context("ingest events")?;
             let window_label = window.window_label();
 
-            if !shiplog_workstreams::WorkstreamManager::has_curated(&run_dir)
-                && !shiplog_workstreams::WorkstreamManager::suggested_path(&run_dir).exists()
+            if !shiplog::workstreams::WorkstreamManager::has_curated(&run_dir)
+                && !shiplog::workstreams::WorkstreamManager::suggested_path(&run_dir).exists()
             {
                 anyhow::bail!(
                     "No workstreams found in {:?}. Run `shiplog collect` first.",
@@ -108,8 +108,8 @@ pub(super) fn handle(
 
             let window_label = window.window_label();
 
-            if !shiplog_workstreams::WorkstreamManager::has_curated(&run_dir)
-                && !shiplog_workstreams::WorkstreamManager::suggested_path(&run_dir).exists()
+            if !shiplog::workstreams::WorkstreamManager::has_curated(&run_dir)
+                && !shiplog::workstreams::WorkstreamManager::suggested_path(&run_dir).exists()
             {
                 anyhow::bail!(
                     "No workstreams found in {:?}. Run `shiplog collect` first.",
@@ -166,8 +166,8 @@ pub(super) fn handle(
 
             let window_label = window.window_label();
 
-            if !shiplog_workstreams::WorkstreamManager::has_curated(&run_dir)
-                && !shiplog_workstreams::WorkstreamManager::suggested_path(&run_dir).exists()
+            if !shiplog::workstreams::WorkstreamManager::has_curated(&run_dir)
+                && !shiplog::workstreams::WorkstreamManager::suggested_path(&run_dir).exists()
             {
                 anyhow::bail!(
                     "No workstreams found in {:?}. Run `shiplog collect` first.",
@@ -220,8 +220,8 @@ pub(super) fn handle(
 
             let window_label = window.window_label();
 
-            if !shiplog_workstreams::WorkstreamManager::has_curated(&run_dir)
-                && !shiplog_workstreams::WorkstreamManager::suggested_path(&run_dir).exists()
+            if !shiplog::workstreams::WorkstreamManager::has_curated(&run_dir)
+                && !shiplog::workstreams::WorkstreamManager::suggested_path(&run_dir).exists()
             {
                 anyhow::bail!(
                     "No workstreams found in {:?}. Run `shiplog collect` first.",
@@ -272,8 +272,8 @@ pub(super) fn handle(
 
             let window_label = window.window_label();
 
-            if !shiplog_workstreams::WorkstreamManager::has_curated(&run_dir)
-                && !shiplog_workstreams::WorkstreamManager::suggested_path(&run_dir).exists()
+            if !shiplog::workstreams::WorkstreamManager::has_curated(&run_dir)
+                && !shiplog::workstreams::WorkstreamManager::suggested_path(&run_dir).exists()
             {
                 anyhow::bail!(
                     "No workstreams found in {:?}. Run `shiplog collect` first.",
@@ -306,8 +306,8 @@ pub(super) fn handle(
             user,
             window_label,
         } => {
-            if !shiplog_workstreams::WorkstreamManager::has_curated(&run_dir)
-                && !shiplog_workstreams::WorkstreamManager::suggested_path(&run_dir).exists()
+            if !shiplog::workstreams::WorkstreamManager::has_curated(&run_dir)
+                && !shiplog::workstreams::WorkstreamManager::suggested_path(&run_dir).exists()
             {
                 anyhow::bail!(
                     "No workstreams found in {:?}. Run `shiplog collect` first.",
@@ -339,8 +339,8 @@ pub(super) fn handle(
             window,
         } => {
             let window = resolve_date_window(window)?;
-            if !shiplog_workstreams::WorkstreamManager::has_curated(&run_dir)
-                && !shiplog_workstreams::WorkstreamManager::suggested_path(&run_dir).exists()
+            if !shiplog::workstreams::WorkstreamManager::has_curated(&run_dir)
+                && !shiplog::workstreams::WorkstreamManager::suggested_path(&run_dir).exists()
             {
                 anyhow::bail!(
                     "No workstreams found in {:?}. Run `shiplog collect` first.",

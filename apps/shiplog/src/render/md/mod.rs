@@ -3,12 +3,12 @@
 //! Converts canonical events, workstreams, and coverage metadata into an
 //! editable self-review packet with receipts and appendix sections.
 
+use crate::workstreams::WORKSTREAM_RECEIPT_RENDER_LIMIT;
 use anyhow::Result;
 use shiplog_ports::Renderer;
 use shiplog_schema::coverage::CoverageManifest;
 use shiplog_schema::event::{EventEnvelope, EventKind};
 use shiplog_schema::workstream::{Workstream, WorkstreamsFile};
-use shiplog_workstreams::WORKSTREAM_RECEIPT_RENDER_LIMIT;
 use std::collections::HashMap;
 
 use self::coverage::render_coverage;

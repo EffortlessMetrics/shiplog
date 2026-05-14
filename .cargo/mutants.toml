@@ -19,18 +19,7 @@ cap_lints = true
 examine_globs = [
   "crates/shiplog-schema/src/**/*.rs",
   "crates/shiplog-ids/src/**/*.rs",
-  "crates/shiplog-coverage/src/**/*.rs",
   "crates/shiplog-ports/src/**/*.rs",
-  "crates/shiplog-engine/src/**/*.rs",
-  "crates/shiplog-workstreams/src/**/*.rs",
-  "crates/shiplog-workstream-cluster/src/**/*.rs",
-  "crates/shiplog-workstream-receipt-policy/src/**/*.rs",
-  "crates/shiplog-workstream-layout/src/**/*.rs",
-  "crates/shiplog-cache/src/**/*.rs",
-  "crates/shiplog-template/src/**/*.rs",
-  "crates/shiplog-merge/src/**/*.rs",
-  "crates/shiplog-cluster-llm/src/**/*.rs",
-  "crates/shiplog-team/src/**/*.rs",
   "apps/shiplog/src/**/*.rs",
 ]
 

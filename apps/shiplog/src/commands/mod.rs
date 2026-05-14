@@ -260,7 +260,7 @@ pub(super) fn dispatch() -> Result<()> {
                 println!("Renamed workstream: {old_title} -> {}", to.trim());
                 println!(
                     "Updated: {}",
-                    shiplog_workstreams::WorkstreamManager::curated_path(&run_dir).display()
+                    shiplog::workstreams::WorkstreamManager::curated_path(&run_dir).display()
                 );
                 if matches!(source, WorkstreamsFileSource::Suggested) {
                     println!("Created curated workstreams.yaml from suggested workstreams.");
@@ -298,7 +298,7 @@ pub(super) fn dispatch() -> Result<()> {
                 }
                 println!(
                     "Updated: {}",
-                    shiplog_workstreams::WorkstreamManager::curated_path(&run_dir).display()
+                    shiplog::workstreams::WorkstreamManager::curated_path(&run_dir).display()
                 );
                 if matches!(source, WorkstreamsFileSource::Suggested) {
                     println!("Created curated workstreams.yaml from suggested workstreams.");
@@ -356,7 +356,7 @@ pub(super) fn dispatch() -> Result<()> {
                     println!("Receipt: {}", result.event_title);
                     println!(
                         "Updated: {}",
-                        shiplog_workstreams::WorkstreamManager::curated_path(&run_dir).display()
+                        shiplog::workstreams::WorkstreamManager::curated_path(&run_dir).display()
                     );
                     if matches!(source, WorkstreamsFileSource::Suggested) {
                         println!("Created curated workstreams.yaml from suggested workstreams.");
@@ -395,7 +395,7 @@ pub(super) fn dispatch() -> Result<()> {
                     println!("Receipt: {}", result.event_title);
                     println!(
                         "Updated: {}",
-                        shiplog_workstreams::WorkstreamManager::curated_path(&run_dir).display()
+                        shiplog::workstreams::WorkstreamManager::curated_path(&run_dir).display()
                     );
                     if matches!(source, WorkstreamsFileSource::Suggested) {
                         println!("Created curated workstreams.yaml from suggested workstreams.");
@@ -425,7 +425,7 @@ pub(super) fn dispatch() -> Result<()> {
                 println!("ID: {}", result.id);
                 println!(
                     "Updated: {}",
-                    shiplog_workstreams::WorkstreamManager::curated_path(&run_dir).display()
+                    shiplog::workstreams::WorkstreamManager::curated_path(&run_dir).display()
                 );
                 if matches!(source, WorkstreamsFileSource::Suggested) {
                     println!("Created curated workstreams.yaml from suggested workstreams.");
@@ -472,7 +472,7 @@ pub(super) fn dispatch() -> Result<()> {
                 }
                 println!(
                     "Updated: {}",
-                    shiplog_workstreams::WorkstreamManager::curated_path(&run_dir).display()
+                    shiplog::workstreams::WorkstreamManager::curated_path(&run_dir).display()
                 );
                 if matches!(source, WorkstreamsFileSource::Suggested) {
                     println!("Created curated workstreams.yaml from suggested workstreams.");
@@ -520,7 +520,7 @@ pub(super) fn dispatch() -> Result<()> {
                 }
                 println!(
                     "Updated: {}",
-                    shiplog_workstreams::WorkstreamManager::curated_path(&run_dir).display()
+                    shiplog::workstreams::WorkstreamManager::curated_path(&run_dir).display()
                 );
                 if matches!(source, WorkstreamsFileSource::Suggested) {
                     println!("Created curated workstreams.yaml from suggested workstreams.");

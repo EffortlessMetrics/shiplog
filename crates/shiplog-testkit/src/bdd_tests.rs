@@ -144,12 +144,12 @@ mod workflow_tests {
 
                         let curated = sample_workstreams_file("Curated from BDD", "user-authored");
                         let suggested = sample_workstreams_file("Suggested from BDD", "machine");
-                        shiplog_workstreams::write_workstreams(
+                        shiplog::workstreams::write_workstreams(
                             &run_dir.join("workstreams.yaml"),
                             &curated,
                         )
                         .unwrap();
-                        shiplog_workstreams::write_workstreams(
+                        shiplog::workstreams::write_workstreams(
                             &run_dir.join("workstreams.suggested.yaml"),
                             &suggested,
                         )
@@ -167,7 +167,7 @@ mod workflow_tests {
                     "the workstream layout is loaded without clustering",
                     |ctx| {
                         let run_dir = assert_present(ctx.string("run_dir"), "run_dir")?;
-                        let selected = shiplog_workstreams::WorkstreamManager::try_load(
+                        let selected = shiplog::workstreams::WorkstreamManager::try_load(
                             std::path::Path::new(run_dir),
                         )
                         .map_err(|e| e.to_string())?

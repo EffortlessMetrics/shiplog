@@ -59,7 +59,7 @@ pub(super) fn handle(
     let workstreams = if regen {
         None
     } else {
-        shiplog_workstreams::WorkstreamManager::try_load(&dir)
+        shiplog::workstreams::WorkstreamManager::try_load(&dir)
             .context("load workstreams from import directory")?
     };
 

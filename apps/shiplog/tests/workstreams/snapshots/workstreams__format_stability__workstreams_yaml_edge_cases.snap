@@ -1,0 +1,22 @@
+---
+source: apps/shiplog/tests/workstreams/format_stability.rs
+assertion_line: 184
+expression: text
+---
+version: 4294967295
+generated_at: 2025-06-01T12:00:00Z
+workstreams:
+- id: a1cb100f57e971cacf269e7c26e4630a25a8e9d4bdd35e32df1a80b66b896254
+  title: Title with "quotes" & <angle brackets> 🚀
+  summary: "Multi-line\nsummary with\ttabs"
+  tags:
+  - ''
+  - tag with spaces
+  - 日本語タグ
+  stats:
+    pull_requests: 18446744073709551615
+    reviews: 0
+    manual_events: 18446744073709551615
+  events:
+  - 65ac439555c225c06d5924f7f0ed624f257cf49ae2cce2439a134ea10936f844
+  receipts: []

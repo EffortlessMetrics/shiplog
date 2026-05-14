@@ -147,7 +147,9 @@ jobs:
 
       - name: Test stable contracts and trust surfaces
         run: |
-          cargo test -p shiplog-ids -p shiplog-schema -p shiplog-ports -p shiplog-workstreams -p shiplog-cluster-llm -- --test-threads=4
+          cargo test -p shiplog-ids -p shiplog-schema -p shiplog-ports -- --test-threads=4
+          cargo test -p shiplog --test workstreams -- --test-threads=4
+          cargo test -p shiplog --features llm --test cluster_llm -- --test-threads=4
           cargo test -p shiplog --test redact -- --test-threads=4
           cargo test -p shiplog --test bundle -- --test-threads=4
           cargo test -p shiplog --test engine_bdd -- --test-threads=4
@@ -183,7 +185,7 @@ jobs:
 
       - name: Test optional surface crates
         run: |
-          cargo test -p shiplog-workstreams -- --test-threads=4
+          cargo test -p shiplog --test workstreams -- --test-threads=4
           cargo test -p shiplog --test merge -- --test-threads=4
           cargo test -p shiplog --test team -- --test-threads=4
 

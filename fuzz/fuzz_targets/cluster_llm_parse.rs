@@ -1,7 +1,7 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use shiplog_cluster_llm::parse_llm_response;
+use shiplog::cluster_llm::parse_llm_response;
 use shiplog_ids::EventId;
 use shiplog_schema::event::*;
 use std::collections::HashSet;

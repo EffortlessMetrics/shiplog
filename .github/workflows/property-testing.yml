@@ -79,8 +79,8 @@ jobs:
       - name: Run property tests for shiplog coverage module
         run: cargo test -p shiplog --test coverage_property -- --test-threads=4
 
-      - name: Run property tests for shiplog-workstreams
-        run: cargo test -p shiplog-workstreams -- --test-threads=4
+      - name: Run property tests for shiplog workstreams module
+        run: cargo test -p shiplog --test workstreams -- --test-threads=4
 
       - name: Run cache tests for shiplog cache module
         run: |
@@ -102,8 +102,8 @@ jobs:
       - name: Run property tests for shiplog JSON artifact writer
         run: cargo test -p shiplog --test render_json -- --test-threads=4
 
-      - name: Run property tests for shiplog-cluster-llm
-        run: cargo test -p shiplog-cluster-llm -- --test-threads=4
+      - name: Run property tests for shiplog cluster_llm module
+        run: cargo test -p shiplog --features llm --test cluster_llm -- --test-threads=4
 
       - name: Run property tests for shiplog-testkit (roadmap)
         run: cargo test -p shiplog-testkit roadmap_property_tests -- --test-threads=4
@@ -120,12 +120,12 @@ jobs:
           echo "- shiplog-schema" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog::redact" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog::coverage" >> $GITHUB_STEP_SUMMARY
-          echo "- shiplog-workstreams" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog::workstreams" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog::cache" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog::bundle" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog::engine" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog::ingest::manual" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog render::md module" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog::engine artifact_json module" >> $GITHUB_STEP_SUMMARY
-          echo "- shiplog-cluster-llm" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog::cluster_llm" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog-testkit (roadmap property tests)" >> $GITHUB_STEP_SUMMARY

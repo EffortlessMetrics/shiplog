@@ -32,12 +32,14 @@
 #
 # apps/shiplog/src/engine
 #                       - orchestration (ingest -> cluster -> render)
-# shiplog-workstreams   - workstream facade (curated + suggested)
+# apps/shiplog/src/workstreams
+#                       - workstream facade (curated + suggested)
 # apps/shiplog/src/render
 #                      - Markdown and JSON renderers (snapshot-tested)
 # apps/shiplog/src/cache
 #                       - API cache facade
-# shiplog-merge         - multi-source event merge and deduplication
+# apps/shiplog/src/merge
+#                       - multi-source event merge and deduplication
 
 # ============================================================================
 # Tier 3: Real adapters and optional boundaries - target score >= 70%
@@ -58,8 +60,10 @@
 #                      - Jira API adapter
 # apps/shiplog/src/ingest/linear.rs
 #                      - Linear API adapter
-# shiplog-cluster-llm   - optional LLM-assisted workstream clustering
-# shiplog-team          - optional team aggregation facade
+# apps/shiplog/src/cluster_llm
+#                       - optional LLM-assisted workstream clustering
+# apps/shiplog/src/team
+#                       - optional team aggregation facade
 # apps/shiplog          - CLI entrypoint
 
 # ============================================================================

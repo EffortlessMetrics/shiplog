@@ -7,13 +7,13 @@ use chrono::{NaiveDate, TimeZone, Utc};
 use shiplog::bundle::{DIR_PROFILES, FILE_PACKET_MD, PROFILE_MANAGER, PROFILE_PUBLIC};
 use shiplog::engine::Engine;
 use shiplog::redact::DeterministicRedactor;
+use shiplog::workstreams::RepoClusterer;
 use shiplog_ids::RunId;
 use shiplog_ports::{IngestOutput, Redactor, Renderer, WorkstreamClusterer};
 use shiplog_schema::bundle::BundleProfile;
 use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
 use shiplog_schema::event::*;
 use shiplog_testkit::TestMarkdownRenderer as MarkdownRenderer;
-use shiplog_workstreams::RepoClusterer;
 
 fn pr_event(repo: &str, number: u64, title: &str) -> EventEnvelope {
     shiplog_testkit::pr_event(repo, number, title)
@@ -292,8 +292,8 @@ fn refresh_works_with_spaces_in_path() {
         generated_at: Utc::now(),
         workstreams: vec![],
     };
-    shiplog_workstreams::write_workstreams(
-        &shiplog_workstreams::WorkstreamManager::curated_path(&out),
+    shiplog::workstreams::write_workstreams(
+        &shiplog::workstreams::WorkstreamManager::curated_path(&out),
         &ws,
     )
     .unwrap();

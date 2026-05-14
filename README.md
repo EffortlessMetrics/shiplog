@@ -606,9 +606,9 @@ external contract. Adapters depend on ports and schema, never the reverse.
 | `shiplog::engine` | Internal orchestration support during contraction |
 | `shiplog-ports` | Internal trait definitions until a plugin/API ADR exists |
 | `shiplog-ids` | Internal deterministic ID helpers during contraction |
-| `shiplog-workstreams` | Internal workstream clustering and curated YAML workflow |
+| `shiplog::workstreams` | Internal workstream clustering and curated YAML workflow |
 | `shiplog-merge` | Internal multi-source merge helpers |
-| `shiplog-cluster-llm` | Internal optional LLM-assisted semantic clustering |
+| `shiplog::cluster_llm` | Internal optional LLM-assisted semantic clustering behind the `llm` feature |
 | `shiplog-team` | Internal team aggregation support |
 | `shiplog::redact` | Internal deterministic keyed SHA-256 redaction support |
 | `shiplog-testkit` | Shared test fixtures (not published) |

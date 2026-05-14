@@ -8,13 +8,13 @@
 use crate::bundle::{DIR_PROFILES, FILE_PACKET_MD, RunArtifactPaths, zip_path_for_profile};
 use crate::bundle::{write_bundle_manifest, write_zip};
 pub use crate::merge::ConflictResolution;
+use crate::workstreams::WorkstreamManager;
 use anyhow::{Context, Result};
 use shiplog_ports::{IngestOutput, Redactor, Renderer, WorkstreamClusterer};
 use shiplog_schema::bundle::BundleProfile;
 use shiplog_schema::coverage::CoverageManifest;
 use shiplog_schema::event::EventEnvelope;
 use shiplog_schema::workstream::WorkstreamsFile;
-use shiplog_workstreams::WorkstreamManager;
 use std::path::{Path, PathBuf};
 
 mod artifact_json;
@@ -371,7 +371,7 @@ impl<'a> Engine<'a> {
         let (ws, ws_source) = if let Some(ws) = workstreams {
             // Write imported workstreams as curated
             let curated_path = WorkstreamManager::curated_path(out_dir);
-            shiplog_workstreams::write_workstreams(&curated_path, &ws)
+            crate::workstreams::write_workstreams(&curated_path, &ws)
                 .with_context(|| format!("write curated workstreams to {curated_path:?}"))?;
             (ws, WorkstreamSource::Curated)
         } else {
@@ -712,12 +712,12 @@ impl<'a> Engine<'a> {
 mod tests {
     use super::*;
     use crate::bundle::{PROFILE_MANAGER, PROFILE_PUBLIC};
+    use crate::workstreams::RepoClusterer;
     use chrono::{NaiveDate, TimeZone, Utc};
     use shiplog_ids::{EventId, RunId};
     use shiplog_ports::IngestOutput;
     use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
     use shiplog_schema::event::*;
-    use shiplog_workstreams::RepoClusterer;
 
     fn pr_event(repo: &str, number: u64, title: &str) -> EventEnvelope {
         EventEnvelope {

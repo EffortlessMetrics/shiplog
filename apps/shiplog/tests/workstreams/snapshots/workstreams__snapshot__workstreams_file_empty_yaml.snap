@@ -1,0 +1,8 @@
+---
+source: apps/shiplog/tests/workstreams/snapshot.rs
+assertion_line: 92
+expression: ws
+---
+version: 1
+generated_at: "2025-06-01T12:00:00Z"
+workstreams: []
