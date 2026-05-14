@@ -47,8 +47,8 @@ for p in "${packages[@]}"; do
     fi
   fi
 
-  echo "==> cargo publish -p $p --dry-run"
-  cargo publish -p "$p" --dry-run
+  echo "==> cargo publish -p $p --dry-run --locked"
+  cargo publish -p "$p" --dry-run --locked
 done
 
 if [[ -n "$from" && "$seen_from" == false ]]; then

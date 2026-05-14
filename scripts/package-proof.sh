@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-cargo metadata --format-version 1 --no-deps
+mkdir -p target
+cargo metadata --format-version 1 --no-deps > target/package-proof-metadata.json
 scripts/package-boundary-audit.sh
 scripts/package-version-audit.sh
 cargo fmt --all -- --check

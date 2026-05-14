@@ -5,6 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 authors.workspace = true
+publish = false
 description = "Canonical shiplog schema: events, coverage manifests, workstreams, and bundle types."
 readme = "README.md"
 documentation = "https://docs.rs/shiplog-schema"

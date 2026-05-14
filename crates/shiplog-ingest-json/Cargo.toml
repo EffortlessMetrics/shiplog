@@ -5,6 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 authors.workspace = true
+publish = false
 description = "Ingestor for canonical shiplog JSONL events and JSON coverage manifests."
 readme = "README.md"
 documentation = "https://docs.rs/shiplog-ingest-json"

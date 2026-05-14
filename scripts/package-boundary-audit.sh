@@ -108,8 +108,8 @@ for package in packages.values():
     if tier in {"internal-module", "dev-only"} and publish_enabled is True:
         errors.append(f"{name}: {tier} package must not be publish enabled")
 
-    if tier == "dev-only" and not publish_false:
-        errors.append(f"dev-only package must set publish = false: {name}")
+    if publish_enabled is False and not publish_false:
+        errors.append(f"non-published package must set Cargo publish = false: {name}")
 
     if publish_enabled is True and publish_false:
         errors.append(f"publish-enabled package must not set Cargo publish = false: {name}")

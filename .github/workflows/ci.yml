@@ -58,7 +58,7 @@ jobs:
 
       - name: Publish dry-run (canary)
         if: matrix.os == 'ubuntu-latest'
-        run: cargo publish -p shiplog-ids --dry-run --locked
+        run: scripts/publish-dry-run.sh
 
   deny:
     name: cargo-deny

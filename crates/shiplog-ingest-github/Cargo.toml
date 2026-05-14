@@ -5,6 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 authors.workspace = true
+publish = false
 description = "GitHub PR/review ingestor with adaptive date slicing and optional SQLite cache."
 readme = "README.md"
 documentation = "https://docs.rs/shiplog-ingest-github"

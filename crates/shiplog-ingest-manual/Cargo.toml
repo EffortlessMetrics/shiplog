@@ -5,6 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 authors.workspace = true
+publish = false
 description = "YAML manual-event ingestor for human-entered work evidence in shiplog."
 readme = "README.md"
 documentation = "https://docs.rs/shiplog-ingest-manual"

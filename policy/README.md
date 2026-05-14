@@ -65,7 +65,8 @@ PR #148 records actuals.
 `publish-allowlist.toml` is a later blocking release ledger for the 0.7
 crate-surface contraction lane. It is consumed by
 `scripts/package-boundary-audit.sh`, `scripts/package-proof.sh`, and
-`scripts/publish-dry-run.sh`.
+`scripts/publish-dry-run.sh`. The boundary audit also checks that packages
+disabled by the policy set `publish = false` in their Cargo manifests.
 
 ## Validation
 
