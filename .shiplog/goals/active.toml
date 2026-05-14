@@ -91,7 +91,7 @@ done_when = "ADR makes the no-second-classifier rule durable and identifies allo
 [[work_item]]
 id = "repair-loop-plan"
 title = "plans(evidence-repair): sequence repair loop implementation"
-status = "pending"
+status = "completed"
 expected_files = [
   "plans/evidence-repair/implementation-plan.md",
   ".shiplog/goals/active.toml",
