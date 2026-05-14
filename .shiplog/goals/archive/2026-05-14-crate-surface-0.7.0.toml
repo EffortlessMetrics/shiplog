@@ -1,0 +1,368 @@
+id = "shiplog-crate-surface-0.7"
+title = "Shiplog 0.7 crate-surface contraction"
+status = "completed"
+owner = "codex"
+created = "2026-05-14"
+completed = "2026-05-14"
+archived_reason = "v0.7.0 shipped; crate-surface contraction is now the stable boundary for the next product-quality lane."
+
+proposal = "docs/proposals/SHIPLOG-PROP-0003-crate-surface-contraction.md"
+spec = "docs/specs/SHIPLOG-SPEC-0004-public-crate-support-tiers.md"
+plan = "plans/crate-surface/implementation-plan.md"
+crate_audit = "docs/release/0.7-crate-surface.md"
+publish_policy = "policy/publish-allowlist.toml"
+
+objective = """
+Prepare shiplog 0.7.0 as the crate-surface contraction release: keep the
+supported public crates.io surface to shiplog, make implementation crates
+internal or unpublished, prevent release tooling from publishing unsupported
+packages, and preserve the 0.6.0 first-run product behavior.
+"""
+
+north_star = """
+Shiplog should be modular in the repo, not accidentally public on crates.io.
+"""
+
+end_state = [
+  "shiplog is the only default 0.7 publish-eligible package",
+  "shiplog-schema is internal; contracts/schemas remains the public machine contract",
+  "non-public implementation crates are removed from the forward publish graph or retained only as unpublished repo support",
+  "the published shiplog package does not depend on historical 0.6 implementation crates",
+  "release tooling fails closed when a non-public package enters the publish order",
+  "0.6 implementation crates are documented as historical and are not yanked as routine cleanup",
+  "0.6 first-run behavior remains unchanged and tested",
+  "Evidence Repair Loop remains paused until crate boundaries are stable",
+]
+
+rules = [
+  "Do not change user-visible first-run behavior unless a spec says so.",
+  "Do not change report JSON or schema compatibility in crate-collapse PRs.",
+  "Do not remove or rename Cargo features without an explicit release contract.",
+  "Do not start Evidence Repair Loop work in this lane.",
+  "Do not yank 0.6 implementation crates as routine cleanup.",
+  "Every retained public crate needs an ADR-backed support reason.",
+  "Every collapsed crate needs proof that CLI and report behavior is unchanged.",
+]
+
+[[linked_adr]]
+id = "SHIPLOG-ADR-0004"
+path = "docs/adr/SHIPLOG-ADR-0004-srp-modules-over-public-microcrates.md"
+purpose = "Use crates for external contracts and modules for internal SRP structure."
+
+[[linked_adr]]
+id = "SHIPLOG-ADR-0005"
+path = "docs/adr/SHIPLOG-ADR-0005-json-schemas-over-public-rust-schema-crate.md"
+purpose = "JSON schemas are the public machine contract; shiplog-schema is internal for 0.7."
+
+[[completed_pr]]
+number = 250
+title = "docs(proposal): add 0.7 crate-surface contraction proposal"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/250"
+
+[[completed_pr]]
+number = 251
+title = "docs(spec): define public crate support tiers"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/251"
+
+[[completed_pr]]
+number = 252
+title = "docs(adr): prefer SRP modules over public microcrates"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/252"
+
+[[completed_pr]]
+number = 253
+title = "docs(crate-surface): classify workspace crates"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/253"
+
+[[completed_pr]]
+number = 254
+title = "refactor(crate): inline render crates"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/254"
+
+[[completed_pr]]
+number = 255
+title = "chore(release): enforce 0.7 publish allowlist"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/255"
+
+[[completed_pr]]
+number = 256
+title = "chore(release): mark non-public crates unpublished"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/256"
+
+[[completed_pr]]
+number = 257
+title = "docs(release): document 0.6 crate surface as historical"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/257"
+
+[[completed_pr]]
+number = 258
+title = "docs(adr): make json schemas the public contract"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/258"
+
+[[completed_pr]]
+number = 259
+title = "plans(crate-surface): add implementation plan and active goal"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/259"
+
+[[completed_pr]]
+number = 260
+title = "refactor(crate): inline local git adapter"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/260"
+
+[[completed_pr]]
+number = 261
+title = "refactor(crate): inline linear adapter"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/261"
+
+[[completed_pr]]
+number = 262
+title = "refactor(crate): inline jira adapter"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/262"
+
+[[completed_pr]]
+number = 263
+title = "refactor(crate): inline gitlab adapter"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/263"
+
+[[completed_pr]]
+number = 264
+title = "refactor(crate): inline manual adapter"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/264"
+
+[[completed_pr]]
+number = 265
+title = "refactor(crate): inline github adapter"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/265"
+
+[[completed_pr]]
+number = 266
+title = "refactor(crate): inline json adapter"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/266"
+
+[[completed_pr]]
+number = 267
+title = "refactor(crate): inline cache support"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/267"
+
+[[completed_pr]]
+number = 269
+title = "refactor(crate): inline coverage support"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/269"
+
+[[completed_pr]]
+number = 271
+title = "refactor(crate): inline engine support"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/271"
+
+[[completed_pr]]
+number = 273
+title = "refactor(crate): inline bundle support"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/273"
+
+[[completed_pr]]
+number = 275
+title = "refactor(crate): inline redaction support"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/275"
+
+[[completed_pr]]
+number = 277
+title = "refactor(crate): inline merge and team support"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/277"
+
+[[completed_pr]]
+number = 279
+title = "refactor(crate): inline workstreams and llm support"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/279"
+
+[[completed_pr]]
+number = 281
+title = "refactor(crate): inline foundation contracts"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/281"
+
+[[completed_pr]]
+number = 283
+title = "chore(release): enforce 0.7 package dependency closure"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/283"
+
+[[completed_pr]]
+number = 285
+title = "release: prepare 0.7.0 crate-surface release"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/285"
+
+[[completed_pr]]
+number = 286
+title = "docs(goal): record 0.7 release prep"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/286"
+
+[[completed_pr]]
+number = 287
+title = "docs(release): align 0.7 audit status"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/287"
+
+[[completed_pr]]
+number = 288
+title = "docs(goal): record 0.7 release control receipts"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/288"
+
+[[completed_pr]]
+number = 289
+title = "docs(release): publish 0.7 draft before smoke"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/289"
+
+[[completed_pr]]
+number = 290
+title = "chore(release): declare release workflow permissions"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/290"
+
+[[completed_pr]]
+number = 291
+title = "docs(release): record 0.7 final preflight"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/291"
+
+[[release_receipt]]
+version = "0.7.0"
+tag = "v0.7.0"
+commit = "f4483c85863bb796d17c2b2906502d2798e3ac35"
+github_release = "https://github.com/EffortlessMetrics/shiplog/releases/tag/v0.7.0"
+release_workflow_run = "https://github.com/EffortlessMetrics/shiplog/actions/runs/25886491341"
+crates_io = "https://crates.io/crates/shiplog/0.7.0"
+published_at_utc = "2026-05-14"
+notes = [
+  "GitHub release workflow completed successfully and uploaded linux, macOS intel, macOS arm64, Windows, and SHA256SUMS assets.",
+  "crates.io publish completed for shiplog v0.7.0.",
+  "GitHub release was already public when inspected after the workflow; gh release edit v0.7.0 --latest normalized latest state.",
+  "PowerShell 5.1 smoke initially exposed a local Get-FileHash portability gap; the smoke script now has a .NET SHA-256 fallback and passes under powershell.exe.",
+]
+
+[[work_item]]
+id = "ingest-adapter-collapse"
+title = "refactor(crate): inline ingest adapters into shiplog"
+status = "completed"
+plan_section = "PR 1: Collapse Ingest Adapters"
+expected_files = [
+  "apps/shiplog/Cargo.toml",
+  "apps/shiplog/src/ingest/**",
+  "apps/shiplog/src/main.rs",
+  "apps/shiplog/tests/**",
+  "crates/shiplog-ingest-*/**",
+  "Cargo.toml",
+  "docs/release/0.7-crate-surface.md",
+]
+commands = [
+  "cargo test -p shiplog --test bundle",
+  "cargo test -p shiplog --test intake_cold_start",
+  "cargo test -p shiplog --test front_door_first_pack_smoke",
+  "cargo test -p shiplog --test cli_integration -- intake",
+  "cargo test -p shiplog --test cli_integration -- report",
+  "cargo test -p shiplog ingest::github::tests::recorded_http_fixtures_prove_full_fresh_then_cached_ingest",
+  "cargo test -p shiplog --test ingest_json",
+  "cargo xtask check-policy-schemas",
+  "cargo xtask check-file-policy --mode blocking-allowlist",
+  "git diff --check",
+]
+rollback = "Restore ingest crates, shiplog manifest dependencies, imports, and moved tests together."
+
+[[work_item]]
+id = "cache-freshness-collapse"
+title = "refactor(crate): inline cache freshness support"
+status = "completed"
+plan_section = "PR 2: Collapse Cache And Freshness Support"
+commands = [
+  "cargo test -p shiplog --test cache",
+  "cargo test -p shiplog --test cache_expiry",
+  "cargo test -p shiplog --test cli_integration -- intake",
+  "cargo test -p shiplog --test intake_cold_start",
+  "cargo xtask check-policy-schemas",
+  "cargo xtask check-file-policy --mode blocking-allowlist",
+  "git diff --check",
+]
+rollback = "Restore shiplog-cache and adapter imports."
+
+[[work_item]]
+id = "product-trust-collapse"
+title = "refactor(crate): inline remaining product/trust support"
+status = "completed"
+plan_section = "PR 3: Collapse Product And Trust Support"
+commands = [
+  "cargo test -p shiplog --test intake_cold_start",
+  "cargo test -p shiplog --test front_door_first_pack_smoke",
+  "cargo test -p shiplog --test cli_integration -- intake",
+  "cargo test -p shiplog --test cli_integration -- report",
+  "cargo clippy --workspace --all-targets --all-features --locked -- -D warnings",
+  "cargo xtask check-policy-schemas",
+  "cargo xtask check-file-policy --mode blocking-allowlist",
+  "git diff --check",
+]
+rollback = "Restore the failed slice and its imports only."
+
+[[work_item]]
+id = "foundation-contract-collapse"
+title = "refactor(crate): inline internal foundation contracts"
+status = "completed"
+plan_section = "PR 4: Collapse Foundation Contracts"
+commands = [
+  "cargo test -p shiplog --test intake_cold_start",
+  "cargo test -p shiplog --test cli_integration -- report",
+  "cargo xtask check-policy-schemas",
+  "cargo xtask check-file-policy --mode blocking-allowlist",
+  "git diff --check",
+]
+rollback = "Restore foundation crates and imports together."
+
+[[work_item]]
+id = "publish-dependency-closure"
+title = "chore(release): enforce 0.7 package dependency closure"
+status = "completed"
+plan_section = "PR 5: Enforce Publish Dependency Closure"
+commands = [
+  "bash scripts/package-boundary-audit.sh",
+  "bash scripts/package-proof.sh",
+  "bash scripts/publish-dry-run.sh",
+  "cargo xtask check-policy-schemas",
+  "cargo xtask check-file-policy --mode blocking-allowlist",
+  "git diff --check",
+]
+rollback = "Revert release-proof tightening only if it blocks a valid package graph and record why."
+
+[[work_item]]
+id = "release-prep"
+title = "release: prepare 0.7.0 crate-surface release"
+status = "completed"
+plan_section = "PR 6: Release Prep"
+commands = [
+  "cargo xtask package-version",
+  "cargo xtask package-boundary",
+  "cargo test -p shiplog --test intake_cold_start",
+  "cargo test -p shiplog --test front_door_first_pack_smoke",
+  "cargo test -p shiplog --test cli_integration -- intake",
+  "cargo test -p shiplog --test cli_integration -- report",
+  "cargo clippy --workspace --all-targets --all-features --locked -- -D warnings",
+  "cargo xtask check-policy-schemas",
+  "cargo xtask check-file-policy --mode blocking-allowlist",
+  "cargo xtask check-executable-files --mode blocking-allowlist",
+  "git diff --check",
+]
+rollback = "Revert release-prep docs and version changes; preserve landed contraction refactors unless they caused the blocker."
+
+[[work_item]]
+id = "release-execution"
+title = "release: tag, publish, and verify 0.7.0"
+status = "completed"
+plan_section = "Lane Closure"
+last_preflight_commit = "f4483c85863bb796d17c2b2906502d2798e3ac35"
+last_preflight_date = "2026-05-14"
+last_preflight_status = "passed"
+commands = [
+  "git tag v0.7.0: passed",
+  "git push origin v0.7.0: passed",
+  "gh run view 25886491341: success",
+  "cargo publish -p shiplog --locked: published shiplog v0.7.0",
+  "cargo search shiplog --limit 1: shiplog = 0.7.0",
+  "cargo info shiplog: version 0.7.0",
+  "gh release edit v0.7.0 --latest: passed",
+  "scripts/release-install-smoke.sh v0.7.0: passed",
+  "scripts/release-install-smoke.ps1 -Version v0.7.0 under powershell.exe: passed after Get-Sha256Hex fallback",
+  "scripts/release-install-smoke.ps1 -Version v0.7.0 under pwsh: passed",
+  "scripts/verify-release.sh v0.7.0: passed",
+]
+rollback = "Follow docs/release/0.7.0-readiness.md rollback guidance; do not yank 0.6 historical crates as routine cleanup."

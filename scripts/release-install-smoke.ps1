@@ -28,6 +28,32 @@ function Invoke-Shiplog {
     }
 }
 
+function Get-Sha256Hex {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    $getFileHashCommand = Get-Command Get-FileHash -ErrorAction SilentlyContinue
+    if ($getFileHashCommand) {
+        return (Get-FileHash $Path -Algorithm SHA256).Hash.ToLowerInvariant()
+    }
+
+    $stream = [System.IO.File]::OpenRead($Path)
+    try {
+        $sha256 = [System.Security.Cryptography.SHA256]::Create()
+        try {
+            return ([System.BitConverter]::ToString($sha256.ComputeHash($stream))).Replace("-", "").ToLowerInvariant()
+        }
+        finally {
+            $sha256.Dispose()
+        }
+    }
+    finally {
+        $stream.Dispose()
+    }
+}
+
 if ($Version -eq "-h" -or $Version -eq "--help") {
     @"
 usage: scripts/release-install-smoke.ps1 <version>
@@ -74,7 +100,7 @@ if (-not $sumLine) {
     throw "no SHA256SUMS.txt entry found for $asset"
 }
 $expectedSha = ($sumLine -split "\s+")[0].ToLowerInvariant()
-$actualSha = (Get-FileHash $binaryPath -Algorithm SHA256).Hash.ToLowerInvariant()
+$actualSha = Get-Sha256Hex $binaryPath
 if ($actualSha -ne $expectedSha) {
     throw "checksum mismatch for $asset`nexpected: $expectedSha`nactual:   $actualSha"
 }
