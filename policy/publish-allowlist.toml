@@ -75,12 +75,6 @@ publish = false
 reason = "Cache/freshness support remains internal unless a public cache API exists."
 
 [[package]]
-name = "shiplog-ingest-github"
-tier = "internal-module"
-publish = false
-reason = "Source adapter; no public plugin or adapter API exists yet."
-
-[[package]]
 name = "shiplog-ingest-json"
 tier = "internal-module"
 publish = false
@@ -150,3 +144,8 @@ reason = "0.6 source adapter crate collapsed into shiplog::ingest::gitlab."
 name = "shiplog-ingest-manual"
 tier = "historical-0.6"
 reason = "0.6 manual evidence adapter crate collapsed into shiplog::ingest::manual."
+
+[[historical]]
+name = "shiplog-ingest-github"
+tier = "historical-0.6"
+reason = "0.6 source adapter crate collapsed into shiplog::ingest::github."

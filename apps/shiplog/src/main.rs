@@ -12,6 +12,7 @@ use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use shiplog::ingest::git::LocalGitIngestor;
+use shiplog::ingest::github::GithubIngestor;
 use shiplog::ingest::gitlab::{GitlabIngestor, MrState};
 use shiplog::ingest::jira::{IssueStatus, JiraIngestor};
 use shiplog::ingest::linear::{IssueStatus as LinearIssueStatus, LinearIngestor};
@@ -24,7 +25,6 @@ use shiplog::render::md::{
 use shiplog_cache::ApiCache;
 use shiplog_engine::{ConflictResolution, Engine, WorkstreamSource};
 use shiplog_ids::{EventId, WorkstreamId};
-use shiplog_ingest_github::GithubIngestor;
 use shiplog_ingest_json::JsonIngestor;
 use shiplog_ports::{IngestOutput, Ingestor, Redactor, Renderer};
 use shiplog_redact::DeterministicRedactor;

@@ -1846,9 +1846,9 @@ dependencies = [
  "serde_yaml_ng",
  "sha2 0.11.0",
  "shiplog-cache",
+ "shiplog-coverage",
  "shiplog-engine",
  "shiplog-ids",
- "shiplog-ingest-github",
  "shiplog-ingest-json",
  "shiplog-ports",
  "shiplog-redact",
@@ -1940,7 +1940,6 @@ dependencies = [
  "shiplog-cluster-llm",
  "shiplog-coverage",
  "shiplog-ids",
- "shiplog-ingest-github",
  "shiplog-ingest-json",
  "shiplog-ports",
  "shiplog-redact",
@@ -1956,24 +1955,6 @@ dependencies = [
  "hex",
  "serde",
  "sha2 0.11.0",
-]
-
-[[package]]
-name = "shiplog-ingest-github"
-version = "0.6.0"
-dependencies = [
- "anyhow",
- "chrono",
- "mutants",
- "reqwest",
- "serde",
- "serde_json",
- "shiplog-cache",
- "shiplog-coverage",
- "shiplog-ids",
- "shiplog-ports",
- "shiplog-schema",
- "url",
 ]
 
 [[package]]

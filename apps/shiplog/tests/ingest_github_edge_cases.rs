@@ -1,11 +1,11 @@
-//! Edge-case tests for shiplog-ingest-github.
+//! Edge-case tests for the GitHub ingest module.
 //!
 //! Covers adaptive date slicing behavior, SQLite cache integration,
 //! rate limit / pagination API surface, and GitHub Enterprise base URL
 //! configuration—all without making real network calls.
 
 use chrono::NaiveDate;
-use shiplog_ingest_github::GithubIngestor;
+use shiplog::ingest::github::GithubIngestor;
 use shiplog_ports::Ingestor;
 
 fn date(y: i32, m: u32, d: u32) -> NaiveDate {

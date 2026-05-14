@@ -116,7 +116,7 @@ cargo test -p shiplog --test intake_cold_start
 cargo test -p shiplog --test front_door_first_pack_smoke
 cargo test -p shiplog --test cli_integration -- intake
 cargo test -p shiplog --test cli_integration -- report
-cargo test -p shiplog-ingest-github recorded_http_fixtures_prove_full_fresh_then_cached_ingest
+cargo test -p shiplog ingest::github::tests::recorded_http_fixtures_prove_full_fresh_then_cached_ingest
 cargo xtask check-policy-schemas
 cargo xtask check-file-policy --mode blocking-allowlist
 git diff --check
