@@ -2296,7 +2296,6 @@ dependencies = [
  "sha2 0.11.0",
  "shiplog-cluster-llm",
  "shiplog-ids",
- "shiplog-merge",
  "shiplog-ports",
  "shiplog-schema",
  "shiplog-testkit",
@@ -2338,21 +2337,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "shiplog-merge"
-version = "0.6.0"
-dependencies = [
- "anyhow",
- "chrono",
- "insta",
- "proptest",
- "serde",
- "serde_json",
- "shiplog-ids",
- "shiplog-ports",
- "shiplog-schema",
-]
-
-[[package]]
 name = "shiplog-ports"
 version = "0.6.0"
 dependencies = [
@@ -2380,25 +2364,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "shiplog-team"
-version = "0.6.0"
-dependencies = [
- "anyhow",
- "chrono",
- "insta",
- "proptest",
- "serde",
- "serde_json",
- "serde_yaml_ng",
- "shiplog-ids",
- "shiplog-merge",
- "shiplog-ports",
- "shiplog-schema",
- "shiplog-testkit",
- "tempfile",
-]
-
-[[package]]
 name = "shiplog-testkit"
 version = "0.6.0"
 dependencies = [
@@ -2408,11 +2373,10 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml_ng",
+ "shiplog",
  "shiplog-ids",
- "shiplog-merge",
  "shiplog-ports",
  "shiplog-schema",
- "shiplog-team",
  "shiplog-workstreams",
  "tempfile",
 ]

@@ -1,5 +1,5 @@
 ---
-source: crates/shiplog-merge/src/lib.rs
+source: apps/shiplog/src/merge/mod.rs
 assertion_line: 810
 expression: ids
 ---

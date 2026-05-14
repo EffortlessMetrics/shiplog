@@ -2762,7 +2762,7 @@ snippet = "until: NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),"
 count = 2
 
 [[entry]]
-path = "crates/shiplog-merge/src/lib.rs"
+path = "apps/shiplog/src/merge/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2770,7 +2770,7 @@ snippet = ".unwrap(),"
 count = 2
 
 [[entry]]
-path = "crates/shiplog-merge/src/lib.rs"
+path = "apps/shiplog/src/merge/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2778,7 +2778,7 @@ snippet = ".unwrap();"
 count = 3
 
 [[entry]]
-path = "crates/shiplog-merge/src/lib.rs"
+path = "apps/shiplog/src/merge/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2786,7 +2786,7 @@ snippet = "Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap(),"
 count = 3
 
 [[entry]]
-path = "crates/shiplog-merge/src/lib.rs"
+path = "apps/shiplog/src/merge/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2794,7 +2794,7 @@ snippet = "Utc.with_ymd_and_hms(2025, 1, 2, 0, 0, 0).unwrap(),"
 count = 2
 
 [[entry]]
-path = "crates/shiplog-merge/src/lib.rs"
+path = "apps/shiplog/src/merge/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2802,7 +2802,7 @@ snippet = 'let event1 = make_event("1", Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0
 count = 3
 
 [[entry]]
-path = "crates/shiplog-merge/src/lib.rs"
+path = "apps/shiplog/src/merge/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2810,7 +2810,7 @@ snippet = 'let event2 = make_event("1", Utc.with_ymd_and_hms(2025, 1, 2, 0, 0, 0
 count = 3
 
 [[entry]]
-path = "crates/shiplog-merge/src/lib.rs"
+path = "apps/shiplog/src/merge/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2818,7 +2818,7 @@ snippet = "let merged = merge_ingest_outputs(&[ingest], ConflictResolution::Pref
 count = 1
 
 [[entry]]
-path = "crates/shiplog-merge/src/lib.rs"
+path = "apps/shiplog/src/merge/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2826,7 +2826,7 @@ snippet = "let t = Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap();"
 count = 8
 
 [[entry]]
-path = "crates/shiplog-merge/src/lib.rs"
+path = "apps/shiplog/src/merge/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2834,7 +2834,7 @@ snippet = "let t1 = Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap();"
 count = 4
 
 [[entry]]
-path = "crates/shiplog-merge/src/lib.rs"
+path = "apps/shiplog/src/merge/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2842,7 +2842,7 @@ snippet = "let t2 = Utc.with_ymd_and_hms(2025, 1, 2, 0, 0, 0).unwrap();"
 count = 4
 
 [[entry]]
-path = "crates/shiplog-merge/src/lib.rs"
+path = "apps/shiplog/src/merge/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2850,7 +2850,7 @@ snippet = "let t3 = Utc.with_ymd_and_hms(2025, 1, 3, 0, 0, 0).unwrap();"
 count = 2
 
 [[entry]]
-path = "crates/shiplog-merge/src/lib.rs"
+path = "apps/shiplog/src/merge/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2858,7 +2858,7 @@ snippet = 'make_event("1", Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap()),'
 count = 1
 
 [[entry]]
-path = "crates/shiplog-merge/src/lib.rs"
+path = "apps/shiplog/src/merge/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2866,7 +2866,7 @@ snippet = 'make_event("2", Utc.with_ymd_and_hms(2025, 1, 2, 0, 0, 0).unwrap()),'
 count = 1
 
 [[entry]]
-path = "crates/shiplog-merge/src/lib.rs"
+path = "apps/shiplog/src/merge/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2874,7 +2874,7 @@ snippet = 'make_event("a", Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap()),'
 count = 1
 
 [[entry]]
-path = "crates/shiplog-merge/src/lib.rs"
+path = "apps/shiplog/src/merge/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2882,7 +2882,7 @@ snippet = 'make_event("a", Utc.with_ymd_and_hms(2025, 1, 3, 0, 0, 0).unwrap()),'
 count = 1
 
 [[entry]]
-path = "crates/shiplog-merge/src/lib.rs"
+path = "apps/shiplog/src/merge/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2890,7 +2890,7 @@ snippet = 'make_event("b", Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap()),'
 count = 1
 
 [[entry]]
-path = "crates/shiplog-merge/src/lib.rs"
+path = "apps/shiplog/src/merge/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2898,7 +2898,7 @@ snippet = 'make_event("b", Utc.with_ymd_and_hms(2025, 1, 1, 1, 0, 0).unwrap()),'
 count = 1
 
 [[entry]]
-path = "crates/shiplog-merge/src/lib.rs"
+path = "apps/shiplog/src/merge/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2906,7 +2906,7 @@ snippet = 'make_event("b", Utc.with_ymd_and_hms(2025, 1, 1, 2, 0, 0).unwrap()),'
 count = 1
 
 [[entry]]
-path = "crates/shiplog-merge/src/lib.rs"
+path = "apps/shiplog/src/merge/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2914,7 +2914,7 @@ snippet = 'make_event("c", Utc.with_ymd_and_hms(2025, 1, 1, 3, 0, 0).unwrap()),'
 count = 1
 
 [[entry]]
-path = "crates/shiplog-merge/src/lib.rs"
+path = "apps/shiplog/src/merge/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2922,7 +2922,7 @@ snippet = 'make_event("c", Utc.with_ymd_and_hms(2025, 1, 2, 0, 0, 0).unwrap()),'
 count = 1
 
 [[entry]]
-path = "crates/shiplog-merge/src/lib.rs"
+path = "apps/shiplog/src/merge/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2930,7 +2930,7 @@ snippet = 'make_event(&format!("e{i}"), Utc.with_ymd_and_hms(2025, 1, day, 0, 0,
 count = 1
 
 [[entry]]
-path = "crates/shiplog-merge/src/lib.rs"
+path = "apps/shiplog/src/merge/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2938,7 +2938,7 @@ snippet = "merge_ingest_outputs(&[ingest_a, ingest_b], ConflictResolution::Prefe
 count = 1
 
 [[entry]]
-path = "crates/shiplog-merge/src/lib.rs"
+path = "apps/shiplog/src/merge/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2946,7 +2946,7 @@ snippet = "since: NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),"
 count = 2
 
 [[entry]]
-path = "crates/shiplog-merge/src/lib.rs"
+path = "apps/shiplog/src/merge/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3746,7 +3746,7 @@ snippet = "let json = serde_json::to_string(&ws).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-team/src/aggregate.rs"
+path = "apps/shiplog/src/team/aggregate.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3754,7 +3754,7 @@ snippet = ".unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-team/src/aggregate.rs"
+path = "apps/shiplog/src/team/aggregate.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3762,7 +3762,7 @@ snippet = "Ok(detected == required.unwrap())"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-team/src/aggregate.rs"
+path = "apps/shiplog/src/team/aggregate.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3770,7 +3770,7 @@ snippet = "Utc.with_ymd_and_hms(2025, 1, 2, 0, 0, 0).unwrap(),"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-team/src/aggregate.rs"
+path = "apps/shiplog/src/team/aggregate.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3778,7 +3778,7 @@ snippet = "Utc.with_ymd_and_hms(2025, 1, 3, 0, 0, 0).unwrap(),"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-team/src/aggregate.rs"
+path = "apps/shiplog/src/team/aggregate.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3786,7 +3786,7 @@ snippet = 'let mut events = std::fs::File::create(run_dir.join("ledger.events.js
 count = 1
 
 [[entry]]
-path = "crates/shiplog-team/src/aggregate.rs"
+path = "apps/shiplog/src/team/aggregate.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3794,7 +3794,7 @@ snippet = "let output = agg.aggregate(root.path()).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-team/src/aggregate.rs"
+path = "apps/shiplog/src/team/aggregate.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3802,7 +3802,7 @@ snippet = "let packet = agg.render_packet_markdown(&output).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-team/src/aggregate.rs"
+path = "apps/shiplog/src/team/aggregate.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3810,7 +3810,7 @@ snippet = "let result = agg.aggregate(dir).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-team/src/aggregate.rs"
+path = "apps/shiplog/src/team/aggregate.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3818,7 +3818,7 @@ snippet = "let result = agg.aggregate(root.path()).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-team/src/aggregate.rs"
+path = "apps/shiplog/src/team/aggregate.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3826,7 +3826,7 @@ snippet = "let root = tempfile::tempdir().unwrap();"
 count = 3
 
 [[entry]]
-path = "crates/shiplog-team/src/aggregate.rs"
+path = "apps/shiplog/src/team/aggregate.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3834,7 +3834,7 @@ snippet = 'serde_json::to_string(&coverage(&format!("{member}-run"))).unwrap(),'
 count = 1
 
 [[entry]]
-path = "crates/shiplog-team/src/aggregate.rs"
+path = "apps/shiplog/src/team/aggregate.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3842,7 +3842,7 @@ snippet = "since: NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),"
 count = 2
 
 [[entry]]
-path = "crates/shiplog-team/src/aggregate.rs"
+path = "apps/shiplog/src/team/aggregate.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3850,7 +3850,7 @@ snippet = "std::fs::create_dir_all(&run_dir).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-team/src/aggregate.rs"
+path = "apps/shiplog/src/team/aggregate.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3858,7 +3858,7 @@ snippet = "until: NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),"
 count = 2
 
 [[entry]]
-path = "crates/shiplog-team/src/aggregate.rs"
+path = "apps/shiplog/src/team/aggregate.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3866,7 +3866,7 @@ snippet = 'writeln!(events, "{}", serde_json::to_string(&e1).unwrap()).unwrap();
 count = 1
 
 [[entry]]
-path = "crates/shiplog-team/src/aggregate.rs"
+path = "apps/shiplog/src/team/aggregate.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3874,7 +3874,7 @@ snippet = 'writeln!(events, "{}", serde_json::to_string(&e2).unwrap()).unwrap();
 count = 1
 
 [[entry]]
-path = "crates/shiplog-team/src/render.rs"
+path = "apps/shiplog/src/team/render.rs"
 family = "expect"
 selector_kind = "method-call"
 selector_callee = "Option/Result::expect"
@@ -3882,7 +3882,7 @@ snippet = '.expect("write template");'
 count = 1
 
 [[entry]]
-path = "crates/shiplog-team/src/render.rs"
+path = "apps/shiplog/src/team/render.rs"
 family = "expect"
 selector_kind = "method-call"
 selector_callee = "Option/Result::expect"
@@ -3890,7 +3890,7 @@ snippet = 'let packet = render_packet_markdown(&cfg, &sample_result()).expect("r
 count = 2
 
 [[entry]]
-path = "crates/shiplog-team/src/render.rs"
+path = "apps/shiplog/src/team/render.rs"
 family = "expect"
 selector_kind = "method-call"
 selector_callee = "Option/Result::expect"
@@ -3898,7 +3898,7 @@ snippet = 'let temp = tempfile::tempdir().expect("tempdir");'
 count = 1
 
 [[entry]]
-path = "crates/shiplog-team/src/render.rs"
+path = "apps/shiplog/src/team/render.rs"
 family = "expect"
 selector_kind = "method-call"
 selector_callee = "Option/Result::expect"
@@ -3906,7 +3906,7 @@ snippet = 'since: NaiveDate::from_ymd_opt(2025, 1, 1).expect("valid date"),'
 count = 2
 
 [[entry]]
-path = "crates/shiplog-team/src/render.rs"
+path = "apps/shiplog/src/team/render.rs"
 family = "expect"
 selector_kind = "method-call"
 selector_callee = "Option/Result::expect"
@@ -3914,7 +3914,7 @@ snippet = 'until: NaiveDate::from_ymd_opt(2025, 2, 1).expect("valid date"),'
 count = 2
 
 [[entry]]
-path = "crates/shiplog-team/src/render.rs"
+path = "apps/shiplog/src/team/render.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3922,7 +3922,7 @@ snippet = "let when = Utc.with_ymd_and_hms(2025, 1, 2, 0, 0, 0).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-team/src/template.rs"
+path = "apps/shiplog/src/team/template.rs"
 family = "panic"
 selector_kind = "macro-call"
 selector_callee = "panic"
@@ -3930,7 +3930,7 @@ snippet = 'panic!("expected inner object");'
 count = 1
 
 [[entry]]
-path = "crates/shiplog-team/src/template.rs"
+path = "apps/shiplog/src/team/template.rs"
 family = "panic"
 selector_kind = "macro-call"
 selector_callee = "panic"
@@ -3938,7 +3938,7 @@ snippet = 'panic!("expected outer object");'
 count = 1
 
 [[entry]]
-path = "crates/shiplog-team/src/template.rs"
+path = "apps/shiplog/src/team/template.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3946,7 +3946,7 @@ snippet = ".unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-team/src/template.rs"
+path = "apps/shiplog/src/team/template.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3954,7 +3954,7 @@ snippet = 'assert_eq!(engine.evaluate_tag("endfor").unwrap(), "");'
 count = 1
 
 [[entry]]
-path = "crates/shiplog-team/src/template.rs"
+path = "apps/shiplog/src/team/template.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3962,7 +3962,7 @@ snippet = 'assert_eq!(engine.evaluate_tag("endif").unwrap(), "");'
 count = 1
 
 [[entry]]
-path = "crates/shiplog-team/src/template.rs"
+path = "apps/shiplog/src/team/template.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3970,7 +3970,7 @@ snippet = 'assert_eq!(engine.evaluate_tag("for item in items").unwrap(), "");'
 count = 1
 
 [[entry]]
-path = "crates/shiplog-team/src/template.rs"
+path = "apps/shiplog/src/team/template.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3978,7 +3978,7 @@ snippet = 'assert_eq!(engine.evaluate_tag("if show_details").unwrap(), "");'
 count = 1
 
 [[entry]]
-path = "crates/shiplog-team/src/template.rs"
+path = "apps/shiplog/src/team/template.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3986,7 +3986,7 @@ snippet = 'assert_eq!(engine.render("", &ctx).unwrap(), "");'
 count = 1
 
 [[entry]]
-path = "crates/shiplog-team/src/template.rs"
+path = "apps/shiplog/src/team/template.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3994,7 +3994,7 @@ snippet = 'assert_eq!(engine.render("{{ a }}{{ b }}", &ctx).unwrap(), "XY");'
 count = 1
 
 [[entry]]
-path = "crates/shiplog-team/src/template.rs"
+path = "apps/shiplog/src/team/template.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -4002,7 +4002,7 @@ snippet = "assert_eq!(engine.render(template, &ctx).unwrap(), template);"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-team/src/template.rs"
+path = "apps/shiplog/src/team/template.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -4010,7 +4010,7 @@ snippet = 'engine.render("Say: {{ greeting }}", &ctx).unwrap(),'
 count = 1
 
 [[entry]]
-path = "crates/shiplog-team/src/template.rs"
+path = "apps/shiplog/src/team/template.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -4018,7 +4018,7 @@ snippet = 'engine.render("{{ body }}", &ctx).unwrap(),'
 count = 1
 
 [[entry]]
-path = "crates/shiplog-team/src/template.rs"
+path = "apps/shiplog/src/team/template.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -4026,7 +4026,7 @@ snippet = 'let result = engine.render("Output: {{ code }}", &ctx).unwrap();'
 count = 1
 
 [[entry]]
-path = "crates/shiplog-team/src/template.rs"
+path = "apps/shiplog/src/team/template.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -4034,7 +4034,7 @@ snippet = "let result = engine.render(&template, &ctx).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-team/src/template.rs"
+path = "apps/shiplog/src/team/template.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -4042,7 +4042,7 @@ snippet = "let result = engine.render(&text, &ctx).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-team/src/template.rs"
+path = "apps/shiplog/src/team/template.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"

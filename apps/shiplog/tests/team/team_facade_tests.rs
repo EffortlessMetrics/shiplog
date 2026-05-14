@@ -1,6 +1,6 @@
-//! Integration tests for shiplog-team facade crate.
+//! Integration tests for shiplog::team facade crate.
 //!
-//! Verifies that public re-exports from shiplog-team are accessible
+//! Verifies that public re-exports from shiplog::team are accessible
 //! through the facade, and that the facade wires correctly end-to-end.
 
 use chrono::{NaiveDate, TimeZone, Utc};
@@ -14,7 +14,7 @@ use std::io::Write;
 use std::path::Path;
 
 // Import everything through the facade
-use shiplog_team::{
+use shiplog::team::{
     TeamAggregateResult, TeamAggregator, TeamConfig, TeamMemberSummary, TeamOutputFiles,
     parse_alias_list, parse_csv_list, resolve_team_config, write_team_outputs,
 };

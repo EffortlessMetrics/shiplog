@@ -14,8 +14,8 @@ use crate::bdd::builders::CoverageBuilder;
 #[cfg(feature = "merge_pipeline")]
 use crate::bdd::builders::EventBuilder;
 use chrono::{NaiveDate, TimeZone, Utc};
+use shiplog::merge::{ConflictResolution, MergeStrategy, merge_events, merge_ingest_outputs};
 use shiplog_ids::{EventId, RunId};
-use shiplog_merge::{ConflictResolution, MergeStrategy, merge_events, merge_ingest_outputs};
 use shiplog_ports::{IngestOutput, Renderer, WorkstreamClusterer};
 use shiplog_schema::coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow};
 use shiplog_schema::event::{

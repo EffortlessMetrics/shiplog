@@ -1,6 +1,6 @@
-//! BDD scenarios for shiplog-team: config loading, CSV parsing, defaults.
+//! BDD scenarios for shiplog::team: config loading, CSV parsing, defaults.
 
-use shiplog_team::{TeamConfig, parse_alias_list, parse_csv_list};
+use shiplog::team::{TeamConfig, parse_alias_list, parse_csv_list};
 use shiplog_testkit::bdd::{Scenario, assertions};
 
 // ---------------------------------------------------------------------------

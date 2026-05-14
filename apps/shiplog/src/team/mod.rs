@@ -1,8 +1,8 @@
 //! Team aggregation mode for generating team-level shipping summaries.
 //!
-//! `shiplog-team` is the optional public boundary. Its internal phases live as
-//! modules so config resolution, ledger aggregation, and packet rendering do
-//! not become separate package contracts.
+//! Team support lives inside the `shiplog` package so config resolution,
+//! ledger aggregation, and packet rendering do not become separate crates.io
+//! package contracts.
 
 pub mod aggregate;
 pub mod core;

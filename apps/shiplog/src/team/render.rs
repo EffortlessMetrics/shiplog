@@ -11,8 +11,8 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 
-use crate::core::TeamConfig;
-use crate::template::{TemplateContext, TemplateEngine};
+use crate::team::core::TeamConfig;
+use crate::team::template::{TemplateContext, TemplateEngine};
 
 /// One member's aggregation outcome.
 #[derive(Debug, Clone, Serialize, Deserialize)]

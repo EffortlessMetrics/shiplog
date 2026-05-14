@@ -1,6 +1,6 @@
 ---
-source: crates/shiplog-team/tests/team_core_tests.rs
-assertion_line: 279
+source: apps/shiplog/tests/team/team_core_tests.rs
+assertion_line: 291
 expression: json
 ---
 {

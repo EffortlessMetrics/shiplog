@@ -7,8 +7,8 @@
 
 use crate::bundle::{DIR_PROFILES, FILE_PACKET_MD, RunArtifactPaths, zip_path_for_profile};
 use crate::bundle::{write_bundle_manifest, write_zip};
+pub use crate::merge::ConflictResolution;
 use anyhow::{Context, Result};
-pub use shiplog_merge::ConflictResolution;
 use shiplog_ports::{IngestOutput, Redactor, Renderer, WorkstreamClusterer};
 use shiplog_schema::bundle::BundleProfile;
 use shiplog_schema::coverage::CoverageManifest;
@@ -696,14 +696,14 @@ impl<'a> Engine<'a> {
     ) -> Result<IngestOutput> {
         #[cfg(feature = "merge-pipeline")]
         {
-            let merged = shiplog_merge::merge_ingest_outputs(&ingest_outputs, resolution)
+            let merged = crate::merge::merge_ingest_outputs(&ingest_outputs, resolution)
                 .context("merge ingest outputs")?;
             Ok(merged.ingest_output)
         }
 
         #[cfg(not(feature = "merge-pipeline"))]
         {
-            shiplog_merge::merge_ingest_outputs_legacy(&ingest_outputs, resolution)
+            crate::merge::merge_ingest_outputs_legacy(&ingest_outputs, resolution)
         }
     }
 }

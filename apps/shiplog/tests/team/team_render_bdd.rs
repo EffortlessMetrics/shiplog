@@ -1,14 +1,14 @@
-//! BDD scenarios for shiplog-team: packet rendering, section filtering.
+//! BDD scenarios for shiplog::team: packet rendering, section filtering.
 
 use chrono::{NaiveDate, TimeZone, Utc};
+use shiplog::team::TeamConfig;
+use shiplog::team::{TeamAggregateResult, TeamMemberSummary, render_packet_markdown};
 use shiplog_ids::{EventId, RunId};
 use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
 use shiplog_schema::event::{
     Actor, EventEnvelope, EventKind, EventPayload, PullRequestEvent, PullRequestState, RepoRef,
     RepoVisibility, SourceRef, SourceSystem,
 };
-use shiplog_team::TeamConfig;
-use shiplog_team::{TeamAggregateResult, TeamMemberSummary, render_packet_markdown};
 use shiplog_testkit::bdd::{Scenario, assertions};
 use std::path::PathBuf;
 
