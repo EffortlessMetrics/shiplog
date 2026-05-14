@@ -35,7 +35,6 @@ tempfile.workspace = true
 [dev-dependencies]
 shiplog-redact = { path = "../shiplog-redact", version = "0.6.0" }
 shiplog-engine = { path = "../shiplog-engine", version = "0.6.0" }
-shiplog-ingest-json = { path = "../shiplog-ingest-json", version = "0.6.0" }
 shiplog-coverage = { path = "../shiplog-coverage", version = "0.6.0" }
 serde.workspace = true
 serde_yaml.workspace = true

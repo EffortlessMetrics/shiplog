@@ -1,17 +1,19 @@
-//! Cross-platform path handling tests for shiplog-ingest-json.
+//! Cross-platform path handling tests for shiplog JSON ingest module.
 //!
 //! Ensures JSONL file reading works correctly with paths containing spaces,
 //! unicode characters, and special characters on all platforms.
 
 use chrono::{NaiveDate, Utc};
-use shiplog_bundle::{FILE_COVERAGE_MANIFEST_JSON, FILE_LEDGER_EVENTS_JSONL};
+use shiplog::ingest::json::JsonIngestor;
 use shiplog_ids::{EventId, RunId};
-use shiplog_ingest_json::JsonIngestor;
 use shiplog_ports::Ingestor;
 use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
 use shiplog_schema::event::*;
 use std::io::Write;
 use std::path::Path;
+
+const FILE_LEDGER_EVENTS_JSONL: &str = "ledger.events.jsonl";
+const FILE_COVERAGE_MANIFEST_JSON: &str = "coverage.manifest.json";
 
 fn make_event(repo: &str, id: &str) -> EventEnvelope {
     EventEnvelope {

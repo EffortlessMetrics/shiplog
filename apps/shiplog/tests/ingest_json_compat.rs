@@ -1,9 +1,9 @@
-//! Backward-compatibility tests for shiplog-ingest-json.
+//! Backward-compatibility tests for shiplog JSON ingest module.
 //!
 //! Verifies that JSONL from different schema versions still parses,
 //! and that extra/missing optional fields are handled gracefully.
 
-use shiplog_ingest_json::parse_events_jsonl;
+use shiplog::ingest::json::parse_events_jsonl;
 use shiplog_schema::event::*;
 
 // ── v0.1 JSONL: object-form SourceSystem ────────────────────────────────

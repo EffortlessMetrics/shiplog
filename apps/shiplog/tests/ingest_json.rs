@@ -1,13 +1,15 @@
-//! Comprehensive tests for shiplog-ingest-json: JSONL parsing, error handling, edge cases.
+//! Comprehensive tests for shiplog JSON ingest module: JSONL parsing, error handling, edge cases.
 
 use chrono::{NaiveDate, Utc};
-use shiplog_bundle::{FILE_COVERAGE_MANIFEST_JSON, FILE_LEDGER_EVENTS_JSONL};
+use shiplog::ingest::json::{JsonIngestor, parse_events_jsonl};
 use shiplog_ids::{EventId, RunId};
-use shiplog_ingest_json::{JsonIngestor, parse_events_jsonl};
 use shiplog_ports::Ingestor;
 use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
 use shiplog_schema::event::*;
 use std::io::Write;
+
+const FILE_LEDGER_EVENTS_JSONL: &str = "ledger.events.jsonl";
+const FILE_COVERAGE_MANIFEST_JSON: &str = "coverage.manifest.json";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 

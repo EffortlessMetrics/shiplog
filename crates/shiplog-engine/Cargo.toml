@@ -45,7 +45,6 @@ shiplog-bundle = { path = "../shiplog-bundle", version = "0.6.0" }
 shiplog-workstreams = { path = "../shiplog-workstreams", version = "0.6.0" }
 shiplog-redact = { path = "../shiplog-redact", version = "0.6.0" }
 serde_json.workspace = true
-shiplog-ingest-json = { path = "../shiplog-ingest-json", version = "0.6.0" }
 
 [lints]
 workspace = true

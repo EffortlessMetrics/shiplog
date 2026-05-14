@@ -17,9 +17,6 @@ members = [
   "crates/shiplog-bundle",
   "crates/shiplog-cache",
 
-  # Source adapters
-  "crates/shiplog-ingest-json",
-
   # Optional feature surfaces
   "crates/shiplog-cluster-llm",
   "crates/shiplog-team",
