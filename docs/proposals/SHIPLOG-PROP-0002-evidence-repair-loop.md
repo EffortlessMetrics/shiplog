@@ -225,7 +225,7 @@ Land the lane in small semantic PRs:
 2. Evidence repair loop spec:
    `docs/specs/SHIPLOG-SPEC-0005-evidence-repair-loop.md`.
 3. Repair-action ADR:
-   `docs/adr/SHIPLOG-ADR-0005-repair-actions-are-receipt-derived.md`.
+   `docs/adr/SHIPLOG-ADR-0006-repair-actions-are-receipt-derived.md`.
 4. Implementation plan and active goal:
    `plans/evidence-repair/implementation-plan.md` and
    `.shiplog/goals/active.toml`.

@@ -47,10 +47,15 @@ github_release = "https://github.com/EffortlessMetrics/shiplog/releases/tag/v0.7
 crates_io = "https://crates.io/crates/shiplog/0.7.0"
 meaning = "Crate boundaries are stable enough to resume product-quality work."
 
+[[completed_pr]]
+number = 293
+title = "docs(spec): define evidence repair loop"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/293"
+
 [[work_item]]
 id = "repair-loop-spec"
 title = "docs(spec): define evidence repair loop contract"
-status = "ready"
+status = "completed"
 expected_files = [
   "docs/specs/SHIPLOG-SPEC-0005-evidence-repair-loop.md",
   "docs/proposals/SHIPLOG-PROP-0002-evidence-repair-loop.md",
