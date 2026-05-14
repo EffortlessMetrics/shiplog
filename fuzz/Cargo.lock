@@ -1846,29 +1846,9 @@ dependencies = [
  "serde_json",
  "serde_yaml_ng",
  "sha2 0.11.0",
- "shiplog-ids",
- "shiplog-ports",
- "shiplog-schema",
- "shiplog-workstreams",
  "toml",
  "url",
  "zip",
-]
-
-[[package]]
-name = "shiplog-cluster-llm"
-version = "0.6.0"
-dependencies = [
- "anyhow",
- "chrono",
- "mutants",
- "reqwest",
- "serde",
- "serde_json",
- "shiplog-ids",
- "shiplog-ports",
- "shiplog-schema",
- "shiplog-workstreams",
 ]
 
 [[package]]
@@ -1883,50 +1863,6 @@ dependencies = [
  "serde_yaml_ng",
  "sha2 0.10.9",
  "shiplog",
- "shiplog-cluster-llm",
- "shiplog-ids",
- "shiplog-ports",
- "shiplog-schema",
- "shiplog-workstreams",
-]
-
-[[package]]
-name = "shiplog-ids"
-version = "0.6.0"
-dependencies = [
- "hex",
- "serde",
- "sha2 0.11.0",
-]
-
-[[package]]
-name = "shiplog-ports"
-version = "0.6.0"
-dependencies = [
- "anyhow",
- "shiplog-schema",
-]
-
-[[package]]
-name = "shiplog-schema"
-version = "0.6.0"
-dependencies = [
- "chrono",
- "serde",
- "serde_json",
- "shiplog-ids",
-]
-
-[[package]]
-name = "shiplog-workstreams"
-version = "0.6.0"
-dependencies = [
- "anyhow",
- "chrono",
- "serde_yaml_ng",
- "shiplog-ids",
- "shiplog-ports",
- "shiplog-schema",
 ]
 
 [[package]]

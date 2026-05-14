@@ -2,15 +2,25 @@
 set -euo pipefail
 
 mkdir -p target
-cargo metadata --format-version 1 --no-deps > target/package-boundary-metadata.json
+metadata_path="${PACKAGE_BOUNDARY_METADATA_PATH:-target/package-boundary-metadata.json}"
+policy_path="${PACKAGE_BOUNDARY_POLICY_PATH:-policy/publish-allowlist.toml}"
+
+if [[ -z "${PACKAGE_BOUNDARY_METADATA_PATH:-}" ]]; then
+  mkdir -p "$(dirname "$metadata_path")"
+  cargo metadata --format-version 1 --no-deps > "$metadata_path"
+fi
+
+export PACKAGE_BOUNDARY_METADATA_PATH="$metadata_path"
+export PACKAGE_BOUNDARY_POLICY_PATH="$policy_path"
 
 python - <<'PY'
 import json
+import os
 import sys
 from pathlib import Path
 
-metadata_path = Path("target/package-boundary-metadata.json")
-policy_path = Path("policy/publish-allowlist.toml")
+metadata_path = Path(os.environ["PACKAGE_BOUNDARY_METADATA_PATH"])
+policy_path = Path(os.environ["PACKAGE_BOUNDARY_POLICY_PATH"])
 metadata = json.loads(metadata_path.read_text())
 
 try:
@@ -25,7 +35,9 @@ transitional_exceptions = set(
     policy.get("publish", {}).get("transitional_exceptions", [])
 )
 package_entries = policy.get("package", [])
+historical_entries = policy.get("historical", [])
 packages_by_name = {entry.get("name"): entry for entry in package_entries}
+historical_by_name = {entry.get("name"): entry for entry in historical_entries}
 
 workspace_ids = set(metadata["workspace_members"])
 packages = {
@@ -51,6 +63,17 @@ if len(packages_by_name) != len(package_entries):
         + ", ".join(name for name in duplicates if name)
     )
 
+if len(historical_by_name) != len(historical_entries):
+    names = [entry.get("name") for entry in historical_entries]
+    duplicates = sorted({name for name in names if names.count(name) > 1})
+    errors.append(
+        "publish allowlist has duplicate historical entries: "
+        + ", ".join(name for name in duplicates if name)
+    )
+
+for name in sorted(set(packages_by_name) & set(historical_by_name)):
+    errors.append(f"package cannot be both current and historical: {name}")
+
 if len(publish_order) != len(set(publish_order)):
     errors.append("publish.default_order contains duplicate package names")
 
@@ -63,10 +86,27 @@ for name in sorted(set(packages_by_name) - workspace_names):
 for name in publish_order:
     entry = packages_by_name.get(name)
     if entry is None:
-        errors.append(f"publish.default_order package is not classified: {name}")
+        if name in historical_by_name:
+            errors.append(f"historical package must not enter publish.default_order: {name}")
+        else:
+            errors.append(f"publish.default_order package is not classified: {name}")
         continue
     if entry.get("publish") is not True:
         errors.append(f"publish.default_order package must set publish = true: {name}")
+
+for entry in historical_entries:
+    name = entry.get("name")
+    tier = entry.get("tier")
+    reason = str(entry.get("reason", "")).strip()
+
+    if not name:
+        errors.append("historical entry is missing a package name")
+    if tier != "historical-0.6":
+        errors.append(f"{name}: historical entries must use tier 'historical-0.6'")
+    if not reason:
+        errors.append(f"{name}: historical entry reason is empty")
+    if name in publish_order:
+        errors.append(f"{name}: historical package must not enter publish.default_order")
 
 for package in packages.values():
     name = package["name"]
@@ -119,10 +159,22 @@ for package in packages.values():
             if dep.get("kind") is not None:
                 continue
             dep_name = dep["name"]
-            dep_entry = packages_by_name.get(dep_name)
-            if dep_entry and dep_entry.get("tier") == "dev-only":
+            if dep_name in historical_by_name:
                 errors.append(
-                    f"published package {name} has a normal dependency on dev-only {dep_name}"
+                    f"published package {name} has a normal dependency on "
+                    f"historical 0.6 package {dep_name}"
+                )
+            dep_entry = packages_by_name.get(dep_name)
+            if dep_entry and dep_entry.get("publish") is not True:
+                errors.append(
+                    f"published package {name} has a normal dependency on "
+                    f"non-publishable workspace package {dep_name} "
+                    f"({dep_entry.get('tier')})"
+                )
+            elif dep_name in workspace_names and dep_entry is None:
+                errors.append(
+                    f"published package {name} has a normal dependency on "
+                    f"unclassified workspace package {dep_name}"
                 )
 
 enabled_names = {
@@ -145,6 +197,7 @@ print(
     f"{len(publish_order)} publish-allowed package(s), "
     f"{sum(1 for e in package_entries if e.get('tier') == 'public-transitional')} transitional, "
     f"{sum(1 for e in package_entries if e.get('tier') == 'internal-module')} internal, "
-    f"{sum(1 for e in package_entries if e.get('tier') == 'dev-only')} dev-only"
+    f"{sum(1 for e in package_entries if e.get('tier') == 'dev-only')} dev-only, "
+    f"{len(historical_entries)} historical"
 )
 PY

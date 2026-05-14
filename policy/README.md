@@ -66,7 +66,9 @@ PR #148 records actuals.
 crate-surface contraction lane. It is consumed by
 `scripts/package-boundary-audit.sh`, `scripts/package-proof.sh`, and
 `scripts/publish-dry-run.sh`. The boundary audit also checks that packages
-disabled by the policy set `publish = false` in their Cargo manifests.
+disabled by the policy set `publish = false` in their Cargo manifests and that
+publish-enabled packages do not depend normally on non-publishable workspace
+packages or historical 0.6 implementation crates.
 
 ## Validation
 
