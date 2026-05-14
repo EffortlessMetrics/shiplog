@@ -52,17 +52,17 @@ pub(crate) fn build_intake_report(
         &share_commands,
         &next_commands,
     );
-    let repair_items = build_repair_items(
-        &repair_sources,
-        &source_freshness,
-        &attention,
-        &evidence_debt,
-        &top_fixups,
-        &journal_suggestions,
-        &actions,
-        &next_commands,
-        &artifacts,
-    );
+    let repair_items = build_repair_items(RepairItemInputs {
+        repair_sources: &repair_sources,
+        source_freshness: &source_freshness,
+        needs_attention: &attention,
+        evidence_debt: &evidence_debt,
+        top_fixups: &top_fixups,
+        journal_suggestions: &journal_suggestions,
+        actions: &actions,
+        next_commands: &next_commands,
+        artifacts: &artifacts,
+    });
 
     Ok(IntakeReport {
         schema_version: 1,
@@ -417,17 +417,30 @@ struct RepairItemDraft {
     receipt_refs: Vec<IntakeReportRepairReceiptRef>,
 }
 
-fn build_repair_items(
-    repair_sources: &[IntakeReportRepairSource],
-    source_freshness: &[IntakeReportSourceFreshness],
-    needs_attention: &[String],
-    evidence_debt: &[IntakeReportEvidenceDebt],
-    top_fixups: &[IntakeReportFixup],
-    journal_suggestions: &[String],
-    actions: &[IntakeReportAction],
-    next_commands: &[String],
-    artifacts: &[IntakeReportArtifact],
-) -> Vec<IntakeReportRepairItem> {
+struct RepairItemInputs<'a> {
+    repair_sources: &'a [IntakeReportRepairSource],
+    source_freshness: &'a [IntakeReportSourceFreshness],
+    needs_attention: &'a [String],
+    evidence_debt: &'a [IntakeReportEvidenceDebt],
+    top_fixups: &'a [IntakeReportFixup],
+    journal_suggestions: &'a [String],
+    actions: &'a [IntakeReportAction],
+    next_commands: &'a [String],
+    artifacts: &'a [IntakeReportArtifact],
+}
+
+fn build_repair_items(inputs: RepairItemInputs<'_>) -> Vec<IntakeReportRepairItem> {
+    let RepairItemInputs {
+        repair_sources,
+        source_freshness,
+        needs_attention,
+        evidence_debt,
+        top_fixups,
+        journal_suggestions,
+        actions,
+        next_commands,
+        artifacts,
+    } = inputs;
     let mut drafts = Vec::new();
     let mut seen = BTreeSet::new();
 
