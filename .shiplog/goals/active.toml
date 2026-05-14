@@ -142,6 +142,11 @@ number = 267
 title = "refactor(crate): inline cache support"
 url = "https://github.com/EffortlessMetrics/shiplog/pull/267"
 
+[[completed_pr]]
+number = 269
+title = "refactor(crate): inline coverage support"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/269"
+
 [[work_item]]
 id = "ingest-adapter-collapse"
 title = "refactor(crate): inline ingest adapters into shiplog"
@@ -187,7 +192,7 @@ rollback = "Restore shiplog-cache and adapter imports."
 
 [[work_item]]
 id = "product-trust-collapse"
-title = "refactor(crate): inline product trust support"
+title = "refactor(crate): inline remaining product trust support"
 status = "ready"
 plan_section = "PR 3: Collapse Product And Trust Support"
 commands = [
