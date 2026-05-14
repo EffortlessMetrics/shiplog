@@ -57,6 +57,11 @@ number = 294
 title = "docs(adr): make repair actions receipt-derived"
 url = "https://github.com/EffortlessMetrics/shiplog/pull/294"
 
+[[completed_pr]]
+number = 295
+title = "plans(evidence-repair): sequence repair loop work"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/295"
+
 [[work_item]]
 id = "repair-loop-spec"
 title = "docs(spec): define evidence repair loop contract"
@@ -91,7 +96,7 @@ done_when = "ADR makes the no-second-classifier rule durable and identifies allo
 [[work_item]]
 id = "repair-loop-plan"
 title = "plans(evidence-repair): sequence repair loop implementation"
-status = "pending"
+status = "completed"
 expected_files = [
   "plans/evidence-repair/implementation-plan.md",
   ".shiplog/goals/active.toml",
