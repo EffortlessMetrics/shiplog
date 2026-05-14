@@ -213,6 +213,8 @@ Current proof and control surfaces:
   0.6 release handoff context.
 - [`docs/release/0.6.0-readiness.md`](../release/0.6.0-readiness.md) records
   the 0.6 readiness proof surface.
+- [`docs/release/0.6-crate-surface-historical.md`](../release/0.6-crate-surface-historical.md)
+  records the 0.6 crates as historical/transitional forward surfaces.
 
 Expected follow-up proof:
 
