@@ -182,6 +182,11 @@ number = 283
 title = "chore(release): enforce 0.7 package dependency closure"
 url = "https://github.com/EffortlessMetrics/shiplog/pull/283"
 
+[[completed_pr]]
+number = 285
+title = "release: prepare 0.7.0 crate-surface release"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/285"
+
 [[work_item]]
 id = "ingest-adapter-collapse"
 title = "refactor(crate): inline ingest adapters into shiplog"
@@ -275,7 +280,7 @@ rollback = "Revert release-proof tightening only if it blocks a valid package gr
 [[work_item]]
 id = "release-prep"
 title = "release: prepare 0.7.0 crate-surface release"
-status = "pending"
+status = "completed"
 plan_section = "PR 6: Release Prep"
 commands = [
   "cargo xtask package-version",
@@ -291,3 +296,18 @@ commands = [
   "git diff --check",
 ]
 rollback = "Revert release-prep docs and version changes; preserve landed contraction refactors unless they caused the blocker."
+
+[[work_item]]
+id = "release-execution"
+title = "release: tag, publish, and verify 0.7.0"
+status = "blocked-explicit-owner-approval-required"
+plan_section = "Lane Closure"
+commands = [
+  "git tag v0.7.0",
+  "git push origin v0.7.0",
+  "CARGO_REGISTRY_TOKEN=<token> cargo publish -p shiplog --locked",
+  "scripts/release-install-smoke.sh v0.7.0",
+  "scripts/release-install-smoke.ps1 -Version v0.7.0",
+  "scripts/verify-release.sh v0.7.0",
+]
+rollback = "Follow docs/release/0.7.0-readiness.md rollback guidance; do not yank 0.6 historical crates as routine cleanup."

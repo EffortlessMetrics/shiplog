@@ -89,11 +89,15 @@ Landed:
   `refactor(crate): inline foundation contracts`
 - [#283](https://github.com/EffortlessMetrics/shiplog/pull/283):
   `chore(release): enforce 0.7 package dependency closure`
+- [#285](https://github.com/EffortlessMetrics/shiplog/pull/285):
+  `release: prepare 0.7.0 crate-surface release`
 
-The remaining risk is release prep: the contraction removes historical 0.6
-implementation packages from the `shiplog` package graph, and release tooling
+The remaining risk is release execution. The contraction removes historical
+0.6 implementation packages from the `shiplog` package graph, release tooling
 now fails closed if a future change reintroduces unsupported package
-dependencies or publish targets.
+dependencies or publish targets, and the 0.7.0 release handoff is ready. Tag,
+publish, GitHub release, and post-release smoke work still require explicit
+owner approval.
 
 ## Sequencing
 
