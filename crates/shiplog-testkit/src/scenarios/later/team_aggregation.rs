@@ -7,14 +7,14 @@ use crate::bdd::Scenario;
 use crate::bdd::assertions::*;
 use chrono::{NaiveDate, TimeZone, Utc};
 use serde_json::Value;
-use shiplog::team::TeamAggregator;
-use shiplog::team::{TeamConfig, parse_alias_list, parse_csv_list, resolve_team_config};
-use shiplog_ids::{EventId, RunId};
-use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
-use shiplog_schema::event::{
+use shiplog::ids::{EventId, RunId};
+use shiplog::schema::coverage::{Completeness, CoverageManifest, TimeWindow};
+use shiplog::schema::event::{
     Actor, EventEnvelope, EventKind, EventPayload, PullRequestEvent, PullRequestState, RepoRef,
     RepoVisibility, SourceRef, SourceSystem,
 };
+use shiplog::team::TeamAggregator;
+use shiplog::team::{TeamConfig, parse_alias_list, parse_csv_list, resolve_team_config};
 use std::collections::HashMap;
 use std::io::Write;
 use std::path::Path;

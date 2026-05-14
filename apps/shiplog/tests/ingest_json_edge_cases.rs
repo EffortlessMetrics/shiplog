@@ -4,11 +4,11 @@
 //! and empty lines in JSONL files.
 
 use chrono::{NaiveDate, Utc};
+use shiplog::ids::{EventId, RunId};
 use shiplog::ingest::json::{JsonIngestor, parse_events_jsonl};
-use shiplog_ids::{EventId, RunId};
-use shiplog_ports::Ingestor;
-use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
-use shiplog_schema::event::*;
+use shiplog::ports::Ingestor;
+use shiplog::schema::coverage::{Completeness, CoverageManifest, TimeWindow};
+use shiplog::schema::event::*;
 use std::io::Write;
 
 mod support;

@@ -3,7 +3,7 @@ name: Property Testing
 # Broad property sweep (lane.property, 256 cases × 13 crates). Routed in
 # PR #155 to label-gated PR + nightly + main only; the bounded smoke
 # (lane.property_smoke, .github/workflows/property-smoke.yml) runs on
-# every PR-fast at 64 cases against the foundation crates.
+# every PR-fast at 64 cases against the foundation modules.
 #
 # Triggers:
 #   - push to main: full sweep
@@ -67,11 +67,11 @@ jobs:
           echo "Running property tests for all crates..."
           cargo test --workspace --all-features -- --test-threads=4
 
-      - name: Run property tests for shiplog-ids
-        run: cargo test -p shiplog-ids -- --test-threads=4
+      - name: Run property tests for shiplog ids module
+        run: cargo test -p shiplog --test ids -- --test-threads=4
 
-      - name: Run property tests for shiplog-schema
-        run: cargo test -p shiplog-schema -- --test-threads=4
+      - name: Run property tests for shiplog schema module
+        run: cargo test -p shiplog --test schema -- --test-threads=4
 
       - name: Run property tests for shiplog redaction module
         run: cargo test -p shiplog --test redact -- --test-threads=4
@@ -116,8 +116,8 @@ jobs:
           echo "Property-based tests completed successfully!" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "## Tested Crates" >> $GITHUB_STEP_SUMMARY
-          echo "- shiplog-ids" >> $GITHUB_STEP_SUMMARY
-          echo "- shiplog-schema" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog::ids" >> $GITHUB_STEP_SUMMARY
+          echo "- shiplog::schema" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog::redact" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog::coverage" >> $GITHUB_STEP_SUMMARY
           echo "- shiplog::workstreams" >> $GITHUB_STEP_SUMMARY

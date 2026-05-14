@@ -4,8 +4,8 @@
 //! coverage manifests (`coverage.manifest.json`).
 
 use anyhow::{Context, Result};
-use shiplog_schema::coverage::CoverageManifest;
-use shiplog_schema::event::EventEnvelope;
+use shiplog::schema::coverage::CoverageManifest;
+use shiplog::schema::event::EventEnvelope;
 use std::io::Write;
 use std::path::Path;
 
@@ -20,7 +20,7 @@ use std::path::Path;
 ///
 /// ```rust,ignore
 /// use shiplog::engine::artifact_json::write_events_jsonl;
-/// use shiplog_schema::event::EventEnvelope;
+/// use shiplog::schema::event::EventEnvelope;
 /// use std::path::Path;
 ///
 /// # fn example(events: &[EventEnvelope]) -> anyhow::Result<()> {
@@ -44,8 +44,8 @@ pub fn write_events_jsonl(path: &Path, events: &[EventEnvelope]) -> Result<()> {
 ///
 /// ```rust,ignore
 /// use shiplog::engine::artifact_json::write_coverage_manifest;
-/// use shiplog_schema::coverage::{CoverageManifest, Completeness, TimeWindow};
-/// use shiplog_ids::RunId;
+/// use shiplog::schema::coverage::{CoverageManifest, Completeness, TimeWindow};
+/// use shiplog::ids::RunId;
 /// use chrono::{NaiveDate, Utc};
 /// use std::path::Path;
 ///
@@ -75,10 +75,10 @@ pub fn write_coverage_manifest(path: &Path, cov: &CoverageManifest) -> Result<()
 mod tests {
     use super::*;
     use chrono::{NaiveDate, TimeZone, Utc};
-    use shiplog_ids::EventId;
-    use shiplog_ids::RunId;
-    use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
-    use shiplog_schema::event::*;
+    use shiplog::ids::EventId;
+    use shiplog::ids::RunId;
+    use shiplog::schema::coverage::{Completeness, CoverageManifest, TimeWindow};
+    use shiplog::schema::event::*;
 
     fn pr_event(repo: &str, number: u64, title: &str) -> EventEnvelope {
         EventEnvelope {

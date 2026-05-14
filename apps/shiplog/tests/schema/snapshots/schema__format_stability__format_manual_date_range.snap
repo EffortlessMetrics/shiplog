@@ -1,0 +1,9 @@
+---
+source: apps/shiplog/tests/schema/format_stability.rs
+assertion_line: 290
+expression: d
+---
+{
+  "start": "2025-01-01",
+  "end": "2025-12-31"
+}

@@ -3,12 +3,12 @@
 //! Covers receipt validation edge cases, boundary conditions, mixed-kind
 //! accumulation simulations, and policy enforcement across all event kinds.
 
+use shiplog::schema::event::EventKind;
 use shiplog::workstreams::{
     WORKSTREAM_RECEIPT_LIMIT_MANUAL, WORKSTREAM_RECEIPT_LIMIT_REVIEW,
     WORKSTREAM_RECEIPT_LIMIT_TOTAL, WORKSTREAM_RECEIPT_RENDER_LIMIT, max_cluster_receipts_for_kind,
     should_include_cluster_receipt, should_render_receipt_at, truncate_cluster_receipts,
 };
-use shiplog_schema::event::EventKind;
 
 // ===========================================================================
 // Boundary conditions at zero

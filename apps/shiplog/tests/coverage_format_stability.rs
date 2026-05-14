@@ -4,8 +4,8 @@
 //! variants, and edge-case values.
 
 use chrono::{NaiveDate, TimeZone, Utc};
-use shiplog_ids::RunId;
-use shiplog_schema::coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow};
+use shiplog::ids::RunId;
+use shiplog::schema::coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow};
 
 fn ts() -> chrono::DateTime<Utc> {
     Utc.with_ymd_and_hms(2025, 6, 1, 12, 0, 0).unwrap()

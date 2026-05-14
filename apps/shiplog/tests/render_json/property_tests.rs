@@ -2,9 +2,9 @@
 
 use crate::artifact_json::{write_coverage_manifest, write_events_jsonl};
 use chrono::{NaiveDate, Utc};
-use shiplog_ids::{EventId, RunId};
-use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
-use shiplog_schema::event::*;
+use shiplog::ids::{EventId, RunId};
+use shiplog::schema::coverage::{Completeness, CoverageManifest, TimeWindow};
+use shiplog::schema::event::*;
 
 // Test: JSONL roundtrip preserves all fields
 #[test]
@@ -125,7 +125,7 @@ fn coverage_with_slices_shows_partial() {
         },
         mode: "merged".to_string(),
         sources: vec!["github".to_string()],
-        slices: vec![shiplog_schema::coverage::CoverageSlice {
+        slices: vec![shiplog::schema::coverage::CoverageSlice {
             window: TimeWindow {
                 since: NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
                 until: NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),

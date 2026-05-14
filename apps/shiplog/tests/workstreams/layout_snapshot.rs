@@ -1,9 +1,9 @@
 //! Snapshot tests for workstream layout YAML output.
 
 use chrono::{TimeZone, Utc};
+use shiplog::ids::{EventId, WorkstreamId};
+use shiplog::schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
 use shiplog::workstreams::write_workstreams;
-use shiplog_ids::{EventId, WorkstreamId};
-use shiplog_schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
 use tempfile::tempdir;
 
 fn fixed_ws_file() -> WorkstreamsFile {

@@ -4,7 +4,7 @@
 
 use libfuzzer_sys::fuzz_target;
 use shiplog::render::md::format_receipt_markdown;
-use shiplog_schema::event::{
+use shiplog::schema::event::{
     Actor, EventEnvelope, EventKind, EventPayload, Link, ManualEvent, ManualEventType,
     PullRequestEvent, PullRequestState, RepoRef, RepoVisibility, ReviewEvent, SourceRef,
     SourceSystem,
@@ -29,7 +29,7 @@ fuzz_target!(|data: &[u8]| {
         .expect("valid fuzz timestamp");
     let event = match selector {
         0 => EventEnvelope {
-            id: shiplog_ids::EventId::from_parts(["fuzz", "pr", "1"]),
+            id: shiplog::ids::EventId::from_parts(["fuzz", "pr", "1"]),
             kind: EventKind::PullRequest,
             occurred_at: ts,
             actor: Actor {
@@ -65,7 +65,7 @@ fuzz_target!(|data: &[u8]| {
             },
         },
         1 => EventEnvelope {
-            id: shiplog_ids::EventId::from_parts(["fuzz", "review", "1"]),
+            id: shiplog::ids::EventId::from_parts(["fuzz", "review", "1"]),
             kind: EventKind::Review,
             occurred_at: ts,
             actor: Actor {
@@ -96,7 +96,7 @@ fuzz_target!(|data: &[u8]| {
             },
         },
         _ => EventEnvelope {
-            id: shiplog_ids::EventId::from_parts(["fuzz", "manual", "1"]),
+            id: shiplog::ids::EventId::from_parts(["fuzz", "manual", "1"]),
             kind: EventKind::Manual,
             occurred_at: ts,
             actor: Actor {

@@ -59,7 +59,7 @@ expires = "permanent"
 [[entry]]
 path = ".github/workflows/property-smoke.yml"
 owner = "policy"
-reason = "Bounded property smoke (lane.property_smoke, added in PR #154). Runs proptest at PROPTEST_CASES=64 with deterministic seed across foundation surfaces (shiplog-ids, shiplog-schema, shiplog::coverage, shiplog::redact). Broad lane.property stays PR-on-every until PR #155 routes it. Never blocks merge."
+reason = "Bounded property smoke (lane.property_smoke, added in PR #154). Runs proptest at PROPTEST_CASES=64 with deterministic seed across foundation surfaces (shiplog::ids, shiplog::schema, shiplog::coverage, shiplog::redact). Broad lane.property stays PR-on-every until PR #155 routes it. Never blocks merge."
 permissions = ["contents:read"]
 secrets_used = []
 external_actions = [
@@ -102,7 +102,7 @@ expires = "permanent"
 [[entry]]
 path = ".github/workflows/ci.yml"
 owner = "release/ci"
-reason = "Primary PR correctness gate (Ubuntu + Windows). Check job covers fmt --check, clippy -D --locked --all-features, workspace tests --locked --all-features, doc-tests --locked --all-features, doc build -D warnings, release build --locked, canary `shiplog-ids` publish --dry-run --locked. Sibling jobs: cargo-deny dependency policy, Policy gates (runs the 11 xtask policy ledger checks at blocking-allowlist mode; added in PR #165)."
+reason = "Primary PR correctness gate (Ubuntu + Windows). Check job covers fmt --check, clippy -D --locked --all-features, workspace tests --locked --all-features, doc-tests --locked --all-features, doc build -D warnings, release build --locked, canary `shiplog` publish --dry-run --locked. Sibling jobs: cargo-deny dependency policy, Policy gates (runs the 11 xtask policy ledger checks at blocking-allowlist mode; added in PR #165)."
 permissions = ["contents:read"]
 secrets_used = []
 external_actions = [

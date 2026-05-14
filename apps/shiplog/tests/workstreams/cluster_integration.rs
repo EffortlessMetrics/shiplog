@@ -1,16 +1,16 @@
 //! Integration tests for cross-crate boundaries (trait contract + API shape).
 
+use shiplog::ports::WorkstreamClusterer;
+use shiplog::schema::event::*;
 use shiplog::workstreams::RepoClusterer;
 use shiplog::workstreams::{
     WORKSTREAM_RECEIPT_LIMIT_MANUAL, WORKSTREAM_RECEIPT_LIMIT_REVIEW,
     WORKSTREAM_RECEIPT_LIMIT_TOTAL,
 };
-use shiplog_ports::WorkstreamClusterer;
-use shiplog_schema::event::*;
 
 fn event(repo: &str, id: &str, number: u64, kind: EventKind) -> EventEnvelope {
     EventEnvelope {
-        id: shiplog_ids::EventId::from_parts(["integration", id]),
+        id: shiplog::ids::EventId::from_parts(["integration", id]),
         kind: kind.clone(),
         occurred_at: chrono::Utc::now(),
         actor: Actor {

@@ -98,8 +98,9 @@ all of these are true:
 - Removing it would break a real user, not only shiplog's internal layout.
 
 If two public crates need the same shared type, move the shared contract into
-`shiplog-schema`, `shiplog-ports`, or `shiplog-ids`. Do not hide production
-dependencies in unpublished sibling crates without a clear owner.
+an explicitly supported public crate by ADR. The 0.7 foundation support lives
+inside `shiplog::{schema,ports,ids}` and must not leak as hidden production
+dependencies in unpublished sibling crates.
 
 If a production seam is not ready to be a public package, fold it under its
 owning package as an SRP module.
@@ -133,6 +134,9 @@ The 0.7 contraction is in progress:
 - `shiplog-coverage` has been inlined as `shiplog::coverage`.
 - `shiplog-bundle` has been inlined as `shiplog::bundle`.
 - `shiplog-redact` has been inlined as `shiplog::redact`.
+- `shiplog-schema` has been inlined as `shiplog::schema`.
+- `shiplog-ports` has been inlined as `shiplog::ports`.
+- `shiplog-ids` has been inlined as `shiplog::ids`.
 - Remaining implementation packages are classified by
   [`SHIPLOG-SPEC-0004`](docs/specs/SHIPLOG-SPEC-0004-public-crate-support-tiers.md)
   and the 0.7 crate-surface audit.

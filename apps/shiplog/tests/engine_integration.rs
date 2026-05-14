@@ -4,15 +4,15 @@ use anyhow::Result;
 use chrono::{NaiveDate, TimeZone, Utc};
 use shiplog::bundle::{DIR_PROFILES, FILE_PACKET_MD, PROFILE_MANAGER, PROFILE_PUBLIC};
 use shiplog::engine::{Engine, WorkstreamSource};
+use shiplog::ids::RunId;
+use shiplog::ports::{IngestOutput, Redactor, Renderer, WorkstreamClusterer};
 use shiplog::redact::DeterministicRedactor;
+use shiplog::schema::bundle::BundleProfile;
+use shiplog::schema::coverage::{Completeness, CoverageManifest, TimeWindow};
+use shiplog::schema::event::*;
+use shiplog::schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
 use shiplog::workstreams::RepoClusterer;
 use shiplog::workstreams::WorkstreamManager;
-use shiplog_ids::RunId;
-use shiplog_ports::{IngestOutput, Redactor, Renderer, WorkstreamClusterer};
-use shiplog_schema::bundle::BundleProfile;
-use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
-use shiplog_schema::event::*;
-use shiplog_schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
 use shiplog_testkit::TestMarkdownRenderer as MarkdownRenderer;
 
 // ---------------------------------------------------------------------------
@@ -199,7 +199,7 @@ fn run_uses_curated_workstreams_when_present() {
         version: 1,
         generated_at: Utc::now(),
         workstreams: vec![Workstream {
-            id: shiplog_ids::WorkstreamId::from_parts(["ws", "curated"]),
+            id: shiplog::ids::WorkstreamId::from_parts(["ws", "curated"]),
             title: "Curated Feature".into(),
             summary: Some("User-edited workstream".into()),
             tags: vec![],
@@ -241,7 +241,7 @@ fn run_uses_suggested_workstreams_when_only_suggested_exists() {
         version: 1,
         generated_at: Utc::now(),
         workstreams: vec![Workstream {
-            id: shiplog_ids::WorkstreamId::from_parts(["ws", "suggested"]),
+            id: shiplog::ids::WorkstreamId::from_parts(["ws", "suggested"]),
             title: "Suggested Feature".into(),
             summary: None,
             tags: vec![],
@@ -570,7 +570,7 @@ fn import_with_provided_workstreams_writes_curated() {
         version: 1,
         generated_at: Utc::now(),
         workstreams: vec![Workstream {
-            id: shiplog_ids::WorkstreamId::from_parts(["ws", "imported"]),
+            id: shiplog::ids::WorkstreamId::from_parts(["ws", "imported"]),
             title: "Imported Work".into(),
             summary: Some("From external source".into()),
             tags: vec![],
@@ -687,7 +687,7 @@ fn refresh_with_curated_workstreams_preserves_curation() {
         version: 1,
         generated_at: Utc::now(),
         workstreams: vec![Workstream {
-            id: shiplog_ids::WorkstreamId::from_parts(["ws", "curated-refresh"]),
+            id: shiplog::ids::WorkstreamId::from_parts(["ws", "curated-refresh"]),
             title: "Curated Refresh".into(),
             summary: None,
             tags: vec![],
@@ -730,7 +730,7 @@ fn refresh_with_suggested_workstreams_uses_suggested() {
         version: 1,
         generated_at: Utc::now(),
         workstreams: vec![Workstream {
-            id: shiplog_ids::WorkstreamId::from_parts(["ws", "suggested-refresh"]),
+            id: shiplog::ids::WorkstreamId::from_parts(["ws", "suggested-refresh"]),
             title: "Suggested Refresh".into(),
             summary: None,
             tags: vec![],

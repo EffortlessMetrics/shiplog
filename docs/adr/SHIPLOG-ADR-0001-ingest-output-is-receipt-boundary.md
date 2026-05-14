@@ -21,7 +21,7 @@ source contributions during one intake run. Only the adapter knows whether a
 given source contribution came from live input, valid cache, or no usable data.
 
 The schema crate already records this boundary in
-[`SourceFreshness`](../../crates/shiplog-schema/src/freshness.rs):
+[`SourceFreshness`](../../apps/shiplog/src/schema/freshness.rs):
 adapter receipts are populated locally, then the CLI/report layer merges those
 receipts with skipped or unavailable source decisions for
 `intake.report.{md,json}`.
@@ -86,7 +86,7 @@ or discarded the value.
 - [`SHIPLOG-SPEC-0002-intake-report-v1`](../specs/SHIPLOG-SPEC-0002-intake-report-v1.md)
   defines `intake.report.json` and `intake.report.md` as the machine and human
   report surfaces.
-- [`SourceFreshness`](../../crates/shiplog-schema/src/freshness.rs) is the
+- [`SourceFreshness`](../../apps/shiplog/src/schema/freshness.rs) is the
   source-local freshness receipt structure.
 - [`apps/shiplog/tests/intake_cold_start.rs`](../../apps/shiplog/tests/intake_cold_start.rs)
   and

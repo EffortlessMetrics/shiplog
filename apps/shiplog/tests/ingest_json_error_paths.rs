@@ -5,7 +5,7 @@
 //! handled gracefully.
 
 use shiplog::ingest::json::{JsonIngestor, parse_events_jsonl};
-use shiplog_ports::Ingestor;
+use shiplog::ports::Ingestor;
 
 // ---------------------------------------------------------------------------
 // Error message quality: line numbers and context

@@ -1045,13 +1045,13 @@ flowchart TD
 cargo mutants --workspace
 
 # Run mutation tests on specific crate
-cargo mutants -p shiplog-schema
+cargo mutants -p shiplog
 
 # Run with specific test
-cargo mutants -p shiplog-schema -- test_name
+cargo mutants -p shiplog -- test_name
 
 # List mutants without running
-cargo mutants -p shiplog-schema --list
+cargo mutants -p shiplog --list
 
 # Generate HTML report
 cargo mutants --workspace --output target/mutants

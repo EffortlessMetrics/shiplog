@@ -2,9 +2,9 @@
 
 use anyhow::{Context, Result};
 use chrono::{NaiveDate, Utc};
-use shiplog_ids::EventId;
-use shiplog_schema::coverage::TimeWindow;
-use shiplog_schema::event::{
+use shiplog::ids::EventId;
+use shiplog::schema::coverage::TimeWindow;
+use shiplog::schema::event::{
     Actor, EventEnvelope, EventKind, EventPayload, ManualDate, ManualEvent, ManualEventEntry,
     ManualEventsFile, RepoRef, RepoVisibility, SourceRef, SourceSystem,
 };
@@ -38,7 +38,7 @@ pub fn create_empty_file() -> ManualEventsFile {
 /// Build a simple manual entry.
 pub fn create_entry(
     id: impl Into<String>,
-    event_type: shiplog_schema::event::ManualEventType,
+    event_type: shiplog::schema::event::ManualEventType,
     date: ManualDate,
     title: impl Into<String>,
 ) -> ManualEventEntry {
@@ -145,7 +145,7 @@ mod tests {
     use super::*;
     use chrono::NaiveDate;
     use proptest::prelude::*;
-    use shiplog_schema::event::{Link, ManualEventType};
+    use shiplog::schema::event::{Link, ManualEventType};
 
     fn make_entry(id: &str, date: ManualDate) -> ManualEventEntry {
         create_entry(id, ManualEventType::Note, date, format!("Event {id}"))

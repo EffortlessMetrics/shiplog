@@ -7,7 +7,7 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use shiplog_schema::event::EventEnvelope;
+use shiplog::schema::event::EventEnvelope;
 
 fuzz_target!(|data: &[u8]| {
     let input = match std::str::from_utf8(data) {

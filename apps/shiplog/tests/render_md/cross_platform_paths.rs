@@ -6,12 +6,12 @@
 //! can be written to paths with special characters.
 
 use chrono::{NaiveDate, Utc};
+use shiplog::ids::{EventId, RunId, WorkstreamId};
+use shiplog::ports::Renderer;
 use shiplog::render::md::MarkdownRenderer;
-use shiplog_ids::{EventId, RunId, WorkstreamId};
-use shiplog_ports::Renderer;
-use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
-use shiplog_schema::event::*;
-use shiplog_schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
+use shiplog::schema::coverage::{Completeness, CoverageManifest, TimeWindow};
+use shiplog::schema::event::*;
+use shiplog::schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
 
 fn pr_event(id: &str, repo: &str, title: &str) -> EventEnvelope {
     EventEnvelope {

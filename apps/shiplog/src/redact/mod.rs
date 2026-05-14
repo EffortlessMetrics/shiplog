@@ -4,9 +4,9 @@
 //! generation backed by keyed hashing and optional alias cache persistence.
 
 use anyhow::Result;
-use shiplog_ports::Redactor;
-use shiplog_schema::event::EventEnvelope;
-use shiplog_schema::workstream::WorkstreamsFile;
+use shiplog::ports::Redactor;
+use shiplog::schema::event::EventEnvelope;
+use shiplog::schema::workstream::WorkstreamsFile;
 use std::path::{Path, PathBuf};
 
 mod alias;
@@ -59,7 +59,7 @@ pub use profile::RedactionProfile;
 ///
 /// let redactor = DeterministicRedactor::new(b"my-secret-key");
 /// // The redactor is now ready to redact events and workstreams
-/// // via the `Redactor` trait from `shiplog_ports`.
+/// // via the `Redactor` trait from `shiplog::ports`.
 /// ```
 pub struct DeterministicRedactor {
     aliases: DeterministicAliasStore,
@@ -163,9 +163,9 @@ mod tests {
     use super::*;
     use chrono::Utc;
     use proptest::prelude::*;
-    use shiplog_ids::EventId;
-    use shiplog_schema::event::*;
-    use shiplog_schema::workstream::Workstream;
+    use shiplog::ids::EventId;
+    use shiplog::schema::event::*;
+    use shiplog::schema::workstream::Workstream;
 
     proptest! {
         #[test]
@@ -474,8 +474,8 @@ mod tests {
     /// Property test: Workstream titles and summaries must not leak in public mode
     #[test]
     fn workstream_redaction_no_leak() {
-        use shiplog_ids::WorkstreamId;
-        use shiplog_schema::workstream::WorkstreamStats;
+        use shiplog::ids::WorkstreamId;
+        use shiplog::schema::workstream::WorkstreamStats;
 
         let r = DeterministicRedactor::new(b"test-key");
 
@@ -729,8 +729,8 @@ mod tests {
     /// Property test: Manager profile handles workstreams
     #[test]
     fn manager_profile_handles_workstreams() {
-        use shiplog_ids::WorkstreamId;
-        use shiplog_schema::workstream::WorkstreamStats;
+        use shiplog::ids::WorkstreamId;
+        use shiplog::schema::workstream::WorkstreamStats;
 
         let r = DeterministicRedactor::new(b"test-key");
 
@@ -835,8 +835,8 @@ mod tests {
 
     #[test]
     fn internal_profile_preserves_workstreams() {
-        use shiplog_ids::WorkstreamId;
-        use shiplog_schema::workstream::WorkstreamStats;
+        use shiplog::ids::WorkstreamId;
+        use shiplog::schema::workstream::WorkstreamStats;
 
         let r = DeterministicRedactor::new(b"test-key");
 

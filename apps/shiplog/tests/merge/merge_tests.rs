@@ -1,7 +1,7 @@
 use chrono::{TimeZone, Utc};
+use shiplog::ids::EventId;
 use shiplog::merge::*;
-use shiplog_ids::EventId;
-use shiplog_schema::event::{
+use shiplog::schema::event::{
     Actor, EventEnvelope, EventKind, EventPayload, ManualEvent, ManualEventType, RepoRef,
     RepoVisibility, SourceRef, SourceSystem,
 };

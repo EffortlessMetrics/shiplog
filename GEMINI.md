@@ -11,13 +11,13 @@ This project is a module-first Rust workspace following **Clean Architecture** p
 ### Workspace Structure
 
 *   **`apps/shiplog`**: The CLI application entry point (subcommands: `collect`, `render`, `refresh`, `import`, `run`).
-*   **`crates/`**:
+*   **`apps/shiplog/src/`**:
     *   **Core Domain:**
-        *   `shiplog-schema`: Canonical event model (the data spine).
-        *   `shiplog-ports`: Trait definitions (Ingestor, Renderer, Redactor, WorkstreamClusterer).
+        *   `shiplog::schema`: Canonical event model (the data spine).
+        *   `shiplog::ports`: Trait definitions (Ingestor, Renderer, Redactor, WorkstreamClusterer).
         *   `shiplog::engine`: Orchestration logic (ingest → normalize → cluster → render).
         *   `shiplog::workstreams`: Logic for clustering events into workstreams.
-        *   `shiplog-ids`: Type-safe stable ID generation (SHA256-based).
+        *   `shiplog::ids`: Type-safe stable ID generation (SHA256-based).
         *   `shiplog::redact`: Deterministic HMAC-SHA256 redaction (internal/manager/public profiles).
         *   Coverage/time-window support now lives under `apps/shiplog/src/coverage`.
     *   **Adapters (Infrastructure):**

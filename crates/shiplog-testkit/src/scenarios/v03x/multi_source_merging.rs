@@ -14,15 +14,15 @@ use crate::bdd::builders::CoverageBuilder;
 #[cfg(feature = "merge_pipeline")]
 use crate::bdd::builders::EventBuilder;
 use chrono::{NaiveDate, TimeZone, Utc};
+use shiplog::ids::{EventId, RunId};
 use shiplog::merge::{ConflictResolution, MergeStrategy, merge_events, merge_ingest_outputs};
-use shiplog::workstreams::RepoClusterer;
-use shiplog_ids::{EventId, RunId};
-use shiplog_ports::{IngestOutput, Renderer, WorkstreamClusterer};
-use shiplog_schema::coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow};
-use shiplog_schema::event::{
+use shiplog::ports::{IngestOutput, Renderer, WorkstreamClusterer};
+use shiplog::schema::coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow};
+use shiplog::schema::event::{
     Actor, EventEnvelope, EventKind, EventPayload, PullRequestEvent, PullRequestState, RepoRef,
     RepoVisibility, SourceRef, SourceSystem,
 };
+use shiplog::workstreams::RepoClusterer;
 use std::collections::BTreeSet;
 
 fn timestamp(offset_seconds: i64) -> chrono::DateTime<chrono::Utc> {
@@ -781,10 +781,10 @@ pub fn multi_source_merge_pipeline_contract() -> Scenario {
                 let event_c = EventBuilder::new("repo/shiplog", 2, "Unique event").build();
 
                 let coverage_a = CoverageBuilder::new("alice")
-                    .completeness(shiplog_schema::coverage::Completeness::Partial)
+                    .completeness(shiplog::schema::coverage::Completeness::Partial)
                     .build();
                 let coverage_b = CoverageBuilder::new("bob")
-                    .completeness(shiplog_schema::coverage::Completeness::Complete)
+                    .completeness(shiplog::schema::coverage::Completeness::Complete)
                     .build();
 
                 let input_a = IngestOutput {

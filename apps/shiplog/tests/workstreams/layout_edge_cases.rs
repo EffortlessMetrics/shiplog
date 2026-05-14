@@ -5,13 +5,13 @@
 //! overwrite semantics.
 
 use chrono::Utc;
+use shiplog::ids::{EventId, WorkstreamId};
+use shiplog::ports::WorkstreamClusterer;
+use shiplog::schema::event::EventEnvelope;
+use shiplog::schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
 use shiplog::workstreams::{
     CURATED_FILENAME, SUGGESTED_FILENAME, WorkstreamManager, load_or_cluster, write_workstreams,
 };
-use shiplog_ids::{EventId, WorkstreamId};
-use shiplog_ports::WorkstreamClusterer;
-use shiplog_schema::event::EventEnvelope;
-use shiplog_schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
 use tempfile::tempdir;
 
 // ---------------------------------------------------------------------------

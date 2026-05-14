@@ -5,7 +5,7 @@ use libfuzzer_sys::fuzz_target;
 use shiplog::coverage::{day_windows, month_windows, week_windows};
 
 fn check_partition(
-    windows: &[shiplog_schema::coverage::TimeWindow],
+    windows: &[shiplog::schema::coverage::TimeWindow],
     since: NaiveDate,
     until: NaiveDate,
 ) {

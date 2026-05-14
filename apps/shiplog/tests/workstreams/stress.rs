@@ -1,7 +1,7 @@
 //! Multi-threaded stress tests for concurrent workstream clustering.
 
+use shiplog::ports::WorkstreamClusterer;
 use shiplog::workstreams::RepoClusterer;
-use shiplog_ports::WorkstreamClusterer;
 
 #[test]
 fn concurrent_clustering_determinism() {

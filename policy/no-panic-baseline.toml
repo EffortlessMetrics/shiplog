@@ -3178,7 +3178,7 @@ snippet = 'let parsed: RedactionProfile = "manager".parse().expect("infallible p
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/benches/serialization.rs"
+path = "apps/shiplog/benches/serialization.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3186,7 +3186,7 @@ snippet = ".map(|e| serde_json::to_string(e).unwrap())"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/benches/serialization.rs"
+path = "apps/shiplog/benches/serialization.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3194,7 +3194,7 @@ snippet = ".map(|line| serde_json::from_str(line).unwrap())"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/benches/serialization.rs"
+path = "apps/shiplog/benches/serialization.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3202,7 +3202,7 @@ snippet = "b.iter(|| serde_json::from_str::<CoverageManifest>(black_box(&json)).
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/benches/serialization.rs"
+path = "apps/shiplog/benches/serialization.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3210,7 +3210,7 @@ snippet = "b.iter(|| serde_json::from_str::<Vec<EventEnvelope>>(black_box(data))
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/benches/serialization.rs"
+path = "apps/shiplog/benches/serialization.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3218,7 +3218,7 @@ snippet = "b.iter(|| serde_json::from_str::<WorkstreamsFile>(black_box(&json)).u
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/benches/serialization.rs"
+path = "apps/shiplog/benches/serialization.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3226,7 +3226,7 @@ snippet = "b.iter(|| serde_json::to_string(black_box(&file)).unwrap());"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/benches/serialization.rs"
+path = "apps/shiplog/benches/serialization.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3234,7 +3234,7 @@ snippet = "b.iter(|| serde_json::to_string(black_box(&manifest)).unwrap());"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/benches/serialization.rs"
+path = "apps/shiplog/benches/serialization.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3242,7 +3242,7 @@ snippet = "b.iter(|| serde_json::to_string(black_box(evts)).unwrap());"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/benches/serialization.rs"
+path = "apps/shiplog/benches/serialization.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3250,7 +3250,7 @@ snippet = "let json = serde_json::to_string(&events).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/benches/serialization.rs"
+path = "apps/shiplog/benches/serialization.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3258,7 +3258,7 @@ snippet = "let json = serde_json::to_string(&file).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/benches/serialization.rs"
+path = "apps/shiplog/benches/serialization.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3266,7 +3266,7 @@ snippet = "let json = serde_json::to_string(&manifest).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/benches/serialization.rs"
+path = "apps/shiplog/benches/serialization.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3274,7 +3274,7 @@ snippet = "let ts = Utc.with_ymd_and_hms(2025, 1, 15, 12, 0, 0).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/benches/serialization.rs"
+path = "apps/shiplog/benches/serialization.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3282,7 +3282,7 @@ snippet = "let ts = Utc.with_ymd_and_hms(2025, 2, 10, 9, 30, 0).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/benches/serialization.rs"
+path = "apps/shiplog/benches/serialization.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3290,7 +3290,7 @@ snippet = "since: NaiveDate::from_ymd_opt(2025, 1, 1 + i).unwrap(),"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/benches/serialization.rs"
+path = "apps/shiplog/benches/serialization.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3298,7 +3298,7 @@ snippet = "since: NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),"
 count = 2
 
 [[entry]]
-path = "crates/shiplog-schema/benches/serialization.rs"
+path = "apps/shiplog/benches/serialization.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3306,7 +3306,7 @@ snippet = "until: NaiveDate::from_ymd_opt(2025, 1, 2 + i).unwrap(),"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/benches/serialization.rs"
+path = "apps/shiplog/benches/serialization.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3314,7 +3314,7 @@ snippet = "until: NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/benches/serialization.rs"
+path = "apps/shiplog/benches/serialization.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3322,7 +3322,7 @@ snippet = "until: NaiveDate::from_ymd_opt(2025, 4, 1).unwrap(),"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/src/bundle.rs"
+path = "apps/shiplog/src/schema/bundle.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3330,7 +3330,7 @@ snippet = "let back: BundleManifest = serde_json::from_str(&json).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/src/bundle.rs"
+path = "apps/shiplog/src/schema/bundle.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3338,7 +3338,7 @@ snippet = "let back: FileChecksum = serde_json::from_str(&json).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/src/bundle.rs"
+path = "apps/shiplog/src/schema/bundle.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3346,7 +3346,7 @@ snippet = "let json = serde_json::to_string(&fc).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/src/bundle.rs"
+path = "apps/shiplog/src/schema/bundle.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3354,7 +3354,7 @@ snippet = "let json = serde_json::to_string(&manifest).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/src/bundle.rs"
+path = "apps/shiplog/src/schema/bundle.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3362,7 +3362,7 @@ snippet = "let manifest: BundleManifest = serde_json::from_str(json).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/src/bundle.rs"
+path = "apps/shiplog/src/schema/bundle.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3370,7 +3370,7 @@ snippet = "let parsed: BundleProfile = s.parse().unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/src/coverage.rs"
+path = "apps/shiplog/src/schema/coverage.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3378,7 +3378,7 @@ snippet = "let after = w.until.succ_opt().unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/src/coverage.rs"
+path = "apps/shiplog/src/schema/coverage.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3386,7 +3386,7 @@ snippet = "let back: Completeness = serde_json::from_str(&json).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/src/coverage.rs"
+path = "apps/shiplog/src/schema/coverage.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3394,7 +3394,7 @@ snippet = "let back: CoverageManifest = serde_json::from_str(&json).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/src/coverage.rs"
+path = "apps/shiplog/src/schema/coverage.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3402,7 +3402,7 @@ snippet = "let back: CoverageSlice = serde_json::from_str(&json).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/src/coverage.rs"
+path = "apps/shiplog/src/schema/coverage.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3410,7 +3410,7 @@ snippet = "let before = w.since.pred_opt().unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/src/coverage.rs"
+path = "apps/shiplog/src/schema/coverage.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3418,7 +3418,7 @@ snippet = "let day_before = w.until.pred_opt().unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/src/coverage.rs"
+path = "apps/shiplog/src/schema/coverage.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3426,7 +3426,7 @@ snippet = "let json = serde_json::to_string(&manifest).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/src/coverage.rs"
+path = "apps/shiplog/src/schema/coverage.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3434,7 +3434,7 @@ snippet = "let json = serde_json::to_string(&slice).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/src/coverage.rs"
+path = "apps/shiplog/src/schema/coverage.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3442,7 +3442,7 @@ snippet = "let json = serde_json::to_string(&variant).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/src/coverage.rs"
+path = "apps/shiplog/src/schema/coverage.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3450,7 +3450,7 @@ snippet = "since: NaiveDate::from_ymd_opt(2025, 1, 10).unwrap(),"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/src/coverage.rs"
+path = "apps/shiplog/src/schema/coverage.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3458,7 +3458,7 @@ snippet = "until: NaiveDate::from_ymd_opt(2025, 1, 20).unwrap(),"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/src/event.rs"
+path = "apps/shiplog/src/schema/event.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3466,7 +3466,7 @@ snippet = "date: ManualDate::Single(NaiveDate::from_ymd_opt(2025, 1, 1).unwrap()
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/src/event.rs"
+path = "apps/shiplog/src/schema/event.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3474,7 +3474,7 @@ snippet = "date: ManualDate::Single(NaiveDate::from_ymd_opt(2025, 5, 1).unwrap()
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/src/event.rs"
+path = "apps/shiplog/src/schema/event.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3482,7 +3482,7 @@ snippet = "end: NaiveDate::from_ymd_opt(2025, 3, 31).unwrap(),"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/src/event.rs"
+path = "apps/shiplog/src/schema/event.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3490,7 +3490,7 @@ snippet = "ended_at: Some(NaiveDate::from_ymd_opt(2025, 3, 16).unwrap()),"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/src/event.rs"
+path = "apps/shiplog/src/schema/event.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3498,7 +3498,7 @@ snippet = "let back: Actor = serde_json::from_str(&json).unwrap();"
 count = 2
 
 [[entry]]
-path = "crates/shiplog-schema/src/event.rs"
+path = "apps/shiplog/src/schema/event.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3506,7 +3506,7 @@ snippet = "let back: EventEnvelope = serde_json::from_str(&json).unwrap();"
 count = 3
 
 [[entry]]
-path = "crates/shiplog-schema/src/event.rs"
+path = "apps/shiplog/src/schema/event.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3514,7 +3514,7 @@ snippet = "let back: Link = serde_json::from_str(&json).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/src/event.rs"
+path = "apps/shiplog/src/schema/event.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3522,7 +3522,7 @@ snippet = "let back: ManualEventEntry = serde_json::from_str(&json).unwrap();"
 count = 2
 
 [[entry]]
-path = "crates/shiplog-schema/src/event.rs"
+path = "apps/shiplog/src/schema/event.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3530,7 +3530,7 @@ snippet = "let back: ManualEventsFile = serde_json::from_str(&json).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/src/event.rs"
+path = "apps/shiplog/src/schema/event.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3538,7 +3538,7 @@ snippet = "let back: RepoRef = serde_json::from_str(&json).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/src/event.rs"
+path = "apps/shiplog/src/schema/event.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3546,7 +3546,7 @@ snippet = "let back: SourceRef = serde_json::from_str(&json).unwrap();"
 count = 2
 
 [[entry]]
-path = "crates/shiplog-schema/src/event.rs"
+path = "apps/shiplog/src/schema/event.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3554,7 +3554,7 @@ snippet = "let back: SourceSystem = serde_json::from_str(&json).unwrap();"
 count = 2
 
 [[entry]]
-path = "crates/shiplog-schema/src/event.rs"
+path = "apps/shiplog/src/schema/event.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3562,7 +3562,7 @@ snippet = "let back: SourceSystem = serde_json::from_str(json).unwrap();"
 count = 2
 
 [[entry]]
-path = "crates/shiplog-schema/src/event.rs"
+path = "apps/shiplog/src/schema/event.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3570,7 +3570,7 @@ snippet = 'let back: SourceSystem = serde_json::from_str(r#""github""#).unwrap()
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/src/event.rs"
+path = "apps/shiplog/src/schema/event.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3578,7 +3578,7 @@ snippet = 'let back: SourceSystem = serde_json::from_str(r#"{"Other":"github"}"#
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/src/event.rs"
+path = "apps/shiplog/src/schema/event.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3586,7 +3586,7 @@ snippet = 'let back: SourceSystem = serde_json::from_str(r#"{"Other":"gitlab"}"#
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/src/event.rs"
+path = "apps/shiplog/src/schema/event.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3594,7 +3594,7 @@ snippet = "let json = serde_json::to_string(&actor).unwrap();"
 count = 2
 
 [[entry]]
-path = "crates/shiplog-schema/src/event.rs"
+path = "apps/shiplog/src/schema/event.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3602,7 +3602,7 @@ snippet = "let json = serde_json::to_string(&entry).unwrap();"
 count = 2
 
 [[entry]]
-path = "crates/shiplog-schema/src/event.rs"
+path = "apps/shiplog/src/schema/event.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3610,7 +3610,7 @@ snippet = "let json = serde_json::to_string(&event).unwrap();"
 count = 3
 
 [[entry]]
-path = "crates/shiplog-schema/src/event.rs"
+path = "apps/shiplog/src/schema/event.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3618,7 +3618,7 @@ snippet = "let json = serde_json::to_string(&file).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/src/event.rs"
+path = "apps/shiplog/src/schema/event.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3626,7 +3626,7 @@ snippet = "let json = serde_json::to_string(&link).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/src/event.rs"
+path = "apps/shiplog/src/schema/event.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3634,7 +3634,7 @@ snippet = "let json = serde_json::to_string(&rr).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/src/event.rs"
+path = "apps/shiplog/src/schema/event.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3642,7 +3642,7 @@ snippet = "let json = serde_json::to_string(&sr).unwrap();"
 count = 2
 
 [[entry]]
-path = "crates/shiplog-schema/src/event.rs"
+path = "apps/shiplog/src/schema/event.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3650,7 +3650,7 @@ snippet = "let json = serde_json::to_string(&variant).unwrap();"
 count = 2
 
 [[entry]]
-path = "crates/shiplog-schema/src/event.rs"
+path = "apps/shiplog/src/schema/event.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3658,7 +3658,7 @@ snippet = "let ts = Utc.with_ymd_and_hms(2025, 3, 15, 10, 0, 0).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/src/event.rs"
+path = "apps/shiplog/src/schema/event.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3666,7 +3666,7 @@ snippet = "let ts = Utc.with_ymd_and_hms(2025, 6, 1, 0, 0, 0).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/src/event.rs"
+path = "apps/shiplog/src/schema/event.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3674,7 +3674,7 @@ snippet = "let ts = Utc.with_ymd_and_hms(2025, 6, 1, 12, 0, 0).unwrap();"
 count = 2
 
 [[entry]]
-path = "crates/shiplog-schema/src/event.rs"
+path = "apps/shiplog/src/schema/event.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3682,7 +3682,7 @@ snippet = "serde_json::from_str(&serde_json::to_string(&variant).unwrap()).unwra
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/src/event.rs"
+path = "apps/shiplog/src/schema/event.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3690,7 +3690,7 @@ snippet = "start: NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/src/event.rs"
+path = "apps/shiplog/src/schema/event.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3698,7 +3698,7 @@ snippet = "started_at: Some(NaiveDate::from_ymd_opt(2025, 3, 15).unwrap()),"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/src/workstream.rs"
+path = "apps/shiplog/src/schema/workstream.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3706,7 +3706,7 @@ snippet = "let back: Workstream = serde_json::from_str(&json).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/src/workstream.rs"
+path = "apps/shiplog/src/schema/workstream.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3714,7 +3714,7 @@ snippet = "let back: WorkstreamStats = serde_json::from_str(&json).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/src/workstream.rs"
+path = "apps/shiplog/src/schema/workstream.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3722,7 +3722,7 @@ snippet = "let back: WorkstreamsFile = serde_json::from_str(&json).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/src/workstream.rs"
+path = "apps/shiplog/src/schema/workstream.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3730,7 +3730,7 @@ snippet = "let json = serde_json::to_string(&file).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/src/workstream.rs"
+path = "apps/shiplog/src/schema/workstream.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3738,7 +3738,7 @@ snippet = "let json = serde_json::to_string(&stats).unwrap();"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-schema/src/workstream.rs"
+path = "apps/shiplog/src/schema/workstream.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"

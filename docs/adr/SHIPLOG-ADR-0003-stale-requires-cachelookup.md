@@ -85,7 +85,7 @@ decide whether evidence is safe to trust and share.
 
 - [`SHIPLOG-SPEC-0002-intake-report-v1`](../specs/SHIPLOG-SPEC-0002-intake-report-v1.md)
   records `stale` as reserved report vocabulary.
-- [`SourceFreshness`](../../crates/shiplog-schema/src/freshness.rs) documents
+- [`SourceFreshness`](../../apps/shiplog/src/schema/freshness.rs) documents
   that `Stale` is reserved until `CacheLookup` exists.
 - [`ApiCache::get`](../../apps/shiplog/src/cache/sqlite.rs) currently returns
   only unexpired hits.

@@ -32,10 +32,10 @@ promoting a package.
 
 | Tier | Examples | Role |
 |------|----------|------|
-| Stable contracts | `shiplog-ids`, `shiplog-schema`, `shiplog-ports` | Core types and traits, no adapter dependencies |
+| Stable contracts | `shiplog::ids`, `shiplog::schema`, `shiplog::ports` | Core types and traits, no adapter dependencies |
 | Trust surfaces | coverage, redaction, bundle, workstreams, render, cache modules | User-visible evidence, privacy, and output behavior under owner packages |
-| Adapters | `shiplog-ingest-*` | External-system or stable-import boundaries |
-| Orchestration | `shiplog-engine` | Wires adapters together via ports |
+| Adapters | `shiplog::ingest::*` | External-system or stable-import boundaries |
+| Orchestration | `shiplog::engine` | Wires adapters together via ports |
 | App | `shiplog` (in `apps/shiplog`) | CLI entrypoint (composition root) |
 | Test-only | `shiplog-testkit` | Shared fixtures and BDD helpers, not published |
 | Internal modules | cache keys/stats/expiry, redaction policy/projector, output layout, team phases, generic helpers | Module folders under owner crates unless deliberately promoted |
@@ -94,13 +94,13 @@ boundary in the PR description.
 
 ### Ingest adapter
 
-1. **Create the crate.** Add `crates/shiplog-ingest-<source>/` with a `Cargo.toml` that depends on `shiplog-ports` and `shiplog-schema`.
+1. **Create the module.** Add `apps/shiplog/src/ingest/<source>.rs` or `apps/shiplog/src/ingest/<source>/` and keep it behind the `shiplog` package unless a support-tier ADR promotes it.
 
-2. **Implement the `Ingestor` trait.** See `shiplog-ports/src/lib.rs` for the trait definition. Your adapter must return a `Vec<EventEnvelope>` and a `CoverageManifest`.
+2. **Implement the `Ingestor` trait.** See `apps/shiplog/src/ports.rs` for the trait definition. Your adapter must return a `Vec<EventEnvelope>` and a `CoverageManifest`.
 
-3. **Register in the workspace.** Add your crate to the `members` list in the root `Cargo.toml`.
+3. **Register in the ingest module.** Export the module from `apps/shiplog/src/ingest/mod.rs`.
 
-4. **Wire into the engine.** Add your adapter as a dependency of `shiplog-engine` and wire it into the orchestration logic.
+4. **Wire into the engine.** Wire it into `shiplog::engine` orchestration.
 
 5. **Wire into the CLI.** Add the new source as a subcommand under `collect` and `refresh` in `apps/shiplog`.
 
@@ -277,7 +277,7 @@ CI runs on every pull request and must pass before merging. The pipeline checks:
 | Linting | `cargo clippy --workspace --all-targets --all-features -- -D warnings` | Ubuntu + Windows |
 | Tests | `cargo test --workspace` | Ubuntu + Windows |
 | Release build | `cargo build --workspace --release` | Ubuntu + Windows |
-| Publish dry-run | `cargo publish -p shiplog-ids --dry-run` | Ubuntu |
+| Publish dry-run | `cargo publish -p shiplog --dry-run` | Ubuntu |
 
 Additional CI workflows run for property tests, BDD tests, fuzzing, mutation testing, and security audits — see `.github/workflows/` for details.
 

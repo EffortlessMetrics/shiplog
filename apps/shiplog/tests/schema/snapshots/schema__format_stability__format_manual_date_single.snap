@@ -1,0 +1,6 @@
+---
+source: apps/shiplog/tests/schema/format_stability.rs
+assertion_line: 281
+expression: d
+---
+"2025-06-01"

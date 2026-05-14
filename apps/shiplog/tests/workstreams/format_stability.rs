@@ -5,9 +5,9 @@
 //! accidental serialization changes in the workstreams YAML format.
 
 use chrono::{TimeZone, Utc};
+use shiplog::ids::{EventId, WorkstreamId};
+use shiplog::schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
 use shiplog::workstreams::write_workstreams;
-use shiplog_ids::{EventId, WorkstreamId};
-use shiplog_schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
 
 fn ts() -> chrono::DateTime<Utc> {
     Utc.with_ymd_and_hms(2025, 6, 1, 12, 0, 0).unwrap()

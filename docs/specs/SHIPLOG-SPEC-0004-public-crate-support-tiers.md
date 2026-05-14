@@ -145,9 +145,9 @@ contract those PRs must satisfy.
 | Current crate | 0.7 support tier | Publish eligibility | Planned disposition |
 | --- | --- | --- | --- |
 | `shiplog` | `public-supported` | yes | Keep as the supported CLI/package surface. |
-| `shiplog-schema` | `internal-module` | no | Keep Rust schema types internal; JSON schemas are the public machine contract. |
-| `shiplog-ids` | `internal-module` | no | Inline or make unpublished support; 0.6 published versions become `historical-0.6`. |
-| `shiplog-ports` | `internal-module` | no | Keep private until a plugin/API ADR exists; 0.6 published versions become `historical-0.6`. |
+| `shiplog-schema` | `historical-0.6` / `internal-module` | no | Collapsed into `shiplog::schema`; JSON schemas are the public machine contract. |
+| `shiplog-ids` | `historical-0.6` / `internal-module` | no | Collapsed into `shiplog::ids`; 0.6 published versions become `historical-0.6`. |
+| `shiplog-ports` | `historical-0.6` / `internal-module` | no | Collapsed into `shiplog::ports`; 0.6 published versions become `historical-0.6`. |
 | `shiplog-engine` | `historical-0.6` / `internal-module` | no | Collapsed into `shiplog::engine`; 0.6 published versions become `historical-0.6`. |
 | `shiplog-coverage` | `historical-0.6` / `internal-module` | no | Collapsed into `shiplog::coverage`; 0.6 published versions become `historical-0.6`. |
 | `shiplog-workstreams` | `historical-0.6` / `internal-module` | no | Collapsed into `shiplog::workstreams`; 0.6 published versions become `historical-0.6`. |
@@ -195,7 +195,7 @@ The support-tier model is complete when:
   non-public;
 - historical 0.6 crates are documented without routine yanking;
 - the `shiplog-schema` public-support decision is recorded before 0.7 release
-  prep;
+  prep and the package is absent from the 0.7 publish allowlist;
 - implementation PRs prove 0.6.0 first-run behavior is unchanged when crates
   are collapsed.
 

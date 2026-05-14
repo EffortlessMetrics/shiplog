@@ -54,9 +54,9 @@ apps/shiplog (CLI, clap)
        ├─ apps/shiplog/src/render + engine artifact writer
        └─ shiplog::bundle (zip + SHA256 checksums)
   Shared foundations:
-       shiplog-ports (trait definitions: Ingestor, Renderer, Redactor, WorkstreamClusterer)
-       shiplog-schema (canonical event model, EventKind, manifests)
-       shiplog-ids (deterministic SHA256-based EventId, RunId, WorkstreamId)
+       shiplog::ports (trait definitions: Ingestor, Renderer, Redactor, WorkstreamClusterer)
+       shiplog::schema (canonical event model, EventKind, manifests)
+       shiplog::ids (deterministic SHA256-based EventId, RunId, WorkstreamId)
        apps/shiplog/src/coverage (time windows, completeness tracking)
        apps/shiplog/src/cache (SQLite-backed API response cache, rusqlite bundled)
        shiplog-testkit (fixture builders for tests)
@@ -103,7 +103,7 @@ Prefix public packages with `shiplog-` only when a boundary has earned an extern
 
 | Tier | Crates | Notes |
 |------|--------|-------|
-| Stable contracts | `shiplog-ids`, `shiplog-schema`, `shiplog-ports` | No adapter deps |
+| Stable contracts | `shiplog::ids`, `shiplog::schema`, `shiplog::ports` | No adapter deps |
 | Trust surfaces | `shiplog::redact`, `shiplog::workstreams`; inlined `shiplog::coverage`, `shiplog::cache`, `shiplog::bundle`, `shiplog::render::*` | Depend on foundation |
 | Adapters | `shiplog::ingest::*` | Depend on foundation and ports |
 | Orchestration | `shiplog::engine` | Wires adapters via ports |

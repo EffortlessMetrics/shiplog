@@ -6,13 +6,13 @@ use chrono::{NaiveDate, Utc};
 use shiplog::engine::{ConflictResolution, Engine, WorkstreamSource};
 use shiplog::ingest::json::JsonIngestor;
 use shiplog::ingest::manual::{ManualIngestor, write_manual_events};
+use shiplog::ports::{IngestOutput, Ingestor, Redactor, Renderer, WorkstreamClusterer};
 use shiplog::redact::DeterministicRedactor;
 use shiplog::render::md::MarkdownRenderer;
+use shiplog::schema::bundle::BundleProfile;
+use shiplog::schema::coverage::CoverageManifest;
+use shiplog::schema::event::{ManualDate, ManualEventEntry, ManualEventType, ManualEventsFile};
 use shiplog::workstreams::RepoClusterer;
-use shiplog_ports::{IngestOutput, Ingestor, Redactor, Renderer, WorkstreamClusterer};
-use shiplog_schema::bundle::BundleProfile;
-use shiplog_schema::coverage::CoverageManifest;
-use shiplog_schema::event::{ManualDate, ManualEventEntry, ManualEventType, ManualEventsFile};
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
 
@@ -190,7 +190,7 @@ fn multi_source_json_plus_manual_combined_output() -> Result<()> {
     let has_manual = merged
         .events
         .iter()
-        .any(|e| matches!(e.payload, shiplog_schema::event::EventPayload::Manual(_)));
+        .any(|e| matches!(e.payload, shiplog::schema::event::EventPayload::Manual(_)));
     assert!(has_manual, "merged output should contain manual events");
 
     // Run the full pipeline with merged data
@@ -300,7 +300,7 @@ fn workstream_clustering_groups_events_by_repo() -> Result<()> {
 
     // Read workstreams file
     let ws_text = std::fs::read_to_string(&outputs.workstreams_yaml)?;
-    let ws: shiplog_schema::workstream::WorkstreamsFile = serde_yaml::from_str(&ws_text)?;
+    let ws: shiplog::schema::workstream::WorkstreamsFile = serde_yaml::from_str(&ws_text)?;
 
     // RepoClusterer groups by repo — fixture has 2 repos (acme/payments, acme/platform)
     assert!(

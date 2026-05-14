@@ -2,9 +2,9 @@ use chrono::Utc;
 use shiplog::cluster_llm::{
     FailingLlmBackend, LlmBackend, LlmClusterer, LlmConfig, LlmWithFallback, MockLlmBackend,
 };
-use shiplog_ids::EventId;
-use shiplog_ports::WorkstreamClusterer;
-use shiplog_schema::event::*;
+use shiplog::ids::EventId;
+use shiplog::ports::WorkstreamClusterer;
+use shiplog::schema::event::*;
 
 // ---------------------------------------------------------------------------
 // Helpers

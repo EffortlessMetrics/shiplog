@@ -6,10 +6,10 @@
 
 use anyhow::Result;
 use chrono::Utc;
-use shiplog_ids::WorkstreamId;
-use shiplog_ports::WorkstreamClusterer;
-use shiplog_schema::event::EventEnvelope;
-use shiplog_schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
+use shiplog::ids::WorkstreamId;
+use shiplog::ports::WorkstreamClusterer;
+use shiplog::schema::event::EventEnvelope;
+use shiplog::schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
 use std::collections::BTreeMap;
 
 use super::receipt_policy::{should_include_cluster_receipt, truncate_cluster_receipts};
@@ -26,7 +26,7 @@ use super::receipt_policy::{should_include_cluster_receipt, truncate_cluster_rec
 ///
 /// ```
 /// use shiplog::workstreams::RepoClusterer;
-/// use shiplog_ports::WorkstreamClusterer;
+/// use shiplog::ports::WorkstreamClusterer;
 ///
 /// let ws = RepoClusterer.cluster(&[]).unwrap();
 /// assert!(ws.workstreams.is_empty());
@@ -85,8 +85,8 @@ mod tests {
         WORKSTREAM_RECEIPT_LIMIT_TOTAL,
     };
     use chrono::Utc;
-    use shiplog_ids::EventId;
-    use shiplog_schema::event::*;
+    use shiplog::ids::EventId;
+    use shiplog::schema::event::*;
 
     fn make_event(repo_name: &str, event_id: &str, number: u64, kind: EventKind) -> EventEnvelope {
         EventEnvelope {

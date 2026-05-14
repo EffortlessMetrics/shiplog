@@ -4,12 +4,12 @@
 //! unicode repos, sorting stability, and custom clusterer strategies.
 
 use chrono::Utc;
+use shiplog::ids::EventId;
+use shiplog::ports::WorkstreamClusterer;
+use shiplog::schema::event::*;
+use shiplog::schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
 use shiplog::workstreams::RepoClusterer;
 use shiplog::workstreams::WORKSTREAM_RECEIPT_LIMIT_TOTAL;
-use shiplog_ids::EventId;
-use shiplog_ports::WorkstreamClusterer;
-use shiplog_schema::event::*;
-use shiplog_schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
 
 fn event(repo: &str, id: &str, number: u64, kind: EventKind) -> EventEnvelope {
     EventEnvelope {
@@ -228,7 +228,7 @@ struct SingleBucketClusterer;
 impl WorkstreamClusterer for SingleBucketClusterer {
     fn cluster(&self, events: &[EventEnvelope]) -> anyhow::Result<WorkstreamsFile> {
         let mut ws = Workstream {
-            id: shiplog_ids::WorkstreamId::from_parts(["all"]),
+            id: shiplog::ids::WorkstreamId::from_parts(["all"]),
             title: "All Work".into(),
             summary: Some("Everything in one bucket".into()),
             tags: vec!["custom".into()],

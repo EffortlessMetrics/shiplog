@@ -4,8 +4,8 @@
 //! (privacy guarantees across profiles).
 
 use proptest::prelude::*;
-use shiplog_ports::Redactor;
-use shiplog_schema::event::EventPayload;
+use shiplog::ports::Redactor;
+use shiplog::schema::event::EventPayload;
 use shiplog_testkit::proptest::*;
 
 // ============================================================================

@@ -5,10 +5,10 @@
 
 use chrono::{Datelike, NaiveDate, TimeZone, Utc};
 use proptest::prelude::*;
-use shiplog_ids::{EventId, RunId, WorkstreamId};
-use shiplog_schema::coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow};
-use shiplog_schema::event::*;
-use shiplog_schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
+use shiplog::ids::{EventId, RunId, WorkstreamId};
+use shiplog::schema::coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow};
+use shiplog::schema::event::*;
+use shiplog::schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
 
 // ============================================================================
 // Base Strategies

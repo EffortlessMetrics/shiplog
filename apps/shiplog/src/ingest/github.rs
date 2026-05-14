@@ -10,14 +10,14 @@ use chrono::{DateTime, NaiveDate, Utc};
 use reqwest::blocking::Client;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
-use shiplog_ids::{EventId, RunId};
-use shiplog_ports::{IngestOutput, Ingestor};
-use shiplog_schema::coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow};
-use shiplog_schema::event::{
+use shiplog::ids::{EventId, RunId};
+use shiplog::ports::{IngestOutput, Ingestor};
+use shiplog::schema::coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow};
+use shiplog::schema::event::{
     Actor, EventEnvelope, EventKind, EventPayload, Link, PullRequestEvent, PullRequestState,
     RepoRef, RepoVisibility, ReviewEvent, SourceRef, SourceSystem,
 };
-use shiplog_schema::freshness::{FreshnessStatus, SourceFreshness};
+use shiplog::schema::freshness::{FreshnessStatus, SourceFreshness};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::thread::sleep;

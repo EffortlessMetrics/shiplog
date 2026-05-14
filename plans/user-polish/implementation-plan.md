@@ -320,7 +320,7 @@ Expected files:
 - `crates/shiplog-cache/src/`
 - `crates/shiplog-cache/tests/`
 - affected ingest adapter crates.
-- `crates/shiplog-schema/src/freshness.rs`, only if docs or counters change.
+- `apps/shiplog/src/schema/freshness.rs`, only if docs or counters change.
 - focused adapter tests.
 
 Behavior change:

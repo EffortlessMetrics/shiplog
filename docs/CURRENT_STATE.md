@@ -210,6 +210,6 @@ The next post-v0.4 work should deepen real-world usage rather than add broad new
 surface area: provider edge cases that affect first-run intake, stricter public
 packet safety checks where redaction rules make them testable, and follow-on
 release/distribution polish. Documented mutation baselines now include
-`shiplog-coverage`, `shiplog-ids`, `shiplog-schema`, `shiplog::redact`,
-`shiplog::bundle`, and a `shiplog-ports` no-target scan, recorded in
+`shiplog::coverage`, `shiplog::ids`, `shiplog::schema`, `shiplog::redact`,
+`shiplog::bundle`, and a `shiplog::ports` no-target scan, recorded in
 [`docs/ci/mutation.md`](ci/mutation.md).

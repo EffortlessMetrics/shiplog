@@ -1,9 +1,8 @@
 use chrono::{NaiveDate, Utc};
+use shiplog::ids::{EventId, RunId, WorkstreamId};
+use shiplog::ports::Renderer;
 use shiplog::render::md::MarkdownRenderer;
-use shiplog::workstreams::WORKSTREAM_RECEIPT_RENDER_LIMIT;
-use shiplog_ids::{EventId, RunId, WorkstreamId};
-use shiplog_ports::Renderer;
-use shiplog_schema::{
+use shiplog::schema::{
     coverage::{CoverageManifest, TimeWindow},
     event::{
         Actor, EventEnvelope, EventKind, EventPayload, PullRequestEvent, PullRequestState, RepoRef,
@@ -11,6 +10,7 @@ use shiplog_schema::{
     },
     workstream::{Workstream, WorkstreamStats, WorkstreamsFile},
 };
+use shiplog::workstreams::WORKSTREAM_RECEIPT_RENDER_LIMIT;
 
 fn pull_request_event(id: &str) -> EventEnvelope {
     EventEnvelope {
@@ -24,7 +24,7 @@ fn pull_request_event(id: &str) -> EventEnvelope {
         repo: RepoRef {
             full_name: "repo/policy".into(),
             html_url: Some("https://example.com/repo/policy".into()),
-            visibility: shiplog_schema::event::RepoVisibility::Unknown,
+            visibility: shiplog::schema::event::RepoVisibility::Unknown,
         },
         payload: EventPayload::PullRequest(PullRequestEvent {
             number: 101,
@@ -61,7 +61,7 @@ fn coverage_manifest() -> CoverageManifest {
         sources: vec!["github".into()],
         slices: vec![],
         warnings: vec![],
-        completeness: shiplog_schema::coverage::Completeness::Complete,
+        completeness: shiplog::schema::coverage::Completeness::Complete,
     }
 }
 

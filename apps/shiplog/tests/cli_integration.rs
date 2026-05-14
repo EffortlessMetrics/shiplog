@@ -4,14 +4,14 @@ use assert_cmd::Command;
 use chrono::{Duration, NaiveDate, TimeZone, Utc};
 use predicates::prelude::*;
 use shiplog::cache::ApiCache;
-use shiplog_ids::{EventId, RunId, WorkstreamId};
-use shiplog_schema::coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow};
-use shiplog_schema::event::{
+use shiplog::ids::{EventId, RunId, WorkstreamId};
+use shiplog::schema::coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow};
+use shiplog::schema::event::{
     Actor, EventEnvelope, EventKind, EventPayload, Link, ManualDate, ManualEvent, ManualEventType,
     ManualEventsFile, PullRequestEvent, PullRequestState, RepoRef, RepoVisibility, ReviewEvent,
     SourceRef, SourceSystem,
 };
-use shiplog_schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
+use shiplog::schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
 use std::path::{Path, PathBuf};
 use std::process::Command as StdCommand;
 use tempfile::TempDir;

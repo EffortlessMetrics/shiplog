@@ -7,14 +7,14 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use shiplog_ports::Renderer;
+use shiplog::ports::Renderer;
 use shiplog::render::md::MarkdownRenderer;
-use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
-use shiplog_schema::event::{
+use shiplog::schema::coverage::{Completeness, CoverageManifest, TimeWindow};
+use shiplog::schema::event::{
     Actor, EventEnvelope, EventKind, EventPayload, Link, PullRequestEvent, PullRequestState,
     RepoRef, RepoVisibility, ReviewEvent, SourceRef, SourceSystem,
 };
-use shiplog_schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
+use shiplog::schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
 
 fuzz_target!(|data: &[u8]| {
     if data.len() < 4 {
@@ -50,7 +50,7 @@ fuzz_target!(|data: &[u8]| {
 
         let event = match kind_sel {
             0 => EventEnvelope {
-                id: shiplog_ids::EventId::from_parts(["fuzz", "pr", &i.to_string()]),
+                id: shiplog::ids::EventId::from_parts(["fuzz", "pr", &i.to_string()]),
                 kind: EventKind::PullRequest,
                 occurred_at: ts,
                 actor: Actor {
@@ -86,7 +86,7 @@ fuzz_target!(|data: &[u8]| {
                 },
             },
             1 => EventEnvelope {
-                id: shiplog_ids::EventId::from_parts(["fuzz", "review", &i.to_string()]),
+                id: shiplog::ids::EventId::from_parts(["fuzz", "review", &i.to_string()]),
                 kind: EventKind::Review,
                 occurred_at: ts,
                 actor: Actor {
@@ -114,7 +114,7 @@ fuzz_target!(|data: &[u8]| {
                 },
             },
             _ => EventEnvelope {
-                id: shiplog_ids::EventId::from_parts(["fuzz", "manual", &i.to_string()]),
+                id: shiplog::ids::EventId::from_parts(["fuzz", "manual", &i.to_string()]),
                 kind: EventKind::Manual,
                 occurred_at: ts,
                 actor: Actor {
@@ -126,8 +126,8 @@ fuzz_target!(|data: &[u8]| {
                     html_url: None,
                     visibility: RepoVisibility::Private,
                 },
-                payload: EventPayload::Manual(shiplog_schema::event::ManualEvent {
-                    event_type: shiplog_schema::event::ManualEventType::Other,
+                payload: EventPayload::Manual(shiplog::schema::event::ManualEvent {
+                    event_type: shiplog::schema::event::ManualEventType::Other,
                     title,
                     description: None,
                     started_at: None,
@@ -153,10 +153,10 @@ fuzz_target!(|data: &[u8]| {
         let end = ((event_count + w + 1) * chunk_size).min(rest.len());
         let title = String::from_utf8_lossy(rest.get(start..end).unwrap_or_default()).to_string();
 
-        let event_ids: Vec<shiplog_ids::EventId> =
+        let event_ids: Vec<shiplog::ids::EventId> =
             events.iter().take(w + 1).map(|e| e.id.clone()).collect();
         workstreams.push(Workstream {
-            id: shiplog_ids::WorkstreamId::from_parts(["fuzz", "ws", &w.to_string()]),
+            id: shiplog::ids::WorkstreamId::from_parts(["fuzz", "ws", &w.to_string()]),
             title,
             summary: Some("fuzz summary".into()),
             tags: vec![],
@@ -192,7 +192,7 @@ fuzz_target!(|data: &[u8]| {
     };
 
     let coverage = CoverageManifest {
-        run_id: shiplog_ids::RunId("fuzz-run".into()),
+        run_id: shiplog::ids::RunId("fuzz-run".into()),
         generated_at: ts,
         user: "fuzzer".into(),
         window: TimeWindow { since, until },

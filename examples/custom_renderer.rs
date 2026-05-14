@@ -1,4 +1,4 @@
-//! Show how to implement a custom renderer using the `shiplog_ports::Renderer` trait.
+//! Show how to implement a custom renderer using the `shiplog::ports::Renderer` trait.
 //!
 //! Shiplog's architecture is ports-and-adapters: you can swap in your own
 //! renderer without touching the engine or the schema crates.
@@ -7,10 +7,10 @@
 //!   cargo run -p shiplog --example custom_renderer
 
 use anyhow::{Context, Result};
-use shiplog_ports::{Renderer, WorkstreamClusterer};
-use shiplog_schema::coverage::CoverageManifest;
-use shiplog_schema::event::{EventEnvelope, EventKind, EventPayload};
-use shiplog_schema::workstream::WorkstreamsFile;
+use shiplog::ports::{Renderer, WorkstreamClusterer};
+use shiplog::schema::coverage::CoverageManifest;
+use shiplog::schema::event::{EventEnvelope, EventKind, EventPayload};
+use shiplog::schema::workstream::WorkstreamsFile;
 
 // ---------------------------------------------------------------------------
 // Custom renderer implementation

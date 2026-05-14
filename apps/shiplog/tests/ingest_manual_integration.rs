@@ -4,7 +4,7 @@ use chrono::NaiveDate;
 use shiplog::ingest::manual::{
     ManualIngestor, create_empty_file, create_entry, write_manual_events,
 };
-use shiplog_ports::Ingestor;
+use shiplog::ports::Ingestor;
 use tempfile::tempdir;
 
 #[test]
@@ -14,14 +14,14 @@ fn ingest_manual_events_uses_manual_event_contract() {
     let mut file = create_empty_file();
     file.events.push(create_entry(
         "inside",
-        shiplog_schema::event::ManualEventType::Note,
-        shiplog_schema::event::ManualDate::Single(NaiveDate::from_ymd_opt(2025, 2, 1).unwrap()),
+        shiplog::schema::event::ManualEventType::Note,
+        shiplog::schema::event::ManualDate::Single(NaiveDate::from_ymd_opt(2025, 2, 1).unwrap()),
         "In window",
     ));
     file.events.push(create_entry(
         "outside",
-        shiplog_schema::event::ManualEventType::Incident,
-        shiplog_schema::event::ManualDate::Single(NaiveDate::from_ymd_opt(2025, 5, 1).unwrap()),
+        shiplog::schema::event::ManualEventType::Incident,
+        shiplog::schema::event::ManualDate::Single(NaiveDate::from_ymd_opt(2025, 5, 1).unwrap()),
         "Out of window",
     ));
 

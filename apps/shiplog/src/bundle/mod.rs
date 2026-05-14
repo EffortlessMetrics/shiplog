@@ -6,8 +6,8 @@
 use anyhow::{Context, Result};
 use chrono::Utc;
 use sha2::{Digest, Sha256};
-use shiplog_ids::RunId;
-use shiplog_schema::bundle::{BundleManifest, BundleProfile, FileChecksum};
+use shiplog::ids::RunId;
+use shiplog::schema::bundle::{BundleManifest, BundleProfile, FileChecksum};
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
@@ -49,8 +49,8 @@ fn is_scoped_include(rel_path: &str, profile: &BundleProfile) -> bool {
 ///
 /// ```rust,no_run
 /// use shiplog::bundle::write_bundle_manifest;
-/// use shiplog_ids::RunId;
-/// use shiplog_schema::bundle::BundleProfile;
+/// use shiplog::ids::RunId;
+/// use shiplog::schema::bundle::BundleProfile;
 /// use std::path::Path;
 ///
 /// let manifest = write_bundle_manifest(
@@ -105,7 +105,7 @@ pub fn write_bundle_manifest(
 ///
 /// ```rust,no_run
 /// use shiplog::bundle::write_zip;
-/// use shiplog_schema::bundle::BundleProfile;
+/// use shiplog::schema::bundle::BundleProfile;
 /// use std::path::Path;
 ///
 /// write_zip(
@@ -262,7 +262,7 @@ mod tests {
         .unwrap();
         std::fs::write(dir.path().join(FILE_LEDGER_EVENTS_JSONL), "").unwrap();
 
-        let run_id = shiplog_ids::RunId::now("test");
+        let run_id = shiplog::ids::RunId::now("test");
         let manifest =
             write_bundle_manifest(dir.path(), &run_id, &BundleProfile::Internal).unwrap();
         let paths: Vec<&str> = manifest.files.iter().map(|f| f.path.as_str()).collect();
@@ -373,7 +373,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         make_test_dir(dir.path());
 
-        let run_id = shiplog_ids::RunId::now("test");
+        let run_id = shiplog::ids::RunId::now("test");
         let manifest = write_bundle_manifest(dir.path(), &run_id, &BundleProfile::Manager).unwrap();
 
         assert_eq!(manifest.profile, BundleProfile::Manager);

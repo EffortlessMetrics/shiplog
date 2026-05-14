@@ -4,10 +4,10 @@
 //! special character handling, long title behaviour, and multi-profile output.
 
 use chrono::{TimeZone, Utc};
+use shiplog::ids::{EventId, WorkstreamId};
+use shiplog::ports::Renderer;
 use shiplog::render::md::{MarkdownRenderer, SectionOrder};
-use shiplog_ids::{EventId, WorkstreamId};
-use shiplog_ports::Renderer;
-use shiplog_schema::{
+use shiplog::schema::{
     coverage::{Completeness, CoverageManifest, TimeWindow},
     event::*,
     workstream::{Workstream, WorkstreamStats, WorkstreamsFile},
@@ -18,7 +18,7 @@ use shiplog_testkit::{fixtures::WorkstreamFixture, pr_event};
 
 fn deterministic_coverage() -> CoverageManifest {
     CoverageManifest {
-        run_id: shiplog_ids::RunId("quality_test_run".into()),
+        run_id: shiplog::ids::RunId("quality_test_run".into()),
         generated_at: Utc.timestamp_opt(0, 0).unwrap(),
         user: "testuser".into(),
         window: TimeWindow {

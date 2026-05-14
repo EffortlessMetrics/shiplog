@@ -6,14 +6,14 @@
 use anyhow::Result;
 use chrono::{NaiveDate, TimeZone, Utc};
 use shiplog::engine::Engine;
+use shiplog::ids::RunId;
+use shiplog::ports::{IngestOutput, Redactor, Renderer, WorkstreamClusterer};
+use shiplog::schema::bundle::BundleProfile;
+use shiplog::schema::coverage::{Completeness, CoverageManifest, TimeWindow};
+use shiplog::schema::event::*;
+use shiplog::schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
 use shiplog::workstreams::RepoClusterer;
 use shiplog::workstreams::WorkstreamManager;
-use shiplog_ids::RunId;
-use shiplog_ports::{IngestOutput, Redactor, Renderer, WorkstreamClusterer};
-use shiplog_schema::bundle::BundleProfile;
-use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
-use shiplog_schema::event::*;
-use shiplog_schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
 use shiplog_testkit::TestMarkdownRenderer as MarkdownRenderer;
 
 // ---------------------------------------------------------------------------
@@ -380,7 +380,7 @@ fn import_empty_events_with_provided_workstreams_succeeds() {
         version: 1,
         generated_at: Utc::now(),
         workstreams: vec![Workstream {
-            id: shiplog_ids::WorkstreamId::from_parts(["ws", "orphan"]),
+            id: shiplog::ids::WorkstreamId::from_parts(["ws", "orphan"]),
             title: "Orphan Workstream".into(),
             summary: None,
             tags: vec![],

@@ -1,8 +1,8 @@
 use chrono::{NaiveDate, TimeZone, Utc};
+use shiplog::ids::{EventId, RunId, WorkstreamId};
+use shiplog::ports::Renderer;
 use shiplog::render::md::{AppendixMode, MarkdownRenderOptions, MarkdownRenderer};
-use shiplog_ids::{EventId, RunId, WorkstreamId};
-use shiplog_ports::Renderer;
-use shiplog_schema::{
+use shiplog::schema::{
     coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow},
     event::*,
     workstream::{Workstream, WorkstreamStats, WorkstreamsFile},

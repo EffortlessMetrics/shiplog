@@ -6,11 +6,11 @@
 use shiplog_testkit::bdd::Scenario;
 
 use chrono::Utc;
+use shiplog::ids::{EventId, WorkstreamId};
+use shiplog::ports::Redactor;
 use shiplog::redact::DeterministicRedactor;
-use shiplog_ids::{EventId, WorkstreamId};
-use shiplog_ports::Redactor;
-use shiplog_schema::event::*;
-use shiplog_schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
+use shiplog::schema::event::*;
+use shiplog::schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
 
 // ---------------------------------------------------------------------------
 // Helpers – build reusable fixtures without cluttering scenarios

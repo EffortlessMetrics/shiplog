@@ -2,10 +2,10 @@
 
 use anyhow::{Context, Result};
 use chrono::Utc;
-use shiplog_ports::{IngestOutput, Ingestor};
-use shiplog_schema::coverage::CoverageManifest;
-use shiplog_schema::event::EventEnvelope;
-use shiplog_schema::freshness::{FreshnessStatus, SourceFreshness};
+use shiplog::ports::{IngestOutput, Ingestor};
+use shiplog::schema::coverage::CoverageManifest;
+use shiplog::schema::event::EventEnvelope;
+use shiplog::schema::freshness::{FreshnessStatus, SourceFreshness};
 use std::fmt;
 use std::path::{Path, PathBuf};
 

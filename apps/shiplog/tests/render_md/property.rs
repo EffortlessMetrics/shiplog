@@ -1,7 +1,7 @@
 use proptest::prelude::*;
+use shiplog::ports::Renderer;
 use shiplog::render::md::MarkdownRenderer;
-use shiplog_ports::Renderer;
-use shiplog_schema::event::EventKind;
+use shiplog::schema::event::EventKind;
 use shiplog_testkit::proptest::{
     strategy_coverage_manifest, strategy_event_envelope, strategy_event_vec,
     strategy_workstreams_file,
@@ -9,9 +9,9 @@ use shiplog_testkit::proptest::{
 
 /// Render a packet with the given inputs, returning the output string.
 fn render(
-    events: &[shiplog_schema::event::EventEnvelope],
-    workstreams: &shiplog_schema::workstream::WorkstreamsFile,
-    coverage: &shiplog_schema::coverage::CoverageManifest,
+    events: &[shiplog::schema::event::EventEnvelope],
+    workstreams: &shiplog::schema::workstream::WorkstreamsFile,
+    coverage: &shiplog::schema::coverage::CoverageManifest,
 ) -> String {
     MarkdownRenderer::new()
         .render_packet_markdown("proptest-user", "2024-Q1", events, workstreams, coverage)
@@ -62,7 +62,7 @@ proptest! {
         events in strategy_event_vec(15),
         coverage in strategy_coverage_manifest(),
     ) {
-        let workstreams = shiplog_schema::workstream::WorkstreamsFile {
+        let workstreams = shiplog::schema::workstream::WorkstreamsFile {
             version: 1,
             generated_at: chrono::Utc::now(),
             workstreams: vec![],
@@ -119,7 +119,7 @@ proptest! {
         events in strategy_event_vec(5),
         coverage in strategy_coverage_manifest(),
     ) {
-        let workstreams = shiplog_schema::workstream::WorkstreamsFile {
+        let workstreams = shiplog::schema::workstream::WorkstreamsFile {
             version: 1,
             generated_at: chrono::Utc::now(),
             workstreams: vec![],
@@ -141,7 +141,7 @@ proptest! {
         event in strategy_event_envelope(),
         coverage in strategy_coverage_manifest(),
     ) {
-        let workstreams = shiplog_schema::workstream::WorkstreamsFile {
+        let workstreams = shiplog::schema::workstream::WorkstreamsFile {
             version: 1,
             generated_at: chrono::Utc::now(),
             workstreams: vec![],

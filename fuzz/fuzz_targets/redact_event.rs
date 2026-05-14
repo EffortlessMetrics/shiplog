@@ -6,9 +6,9 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use shiplog_ports::Redactor;
+use shiplog::ports::Redactor;
 use shiplog::redact::DeterministicRedactor;
-use shiplog_schema::event::EventEnvelope;
+use shiplog::schema::event::EventEnvelope;
 
 fuzz_target!(|data: &[u8]| {
     if data.len() < 2 {

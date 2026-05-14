@@ -2,8 +2,8 @@
 
 use super::profile::RedactionProfile;
 use super::repo::{AliasResolver, redact_repo_public};
-use shiplog_schema::event::{EventEnvelope, EventPayload};
-use shiplog_schema::workstream::{Workstream, WorkstreamsFile};
+use shiplog::schema::event::{EventEnvelope, EventPayload};
+use shiplog::schema::workstream::{Workstream, WorkstreamsFile};
 
 /// Redact a single event for the selected profile.
 pub(crate) fn redact_event_with_aliases<A: AliasResolver + ?Sized>(
@@ -109,9 +109,9 @@ pub(crate) fn redact_workstreams_with_aliases<A: AliasResolver + ?Sized>(
 mod tests {
     use super::*;
     use chrono::{NaiveDate, Utc};
-    use shiplog_ids::{EventId, WorkstreamId};
-    use shiplog_schema::event::*;
-    use shiplog_schema::workstream::WorkstreamStats;
+    use shiplog::ids::{EventId, WorkstreamId};
+    use shiplog::schema::event::*;
+    use shiplog::schema::workstream::WorkstreamStats;
 
     fn alias(kind: &str, value: &str) -> String {
         let mut acc = 14695981039346656037u64;

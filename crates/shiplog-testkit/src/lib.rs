@@ -2,12 +2,12 @@
 
 use anyhow::Context;
 use chrono::{TimeZone, Utc};
-use shiplog_ids::EventId;
-use shiplog_ports::Renderer;
-use shiplog_schema::coverage::CoverageManifest;
-use shiplog_schema::coverage::TimeWindow;
-use shiplog_schema::event::*;
-use shiplog_schema::workstream::WorkstreamsFile;
+use shiplog::ids::EventId;
+use shiplog::ports::Renderer;
+use shiplog::schema::coverage::CoverageManifest;
+use shiplog::schema::coverage::TimeWindow;
+use shiplog::schema::event::*;
+use shiplog::schema::workstream::WorkstreamsFile;
 
 pub mod bdd;
 pub mod bdd_scenarios;
@@ -146,9 +146,9 @@ pub fn pr_event(repo: &str, number: u64, title: &str) -> EventEnvelope {
 pub mod fixtures {
     use super::*;
     use chrono::NaiveDate;
-    use shiplog_ids::WorkstreamId;
-    use shiplog_schema::coverage::{Completeness, CoverageManifest};
-    use shiplog_schema::workstream::{Workstream, WorkstreamStats};
+    use shiplog::ids::WorkstreamId;
+    use shiplog::schema::coverage::{Completeness, CoverageManifest};
+    use shiplog::schema::workstream::{Workstream, WorkstreamStats};
 
     /// Builder for creating test workstreams
     pub struct WorkstreamFixture {
@@ -230,10 +230,10 @@ pub mod fixtures {
     /// Creates a coverage manifest for testing
     pub fn test_coverage(user: &str, completeness: Completeness) -> CoverageManifest {
         CoverageManifest {
-            run_id: shiplog_ids::RunId::now("test"),
+            run_id: shiplog::ids::RunId::now("test"),
             generated_at: Utc::now(),
             user: user.to_string(),
-            window: shiplog_schema::coverage::TimeWindow {
+            window: shiplog::schema::coverage::TimeWindow {
                 since: NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
                 until: NaiveDate::from_ymd_opt(2025, 4, 1).unwrap(),
             },

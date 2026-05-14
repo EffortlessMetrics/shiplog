@@ -3,8 +3,8 @@
 //! Complements `snapshot.rs` with direct BundleManifest JSON/YAML snapshots
 //! (no filesystem dependency), minimal variants, and edge-case values.
 
-use shiplog_ids::RunId;
-use shiplog_schema::bundle::{BundleManifest, BundleProfile, FileChecksum};
+use shiplog::ids::RunId;
+use shiplog::schema::bundle::{BundleManifest, BundleProfile, FileChecksum};
 
 fn ts() -> chrono::DateTime<chrono::Utc> {
     chrono::TimeZone::with_ymd_and_hms(&chrono::Utc, 2025, 6, 1, 12, 0, 0).unwrap()

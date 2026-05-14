@@ -1,11 +1,11 @@
 //! Property tests for shiplog-workstreams.
 
 use proptest::prelude::*;
+use shiplog::ids::{EventId, WorkstreamId};
+use shiplog::schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
 use shiplog::workstreams::{
     CURATED_FILENAME, SUGGESTED_FILENAME, WorkstreamManager, write_workstreams,
 };
-use shiplog_ids::{EventId, WorkstreamId};
-use shiplog_schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
 use tempfile::tempdir;
 
 fn alpha_token() -> impl Strategy<Value = String> {

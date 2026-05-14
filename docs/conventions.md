@@ -100,7 +100,7 @@ known field sets need not.
 
 The `FreshnessStatus::Stale` lane is the model for this convention. Before
 `CacheLookup` existed, the enum in
-[`crates/shiplog-schema/src/freshness.rs`](../crates/shiplog-schema/src/freshness.rs)
+[`apps/shiplog/src/schema/freshness.rs`](../apps/shiplog/src/schema/freshness.rs)
 reserved a `Stale` variant that no adapter could emit honestly. The module doc
 and the variant doc stated explicitly *why* it was not emitted:
 
@@ -199,7 +199,7 @@ and `source_label` for display. See
 - [`contracts/schemas/intake-report.v1.schema.json`](../contracts/schemas/intake-report.v1.schema.json)
   — the canonical example of the `propertyNames` vocabulary gate
   (`$defs/non_secret_field_name`).
-- [`crates/shiplog-schema/src/freshness.rs`](../crates/shiplog-schema/src/freshness.rs)
+- [`apps/shiplog/src/schema/freshness.rs`](../apps/shiplog/src/schema/freshness.rs)
   — the canonical example of the forward-receipt convention
   (`FreshnessStatus::Stale` variant + module doc).
 - [`docs/POLICY_ALLOWLISTS.md`](POLICY_ALLOWLISTS.md) — the broader policy

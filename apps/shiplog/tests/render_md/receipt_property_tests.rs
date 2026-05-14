@@ -2,9 +2,9 @@
 
 use chrono::{TimeZone, Utc};
 use proptest::prelude::*;
+use shiplog::ids::EventId;
 use shiplog::render::md::format_receipt_markdown;
-use shiplog_ids::EventId;
-use shiplog_schema::event::*;
+use shiplog::schema::event::*;
 
 fn build_pr_event(repo: &str, title: &str, number: u64, with_link: bool) -> EventEnvelope {
     EventEnvelope {

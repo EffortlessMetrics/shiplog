@@ -2294,54 +2294,12 @@ dependencies = [
  "serde_json",
  "serde_yaml_ng",
  "sha2 0.11.0",
- "shiplog-ids",
- "shiplog-ports",
- "shiplog-schema",
  "shiplog-testkit",
  "tempfile",
+ "tokio",
  "toml",
  "url",
  "zip",
-]
-
-[[package]]
-name = "shiplog-ids"
-version = "0.6.0"
-dependencies = [
- "criterion",
- "hex",
- "insta",
- "proptest",
- "serde",
- "serde_json",
- "sha2 0.11.0",
-]
-
-[[package]]
-name = "shiplog-ports"
-version = "0.6.0"
-dependencies = [
- "anyhow",
- "chrono",
- "proptest",
- "shiplog-ids",
- "shiplog-schema",
- "tokio",
-]
-
-[[package]]
-name = "shiplog-schema"
-version = "0.6.0"
-dependencies = [
- "chrono",
- "criterion",
- "insta",
- "proptest",
- "serde",
- "serde_json",
- "serde_yaml_ng",
- "shiplog-ids",
- "shiplog-testkit",
 ]
 
 [[package]]
@@ -2355,9 +2313,6 @@ dependencies = [
  "serde_json",
  "serde_yaml_ng",
  "shiplog",
- "shiplog-ids",
- "shiplog-ports",
- "shiplog-schema",
  "tempfile",
 ]
 

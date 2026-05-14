@@ -1,6 +1,6 @@
 //! Repository redaction helpers for public projections.
 
-use shiplog_schema::event::{RepoRef, RepoVisibility};
+use shiplog::schema::event::{RepoRef, RepoVisibility};
 
 /// Alias resolver used by public repository redaction.
 pub(crate) trait AliasResolver {

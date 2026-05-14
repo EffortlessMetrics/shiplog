@@ -7,9 +7,9 @@
 //! It intentionally has one responsibility: stable workstream-file semantics.
 
 use anyhow::{Context, Result};
-use shiplog_ports::WorkstreamClusterer;
-use shiplog_schema::event::EventEnvelope;
-use shiplog_schema::workstream::WorkstreamsFile;
+use shiplog::ports::WorkstreamClusterer;
+use shiplog::schema::event::EventEnvelope;
+use shiplog::schema::workstream::WorkstreamsFile;
 use std::path::{Path, PathBuf};
 
 /// User-curated workstream file.
@@ -49,7 +49,7 @@ pub fn load_or_cluster(
 /// ```
 /// # use chrono::Utc;
 /// use shiplog::workstreams::write_workstreams;
-/// use shiplog_schema::workstream::WorkstreamsFile;
+/// use shiplog::schema::workstream::WorkstreamsFile;
 ///
 /// let ws = WorkstreamsFile { version: 1, generated_at: Utc::now(), workstreams: vec![] };
 /// let dir = tempfile::tempdir().unwrap();
@@ -123,7 +123,7 @@ impl WorkstreamManager {
     /// ```
     /// # use chrono::Utc;
     /// use shiplog::workstreams::WorkstreamManager;
-    /// use shiplog_schema::workstream::WorkstreamsFile;
+    /// use shiplog::schema::workstream::WorkstreamsFile;
     ///
     /// let ws = WorkstreamsFile { version: 1, generated_at: Utc::now(), workstreams: vec![] };
     /// let dir = tempfile::tempdir().unwrap();
@@ -218,13 +218,13 @@ fn read_workstreams(path: &Path) -> Result<WorkstreamsFile> {
 mod tests {
     use super::*;
     use chrono::Utc;
-    use shiplog_ids::{EventId, WorkstreamId};
-    use shiplog_ports::WorkstreamClusterer;
-    use shiplog_schema::event::{
+    use shiplog::ids::{EventId, WorkstreamId};
+    use shiplog::ports::WorkstreamClusterer;
+    use shiplog::schema::event::{
         Actor, EventEnvelope, EventKind, EventPayload, Link, RepoRef, RepoVisibility, ReviewEvent,
         SourceRef, SourceSystem,
     };
-    use shiplog_schema::workstream::{Workstream, WorkstreamStats};
+    use shiplog::schema::workstream::{Workstream, WorkstreamStats};
     use tempfile::tempdir;
 
     fn make_event(repo_name: &str, event_id: &str, number: u64) -> EventEnvelope {

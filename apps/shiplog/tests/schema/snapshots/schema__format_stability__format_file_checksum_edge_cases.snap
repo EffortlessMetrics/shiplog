@@ -1,0 +1,17 @@
+---
+source: apps/shiplog/tests/schema/format_stability.rs
+assertion_line: 450
+expression: checksums
+---
+[
+  {
+    "path": "",
+    "sha256": "",
+    "bytes": 0
+  },
+  {
+    "path": "deeply/nested/path/to/file with spaces.txt",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 18446744073709551615
+  }
+]

@@ -15,9 +15,9 @@ pub use prompt::{chunk_events, format_event_list, summarize_event, system_prompt
 
 use crate::workstreams::RepoClusterer;
 use anyhow::Result;
-use shiplog_ports::WorkstreamClusterer;
-use shiplog_schema::event::EventEnvelope;
-use shiplog_schema::workstream::WorkstreamsFile;
+use shiplog::ports::WorkstreamClusterer;
+use shiplog::schema::event::EventEnvelope;
+use shiplog::schema::workstream::WorkstreamsFile;
 
 /// LLM-assisted workstream clusterer.
 pub struct LlmClusterer {
@@ -112,8 +112,8 @@ impl WorkstreamClusterer for LlmWithFallback {
 mod tests {
     use super::*;
     use chrono::Utc;
-    use shiplog_ids::EventId;
-    use shiplog_schema::event::*;
+    use shiplog::ids::EventId;
+    use shiplog::schema::event::*;
 
     fn make_test_event(repo: &str, pr_num: u64, title: &str) -> EventEnvelope {
         EventEnvelope {

@@ -4,7 +4,7 @@ name: Property Smoke
 #
 # Lane: lane.property_smoke (advisory, default_pr=true). Runs proptest
 # at PROPTEST_CASES=64 with a deterministic seed against the foundation
-# surfaces (shiplog-ids, shiplog-schema, shiplog::coverage, shiplog::redact)
+# surfaces (shiplog::ids, shiplog::schema, shiplog::coverage, shiplog::redact)
 # whose invariants are most load-bearing. The broad property sweep
 # (lane.property, .github/workflows/property-testing.yml) keeps running
 # on PR at PROPTEST_CASES=256 until PR #155 routes the broad form to
@@ -12,7 +12,7 @@ name: Property Smoke
 #
 # Scope rationale (see docs/ci/test-evidence-lanes.md#bounded-vs-broad-stochastic):
 # fast stochastic tests are good PR tests; the waste comes from running
-# them too broadly. 64 cases on the foundation crates catches counter-
+# them too broadly. 64 cases on the foundation modules catches counter-
 # examples that show up at small sizes (where most do) at a fraction of
 # the broad lane's cost. The deterministic seed makes every PR run see
 # the same case sequence so flakes don't masquerade as regressions.
@@ -60,6 +60,6 @@ jobs:
 
       - name: Foundation property tests (bounded, deterministic)
         run: |
-          cargo test -p shiplog-ids -p shiplog-schema -- --test-threads=4
+          cargo test -p shiplog --test ids --test schema -- --test-threads=4
           cargo test -p shiplog --test redact -- --test-threads=4
           cargo test -p shiplog --test coverage_property -- --test-threads=4

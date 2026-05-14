@@ -2,8 +2,8 @@
 
 use chrono::{NaiveDate, Utc};
 use shiplog::ingest::manual::{ManualIngestor, create_entry, write_manual_events};
-use shiplog_ports::Ingestor;
-use shiplog_schema::event::{ManualDate, ManualEventType, ManualEventsFile};
+use shiplog::ports::Ingestor;
+use shiplog::schema::event::{ManualDate, ManualEventType, ManualEventsFile};
 use shiplog_testkit::bdd::assertions::{assert_eq, assert_present, assert_true};
 use shiplog_testkit::bdd::{Scenario, ScenarioContext};
 

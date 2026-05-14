@@ -3,8 +3,8 @@
 use chrono::Utc;
 use libfuzzer_sys::fuzz_target;
 use shiplog::cluster_llm::{chunk_events, format_event_list, summarize_event, system_prompt};
-use shiplog_ids::EventId;
-use shiplog_schema::event::*;
+use shiplog::ids::EventId;
+use shiplog::schema::event::*;
 
 fn make_event(num: u64) -> EventEnvelope {
     EventEnvelope {

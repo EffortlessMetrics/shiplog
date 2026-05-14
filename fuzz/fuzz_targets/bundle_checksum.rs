@@ -8,7 +8,7 @@
 
 use libfuzzer_sys::fuzz_target;
 use sha2::{Digest, Sha256};
-use shiplog_schema::bundle::FileChecksum;
+use shiplog::schema::bundle::FileChecksum;
 
 fuzz_target!(|data: &[u8]| {
     // Compute SHA-256 of arbitrary content (mirrors shiplog::bundle::sha256_file)

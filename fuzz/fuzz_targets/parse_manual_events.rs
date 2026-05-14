@@ -8,7 +8,7 @@
 
 use libfuzzer_sys::fuzz_target;
 use shiplog::ingest::manual::events_in_window;
-use shiplog_schema::event::ManualEventsFile;
+use shiplog::schema::event::ManualEventsFile;
 
 fuzz_target!(|data: &[u8]| {
     // Ensure the input is valid UTF-8
@@ -20,7 +20,7 @@ fuzz_target!(|data: &[u8]| {
     let Ok(file) = serde_yaml::from_str::<ManualEventsFile>(input) else {
         return;
     };
-    let window = shiplog_schema::coverage::TimeWindow {
+    let window = shiplog::schema::coverage::TimeWindow {
         since: chrono::NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
         until: chrono::NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),
     };

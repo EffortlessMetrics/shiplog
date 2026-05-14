@@ -5,13 +5,13 @@
 use chrono::{NaiveDate, TimeZone, Utc};
 use shiplog::bundle::{DIR_PROFILES, FILE_PACKET_MD, PROFILE_MANAGER, PROFILE_PUBLIC};
 use shiplog::engine::{Engine, WorkstreamSource};
+use shiplog::ids::{EventId, RunId};
+use shiplog::ports::IngestOutput;
 use shiplog::redact::DeterministicRedactor;
+use shiplog::schema::bundle::BundleProfile;
+use shiplog::schema::coverage::{Completeness, CoverageManifest, TimeWindow};
+use shiplog::schema::event::*;
 use shiplog::workstreams::RepoClusterer;
-use shiplog_ids::{EventId, RunId};
-use shiplog_ports::IngestOutput;
-use shiplog_schema::bundle::BundleProfile;
-use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
-use shiplog_schema::event::*;
 use shiplog_testkit::TestMarkdownRenderer as MarkdownRenderer;
 use shiplog_testkit::bdd::Scenario;
 use shiplog_testkit::bdd::assertions::*;
@@ -84,11 +84,11 @@ fn test_ingest(events: Vec<EventEnvelope>) -> IngestOutput {
 }
 
 fn test_engine() -> Engine<'static> {
-    let renderer: &'static dyn shiplog_ports::Renderer =
+    let renderer: &'static dyn shiplog::ports::Renderer =
         Box::leak(Box::new(MarkdownRenderer::new()));
-    let clusterer: &'static dyn shiplog_ports::WorkstreamClusterer =
+    let clusterer: &'static dyn shiplog::ports::WorkstreamClusterer =
         Box::leak(Box::new(RepoClusterer));
-    let redactor: &'static dyn shiplog_ports::Redactor =
+    let redactor: &'static dyn shiplog::ports::Redactor =
         Box::leak(Box::new(DeterministicRedactor::new(b"bdd-test-key")));
     Engine::new(renderer, clusterer, redactor)
 }

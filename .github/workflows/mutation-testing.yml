@@ -72,11 +72,11 @@ jobs:
 
             wait "${pid}"
           }
-          cargo mutants -p shiplog-schema --timeout 180 --copy-target=false || fail=1
+          echo "shiplog::schema is inlined; covered by the shiplog package mutation target."
           echo "shiplog::redact is inlined; covered by the shiplog package mutation target."
           echo "shiplog::coverage is inlined; covered by the shiplog package mutation target."
-          cargo mutants -p shiplog-ids --timeout 120 --copy-target=false || fail=1
-          cargo mutants -p shiplog-ports --timeout 120 --copy-target=false || fail=1
+          echo "shiplog::ids is inlined; covered by the shiplog package mutation target."
+          echo "shiplog::ports is inlined; covered by the shiplog package mutation target."
           echo "shiplog::bundle is inlined; covered by the shiplog package mutation target."
           exit $fail
 

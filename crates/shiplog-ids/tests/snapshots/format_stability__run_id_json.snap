@@ -1,5 +1,0 @@
----
-source: crates/shiplog-ids/tests/format_stability.rs
-expression: id
----
-"shiplog_1234567890"

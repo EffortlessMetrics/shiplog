@@ -5,13 +5,13 @@
 
 use chrono::{NaiveDate, TimeZone, Utc};
 use shiplog::engine::Engine;
+use shiplog::ids::RunId;
+use shiplog::ports::{IngestOutput, Redactor, Renderer, WorkstreamClusterer};
 use shiplog::redact::DeterministicRedactor;
+use shiplog::schema::bundle::BundleProfile;
+use shiplog::schema::coverage::{Completeness, CoverageManifest, TimeWindow};
+use shiplog::schema::event::EventEnvelope;
 use shiplog::workstreams::RepoClusterer;
-use shiplog_ids::RunId;
-use shiplog_ports::{IngestOutput, Redactor, Renderer, WorkstreamClusterer};
-use shiplog_schema::bundle::BundleProfile;
-use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
-use shiplog_schema::event::EventEnvelope;
 use shiplog_testkit::TestMarkdownRenderer as MarkdownRenderer;
 
 const RUNS: usize = 3;

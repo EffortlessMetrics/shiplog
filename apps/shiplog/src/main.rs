@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use shiplog::cache::ApiCache;
 use shiplog::engine::{ConflictResolution, Engine, WorkstreamSource};
+use shiplog::ids::{EventId, WorkstreamId};
 use shiplog::ingest::git::LocalGitIngestor;
 use shiplog::ingest::github::GithubIngestor;
 use shiplog::ingest::gitlab::{GitlabIngestor, MrState};
@@ -22,20 +23,19 @@ use shiplog::ingest::linear::{IssueStatus as LinearIssueStatus, LinearIngestor};
 use shiplog::ingest::manual::{
     ManualIngestor, create_empty_file, read_manual_events, write_manual_events,
 };
+use shiplog::ports::{IngestOutput, Ingestor, Redactor, Renderer};
 use shiplog::redact::DeterministicRedactor;
 use shiplog::render::md::{
     AppendixMode, MarkdownRenderOptions, MarkdownRenderer, SectionOrder, format_receipt_markdown,
 };
-use shiplog::workstreams::{RepoClusterer, WORKSTREAM_RECEIPT_RENDER_LIMIT};
-use shiplog_ids::{EventId, WorkstreamId};
-use shiplog_ports::{IngestOutput, Ingestor, Redactor, Renderer};
-use shiplog_schema::{
+use shiplog::schema::{
     bundle::BundleProfile,
     coverage::{CoverageManifest, TimeWindow},
     event::{EventEnvelope, EventPayload},
     event::{Link, ManualDate, ManualEventEntry, ManualEventType},
     workstream::{Workstream, WorkstreamStats, WorkstreamsFile},
 };
+use shiplog::workstreams::{RepoClusterer, WORKSTREAM_RECEIPT_RENDER_LIMIT};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fs::File;
 use std::io::Read;
@@ -7522,7 +7522,7 @@ fn run_configured_multi_pipeline(
         }
         merged.coverage.sources.sort();
         merged.coverage.sources.dedup();
-        merged.coverage.completeness = shiplog_schema::coverage::Completeness::Partial;
+        merged.coverage.completeness = shiplog::schema::coverage::Completeness::Partial;
     }
 
     let run_id = merged.coverage.run_id.to_string();
@@ -8009,7 +8009,7 @@ fn identity_client() -> Result<Client> {
 
 fn create_engine(
     redact_key: &str,
-    clusterer: Box<dyn shiplog_ports::WorkstreamClusterer>,
+    clusterer: Box<dyn shiplog::ports::WorkstreamClusterer>,
     bundle_profile: &BundleProfile,
 ) -> (Engine<'static>, &'static DeterministicRedactor) {
     create_engine_with_renderer(
@@ -8024,7 +8024,7 @@ fn create_engine(
 
 fn create_engine_with_renderer(
     redact_key: &str,
-    clusterer: Box<dyn shiplog_ports::WorkstreamClusterer>,
+    clusterer: Box<dyn shiplog::ports::WorkstreamClusterer>,
     renderer: Box<dyn Renderer>,
 ) -> (Engine<'static>, &'static DeterministicRedactor) {
     let redactor = DeterministicRedactor::new(redact_key.as_bytes());
@@ -8032,10 +8032,10 @@ fn create_engine_with_renderer(
     // We need to leak these to give them 'static lifetime
     // This is acceptable for a CLI tool that runs once
     let renderer: &'static dyn Renderer = Box::leak(renderer);
-    let clusterer: &'static dyn shiplog_ports::WorkstreamClusterer = Box::leak(clusterer);
+    let clusterer: &'static dyn shiplog::ports::WorkstreamClusterer = Box::leak(clusterer);
     let redactor_box = Box::new(redactor);
     let redactor_ref: &'static DeterministicRedactor = Box::leak(redactor_box);
-    let redactor_trait: &'static dyn shiplog_ports::Redactor = redactor_ref;
+    let redactor_trait: &'static dyn shiplog::ports::Redactor = redactor_ref;
 
     (
         Engine::new(renderer, clusterer, redactor_trait),
@@ -8121,7 +8121,7 @@ fn default_appendix_for_profile(
 }
 
 fn render_existing_run(args: RenderExistingArgs<'_>) -> Result<shiplog::engine::RunOutputs> {
-    let clusterer: Box<dyn shiplog_ports::WorkstreamClusterer> = Box::new(RepoClusterer);
+    let clusterer: Box<dyn shiplog::ports::WorkstreamClusterer> = Box::new(RepoClusterer);
     let renderer = Box::new(ModeMarkdownRenderer::new(
         args.mode,
         cli_render_options(
@@ -8190,7 +8190,7 @@ impl Renderer for ModeMarkdownRenderer {
         window_label: &str,
         events: &[EventEnvelope],
         workstreams: &WorkstreamsFile,
-        coverage: &shiplog_schema::coverage::CoverageManifest,
+        coverage: &shiplog::schema::coverage::CoverageManifest,
     ) -> Result<String> {
         match self.mode {
             RenderPacketMode::Packet => self.inner.render_packet_markdown_with_options(
@@ -8226,7 +8226,7 @@ fn build_clusterer(
     llm_api_endpoint: &str,
     llm_model: &str,
     llm_api_key: Option<String>,
-) -> Box<dyn shiplog_ports::WorkstreamClusterer> {
+) -> Box<dyn shiplog::ports::WorkstreamClusterer> {
     if llm_cluster {
         #[cfg(feature = "llm")]
         {
@@ -9766,8 +9766,8 @@ fn delete_workstream(
 }
 
 fn append_unique_event_ids(
-    target: &mut Vec<shiplog_ids::EventId>,
-    incoming: Vec<shiplog_ids::EventId>,
+    target: &mut Vec<shiplog::ids::EventId>,
+    incoming: Vec<shiplog::ids::EventId>,
 ) {
     for event_id in incoming {
         let event_key = event_id.to_string();
@@ -9834,7 +9834,7 @@ fn split_workstream(
             if matched_ids.contains(&event_key) {
                 if !moved_events
                     .iter()
-                    .any(|candidate: &shiplog_ids::EventId| candidate.to_string() == event_key)
+                    .any(|candidate: &shiplog::ids::EventId| candidate.to_string() == event_key)
                 {
                     moved_events.push(event_id.clone());
                 }
@@ -9849,7 +9849,7 @@ fn split_workstream(
             if matched_ids.contains(&event_key) {
                 if !moved_receipts
                     .iter()
-                    .any(|candidate: &shiplog_ids::EventId| candidate.to_string() == event_key)
+                    .any(|candidate: &shiplog::ids::EventId| candidate.to_string() == event_key)
                 {
                     moved_receipts.push(event_id.clone());
                 }
@@ -10240,7 +10240,7 @@ fn modified_time_label(path: &Path) -> String {
         .unwrap_or_else(|_| "unknown".to_string())
 }
 
-fn coverage_gap_count(coverage: &shiplog_schema::coverage::CoverageManifest) -> usize {
+fn coverage_gap_count(coverage: &shiplog::schema::coverage::CoverageManifest) -> usize {
     coverage.warnings.len()
         + coverage
             .slices
@@ -11300,7 +11300,7 @@ fn detect_evidence_debt(input: EvidenceDebtInput<'_>) -> Vec<EvidenceDebt> {
         );
     }
 
-    if input.coverage.completeness != shiplog_schema::coverage::Completeness::Complete {
+    if input.coverage.completeness != shiplog::schema::coverage::Completeness::Complete {
         debt.push(
             EvidenceDebt::new(
                 EvidenceDebtSeverity::Warning,

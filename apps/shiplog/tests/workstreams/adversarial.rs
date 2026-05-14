@@ -1,10 +1,10 @@
 //! Adversarial and edge-case tests for shiplog-workstreams clustering.
 
 use chrono::Utc;
+use shiplog::ids::EventId;
+use shiplog::ports::WorkstreamClusterer;
+use shiplog::schema::event::*;
 use shiplog::workstreams::RepoClusterer;
-use shiplog_ids::EventId;
-use shiplog_ports::WorkstreamClusterer;
-use shiplog_schema::event::*;
 
 fn make_pr_event(repo: &str, id_suffix: &str) -> EventEnvelope {
     EventEnvelope {
@@ -199,20 +199,20 @@ fn special_chars_sort_correctly() {
 
 #[test]
 fn empty_yaml_file_is_error() {
-    let result = serde_yaml::from_str::<shiplog_schema::workstream::WorkstreamsFile>("");
+    let result = serde_yaml::from_str::<shiplog::schema::workstream::WorkstreamsFile>("");
     assert!(result.is_err());
 }
 
 #[test]
 fn wrong_structure_yaml_is_error() {
     let yaml = "key: value\nanother: 42\n";
-    let result = serde_yaml::from_str::<shiplog_schema::workstream::WorkstreamsFile>(yaml);
+    let result = serde_yaml::from_str::<shiplog::schema::workstream::WorkstreamsFile>(yaml);
     assert!(result.is_err());
 }
 
 #[test]
 fn extra_yaml_fields_tolerated() {
-    let ws = shiplog_schema::workstream::WorkstreamsFile {
+    let ws = shiplog::schema::workstream::WorkstreamsFile {
         version: 1,
         generated_at: Utc::now(),
         workstreams: vec![],
@@ -220,7 +220,7 @@ fn extra_yaml_fields_tolerated() {
     let yaml = serde_yaml::to_string(&ws).unwrap();
     let yaml_with_extra = format!("{yaml}extra_field: surprise\n");
     let result =
-        serde_yaml::from_str::<shiplog_schema::workstream::WorkstreamsFile>(&yaml_with_extra);
+        serde_yaml::from_str::<shiplog::schema::workstream::WorkstreamsFile>(&yaml_with_extra);
     assert!(result.is_ok(), "extra YAML fields should be tolerated");
 }
 

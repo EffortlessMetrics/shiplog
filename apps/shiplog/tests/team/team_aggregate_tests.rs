@@ -1,13 +1,13 @@
 //! Integration tests for shiplog::team: aggregation, I/O, edge cases.
 
 use chrono::{NaiveDate, TimeZone, Utc};
-use shiplog::team::{TeamAggregator, TeamConfig, write_team_outputs};
-use shiplog_ids::EventId;
-use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
-use shiplog_schema::event::{
+use shiplog::ids::EventId;
+use shiplog::schema::coverage::{Completeness, CoverageManifest, TimeWindow};
+use shiplog::schema::event::{
     Actor, EventEnvelope, EventKind, EventPayload, PullRequestEvent, PullRequestState, RepoRef,
     RepoVisibility, SourceRef, SourceSystem,
 };
+use shiplog::team::{TeamAggregator, TeamConfig, write_team_outputs};
 use std::io::Write;
 use std::path::Path;
 
@@ -56,7 +56,7 @@ fn make_event(id: &str, repo: &str, when: chrono::DateTime<Utc>) -> EventEnvelop
 
 fn make_coverage(run_id: &str) -> CoverageManifest {
     CoverageManifest {
-        run_id: shiplog_ids::RunId(run_id.to_string()),
+        run_id: shiplog::ids::RunId(run_id.to_string()),
         generated_at: Utc::now(),
         user: "alice".to_string(),
         window: TimeWindow {

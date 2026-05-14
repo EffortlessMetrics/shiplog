@@ -1,9 +1,9 @@
 use super::claims::ClaimTracker;
 use super::stats;
 use super::{LlmWorkstream, MAX_RECEIPTS_PER_WORKSTREAM};
-use shiplog_ids::WorkstreamId;
-use shiplog_schema::event::EventEnvelope;
-use shiplog_schema::workstream::Workstream;
+use shiplog::ids::WorkstreamId;
+use shiplog::schema::event::EventEnvelope;
+use shiplog::schema::workstream::Workstream;
 
 pub(super) fn build_claimed_workstreams(
     llm_workstreams: Vec<LlmWorkstream>,

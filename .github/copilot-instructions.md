@@ -48,9 +48,9 @@ Fuzzing
 
 This is a module-first Rust workspace following Clean Architecture boundaries. The supported public package surface is being contracted for 0.7; implementation seams should start as owner modules unless a spec and ADR promote them. See `API_SURFACE.md` before adding or promoting package boundaries. Key components:
 
-- crates/shiplog-ids — ID types and helpers (SHA256-based deterministic IDs)
-- crates/shiplog-schema — canonical event model (the data spine)
-- crates/shiplog-ports — trait definitions (Ingestor, Renderer, Redactor, WorkstreamClusterer)
+- apps/shiplog/src/ids.rs — ID types and helpers (SHA256-based deterministic IDs)
+- apps/shiplog/src/schema — canonical event model (the data spine)
+- apps/shiplog/src/ports.rs — trait definitions (Ingestor, Renderer, Redactor, WorkstreamClusterer)
 - apps/shiplog/src/coverage — slicing and completeness reporting
 - apps/shiplog/src/workstreams — clustering + editable YAML overrides
 - crates/shiplog-redact — deterministic HMAC-SHA256 redaction (internal/manager/public profiles)
@@ -97,7 +97,7 @@ Outputs typically produced under `out/<run_id>/` and include `packet.md`, `works
 ## Key conventions and patterns (repo-specific)
 
 - Crate naming: crates use the `shiplog-*` prefix only after promotion; role is implied by the suffix (schema, ports, ingest-*, engine).
-- Ports & adapters: `crates/shiplog-ports` defines traits; adapters and renderers implement those traits while preserving dependency direction.
+- Ports & adapters: `shiplog::ports` defines traits; adapters and renderers implement those traits while preserving dependency direction.
 - Module-first boundaries: keep new SRP seams as modules under the owning package first. Promote to a crate only when the public crate test in `SHIPLOG-SPEC-0004` is satisfied and an ADR records the decision.
 - Testing conventions:
   - Unit tests live next to the crate or owner module they verify.

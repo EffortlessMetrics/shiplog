@@ -8,15 +8,15 @@
 use chrono::{NaiveDate, TimeZone, Utc};
 use shiplog::bundle::{DIR_PROFILES, FILE_PACKET_MD, PROFILE_MANAGER, PROFILE_PUBLIC};
 use shiplog::engine::{Engine, WorkstreamSource};
+use shiplog::ids::RunId;
+use shiplog::ports::{IngestOutput, Redactor, Renderer, WorkstreamClusterer};
 use shiplog::redact::DeterministicRedactor;
+use shiplog::schema::bundle::BundleProfile;
+use shiplog::schema::coverage::{Completeness, CoverageManifest, TimeWindow};
+use shiplog::schema::event::*;
+use shiplog::schema::workstream::WorkstreamsFile;
 use shiplog::workstreams::RepoClusterer;
 use shiplog::workstreams::WorkstreamManager;
-use shiplog_ids::RunId;
-use shiplog_ports::{IngestOutput, Redactor, Renderer, WorkstreamClusterer};
-use shiplog_schema::bundle::BundleProfile;
-use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
-use shiplog_schema::event::*;
-use shiplog_schema::workstream::WorkstreamsFile;
 use shiplog_testkit::TestMarkdownRenderer as MarkdownRenderer;
 use shiplog_testkit::parse_events_jsonl_fixture;
 use std::io::Write;
@@ -32,7 +32,7 @@ fn pr_event(repo: &str, number: u64, title: &str) -> EventEnvelope {
 
 fn review_event(repo: &str, pr_number: u64, pr_title: &str) -> EventEnvelope {
     EventEnvelope {
-        id: shiplog_ids::EventId::from_parts(["github", "review", repo, &pr_number.to_string()]),
+        id: shiplog::ids::EventId::from_parts(["github", "review", repo, &pr_number.to_string()]),
         kind: EventKind::Review,
         occurred_at: Utc.timestamp_opt(1_700_000_000, 0).unwrap(),
         actor: Actor {

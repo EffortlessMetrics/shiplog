@@ -5,8 +5,8 @@
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
-use shiplog_schema::coverage::CoverageManifest;
-use shiplog_schema::event::EventEnvelope;
+use shiplog::schema::coverage::CoverageManifest;
+use shiplog::schema::event::EventEnvelope;
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
@@ -203,9 +203,9 @@ fn group_events_by_repo(events: &[EventEnvelope]) -> Vec<(String, usize)> {
 mod tests {
     use super::*;
     use chrono::{NaiveDate, TimeZone, Utc};
-    use shiplog_ids::{EventId, RunId};
-    use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
-    use shiplog_schema::event::{
+    use shiplog::ids::{EventId, RunId};
+    use shiplog::schema::coverage::{Completeness, CoverageManifest, TimeWindow};
+    use shiplog::schema::event::{
         Actor, EventEnvelope, EventKind, EventPayload, PullRequestEvent, PullRequestState, RepoRef,
         RepoVisibility, SourceRef, SourceSystem,
     };

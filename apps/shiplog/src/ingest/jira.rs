@@ -9,10 +9,10 @@ use chrono::{DateTime, NaiveDate, Utc};
 use reqwest::blocking::Client;
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
-use shiplog_ids::{EventId, RunId};
-use shiplog_ports::{IngestOutput, Ingestor};
-use shiplog_schema::coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow};
-use shiplog_schema::event::{
+use shiplog::ids::{EventId, RunId};
+use shiplog::ports::{IngestOutput, Ingestor};
+use shiplog::schema::coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow};
+use shiplog::schema::event::{
     Actor, EventEnvelope, EventKind, EventPayload, Link, ManualEvent, ManualEventType, RepoRef,
     RepoVisibility, SourceRef, SourceSystem,
 };

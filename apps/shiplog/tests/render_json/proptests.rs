@@ -2,8 +2,8 @@
 
 use crate::artifact_json::{write_coverage_manifest, write_events_jsonl};
 use proptest::prelude::*;
-use shiplog_schema::coverage::CoverageManifest;
-use shiplog_schema::event::EventEnvelope;
+use shiplog::schema::coverage::CoverageManifest;
+use shiplog::schema::event::EventEnvelope;
 use shiplog_testkit::proptest::{
     strategy_coverage_manifest, strategy_event_envelope, strategy_event_vec,
 };

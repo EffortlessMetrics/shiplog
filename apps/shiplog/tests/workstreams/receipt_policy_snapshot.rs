@@ -1,9 +1,9 @@
 //! Snapshot tests for receipt policy behavior across all event kinds.
 
+use shiplog::schema::event::EventKind;
 use shiplog::workstreams::{
     max_cluster_receipts_for_kind, should_include_cluster_receipt, should_render_receipt_at,
 };
-use shiplog_schema::event::EventKind;
 
 #[test]
 fn snapshot_receipt_limits_per_kind() {

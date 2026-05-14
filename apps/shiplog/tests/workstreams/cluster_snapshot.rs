@@ -1,10 +1,10 @@
 //! Snapshot tests for workstream clustering output structure.
 
 use chrono::{TimeZone, Utc};
+use shiplog::ids::EventId;
+use shiplog::ports::WorkstreamClusterer;
+use shiplog::schema::event::*;
 use shiplog::workstreams::RepoClusterer;
-use shiplog_ids::EventId;
-use shiplog_ports::WorkstreamClusterer;
-use shiplog_schema::event::*;
 
 fn fixed_event(repo: &str, id: &str, number: u64, kind: EventKind) -> EventEnvelope {
     let ts = Utc

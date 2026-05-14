@@ -4,8 +4,8 @@
 //! and sha256 on non-existent files.
 
 use shiplog::bundle::{write_bundle_manifest, write_zip};
-use shiplog_ids::RunId;
-use shiplog_schema::bundle::BundleProfile;
+use shiplog::ids::RunId;
+use shiplog::schema::bundle::BundleProfile;
 use std::fs::File;
 
 // ---------------------------------------------------------------------------

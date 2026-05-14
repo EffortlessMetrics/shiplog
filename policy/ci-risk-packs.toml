@@ -48,11 +48,11 @@ selected_lanes = ["property"]
 
 [[risk_pack]]
 id = "schema-ids"
-description = "Stable contract crates: schema, ids, ports."
+description = "Stable contract modules: schema, ids, ports."
 paths = [
-  "crates/shiplog-schema/**",
-  "crates/shiplog-ids/**",
-  "crates/shiplog-ports/**",
+  "apps/shiplog/src/schema/**",
+  "apps/shiplog/src/ids.rs",
+  "apps/shiplog/src/ports.rs",
 ]
 labels = ["mutation"]
 selected_lanes = ["mutation_targeted", "property"]

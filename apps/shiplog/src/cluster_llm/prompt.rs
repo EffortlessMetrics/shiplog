@@ -1,4 +1,4 @@
-use shiplog_schema::event::{EventEnvelope, EventPayload};
+use shiplog::schema::event::{EventEnvelope, EventPayload};
 
 /// One-line summary of an event for LLM context.
 pub fn summarize_event(ev: &EventEnvelope) -> String {
@@ -107,8 +107,8 @@ Rules:
 mod tests {
     use super::*;
     use chrono::Utc;
-    use shiplog_ids::EventId;
-    use shiplog_schema::event::*;
+    use shiplog::ids::EventId;
+    use shiplog::schema::event::*;
 
     fn make_pr_event(num: u64, title: &str) -> EventEnvelope {
         EventEnvelope {

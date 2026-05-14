@@ -10,7 +10,7 @@
 //!
 //! ```
 //! use shiplog::workstreams::RepoClusterer;
-//! use shiplog_ports::WorkstreamClusterer;
+//! use shiplog::ports::WorkstreamClusterer;
 //!
 //! let clusterer = RepoClusterer;
 //! let ws = clusterer.cluster(&[]).unwrap();

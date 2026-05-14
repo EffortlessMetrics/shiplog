@@ -5,8 +5,8 @@
 //! each responsibility in a focused helper makes the packet contract easier to
 //! review without changing the emitted Markdown shape.
 
-use shiplog_schema::coverage::{Completeness, CoverageManifest, CoverageSlice};
-use shiplog_schema::event::EventEnvelope;
+use shiplog::schema::coverage::{Completeness, CoverageManifest, CoverageSlice};
+use shiplog::schema::event::EventEnvelope;
 
 use super::source::{
     SkippedSource, display_source_label, display_source_list, event_source_present,

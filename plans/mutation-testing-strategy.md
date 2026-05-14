@@ -62,10 +62,10 @@ Based on criticality and complexity, crates are prioritized into tiers:
 
 These crates contain core data structures and invariants that must be thoroughly tested:
 
-- **[`shiplog-schema`](../crates/shiplog-schema/)**: Canonical event model, coverage tracking, bundle metadata
+- **[`shiplog-schema`](../apps/shiplog/src/schema/)**: Canonical event model, coverage tracking, bundle metadata
 - **[`shiplog::redact`](../apps/shiplog/src/redact/)**: Redaction invariants - security-critical
 - **[`shiplog::coverage`](../apps/shiplog/src/coverage/)**: Time window utilities, completeness tracking
-- **[`shiplog-ids`](../crates/shiplog-ids/)**: ID generation - must be deterministic
+- **[`shiplog-ids`](../apps/shiplog/src/ids.rs)**: ID generation - must be deterministic
 
 **Target Mutation Score:** ≥ 90%
 
@@ -73,10 +73,10 @@ These crates contain core data structures and invariants that must be thoroughly
 
 These crates implement core pipeline functionality:
 
-- **[`shiplog-engine`](../crates/shiplog-engine/)**: Orchestration engine
+- **[`shiplog-engine`](../apps/shiplog/src/engine/)**: Orchestration engine
 - **`shiplog::bundle`** (`../apps/shiplog/src/bundle/`): Bundle writing and manifest generation
-- **[`shiplog-workstreams`](../crates/shiplog-workstreams/)**: Workstream management
-- **[`shiplog-ports`](../crates/shiplog-ports/)**: Trait definitions
+- **[`shiplog-workstreams`](../apps/shiplog/src/workstreams/)**: Workstream management
+- **[`shiplog-ports`](../apps/shiplog/src/ports.rs)**: Trait definitions
 
 **Target Mutation Score:** ≥ 80%
 
@@ -84,18 +84,18 @@ These crates implement core pipeline functionality:
 
 These crates implement adapters and rendering:
 
-- **[`shiplog-ingest-github`](../crates/shiplog-ingest-github/)**: GitHub API ingestor
-- **[`shiplog-ingest-json`](../crates/shiplog-ingest-json/)**: JSON ingestor
-- **[`shiplog-ingest-manual`](../crates/shiplog-ingest-manual/)**: Manual event ingestor
-- **[`shiplog-render-md`](../crates/shiplog-render-md/)**: Markdown renderer
-- **[`shiplog-render-json`](../crates/shiplog-render-json/)**: JSON renderer
-- **[`shiplog-cache`](../crates/shiplog-cache/)**: API cache
+- **[`shiplog-ingest-github`](../apps/shiplog/src/ingest/github.rs)**: GitHub API ingestor
+- **[`shiplog-ingest-json`](../apps/shiplog/src/ingest/json.rs)**: JSON ingestor
+- **[`shiplog-ingest-manual`](../apps/shiplog/src/ingest/manual/)**: Manual event ingestor
+- **[`shiplog-render-md`](../apps/shiplog/src/render/md/)**: Markdown renderer
+- **[`shiplog-render-json`](../apps/shiplog/src/engine/artifact_json.rs)**: JSON renderer
+- **[`shiplog-cache`](../apps/shiplog/src/cache/)**: API cache
 
 **Target Mutation Score:** ≥ 70%
 
 #### Tier 4: Supporting and Experimental (Lower Priority)
 
-- **[`shiplog-cluster-llm`](../crates/shiplog-cluster-llm/)**: LLM clustering (feature-gated)
+- **[`shiplog-cluster-llm`](../apps/shiplog/src/cluster_llm/)**: LLM clustering (feature-gated)
 - **[`shiplog-testkit`](../crates/shiplog-testkit/)**: Test utilities (not production code)
 - **[`apps/shiplog`](../apps/shiplog/)**: CLI application
 
@@ -132,8 +132,8 @@ The enhanced configuration provides per-crate settings and test filtering:
 # Mutation testing configuration for shiplog
 #
 # Run: cargo mutants --workspace
-# Run single crate: cargo mutants -p shiplog-schema
-# Run with specific test: cargo mutants -p shiplog-schema -- test_name
+# Run single crate: cargo mutants -p shiplog
+# Run with specific test: cargo mutants -p shiplog -- test_name
 
 [mutants]
 # Global timeout per mutation test run
@@ -342,7 +342,7 @@ Runs only library tests, excluding integration tests.
 **Strategy 2: Per-Crate Targeted (Medium)**
 
 ```bash
-cargo mutants -p shiplog-schema
+cargo mutants -p shiplog
 cargo mutants -p shiplog-redact
 # ... etc
 ```
@@ -353,7 +353,7 @@ Run mutation tests on specific crates during development.
 
 ```bash
 # Core invariants
-cargo mutants -p shiplog-schema -- --test "mutation_core"
+cargo mutants -p shiplog -- --test "mutation_core"
 
 # Redaction safety
 cargo mutants -p shiplog-redact -- --test "mutation_redaction"
@@ -1399,13 +1399,13 @@ mutation_testing_dashboard:
 cargo mutants --workspace
 
 # Run mutation tests on specific crate
-cargo mutants -p shiplog-schema
+cargo mutants -p shiplog
 
 # Run mutation tests with specific test
-cargo mutants -p shiplog-schema -- test_name
+cargo mutants -p shiplog -- test_name
 
 # List mutants without running tests
-cargo mutants -p shiplog-schema --list
+cargo mutants -p shiplog --list
 
 # Generate HTML report
 cargo mutants --workspace --output target/mutants

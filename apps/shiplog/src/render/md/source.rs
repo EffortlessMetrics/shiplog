@@ -3,7 +3,7 @@
 //! This module keeps source normalization separate from packet section
 //! rendering so every renderer path uses the same source matching and labels.
 
-use shiplog_schema::event::EventEnvelope;
+use shiplog::schema::event::EventEnvelope;
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct SkippedSource<'a> {

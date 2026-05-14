@@ -4,7 +4,7 @@
 //! deserialises correctly and that new fields have sensible defaults
 //! when absent.
 
-use shiplog_schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
+use shiplog::schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
 
 // ── Older YAML formats ──────────────────────────────────────────────────
 

@@ -20,9 +20,9 @@ This document defines a comprehensive fuzzing strategy for all user-controlled i
 
 ### 1. JSONL Ingestion (ledger.events.jsonl)
 
-**Location:** [`crates/shiplog-ingest-json/src/lib.rs`](../crates/shiplog-ingest-json/src/lib.rs:31)
+**Location:** [`crates/shiplog-ingest-json/src/lib.rs`](../apps/shiplog/src/ingest/json.rs:31)
 
-**Input Format:** Newline-delimited JSON (JSONL) where each line is a serialized [`EventEnvelope`](../crates/shiplog-schema/src/event.rs:162)
+**Input Format:** Newline-delimited JSON (JSONL) where each line is a serialized [`EventEnvelope`](../apps/shiplog/src/schema/event.rs:162)
 
 **Attack Surface:**
 - Serde JSON deserialization
@@ -46,9 +46,9 @@ fn read_events(path: &PathBuf) -> Result<Vec<EventEnvelope>>
 
 ### 2. YAML Workstream Edits (workstreams.yaml)
 
-**Location:** [`crates/shiplog-workstreams/src/lib.rs`](../crates/shiplog-workstreams/src/lib.rs:93)
+**Location:** [`crates/shiplog-workstreams/src/lib.rs`](../apps/shiplog/src/workstreams/mod.rs:93)
 
-**Input Format:** YAML serialization of [`WorkstreamsFile`](../crates/shiplog-schema/src/workstream.rs:37)
+**Input Format:** YAML serialization of [`WorkstreamsFile`](../apps/shiplog/src/schema/workstream.rs:37)
 
 **Attack Surface:**
 - Serde YAML deserialization
@@ -72,7 +72,7 @@ let ws: WorkstreamsFile = serde_yaml::from_str(&text)
 
 ### 3. GitHub API Responses
 
-**Location:** [`crates/shiplog-ingest-github/src/lib.rs`](../crates/shiplog-ingest-github/src/lib.rs:108)
+**Location:** [`crates/shiplog-ingest-github/src/lib.rs`](../apps/shiplog/src/ingest/github.rs:108)
 
 **Input Format:** JSON responses from GitHub API (PRs, reviews, search results)
 
@@ -123,7 +123,7 @@ struct Cli
 
 ### 5. Template Files (Jinja2 Templates)
 
-**Location:** [`crates/shiplog-render-md/src/lib.rs`](../crates/shiplog-render-md/src/lib.rs:24)
+**Location:** [`crates/shiplog-render-md/src/lib.rs`](../apps/shiplog/src/render/md/mod.rs:24)
 
 **Input Format:** Markdown with variable interpolation (future feature)
 
@@ -147,9 +147,9 @@ fn render_packet_markdown(...)
 
 ### 6. Manual Events YAML (manual_events.yaml)
 
-**Location:** [`crates/shiplog-ingest-manual/src/lib.rs`](../crates/shiplog-ingest-manual/src/lib.rs:128)
+**Location:** [`crates/shiplog-ingest-manual/src/lib.rs`](../apps/shiplog/src/ingest/manual/mod.rs:128)
 
-**Input Format:** YAML serialization of [`ManualEventsFile`](../crates/shiplog-schema/src/event.rs:366)
+**Input Format:** YAML serialization of [`ManualEventsFile`](../apps/shiplog/src/schema/event.rs:366)
 
 **Attack Surface:**
 - Serde YAML deserialization
@@ -171,9 +171,9 @@ pub fn read_manual_events(path: &Path) -> Result<ManualEventsFile>
 
 ### 7. Coverage Manifest JSON (coverage.manifest.json)
 
-**Location:** [`crates/shiplog-ingest-json/src/lib.rs`](../crates/shiplog-ingest-json/src/lib.rs:45)
+**Location:** [`crates/shiplog-ingest-json/src/lib.rs`](../apps/shiplog/src/ingest/json.rs:45)
 
-**Input Format:** JSON serialization of [`CoverageManifest`](../crates/shiplog-schema/src/coverage.rs:40)
+**Input Format:** JSON serialization of [`CoverageManifest`](../apps/shiplog/src/schema/coverage.rs:40)
 
 **Attack Surface:**
 - Serde JSON deserialization
@@ -194,9 +194,9 @@ fn read_coverage(path: &PathBuf) -> Result<CoverageManifest>
 
 ### 8. Bundle Manifest JSON
 
-**Location:** [`crates/shiplog-schema/src/bundle.rs`](../crates/shiplog-schema/src/bundle.rs:55)
+**Location:** [`apps/shiplog/src/schema/bundle.rs`](../apps/shiplog/src/schema/bundle.rs:55)
 
-**Input Format:** JSON serialization of [`BundleManifest`](../crates/shiplog-schema/src/bundle.rs:55)
+**Input Format:** JSON serialization of [`BundleManifest`](../apps/shiplog/src/schema/bundle.rs:55)
 
 **Attack Surface:**
 - Serde JSON deserialization
@@ -207,7 +207,7 @@ fn read_coverage(path: &PathBuf) -> Result<CoverageManifest>
 
 **Critical Code Paths:**
 ```rust
-// crates/shiplog-schema/src/bundle.rs:55-62
+// apps/shiplog/src/schema/bundle.rs:55-62
 pub struct BundleManifest
 ```
 
@@ -241,7 +241,7 @@ pub fn load_cache(&self, path: &Path) -> Result<()>
 
 ### Harness 1: JSONL Event Parsing
 
-**Target:** [`EventEnvelope`](../crates/shiplog-schema/src/event.rs:162) deserialization
+**Target:** [`EventEnvelope`](../apps/shiplog/src/schema/event.rs:162) deserialization
 
 **Harness Signature:**
 ```rust
@@ -257,7 +257,7 @@ fuzz_target!(|data: &[u8]| {
             }
             
             // This should never panic - return Result instead
-            let _ = serde_json::from_str::<shiplog_schema::event::EventEnvelope>(line);
+            let _ = serde_json::from_str::<shiplog::schema::event::EventEnvelope>(line);
         }
     }
 });
@@ -280,7 +280,7 @@ fuzz_target!(|data: &[u8]| {
 
 ### Harness 2: YAML Workstream Parsing
 
-**Target:** [`WorkstreamsFile`](../crates/shiplog-schema/src/workstream.rs:37) deserialization
+**Target:** [`WorkstreamsFile`](../apps/shiplog/src/schema/workstream.rs:37) deserialization
 
 **Harness Signature:**
 ```rust
@@ -289,7 +289,7 @@ use libfuzzer_sys::fuzz_target;
 
 fuzz_target!(|data: &[u8]| {
     if let Ok(text) = std::str::from_utf8(data) {
-        let _ = serde_yaml::from_str::<shiplog_schema::workstream::WorkstreamsFile>(text);
+        let _ = serde_yaml::from_str::<shiplog::schema::workstream::WorkstreamsFile>(text);
     }
 });
 ```
@@ -321,9 +321,9 @@ use libfuzzer_sys::fuzz_target;
 fuzz_target!(|data: &[u8]| {
     if let Ok(text) = std::str::from_utf8(data) {
         // Fuzz all GitHub API response types
-        let _ = serde_json::from_str::<shiplog_ingest_github::PullRequest>(text);
-        let _ = serde_json::from_str::<shiplog_ingest_github::Review>(text);
-        let _ = serde_json::from_str::<shiplog_ingest_github::SearchResponse>(text);
+        let _ = serde_json::from_str::<shiplog::ingest::github::PullRequest>(text);
+        let _ = serde_json::from_str::<shiplog::ingest::github::Review>(text);
+        let _ = serde_json::from_str::<shiplog::ingest::github::SearchResponse>(text);
     }
 });
 ```
@@ -345,7 +345,7 @@ fuzz_target!(|data: &[u8]| {
 
 ### Harness 4: Manual Events YAML Parsing
 
-**Target:** [`ManualEventsFile`](../crates/shiplog-schema/src/event.rs:366) deserialization
+**Target:** [`ManualEventsFile`](../apps/shiplog/src/schema/event.rs:366) deserialization
 
 **Harness Signature:**
 ```rust
@@ -354,7 +354,7 @@ use libfuzzer_sys::fuzz_target;
 
 fuzz_target!(|data: &[u8]| {
     if let Ok(text) = std::str::from_utf8(data) {
-        let _ = serde_yaml::from_str::<shiplog_schema::event::ManualEventsFile>(text);
+        let _ = serde_yaml::from_str::<shiplog::schema::event::ManualEventsFile>(text);
     }
 });
 ```
@@ -376,7 +376,7 @@ fuzz_target!(|data: &[u8]| {
 
 ### Harness 5: Coverage Manifest JSON Parsing
 
-**Target:** [`CoverageManifest`](../crates/shiplog-schema/src/coverage.rs:40) deserialization
+**Target:** [`CoverageManifest`](../apps/shiplog/src/schema/coverage.rs:40) deserialization
 
 **Harness Signature:**
 ```rust
@@ -385,7 +385,7 @@ use libfuzzer_sys::fuzz_target;
 
 fuzz_target!(|data: &[u8]| {
     if let Ok(text) = std::str::from_utf8(data) {
-        let _ = serde_json::from_str::<shiplog_schema::coverage::CoverageManifest>(text);
+        let _ = serde_json::from_str::<shiplog::schema::coverage::CoverageManifest>(text);
     }
 });
 ```
@@ -407,7 +407,7 @@ fuzz_target!(|data: &[u8]| {
 
 ### Harness 6: Bundle Manifest JSON Parsing
 
-**Target:** [`BundleManifest`](../crates/shiplog-schema/src/bundle.rs:55) deserialization
+**Target:** [`BundleManifest`](../apps/shiplog/src/schema/bundle.rs:55) deserialization
 
 **Harness Signature:**
 ```rust
@@ -416,7 +416,7 @@ use libfuzzer_sys::fuzz_target;
 
 fuzz_target!(|data: &[u8]| {
     if let Ok(text) = std::str::from_utf8(data) {
-        let _ = serde_json::from_str::<shiplog_schema::bundle::BundleManifest>(text);
+        let _ = serde_json::from_str::<shiplog::schema::bundle::BundleManifest>(text);
     }
 });
 ```
@@ -473,7 +473,7 @@ fuzz_target!(|data: &[u8]| {
 
 ### Harness 8: Source System Deserialization
 
-**Target:** [`SourceSystem`](../crates/shiplog-schema/src/event.rs:12) custom deserializer
+**Target:** [`SourceSystem`](../apps/shiplog/src/schema/event.rs:12) custom deserializer
 
 **Harness Signature:**
 ```rust
@@ -482,7 +482,7 @@ use libfuzzer_sys::fuzz_target;
 
 fuzz_target!(|data: &[u8]| {
     if let Ok(text) = std::str::from_utf8(data) {
-        let _ = serde_json::from_str::<shiplog_schema::event::SourceSystem>(text);
+        let _ = serde_json::from_str::<shiplog::schema::event::SourceSystem>(text);
     }
 });
 ```
@@ -505,7 +505,7 @@ fuzz_target!(|data: &[u8]| {
 
 ### Harness 9: Manual Date Deserialization
 
-**Target:** [`ManualDate`](../crates/shiplog-schema/src/event.rs:398) untagged enum
+**Target:** [`ManualDate`](../apps/shiplog/src/schema/event.rs:398) untagged enum
 
 **Harness Signature:**
 ```rust
@@ -514,7 +514,7 @@ use libfuzzer_sys::fuzz_target;
 
 fuzz_target!(|data: &[u8]| {
     if let Ok(text) = std::str::from_utf8(data) {
-        let _ = serde_yaml::from_str::<shiplog_schema::event::ManualDate>(text);
+        let _ = serde_yaml::from_str::<shiplog::schema::event::ManualDate>(text);
     }
 });
 ```
@@ -883,8 +883,8 @@ fuzz/
 ```rust
 fuzz_target!(|data: &[u8]| {
     if let Ok(text) = std::str::from_utf8(data) {
-        let _ = serde_json::from_str::<shiplog_ingest_gitlab::MergeRequest>(text);
-        let _ = serde_json::from_str::<shiplog_ingest_gitlab::Review>(text);
+        let _ = serde_json::from_str::<shiplog::ingest::gitlab::MergeRequest>(text);
+        let _ = serde_json::from_str::<shiplog::ingest::gitlab::Review>(text);
     }
 });
 ```
@@ -909,8 +909,8 @@ fuzz_target!(|data: &[u8]| {
 ```rust
 fuzz_target!(|data: &[u8]| {
     if let Ok(text) = std::str::from_utf8(data) {
-        let _ = serde_json::from_str::<shiplog_ingest_jira::Issue>(text);
-        let _ = serde_json::from_str::<shiplog_ingest_linear::Ticket>(text);
+        let _ = serde_json::from_str::<shiplog::ingest::jira::Issue>(text);
+        let _ = serde_json::from_str::<shiplog::ingest::linear::Ticket>(text);
     }
 });
 ```
@@ -937,7 +937,7 @@ fuzz_target!(|data: &[u8]| {
     if let Ok(text) = std::str::from_utf8(data) {
         // Parse multiple events from input
         let events: Vec<EventEnvelope> = serde_json::from_str(text).unwrap_or_default();
-        let _ = shiplog_engine::merge_events(events);
+        let _ = shiplog::engine::merge_events(events);
     }
 });
 ```

@@ -6,15 +6,15 @@
 use chrono::{NaiveDate, TimeZone, Utc};
 use shiplog::bundle::{DIR_PROFILES, FILE_PACKET_MD, PROFILE_PUBLIC};
 use shiplog::engine::Engine;
+use shiplog::ids::{EventId, WorkstreamId};
+use shiplog::ports::IngestOutput;
 use shiplog::redact::DeterministicRedactor;
+use shiplog::schema::bundle::BundleProfile;
+use shiplog::schema::coverage::{Completeness, CoverageManifest, TimeWindow};
+use shiplog::schema::event::*;
+use shiplog::schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
 use shiplog::workstreams::RepoClusterer;
 use shiplog::workstreams::WorkstreamManager;
-use shiplog_ids::{EventId, WorkstreamId};
-use shiplog_ports::IngestOutput;
-use shiplog_schema::bundle::BundleProfile;
-use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
-use shiplog_schema::event::*;
-use shiplog_schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
 use shiplog_testkit::TestMarkdownRenderer as MarkdownRenderer;
 use shiplog_testkit::bdd::Scenario;
 use shiplog_testkit::bdd::assertions::*;
@@ -69,7 +69,7 @@ fn test_ingest(events: Vec<EventEnvelope>) -> IngestOutput {
     IngestOutput {
         events,
         coverage: CoverageManifest {
-            run_id: shiplog_ids::RunId("bdd_workflow_run".into()),
+            run_id: shiplog::ids::RunId("bdd_workflow_run".into()),
             generated_at: Utc.timestamp_opt(0, 0).unwrap(),
             user: "tester".into(),
             window: TimeWindow {
@@ -87,11 +87,11 @@ fn test_ingest(events: Vec<EventEnvelope>) -> IngestOutput {
 }
 
 fn test_engine() -> Engine<'static> {
-    let renderer: &'static dyn shiplog_ports::Renderer =
+    let renderer: &'static dyn shiplog::ports::Renderer =
         Box::leak(Box::new(MarkdownRenderer::new()));
-    let clusterer: &'static dyn shiplog_ports::WorkstreamClusterer =
+    let clusterer: &'static dyn shiplog::ports::WorkstreamClusterer =
         Box::leak(Box::new(RepoClusterer));
-    let redactor: &'static dyn shiplog_ports::Redactor =
+    let redactor: &'static dyn shiplog::ports::Redactor =
         Box::leak(Box::new(DeterministicRedactor::new(b"bdd-workflow-key")));
     Engine::new(renderer, clusterer, redactor)
 }

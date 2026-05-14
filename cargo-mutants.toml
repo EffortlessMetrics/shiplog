@@ -7,17 +7,17 @@
 #
 # Run examples:
 #   cargo mutants --workspace
-#   cargo mutants -p shiplog-schema
-#   cargo mutants -p shiplog-schema -- test_name
+#   cargo mutants -p shiplog
+#   cargo mutants -p shiplog -- test_name
 
 # ============================================================================
 # Tier 1: Stable contracts and trust surfaces - target score >= 90%
 # Deterministic logic, privacy, completeness, and canonical data contracts.
 # ============================================================================
 #
-# shiplog-schema        - canonical event model, coverage types, bundle metadata
-# shiplog-ids           - SHA-256 deterministic ID generation
-# shiplog-ports         - trait definitions (Ingestor, Renderer, Redactor, Clusterer)
+# shiplog::schema       - canonical event model, coverage types, bundle metadata
+# shiplog::ids          - SHA-256 deterministic ID generation
+# shiplog::ports        - trait definitions (Ingestor, Renderer, Redactor, Clusterer)
 # apps/shiplog/src/redact
 #                       - HMAC-SHA-256 redaction orchestrator
 # apps/shiplog/src/coverage

@@ -1,4 +1,4 @@
-use shiplog_schema::event::{EventKind, PullRequestState};
+use shiplog::schema::event::{EventKind, PullRequestState};
 use shiplog_testkit::*;
 
 #[test]
@@ -6,7 +6,7 @@ fn pr_event_creation() {
     let event = pr_event("owner/repo", 42, "Fix bug");
     assert_eq!(event.kind, EventKind::PullRequest);
     assert_eq!(event.repo.full_name, "owner/repo");
-    if let shiplog_schema::event::EventPayload::PullRequest(pr) = &event.payload {
+    if let shiplog::schema::event::EventPayload::PullRequest(pr) = &event.payload {
         assert_eq!(pr.number, 42);
         assert_eq!(pr.title, "Fix bug");
         assert_eq!(pr.state, PullRequestState::Merged);

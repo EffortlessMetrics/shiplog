@@ -1,9 +1,9 @@
 //! Integration tests for shiplog-render-md.
 
 use chrono::{NaiveDate, TimeZone, Utc};
+use shiplog::ids::EventId;
 use shiplog::render::md::format_receipt_markdown;
-use shiplog_ids::EventId;
-use shiplog_schema::event::*;
+use shiplog::schema::event::*;
 use shiplog_testkit::pr_event;
 
 #[test]

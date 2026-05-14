@@ -5,9 +5,9 @@
 
 use crate::artifact_json::{write_coverage_manifest, write_events_jsonl};
 use chrono::{NaiveDate, TimeZone, Utc};
-use shiplog_ids::{EventId, RunId};
-use shiplog_schema::coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow};
-use shiplog_schema::event::*;
+use shiplog::ids::{EventId, RunId};
+use shiplog::schema::coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow};
+use shiplog::schema::event::*;
 use shiplog_testkit::pr_event;
 
 // ── Helpers ──────────────────────────────────────────────────────────────

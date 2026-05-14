@@ -12,7 +12,7 @@ pub(super) fn handle(
     bundle_profile: BundleProfile,
 ) -> Result<()> {
     let redaction_key = RedactionKey::resolve(redact_key, &bundle_profile)?;
-    let clusterer: Box<dyn shiplog_ports::WorkstreamClusterer> = Box::new(RepoClusterer);
+    let clusterer: Box<dyn shiplog::ports::WorkstreamClusterer> = Box::new(RepoClusterer);
     let (engine, redactor) = create_engine(redaction_key.engine_key(), clusterer, &bundle_profile);
     let engine = engine.with_profile_rendering(redaction_key.render_profiles());
 

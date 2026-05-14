@@ -1,0 +1,6 @@
+---
+source: apps/shiplog/tests/ids/format_stability.rs
+assertion_line: 43
+expression: id
+---
+"shiplog_1234567890"

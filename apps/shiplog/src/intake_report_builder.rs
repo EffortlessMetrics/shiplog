@@ -142,7 +142,7 @@ fn source_failure_attention(result: &ConfiguredRunResult) -> Vec<String> {
 
 fn coverage_attention(coverage: &CoverageManifest) -> Vec<String> {
     let mut attention = Vec::new();
-    if coverage.completeness != shiplog_schema::coverage::Completeness::Complete {
+    if coverage.completeness != shiplog::schema::coverage::Completeness::Complete {
         attention.push(format!(
             "Coverage is {}; skipped or incomplete sources are recorded.",
             coverage.completeness

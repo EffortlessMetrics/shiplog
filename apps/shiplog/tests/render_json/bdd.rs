@@ -1,8 +1,8 @@
 //! BDD-style scenario tests for shiplog-render-json.
 
 use crate::artifact_json::{write_coverage_manifest, write_events_jsonl};
-use shiplog_schema::coverage::{Completeness, CoverageManifest};
-use shiplog_schema::event::EventEnvelope;
+use shiplog::schema::coverage::{Completeness, CoverageManifest};
+use shiplog::schema::event::EventEnvelope;
 use shiplog_testkit::bdd::{Scenario, ScenarioContext};
 use shiplog_testkit::fixtures;
 
@@ -252,7 +252,7 @@ fn bdd_jsonl_roundtrip_preserves_event_fields() {
                 let ev: EventEnvelope =
                     serde_json::from_str(line).map_err(|e| format!("parse error: {e}"))?;
                 parsed_ids.push(ev.id.to_string());
-                if ev.kind != shiplog_schema::event::EventKind::PullRequest {
+                if ev.kind != shiplog::schema::event::EventKind::PullRequest {
                     all_pr = false;
                 }
                 if ev.actor.login != "user" {

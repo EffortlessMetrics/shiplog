@@ -5,7 +5,7 @@
 
 use chrono::NaiveDate;
 use shiplog::coverage::{month_windows, window_len_days};
-use shiplog_schema::coverage::{CoverageSlice, TimeWindow};
+use shiplog::schema::coverage::{CoverageSlice, TimeWindow};
 
 #[test]
 fn snapshot_time_window_json() {

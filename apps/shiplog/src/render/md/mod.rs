@@ -5,10 +5,10 @@
 
 use crate::workstreams::WORKSTREAM_RECEIPT_RENDER_LIMIT;
 use anyhow::Result;
-use shiplog_ports::Renderer;
-use shiplog_schema::coverage::CoverageManifest;
-use shiplog_schema::event::{EventEnvelope, EventKind};
-use shiplog_schema::workstream::{Workstream, WorkstreamsFile};
+use shiplog::ports::Renderer;
+use shiplog::schema::coverage::CoverageManifest;
+use shiplog::schema::event::{EventEnvelope, EventKind};
+use shiplog::schema::workstream::{Workstream, WorkstreamsFile};
 use std::collections::HashMap;
 
 use self::coverage::render_coverage;
@@ -89,10 +89,10 @@ impl Default for MarkdownRenderOptions {
 ///
 /// ```rust,no_run
 /// use shiplog::render::md::MarkdownRenderer;
-/// use shiplog_ports::Renderer;
-/// use shiplog_schema::event::EventEnvelope;
-/// use shiplog_schema::workstream::WorkstreamsFile;
-/// use shiplog_schema::coverage::CoverageManifest;
+/// use shiplog::ports::Renderer;
+/// use shiplog::schema::event::EventEnvelope;
+/// use shiplog::schema::workstream::WorkstreamsFile;
+/// use shiplog::schema::coverage::CoverageManifest;
 ///
 /// # fn example(
 /// #     events: &[EventEnvelope],
@@ -657,10 +657,10 @@ fn render_file_artifacts(out: &mut String) {
 mod tests {
     use super::*;
     use chrono::{NaiveDate, TimeZone, Utc};
-    use shiplog_ids::{EventId, RunId, WorkstreamId};
-    use shiplog_schema::coverage::*;
-    use shiplog_schema::event::*;
-    use shiplog_schema::workstream::*;
+    use shiplog::ids::{EventId, RunId, WorkstreamId};
+    use shiplog::schema::coverage::*;
+    use shiplog::schema::event::*;
+    use shiplog::schema::workstream::*;
 
     fn create_test_pr(id: &str, number: u64, title: &str) -> EventEnvelope {
         EventEnvelope {

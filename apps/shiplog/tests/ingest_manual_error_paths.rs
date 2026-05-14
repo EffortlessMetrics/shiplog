@@ -5,7 +5,7 @@
 
 use chrono::NaiveDate;
 use shiplog::ingest::manual::{ManualIngestor, read_manual_events, write_manual_events};
-use shiplog_ports::Ingestor;
+use shiplog::ports::Ingestor;
 
 fn date(y: i32, m: u32, d: u32) -> NaiveDate {
     NaiveDate::from_ymd_opt(y, m, d).unwrap()
@@ -201,7 +201,7 @@ fn nonexistent_file_coverage_completeness_is_unknown() {
     let output = ing.ingest().unwrap();
     assert_eq!(
         output.coverage.completeness,
-        shiplog_schema::coverage::Completeness::Unknown,
+        shiplog::schema::coverage::Completeness::Unknown,
         "missing file should report unknown completeness"
     );
 }

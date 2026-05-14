@@ -3,12 +3,12 @@
 //! Verifies that clustering is fully reproducible: same events always produce
 //! the same workstream grouping and ordering.
 
+use shiplog::ports::WorkstreamClusterer;
 use shiplog::workstreams::RepoClusterer;
-use shiplog_ports::WorkstreamClusterer;
 
 const ITERATIONS: usize = 100;
 
-fn sample_events() -> Vec<shiplog_schema::event::EventEnvelope> {
+fn sample_events() -> Vec<shiplog::schema::event::EventEnvelope> {
     vec![
         shiplog_testkit::pr_event("acme/frontend", 1, "Add login page"),
         shiplog_testkit::pr_event("acme/frontend", 2, "Fix CSS layout"),

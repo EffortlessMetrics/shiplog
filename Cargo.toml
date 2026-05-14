@@ -4,11 +4,6 @@ members = [
   # Primary product
   "apps/shiplog",
 
-  # Stable integration contracts
-  "crates/shiplog-ids",
-  "crates/shiplog-schema",
-  "crates/shiplog-ports",
-
   # Dev-only support
   "crates/shiplog-testkit",
   "xtask",

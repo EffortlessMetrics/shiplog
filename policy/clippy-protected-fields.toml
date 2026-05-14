@@ -237,7 +237,7 @@ boundary_module = "shiplog::bundle (FileChecksum today); future: shiplog::engine
 accessor_pattern = "The protection is procedural, not visibility-based: each receipt-emitting module has a single canonical computer function (e.g. `shiplog::bundle::compute_file_checksum`), determinism is enforced by property tests and fuzz harnesses, and the receipt-bearing serde types are intentionally `pub` because they ARE the JSON schema contract. `disallowed_fields` is the wrong tool — making `FileChecksum::sha256` private would break the bundle-manifest schema."
 failure_mode = "One caller hashes the canonical fields; a second caller hashes a slightly different field order; the two receipts disagree for the same logical input and consumers diverge."
 # Audited 2026-05-12 (post-#212):
-#   - `FileChecksum` in `crates/shiplog-schema/src/bundle.rs` is a
+#   - `FileChecksum` in `apps/shiplog/src/schema/bundle.rs` is a
 #     `pub struct` with `pub sha256: String`, `pub path: String`, and
 #     `pub bytes: u64`. This is the canonical bundle-manifest entry
 #     type used in `bundle.manifest.json`. The fields are `pub` by
@@ -298,8 +298,8 @@ slug = "source-opaque-ids"
 title = "Source opaque IDs"
 invariant = "Provider-specific identifiers (GitHub `node_id`, GitLab project IDs, Jira issue keys, Linear UUIDs, opaque `local_git` ref names) must be aliased / nullified before they cross a redaction profile boundary. The redaction policy returns the aliased form for non-internal profiles and the raw form only when an `Internal` profile is explicitly in use."
 boundary_crate = "mixed"
-boundary_module = "shiplog-schema::event (canonical wrapper field), shiplog::ingest::* (per-source population), shiplog::redact::policy (nullification on profile boundary)"
-accessor_pattern = "The opaque-ID surface is concentrated into a single canonical wrapper field `SourceRef::opaque_id: Option<String>` in `shiplog-schema/src/event.rs`. Every ingest adapter constructs `SourceRef { opaque_id: Some(...) }`; there is no per-source `node_id` field on adapter-specific event types. The field is `pub` by serde shape (it IS part of the event-ledger JSON contract). Protection is procedural: `shiplog::redact::policy::redact_event_with_aliases` sets `event.source.opaque_id = None` for non-internal profiles; property + integration tests prove the nullification works."
+boundary_module = "shiplog::schema::event (canonical wrapper field), shiplog::ingest::* (per-source population), shiplog::redact::policy (nullification on profile boundary)"
+accessor_pattern = "The opaque-ID surface is concentrated into a single canonical wrapper field `SourceRef::opaque_id: Option<String>` in `apps/shiplog/src/schema/event.rs`. Every ingest adapter constructs `SourceRef { opaque_id: Some(...) }`; there is no per-source `node_id` field on adapter-specific event types. The field is `pub` by serde shape (it IS part of the event-ledger JSON contract). Protection is procedural: `shiplog::redact::policy::redact_event_with_aliases` sets `event.source.opaque_id = None` for non-internal profiles; property + integration tests prove the nullification works."
 failure_mode = "A public-profile render reads `event.source.opaque_id` directly after the redaction step has cleared it; the rendered packet does NOT leak the provider-internal id because the redaction policy already set it to `None`. The real failure mode would be a new code path that emits the event BEFORE the redact step runs — that risk is caught by the existing integration tests in `apps/shiplog/tests/redact/integration_policy_tests.rs`."
 # Audited 2026-05-12 (post-#214):
 #   - `SourceRef::opaque_id: Option<String>` is the canonical
@@ -335,7 +335,7 @@ field_candidates = [
   "TODO: future opaque-ID fields on any new ingest adapter — must populate `SourceRef::opaque_id` rather than introducing a per-adapter raw field",
 ]
 activation_status = "type-enforced"
-next_action = "Nothing to do for this class today: the canonical-wrapper refactor that the doc historically flagged as 'the largest class by surface area' is already complete. Future ingest adapters must populate `SourceRef::opaque_id` rather than introducing per-adapter raw fields. A future ledger-driven `xtask check-protected-fields` checker (optional step 6 in the activation ladder doc) could catch a regression like a future ingest adapter exposing its own `pub node_id: String` on its event type, by scanning for new `pub.*_id: String` patterns on types whose modules import shiplog-schema's `SourceRef`."
+next_action = "Nothing to do for this class today: the canonical-wrapper refactor that the doc historically flagged as 'the largest class by surface area' is already complete. Future ingest adapters must populate `SourceRef::opaque_id` rather than introducing per-adapter raw fields. A future ledger-driven `xtask check-protected-fields` checker (optional step 6 in the activation ladder doc) could catch a regression like a future ingest adapter exposing its own `pub node_id: String` on its event type, by scanning for new `pub.*_id: String` patterns on types whose modules import shiplog::schema's `SourceRef`."
 owner = "shiplog::ingest::github"
 reason = "See docs/CLIPPY_PROTECTED_FIELDS.md#4-source-opaque-ids for the seam doctrine and failure mode."
 created = "2026-05-11"

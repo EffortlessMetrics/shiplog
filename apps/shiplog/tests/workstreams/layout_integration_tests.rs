@@ -1,34 +1,34 @@
 //! Integration tests for shiplog-workstreams.
 
 use chrono::{TimeZone, Utc};
+use shiplog::ids::EventId;
+use shiplog::schema::event::EventEnvelope;
+use shiplog::schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
 use shiplog::workstreams::RepoClusterer;
 use shiplog::workstreams::{
     CURATED_FILENAME, SUGGESTED_FILENAME, WorkstreamManager, load_or_cluster, write_workstreams,
 };
-use shiplog_ids::EventId;
-use shiplog_schema::event::EventEnvelope;
-use shiplog_schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
 use tempfile::tempdir;
 
 fn make_event(repo_name: &str, id: &str) -> EventEnvelope {
     EventEnvelope {
         id: EventId::from_parts(["github", id]),
-        kind: shiplog_schema::event::EventKind::PullRequest,
+        kind: shiplog::schema::event::EventKind::PullRequest,
         occurred_at: Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).single().unwrap(),
-        actor: shiplog_schema::event::Actor {
+        actor: shiplog::schema::event::Actor {
             login: "tester".into(),
             id: None,
         },
-        repo: shiplog_schema::event::RepoRef {
+        repo: shiplog::schema::event::RepoRef {
             full_name: repo_name.into(),
             html_url: Some(format!("https://example.com/{repo_name}")),
-            visibility: shiplog_schema::event::RepoVisibility::Unknown,
+            visibility: shiplog::schema::event::RepoVisibility::Unknown,
         },
-        payload: shiplog_schema::event::EventPayload::PullRequest(
-            shiplog_schema::event::PullRequestEvent {
+        payload: shiplog::schema::event::EventPayload::PullRequest(
+            shiplog::schema::event::PullRequestEvent {
                 number: 1,
                 title: "Test PR".into(),
-                state: shiplog_schema::event::PullRequestState::Merged,
+                state: shiplog::schema::event::PullRequestState::Merged,
                 created_at: Utc::now(),
                 merged_at: Some(Utc::now()),
                 additions: Some(10),
@@ -40,8 +40,8 @@ fn make_event(repo_name: &str, id: &str) -> EventEnvelope {
         ),
         tags: vec![],
         links: vec![],
-        source: shiplog_schema::event::SourceRef {
-            system: shiplog_schema::event::SourceSystem::Github,
+        source: shiplog::schema::event::SourceRef {
+            system: shiplog::schema::event::SourceSystem::Github,
             url: None,
             opaque_id: None,
         },
@@ -53,7 +53,7 @@ fn make_file(title: &str) -> WorkstreamsFile {
         version: 1,
         generated_at: Utc::now(),
         workstreams: vec![Workstream {
-            id: shiplog_ids::WorkstreamId::from_parts(["repo", title]),
+            id: shiplog::ids::WorkstreamId::from_parts(["repo", title]),
             title: title.to_string(),
             summary: None,
             tags: vec!["repo".into()],
@@ -150,7 +150,7 @@ fn integration_multiple_workstreams_roundtrip() {
         generated_at: Utc::now(),
         workstreams: vec![
             Workstream {
-                id: shiplog_ids::WorkstreamId::from_parts(["repo", "a"]),
+                id: shiplog::ids::WorkstreamId::from_parts(["repo", "a"]),
                 title: "repo-a".into(),
                 summary: Some("First".into()),
                 tags: vec!["repo".into()],
@@ -163,7 +163,7 @@ fn integration_multiple_workstreams_roundtrip() {
                 receipts: vec![EventId::from_parts(["e", "1"])],
             },
             Workstream {
-                id: shiplog_ids::WorkstreamId::from_parts(["repo", "b"]),
+                id: shiplog::ids::WorkstreamId::from_parts(["repo", "b"]),
                 title: "repo-b".into(),
                 summary: None,
                 tags: vec!["repo".into()],

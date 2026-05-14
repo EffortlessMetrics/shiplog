@@ -4,9 +4,9 @@
 //! through the facade, and that the facade wires correctly end-to-end.
 
 use chrono::{NaiveDate, TimeZone, Utc};
-use shiplog_ids::EventId;
-use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
-use shiplog_schema::event::{
+use shiplog::ids::EventId;
+use shiplog::schema::coverage::{Completeness, CoverageManifest, TimeWindow};
+use shiplog::schema::event::{
     Actor, EventEnvelope, EventKind, EventPayload, PullRequestEvent, PullRequestState, RepoRef,
     RepoVisibility, SourceRef, SourceSystem,
 };
@@ -64,7 +64,7 @@ fn make_event(id: &str, repo: &str, when: chrono::DateTime<Utc>) -> EventEnvelop
 
 fn make_coverage() -> CoverageManifest {
     CoverageManifest {
-        run_id: shiplog_ids::RunId("facade-test".into()),
+        run_id: shiplog::ids::RunId("facade-test".into()),
         generated_at: Utc::now(),
         user: "member".into(),
         window: TimeWindow {

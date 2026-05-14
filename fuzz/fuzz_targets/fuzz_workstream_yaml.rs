@@ -5,7 +5,7 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use shiplog_schema::workstream::WorkstreamsFile;
+use shiplog::schema::workstream::WorkstreamsFile;
 
 fuzz_target!(|data: &[u8]| {
     let input = match std::str::from_utf8(data) {

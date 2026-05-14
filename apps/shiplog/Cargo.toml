@@ -36,9 +36,6 @@ itertools.workspace = true
 zip.workspace = true
 git2 = "0.20"
 mutants.workspace = true
-shiplog-ports = { path = "../../crates/shiplog-ports", version = "0.6.0" }
-shiplog-schema = { path = "../../crates/shiplog-schema", version = "0.6.0" }
-shiplog-ids = { path = "../../crates/shiplog-ids", version = "0.6.0" }
 
 [dev-dependencies]
 tempfile.workspace = true
@@ -49,10 +46,8 @@ predicates.workspace = true
 insta = { workspace = true, features = ["json", "redactions"] }
 proptest.workspace = true
 criterion.workspace = true
-shiplog-ports = { path = "../../crates/shiplog-ports", version = "0.6.0" }
-shiplog-schema = { path = "../../crates/shiplog-schema", version = "0.6.0" }
-shiplog-ids = { path = "../../crates/shiplog-ids", version = "0.6.0" }
 shiplog-testkit = { path = "../../crates/shiplog-testkit" }
+tokio.workspace = true
 
 [[example]]
 name = "json_import"
@@ -71,7 +66,15 @@ name = "coverage"
 harness = false
 
 [[bench]]
+name = "id_generation"
+harness = false
+
+[[bench]]
 name = "redaction"
+harness = false
+
+[[bench]]
+name = "serialization"
 harness = false
 
 [lints]

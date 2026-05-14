@@ -4,7 +4,7 @@
 //! and that extra/missing optional fields are handled gracefully.
 
 use shiplog::ingest::json::parse_events_jsonl;
-use shiplog_schema::event::*;
+use shiplog::schema::event::*;
 
 // ── v0.1 JSONL: object-form SourceSystem ────────────────────────────────
 

@@ -21,24 +21,6 @@ publish = true
 reason = "Supported CLI package and primary user install surface."
 
 [[package]]
-name = "shiplog-schema"
-tier = "internal-module"
-publish = false
-reason = "ADR-0005 makes JSON schemas the public machine contract; Rust schema types are internal."
-
-[[package]]
-name = "shiplog-ids"
-tier = "internal-module"
-publish = false
-reason = "Internal deterministic ID helpers until a public contract ADR exists."
-
-[[package]]
-name = "shiplog-ports"
-tier = "internal-module"
-publish = false
-reason = "Internal traits until a plugin or adapter API is specified."
-
-[[package]]
 name = "shiplog-testkit"
 tier = "dev-only"
 publish = false
@@ -139,3 +121,18 @@ reason = "0.6 workstream support crate collapsed into shiplog::workstreams."
 name = "shiplog-cluster-llm"
 tier = "historical-0.6"
 reason = "0.6 optional LLM support crate collapsed into shiplog::cluster_llm behind the llm feature."
+
+[[historical]]
+name = "shiplog-schema"
+tier = "historical-0.6"
+reason = "0.6 Rust schema crate collapsed into shiplog::schema; contracts/schemas remains the public machine contract."
+
+[[historical]]
+name = "shiplog-ids"
+tier = "historical-0.6"
+reason = "0.6 deterministic ID crate collapsed into shiplog::ids."
+
+[[historical]]
+name = "shiplog-ports"
+tier = "historical-0.6"
+reason = "0.6 trait crate collapsed into shiplog::ports."

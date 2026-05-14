@@ -4,7 +4,7 @@
 
 use chrono::NaiveDate;
 use shiplog::coverage::{day_windows, month_windows, window_len_days};
-use shiplog_schema::coverage::{Completeness, CoverageSlice, TimeWindow};
+use shiplog::schema::coverage::{Completeness, CoverageSlice, TimeWindow};
 use shiplog_testkit::bdd::Scenario;
 use shiplog_testkit::bdd::assertions::*;
 use shiplog_testkit::bdd::builders::CoverageBuilder;

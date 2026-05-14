@@ -1,7 +1,7 @@
 use shiplog::bundle::write_bundle_manifest;
 use shiplog::bundle::*;
-use shiplog_ids::RunId;
-use shiplog_schema::bundle::BundleProfile;
+use shiplog::ids::RunId;
+use shiplog::schema::bundle::BundleProfile;
 use std::fs;
 
 fn make_test_dir(dir: &std::path::Path) {

@@ -126,7 +126,7 @@ which files a PR touches:
 ```text
 redaction/privacy   → apps/shiplog/src/redact/, apps/shiplog/tests/redact/, apps/shiplog/src/bundle/, profile/share code
 bundle/integrity    → apps/shiplog/src/bundle/, share manifest writers/verifiers
-schema/ids          → crates/shiplog-schema/, crates/shiplog-ids/, contracts/schemas/
+schema/ids          → apps/shiplog/src/schema/, apps/shiplog/src/ids.rs, contracts/schemas/
 source adapters     → apps/shiplog/src/ingest/
 CLI/product         → apps/shiplog/
 release/package     → scripts/, .github/workflows/release.yml, package metadata

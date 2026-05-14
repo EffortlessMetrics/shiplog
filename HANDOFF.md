@@ -209,9 +209,9 @@ Three render profiles:
 
 ### Key modules and support crates
 
-- `shiplog-schema`: internal canonical types + on-disk contracts
-- `shiplog-ports`: internal traits (`Ingestor`, `WorkstreamClusterer`, `Renderer`, `Redactor`)
-- `shiplog-ids`: internal stable deterministic IDs
+- `shiplog::schema`: internal canonical types + on-disk contracts
+- `shiplog::ports`: internal traits (`Ingestor`, `WorkstreamClusterer`, `Renderer`, `Redactor`)
+- `shiplog::ids`: internal stable deterministic IDs
 - `shiplog::engine`: orchestration (collect/render/refresh/import)
 - `shiplog::ingest::github`: GitHub adapter (window slicing, caching, GHES)
 - `shiplog::ingest::git`: local git repository adapter
@@ -370,7 +370,8 @@ Goal: reduce onboarding friction:
 
 **"no matching package named shiplog-schema found" during publish/package**
 
-- You are publishing out of order. Publish foundation crates first.
+- You are using stale 0.6-era release tooling or dependency metadata. In 0.7,
+  schema support is internal to the `shiplog` package.
 
 **Refresh does not preserve curation**
 

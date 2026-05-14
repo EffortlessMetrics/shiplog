@@ -6,11 +6,11 @@
 
 use anyhow::{Result, anyhow};
 use chrono::Utc;
-use shiplog_ids::EventId;
-use shiplog_ids::RunId;
-use shiplog_ports::IngestOutput;
-use shiplog_schema::coverage::{Completeness, CoverageManifest, CoverageSlice};
-use shiplog_schema::event::EventEnvelope;
+use shiplog::ids::EventId;
+use shiplog::ids::RunId;
+use shiplog::ports::IngestOutput;
+use shiplog::schema::coverage::{Completeness, CoverageManifest, CoverageSlice};
+use shiplog::schema::event::EventEnvelope;
 use std::collections::HashMap;
 
 /// Strategy for handling duplicate events during merge.
@@ -213,8 +213,8 @@ pub fn merge_ingest_outputs_legacy(
     let mut event_map: HashMap<String, Vec<EventEnvelope>> = HashMap::new();
     let mut all_sources: Vec<String> = Vec::new();
     let mut all_warnings: Vec<String> = Vec::new();
-    let mut all_slices: Vec<shiplog_schema::coverage::CoverageSlice> = Vec::new();
-    let mut all_freshness: Vec<shiplog_schema::freshness::SourceFreshness> = Vec::new();
+    let mut all_slices: Vec<shiplog::schema::coverage::CoverageSlice> = Vec::new();
+    let mut all_freshness: Vec<shiplog::schema::freshness::SourceFreshness> = Vec::new();
 
     let base_output = &ingest_outputs[0];
     let window = base_output.coverage.window.clone();
@@ -254,11 +254,11 @@ pub fn merge_ingest_outputs_legacy(
 
     let completeness = if ingest_outputs
         .iter()
-        .any(|o| o.coverage.completeness == shiplog_schema::coverage::Completeness::Partial)
+        .any(|o| o.coverage.completeness == shiplog::schema::coverage::Completeness::Partial)
     {
-        shiplog_schema::coverage::Completeness::Partial
+        shiplog::schema::coverage::Completeness::Partial
     } else {
-        shiplog_schema::coverage::Completeness::Complete
+        shiplog::schema::coverage::Completeness::Complete
     };
 
     if conflict_count > 0 {
@@ -268,7 +268,7 @@ pub fn merge_ingest_outputs_legacy(
         ));
     }
 
-    let coverage = shiplog_schema::coverage::CoverageManifest {
+    let coverage = shiplog::schema::coverage::CoverageManifest {
         run_id: RunId::now("merge"),
         generated_at: chrono::Utc::now(),
         user,
@@ -337,7 +337,7 @@ fn completeness_score_legacy(event: &EventEnvelope) -> usize {
 
     // Check payload completeness
     match &event.payload {
-        shiplog_schema::event::EventPayload::PullRequest(pr) => {
+        shiplog::schema::event::EventPayload::PullRequest(pr) => {
             if pr.additions.is_some() {
                 score += 1;
             }
@@ -351,7 +351,7 @@ fn completeness_score_legacy(event: &EventEnvelope) -> usize {
                 score += 1;
             }
         }
-        shiplog_schema::event::EventPayload::Manual(manual) => {
+        shiplog::schema::event::EventPayload::Manual(manual) => {
             if manual.description.is_some() {
                 score += 1;
             }
@@ -377,7 +377,7 @@ fn completeness_score(event: &EventEnvelope) -> u32 {
 
     // Check payload completeness
     match &event.payload {
-        shiplog_schema::event::EventPayload::PullRequest(pr) => {
+        shiplog::schema::event::EventPayload::PullRequest(pr) => {
             score += 10;
             if pr.additions.is_some() {
                 score += 1;
@@ -392,13 +392,13 @@ fn completeness_score(event: &EventEnvelope) -> u32 {
                 score += 1;
             }
         }
-        shiplog_schema::event::EventPayload::Review(r) => {
+        shiplog::schema::event::EventPayload::Review(r) => {
             score += 8;
             if !r.pull_title.is_empty() {
                 score += 1;
             }
         }
-        shiplog_schema::event::EventPayload::Manual(m) => {
+        shiplog::schema::event::EventPayload::Manual(m) => {
             score += 5;
             if m.description.is_some() {
                 score += 2;
@@ -434,9 +434,9 @@ fn completeness_score(event: &EventEnvelope) -> u32 {
 mod tests {
     use super::*;
     use chrono::{NaiveDate, TimeZone, Utc};
-    use shiplog_ids::EventId;
-    use shiplog_schema::coverage::{CoverageManifest, CoverageSlice, TimeWindow};
-    use shiplog_schema::event::{
+    use shiplog::ids::EventId;
+    use shiplog::schema::coverage::{CoverageManifest, CoverageSlice, TimeWindow};
+    use shiplog::schema::event::{
         Actor, EventKind, EventPayload, ManualEvent, ManualEventType, RepoRef, RepoVisibility,
         SourceRef, SourceSystem,
     };

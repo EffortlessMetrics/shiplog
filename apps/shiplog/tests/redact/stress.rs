@@ -1,7 +1,7 @@
 //! Multi-threaded stress tests for concurrent redaction operations.
 
+use shiplog::ports::Redactor;
 use shiplog::redact::DeterministicRedactor;
-use shiplog_ports::Redactor;
 use std::collections::HashSet;
 use std::sync::Arc;
 

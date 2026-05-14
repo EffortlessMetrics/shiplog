@@ -29,9 +29,9 @@ Recorded Tier 1 baselines:
 | Crate | Commit | Mutants | Caught | Survived | Unviable | Result |
 | ----- | ------ | ------: | -----: | -------: | -------: | ------ |
 | `shiplog::coverage` | `762841b` | 31 | 26 | 0 | 5 | historical baseline from the former `shiplog-coverage` crate |
-| `shiplog-ids` | `e6166e5` | 8 | 5 | 0 | 3 | clean baseline |
-| `shiplog-ports` | `74d095d` | 0 | 0 | 0 | 0 | no mutation targets |
-| `shiplog-schema` | `77dc752` | 33 | 27 | 0 | 6 | clean baseline |
+| `shiplog::ids` | `e6166e5` | 8 | 5 | 0 | 3 | historical baseline from the former `shiplog-ids` crate |
+| `shiplog::ports` | `74d095d` | 0 | 0 | 0 | 0 | historical no-target scan from the former `shiplog-ports` crate |
+| `shiplog::schema` | `77dc752` | 33 | 27 | 0 | 6 | historical baseline from the former `shiplog-schema` crate |
 | `shiplog::redact` | `812c45b` + policy cleanup | 35 | 26 | 0 | 9 | historical baseline from the former `shiplog-redact` crate |
 | `shiplog::bundle` | `f18b23d` + zip/hash cleanup | 22 | 21 | 0 | 1 | historical baseline from the former `shiplog-bundle` crate |
 
@@ -40,9 +40,9 @@ The local PowerShell receipts used:
 ```powershell
 New-Item -ItemType Directory -Force -Path target\mutants | Out-Null
 cargo mutants -p shiplog --timeout 600 --copy-target=false --output target/mutants/shiplog-coverage-baseline
-cargo mutants -p shiplog-ids --timeout 600 --copy-target=false --output target/mutants/shiplog-ids-baseline
-cargo mutants -p shiplog-ports --timeout 600 --copy-target=false --output target/mutants/shiplog-ports-baseline
-cargo mutants -p shiplog-schema --timeout 600 --copy-target=false --output target/mutants/shiplog-schema-baseline
+cargo mutants -p shiplog --timeout 600 --copy-target=false --output target/mutants/shiplog-ids-baseline
+cargo mutants -p shiplog --timeout 600 --copy-target=false --output target/mutants/shiplog-ports-baseline
+cargo mutants -p shiplog --timeout 600 --copy-target=false --output target/mutants/shiplog-schema-baseline
 cargo mutants -p shiplog-redact --timeout 600 --copy-target=false --output target/mutants/shiplog-redact-baseline-public-source
 cargo mutants -p shiplog-bundle --timeout 600 --copy-target=false --output target/mutants/shiplog-bundle-baseline-fixed
 ```
@@ -53,14 +53,14 @@ cargo mutants -p shiplog-bundle --timeout 600 --copy-target=false --output targe
 shiplog::coverage:
 31 mutants tested in 2m: 26 caught, 5 unviable
 
-shiplog-ids:
+shiplog::ids:
 8 mutants tested in 50s: 5 caught, 3 unviable
 
-shiplog-ports:
+shiplog::ports:
 Found 0 mutants to test
 WARN No mutants found under the active filters
 
-shiplog-schema:
+shiplog::schema:
 33 mutants tested in 4m: 27 caught, 6 unviable
 
 shiplog::redact:
@@ -70,8 +70,8 @@ shiplog::bundle:
 22 mutants tested in 2m: 21 caught, 1 unviable
 ```
 
-The generated `missed.txt` files for `shiplog::coverage`, `shiplog-ids`,
-`shiplog-schema`, `shiplog::redact`, and `shiplog::bundle` were empty, so there
+The generated `missed.txt` files for `shiplog::coverage`, `shiplog::ids`,
+`shiplog::schema`, `shiplog::redact`, and `shiplog::bundle` were empty, so there
 were no surviving mutants for these crates in the baseline runs.
 
 The first `shiplog::redact` scan found two equivalent survivors in batch-level
@@ -86,9 +86,11 @@ used for checksum hashing. The baseline cleanup switched hashing to
 the run directory could be included in the archive being written. The clean
 rerun is the recorded baseline.
 
-`shiplog-ports` is a trait contract crate. The current cargo-mutants scan found
-no mutable implementation targets; its behavior remains covered by trait-object,
-error-path, and composition tests rather than mutation survivor counts.
+`shiplog::ports` is trait contract code. The historical cargo-mutants scan
+found no mutable implementation targets; its behavior remains covered by
+trait-object, error-path, and composition tests rather than mutation survivor
+counts. The current inlined module is covered by the `shiplog` package mutation
+target.
 
 ## Next baseline posture
 

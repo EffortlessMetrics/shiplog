@@ -3,12 +3,12 @@
 //! Verifies that redaction is fully reproducible: same key + same input always
 //! produce the same redacted output, regardless of call order.
 
+use shiplog::ports::Redactor;
 use shiplog::redact::DeterministicRedactor;
-use shiplog_ports::Redactor;
 
 const ITERATIONS: usize = 100;
 
-fn sample_events() -> Vec<shiplog_schema::event::EventEnvelope> {
+fn sample_events() -> Vec<shiplog::schema::event::EventEnvelope> {
     vec![
         shiplog_testkit::pr_event("acme/frontend", 1, "Add login page"),
         shiplog_testkit::pr_event("acme/frontend", 2, "Fix CSS layout"),
@@ -58,8 +58,8 @@ fn redact_events_manager_profile_deterministic() {
 #[test]
 fn redact_workstreams_deterministic_across_100_iterations() {
     use chrono::Utc;
-    use shiplog_ids::WorkstreamId;
-    use shiplog_schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
+    use shiplog::ids::WorkstreamId;
+    use shiplog::schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
 
     let redactor = DeterministicRedactor::new(b"ws-determinism-key");
     let ws = WorkstreamsFile {

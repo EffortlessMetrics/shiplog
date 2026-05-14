@@ -4,15 +4,15 @@
 //! partial coverage with warnings, and workstream-event mismatches.
 
 use chrono::{NaiveDate, TimeZone, Utc};
+use shiplog::ids::{EventId, RunId, WorkstreamId};
+use shiplog::ports::Renderer;
 use shiplog::render::md::MarkdownRenderer;
-use shiplog_ids::{EventId, RunId, WorkstreamId};
-use shiplog_ports::Renderer;
-use shiplog_schema::coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow};
-use shiplog_schema::event::{
+use shiplog::schema::coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow};
+use shiplog::schema::event::{
     Actor, EventEnvelope, EventKind, EventPayload, Link, PullRequestEvent, PullRequestState,
     RepoRef, RepoVisibility, SourceRef, SourceSystem,
 };
-use shiplog_schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
+use shiplog::schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
 
 // ---------------------------------------------------------------------------
 // Helpers

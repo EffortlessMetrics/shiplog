@@ -4,12 +4,12 @@
 //! (workstream assignment consistency).
 
 use proptest::prelude::*;
+use shiplog::ports::WorkstreamClusterer;
+use shiplog::schema::event::EventEnvelope;
 use shiplog::workstreams::RepoClusterer;
-use shiplog_ports::WorkstreamClusterer;
-use shiplog_schema::event::EventEnvelope;
 use shiplog_testkit::proptest::*;
 
-fn clustered_workstreams(events: &[EventEnvelope]) -> Vec<shiplog_schema::workstream::Workstream> {
+fn clustered_workstreams(events: &[EventEnvelope]) -> Vec<shiplog::schema::workstream::Workstream> {
     RepoClusterer.cluster(events).unwrap().workstreams
 }
 
@@ -92,9 +92,9 @@ proptest! {
             for event_id in &ws.events {
                 if let Some(event) = events.iter().find(|e| &e.id == event_id) {
                     match event.kind {
-                        shiplog_schema::event::EventKind::PullRequest => pr_count += 1,
-                        shiplog_schema::event::EventKind::Review => review_count += 1,
-                        shiplog_schema::event::EventKind::Manual => manual_count += 1,
+                        shiplog::schema::event::EventKind::PullRequest => pr_count += 1,
+                        shiplog::schema::event::EventKind::Review => review_count += 1,
+                        shiplog::schema::event::EventKind::Manual => manual_count += 1,
                     }
                 }
             }
@@ -114,7 +114,7 @@ proptest! {
         let workstreams = clustered_workstreams(&events);
 
         // Group events by repo
-        let mut repo_events: std::collections::HashMap<String, Vec<&shiplog_schema::event::EventEnvelope>> =
+        let mut repo_events: std::collections::HashMap<String, Vec<&shiplog::schema::event::EventEnvelope>> =
             std::collections::HashMap::new();
         for event in &events {
             repo_events.entry(event.repo.full_name.clone())
@@ -199,7 +199,7 @@ proptest! {
     fn prop_version_field(
         events in strategy_event_vec(50)
     ) {
-        let workstreams_file = shiplog_schema::workstream::WorkstreamsFile {
+        let workstreams_file = shiplog::schema::workstream::WorkstreamsFile {
             workstreams: clustered_workstreams(&events),
             version: 1,
             generated_at: chrono::Utc::now(),

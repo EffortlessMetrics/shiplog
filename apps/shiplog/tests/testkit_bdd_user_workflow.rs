@@ -7,12 +7,12 @@
 mod user_workflow_tests {
     use chrono::{NaiveDate, Utc};
     use shiplog::engine::{Engine, WorkstreamSource};
+    use shiplog::ids::RunId;
+    use shiplog::ports::{IngestOutput, Redactor, WorkstreamClusterer};
     use shiplog::redact::DeterministicRedactor;
+    use shiplog::schema::bundle::BundleProfile;
+    use shiplog::schema::coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow};
     use shiplog::workstreams::RepoClusterer;
-    use shiplog_ids::RunId;
-    use shiplog_ports::{IngestOutput, Redactor, WorkstreamClusterer};
-    use shiplog_schema::bundle::BundleProfile;
-    use shiplog_schema::coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow};
     use shiplog_testkit::TestMarkdownRenderer as MarkdownRenderer;
     use shiplog_testkit::bdd::Scenario;
     use shiplog_testkit::bdd::assertions::*;
@@ -38,7 +38,7 @@ mod user_workflow_tests {
     }
 
     fn build_engine() -> Engine<'static> {
-        let renderer: &'static dyn shiplog_ports::Renderer =
+        let renderer: &'static dyn shiplog::ports::Renderer =
             Box::leak(Box::new(MarkdownRenderer::new()));
         let clusterer: &'static dyn WorkstreamClusterer = Box::leak(Box::new(RepoClusterer));
         let redactor: &'static dyn Redactor =
@@ -75,7 +75,7 @@ mod user_workflow_tests {
                     .insert("coverage".to_string(), coverage_json.into_bytes());
             })
             .when("running the full pipeline via Engine::run", |ctx| {
-                let events: Vec<shiplog_schema::event::EventEnvelope> =
+                let events: Vec<shiplog::schema::event::EventEnvelope> =
                     serde_json::from_slice(ctx.data.get("events").unwrap()).unwrap();
                 let coverage: CoverageManifest =
                     serde_json::from_slice(ctx.data.get("coverage").unwrap()).unwrap();
@@ -179,7 +179,7 @@ mod user_workflow_tests {
                         .insert("events".to_string(), events_json.into_bytes());
                 })
                 .when("clustering events", |ctx| {
-                    let events: Vec<shiplog_schema::event::EventEnvelope> =
+                    let events: Vec<shiplog::schema::event::EventEnvelope> =
                         serde_json::from_slice(ctx.data.get("events").unwrap()).unwrap();
                     let clusterer = RepoClusterer;
                     let ws = clusterer.cluster(&events).map_err(|e| e.to_string())?;
@@ -218,11 +218,11 @@ mod user_workflow_tests {
                 .when(
                     "user writes curated workstreams.yaml then re-renders",
                     |ctx| {
-                        let events: Vec<shiplog_schema::event::EventEnvelope> =
+                        let events: Vec<shiplog::schema::event::EventEnvelope> =
                             serde_json::from_slice(ctx.data.get("events").unwrap()).unwrap();
 
                         // Simulate curation: build a WorkstreamsFile with custom titles
-                        let mut ws: shiplog_schema::workstream::WorkstreamsFile =
+                        let mut ws: shiplog::schema::workstream::WorkstreamsFile =
                             serde_json::from_slice(ctx.data.get("workstreams").unwrap()).unwrap();
                         for w in &mut ws.workstreams {
                             if w.title.contains("frontend") {
@@ -319,7 +319,7 @@ mod user_workflow_tests {
                 );
             })
             .when("redacting at manager level", |ctx| {
-                let events: Vec<shiplog_schema::event::EventEnvelope> =
+                let events: Vec<shiplog::schema::event::EventEnvelope> =
                     serde_json::from_slice(ctx.data.get("events").unwrap()).unwrap();
                 let redactor = DeterministicRedactor::new(b"bdd-redact-key");
                 let manager_events = redactor
@@ -332,7 +332,7 @@ mod user_workflow_tests {
                 // Manager profile: titles preserved, links aliased
                 let ev = &manager_events[0];
                 let pr = match &ev.payload {
-                    shiplog_schema::event::EventPayload::PullRequest(pr) => pr,
+                    shiplog::schema::event::EventPayload::PullRequest(pr) => pr,
                     _ => return Err("expected PR payload".to_string()),
                 };
                 ctx.flags.insert(
@@ -362,7 +362,7 @@ mod user_workflow_tests {
                 )
             })
             .when("redacting at public level", |ctx| {
-                let events: Vec<shiplog_schema::event::EventEnvelope> =
+                let events: Vec<shiplog::schema::event::EventEnvelope> =
                     serde_json::from_slice(ctx.data.get("events").unwrap()).unwrap();
                 let redactor = DeterministicRedactor::new(b"bdd-redact-key");
                 let public_events = redactor
@@ -374,7 +374,7 @@ mod user_workflow_tests {
 
                 let ev = &public_events[0];
                 let pr = match &ev.payload {
-                    shiplog_schema::event::EventPayload::PullRequest(pr) => pr,
+                    shiplog::schema::event::EventPayload::PullRequest(pr) => pr,
                     _ => return Err("expected PR payload".to_string()),
                 };
                 // Public profile: titles are aliased/stripped
@@ -463,7 +463,7 @@ mod user_workflow_tests {
     fn empty_input_handling() {
         let scenario = Scenario::new("Empty input: pipeline succeeds with zero events")
             .given("an empty event list and valid coverage", |ctx| {
-                let events: Vec<shiplog_schema::event::EventEnvelope> = vec![];
+                let events: Vec<shiplog::schema::event::EventEnvelope> = vec![];
                 let coverage = make_coverage("testuser", Completeness::Complete);
                 let events_json = serde_json::to_string(&events).unwrap();
                 let coverage_json = serde_json::to_string(&coverage).unwrap();
@@ -473,7 +473,7 @@ mod user_workflow_tests {
                     .insert("coverage".to_string(), coverage_json.into_bytes());
             })
             .when("running the full pipeline", |ctx| {
-                let events: Vec<shiplog_schema::event::EventEnvelope> =
+                let events: Vec<shiplog::schema::event::EventEnvelope> =
                     serde_json::from_slice(ctx.data.get("events").unwrap()).unwrap();
                 let coverage: CoverageManifest =
                     serde_json::from_slice(ctx.data.get("coverage").unwrap()).unwrap();
@@ -504,7 +504,7 @@ mod user_workflow_tests {
 
                 // Count workstreams in the written file
                 let ws_content = std::fs::read_to_string(&outputs.workstreams_yaml).unwrap();
-                let ws: shiplog_schema::workstream::WorkstreamsFile =
+                let ws: shiplog::schema::workstream::WorkstreamsFile =
                     serde_yaml::from_str(&ws_content).unwrap();
                 ctx.numbers
                     .insert("workstream_count".to_string(), ws.workstreams.len() as u64);

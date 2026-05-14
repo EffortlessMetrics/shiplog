@@ -5,7 +5,7 @@
 use chrono::NaiveDate;
 use proptest::prelude::*;
 use shiplog::coverage::{day_windows, month_windows, week_windows, window_len_days};
-use shiplog_schema::coverage::TimeWindow;
+use shiplog::schema::coverage::TimeWindow;
 use shiplog_testkit::proptest::strategy_naive_date;
 
 // ============================================================================
@@ -111,7 +111,7 @@ proptest! {
     ) {
         prop_assume!(fetched <= total);
 
-        let slice = shiplog_schema::coverage::CoverageSlice {
+        let slice = shiplog::schema::coverage::CoverageSlice {
             window: TimeWindow {
                 since: chrono::NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
                 until: chrono::NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),
@@ -135,7 +135,7 @@ proptest! {
         let total_count = fetched.max(total);
         let fetched_count = fetched.min(total);
 
-        let slice = shiplog_schema::coverage::CoverageSlice {
+        let slice = shiplog::schema::coverage::CoverageSlice {
             window: TimeWindow {
                 since: chrono::NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
                 until: chrono::NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),

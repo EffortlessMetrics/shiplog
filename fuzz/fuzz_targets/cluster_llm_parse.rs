@@ -2,8 +2,8 @@
 
 use libfuzzer_sys::fuzz_target;
 use shiplog::cluster_llm::parse_llm_response;
-use shiplog_ids::EventId;
-use shiplog_schema::event::*;
+use shiplog::ids::EventId;
+use shiplog::schema::event::*;
 use std::collections::HashSet;
 
 fn make_event(num: u64) -> EventEnvelope {

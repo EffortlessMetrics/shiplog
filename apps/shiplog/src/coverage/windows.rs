@@ -1,7 +1,7 @@
 //! Date-window partition primitives used by coverage and ingestion logic.
 
 use chrono::{Datelike, NaiveDate, Weekday};
-use shiplog_schema::coverage::TimeWindow;
+use shiplog::schema::coverage::TimeWindow;
 
 /// Split a half-open date range into month-start anchored windows.
 ///
@@ -126,7 +126,7 @@ pub fn day_windows(since: NaiveDate, until: NaiveDate) -> Vec<TimeWindow> {
 /// ```
 /// use chrono::NaiveDate;
 /// use shiplog::coverage::window_len_days;
-/// use shiplog_schema::coverage::TimeWindow;
+/// use shiplog::schema::coverage::TimeWindow;
 ///
 /// let w = TimeWindow {
 ///     since: NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),

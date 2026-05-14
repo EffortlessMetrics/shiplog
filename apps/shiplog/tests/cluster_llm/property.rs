@@ -3,9 +3,9 @@ use shiplog::cluster_llm::{
     LlmClusterer, LlmConfig, MockLlmBackend, chunk_events, format_event_list, parse_llm_response,
     summarize_event, system_prompt,
 };
-use shiplog_ids::EventId;
-use shiplog_ports::WorkstreamClusterer;
-use shiplog_schema::event::*;
+use shiplog::ids::EventId;
+use shiplog::ports::WorkstreamClusterer;
+use shiplog::schema::event::*;
 use std::collections::HashSet;
 
 fn make_pr_event(num: u64, title: &str) -> EventEnvelope {

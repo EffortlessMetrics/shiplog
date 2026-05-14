@@ -6,9 +6,9 @@
 
 use crate::artifact_json::{write_coverage_manifest, write_events_jsonl};
 use chrono::{NaiveDate, TimeZone, Utc};
-use shiplog_ids::{EventId, RunId};
-use shiplog_schema::coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow};
-use shiplog_schema::event::*;
+use shiplog::ids::{EventId, RunId};
+use shiplog::schema::coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow};
+use shiplog::schema::event::*;
 
 fn ts() -> chrono::DateTime<Utc> {
     Utc.with_ymd_and_hms(2025, 6, 1, 12, 0, 0).unwrap()

@@ -2,11 +2,11 @@
 
 use proptest::prelude::*;
 use shiplog::engine::Engine;
+use shiplog::ports::{IngestOutput, Redactor, Renderer, WorkstreamClusterer};
 use shiplog::redact::DeterministicRedactor;
+use shiplog::schema::bundle::BundleProfile;
+use shiplog::schema::coverage::CoverageManifest;
 use shiplog::workstreams::RepoClusterer;
-use shiplog_ports::{IngestOutput, Redactor, Renderer, WorkstreamClusterer};
-use shiplog_schema::bundle::BundleProfile;
-use shiplog_schema::coverage::CoverageManifest;
 use shiplog_testkit::TestMarkdownRenderer as MarkdownRenderer;
 use shiplog_testkit::proptest::strategies::{strategy_coverage_manifest, strategy_event_vec};
 

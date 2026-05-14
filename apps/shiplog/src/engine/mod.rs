@@ -10,11 +10,11 @@ use crate::bundle::{write_bundle_manifest, write_zip};
 pub use crate::merge::ConflictResolution;
 use crate::workstreams::WorkstreamManager;
 use anyhow::{Context, Result};
-use shiplog_ports::{IngestOutput, Redactor, Renderer, WorkstreamClusterer};
-use shiplog_schema::bundle::BundleProfile;
-use shiplog_schema::coverage::CoverageManifest;
-use shiplog_schema::event::EventEnvelope;
-use shiplog_schema::workstream::WorkstreamsFile;
+use shiplog::ports::{IngestOutput, Redactor, Renderer, WorkstreamClusterer};
+use shiplog::schema::bundle::BundleProfile;
+use shiplog::schema::coverage::CoverageManifest;
+use shiplog::schema::event::EventEnvelope;
+use shiplog::schema::workstream::WorkstreamsFile;
 use std::path::{Path, PathBuf};
 
 mod artifact_json;
@@ -97,7 +97,7 @@ impl<'a> Engine<'a> {
     ///
     /// ```rust,no_run
     /// use shiplog::engine::Engine;
-    /// use shiplog_ports::{Renderer, WorkstreamClusterer, Redactor};
+    /// use shiplog::ports::{Renderer, WorkstreamClusterer, Redactor};
     /// # fn example(
     /// #     renderer: &dyn Renderer,
     /// #     clusterer: &dyn WorkstreamClusterer,
@@ -136,8 +136,8 @@ impl<'a> Engine<'a> {
     ///
     /// ```rust,no_run
     /// use shiplog::engine::Engine;
-    /// use shiplog_ports::{IngestOutput, Renderer, WorkstreamClusterer, Redactor};
-    /// use shiplog_schema::bundle::BundleProfile;
+    /// use shiplog::ports::{IngestOutput, Renderer, WorkstreamClusterer, Redactor};
+    /// use shiplog::schema::bundle::BundleProfile;
     /// use std::path::Path;
     ///
     /// # fn example(
@@ -298,8 +298,8 @@ impl<'a> Engine<'a> {
     ///
     /// ```rust,no_run
     /// use shiplog::engine::Engine;
-    /// use shiplog_ports::{IngestOutput, Renderer, WorkstreamClusterer, Redactor};
-    /// use shiplog_schema::bundle::BundleProfile;
+    /// use shiplog::ports::{IngestOutput, Renderer, WorkstreamClusterer, Redactor};
+    /// use shiplog::schema::bundle::BundleProfile;
     /// use std::path::Path;
     ///
     /// # fn example(
@@ -446,8 +446,8 @@ impl<'a> Engine<'a> {
     ///
     /// ```rust,no_run
     /// use shiplog::engine::Engine;
-    /// use shiplog_ports::{IngestOutput, Renderer, WorkstreamClusterer, Redactor};
-    /// use shiplog_schema::bundle::BundleProfile;
+    /// use shiplog::ports::{IngestOutput, Renderer, WorkstreamClusterer, Redactor};
+    /// use shiplog::schema::bundle::BundleProfile;
     /// use std::path::Path;
     ///
     /// # fn example(
@@ -671,7 +671,7 @@ impl<'a> Engine<'a> {
     ///
     /// ```rust,no_run
     /// use shiplog::engine::{Engine, ConflictResolution};
-    /// use shiplog_ports::{IngestOutput, Renderer, WorkstreamClusterer, Redactor};
+    /// use shiplog::ports::{IngestOutput, Renderer, WorkstreamClusterer, Redactor};
     ///
     /// # fn example(
     /// #     renderer: &dyn Renderer,
@@ -714,10 +714,46 @@ mod tests {
     use crate::bundle::{PROFILE_MANAGER, PROFILE_PUBLIC};
     use crate::workstreams::RepoClusterer;
     use chrono::{NaiveDate, TimeZone, Utc};
-    use shiplog_ids::{EventId, RunId};
-    use shiplog_ports::IngestOutput;
-    use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
-    use shiplog_schema::event::*;
+    use shiplog::ids::{EventId, RunId};
+    use shiplog::ports::IngestOutput;
+    use shiplog::schema::coverage::{Completeness, CoverageManifest, TimeWindow};
+    use shiplog::schema::event::*;
+
+    #[derive(Debug, Default)]
+    struct TestMarkdownRenderer;
+
+    impl Renderer for TestMarkdownRenderer {
+        fn render_packet_markdown(
+            &self,
+            user: &str,
+            window_label: &str,
+            events: &[EventEnvelope],
+            workstreams: &WorkstreamsFile,
+            coverage: &CoverageManifest,
+        ) -> Result<String> {
+            let mut out = String::new();
+            out.push_str(&format!("# Test Packet for {user}\n\n"));
+            out.push_str(&format!("Window: {window_label}\n"));
+            out.push_str(&format!("Coverage: {:?}\n\n", coverage.completeness));
+            out.push_str("## Workstreams\n");
+            for workstream in &workstreams.workstreams {
+                out.push_str(&format!("- {}\n", workstream.title));
+            }
+            out.push_str("\n## Events\n");
+            for event in events {
+                let title = match &event.payload {
+                    EventPayload::PullRequest(pr) => &pr.title,
+                    EventPayload::Review(review) => &review.pull_title,
+                    EventPayload::Manual(manual) => &manual.title,
+                };
+                out.push_str(&format!(
+                    "- {:?}: {} from {:?} - {}\n",
+                    event.kind, event.repo.full_name, event.source.system, title
+                ));
+            }
+            Ok(out)
+        }
+    }
 
     fn pr_event(repo: &str, number: u64, title: &str) -> EventEnvelope {
         EventEnvelope {
@@ -788,11 +824,11 @@ mod tests {
     }
 
     fn test_engine() -> Engine<'static> {
-        let renderer: &'static dyn shiplog_ports::Renderer =
-            Box::leak(Box::new(shiplog_testkit::TestMarkdownRenderer));
-        let clusterer: &'static dyn shiplog_ports::WorkstreamClusterer =
+        let renderer: &'static dyn shiplog::ports::Renderer =
+            Box::leak(Box::new(TestMarkdownRenderer));
+        let clusterer: &'static dyn shiplog::ports::WorkstreamClusterer =
             Box::leak(Box::new(RepoClusterer));
-        let redactor: &'static dyn shiplog_ports::Redactor = Box::leak(Box::new(
+        let redactor: &'static dyn shiplog::ports::Redactor = Box::leak(Box::new(
             crate::redact::DeterministicRedactor::new(b"test-key"),
         ));
         Engine::new(renderer, clusterer, redactor)

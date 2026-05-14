@@ -1,11 +1,11 @@
 //! Integration tests for shiplog::redact facade policy behavior.
 
 use chrono::Utc;
+use shiplog::ids::{EventId, WorkstreamId};
+use shiplog::ports::Redactor;
 use shiplog::redact::{DeterministicRedactor, RedactionProfile};
-use shiplog_ids::{EventId, WorkstreamId};
-use shiplog_ports::Redactor;
-use shiplog_schema::event::*;
-use shiplog_schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
+use shiplog::schema::event::*;
+use shiplog::schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
 
 fn sample_events() -> Vec<EventEnvelope> {
     vec![

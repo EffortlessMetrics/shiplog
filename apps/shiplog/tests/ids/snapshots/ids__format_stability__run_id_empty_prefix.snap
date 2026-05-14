@@ -1,0 +1,6 @@
+---
+source: apps/shiplog/tests/ids/format_stability.rs
+assertion_line: 21
+expression: id.to_string()
+---
+_999

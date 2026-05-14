@@ -7,11 +7,11 @@
 use anyhow::{Context, Result};
 use shiplog::engine::Engine;
 use shiplog::ingest::json::JsonIngestor;
+use shiplog::ports::Ingestor;
 use shiplog::redact::DeterministicRedactor;
 use shiplog::render::md::MarkdownRenderer;
+use shiplog::schema::bundle::BundleProfile;
 use shiplog::workstreams::RepoClusterer;
-use shiplog_ports::Ingestor;
-use shiplog_schema::bundle::BundleProfile;
 use std::path::PathBuf;
 
 fn main() -> Result<()> {

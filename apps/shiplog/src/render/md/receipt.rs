@@ -3,7 +3,7 @@
 //! This crate has a single responsibility:
 //! - converting one `EventEnvelope` into one display-ready receipt line
 
-use shiplog_schema::event::{EventEnvelope, EventKind, EventPayload, ManualEventType};
+use shiplog::schema::event::{EventEnvelope, EventKind, EventPayload, ManualEventType};
 
 /// Format one event into a markdown receipt line.
 #[must_use]
@@ -79,8 +79,8 @@ pub fn manual_type_emoji(event_type: &ManualEventType) -> &'static str {
 mod tests {
     use super::*;
     use chrono::{NaiveDate, TimeZone, Utc};
-    use shiplog_ids::EventId;
-    use shiplog_schema::event::*;
+    use shiplog::ids::EventId;
+    use shiplog::schema::event::*;
 
     fn sample_pr_event() -> EventEnvelope {
         EventEnvelope {

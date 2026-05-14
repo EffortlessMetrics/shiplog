@@ -192,10 +192,10 @@ pub mod assertions {
 /// Fixture builders for common test scenarios
 pub mod builders {
     use chrono::{NaiveDate, Utc};
-    use shiplog_ids::EventId;
-    use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
-    use shiplog_schema::event::*;
-    use shiplog_schema::workstream::WorkstreamsFile;
+    use shiplog::ids::EventId;
+    use shiplog::schema::coverage::{Completeness, CoverageManifest, TimeWindow};
+    use shiplog::schema::event::*;
+    use shiplog::schema::workstream::WorkstreamsFile;
 
     pub struct EventBuilder {
         repo: String,
@@ -307,7 +307,7 @@ pub mod builders {
 
         pub fn build(self) -> CoverageManifest {
             CoverageManifest {
-                run_id: shiplog_ids::RunId::now("test"),
+                run_id: shiplog::ids::RunId::now("test"),
                 generated_at: Utc::now(),
                 user: self.user,
                 window: TimeWindow {

@@ -17,9 +17,6 @@ cap_lints = true
 # Only mutate source files in product crates and transitional internal carriers.
 # Deleted generic/planned package shells are intentionally absent.
 examine_globs = [
-  "crates/shiplog-schema/src/**/*.rs",
-  "crates/shiplog-ids/src/**/*.rs",
-  "crates/shiplog-ports/src/**/*.rs",
   "apps/shiplog/src/**/*.rs",
 ]
 

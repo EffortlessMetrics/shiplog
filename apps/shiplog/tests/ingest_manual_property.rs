@@ -3,8 +3,8 @@
 use chrono::{NaiveDate, Utc};
 use proptest::prelude::*;
 use shiplog::ingest::manual::{ManualIngestor, write_manual_events};
-use shiplog_ports::Ingestor;
-use shiplog_schema::event::{ManualDate, ManualEventEntry, ManualEventType, ManualEventsFile};
+use shiplog::ports::Ingestor;
+use shiplog::schema::event::{ManualDate, ManualEventEntry, ManualEventType, ManualEventsFile};
 
 // ---------------------------------------------------------------------------
 // Strategies

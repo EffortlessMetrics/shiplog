@@ -3,11 +3,11 @@
 //! Exercises repo-based clustering and the WorkstreamManager file precedence.
 
 use chrono::Utc;
+use shiplog::ids::EventId;
+use shiplog::ports::WorkstreamClusterer;
+use shiplog::schema::event::*;
+use shiplog::schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
 use shiplog::workstreams::{RepoClusterer, WorkstreamManager, write_workstreams};
-use shiplog_ids::EventId;
-use shiplog_ports::WorkstreamClusterer;
-use shiplog_schema::event::*;
-use shiplog_schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
 use shiplog_testkit::bdd::Scenario;
 use shiplog_testkit::bdd::assertions::*;
 
@@ -73,7 +73,7 @@ fn make_workstreams(title: &str) -> WorkstreamsFile {
         version: 1,
         generated_at: Utc::now(),
         workstreams: vec![Workstream {
-            id: shiplog_ids::WorkstreamId::from_parts(["bdd", "ws", title]),
+            id: shiplog::ids::WorkstreamId::from_parts(["bdd", "ws", title]),
             title: title.to_string(),
             summary: Some("test workstream".into()),
             tags: vec!["repo".into()],

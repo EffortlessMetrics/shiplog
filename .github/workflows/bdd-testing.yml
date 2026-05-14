@@ -147,7 +147,7 @@ jobs:
 
       - name: Test stable contracts and trust surfaces
         run: |
-          cargo test -p shiplog-ids -p shiplog-schema -p shiplog-ports -- --test-threads=4
+          cargo test -p shiplog --test ids --test schema --test ports -- --test-threads=4
           cargo test -p shiplog --test workstreams -- --test-threads=4
           cargo test -p shiplog --features llm --test cluster_llm -- --test-threads=4
           cargo test -p shiplog --test redact -- --test-threads=4

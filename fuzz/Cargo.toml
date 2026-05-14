@@ -9,10 +9,7 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = "0.4"
-shiplog-schema = { path = "../crates/shiplog-schema" }
-shiplog-ids = { path = "../crates/shiplog-ids" }
 shiplog = { path = "../apps/shiplog", features = ["llm"] }
-shiplog-ports = { path = "../crates/shiplog-ports", version = "0.6.0" }
 sha2 = "0.10.9"
 hex = "0.4.3"
 chrono = "0.4.44"

@@ -6,8 +6,8 @@
 
 use chrono::{NaiveDate, Utc};
 use shiplog::ingest::manual::{ManualIngestor, read_manual_events, write_manual_events};
-use shiplog_ports::Ingestor;
-use shiplog_schema::event::{
+use shiplog::ports::Ingestor;
+use shiplog::schema::event::{
     Link, ManualDate, ManualEventEntry, ManualEventType, ManualEventsFile,
 };
 

@@ -2,8 +2,8 @@
 
 use crate::artifact_json::{write_coverage_manifest, write_events_jsonl};
 use chrono::{NaiveDate, TimeZone, Utc};
-use shiplog_ids::RunId;
-use shiplog_schema::coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow};
+use shiplog::ids::RunId;
+use shiplog::schema::coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow};
 use shiplog_testkit::pr_event;
 
 // ── JSONL snapshot tests ────────────────────────────────────────────────

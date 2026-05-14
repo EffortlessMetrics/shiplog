@@ -602,10 +602,10 @@ external contract. Adapters depend on ports and schema, never the reverse.
 | Surface | Role |
 |-------|------|
 | `shiplog` | Supported CLI entrypoint and default public package surface |
-| `shiplog-schema` | Internal typed schema support; JSON schemas are the public machine contract |
+| `shiplog::schema` | Internal typed schema support; JSON schemas are the public machine contract |
 | `shiplog::engine` | Internal orchestration support during contraction |
-| `shiplog-ports` | Internal trait definitions until a plugin/API ADR exists |
-| `shiplog-ids` | Internal deterministic ID helpers during contraction |
+| `shiplog::ports` | Internal trait definitions until a plugin/API ADR exists |
+| `shiplog::ids` | Internal deterministic ID helpers during contraction |
 | `shiplog::workstreams` | Internal workstream clustering and curated YAML workflow |
 | `shiplog-merge` | Internal multi-source merge helpers |
 | `shiplog::cluster_llm` | Internal optional LLM-assisted semantic clustering behind the `llm` feature |

@@ -114,17 +114,17 @@ mod workflow_tests {
     fn sample_workstreams_file(
         title: &str,
         summary: &str,
-    ) -> shiplog_schema::workstream::WorkstreamsFile {
-        shiplog_schema::workstream::WorkstreamsFile {
+    ) -> shiplog::schema::workstream::WorkstreamsFile {
+        shiplog::schema::workstream::WorkstreamsFile {
             version: 1,
             generated_at: chrono::Utc::now(),
-            workstreams: vec![shiplog_schema::workstream::Workstream {
-                id: shiplog_ids::WorkstreamId::from_parts(["ws", title]),
+            workstreams: vec![shiplog::schema::workstream::Workstream {
+                id: shiplog::ids::WorkstreamId::from_parts(["ws", title]),
                 title: title.to_string(),
                 summary: Some(summary.to_string()),
                 tags: vec!["bdd".into()],
-                stats: shiplog_schema::workstream::WorkstreamStats::zero(),
-                events: vec![shiplog_ids::EventId::from_parts(["e", title])],
+                stats: shiplog::schema::workstream::WorkstreamStats::zero(),
+                events: vec![shiplog::ids::EventId::from_parts(["e", title])],
                 receipts: vec![],
             }],
         }

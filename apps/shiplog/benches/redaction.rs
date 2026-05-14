@@ -1,7 +1,7 @@
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
+use shiplog::ports::Redactor;
 use shiplog::redact::DeterministicRedactor;
-use shiplog_ports::Redactor;
-use shiplog_schema::event::EventEnvelope;
+use shiplog::schema::event::EventEnvelope;
 use std::hint::black_box;
 
 fn sample_events(n: usize) -> Vec<EventEnvelope> {
@@ -60,7 +60,7 @@ fn bench_redact_workstreams(c: &mut Criterion) {
     let redactor = DeterministicRedactor::new(b"bench-key-2025");
     let events = sample_events(30);
 
-    let workstreams_file = shiplog_schema::workstream::WorkstreamsFile {
+    let workstreams_file = shiplog::schema::workstream::WorkstreamsFile {
         version: 1,
         generated_at: chrono::Utc::now(),
         workstreams: (0..5)
@@ -71,12 +71,12 @@ fn bench_redact_workstreams(c: &mut Criterion) {
                     .take(6)
                     .map(|e| e.id.clone())
                     .collect();
-                shiplog_schema::workstream::Workstream {
-                    id: shiplog_ids::WorkstreamId::from_parts(["repo", &format!("org/repo-{i}")]),
+                shiplog::schema::workstream::Workstream {
+                    id: shiplog::ids::WorkstreamId::from_parts(["repo", &format!("org/repo-{i}")]),
                     title: format!("Workstream {i}"),
                     summary: Some(format!("Summary for workstream {i}")),
                     tags: vec!["infra".into(), "backend".into()],
-                    stats: shiplog_schema::workstream::WorkstreamStats {
+                    stats: shiplog::schema::workstream::WorkstreamStats {
                         pull_requests: 6,
                         reviews: 0,
                         manual_events: 0,

@@ -1,13 +1,13 @@
 //! Property tests for repo clustering invariants.
 
 use proptest::prelude::*;
+use shiplog::ports::WorkstreamClusterer;
+use shiplog::schema::event::EventEnvelope;
 use shiplog::workstreams::RepoClusterer;
 use shiplog::workstreams::WORKSTREAM_RECEIPT_LIMIT_TOTAL;
-use shiplog_ports::WorkstreamClusterer;
-use shiplog_schema::event::EventEnvelope;
 use shiplog_testkit::proptest::*;
 
-fn clustered_workstreams(events: &[EventEnvelope]) -> Vec<shiplog_schema::workstream::Workstream> {
+fn clustered_workstreams(events: &[EventEnvelope]) -> Vec<shiplog::schema::workstream::Workstream> {
     RepoClusterer.cluster(events).unwrap().workstreams
 }
 

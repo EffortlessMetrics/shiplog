@@ -1,8 +1,8 @@
 use anyhow::{Context, Result};
 use chrono::Utc;
 use serde::Deserialize;
-use shiplog_schema::event::EventEnvelope;
-use shiplog_schema::workstream::WorkstreamsFile;
+use shiplog::schema::event::EventEnvelope;
+use shiplog::schema::workstream::WorkstreamsFile;
 mod claims;
 mod stats;
 mod workstreams;
@@ -56,8 +56,8 @@ pub fn parse_llm_response(json_str: &str, events: &[EventEnvelope]) -> Result<Wo
 mod tests {
     use super::*;
     use chrono::Utc;
-    use shiplog_ids::EventId;
-    use shiplog_schema::event::*;
+    use shiplog::ids::EventId;
+    use shiplog::schema::event::*;
 
     fn make_pr_event(num: u64) -> EventEnvelope {
         EventEnvelope {

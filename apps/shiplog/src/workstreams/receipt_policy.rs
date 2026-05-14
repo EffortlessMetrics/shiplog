@@ -3,7 +3,7 @@
 //! This module is intentionally tiny and focused: it codifies the policy constants
 //! used by workstream clustering and markdown rendering so they stay in sync.
 
-use shiplog_schema::event::EventKind;
+use shiplog::schema::event::EventKind;
 
 /// Max receipts kept during clustering for Review events.
 pub const WORKSTREAM_RECEIPT_LIMIT_REVIEW: usize = 5;

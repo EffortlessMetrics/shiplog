@@ -1,10 +1,10 @@
-use shiplog_schema::event::{EventEnvelope, EventKind};
-use shiplog_schema::workstream::WorkstreamStats;
+use shiplog::schema::event::{EventEnvelope, EventKind};
+use shiplog::schema::workstream::WorkstreamStats;
 
 /// Projection of selected events into the fields carried by a workstream.
 pub(super) struct EventSelection {
     pub(super) stats: WorkstreamStats,
-    pub(super) event_ids: Vec<shiplog_ids::EventId>,
+    pub(super) event_ids: Vec<shiplog::ids::EventId>,
 }
 
 pub(super) fn summarize_events(events: &[EventEnvelope], indices: &[usize]) -> EventSelection {
@@ -24,7 +24,7 @@ pub(super) fn receipt_ids_for_indices(
     events: &[EventEnvelope],
     indices: impl IntoIterator<Item = usize>,
     limit: usize,
-) -> Vec<shiplog_ids::EventId> {
+) -> Vec<shiplog::ids::EventId> {
     indices
         .into_iter()
         .take(limit)

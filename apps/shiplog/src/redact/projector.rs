@@ -3,8 +3,8 @@
 use super::policy::{redact_events_with_aliases, redact_workstreams_with_aliases};
 use super::profile::RedactionProfile;
 use super::repo::AliasResolver;
-use shiplog_schema::event::EventEnvelope;
-use shiplog_schema::workstream::WorkstreamsFile;
+use shiplog::schema::event::EventEnvelope;
+use shiplog::schema::workstream::WorkstreamsFile;
 
 /// Parse a raw profile string into a canonical profile.
 #[must_use]

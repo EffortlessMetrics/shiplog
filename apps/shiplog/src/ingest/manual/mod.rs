@@ -5,9 +5,9 @@
 
 use anyhow::Result;
 use chrono::Utc;
-use shiplog_ports::{IngestOutput, Ingestor};
-use shiplog_schema::coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow};
-use shiplog_schema::freshness::{FreshnessStatus, SourceFreshness};
+use shiplog::ports::{IngestOutput, Ingestor};
+use shiplog::schema::coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow};
+use shiplog::schema::freshness::{FreshnessStatus, SourceFreshness};
 use std::path::Path;
 
 pub mod events;
@@ -30,7 +30,7 @@ pub use events::{
 ///
 /// ```rust,no_run
 /// use shiplog::ingest::manual::ManualIngestor;
-/// use shiplog_ports::Ingestor;
+/// use shiplog::ports::Ingestor;
 /// use chrono::NaiveDate;
 ///
 /// let ingestor = ManualIngestor::new(
@@ -87,7 +87,7 @@ impl Ingestor for ManualIngestor {
             return Ok(IngestOutput {
                 events: Vec::new(),
                 coverage: CoverageManifest {
-                    run_id: shiplog_ids::RunId::now("manual"),
+                    run_id: shiplog::ids::RunId::now("manual"),
                     generated_at: observed_at,
                     user: self.user.clone(),
                     window: self.window.clone(),
@@ -126,7 +126,7 @@ impl Ingestor for ManualIngestor {
 
         let observed_at = Utc::now();
         let coverage = CoverageManifest {
-            run_id: shiplog_ids::RunId::now("manual"),
+            run_id: shiplog::ids::RunId::now("manual"),
             generated_at: observed_at,
             user: self.user.clone(),
             window: self.window.clone(),
@@ -165,7 +165,7 @@ impl Ingestor for ManualIngestor {
 mod tests {
     use super::*;
     use chrono::NaiveDate;
-    use shiplog_schema::event::{ManualDate, ManualEventEntry, ManualEventType, ManualEventsFile};
+    use shiplog::schema::event::{ManualDate, ManualEventEntry, ManualEventType, ManualEventsFile};
 
     fn make_test_entry(id: &str) -> ManualEventEntry {
         ManualEventEntry {
@@ -176,7 +176,7 @@ mod tests {
             description: Some("A test event".to_string()),
             workstream: Some("test-workstream".to_string()),
             tags: vec!["test".to_string()],
-            receipts: vec![shiplog_schema::event::Link {
+            receipts: vec![shiplog::schema::event::Link {
                 label: "doc".to_string(),
                 url: "https://example.com/doc".to_string(),
             }],

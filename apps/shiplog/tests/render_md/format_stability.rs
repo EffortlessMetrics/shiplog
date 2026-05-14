@@ -5,10 +5,10 @@
 //! to guard against accidental format changes in the rendered packet.
 
 use chrono::{NaiveDate, TimeZone, Utc};
+use shiplog::ids::{EventId, RunId, WorkstreamId};
+use shiplog::ports::Renderer;
 use shiplog::render::md::{MarkdownRenderer, SectionOrder};
-use shiplog_ids::{EventId, RunId, WorkstreamId};
-use shiplog_ports::Renderer;
-use shiplog_schema::{
+use shiplog::schema::{
     coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow},
     event::*,
     workstream::{Workstream, WorkstreamStats, WorkstreamsFile},

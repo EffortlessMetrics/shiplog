@@ -6,7 +6,7 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use shiplog_schema::bundle::{BundleManifest, BundleProfile};
+use shiplog::schema::bundle::{BundleManifest, BundleProfile};
 use std::str::FromStr;
 
 fuzz_target!(|data: &[u8]| {

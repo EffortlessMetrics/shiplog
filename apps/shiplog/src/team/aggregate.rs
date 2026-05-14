@@ -8,9 +8,9 @@
 use anyhow::{Context, Result, anyhow};
 use chrono::{NaiveDate, Utc};
 use serde_json::Value;
-use shiplog_ports::IngestOutput;
-use shiplog_schema::coverage::{Completeness, CoverageManifest, TimeWindow};
-use shiplog_schema::event::EventEnvelope;
+use shiplog::ports::IngestOutput;
+use shiplog::schema::coverage::{Completeness, CoverageManifest, TimeWindow};
+use shiplog::schema::event::EventEnvelope;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -312,7 +312,7 @@ fn empty_coverage(
 ) -> CoverageManifest {
     let today = Utc::now().date_naive();
     CoverageManifest {
-        run_id: shiplog_ids::RunId::now("team"),
+        run_id: shiplog::ids::RunId::now("team"),
         generated_at: Utc::now(),
         user: "team".to_string(),
         window: TimeWindow {
@@ -331,29 +331,29 @@ fn empty_coverage(
 mod tests {
     use super::*;
     use chrono::{NaiveDate, TimeZone, Utc};
-    use shiplog_ids::EventId;
-    use shiplog_schema::coverage::TimeWindow;
+    use shiplog::ids::EventId;
+    use shiplog::schema::coverage::TimeWindow;
     use std::io::Write;
 
     fn event(id: &str, repo: &str, when: chrono::DateTime<Utc>) -> EventEnvelope {
         EventEnvelope {
             id: EventId::from_parts(["team", id]),
-            kind: shiplog_schema::event::EventKind::PullRequest,
+            kind: shiplog::schema::event::EventKind::PullRequest,
             occurred_at: when,
-            actor: shiplog_schema::event::Actor {
+            actor: shiplog::schema::event::Actor {
                 login: "alice".to_string(),
                 id: None,
             },
-            repo: shiplog_schema::event::RepoRef {
+            repo: shiplog::schema::event::RepoRef {
                 full_name: repo.to_string(),
                 html_url: None,
-                visibility: shiplog_schema::event::RepoVisibility::Public,
+                visibility: shiplog::schema::event::RepoVisibility::Public,
             },
-            payload: shiplog_schema::event::EventPayload::PullRequest(
-                shiplog_schema::event::PullRequestEvent {
+            payload: shiplog::schema::event::EventPayload::PullRequest(
+                shiplog::schema::event::PullRequestEvent {
                     number: 1,
                     title: format!("Event {id}"),
-                    state: shiplog_schema::event::PullRequestState::Merged,
+                    state: shiplog::schema::event::PullRequestState::Merged,
                     created_at: when,
                     merged_at: Some(when),
                     additions: Some(1),
@@ -368,17 +368,17 @@ mod tests {
             ),
             tags: vec![],
             links: vec![],
-            source: shiplog_schema::event::SourceRef {
-                system: shiplog_schema::event::SourceSystem::Github,
+            source: shiplog::schema::event::SourceRef {
+                system: shiplog::schema::event::SourceSystem::Github,
                 url: None,
                 opaque_id: None,
             },
         }
     }
 
-    fn coverage(run_id: &str) -> shiplog_schema::coverage::CoverageManifest {
-        shiplog_schema::coverage::CoverageManifest {
-            run_id: shiplog_ids::RunId(run_id.to_string()),
+    fn coverage(run_id: &str) -> shiplog::schema::coverage::CoverageManifest {
+        shiplog::schema::coverage::CoverageManifest {
+            run_id: shiplog::ids::RunId(run_id.to_string()),
             generated_at: Utc::now(),
             user: "alice".to_string(),
             window: TimeWindow {

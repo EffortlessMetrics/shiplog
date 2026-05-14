@@ -6,7 +6,7 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use shiplog_schema::workstream::WorkstreamsFile;
+use shiplog::schema::workstream::WorkstreamsFile;
 
 fuzz_target!(|data: &[u8]| {
     // Ensure the input is valid UTF-8

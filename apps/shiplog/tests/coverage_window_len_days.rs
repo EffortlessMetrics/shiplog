@@ -1,6 +1,6 @@
 use chrono::NaiveDate;
 use shiplog::coverage::window_len_days;
-use shiplog_schema::coverage::TimeWindow;
+use shiplog::schema::coverage::TimeWindow;
 
 #[test]
 fn window_len_days_reports_multi_day_length() {
