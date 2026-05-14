@@ -1,5 +1,5 @@
 ---
-source: crates/shiplog-ingest-linear/src/lib.rs
+source: apps/shiplog/src/ingest/linear.rs
 expression: events
 ---
 - id: 2894f4159959a3c007dacf6be132fad4833d4ba5092418c077afce58ce3c38d0

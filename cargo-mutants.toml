@@ -29,8 +29,8 @@
 #
 # shiplog-engine        - orchestration (ingest -> cluster -> render)
 # shiplog-workstreams   - workstream facade (curated + suggested)
-# shiplog-render-md     - Markdown renderer (insta snapshot-tested)
-# shiplog-render-json   - JSON renderer
+# apps/shiplog/src/render
+#                      - Markdown and JSON renderers (snapshot-tested)
 # shiplog-cache         - API cache facade
 # shiplog-merge         - multi-source event merge and deduplication
 
@@ -42,10 +42,12 @@
 # shiplog-ingest-github - GitHub API adapter
 # shiplog-ingest-json   - JSONL import adapter
 # shiplog-ingest-manual - manual YAML ingest adapter
-# shiplog-ingest-git    - local git-log ingest adapter
+# apps/shiplog/src/ingest/git.rs
+#                      - local git-log ingest adapter
 # shiplog-ingest-gitlab - GitLab API adapter
 # shiplog-ingest-jira   - Jira API adapter
-# shiplog-ingest-linear - Linear API adapter
+# apps/shiplog/src/ingest/linear.rs
+#                      - Linear API adapter
 # shiplog-cluster-llm   - optional LLM-assisted workstream clustering
 # shiplog-team          - optional team aggregation facade
 # apps/shiplog          - CLI entrypoint

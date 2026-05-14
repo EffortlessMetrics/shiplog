@@ -1,7 +1,7 @@
-//! Comprehensive tests for shiplog-ingest-linear: parsing, construction, edge cases.
+//! Comprehensive tests for the Linear ingest module: parsing, construction, edge cases.
 
 use chrono::NaiveDate;
-use shiplog_ingest_linear::{IssueStatus, LinearIngestor};
+use shiplog::ingest::linear::{IssueStatus, LinearIngestor};
 use std::str::FromStr;
 
 // ── Helpers ─────────────────────────────────────────────────────────────────

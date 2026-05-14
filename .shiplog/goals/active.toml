@@ -97,6 +97,16 @@ number = 258
 title = "docs(adr): make json schemas the public contract"
 url = "https://github.com/EffortlessMetrics/shiplog/pull/258"
 
+[[completed_pr]]
+number = 259
+title = "plans(crate-surface): add implementation plan and active goal"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/259"
+
+[[completed_pr]]
+number = 260
+title = "refactor(crate): inline local git adapter"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/260"
+
 [[work_item]]
 id = "ingest-adapter-collapse"
 title = "refactor(crate): inline ingest adapters into shiplog"
@@ -203,4 +213,3 @@ commands = [
   "git diff --check",
 ]
 rollback = "Revert release-prep docs and version changes; preserve landed contraction refactors unless they caused the blocker."
-
