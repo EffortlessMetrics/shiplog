@@ -132,6 +132,11 @@ number = 265
 title = "refactor(crate): inline github adapter"
 url = "https://github.com/EffortlessMetrics/shiplog/pull/265"
 
+[[completed_pr]]
+number = 266
+title = "refactor(crate): inline json adapter"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/266"
+
 [[work_item]]
 id = "ingest-adapter-collapse"
 title = "refactor(crate): inline ingest adapters into shiplog"
