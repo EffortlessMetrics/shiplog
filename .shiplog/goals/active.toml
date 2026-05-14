@@ -147,6 +147,11 @@ number = 269
 title = "refactor(crate): inline coverage support"
 url = "https://github.com/EffortlessMetrics/shiplog/pull/269"
 
+[[completed_pr]]
+number = 271
+title = "refactor(crate): inline engine support"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/271"
+
 [[work_item]]
 id = "ingest-adapter-collapse"
 title = "refactor(crate): inline ingest adapters into shiplog"
