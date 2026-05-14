@@ -47,8 +47,8 @@ git tag v0.7.0
 git push origin v0.7.0
 ```
 
-`release.yml` builds the multi-platform binaries and creates the GitHub
-release.
+`release.yml` builds the multi-platform binaries and creates a draft GitHub
+release. Wait for the workflow to upload assets before publishing the draft.
 
 ## Publish To crates.io
 
@@ -59,6 +59,19 @@ CARGO_REGISTRY_TOKEN=<token> cargo publish -p shiplog --locked
 ```
 
 Do not run `scripts/publish-v0.5.0.sh` or `scripts/publish-v0.6.0.sh`.
+
+## Publish GitHub Release
+
+After `release.yml` has uploaded the release assets and crates.io publish has
+completed, publish the draft GitHub release:
+
+```bash
+gh release view v0.7.0
+gh release edit v0.7.0 --draft=false --latest
+```
+
+`scripts/verify-release.sh` expects the GitHub release to be non-draft and
+non-prerelease.
 
 ## Post-Tag Smoke
 

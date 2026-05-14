@@ -446,5 +446,7 @@ Close the lane only when:
 - the published package graph does not require unsupported implementation
   crates as forward dependencies;
 - first-run intake/open/report behavior has targeted proof;
+- the draft GitHub release is published after assets upload and crates.io
+  publish;
 - 0.7 release prep records install, package, and compatibility proof;
 - the active goal is archived with shipped release receipts.
