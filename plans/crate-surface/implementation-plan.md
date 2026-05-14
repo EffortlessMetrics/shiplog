@@ -83,6 +83,8 @@ Landed:
   `refactor(crate): inline redaction support`
 - [#277](https://github.com/EffortlessMetrics/shiplog/pull/277):
   `refactor(crate): inline merge and team support`
+- [#279](https://github.com/EffortlessMetrics/shiplog/pull/279):
+  `refactor(crate): inline workstreams and llm support`
 
 The remaining risk is dependency leakage: `shiplog` can be publish-allowed but
 still resolve historical 0.6 implementation crates if versioned path
@@ -211,8 +213,8 @@ refactor(crate): inline remaining product trust support
 
 Scope:
 
-- `shiplog-bundle`, `shiplog-redact`, `shiplog-merge`, and `shiplog-team`
-  are complete; move `shiplog-workstreams` in a small slice.
+- `shiplog-bundle`, `shiplog-redact`, `shiplog-merge`, `shiplog-team`,
+  `shiplog-workstreams`, and `shiplog-cluster-llm` are complete.
 - Treat `shiplog-engine` as complete; product orchestration support moved into
   `shiplog::engine` in #271.
 - Keep bundle, redaction, and workstream output shape unchanged.
@@ -221,9 +223,9 @@ Scope:
 Expected files:
 
 - `apps/shiplog/Cargo.toml`
-- `apps/shiplog/src/{workstreams,merge,team}/**`
+- `apps/shiplog/src/{workstreams,merge,team,cluster_llm}/**`
 - `apps/shiplog/tests/**`
-- `crates/shiplog-{workstreams,merge,team}/**`
+- `crates/shiplog-{workstreams,merge,team,cluster-llm}/**`
 - `docs/release/0.7-crate-surface.md`
 
 Behavior change:
@@ -238,6 +240,8 @@ cargo test -p shiplog --test front_door_first_pack_smoke
 cargo test -p shiplog --test cli_integration -- intake
 cargo test -p shiplog --test cli_integration -- report
 cargo test -p shiplog --test bundle
+cargo test -p shiplog --test workstreams -- --test-threads=4
+cargo test -p shiplog --features llm --test cluster_llm -- --test-threads=4
 cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
 cargo xtask check-policy-schemas
 cargo xtask check-file-policy --mode blocking-allowlist
