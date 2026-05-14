@@ -1,10 +1,10 @@
-//! Determinism tests for shiplog-redact.
+//! Determinism tests for shiplog::redact.
 //!
 //! Verifies that redaction is fully reproducible: same key + same input always
 //! produce the same redacted output, regardless of call order.
 
+use shiplog::redact::DeterministicRedactor;
 use shiplog_ports::Redactor;
-use shiplog_redact::DeterministicRedactor;
 
 const ITERATIONS: usize = 100;
 

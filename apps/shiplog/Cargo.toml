@@ -38,7 +38,6 @@ git2 = "0.20"
 mutants.workspace = true
 shiplog-merge = { path = "../../crates/shiplog-merge", version = "0.6.0" }
 shiplog-workstreams = { path = "../../crates/shiplog-workstreams", version = "0.6.0" }
-shiplog-redact = { path = "../../crates/shiplog-redact", version = "0.6.0" }
 shiplog-ports = { path = "../../crates/shiplog-ports", version = "0.6.0" }
 shiplog-schema = { path = "../../crates/shiplog-schema", version = "0.6.0" }
 shiplog-ids = { path = "../../crates/shiplog-ids", version = "0.6.0" }
@@ -55,7 +54,6 @@ proptest.workspace = true
 criterion.workspace = true
 shiplog-ports = { path = "../../crates/shiplog-ports", version = "0.6.0" }
 shiplog-schema = { path = "../../crates/shiplog-schema", version = "0.6.0" }
-shiplog-redact = { path = "../../crates/shiplog-redact", version = "0.6.0" }
 shiplog-workstreams = { path = "../../crates/shiplog-workstreams", version = "0.6.0" }
 shiplog-ids = { path = "../../crates/shiplog-ids", version = "0.6.0" }
 shiplog-testkit = { path = "../../crates/shiplog-testkit" }
@@ -74,6 +72,10 @@ path = "../../examples/redaction.rs"
 
 [[bench]]
 name = "coverage"
+harness = false
+
+[[bench]]
+name = "redaction"
 harness = false
 
 [lints]

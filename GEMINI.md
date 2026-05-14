@@ -18,7 +18,7 @@ This project is a module-first Rust workspace following **Clean Architecture** p
         *   `shiplog::engine`: Orchestration logic (ingest → normalize → cluster → render).
         *   `shiplog-workstreams`: Logic for clustering events into workstreams.
         *   `shiplog-ids`: Type-safe stable ID generation (SHA256-based).
-        *   `shiplog-redact`: Deterministic HMAC-SHA256 redaction (internal/manager/public profiles).
+        *   `shiplog::redact`: Deterministic HMAC-SHA256 redaction (internal/manager/public profiles).
         *   Coverage/time-window support now lives under `apps/shiplog/src/coverage`.
     *   **Adapters (Infrastructure):**
         *   Source adapters live under `apps/shiplog/src/ingest/`.

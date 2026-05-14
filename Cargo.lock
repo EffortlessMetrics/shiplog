@@ -2298,7 +2298,6 @@ dependencies = [
  "shiplog-ids",
  "shiplog-merge",
  "shiplog-ports",
- "shiplog-redact",
  "shiplog-schema",
  "shiplog-testkit",
  "shiplog-workstreams",
@@ -2366,25 +2365,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "shiplog-redact"
-version = "0.6.0"
-dependencies = [
- "anyhow",
- "chrono",
- "criterion",
- "hex",
- "proptest",
- "serde",
- "serde_json",
- "sha2 0.11.0",
- "shiplog-ids",
- "shiplog-ports",
- "shiplog-schema",
- "shiplog-testkit",
- "tempfile",
-]
-
-[[package]]
 name = "shiplog-schema"
 version = "0.6.0"
 dependencies = [
@@ -2431,7 +2411,6 @@ dependencies = [
  "shiplog-ids",
  "shiplog-merge",
  "shiplog-ports",
- "shiplog-redact",
  "shiplog-schema",
  "shiplog-team",
  "shiplog-workstreams",

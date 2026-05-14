@@ -19,7 +19,6 @@ cap_lints = true
 examine_globs = [
   "crates/shiplog-schema/src/**/*.rs",
   "crates/shiplog-ids/src/**/*.rs",
-  "crates/shiplog-redact/src/**/*.rs",
   "crates/shiplog-coverage/src/**/*.rs",
   "crates/shiplog-ports/src/**/*.rs",
   "crates/shiplog-engine/src/**/*.rs",

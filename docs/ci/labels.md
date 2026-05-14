@@ -67,7 +67,7 @@ Risk packs (see [`risk-packs.md`](risk-packs.md)) auto-apply some labels and
 auto-select some lanes based on changed paths. Manual labels override or
 extend risk-pack auto-routing, never replace it.
 
-Example: a PR that touches `crates/shiplog-redact/` matches the
+Example: a PR that touches `apps/shiplog/src/redact/` matches the
 `redaction-privacy` risk pack, which auto-applies the `mutation` label and
 selects `mutation_targeted` + `property` lanes. The author can additionally
 apply `full-ci` to run every targeted lane (e.g. coverage + BDD).

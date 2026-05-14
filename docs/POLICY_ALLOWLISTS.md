@@ -46,7 +46,7 @@ Field rules:
   where the policy explicitly says so (e.g. `tests/**/*.json`); single-file
   paths are preferred for blast-radius reasons.
 - `owner` — the crate or sub-team that takes responsibility. Use the
-  workspace package name (`shiplog::engine`, `shiplog-redact`, etc.) when the
+  workspace package or module name (`shiplog::engine`, `shiplog::redact`, etc.) when the
   finding lives in that package, or one of: `release`, `policy`, `ci`,
   `docs`.
 - `reason` — one or two sentences. Explain the situation, not the

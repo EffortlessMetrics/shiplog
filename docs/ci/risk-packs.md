@@ -40,7 +40,7 @@ PR plan + the always-on PR-fast lanes (which are still gated by the
 
 | ID | Description | Paths (summarised) | Auto-labels | Auto-selected lanes |
 |----|-------------|--------------------|-------------|---------------------|
-| `redaction-privacy` | Redaction trust surface and privacy-sensitive code paths | `crates/shiplog-redact/**`, `apps/shiplog/src/bundle/**`, `apps/shiplog/tests/bundle/**`, `apps/shiplog/src/**/share*.rs`, `apps/shiplog/src/**/profile*.rs` | `mutation` | `mutation_targeted`, `property` |
+| `redaction-privacy` | Redaction trust surface and privacy-sensitive code paths | `apps/shiplog/src/redact/**`, `apps/shiplog/tests/redact/**`, `apps/shiplog/src/bundle/**`, `apps/shiplog/tests/bundle/**`, `apps/shiplog/src/**/share*.rs`, `apps/shiplog/src/**/profile*.rs` | `mutation` | `mutation_targeted`, `property` |
 | `bundle-share` | Bundle integrity, share manifests, share verification | `apps/shiplog/src/bundle/**`, `apps/shiplog/tests/bundle/**`, `apps/shiplog/src/**/share*.rs`, `apps/shiplog/src/**/manifest*.rs` | `mutation` | `mutation_targeted` |
 | `report-schema` | Intake report schema, agent pack export, contracts/schemas | `contracts/schemas/**`, `apps/shiplog/src/engine/**`, `apps/shiplog/src/**/intake*.rs`, `apps/shiplog/src/**/report*.rs` | `property-tests` | `property` |
 | `schema-ids` | Stable contract crates (schema, ids, ports) | `crates/shiplog-schema/**`, `crates/shiplog-ids/**`, `crates/shiplog-ports/**` | `mutation` | `mutation_targeted`, `property` |

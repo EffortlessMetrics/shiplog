@@ -50,7 +50,7 @@ apps/shiplog (CLI, clap)
        ├─ Ingest adapters: apps/shiplog/src/ingest/*
        ├─ shiplog-workstreams (clustering + user-curated YAML)
        ├─ shiplog-cluster-llm (optional LLM-assisted clustering, feature-gated)
-       ├─ shiplog-redact (deterministic HMAC-SHA256 aliasing, 3 profiles)
+       ├─ shiplog::redact (deterministic HMAC-SHA256 aliasing, 3 profiles)
        ├─ apps/shiplog/src/render + engine artifact writer
        └─ shiplog::bundle (zip + SHA256 checksums)
   Shared foundations:
@@ -90,7 +90,7 @@ Outputs go under `out/<run_id>/`: `packet.md`, `ledger.events.jsonl`, `coverage.
 
 - Unit tests live next to the crate or owner module they verify.
 - Snapshot tests (`insta`, YAML format) in `shiplog::render` and `shiplog::engine` - review snapshot diffs carefully.
-- Property-based tests (`proptest`) in `shiplog-redact` for redaction leak detection.
+- Property-based tests (`proptest`) in `shiplog::redact` for redaction leak detection.
 - Shared fixtures via `shiplog-testkit::fixtures` to avoid cross-crate duplication.
 - BDD-style test infrastructure in `shiplog-testkit::bdd` for scenario-driven integration tests.
 - Fuzz harnesses in `fuzz/` (not part of workspace; requires `cargo-fuzz`).
@@ -104,7 +104,7 @@ Prefix public packages with `shiplog-` only when a boundary has earned an extern
 | Tier | Crates | Notes |
 |------|--------|-------|
 | Stable contracts | `shiplog-ids`, `shiplog-schema`, `shiplog-ports` | No adapter deps |
-| Trust surfaces | `shiplog-redact`, `shiplog-workstreams`; inlined `shiplog::coverage`, `shiplog::cache`, `shiplog::bundle`, `shiplog::render::*` | Depend on foundation |
+| Trust surfaces | `shiplog::redact`, `shiplog-workstreams`; inlined `shiplog::coverage`, `shiplog::cache`, `shiplog::bundle`, `shiplog::render::*` | Depend on foundation |
 | Adapters | `shiplog::ingest::*` | Depend on foundation and ports |
 | Orchestration | `shiplog::engine` | Wires adapters via ports |
 | App | `shiplog` (CLI) | Feature-gates: `llm` (default off) |

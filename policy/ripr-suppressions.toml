@@ -14,17 +14,17 @@ status = "advisory"
 #
 # [[suppression]]
 # id = "ripr-0001"
-# path = "crates/shiplog-redact/src/example.rs"
+# path = "apps/shiplog/src/redact/example.rs"
 # function = "redact_alias"
 # severity = "weakly_exposed"
-# owner = "shiplog-redact"
+# owner = "shiplog::redact"
 # reason = "Property test covers the equivalence class; full mutation calibrated this finding on main@<sha>."
 # created = "2026-05-09"
 # review_after = "2026-09-09"
 # expires = "2027-02-09"
 #
 # [suppression.context]
-# tracked_by_test = "shiplog-redact::tests::redact_alias_property"
+# tracked_by_test = "shiplog::redact::tests::redact_alias_property"
 # tracked_by_mutation_run = "main@<sha>"
 #
 # See docs/ci/ripr.md (added in PR #142) for the operating doc.

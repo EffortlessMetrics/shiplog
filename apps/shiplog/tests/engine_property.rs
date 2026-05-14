@@ -2,8 +2,8 @@
 
 use proptest::prelude::*;
 use shiplog::engine::Engine;
+use shiplog::redact::DeterministicRedactor;
 use shiplog_ports::{IngestOutput, Redactor, Renderer, WorkstreamClusterer};
-use shiplog_redact::DeterministicRedactor;
 use shiplog_schema::bundle::BundleProfile;
 use shiplog_schema::coverage::CoverageManifest;
 use shiplog_testkit::TestMarkdownRenderer as MarkdownRenderer;

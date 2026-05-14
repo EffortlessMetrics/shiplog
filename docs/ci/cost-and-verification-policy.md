@@ -226,7 +226,7 @@ forces the cost-vs-signal trade-off to be reviewed.
 PRs route through three mechanisms:
 
 - **Risk packs.** A file-pattern → label mapping in
-  `policy/ci-risk-packs.toml`. A PR that touches `crates/shiplog-redact/` gets
+  `policy/ci-risk-packs.toml`. A PR that touches `apps/shiplog/src/redact/` gets
   the `redaction` label, which routes the redaction-scoped mutation lane.
 - **Manual labels.** An author or reviewer can apply `full-ci`,
   `ci-budget-ack`, `ci-budget-override`, `ripr-waive`, etc. to override the

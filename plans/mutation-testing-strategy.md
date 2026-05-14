@@ -63,7 +63,7 @@ Based on criticality and complexity, crates are prioritized into tiers:
 These crates contain core data structures and invariants that must be thoroughly tested:
 
 - **[`shiplog-schema`](../crates/shiplog-schema/)**: Canonical event model, coverage tracking, bundle metadata
-- **[`shiplog-redact`](../crates/shiplog-redact/)**: Redaction invariants - security-critical
+- **[`shiplog::redact`](../apps/shiplog/src/redact/)**: Redaction invariants - security-critical
 - **[`shiplog::coverage`](../apps/shiplog/src/coverage/)**: Time window utilities, completeness tracking
 - **[`shiplog-ids`](../crates/shiplog-ids/)**: ID generation - must be deterministic
 

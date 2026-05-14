@@ -2954,7 +2954,7 @@ snippet = "until: NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),"
 count = 2
 
 [[entry]]
-path = "crates/shiplog-redact/benches/redaction.rs"
+path = "apps/shiplog/benches/redaction.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -2962,7 +2962,7 @@ snippet = ".unwrap()"
 count = 3
 
 [[entry]]
-path = "crates/shiplog-redact/src/alias.rs"
+path = "apps/shiplog/src/redact/alias.rs"
 family = "expect"
 selector_kind = "method-call"
 selector_callee = "Option/Result::expect"
@@ -2970,7 +2970,7 @@ snippet = '.expect("write");'
 count = 1
 
 [[entry]]
-path = "crates/shiplog-redact/src/alias.rs"
+path = "apps/shiplog/src/redact/alias.rs"
 family = "expect"
 selector_kind = "method-call"
 selector_callee = "Option/Result::expect"
@@ -2978,7 +2978,7 @@ snippet = 'first.save_cache(&cache_path).expect("save cache");'
 count = 2
 
 [[entry]]
-path = "crates/shiplog-redact/src/alias.rs"
+path = "apps/shiplog/src/redact/alias.rs"
 family = "expect"
 selector_kind = "method-call"
 selector_callee = "Option/Result::expect"
@@ -2986,7 +2986,7 @@ snippet = 'let dir = tempfile::tempdir().expect("tempdir");'
 count = 4
 
 [[entry]]
-path = "crates/shiplog-redact/src/alias.rs"
+path = "apps/shiplog/src/redact/alias.rs"
 family = "expect"
 selector_kind = "method-call"
 selector_callee = "Option/Result::expect"
@@ -2994,7 +2994,7 @@ snippet = 'second.load_cache(&cache_path).expect("load cache");'
 count = 2
 
 [[entry]]
-path = "crates/shiplog-redact/src/alias.rs"
+path = "apps/shiplog/src/redact/alias.rs"
 family = "expect"
 selector_kind = "method-call"
 selector_callee = "Option/Result::expect"
@@ -3002,7 +3002,7 @@ snippet = 'serde_json::to_string(&bad).expect("serialize bad"),'
 count = 1
 
 [[entry]]
-path = "crates/shiplog-redact/src/alias.rs"
+path = "apps/shiplog/src/redact/alias.rs"
 family = "expect"
 selector_kind = "method-call"
 selector_callee = "Option/Result::expect"
@@ -3010,7 +3010,7 @@ snippet = 'std::fs::write(&cache_path, "this is not json!!!").expect("write");'
 count = 1
 
 [[entry]]
-path = "crates/shiplog-redact/src/lib.rs"
+path = "apps/shiplog/src/redact/mod.rs"
 family = "panic"
 selector_kind = "macro-call"
 selector_callee = "panic"
@@ -3018,7 +3018,7 @@ snippet = '_ => panic!("expected manual event"),'
 count = 1
 
 [[entry]]
-path = "crates/shiplog-redact/src/lib.rs"
+path = "apps/shiplog/src/redact/mod.rs"
 family = "panic"
 selector_kind = "macro-call"
 selector_callee = "panic"
@@ -3026,7 +3026,7 @@ snippet = '_ => panic!("expected pr"),'
 count = 2
 
 [[entry]]
-path = "crates/shiplog-redact/src/lib.rs"
+path = "apps/shiplog/src/redact/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3034,7 +3034,7 @@ snippet = "ended_at: Some(NaiveDate::from_ymd_opt(2024, 1, 15).unwrap()),"
 count = 2
 
 [[entry]]
-path = "crates/shiplog-redact/src/lib.rs"
+path = "apps/shiplog/src/redact/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3042,7 +3042,7 @@ snippet = "let dir = tempfile::tempdir().unwrap();"
 count = 4
 
 [[entry]]
-path = "crates/shiplog-redact/src/lib.rs"
+path = "apps/shiplog/src/redact/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3050,7 +3050,7 @@ snippet = "let json = serde_json::to_string(&out).unwrap();"
 count = 6
 
 [[entry]]
-path = "crates/shiplog-redact/src/lib.rs"
+path = "apps/shiplog/src/redact/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3058,7 +3058,7 @@ snippet = 'let out = r.redact_events(&[ev], "internal").unwrap();'
 count = 1
 
 [[entry]]
-path = "crates/shiplog-redact/src/lib.rs"
+path = "apps/shiplog/src/redact/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3066,7 +3066,7 @@ snippet = 'let out = r.redact_events(&[ev], "manager").unwrap();'
 count = 2
 
 [[entry]]
-path = "crates/shiplog-redact/src/lib.rs"
+path = "apps/shiplog/src/redact/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3074,7 +3074,7 @@ snippet = 'let out = r.redact_events(&[ev], "public").unwrap();'
 count = 6
 
 [[entry]]
-path = "crates/shiplog-redact/src/lib.rs"
+path = "apps/shiplog/src/redact/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3082,7 +3082,7 @@ snippet = 'let out = r.redact_workstreams(&ws_file, "internal").unwrap();'
 count = 1
 
 [[entry]]
-path = "crates/shiplog-redact/src/lib.rs"
+path = "apps/shiplog/src/redact/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3090,7 +3090,7 @@ snippet = 'let out = r.redact_workstreams(&ws_file, "manager").unwrap();'
 count = 1
 
 [[entry]]
-path = "crates/shiplog-redact/src/lib.rs"
+path = "apps/shiplog/src/redact/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3098,7 +3098,7 @@ snippet = 'let out = r.redact_workstreams(&ws_file, "public").unwrap();'
 count = 1
 
 [[entry]]
-path = "crates/shiplog-redact/src/lib.rs"
+path = "apps/shiplog/src/redact/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3106,7 +3106,7 @@ snippet = "r1.save_cache(&cache_path).unwrap();"
 count = 2
 
 [[entry]]
-path = "crates/shiplog-redact/src/lib.rs"
+path = "apps/shiplog/src/redact/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3114,7 +3114,7 @@ snippet = "r2.load_cache(&cache_path).unwrap();"
 count = 2
 
 [[entry]]
-path = "crates/shiplog-redact/src/lib.rs"
+path = "apps/shiplog/src/redact/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3122,7 +3122,7 @@ snippet = "started_at: Some(NaiveDate::from_ymd_opt(2024, 1, 15).unwrap()),"
 count = 2
 
 [[entry]]
-path = "crates/shiplog-redact/src/lib.rs"
+path = "apps/shiplog/src/redact/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3130,7 +3130,7 @@ snippet = 'std::fs::write(&cache_path, "this is not json!!!").unwrap();'
 count = 1
 
 [[entry]]
-path = "crates/shiplog-redact/src/lib.rs"
+path = "apps/shiplog/src/redact/mod.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3138,7 +3138,7 @@ snippet = "std::fs::write(&cache_path, serde_json::to_string(&bad).unwrap()).unw
 count = 1
 
 [[entry]]
-path = "crates/shiplog-redact/src/policy.rs"
+path = "apps/shiplog/src/redact/policy.rs"
 family = "panic"
 selector_kind = "macro-call"
 selector_callee = "panic"
@@ -3146,7 +3146,7 @@ snippet = '_ => panic!("expected manual payload"),'
 count = 1
 
 [[entry]]
-path = "crates/shiplog-redact/src/policy.rs"
+path = "apps/shiplog/src/redact/policy.rs"
 family = "panic"
 selector_kind = "macro-call"
 selector_callee = "panic"
@@ -3154,7 +3154,7 @@ snippet = '_ => panic!("expected pull request payload"),'
 count = 1
 
 [[entry]]
-path = "crates/shiplog-redact/src/policy.rs"
+path = "apps/shiplog/src/redact/policy.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3162,7 +3162,7 @@ snippet = "ended_at: Some(NaiveDate::from_ymd_opt(2025, 1, 1).unwrap()),"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-redact/src/policy.rs"
+path = "apps/shiplog/src/redact/policy.rs"
 family = "unwrap"
 selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
@@ -3170,7 +3170,7 @@ snippet = "started_at: Some(NaiveDate::from_ymd_opt(2025, 1, 1).unwrap()),"
 count = 1
 
 [[entry]]
-path = "crates/shiplog-redact/src/profile.rs"
+path = "apps/shiplog/src/redact/profile.rs"
 family = "expect"
 selector_kind = "method-call"
 selector_callee = "Option/Result::expect"

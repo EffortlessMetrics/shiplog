@@ -32,7 +32,7 @@ Recorded Tier 1 baselines:
 | `shiplog-ids` | `e6166e5` | 8 | 5 | 0 | 3 | clean baseline |
 | `shiplog-ports` | `74d095d` | 0 | 0 | 0 | 0 | no mutation targets |
 | `shiplog-schema` | `77dc752` | 33 | 27 | 0 | 6 | clean baseline |
-| `shiplog-redact` | `812c45b` + policy cleanup | 35 | 26 | 0 | 9 | clean baseline |
+| `shiplog::redact` | `812c45b` + policy cleanup | 35 | 26 | 0 | 9 | historical baseline from the former `shiplog-redact` crate |
 | `shiplog::bundle` | `f18b23d` + zip/hash cleanup | 22 | 21 | 0 | 1 | historical baseline from the former `shiplog-bundle` crate |
 
 The local PowerShell receipts used:
@@ -63,7 +63,7 @@ WARN No mutants found under the active filters
 shiplog-schema:
 33 mutants tested in 4m: 27 caught, 6 unviable
 
-shiplog-redact:
+shiplog::redact:
 35 mutants tested in 2m: 26 caught, 9 unviable
 
 shiplog::bundle:
@@ -71,13 +71,14 @@ shiplog::bundle:
 ```
 
 The generated `missed.txt` files for `shiplog::coverage`, `shiplog-ids`,
-`shiplog-schema`, `shiplog-redact`, and `shiplog::bundle` were empty, so there
+`shiplog-schema`, `shiplog::redact`, and `shiplog::bundle` were empty, so there
 were no surviving mutants for these crates in the baseline runs.
 
-The first `shiplog-redact` scan found two equivalent survivors in batch-level
+The first `shiplog::redact` scan found two equivalent survivors in batch-level
 `Internal` fast paths. The policy cleanup in this baseline removes those
 duplicate fast paths so profile semantics live at the single-event and
 single-workstream policy boundary; the clean rerun is the recorded baseline.
+The current inlined module is covered by the `shiplog` package mutation target.
 
 The first `shiplog-bundle` scan found a timeout in the manual file-read loop
 used for checksum hashing. The baseline cleanup switched hashing to

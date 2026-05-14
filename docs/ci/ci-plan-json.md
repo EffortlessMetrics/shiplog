@@ -85,7 +85,7 @@ This doc is the human reference.
 |---|---|---|---|
 | `files` | array of string | yes | Repo-relative paths from the PR diff |
 | `areas` | array of string | yes | Top-level areas affected (e.g. `"docs"`, `"crates"`, `"apps"`, `"scripts"`, `"policy"`, `"workflows"`) |
-| `crates` | array of string | yes | Workspace crates touched (e.g. `"shiplog-redact"`) |
+| `crates` | array of string | yes | Workspace crates or packages touched (e.g. `"shiplog"`) |
 
 ### `selection`
 

@@ -7,8 +7,8 @@
 //!   cargo run -p shiplog --example redaction
 
 use anyhow::{Context, Result};
+use shiplog::redact::DeterministicRedactor;
 use shiplog_ports::Redactor;
-use shiplog_redact::DeterministicRedactor;
 use shiplog_schema::event::{EventEnvelope, EventPayload};
 
 fn main() -> Result<()> {

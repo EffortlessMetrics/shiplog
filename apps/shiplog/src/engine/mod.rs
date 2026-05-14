@@ -793,7 +793,7 @@ mod tests {
         let clusterer: &'static dyn shiplog_ports::WorkstreamClusterer =
             Box::leak(Box::new(RepoClusterer));
         let redactor: &'static dyn shiplog_ports::Redactor = Box::leak(Box::new(
-            shiplog_redact::DeterministicRedactor::new(b"test-key"),
+            crate::redact::DeterministicRedactor::new(b"test-key"),
         ));
         Engine::new(renderer, clusterer, redactor)
     }
