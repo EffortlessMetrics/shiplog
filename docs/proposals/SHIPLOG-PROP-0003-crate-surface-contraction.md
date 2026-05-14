@@ -22,12 +22,9 @@ Target public surface:
 shiplog
 ```
 
-Possible public surface, only if justified by real external Rust consumers:
-
-```text
-shiplog
-shiplog-schema
-```
+ADR-0005 decides not to keep `shiplog-schema` as a 0.7 public crate. JSON
+schemas under `contracts/schemas/` are the public machine contract unless a
+future ADR promotes a typed Rust API.
 
 Everything else should become an internal module, dev-only support, or
 historical 0.6.x surface that is not supported as a forward public import
@@ -110,8 +107,8 @@ PR explicitly changes it.
 The package surface changes:
 
 - `shiplog` remains public and installable;
-- `shiplog-schema` remains public only if the lane finds a real external Rust
-  consumer or a deliberate typed-contract reason;
+- `shiplog-schema` is not a 0.7 public crate; JSON schemas are the public
+  machine contract unless a later ADR promotes a typed Rust API;
 - implementation crates stop being published as forward-supported crates;
 - `shiplog-testkit` and `xtask` remain dev-only and unpublished;
 - 0.6.x implementation crates are historical/transitional and are not yanked
@@ -152,7 +149,7 @@ spec.
 | Current crate | 0.7 direction |
 | --- | --- |
 | `shiplog` | keep public |
-| `shiplog-schema` | decide: keep public or inline |
+| `shiplog-schema` | internal module; JSON schemas are public |
 | `shiplog-ids` | inline unless externally justified |
 | `shiplog-ports` | internal; no plugin API yet |
 | `shiplog-engine` | internal module |
@@ -230,7 +227,8 @@ This proposal does not:
 6. Inline render crates into `shiplog` modules.
 7. Inline ingest adapter crates into `shiplog` source modules.
 8. Inline product/trust support crates in small slices.
-9. Decide whether `shiplog-schema` remains public.
+9. Decide whether `shiplog-schema` remains public. Landed as
+   [`SHIPLOG-ADR-0005`](../adr/SHIPLOG-ADR-0005-json-schemas-over-public-rust-schema-crate.md).
 10. Enforce the 0.7 publish allowlist in release tooling.
 11. Document 0.6 implementation crates as historical.
 12. Prepare the 0.7.0 crate-surface release.
@@ -331,7 +329,7 @@ The lane can close when:
 - the supported public crate surface is enforced by release tooling;
 - non-public implementation crates have been inlined or made unpublished in
   small, verified PRs;
-- `shiplog-schema` has an ADR-backed keep-or-inline decision;
+- `shiplog-schema` has an ADR-backed internal/public decision;
 - 0.6.x implementation crates are documented as historical/transitional;
 - the 0.7.0 release is prepared with install, intake, open, report, schema, and
   publish-surface proof.

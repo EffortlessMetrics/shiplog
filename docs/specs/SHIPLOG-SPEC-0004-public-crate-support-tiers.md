@@ -70,9 +70,9 @@ Contract:
 - must not be introduced as a convenience boundary;
 - must be documented in release notes when users need to change imports.
 
-`shiplog-schema` is the current expected transitional decision point. It can
-stay public only if the project records an ADR-backed typed-contract reason or
-known external Rust consumer.
+ADR-0005 decides that `shiplog-schema` is internal for 0.7. JSON schemas under
+`contracts/schemas/` are the public machine contract unless a later ADR promotes
+a typed Rust API.
 
 ### internal-module
 
@@ -145,7 +145,7 @@ contract those PRs must satisfy.
 | Current crate | 0.7 support tier | Publish eligibility | Planned disposition |
 | --- | --- | --- | --- |
 | `shiplog` | `public-supported` | yes | Keep as the supported CLI/package surface. |
-| `shiplog-schema` | `public-transitional` | exception only | Decide by ADR whether typed Rust schemas remain public or are inlined behind JSON schemas. |
+| `shiplog-schema` | `internal-module` | no | Keep Rust schema types internal; JSON schemas are the public machine contract. |
 | `shiplog-ids` | `internal-module` | no | Inline or make unpublished support; 0.6 published versions become `historical-0.6`. |
 | `shiplog-ports` | `internal-module` | no | Keep private until a plugin/API ADR exists; 0.6 published versions become `historical-0.6`. |
 | `shiplog-engine` | `internal-module` | no | Inline into product internals; 0.6 published versions become `historical-0.6`. |
@@ -181,8 +181,7 @@ The 0.7 posture is:
 - supported 0.7 docs name only the public-supported surface and any explicit
   public-transitional exception;
 - `cargo install shiplog` remains the primary user path;
-- JSON schemas under `contracts/schemas/` remain the default machine contract
-  unless an ADR keeps `shiplog-schema` public.
+- JSON schemas under `contracts/schemas/` remain the public machine contract.
 
 ## Acceptance Criteria
 
@@ -195,7 +194,7 @@ The support-tier model is complete when:
 - package manifests cannot remain publishable when policy marks the package
   non-public;
 - historical 0.6 crates are documented without routine yanking;
-- the `shiplog-schema` keep-or-inline decision is recorded before 0.7 release
+- the `shiplog-schema` public-support decision is recorded before 0.7 release
   prep;
 - implementation PRs prove 0.6.0 first-run behavior is unchanged when crates
   are collapsed.
@@ -220,7 +219,8 @@ Expected follow-up proof:
 
 - crate audit table matching this spec;
 - ADR for SRP modules over public microcrates;
-- ADR deciding whether `shiplog-schema` remains public;
+- ADR-0005 deciding that `shiplog-schema` is internal and JSON schemas are
+  public;
 - release-tooling allowlist check via
   [`policy/publish-allowlist.toml`](../../policy/publish-allowlist.toml) and
   [`scripts/package-boundary-audit.sh`](../../scripts/package-boundary-audit.sh);
