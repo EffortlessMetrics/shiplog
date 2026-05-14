@@ -40,10 +40,10 @@ The default public surface for 0.7.0 is:
 shiplog
 ```
 
-`shiplog-schema` remains a pending explicit decision. It may stay public only
-if a later ADR records a typed Rust contract reason or known external Rust
-consumer. Otherwise, JSON schemas under `contracts/schemas/` remain the public
-machine contract and Rust schema types are internal implementation support.
+`shiplog-schema` was the only pending explicit decision. ADR-0005 decided that
+JSON schemas under `contracts/schemas/` remain the public machine contract and
+Rust schema types are internal implementation support unless a later ADR
+promotes a typed Rust API.
 
 Internal adapters, renderers, cache, bundle, coverage, workstream, engine,
 merge, team, and LLM support should not remain public crates merely because

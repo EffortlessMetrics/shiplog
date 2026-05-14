@@ -602,7 +602,7 @@ external contract. Adapters depend on ports and schema, never the reverse.
 | Crate | Role |
 |-------|------|
 | `shiplog` | Supported CLI entrypoint and default public package surface |
-| `shiplog-schema` | Transitional typed Rust schema surface pending ADR |
+| `shiplog-schema` | Internal typed schema support; JSON schemas are the public machine contract |
 | `shiplog-engine` | Internal orchestration support during contraction |
 | `shiplog-ports` | Internal trait definitions until a plugin/API ADR exists |
 | `shiplog-ids` | Internal deterministic ID helpers during contraction |

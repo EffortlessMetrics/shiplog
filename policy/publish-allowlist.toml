@@ -6,8 +6,8 @@ status = "blocking"
 # 0.7 crate-surface contraction publish control.
 #
 # Workspace membership is not publish eligibility. Release scripts must publish
-# only the packages listed in publish.default_order. Transitional packages require
-# an explicit exception before they can enter the publish order.
+# only the packages listed in publish.default_order. New public crates require
+# an ADR before they can enter the publish order.
 
 [publish]
 release = "0.7"
@@ -22,9 +22,9 @@ reason = "Supported CLI package and primary user install surface."
 
 [[package]]
 name = "shiplog-schema"
-tier = "public-transitional"
+tier = "internal-module"
 publish = false
-reason = "Pending ADR deciding whether typed Rust schemas remain public."
+reason = "ADR-0005 makes JSON schemas the public machine contract; Rust schema types are internal."
 
 [[package]]
 name = "shiplog-ids"
