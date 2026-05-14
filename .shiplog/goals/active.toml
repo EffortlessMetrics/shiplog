@@ -316,6 +316,7 @@ commands = [
   "git tag v0.7.0",
   "git push origin v0.7.0",
   "CARGO_REGISTRY_TOKEN=<token> cargo publish -p shiplog --locked",
+  "gh release edit v0.7.0 --draft=false --latest",
   "scripts/release-install-smoke.sh v0.7.0",
   "scripts/release-install-smoke.ps1 -Version v0.7.0",
   "scripts/verify-release.sh v0.7.0",
