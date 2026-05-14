@@ -197,6 +197,21 @@ number = 287
 title = "docs(release): align 0.7 audit status"
 url = "https://github.com/EffortlessMetrics/shiplog/pull/287"
 
+[[completed_pr]]
+number = 288
+title = "docs(goal): record 0.7 release control receipts"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/288"
+
+[[completed_pr]]
+number = 289
+title = "docs(release): publish 0.7 draft before smoke"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/289"
+
+[[completed_pr]]
+number = 290
+title = "chore(release): declare release workflow permissions"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/290"
+
 [[work_item]]
 id = "ingest-adapter-collapse"
 title = "refactor(crate): inline ingest adapters into shiplog"
@@ -312,6 +327,9 @@ id = "release-execution"
 title = "release: tag, publish, and verify 0.7.0"
 status = "blocked-explicit-owner-approval-required"
 plan_section = "Lane Closure"
+last_preflight_commit = "09b105894620e79432242c8cdc3cfaf54784be0e"
+last_preflight_date = "2026-05-14"
+last_preflight_status = "passed"
 commands = [
   "git tag v0.7.0",
   "git push origin v0.7.0",
