@@ -171,6 +171,36 @@ fn assert_intake_report_schema_contract(report_json: &serde_json::Value) {
             "repair source schema should allow kind {kind:?}"
         );
     }
+    let source_key_values = schema["$defs"]["source_key"]["enum"]
+        .as_array()
+        .expect("source identity schema should document canonical source keys");
+    for key in [
+        "github", "gitlab", "jira", "linear", "manual", "json", "git",
+    ] {
+        assert!(
+            source_key_values
+                .iter()
+                .any(|value| value.as_str() == Some(key)),
+            "source identity schema should allow source_key {key:?}"
+        );
+    }
+    for def in [
+        "included_source",
+        "skipped_source",
+        "source_decision",
+        "source_freshness",
+        "repair_source",
+    ] {
+        let source_properties = schema["$defs"][def]["allOf"][1]["properties"]
+            .as_object()
+            .unwrap_or_else(|| panic!("{def} schema should document source identity fields"));
+        for field in ["source", "source_key", "source_label"] {
+            assert!(
+                source_properties.contains_key(field),
+                "{def} schema should document {field}"
+            );
+        }
+    }
     let fixup_properties = schema["$defs"]["fixup"]["allOf"][1]["properties"]
         .as_object()
         .expect("fixup schema should document object properties");
@@ -3933,7 +3963,9 @@ user = "octo"
     assert!(report_md.contains("shiplog share manager"));
     assert!(report_md.contains("SHIPLOG_REDACT_KEY"));
 
-    assert_eq!(report_json["included_sources"][0]["source"], "Manual");
+    assert_eq!(report_json["included_sources"][0]["source"], "manual");
+    assert_eq!(report_json["included_sources"][0]["source_key"], "manual");
+    assert_eq!(report_json["included_sources"][0]["source_label"], "Manual");
     assert_eq!(report_json["included_sources"][0]["event_count"], 1);
     assert_eq!(report_json["skipped_sources"].as_array().unwrap().len(), 0);
     assert!(
@@ -4042,7 +4074,10 @@ coverage = "./all-source.coverage.json"
             .as_array()
             .unwrap()
             .iter()
-            .any(|source| source["source"] == "JSON" && source["event_count"] == 8)
+            .any(|source| source["source_key"] == "json"
+                && source["source"] == "json"
+                && source["source_label"] == "JSON"
+                && source["event_count"] == 8)
     );
     assert_eq!(report_json["skipped_sources"].as_array().unwrap().len(), 0);
     assert!(
@@ -4391,6 +4426,16 @@ status = "done"
     assert_eq!(report_json["skipped_sources"].as_array().unwrap().len(), 2);
     assert_eq!(report_json["repair_sources"].as_array().unwrap().len(), 2);
     assert!(
+        report_json["skipped_sources"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|source| source["source"] == "jira"
+                && source["source_key"] == "jira"
+                && source["source_label"] == "Jira"
+                && source["reason"] == "missing JIRA_TOKEN")
+    );
+    assert!(
         report_json["next_commands"]
             .as_array()
             .unwrap()
@@ -4403,7 +4448,9 @@ status = "done"
             .as_array()
             .unwrap()
             .iter()
-            .any(|decision| decision["source"] == "Jira"
+            .any(|decision| decision["source"] == "jira"
+                && decision["source_key"] == "jira"
+                && decision["source_label"] == "Jira"
                 && decision["hint_lines"]
                     .as_array()
                     .unwrap()
@@ -4415,7 +4462,9 @@ status = "done"
             .as_array()
             .unwrap()
             .iter()
-            .any(|repair| repair["source"] == "Jira"
+            .any(|repair| repair["source"] == "jira"
+                && repair["source_key"] == "jira"
+                && repair["source_label"] == "Jira"
                 && repair["kind"] == "missing_token"
                 && repair["commands"]
                     .as_array()
@@ -4423,6 +4472,27 @@ status = "done"
                     .iter()
                     .any(|line| line.as_str().unwrap().contains("shiplog identify jira")))
     );
+    for (source_key, source_label) in [("jira", "Jira"), ("linear", "Linear")] {
+        assert!(
+            report_json["source_decisions"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|decision| decision["source_key"] == source_key
+                    && decision["source_label"] == source_label),
+            "source_decisions should expose canonical identity for {source_key}"
+        );
+        assert!(
+            report_json["source_freshness"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|freshness| freshness["source_key"] == source_key
+                    && freshness["source_label"] == source_label
+                    && freshness["status"] == "unavailable"),
+            "source_freshness should join to source_decisions on source_key for {source_key}"
+        );
+    }
 
     assert!(
         coverage.contains("Configured source jira was skipped: missing JIRA_TOKEN"),
@@ -4566,7 +4636,9 @@ cache_dir = "./.cache"
     assert_eq!(report_json["skipped_sources"].as_array().unwrap().len(), 3);
     let repairs = report_json["repair_sources"].as_array().unwrap();
     assert!(repairs.iter().any(|repair| {
-        repair["source"] == "GitLab"
+        repair["source"] == "gitlab"
+            && repair["source_key"] == "gitlab"
+            && repair["source_label"] == "GitLab"
             && repair["kind"] == "invalid_filter"
             && repair["commands"]
                 .as_array()
@@ -4575,7 +4647,9 @@ cache_dir = "./.cache"
                 .any(|command| command.as_str().unwrap().contains("sources.gitlab.state"))
     }));
     assert!(repairs.iter().any(|repair| {
-        repair["source"] == "Jira"
+        repair["source"] == "jira"
+            && repair["source_key"] == "jira"
+            && repair["source_label"] == "Jira"
             && repair["kind"] == "invalid_filter"
             && repair["commands"]
                 .as_array()
@@ -4584,7 +4658,9 @@ cache_dir = "./.cache"
                 .any(|command| command.as_str().unwrap().contains("sources.jira.status"))
     }));
     assert!(repairs.iter().any(|repair| {
-        repair["source"] == "Linear"
+        repair["source"] == "linear"
+            && repair["source_key"] == "linear"
+            && repair["source_label"] == "Linear"
             && repair["kind"] == "invalid_filter"
             && repair["commands"]
                 .as_array()
@@ -5924,6 +6000,65 @@ fn open_packet_latest_prints_packet_path_when_forced() {
 }
 
 #[test]
+fn open_packet_latest_selects_lexicographically_newest_run() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path();
+    let newest = "2026-05-13T09-00-00Z-newest";
+    let older = "2026-05-12T09-00-00Z-older";
+
+    write_minimal_open_run(out, newest, "newest packet");
+    std::thread::sleep(std::time::Duration::from_millis(25));
+    write_minimal_open_run(out, older, "older packet");
+
+    shiplog_cmd()
+        .args([
+            "open",
+            "packet",
+            "--out",
+            out.to_str().unwrap(),
+            "--latest",
+            "--print-path",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(newest))
+        .stdout(predicate::str::contains("packet.md"))
+        .stdout(predicate::str::contains(older).not());
+}
+
+#[test]
+fn open_latest_without_runs_prints_intake_command_to_create_one() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("missing runs");
+    let out_arg = out.to_str().unwrap();
+
+    shiplog_cmd()
+        .args([
+            "open",
+            "packet",
+            "--out",
+            out_arg,
+            "--latest",
+            "--print-path",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("No run directories found"))
+        .stderr(predicate::str::contains(
+            "shiplog intake --last-6-months --explain",
+        ))
+        .stderr(predicate::str::contains("--out"))
+        .stderr(predicate::str::contains(out_arg));
+}
+
+fn write_minimal_open_run(out: &Path, run_id: &str, packet_body: &str) {
+    let run = out.join(run_id);
+    std::fs::create_dir_all(&run).unwrap();
+    std::fs::write(run.join("ledger.events.jsonl"), "").unwrap();
+    std::fs::write(run.join("packet.md"), packet_body).unwrap();
+}
+
+#[test]
 fn open_workstreams_latest_prints_effective_workstreams_path_when_forced() {
     let tmp = TempDir::new().unwrap();
     collect_json_into(tmp.path());
@@ -6266,6 +6401,45 @@ fn report_validate_accepts_legacy_reports_without_actions() {
         .assert()
         .success()
         .stdout(predicate::str::contains("Report valid:"));
+}
+
+#[test]
+fn report_validate_rejects_unknown_source_key() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args(["intake", "--out", out.to_str().unwrap(), "--no-open"])
+        .assert()
+        .success();
+
+    let report_path = first_run_dir(&out).join("intake.report.json");
+    let mut report: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&report_path).unwrap()).unwrap();
+    report["source_decisions"][0]["source_key"] = serde_json::json!("storybook");
+    std::fs::write(
+        &report_path,
+        format!("{}\n", serde_json::to_string_pretty(&report).unwrap()),
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .args([
+            "report",
+            "validate",
+            "--path",
+            report_path.to_str().unwrap(),
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "source_decisions source_key \"storybook\" is not supported",
+        ));
 }
 
 #[test]

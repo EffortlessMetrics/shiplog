@@ -152,21 +152,19 @@ on a first run:
 - **`cached`** — the source served all its data from a valid cache
   entry, no live fetch happened. Only seen on a warm rerun after a
   prior successful run.
+- **`stale`** — the source served at least one expired cache entry
+  through a proven `CacheLookup::Stale` receipt.
 - **`skipped`** — the source was intentionally not attempted (no
   token, configured `enabled = false`, missing local path).
 - **`unavailable`** — the source was attempted but produced no usable
   result (transient error, partial fetch).
 
 Each entry also carries `cache: N hit / M miss` when the source uses a
-cache, and a free-form reason for `skipped` / `unavailable`. The
-machine-readable form is in `intake.report.json` under
-`source_freshness` for tools that consume the receipt directly.
-
-A `stale` value is reserved in the v1 schema but is **not emitted
-today** — the current cache filters expired rows out of lookups, so
-the adapter cannot honestly distinguish "stale-hit" from "miss". A
-future cache change will enable it; until then, expired-but-needed
-data shows up as `unavailable` plus a live-fetch failure reason.
+cache, and a free-form reason for `stale`, `skipped`, and `unavailable`.
+The machine-readable form is in `intake.report.json` under
+`source_freshness` for tools that consume the receipt directly. Shiplog
+must not infer `stale` from a miss; it can only come from a cache lookup
+that proves an expired row existed.
 
 ## What "Needs evidence" means
 

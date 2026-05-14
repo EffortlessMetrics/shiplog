@@ -170,6 +170,19 @@
         "type": "string"
       }
     },
+    "source_key": {
+      "type": "string",
+      "enum": [
+        "github",
+        "gitlab",
+        "jira",
+        "linear",
+        "manual",
+        "json",
+        "git",
+        "unknown"
+      ]
+    },
     "window": {
       "allOf": [
         {
@@ -235,6 +248,13 @@
               "type": "string",
               "minLength": 1
             },
+            "source_key": {
+              "$ref": "#/$defs/source_key"
+            },
+            "source_label": {
+              "type": "string",
+              "minLength": 1
+            },
             "event_count": {
               "type": "integer",
               "minimum": 0
@@ -261,6 +281,13 @@
               "type": "string",
               "minLength": 1
             },
+            "source_key": {
+              "$ref": "#/$defs/source_key"
+            },
+            "source_label": {
+              "type": "string",
+              "minLength": 1
+            },
             "reason": {
               "type": "string",
               "minLength": 1
@@ -284,6 +311,13 @@
           ],
           "properties": {
             "source": {
+              "type": "string",
+              "minLength": 1
+            },
+            "source_key": {
+              "$ref": "#/$defs/source_key"
+            },
+            "source_label": {
               "type": "string",
               "minLength": 1
             },
@@ -324,6 +358,13 @@
           ],
           "properties": {
             "source": {
+              "type": "string",
+              "minLength": 1
+            },
+            "source_key": {
+              "$ref": "#/$defs/source_key"
+            },
+            "source_label": {
               "type": "string",
               "minLength": 1
             },
@@ -368,6 +409,13 @@
           ],
           "properties": {
             "source": {
+              "type": "string",
+              "minLength": 1
+            },
+            "source_key": {
+              "$ref": "#/$defs/source_key"
+            },
+            "source_label": {
               "type": "string",
               "minLength": 1
             },
