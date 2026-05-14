@@ -1,0 +1,157 @@
+schema_version = 1
+policy = "publish-allowlist"
+owner = "release"
+status = "blocking"
+
+# 0.7 crate-surface contraction publish control.
+#
+# Workspace membership is not publish eligibility. Release scripts must publish
+# only the packages listed in publish.default_order. Transitional packages require
+# an explicit exception before they can enter the publish order.
+
+[publish]
+release = "0.7"
+default_order = ["shiplog"]
+transitional_exceptions = []
+
+[[package]]
+name = "shiplog"
+tier = "public-supported"
+publish = true
+reason = "Supported CLI package and primary user install surface."
+
+[[package]]
+name = "shiplog-schema"
+tier = "public-transitional"
+publish = false
+reason = "Pending ADR deciding whether typed Rust schemas remain public."
+
+[[package]]
+name = "shiplog-ids"
+tier = "internal-module"
+publish = false
+reason = "Internal deterministic ID helpers until a public contract ADR exists."
+
+[[package]]
+name = "shiplog-ports"
+tier = "internal-module"
+publish = false
+reason = "Internal traits until a plugin or adapter API is specified."
+
+[[package]]
+name = "shiplog-engine"
+tier = "internal-module"
+publish = false
+reason = "Product orchestration support, not a forward public import surface."
+
+[[package]]
+name = "shiplog-coverage"
+tier = "internal-module"
+publish = false
+reason = "Coverage support should collapse into owner modules."
+
+[[package]]
+name = "shiplog-workstreams"
+tier = "internal-module"
+publish = false
+reason = "Workstream support should collapse into owner modules."
+
+[[package]]
+name = "shiplog-redact"
+tier = "internal-module"
+publish = false
+reason = "Redaction support remains product-internal unless promoted by ADR."
+
+[[package]]
+name = "shiplog-bundle"
+tier = "internal-module"
+publish = false
+reason = "Bundle support remains product-internal unless promoted by ADR."
+
+[[package]]
+name = "shiplog-cache"
+tier = "internal-module"
+publish = false
+reason = "Cache/freshness support remains internal unless a public cache API exists."
+
+[[package]]
+name = "shiplog-ingest-github"
+tier = "internal-module"
+publish = false
+reason = "Source adapter; no public plugin or adapter API exists yet."
+
+[[package]]
+name = "shiplog-ingest-git"
+tier = "internal-module"
+publish = false
+reason = "Source adapter; no public plugin or adapter API exists yet."
+
+[[package]]
+name = "shiplog-ingest-json"
+tier = "internal-module"
+publish = false
+reason = "Import adapter; JSON schemas are the public machine contract."
+
+[[package]]
+name = "shiplog-ingest-manual"
+tier = "internal-module"
+publish = false
+reason = "Manual evidence adapter; no public plugin or adapter API exists yet."
+
+[[package]]
+name = "shiplog-ingest-gitlab"
+tier = "internal-module"
+publish = false
+reason = "Source adapter; no public plugin or adapter API exists yet."
+
+[[package]]
+name = "shiplog-ingest-jira"
+tier = "internal-module"
+publish = false
+reason = "Source adapter; no public plugin or adapter API exists yet."
+
+[[package]]
+name = "shiplog-ingest-linear"
+tier = "internal-module"
+publish = false
+reason = "Source adapter; no public plugin or adapter API exists yet."
+
+[[package]]
+name = "shiplog-cluster-llm"
+tier = "internal-module"
+publish = false
+reason = "Optional implementation support, not a supported public package."
+
+[[package]]
+name = "shiplog-team"
+tier = "internal-module"
+publish = false
+reason = "Team support remains product-internal unless promoted by ADR."
+
+[[package]]
+name = "shiplog-merge"
+tier = "internal-module"
+publish = false
+reason = "Merge support remains product-internal unless promoted by ADR."
+
+[[package]]
+name = "shiplog-testkit"
+tier = "dev-only"
+publish = false
+reason = "Workspace test support; Cargo manifest also sets publish = false."
+
+[[package]]
+name = "xtask"
+tier = "dev-only"
+publish = false
+reason = "Repository automation; Cargo manifest also sets publish = false."
+
+[[historical]]
+name = "shiplog-render-md"
+tier = "historical-0.6"
+reason = "0.6 implementation crate collapsed into shiplog::render::md."
+
+[[historical]]
+name = "shiplog-render-json"
+tier = "historical-0.6"
+reason = "0.6 implementation crate collapsed into the engine artifact writer."

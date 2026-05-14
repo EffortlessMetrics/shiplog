@@ -14,29 +14,28 @@ elif [[ "${1:-}" != "" ]]; then
 fi
 
 scripts/package-version-audit.sh
+scripts/package-boundary-audit.sh
 
-packages=(
-  shiplog-ids
-  shiplog-schema
-  shiplog-ports
-  shiplog-coverage
-  shiplog-cache
-  shiplog-redact
-  shiplog-bundle
-  shiplog-workstreams
-  shiplog-merge
-  shiplog-ingest-json
-  shiplog-ingest-manual
-  shiplog-ingest-git
-  shiplog-ingest-github
-  shiplog-ingest-gitlab
-  shiplog-ingest-jira
-  shiplog-ingest-linear
-  shiplog-cluster-llm
-  shiplog-team
-  shiplog-engine
-  shiplog
+mapfile -t packages < <(python - <<'PY' | tr -d '\r'
+from pathlib import Path
+import sys
+
+try:
+    import tomllib
+except ModuleNotFoundError:
+    print("Python 3.11+ is required for tomllib", file=sys.stderr)
+    sys.exit(2)
+
+policy = tomllib.loads(Path("policy/publish-allowlist.toml").read_text())
+for package in policy.get("publish", {}).get("default_order", []):
+    print(package)
+PY
 )
+
+if [[ "${#packages[@]}" -eq 0 ]]; then
+  echo "publish allowlist is empty" >&2
+  exit 1
+fi
 
 seen_from=false
 for p in "${packages[@]}"; do

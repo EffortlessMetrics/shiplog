@@ -31,6 +31,7 @@ policy/dependency-surface-allowlist.toml Anything declaring third-party deps (Ca
 policy/workflow-allowlist.toml          GitHub Actions workflow files and their permission scopes
 policy/process-allowlist.toml           Scripts that spawn external processes
 policy/network-allowlist.toml           Code/scripts that make network calls
+policy/publish-allowlist.toml           0.7 public package publish order
 ```
 
 All ledgers share the schema documented in
@@ -75,6 +76,9 @@ scripts/*.{sh,ps1}
   package-proof.sh, package-boundary-audit.sh, package-version-audit.sh,
   publish-dry-run.sh, verify-release.sh,
   release-install-smoke.{sh,ps1}, demo-review-rescue.{sh,ps1}
+
+release policy
+  policy/publish-allowlist.toml
 
 config/baseline files
   deny.toml, codecov.yml, rust-toolchain.toml,

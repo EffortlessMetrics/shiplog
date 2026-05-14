@@ -216,7 +216,9 @@ Expected follow-up proof:
 - crate audit table matching this spec;
 - ADR for SRP modules over public microcrates;
 - ADR deciding whether `shiplog-schema` remains public;
-- release-tooling allowlist check;
+- release-tooling allowlist check via
+  [`policy/publish-allowlist.toml`](../../policy/publish-allowlist.toml) and
+  [`scripts/package-boundary-audit.sh`](../../scripts/package-boundary-audit.sh);
 - publish dry-run proof for allowed public crates only;
 - first-run intake/open/report tests after crate collapse.
 

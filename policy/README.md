@@ -25,6 +25,7 @@ the master rollout doc at
 | `dependency-surface-allowlist.toml` | release | file-policy checker (#149) |
 | `process-allowlist.toml` | policy | file-policy checker (#149) |
 | `network-allowlist.toml` | policy | file-policy checker (#149) |
+| `publish-allowlist.toml` | release | package-boundary audit and publish scripts |
 | `ripr-suppressions.toml` | policy | ripr lane (#153) |
 
 ## Common receipt fields
@@ -50,18 +51,21 @@ Every entry uses the schema documented in
 
 Plus per-ledger extension fields documented in each ledger's header comment.
 
-## Status in this PR
+## Historical status
 
-All ledgers in this PR are **parse-only skeletons** (`status = "advisory"`).
-No xtask, no workflows, no enforcement, no CI behavior change. The
-ledgers seed obvious entries (existing workflows, scripts, debt, lint floor)
-so that later PRs read from declared contracts rather than inventing policy
-in code.
+The initial ledgers were parse-only skeletons (`status = "advisory"`). They
+seeded obvious entries so later PRs could read from declared contracts rather
+than inventing policy in code.
 
 The xtask runner that loads these lands in PR #143; the per-ledger checkers
 land in PR #149 (file policy), PR #150 (Clippy), PR #151 (no-panic), and
 PR #153 (ripr). Hard enforcement is deferred to a follow-up release after
 PR #148 records actuals.
+
+`publish-allowlist.toml` is a later blocking release ledger for the 0.7
+crate-surface contraction lane. It is consumed by
+`scripts/package-boundary-audit.sh`, `scripts/package-proof.sh`, and
+`scripts/publish-dry-run.sh`.
 
 ## Validation
 
