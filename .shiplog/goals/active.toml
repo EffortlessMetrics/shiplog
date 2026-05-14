@@ -112,12 +112,15 @@ done_when = "Plan breaks the lane into reviewable PRs with proof commands and ro
 [[work_item]]
 id = "repair-item-model"
 title = "feat(report): add receipt-derived repair items"
-status = "pending"
+status = "completed"
 expected_files = [
   "apps/shiplog/src/**",
   "apps/shiplog/tests/**",
   "contracts/schemas/intake-report.v1.schema.json",
+  "docs/adr/SHIPLOG-ADR-0006-repair-actions-are-receipt-derived.md",
+  "docs/proposals/SHIPLOG-PROP-0002-evidence-repair-loop.md",
   "docs/schemas/intake-report-v1.md",
+  "docs/specs/SHIPLOG-SPEC-0005-evidence-repair-loop.md",
 ]
 commands = [
   "cargo test -p shiplog --test intake_cold_start",

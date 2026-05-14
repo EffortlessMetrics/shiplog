@@ -41,16 +41,27 @@ pub(crate) fn build_intake_report(
     let repair_sources = intake_repair_source_reports(explanations, &result.configured.failures);
     let journal_suggestions = build_journal_suggestions(&top_fixups);
     let share_commands = build_share_commands(out_dir, &run_id);
+    let source_freshness = build_source_freshness_report(
+        &result.configured.successes,
+        &result.configured.failures,
+        explanations,
+    );
     let actions = intake_report_actions(
         &repair_sources,
         &top_fixups,
         &share_commands,
         &next_commands,
     );
-    let source_freshness = build_source_freshness_report(
-        &result.configured.successes,
-        &result.configured.failures,
-        explanations,
+    let repair_items = build_repair_items(
+        &repair_sources,
+        &source_freshness,
+        &attention,
+        &evidence_debt,
+        &top_fixups,
+        &journal_suggestions,
+        &actions,
+        &next_commands,
+        &artifacts,
     );
 
     Ok(IntakeReport {
@@ -76,6 +87,7 @@ pub(crate) fn build_intake_report(
         source_decisions: intake_source_decision_reports(explanations),
         source_freshness,
         repair_sources,
+        repair_items,
         curation_notes,
         good,
         needs_attention: attention,
@@ -390,4 +402,290 @@ fn build_share_commands(out_dir: &Path, run_id: &str) -> Vec<String> {
         format!("shiplog share manager --out {out_arg} --run {run_id}"),
         format!("shiplog share public --out {out_arg} --run {run_id}"),
     ]
+}
+
+#[derive(Debug)]
+struct RepairItemDraft {
+    repair_key: String,
+    source_key: Option<String>,
+    source_label: Option<String>,
+    kind: String,
+    reason: String,
+    action_kind: String,
+    action_command: Option<String>,
+    clears_when: String,
+    receipt_refs: Vec<IntakeReportRepairReceiptRef>,
+}
+
+fn build_repair_items(
+    repair_sources: &[IntakeReportRepairSource],
+    source_freshness: &[IntakeReportSourceFreshness],
+    needs_attention: &[String],
+    evidence_debt: &[IntakeReportEvidenceDebt],
+    top_fixups: &[IntakeReportFixup],
+    journal_suggestions: &[String],
+    actions: &[IntakeReportAction],
+    next_commands: &[String],
+    artifacts: &[IntakeReportArtifact],
+) -> Vec<IntakeReportRepairItem> {
+    let mut drafts = Vec::new();
+    let mut seen = BTreeSet::new();
+
+    for attention in needs_attention {
+        if !attention.contains("No events collected") {
+            continue;
+        }
+        push_repair_item_draft(
+            &mut drafts,
+            &mut seen,
+            RepairItemDraft {
+                repair_key: "manual:manual_evidence_missing:no_events".to_string(),
+                source_key: Some("manual".to_string()),
+                source_label: Some("Manual".to_string()),
+                kind: "manual_evidence_missing".to_string(),
+                reason: attention.clone(),
+                action_kind: "journal_add".to_string(),
+                action_command: Some("shiplog journal add".to_string()),
+                clears_when: "manual source contributes at least one evidence event".to_string(),
+                receipt_refs: vec![IntakeReportRepairReceiptRef {
+                    field: "needs_attention".to_string(),
+                    source_key: Some("manual".to_string()),
+                }],
+            },
+        );
+    }
+
+    for repair in repair_sources {
+        let kind = if repair.kind == "cache_replay" {
+            "source_cached_only"
+        } else {
+            "source_skipped_configuration"
+        };
+        let action_kind = if kind == "source_cached_only" {
+            "rerun_intake"
+        } else {
+            "configure_source"
+        };
+        push_repair_item_draft(
+            &mut drafts,
+            &mut seen,
+            RepairItemDraft {
+                repair_key: format!("source:{}:{kind}", repair.source_key),
+                source_key: Some(repair.source_key.clone()),
+                source_label: Some(repair.source_label.clone()),
+                kind: kind.to_string(),
+                reason: format!("{} needs repair: {}", repair.source_label, repair.reason),
+                action_kind: action_kind.to_string(),
+                action_command: repair.commands.first().cloned(),
+                clears_when: format!(
+                    "{} source contributes evidence on a rerun",
+                    repair.source_label
+                ),
+                receipt_refs: vec![IntakeReportRepairReceiptRef {
+                    field: "repair_sources".to_string(),
+                    source_key: Some(repair.source_key.clone()),
+                }],
+            },
+        );
+    }
+
+    for freshness in source_freshness {
+        let Some(kind) = source_freshness_repair_kind(&freshness.status) else {
+            continue;
+        };
+        push_repair_item_draft(
+            &mut drafts,
+            &mut seen,
+            RepairItemDraft {
+                repair_key: format!("source:{}:{kind}", freshness.source_key),
+                source_key: Some(freshness.source_key.clone()),
+                source_label: Some(freshness.source_label.clone()),
+                kind: kind.to_string(),
+                reason: freshness.reason.clone().unwrap_or_else(|| {
+                    format!(
+                        "{} evidence is {}",
+                        freshness.source_label, freshness.status
+                    )
+                }),
+                action_kind: "rerun_intake".to_string(),
+                action_command: intake_rerun_command(next_commands),
+                clears_when: format!(
+                    "{} source contributes fresh evidence on a rerun",
+                    freshness.source_label
+                ),
+                receipt_refs: vec![IntakeReportRepairReceiptRef {
+                    field: "source_freshness".to_string(),
+                    source_key: Some(freshness.source_key.clone()),
+                }],
+            },
+        );
+    }
+
+    for fixup in top_fixups {
+        if !journal_suggestions
+            .iter()
+            .any(|suggestion| suggestion == &fixup.command)
+        {
+            continue;
+        }
+        push_repair_item_draft(
+            &mut drafts,
+            &mut seen,
+            RepairItemDraft {
+                repair_key: format!("manual:manual_evidence_missing:{}", fixup.id),
+                source_key: Some("manual".to_string()),
+                source_label: Some("Manual".to_string()),
+                kind: "manual_evidence_missing".to_string(),
+                reason: fixup.title.clone(),
+                action_kind: "journal_add".to_string(),
+                action_command: Some(fixup.command.clone()),
+                clears_when: "manual source contributes at least one evidence event".to_string(),
+                receipt_refs: vec![
+                    IntakeReportRepairReceiptRef {
+                        field: "top_fixups".to_string(),
+                        source_key: None,
+                    },
+                    IntakeReportRepairReceiptRef {
+                        field: "journal_suggestions".to_string(),
+                        source_key: Some("manual".to_string()),
+                    },
+                ],
+            },
+        );
+    }
+
+    for debt in evidence_debt {
+        push_repair_item_draft(
+            &mut drafts,
+            &mut seen,
+            RepairItemDraft {
+                repair_key: format!("evidence_debt:{}", action_token(&debt.kind)),
+                source_key: None,
+                source_label: None,
+                kind: "evidence_debt_open".to_string(),
+                reason: debt.summary.clone(),
+                action_kind: "no_safe_action".to_string(),
+                action_command: None,
+                clears_when: "the evidence debt item is absent from a later report".to_string(),
+                receipt_refs: vec![IntakeReportRepairReceiptRef {
+                    field: "evidence_debt".to_string(),
+                    source_key: None,
+                }],
+            },
+        );
+    }
+
+    let has_share_actions = actions
+        .iter()
+        .any(|action| action.kind.starts_with("share_"));
+    if !drafts.is_empty() && has_share_actions {
+        push_repair_item_draft(
+            &mut drafts,
+            &mut seen,
+            RepairItemDraft {
+                repair_key: "share:share_redaction_required".to_string(),
+                source_key: None,
+                source_label: None,
+                kind: "share_redaction_required".to_string(),
+                reason:
+                    "Manager and public share commands require a redaction key before rendering."
+                        .to_string(),
+                action_kind: "no_safe_action".to_string(),
+                action_command: None,
+                clears_when: "manager or public share output is rendered with --redact-key or SHIPLOG_REDACT_KEY"
+                    .to_string(),
+                receipt_refs: vec![IntakeReportRepairReceiptRef {
+                    field: "actions".to_string(),
+                    source_key: None,
+                }],
+            },
+        );
+    }
+
+    for artifact in artifacts {
+        if artifact.label != "source failures" {
+            continue;
+        }
+        push_repair_item_draft(
+            &mut drafts,
+            &mut seen,
+            RepairItemDraft {
+                repair_key: "artifact:source_failures".to_string(),
+                source_key: None,
+                source_label: None,
+                kind: "artifact_missing_or_unopened".to_string(),
+                reason: "Source failure receipts were written for inspection.".to_string(),
+                action_kind: "open_artifact".to_string(),
+                action_command: None,
+                clears_when:
+                    "the failing source contributes evidence or the source failure artifact is absent"
+                        .to_string(),
+                receipt_refs: vec![IntakeReportRepairReceiptRef {
+                    field: "artifacts".to_string(),
+                    source_key: None,
+                }],
+            },
+        );
+    }
+
+    drafts
+        .into_iter()
+        .enumerate()
+        .map(|(idx, draft)| {
+            let repair_id = format!(
+                "repair_{:03}_{}",
+                idx + 1,
+                repair_id_token(&draft.repair_key)
+            );
+            IntakeReportRepairItem {
+                repair_id,
+                repair_key: draft.repair_key,
+                source_key: draft.source_key,
+                source_label: draft.source_label,
+                kind: draft.kind,
+                reason: draft.reason,
+                action: IntakeReportRepairAction {
+                    kind: draft.action_kind,
+                    command: draft.action_command,
+                },
+                clears_when: draft.clears_when,
+                receipt_refs: draft.receipt_refs,
+            }
+        })
+        .collect()
+}
+
+fn push_repair_item_draft(
+    drafts: &mut Vec<RepairItemDraft>,
+    seen: &mut BTreeSet<String>,
+    draft: RepairItemDraft,
+) {
+    if seen.insert(draft.repair_key.clone()) {
+        drafts.push(draft);
+    }
+}
+
+fn source_freshness_repair_kind(status: &str) -> Option<&'static str> {
+    match status {
+        "stale" => Some("source_freshness_stale"),
+        "cached" => Some("source_cached_only"),
+        _ => None,
+    }
+}
+
+fn intake_rerun_command(next_commands: &[String]) -> Option<String> {
+    next_commands
+        .iter()
+        .find(|command| command.contains("shiplog intake "))
+        .cloned()
+        .or_else(|| Some("shiplog intake --last-6-months --explain".to_string()))
+}
+
+fn repair_id_token(repair_key: &str) -> String {
+    let token = action_token(repair_key);
+    if token.len() > 48 {
+        token[..48].trim_end_matches('_').to_string()
+    } else {
+        token
+    }
 }

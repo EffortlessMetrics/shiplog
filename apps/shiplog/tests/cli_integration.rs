@@ -243,6 +243,71 @@ fn assert_intake_report_schema_contract(report_json: &serde_json::Value) {
             "action schema should allow kind {kind:?}"
         );
     }
+    let repair_item_properties = schema["$defs"]["repair_item"]["allOf"][1]["properties"]
+        .as_object()
+        .expect("repair item schema should document object properties");
+    for field in [
+        "repair_id",
+        "repair_key",
+        "source_key",
+        "source_label",
+        "kind",
+        "reason",
+        "action",
+        "clears_when",
+        "receipt_refs",
+    ] {
+        assert!(
+            repair_item_properties.contains_key(field),
+            "repair item schema should document {field:?}"
+        );
+    }
+    let repair_item_kind_values = repair_item_properties["kind"]["enum"]
+        .as_array()
+        .expect("repair item schema should document repair item kind values");
+    for kind in [
+        "manual_evidence_missing",
+        "source_skipped_configuration",
+        "evidence_debt_open",
+    ] {
+        assert!(
+            repair_item_kind_values
+                .iter()
+                .any(|value| value.as_str() == Some(kind)),
+            "repair item schema should allow kind {kind:?}"
+        );
+    }
+    let repair_action_properties = schema["$defs"]["repair_action"]["allOf"][1]["properties"]
+        .as_object()
+        .expect("repair action schema should document object properties");
+    let repair_action_kind_values = repair_action_properties["kind"]["enum"]
+        .as_array()
+        .expect("repair action schema should document repair action kind values");
+    for kind in ["journal_add", "configure_source", "rerun_intake"] {
+        assert!(
+            repair_action_kind_values
+                .iter()
+                .any(|value| value.as_str() == Some(kind)),
+            "repair action schema should allow kind {kind:?}"
+        );
+    }
+    let receipt_field_values =
+        schema["$defs"]["repair_receipt_ref"]["allOf"][1]["properties"]["field"]["enum"]
+            .as_array()
+            .expect("repair receipt ref schema should document receipt fields");
+    for field in [
+        "repair_sources",
+        "needs_attention",
+        "evidence_debt",
+        "journal_suggestions",
+    ] {
+        assert!(
+            receipt_field_values
+                .iter()
+                .any(|value| value.as_str() == Some(field)),
+            "repair receipt ref schema should allow field {field:?}"
+        );
+    }
 }
 
 fn assert_schema_field_names_are_not_secret_bearing(value: &serde_json::Value) {
@@ -325,6 +390,7 @@ fn assert_golden_intake_report(run_dir: &Path, readiness: &str) -> (String, serd
         "source_decisions",
         "source_freshness",
         "repair_sources",
+        "repair_items",
         "good",
         "needs_attention",
         "next_commands",
@@ -348,6 +414,48 @@ fn assert_golden_intake_report(run_dir: &Path, readiness: &str) -> (String, serd
         assert!(
             repair["kind"].as_str().is_some_and(|kind| !kind.is_empty()),
             "generated repair source should expose a stable kind"
+        );
+    }
+    for repair_item in report_json["repair_items"]
+        .as_array()
+        .expect("repair_items should be an array")
+    {
+        let repair_id = repair_item["repair_id"]
+            .as_str()
+            .expect("generated repair item should expose a stable id");
+        assert!(
+            repair_id.starts_with("repair_") && !repair_id.chars().any(char::is_whitespace),
+            "generated repair item id should be a stable token"
+        );
+        assert!(
+            repair_item["repair_key"]
+                .as_str()
+                .is_some_and(|key| !key.is_empty()),
+            "generated repair item should expose a stable repair key"
+        );
+        assert!(
+            repair_item["kind"]
+                .as_str()
+                .is_some_and(|kind| !kind.is_empty()),
+            "generated repair item should expose a stable kind"
+        );
+        assert!(
+            repair_item["action"]["kind"]
+                .as_str()
+                .is_some_and(|kind| !kind.is_empty()),
+            "generated repair item should expose an action kind"
+        );
+        assert!(
+            repair_item["clears_when"]
+                .as_str()
+                .is_some_and(|condition| !condition.is_empty()),
+            "generated repair item should explain its clear condition"
+        );
+        assert!(
+            repair_item["receipt_refs"]
+                .as_array()
+                .is_some_and(|refs| !refs.is_empty()),
+            "generated repair item should cite report receipts"
         );
     }
     for fixup in report_json["top_fixups"]
@@ -4256,6 +4364,20 @@ fn intake_creates_minimal_config_and_manual_rescue_packet() {
             .any(|item| item.as_str().unwrap().contains("No events collected")),
         "empty rescue report should explain the evidence gap"
     );
+    let repair_items = report_json["repair_items"].as_array().unwrap();
+    assert!(
+        repair_items
+            .iter()
+            .any(|item| item["kind"] == "manual_evidence_missing"
+                && item["source_key"] == "manual"
+                && item["action"]["kind"] == "journal_add"
+                && item["receipt_refs"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .any(|receipt| receipt["field"] == "needs_attention")),
+        "empty rescue report should expose a receipt-derived manual evidence repair item"
+    );
 }
 
 #[test]
@@ -4471,6 +4593,33 @@ status = "done"
                     .unwrap()
                     .iter()
                     .any(|line| line.as_str().unwrap().contains("shiplog identify jira")))
+    );
+    let repair_items = report_json["repair_items"].as_array().unwrap();
+    assert!(
+        repair_items
+            .iter()
+            .any(|item| item["kind"] == "source_skipped_configuration"
+                && item["source_key"] == "jira"
+                && item["action"]["kind"] == "configure_source"
+                && item["receipt_refs"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .any(|receipt| receipt["field"] == "repair_sources"
+                        && receipt["source_key"] == "jira")),
+        "skipped Jira source should produce a receipt-derived repair item"
+    );
+    assert!(
+        repair_items
+            .iter()
+            .any(|item| item["kind"] == "artifact_missing_or_unopened"
+                && item["action"]["kind"] == "open_artifact"
+                && item["receipt_refs"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .any(|receipt| receipt["field"] == "artifacts")),
+        "source failure artifact should produce an artifact repair item"
     );
     for (source_key, source_label) in [("jira", "Jira"), ("linear", "Linear")] {
         assert!(
@@ -6404,6 +6553,46 @@ fn report_validate_accepts_legacy_reports_without_actions() {
 }
 
 #[test]
+fn report_validate_accepts_legacy_reports_without_repair_items() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args(["intake", "--out", out.to_str().unwrap(), "--no-open"])
+        .assert()
+        .success();
+
+    let report_path = first_run_dir(&out).join("intake.report.json");
+    let mut report: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&report_path).unwrap()).unwrap();
+    report
+        .as_object_mut()
+        .expect("report should be an object")
+        .remove("repair_items");
+    std::fs::write(
+        &report_path,
+        format!("{}\n", serde_json::to_string_pretty(&report).unwrap()),
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .args([
+            "report",
+            "validate",
+            "--path",
+            report_path.to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Report valid:"));
+}
+
+#[test]
 fn report_validate_rejects_unknown_source_key() {
     let tmp = TempDir::new().unwrap();
     let out = tmp.path().join("out");
@@ -6629,6 +6818,178 @@ fn report_validate_rejects_invalid_action_id() {
         .failure()
         .stderr(predicate::str::contains(
             "actions id must match action_[a-z0-9_]+",
+        ));
+}
+
+#[test]
+fn report_validate_rejects_unknown_repair_item_kind() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args(["intake", "--out", out.to_str().unwrap(), "--no-open"])
+        .assert()
+        .success();
+
+    let report_path = first_run_dir(&out).join("intake.report.json");
+    let mut report: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&report_path).unwrap()).unwrap();
+    report["repair_items"] = serde_json::json!([
+        {
+            "repair_id": "repair_001_mystery",
+            "repair_key": "mystery",
+            "kind": "mystery",
+            "reason": "Mystery repair",
+            "action": {
+                "kind": "no_safe_action"
+            },
+            "clears_when": "the mystery clears",
+            "receipt_refs": [
+                {
+                    "field": "evidence_debt"
+                }
+            ]
+        }
+    ]);
+    std::fs::write(
+        &report_path,
+        format!("{}\n", serde_json::to_string_pretty(&report).unwrap()),
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .args([
+            "report",
+            "validate",
+            "--path",
+            report_path.to_str().unwrap(),
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "repair_items kind \"mystery\" is not supported",
+        ));
+}
+
+#[test]
+fn report_validate_rejects_invalid_repair_item_id() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args(["intake", "--out", out.to_str().unwrap(), "--no-open"])
+        .assert()
+        .success();
+
+    let report_path = first_run_dir(&out).join("intake.report.json");
+    let mut report: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&report_path).unwrap()).unwrap();
+    report["repair_items"] = serde_json::json!([
+        {
+            "repair_id": "Repair Bad",
+            "repair_key": "manual:manual_evidence_missing",
+            "source_key": "manual",
+            "source_label": "Manual",
+            "kind": "manual_evidence_missing",
+            "reason": "Missing manual evidence",
+            "action": {
+                "kind": "journal_add",
+                "command": "shiplog journal add --title \"Manual evidence\""
+            },
+            "clears_when": "manual source contributes evidence",
+            "receipt_refs": [
+                {
+                    "field": "journal_suggestions",
+                    "source_key": "manual"
+                }
+            ]
+        }
+    ]);
+    std::fs::write(
+        &report_path,
+        format!("{}\n", serde_json::to_string_pretty(&report).unwrap()),
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .args([
+            "report",
+            "validate",
+            "--path",
+            report_path.to_str().unwrap(),
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "repair_items repair_id must match repair_[a-z0-9_]+",
+        ));
+}
+
+#[test]
+fn report_validate_rejects_unknown_repair_action_kind() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args(["intake", "--out", out.to_str().unwrap(), "--no-open"])
+        .assert()
+        .success();
+
+    let report_path = first_run_dir(&out).join("intake.report.json");
+    let mut report: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&report_path).unwrap()).unwrap();
+    report["repair_items"] = serde_json::json!([
+        {
+            "repair_id": "repair_001_bad_action",
+            "repair_key": "manual:manual_evidence_missing",
+            "source_key": "manual",
+            "source_label": "Manual",
+            "kind": "manual_evidence_missing",
+            "reason": "Missing manual evidence",
+            "action": {
+                "kind": "mutate_provider"
+            },
+            "clears_when": "manual source contributes evidence",
+            "receipt_refs": [
+                {
+                    "field": "journal_suggestions",
+                    "source_key": "manual"
+                }
+            ]
+        }
+    ]);
+    std::fs::write(
+        &report_path,
+        format!("{}\n", serde_json::to_string_pretty(&report).unwrap()),
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .args([
+            "report",
+            "validate",
+            "--path",
+            report_path.to_str().unwrap(),
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "repair_items action.kind \"mutate_provider\" is not supported",
         ));
 }
 
@@ -6869,12 +7230,16 @@ fn report_export_agent_pack_writes_derived_control_surface_without_mutating_repo
     );
     assert_eq!(
         pack_json["summary"]["repair_count"].as_u64(),
-        Some(report_json["repair_sources"].as_array().unwrap().len() as u64)
+        Some(report_json["repair_items"].as_array().unwrap().len() as u64)
     );
     assert!(pack_json["gaps"]["needs_attention"].is_array());
     assert!(pack_json["gaps"]["skipped_sources"].is_array());
     assert!(pack_json["gaps"]["evidence_debt"].is_array());
     assert!(pack_json["repairs"].is_array());
+    assert_eq!(
+        pack_json["repairs"], report_json["repair_items"],
+        "agent pack repairs should mirror intake report repair_items when present"
+    );
     assert!(pack_json["fixups"].is_array());
     assert!(pack_json["actions"].is_array());
     assert!(pack_json["share_status"]["commands"].is_array());

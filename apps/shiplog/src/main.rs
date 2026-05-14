@@ -1780,6 +1780,7 @@ struct IntakeReport {
     source_decisions: Vec<IntakeReportSourceDecision>,
     source_freshness: Vec<IntakeReportSourceFreshness>,
     repair_sources: Vec<IntakeReportRepairSource>,
+    repair_items: Vec<IntakeReportRepairItem>,
     curation_notes: Vec<String>,
     good: Vec<String>,
     needs_attention: Vec<String>,
@@ -1862,6 +1863,35 @@ struct IntakeReportRepairSource {
     kind: String,
     reason: String,
     commands: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct IntakeReportRepairItem {
+    repair_id: String,
+    repair_key: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    source_key: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    source_label: Option<String>,
+    kind: String,
+    reason: String,
+    action: IntakeReportRepairAction,
+    clears_when: String,
+    receipt_refs: Vec<IntakeReportRepairReceiptRef>,
+}
+
+#[derive(Debug, Serialize)]
+struct IntakeReportRepairAction {
+    kind: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    command: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct IntakeReportRepairReceiptRef {
+    field: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    source_key: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -2789,7 +2819,7 @@ const INTAKE_REPORT_REQUIRED_FIELDS: &[&str] = &[
     "next_commands",
     "artifacts",
 ];
-const INTAKE_REPORT_OPTIONAL_FIELDS: &[&str] = &["actions"];
+const INTAKE_REPORT_OPTIONAL_FIELDS: &[&str] = &["actions", "repair_items"];
 const INTAKE_REPORT_ARRAY_FIELDS: &[&str] = &[
     "included_sources",
     "skipped_sources",
@@ -2806,7 +2836,7 @@ const INTAKE_REPORT_ARRAY_FIELDS: &[&str] = &[
     "next_commands",
     "artifacts",
 ];
-const INTAKE_REPORT_OPTIONAL_ARRAY_FIELDS: &[&str] = &["actions"];
+const INTAKE_REPORT_OPTIONAL_ARRAY_FIELDS: &[&str] = &["actions", "repair_items"];
 const INTAKE_REPORT_MARKDOWN_SECTIONS: &[&str] = &[
     "# Review Intake Report",
     "## Included Sources",
@@ -2861,6 +2891,34 @@ const INTAKE_ACTION_KIND_VALUES: &[&str] = &[
     "next_command",
 ];
 const INTAKE_ACTION_RISK_VALUES: &[&str] = &["low", "medium", "high"];
+const INTAKE_REPAIR_ITEM_KIND_VALUES: &[&str] = &[
+    "manual_evidence_missing",
+    "source_skipped_configuration",
+    "source_freshness_stale",
+    "source_cached_only",
+    "evidence_debt_open",
+    "share_redaction_required",
+    "artifact_missing_or_unopened",
+];
+const INTAKE_REPAIR_ACTION_KIND_VALUES: &[&str] = &[
+    "journal_add",
+    "configure_source",
+    "rerun_intake",
+    "open_artifact",
+    "no_safe_action",
+];
+const INTAKE_REPAIR_RECEIPT_FIELD_VALUES: &[&str] = &[
+    "source_decisions",
+    "source_freshness",
+    "repair_sources",
+    "needs_attention",
+    "evidence_debt",
+    "top_fixups",
+    "journal_suggestions",
+    "next_commands",
+    "actions",
+    "artifacts",
+];
 const AGENT_PACK_SCHEMA_VERSION: u64 = 1;
 
 fn validate_intake_report_command(
@@ -2903,6 +2961,7 @@ fn summarize_intake_report_command(
     let included_sources = json_array(&report_json, "included_sources")?;
     let skipped_sources = json_array(&report_json, "skipped_sources")?;
     let repair_sources = json_array(&report_json, "repair_sources")?;
+    let repair_items = optional_json_array(&report_json, "repair_items")?;
     let top_fixups = json_array(&report_json, "top_fixups")?;
     let evidence_debt = json_array(&report_json, "evidence_debt")?;
     let share_commands = json_array(&report_json, "share_commands")?;
@@ -2920,6 +2979,7 @@ fn summarize_intake_report_command(
     );
     println!("Evidence debt: {} findings", evidence_debt.len());
     println!("Repairs: {} source actions", repair_sources.len());
+    println!("Repair items: {} actions", repair_items.len());
     println!("Fixups: {} actions", top_fixups.len());
     println!("Share commands: {}", share_commands.len());
     println!("Machine actions: {}", actions.len());
@@ -2929,6 +2989,7 @@ fn summarize_intake_report_command(
 
     print_report_summary_items("Skipped sources", skipped_sources, "source", "reason")?;
     print_report_repair_summary_items("Top repairs", repair_sources)?;
+    print_report_summary_items("Repair items", repair_items, "kind", "reason")?;
     print_report_summary_items("Top fixups", top_fixups, "title", "command")?;
     print_report_summary_strings("Share next", share_commands)?;
     print_report_summary_items("Machine actions", actions, "label", "command")?;
@@ -2955,6 +3016,7 @@ fn export_agent_pack_command(
     let included_sources = json_array(&report_json, "included_sources")?.to_vec();
     let skipped_sources = json_array(&report_json, "skipped_sources")?.to_vec();
     let repair_sources = json_array(&report_json, "repair_sources")?.to_vec();
+    let repair_items = optional_json_array(&report_json, "repair_items")?.to_vec();
     let evidence_debt = json_array(&report_json, "evidence_debt")?.to_vec();
     let top_fixups = json_array(&report_json, "top_fixups")?.to_vec();
     let journal_suggestions = json_array(&report_json, "journal_suggestions")?.to_vec();
@@ -2971,6 +3033,11 @@ fn export_agent_pack_command(
         .iter()
         .filter_map(serde_json::Value::as_str)
         .any(|command| command.contains("shiplog share public"));
+    let repairs = if repair_items.is_empty() && report_json.get("repair_items").is_none() {
+        repair_sources.clone()
+    } else {
+        repair_items.clone()
+    };
 
     let pack = serde_json::json!({
         "schema_version": AGENT_PACK_SCHEMA_VERSION,
@@ -2995,7 +3062,7 @@ fn export_agent_pack_command(
             "included_source_count": included_sources.len(),
             "skipped_source_count": skipped_sources.len(),
             "evidence_debt_count": evidence_debt.len(),
-            "repair_count": repair_sources.len(),
+            "repair_count": repairs.len(),
             "fixup_count": top_fixups.len(),
             "journal_suggestion_count": journal_suggestions.len(),
             "share_command_count": share_commands.len(),
@@ -3007,7 +3074,7 @@ fn export_agent_pack_command(
             "skipped_sources": skipped_sources,
             "evidence_debt": evidence_debt,
         },
-        "repairs": repair_sources,
+        "repairs": repairs,
         "fixups": top_fixups,
         "journal_suggestions": journal_suggestions,
         "share_status": {
@@ -3227,6 +3294,14 @@ fn validate_report_items(report: &serde_json::Value) -> Result<()> {
             validate_report_action(item)?;
         }
     }
+    if let Some(repair_items) = report.get("repair_items") {
+        let repair_items = repair_items.as_array().ok_or_else(|| {
+            anyhow::anyhow!("intake report field \"repair_items\" must be an array")
+        })?;
+        for item in repair_items {
+            validate_report_repair_item(item)?;
+        }
+    }
 
     Ok(())
 }
@@ -3290,6 +3365,121 @@ fn validate_report_action(item: &serde_json::Value) -> Result<()> {
     let risk = string_field(item, "risk")?;
     if !INTAKE_ACTION_RISK_VALUES.contains(&risk.as_str()) {
         anyhow::bail!("intake report actions risk {risk:?} is not supported")
+    }
+
+    Ok(())
+}
+
+fn validate_report_repair_item(item: &serde_json::Value) -> Result<()> {
+    let object = item
+        .as_object()
+        .ok_or_else(|| anyhow::anyhow!("intake report repair_items items must be objects"))?;
+    for required in [
+        "repair_id",
+        "repair_key",
+        "kind",
+        "reason",
+        "action",
+        "clears_when",
+        "receipt_refs",
+    ] {
+        if !object.contains_key(required) {
+            anyhow::bail!("intake report repair_items item missing field {required:?}")
+        }
+    }
+    for key in object.keys() {
+        ensure_field_name_not_secret_bearing(key)?;
+    }
+    if item.get("source_key").is_some() != item.get("source_label").is_some() {
+        anyhow::bail!("intake report repair_items source_key and source_label must be paired")
+    }
+    validate_optional_report_source_identity("repair_items", item)?;
+
+    let repair_id = string_field(item, "repair_id")?;
+    if !repair_id.starts_with("repair_")
+        || !repair_id
+            .chars()
+            .all(|ch| ch.is_ascii_lowercase() || ch.is_ascii_digit() || ch == '_')
+    {
+        anyhow::bail!("intake report repair_items repair_id must match repair_[a-z0-9_]+")
+    }
+
+    let repair_key = string_field(item, "repair_key")?;
+    if repair_key.trim().is_empty() {
+        anyhow::bail!("intake report repair_items repair_key must not be empty")
+    }
+
+    let kind = string_field(item, "kind")?;
+    if !INTAKE_REPAIR_ITEM_KIND_VALUES.contains(&kind.as_str()) {
+        anyhow::bail!("intake report repair_items kind {kind:?} is not supported")
+    }
+
+    ensure_string_field(item, "reason")?;
+    ensure_string_field(item, "clears_when")?;
+    validate_report_repair_action(object_field(item, "action")?)?;
+
+    let receipt_refs = json_array(item, "receipt_refs")?;
+    if receipt_refs.is_empty() {
+        anyhow::bail!("intake report repair_items receipt_refs must not be empty")
+    }
+    for receipt_ref in receipt_refs {
+        validate_report_repair_receipt_ref(receipt_ref)?;
+    }
+
+    Ok(())
+}
+
+fn validate_report_repair_action(item: &serde_json::Value) -> Result<()> {
+    let object = item
+        .as_object()
+        .ok_or_else(|| anyhow::anyhow!("intake report repair_items action must be an object"))?;
+    if !object.contains_key("kind") {
+        anyhow::bail!("intake report repair_items action missing field \"kind\"")
+    }
+    for key in object.keys() {
+        ensure_field_name_not_secret_bearing(key)?;
+    }
+
+    let kind = string_field(item, "kind")?;
+    if !INTAKE_REPAIR_ACTION_KIND_VALUES.contains(&kind.as_str()) {
+        anyhow::bail!("intake report repair_items action.kind {kind:?} is not supported")
+    }
+    if let Some(command) = item.get("command") {
+        let Some(command) = command.as_str() else {
+            anyhow::bail!("intake report repair_items action.command must be a string")
+        };
+        if command.trim().is_empty() {
+            anyhow::bail!("intake report repair_items action.command must not be empty")
+        }
+    }
+
+    Ok(())
+}
+
+fn validate_report_repair_receipt_ref(item: &serde_json::Value) -> Result<()> {
+    let object = item.as_object().ok_or_else(|| {
+        anyhow::anyhow!("intake report repair_items receipt_refs must be objects")
+    })?;
+    if !object.contains_key("field") {
+        anyhow::bail!("intake report repair_items receipt_refs item missing field \"field\"")
+    }
+    for key in object.keys() {
+        ensure_field_name_not_secret_bearing(key)?;
+    }
+
+    let field = string_field(item, "field")?;
+    if !INTAKE_REPAIR_RECEIPT_FIELD_VALUES.contains(&field.as_str()) {
+        anyhow::bail!("intake report repair_items receipt_refs field {field:?} is not supported")
+    }
+    if let Some(source_key) = item.get("source_key") {
+        let Some(source_key) = source_key.as_str() else {
+            anyhow::bail!("intake report repair_items receipt_refs source_key must be a string")
+        };
+        if !INTAKE_SOURCE_KEY_VALUES.contains(&source_key) {
+            anyhow::bail!(
+                "intake report repair_items receipt_refs source_key {source_key:?} is not supported"
+            )
+        }
     }
 
     Ok(())
