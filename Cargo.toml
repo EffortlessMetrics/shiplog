@@ -19,7 +19,6 @@ members = [
 
   # Source adapters
   "crates/shiplog-ingest-github",
-  "crates/shiplog-ingest-git",
   "crates/shiplog-ingest-json",
   "crates/shiplog-ingest-manual",
   "crates/shiplog-ingest-gitlab",

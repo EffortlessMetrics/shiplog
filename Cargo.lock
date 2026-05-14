@@ -2269,9 +2269,11 @@ dependencies = [
  "assert_cmd",
  "chrono",
  "clap",
+ "git2",
  "hex",
  "insta",
  "itertools 0.14.0",
+ "mutants",
  "predicates",
  "proptest",
  "regex",
@@ -2284,7 +2286,6 @@ dependencies = [
  "shiplog-cluster-llm",
  "shiplog-engine",
  "shiplog-ids",
- "shiplog-ingest-git",
  "shiplog-ingest-github",
  "shiplog-ingest-gitlab",
  "shiplog-ingest-jira",
@@ -2397,22 +2398,6 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.11.0",
-]
-
-[[package]]
-name = "shiplog-ingest-git"
-version = "0.6.0"
-dependencies = [
- "anyhow",
- "chrono",
- "git2",
- "mutants",
- "proptest",
- "shiplog-cache",
- "shiplog-ids",
- "shiplog-ports",
- "shiplog-schema",
- "tempfile",
 ]
 
 [[package]]

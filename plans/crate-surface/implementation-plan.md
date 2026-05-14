@@ -74,7 +74,9 @@ refactor(crate): inline ingest adapters into shiplog
 Scope:
 
 - Move source adapter code from `crates/shiplog-ingest-*` into
-  `apps/shiplog/src/ingest/` owner modules.
+  `apps/shiplog/src/ingest/` owner modules in reviewable slices.
+- Start with `shiplog-ingest-git`, because it has no live-network fixture
+  surface and is not referenced by engine or testkit tests.
 - Migrate adapter tests or keep equivalent product tests in the new package
   location.
 - Preserve recorded GitHub fixture proof.
@@ -397,4 +399,3 @@ Close the lane only when:
 - first-run intake/open/report behavior has targeted proof;
 - 0.7 release prep records install, package, and compatibility proof;
 - the active goal is archived with shipped release receipts.
-

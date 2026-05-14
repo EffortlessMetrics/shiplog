@@ -81,12 +81,6 @@ publish = false
 reason = "Source adapter; no public plugin or adapter API exists yet."
 
 [[package]]
-name = "shiplog-ingest-git"
-tier = "internal-module"
-publish = false
-reason = "Source adapter; no public plugin or adapter API exists yet."
-
-[[package]]
 name = "shiplog-ingest-json"
 tier = "internal-module"
 publish = false
@@ -155,3 +149,8 @@ reason = "0.6 implementation crate collapsed into shiplog::render::md."
 name = "shiplog-render-json"
 tier = "historical-0.6"
 reason = "0.6 implementation crate collapsed into the engine artifact writer."
+
+[[historical]]
+name = "shiplog-ingest-git"
+tier = "historical-0.6"
+reason = "0.6 source adapter crate collapsed into shiplog::ingest::git."

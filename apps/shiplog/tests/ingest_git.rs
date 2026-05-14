@@ -1,5 +1,5 @@
 use chrono::NaiveDate;
-use shiplog_ingest_git::LocalGitIngestor;
+use shiplog::ingest::git::LocalGitIngestor;
 
 #[test]
 fn ingestor_creation() {

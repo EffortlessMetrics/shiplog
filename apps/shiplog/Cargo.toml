@@ -29,9 +29,10 @@ hex.workspace = true
 sha2.workspace = true
 toml.workspace = true
 itertools.workspace = true
+git2 = "0.20"
+mutants.workspace = true
 shiplog-engine = { path = "../../crates/shiplog-engine", version = "0.6.0" }
 shiplog-ingest-github = { path = "../../crates/shiplog-ingest-github", version = "0.6.0" }
-shiplog-ingest-git = { path = "../../crates/shiplog-ingest-git", version = "0.6.0" }
 shiplog-ingest-gitlab = { path = "../../crates/shiplog-ingest-gitlab", version = "0.6.0" }
 shiplog-ingest-jira = { path = "../../crates/shiplog-ingest-jira", version = "0.6.0" }
 shiplog-ingest-linear = { path = "../../crates/shiplog-ingest-linear", version = "0.6.0" }

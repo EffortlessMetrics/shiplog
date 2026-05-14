@@ -157,7 +157,7 @@ contract those PRs must satisfy.
 | `shiplog-render-md` | `historical-0.6` / `internal-module` | no | Collapsed into `shiplog::render::md`; 0.6 published versions become `historical-0.6`. |
 | `shiplog-render-json` | `historical-0.6` / `internal-module` | no | Collapsed into the engine artifact writer for this contraction slice; 0.6 published versions become `historical-0.6`. |
 | `shiplog-ingest-github` | `internal-module` | no | Inline GitHub adapter; 0.6 published versions become `historical-0.6`. |
-| `shiplog-ingest-git` | `internal-module` | no | Inline local git adapter; 0.6 published versions become `historical-0.6`. |
+| `shiplog-ingest-git` | `historical-0.6` / `internal-module` | no | Collapsed into `shiplog::ingest::git`; 0.6 published versions become `historical-0.6`. |
 | `shiplog-ingest-json` | `internal-module` | no | Inline JSON import adapter; 0.6 published versions become `historical-0.6`. |
 | `shiplog-ingest-manual` | `internal-module` | no | Inline manual evidence adapter; 0.6 published versions become `historical-0.6`. |
 | `shiplog-ingest-gitlab` | `internal-module` | no | Inline GitLab adapter; 0.6 published versions become `historical-0.6`. |

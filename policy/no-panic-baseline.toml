@@ -10,6 +10,262 @@ status = "advisory"
 mode = "no-new-debt"
 
 [[entry]]
+path = "apps/shiplog/src/ingest/git.rs"
+family = "expect"
+selector_kind = "method-call"
+selector_callee = "Option/Result::expect"
+snippet = 'let err = result.err().expect("expected an error");'
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/git.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = ".unwrap_or_else(|| DateTime::from_timestamp(0, 0).unwrap())"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/git.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "NaiveDate::from_ymd_opt(2000, 1, 1).unwrap(),"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/git.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "NaiveDate::from_ymd_opt(2000, 1, 2).unwrap(),"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/git.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "NaiveDate::from_ymd_opt(2020, 1, 1).unwrap(),"
+count = 8
+
+[[entry]]
+path = "apps/shiplog/src/ingest/git.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),"
+count = 2
+
+[[entry]]
+path = "apps/shiplog/src/ingest/git.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),"
+count = 13
+
+[[entry]]
+path = "apps/shiplog/src/ingest/git.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "NaiveDate::from_ymd_opt(2025, 1, 31).unwrap(),"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/git.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "NaiveDate::from_ymd_opt(2025, 12, 31).unwrap(),"
+count = 12
+
+[[entry]]
+path = "apps/shiplog/src/ingest/git.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "NaiveDate::from_ymd_opt(2030, 12, 31).unwrap(),"
+count = 10
+
+[[entry]]
+path = "apps/shiplog/src/ingest/git.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let (_dir, repo) = create_multi_author_repo().unwrap();"
+count = 3
+
+[[entry]]
+path = "apps/shiplog/src/ingest/git.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let (_dir, repo) = create_test_repo().unwrap();"
+count = 15
+
+[[entry]]
+path = "apps/shiplog/src/ingest/git.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let after = DateTime::from_timestamp(1738368000, 0).unwrap(); // 2025-02-01"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/git.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let alice_out = alice_ingestor.ingest().unwrap();"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/git.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let all_out = all_ingestor.ingest().unwrap();"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/git.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let before = DateTime::from_timestamp(1733011200, 0).unwrap(); // 2024-12-01"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/git.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let bob_out = bob_ingestor.ingest().unwrap();"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/git.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let commit = head.peel_to_commit().unwrap();"
+count = 6
+
+[[entry]]
+path = "apps/shiplog/src/ingest/git.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let dir = TempDir::new().unwrap();"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/git.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let dt = test_date.and_hms_opt(0, 0, 0).unwrap().and_utc();"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/git.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let head = repo.head().unwrap();"
+count = 6
+
+[[entry]]
+path = "apps/shiplog/src/ingest/git.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let inside = DateTime::from_timestamp(1735689600, 0).unwrap(); // 2025-01-01"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/git.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let no_merge_out = no_merge.ingest().unwrap();"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/git.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let output = ingestor.ingest().unwrap();"
+count = 5
+
+[[entry]]
+path = "apps/shiplog/src/ingest/git.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let output = result.unwrap();"
+count = 2
+
+[[entry]]
+path = "apps/shiplog/src/ingest/git.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let repo_path = repo.path().parent().unwrap().to_path_buf();"
+count = 12
+
+[[entry]]
+path = "apps/shiplog/src/ingest/git.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let same_date = NaiveDate::from_ymd_opt(2025, 6, 15).unwrap();"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/git.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let since = NaiveDate::from_ymd_opt(2020, 1, 1).unwrap();"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/git.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let since = NaiveDate::from_ymd_opt(2025, 1, 1).unwrap();"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/git.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let until = NaiveDate::from_ymd_opt(2025, 12, 31).unwrap();"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/git.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let until = NaiveDate::from_ymd_opt(2030, 12, 31).unwrap();"
+count = 1
+
+[[entry]]
+path = "apps/shiplog/src/ingest/git.rs"
+family = "unwrap"
+selector_kind = "method-call"
+selector_callee = "Option/Result::unwrap"
+snippet = "let with_merge_out = with_merge.ingest().unwrap();"
+count = 1
+
+[[entry]]
 path = "apps/shiplog/src/main.rs"
 family = "expect"
 selector_kind = "method-call"
@@ -1096,262 +1352,6 @@ selector_kind = "method-call"
 selector_callee = "Option/Result::unwrap"
 snippet = "until: NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),"
 count = 2
-
-[[entry]]
-path = "crates/shiplog-ingest-git/src/lib.rs"
-family = "expect"
-selector_kind = "method-call"
-selector_callee = "Option/Result::expect"
-snippet = 'let err = result.err().expect("expected an error");'
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-git/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = ".unwrap_or_else(|| DateTime::from_timestamp(0, 0).unwrap())"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-git/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "NaiveDate::from_ymd_opt(2000, 1, 1).unwrap(),"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-git/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "NaiveDate::from_ymd_opt(2000, 1, 2).unwrap(),"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-git/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "NaiveDate::from_ymd_opt(2020, 1, 1).unwrap(),"
-count = 8
-
-[[entry]]
-path = "crates/shiplog-ingest-git/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),"
-count = 2
-
-[[entry]]
-path = "crates/shiplog-ingest-git/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),"
-count = 13
-
-[[entry]]
-path = "crates/shiplog-ingest-git/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "NaiveDate::from_ymd_opt(2025, 1, 31).unwrap(),"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-git/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "NaiveDate::from_ymd_opt(2025, 12, 31).unwrap(),"
-count = 12
-
-[[entry]]
-path = "crates/shiplog-ingest-git/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "NaiveDate::from_ymd_opt(2030, 12, 31).unwrap(),"
-count = 10
-
-[[entry]]
-path = "crates/shiplog-ingest-git/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let (_dir, repo) = create_multi_author_repo().unwrap();"
-count = 3
-
-[[entry]]
-path = "crates/shiplog-ingest-git/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let (_dir, repo) = create_test_repo().unwrap();"
-count = 15
-
-[[entry]]
-path = "crates/shiplog-ingest-git/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let after = DateTime::from_timestamp(1738368000, 0).unwrap(); // 2025-02-01"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-git/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let alice_out = alice_ingestor.ingest().unwrap();"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-git/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let all_out = all_ingestor.ingest().unwrap();"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-git/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let before = DateTime::from_timestamp(1733011200, 0).unwrap(); // 2024-12-01"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-git/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let bob_out = bob_ingestor.ingest().unwrap();"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-git/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let commit = head.peel_to_commit().unwrap();"
-count = 6
-
-[[entry]]
-path = "crates/shiplog-ingest-git/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let dir = TempDir::new().unwrap();"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-git/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let dt = test_date.and_hms_opt(0, 0, 0).unwrap().and_utc();"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-git/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let head = repo.head().unwrap();"
-count = 6
-
-[[entry]]
-path = "crates/shiplog-ingest-git/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let inside = DateTime::from_timestamp(1735689600, 0).unwrap(); // 2025-01-01"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-git/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let no_merge_out = no_merge.ingest().unwrap();"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-git/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let output = ingestor.ingest().unwrap();"
-count = 5
-
-[[entry]]
-path = "crates/shiplog-ingest-git/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let output = result.unwrap();"
-count = 2
-
-[[entry]]
-path = "crates/shiplog-ingest-git/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let repo_path = repo.path().parent().unwrap().to_path_buf();"
-count = 12
-
-[[entry]]
-path = "crates/shiplog-ingest-git/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let same_date = NaiveDate::from_ymd_opt(2025, 6, 15).unwrap();"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-git/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let since = NaiveDate::from_ymd_opt(2020, 1, 1).unwrap();"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-git/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let since = NaiveDate::from_ymd_opt(2025, 1, 1).unwrap();"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-git/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let until = NaiveDate::from_ymd_opt(2025, 12, 31).unwrap();"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-git/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let until = NaiveDate::from_ymd_opt(2030, 12, 31).unwrap();"
-count = 1
-
-[[entry]]
-path = "crates/shiplog-ingest-git/src/lib.rs"
-family = "unwrap"
-selector_kind = "method-call"
-selector_callee = "Option/Result::unwrap"
-snippet = "let with_merge_out = with_merge.ingest().unwrap();"
-count = 1
 
 [[entry]]
 path = "crates/shiplog-ingest-github/src/lib.rs"
