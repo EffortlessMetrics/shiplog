@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use crate::*;
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments, reason = "policy:clippy-0001")]
 pub(super) fn handle(
     inputs: Vec<PathBuf>,
     out: PathBuf,
