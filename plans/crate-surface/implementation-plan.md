@@ -91,6 +91,10 @@ Landed:
   `chore(release): enforce 0.7 package dependency closure`
 - [#285](https://github.com/EffortlessMetrics/shiplog/pull/285):
   `release: prepare 0.7.0 crate-surface release`
+- [#286](https://github.com/EffortlessMetrics/shiplog/pull/286):
+  `docs(goal): record 0.7 release prep`
+- [#287](https://github.com/EffortlessMetrics/shiplog/pull/287):
+  `docs(release): align 0.7 audit status`
 
 The remaining risk is release execution. The contraction removes historical
 0.6 implementation packages from the `shiplog` package graph, release tooling

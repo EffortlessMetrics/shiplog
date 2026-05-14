@@ -187,6 +187,16 @@ number = 285
 title = "release: prepare 0.7.0 crate-surface release"
 url = "https://github.com/EffortlessMetrics/shiplog/pull/285"
 
+[[completed_pr]]
+number = 286
+title = "docs(goal): record 0.7 release prep"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/286"
+
+[[completed_pr]]
+number = 287
+title = "docs(release): align 0.7 audit status"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/287"
+
 [[work_item]]
 id = "ingest-adapter-collapse"
 title = "refactor(crate): inline ingest adapters into shiplog"
