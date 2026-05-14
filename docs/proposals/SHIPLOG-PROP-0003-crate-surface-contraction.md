@@ -236,6 +236,9 @@ This proposal does not:
 Plans own PR sequencing and rollback. This proposal records why the lane
 exists and what release outcome should be achieved.
 
+Current implementation plan:
+[`plans/crate-surface/implementation-plan.md`](../../plans/crate-surface/implementation-plan.md).
+
 ## Validation Strategy
 
 Documentation and planning PRs should run:
