@@ -3186,8 +3186,26 @@ fn resolve_repair_plan_report_path(
     match run.as_deref() {
         Some("latest") | None => Ok(find_latest_run_dir_for_repair_plan(out_dir)?
             .map(|run_dir| run_dir.join("intake.report.json"))),
-        Some(run_id) => Ok(Some(out_dir.join(run_id).join("intake.report.json"))),
+        Some(run_id) => {
+            validate_repair_plan_run_id(run_id)?;
+            Ok(Some(out_dir.join(run_id).join("intake.report.json")))
+        }
     }
+}
+
+fn validate_repair_plan_run_id(run_id: &str) -> Result<()> {
+    if run_id.contains('/') || run_id.contains('\\') {
+        anyhow::bail!("repair plan --run must be a single run directory name, not a path")
+    }
+
+    let mut components = Path::new(run_id).components();
+    if !matches!(components.next(), Some(std::path::Component::Normal(_)))
+        || components.next().is_some()
+    {
+        anyhow::bail!("repair plan --run must be a single run directory name, not a path")
+    }
+
+    Ok(())
 }
 
 fn find_latest_run_dir_for_repair_plan(out_dir: &Path) -> Result<Option<PathBuf>> {

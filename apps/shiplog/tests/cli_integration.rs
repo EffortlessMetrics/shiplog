@@ -6750,6 +6750,30 @@ fn repair_plan_latest_rejects_invalid_report_json() -> CliTestResult {
 }
 
 #[test]
+fn repair_plan_run_rejects_path_traversal() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let out = tmp.path().join("out");
+    let out_arg = out.to_string_lossy().to_string();
+
+    shiplog_cmd()
+        .args([
+            "repair",
+            "plan",
+            "--out",
+            out_arg.as_str(),
+            "--run",
+            "../outside",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "repair plan --run must be a single run directory name",
+        ));
+
+    Ok(())
+}
+
+#[test]
 fn report_validate_rejects_unknown_source_key() {
     let tmp = TempDir::new().unwrap();
     let out = tmp.path().join("out");
