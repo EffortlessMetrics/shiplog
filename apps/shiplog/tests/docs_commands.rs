@@ -333,7 +333,8 @@ fn documented_help_commands_stay_available() {
         .assert()
         .success()
         .stdout(predicate::str::contains("manager"))
-        .stdout(predicate::str::contains("public"));
+        .stdout(predicate::str::contains("public"))
+        .stdout(predicate::str::contains("explain"));
 
     shiplog_cmd()
         .args(["share", "manager", "--help"])
@@ -342,6 +343,13 @@ fn documented_help_commands_stay_available() {
         .stdout(predicate::str::contains("--latest"))
         .stdout(predicate::str::contains("--redact-key"))
         .stdout(predicate::str::contains("--zip"));
+
+    shiplog_cmd()
+        .args(["share", "explain", "manager", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--latest"))
+        .stdout(predicate::str::contains("--redact-key"));
 
     shiplog_cmd()
         .args(["share", "verify", "manager", "--help"])
@@ -840,6 +848,7 @@ fn review_deadline_guide_documents_rescue_path() {
         "shiplog open intake-report --latest",
         "shiplog review fixups --latest --commands-only",
         "shiplog review fixups --latest --journal-template",
+        "shiplog share explain manager --latest",
         "shiplog share verify manager --latest",
         "shiplog share verify public --latest --strict",
         "shiplog share manager --latest --zip",

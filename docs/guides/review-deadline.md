@@ -161,6 +161,7 @@ shiplog journal add \
 Before sending a packet:
 
 ```bash
+shiplog share explain manager --latest
 shiplog share verify manager --latest
 shiplog share manager --latest
 shiplog open packet --latest
@@ -169,6 +170,7 @@ shiplog open packet --latest
 Check that:
 
 - coverage and skipped sources are visible;
+- the profile explanation matches what you intend to include, remove, and block;
 - the selected audience profile is the one you meant to render;
 - the packet has the receipts you want to rely on;
 - manager/public output used a real redaction key;

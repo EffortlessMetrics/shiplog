@@ -9494,6 +9494,101 @@ fn share_manager_without_key_fails_closed() {
 }
 
 #[test]
+fn share_explain_manager_without_key_reports_block_without_writing() {
+    let tmp = TempDir::new().unwrap();
+    collect_json_into(tmp.path());
+
+    let assert = shiplog_cmd()
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args([
+            "share",
+            "explain",
+            "manager",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+        ])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
+
+    assert!(stdout.contains("Manager profile:"));
+    assert!(stdout.contains("Status: blocked"));
+    assert!(stdout.contains("Redaction key: missing"));
+    assert!(stdout.contains("Included:"));
+    assert!(stdout.contains("- packet readiness and claim candidates"));
+    assert!(stdout.contains("source-backed evidence counts: GitHub"));
+    assert!(stdout.contains("Removed:"));
+    assert!(stdout.contains("- opaque provider identifiers"));
+    assert!(stdout.contains("Blocked:\n- missing SHIPLOG_REDACT_KEY"));
+    assert!(stdout.contains("Needs review:\n- None"));
+    assert!(stdout.contains("Profile packet: not written yet"));
+    assert!(stdout.contains("Share manifest: not written yet"));
+    assert!(stdout.contains("shiplog share manager --out"));
+    assert!(
+        !tmp.path()
+            .join("run_fixture/profiles/manager/packet.md")
+            .exists(),
+        "manager explain should not render the share packet"
+    );
+    assert!(
+        !tmp.path()
+            .join("run_fixture/profiles/manager/share.manifest.json")
+            .exists(),
+        "manager explain should not write the share manifest"
+    );
+}
+
+#[test]
+fn share_explain_public_without_key_reports_public_posture_without_writing() {
+    let tmp = TempDir::new().unwrap();
+    collect_json_into(tmp.path());
+
+    let assert = shiplog_cmd()
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args([
+            "share",
+            "explain",
+            "public",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+        ])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
+
+    assert!(stdout.contains("Public profile:"));
+    assert!(stdout.contains("Status: blocked"));
+    assert!(stdout.contains("Included:"));
+    assert!(stdout.contains("public-safe summaries with the lowest default receipt density"));
+    assert!(stdout.contains("Removed:"));
+    assert!(stdout.contains("raw private URLs and original names where strict redaction applies"));
+    assert!(stdout.contains("Blocked:\n- missing SHIPLOG_REDACT_KEY"));
+    assert!(
+        stdout.contains(
+            "Public profile should be reviewed after rendering; strict scan is a guardrail"
+        )
+    );
+    assert!(stdout.contains("Public profile uses the strictest redaction profile."));
+    assert!(stdout.contains("shiplog share public --out"));
+    assert!(
+        !tmp.path()
+            .join("run_fixture/profiles/public/packet.md")
+            .exists(),
+        "public explain should not render the share packet"
+    );
+    assert!(
+        !tmp.path()
+            .join("run_fixture/profiles/public/share.manifest.json")
+            .exists(),
+        "public explain should not write the share manifest"
+    );
+}
+
+#[test]
 fn share_verify_manager_without_key_fails_closed_without_writing() {
     let tmp = TempDir::new().unwrap();
     collect_json_into(tmp.path());

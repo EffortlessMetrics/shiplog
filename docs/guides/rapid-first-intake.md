@@ -238,6 +238,9 @@ What changes:
 
 ## Share safely
 
+Use `share explain` before rendering when you want to see what a profile
+includes, removes, and blocks without writing artifacts.
+
 Manager and public profiles are deterministic: same key + same input =
 same aliases across runs. They fail closed without
 `SHIPLOG_REDACT_KEY`.
@@ -245,9 +248,11 @@ same aliases across runs. They fail closed without
 ```bash
 export SHIPLOG_REDACT_KEY=replace-with-a-stable-secret
 
+shiplog share explain manager --latest
 shiplog share verify manager --latest
 shiplog share manager --latest --zip
 
+shiplog share explain public --latest
 shiplog share verify public --latest --strict
 shiplog share public --latest --zip
 ```

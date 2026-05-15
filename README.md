@@ -325,6 +325,9 @@ fail-closed redaction and bundle-profile behavior as `render`. They require
 `--redact-key` or `SHIPLOG_REDACT_KEY` and write
 `profiles/<profile>/share.manifest.json` as a postflight receipt for what was
 shared, which key source was used, and the packet/zip checksums. Use
+`shiplog share explain manager --latest` or
+`shiplog share explain public --latest` to see what the profile includes,
+removes, and blocks without writing share artifacts or requiring a key. Use
 `shiplog share verify manager --latest` or
 `shiplog share verify public --latest` to check the selected run, coverage
 warnings, skipped sources, and redaction-key readiness without writing share
@@ -370,6 +373,7 @@ out/<run_id>/
 | `collect multi` | Collect enabled sources from `shiplog.toml` into one merged packet |
 | `render` | Re-render packet from existing ledger and workstreams |
 | `share manager/public` | Render a manager- or public-safe packet with fail-closed redaction |
+| `share explain manager/public` | Explain included, removed, and blocked share-profile posture without writing artifacts |
 | `share verify manager/public` | Preflight a share profile without writing share artifacts |
 | `share verify manifest` | Verify an existing share manifest and packet/zip checksums |
 | `refresh <source>` | Re-fetch events while preserving curated `workstreams.yaml` |

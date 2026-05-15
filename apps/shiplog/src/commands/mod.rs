@@ -178,6 +178,14 @@ pub(super) fn dispatch() -> Result<()> {
                     write_share_manifest(&outputs, &BundleProfile::Public, &redaction_key)?;
                 print_share_outputs(&outputs, &BundleProfile::Public, &manifest_path);
             }
+            ShareCommand::Explain { cmd } => match cmd {
+                ShareExplainCommand::Manager(options) => {
+                    explain_share_profile(options, BundleProfile::Manager)?;
+                }
+                ShareExplainCommand::Public(options) => {
+                    explain_share_profile(options, BundleProfile::Public)?;
+                }
+            },
             ShareCommand::Verify { cmd } => match cmd {
                 ShareVerifyCommand::Manager(options) => {
                     verify_share_profile(options, BundleProfile::Manager)?;

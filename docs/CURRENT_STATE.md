@@ -118,6 +118,7 @@ Rendering and sharing:
 - `shiplog render --appendix full|summary|none`
 - `shiplog render --bundle-profile manager|public`
 - `shiplog share manager|public`
+- `shiplog share explain manager|public`
 - `shiplog share verify manager|public`
 - `shiplog share verify public --strict`
 - `shiplog share verify manifest --profile manager|public`
@@ -131,6 +132,8 @@ keeps the full audit appendix by default.
 
 Manager and public profiles fail closed unless `--redact-key` or the configured
 redaction-key environment variable is provided.
+`shiplog share explain manager|public` reports what a profile includes, removes,
+and blocks without writing profile artifacts or requiring a redaction key.
 `shiplog share verify manager|public` performs the same redaction-key preflight
 and inspects coverage/skipped-source metadata without writing share artifacts.
 `shiplog share verify public --strict` also scans the existing or in-memory
