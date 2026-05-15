@@ -202,7 +202,7 @@ done_when = "The chosen diff command shows cleared, changed, new, and still-open
 [[work_item]]
 id = "repair-loop-e2e-proof"
 title = "test(product): prove cold run to improved packet repair loop"
-status = "pending"
+status = "completed"
 expected_files = [
   "apps/shiplog/tests/**",
   "docs/**",

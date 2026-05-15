@@ -223,6 +223,32 @@ fn install_guide_documents_current_install_paths() {
 }
 
 #[test]
+fn evidence_repair_loop_guide_documents_report_derived_flow() {
+    let doc_path = repo_root().join("docs/guides/evidence-repair-loop.md");
+    let doc = std::fs::read_to_string(&doc_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", doc_path.display()));
+
+    for needle in [
+        "shiplog intake --last-6-months --explain",
+        "shiplog repair plan --latest",
+        "shiplog journal add --from-repair <repair_id>",
+        "shiplog repair diff --latest",
+        "shiplog open packet --latest",
+        "Cleared",
+        "New",
+        "Still open",
+        "Changed",
+        "intake.report.json",
+        "provider tickets or source records are edited",
+    ] {
+        assert!(
+            doc.contains(needle),
+            "evidence repair loop guide should mention {needle:?}"
+        );
+    }
+}
+
+#[test]
 fn documented_help_commands_stay_available() {
     shiplog_cmd()
         .arg("--help")

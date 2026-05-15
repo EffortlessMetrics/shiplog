@@ -205,7 +205,7 @@ Follow-up:
 
 Title: `feat(journal): add from-repair flow`
 
-Status: in review in [#298](https://github.com/EffortlessMetrics/shiplog/pull/298)
+Status: landed in [#298](https://github.com/EffortlessMetrics/shiplog/pull/298)
 
 Depends on:
 
@@ -258,7 +258,7 @@ Follow-up:
 
 Title: `feat(repair): diff latest repair states`
 
-Status: in review in [#299](https://github.com/EffortlessMetrics/shiplog/pull/299)
+Status: landed in [#299](https://github.com/EffortlessMetrics/shiplog/pull/299)
 
 Depends on:
 
@@ -305,7 +305,7 @@ Follow-up:
 
 Title: `test(product): prove repair loop improves first packet`
 
-Status: blocked on PR 4
+Status: in progress
 
 Depends on:
 
