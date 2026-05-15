@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-05-15
+
+shiplog 0.8.0 is the **evidence repair loop release**. It turns the honest
+first-run report from 0.6/0.7 into a guided repair path: inspect receipts, print
+safe repair actions, add local manual evidence from a repair ID, rerun intake,
+and see which repair keys cleared.
+
+### Added
+
+- Added receipt-derived `repair_items` to `intake.report.json`, with stable
+  `repair_id`, `repair_key`, source identity, reason, safe action, clear
+  condition, and receipt references. Repair items are derived from existing
+  report receipts instead of live source rediscovery (#296).
+- Added `shiplog repair plan --latest` to render the latest report's repair
+  queue, including missing-report, legacy-report, invalid-report, and empty-queue
+  handling (#297).
+- Added `shiplog journal add --from-repair <repair_id>` so a manual-evidence
+  repair item can append a local journal event without guessing, overwriting
+  existing journal content, or mutating provider records (#298).
+- Added `shiplog repair diff --latest` to compare the latest two compatible
+  repair reports by `repair_key` and show cleared, new, still-open, and changed
+  repair items (#299).
+
+### Documentation
+
+- Added the evidence repair loop source-of-truth stack: proposal, spec, ADR,
+  implementation plan, active goal, user guide, README pointer, and release
+  readiness/handoff notes (#293-#295, #300).
+
+### Tests
+
+- Added a product-level proof that a cold `Needs evidence` first run can produce
+  a repair plan, add manual evidence from a repair ID, rerun intake, clear the
+  no-events repair key, and produce a more useful packet without provider
+  mutation (#300).
+
+### Release
+
+- Bumped workspace packages and normal workspace dependency requirements from
+  `0.7.0` to `0.8.0`.
+
 ## [0.7.0] - 2026-05-14
 
 shiplog 0.7.0 is the **crate-surface contraction release**. It preserves the
@@ -526,7 +567,8 @@ rollout map and the 18-PR ladder (#140–#157).
 - Basic workspace configuration with Cargo
 - MIT/Apache-2.0 dual licensing
 
-[Unreleased]: https://github.com/EffortlessMetrics/shiplog/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/EffortlessMetrics/shiplog/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/EffortlessMetrics/shiplog/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/EffortlessMetrics/shiplog/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/EffortlessMetrics/shiplog/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/EffortlessMetrics/shiplog/compare/v0.4.0...v0.5.0

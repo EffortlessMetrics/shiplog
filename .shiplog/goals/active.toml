@@ -7,6 +7,7 @@ created = "2026-05-14"
 proposal = "docs/proposals/SHIPLOG-PROP-0002-evidence-repair-loop.md"
 crate_surface_archive = ".shiplog/goals/archive/2026-05-14-crate-surface-0.7.0.toml"
 release_checkpoint = "v0.7.0"
+next_release_target = "v0.8.0"
 
 objective = """
 Make Shiplog better after the 0.7.0 crate-surface cut: turn trustworthy
@@ -220,3 +221,35 @@ commands = [
   "git diff --check",
 ]
 done_when = "A product test proves first run, repair plan, manual evidence repair, rerun, and improved packet."
+
+[[work_item]]
+id = "repair-loop-release-prep"
+title = "release: prepare evidence repair loop release"
+status = "completed"
+expected_files = [
+  "Cargo.toml",
+  "apps/shiplog/Cargo.toml",
+  "crates/shiplog-testkit/Cargo.toml",
+  "xtask/Cargo.toml",
+  "Cargo.lock",
+  "policy/publish-allowlist.toml",
+  "CHANGELOG.md",
+  "docs/release/**",
+  "RELEASE_HANDOFF_0.8.0.md",
+  ".shiplog/goals/active.toml",
+]
+commands = [
+  "bash scripts/package-version-audit.sh",
+  "bash scripts/package-boundary-audit.sh",
+  "bash scripts/publish-dry-run.sh",
+  "cargo test -p shiplog --test front_door_first_pack_smoke",
+  "cargo test -p shiplog --test intake_cold_start",
+  "cargo test -p shiplog --test cli_integration -- repair",
+  "cargo clippy --workspace --all-targets --all-features --locked -- -D warnings",
+  "cargo xtask check-policy-schemas",
+  "cargo xtask check-file-policy --mode blocking-allowlist",
+  "cargo xtask check-executable-files --mode blocking-allowlist",
+  "cargo xtask check-no-panic-family --mode blocking-allowlist",
+  "git diff --check",
+]
+done_when = "0.8.0 version metadata, release notes, readiness ledger, handoff, and proof commands are copy-ready without claiming the release has been published."

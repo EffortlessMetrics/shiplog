@@ -364,7 +364,7 @@ Follow-up:
 
 Title: `release: prepare evidence repair loop release`
 
-Status: blocked on PR 5
+Status: in progress
 
 Scope:
 
@@ -377,7 +377,11 @@ Expected files:
 
 - `CHANGELOG.md`
 - `docs/release/**`
+- `RELEASE_HANDOFF_0.8.0.md`
 - `.shiplog/goals/active.toml`
+- `policy/publish-allowlist.toml`, if the release target marker changes
+- Cargo version files and `Cargo.lock`, if the release-prep PR bumps the
+  release target
 
 Validation:
 
@@ -386,6 +390,7 @@ cargo test -p shiplog --test front_door_first_pack_smoke
 cargo test -p shiplog --test intake_cold_start
 cargo test -p shiplog --test cli_integration -- repair
 cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+cargo install --path apps/shiplog --locked --root target/release-install-local --force
 cargo xtask check-policy-schemas
 cargo xtask check-file-policy --mode blocking-allowlist
 cargo xtask check-executable-files --mode blocking-allowlist
