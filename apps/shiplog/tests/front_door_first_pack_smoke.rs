@@ -197,6 +197,10 @@ fn install_to_first_pack_smoke() {
         packet_body.contains("Still weak:") && packet_body.contains("needs_context"),
         "smoke: Packet Readiness section must surface weak evidence state. packet:\n{packet_body}"
     );
+    assert!(
+        !packet_body.contains("# Claim Candidates"),
+        "smoke: zero-evidence packet should not render claim candidates. packet:\n{packet_body}"
+    );
 
     // (b) Redaction status. Internal profile on a first-run; the
     // exact phrasing is part of the contract because reviewers scan
@@ -403,6 +407,14 @@ fn repair_loop_improves_first_packet_without_provider_mutation() {
             && repaired_packet.contains("Ready with caveats.")
             && repaired_packet.contains("manual_only"),
         "repair proof: repaired packet should render packet readiness and manual-only evidence strength. packet:\n{repaired_packet}"
+    );
+    assert!(
+        repaired_packet.contains("# Claim Candidates")
+            && repaired_packet.contains("## Manual evidence repair")
+            && repaired_packet.contains("Evidence strength: `manual_only`")
+            && repaired_packet.contains("Missing context:")
+            && repaired_packet.contains("Which source-backed receipt could confirm this?"),
+        "repair proof: repaired packet should render claim candidates and missing-context prompts. packet:\n{repaired_packet}"
     );
     assert!(
         repaired_packet.contains("Manual evidence repair") && repaired_packet.contains(&repair_id),

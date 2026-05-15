@@ -2693,7 +2693,11 @@ fn write_intake_report(run_dir: &Path, report: &IntakeReport) -> Result<()> {
 fn write_packet_readiness_section(packet_path: &Path, report: &IntakeReport) -> Result<()> {
     let packet = std::fs::read_to_string(packet_path)
         .with_context(|| format!("read {}", packet_path.display()))?;
-    let section = render_packet_readiness_packet_section(report);
+    let section = format!(
+        "{}{}",
+        render_packet_readiness_packet_section(report),
+        render_claim_candidates_packet_section(report)
+    );
     std::fs::write(packet_path, format!("{section}{packet}"))
         .with_context(|| format!("write {}", packet_path.display()))?;
     Ok(())
@@ -2772,6 +2776,71 @@ fn packet_readiness_scope_label(scope: &str) -> String {
         }
         other => other.replace('_', " "),
     }
+}
+
+fn render_claim_candidates_packet_section(report: &IntakeReport) -> String {
+    if report.packet_quality.claim_candidates.is_empty() {
+        return String::new();
+    }
+
+    let mut out = String::new();
+    out.push_str("# Claim Candidates\n\n");
+    for candidate in &report.packet_quality.claim_candidates {
+        out.push_str(&format!("## {}\n\n", candidate.title));
+        out.push_str(&format!(
+            "Evidence strength: `{}`\n\n",
+            candidate.evidence_strength
+        ));
+
+        out.push_str("Evidence:\n");
+        if candidate.supporting_sources.is_empty() {
+            out.push_str("- Sources: not classified\n");
+        } else {
+            out.push_str(&format!(
+                "- Sources: {}\n",
+                candidate.supporting_sources.join(", ")
+            ));
+        }
+        if candidate.supporting_receipt_refs.is_empty() {
+            out.push_str("- Receipts: none recorded\n");
+        } else {
+            for receipt in &candidate.supporting_receipt_refs {
+                out.push_str(&format!(
+                    "- Receipt: {}\n",
+                    packet_receipt_ref_label(receipt)
+                ));
+            }
+        }
+        if !candidate.caveats.is_empty() {
+            out.push_str("\nCaveats:\n");
+            for caveat in &candidate.caveats {
+                out.push_str(&format!("- {caveat}\n"));
+            }
+        }
+
+        out.push_str("\nMissing context:\n");
+        if candidate.missing_context_prompts.is_empty() {
+            out.push_str("- None recorded.\n");
+        } else {
+            for prompt in &candidate.missing_context_prompts {
+                out.push_str(&format!("- {prompt}\n"));
+            }
+        }
+        out.push('\n');
+    }
+
+    out
+}
+
+fn packet_receipt_ref_label(receipt: &IntakeReportQualityReceiptRef) -> String {
+    let mut label = receipt.field.clone();
+    if let Some(source_key) = &receipt.source_key {
+        label.push_str(&format!(" source:{source_key}"));
+    }
+    if let Some(repair_key) = &receipt.repair_key {
+        label.push_str(&format!(" repair:{repair_key}"));
+    }
+    label
 }
 
 fn render_intake_report_markdown(report: &IntakeReport) -> String {

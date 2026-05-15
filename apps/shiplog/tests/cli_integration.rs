@@ -4545,6 +4545,12 @@ user = "octo"
         packet.contains("Ready with caveats.") && packet.contains("manual_only"),
         "manual-only packet should surface readiness caveats in packet.md"
     );
+    assert!(
+        packet.contains("# Claim Candidates")
+            && packet.contains("Evidence strength: `manual_only`")
+            && packet.contains("Missing context:"),
+        "manual-only packet should render claim candidates with missing-context prompts"
+    );
     assert!(packet.contains("- Manual: 1 event"));
     assert!(packet.contains("Skipped:\n- None recorded\n"));
     assert!(packet.contains("Known gaps:\n- Manual events are user-provided\n"));
