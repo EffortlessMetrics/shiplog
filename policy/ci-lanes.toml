@@ -269,10 +269,10 @@ base_lem = 4
 default_pr = true
 blocking = false
 workflow = ".github/workflows/ripr.yml"
-workflow_name = "ripr"
+workflow_name = "RIPR PR Evidence"
 job_name = "advisory"
 labels = ["ripr", "ripr-waive"]
-outputs = ["target/ripr/ripr.json", "target/ripr/ripr.sarif"]
+outputs = ["target/ripr/pr/repo-exposure.json", "target/ripr/pr/repo-exposure.md", "target/ripr/review/comments.json", "target/ripr/review/comments.md"]
 
 # ── Bot review lanes (advisory, external AI multiplier 4x) ─────────────
 

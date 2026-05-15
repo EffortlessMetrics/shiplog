@@ -20,6 +20,15 @@ pub struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Command {
+    /// Generate or verify public Shields endpoint badge JSON.
+    Badges(BadgesArgs),
+
+    /// Produce PR-scoped RIPR exposure evidence under `target/ripr/pr/`.
+    RiprPr(RiprArgs),
+
+    /// Produce PR-scoped RIPR review guidance under `target/ripr/review/`.
+    RiprReviewComments(RiprArgs),
+
     /// Validate `policy/*.toml` common headers and well-formed structure.
     CheckPolicySchemas,
 
@@ -95,6 +104,30 @@ enum Command {
     /// (and vice versa). Exemptions are explicit in
     /// `[actuals_exemptions].not_subscribed`.
     CheckActualsCoverage(FilePolicyModeArgs),
+}
+
+#[derive(Debug, Args)]
+pub struct BadgesArgs {
+    /// Check committed badge endpoints for drift instead of updating them.
+    #[arg(long)]
+    pub check: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct RiprArgs {
+    /// Verify the existing output contract instead of producing evidence.
+    #[arg(long)]
+    pub check: bool,
+
+    /// Base git ref for PR-scoped analysis. Defaults to GITHUB_BASE_SHA,
+    /// then origin/<GITHUB_BASE_REF>, then origin/main.
+    #[arg(long)]
+    pub base: Option<String>,
+
+    /// Head git ref for PR-scoped analysis. Defaults to GITHUB_HEAD_SHA,
+    /// then HEAD.
+    #[arg(long)]
+    pub head: Option<String>,
 }
 
 #[derive(Debug, Args)]
@@ -208,6 +241,23 @@ impl Cli {
             None => crate::policy::detect_workspace_root()?,
         };
         match self.command {
+            Command::Badges(args) => tasks::badges::run(&workspace_root, args.check),
+            Command::RiprPr(args) => tasks::ripr::pr(
+                &workspace_root,
+                tasks::ripr::RiprArgs {
+                    check: args.check,
+                    base: args.base,
+                    head: args.head,
+                },
+            ),
+            Command::RiprReviewComments(args) => tasks::ripr::review_comments(
+                &workspace_root,
+                tasks::ripr::RiprArgs {
+                    check: args.check,
+                    base: args.base,
+                    head: args.head,
+                },
+            ),
             Command::CheckPolicySchemas => tasks::check_policy_schemas::run(&workspace_root),
             Command::PackageBoundary => tasks::package_boundary::run(&workspace_root),
             Command::PackageVersion => tasks::package_version::run(&workspace_root),

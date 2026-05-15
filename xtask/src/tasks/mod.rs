@@ -1,3 +1,4 @@
+pub mod badges;
 pub mod check_actuals_coverage;
 pub mod check_label_enforcement;
 pub mod check_lane_mappings;
@@ -11,3 +12,4 @@ pub mod no_panic;
 pub mod package_boundary;
 pub mod package_version;
 pub mod policy_report;
+pub mod ripr;

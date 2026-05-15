@@ -1,17 +1,8 @@
 # `ripr` Operating Doc
 
 `ripr` is shiplog's PR-time oracle-gap detector. It runs as an advisory
-lane on every PR (added in PR #153) and answers a mutation-shaped question
+lane on Rust-diff pull requests and answers a mutation-shaped question
 **without** running mutations:
-
-> **v0.5.0 status:** The lane in PR #153 ships as a **stub** — the
-> workflow, configuration, and contract artifacts (`target/ripr/ripr.json`
-> + `.sarif`) are wired so downstream tooling (PR plan, CI actuals,
-> future required-check promotion) can treat the lane as live, but the
-> stub does not perform real exposure analysis and always reports zero
-> findings. Real ripr integration is a follow-up release. The
-> doctrine, suppressions schema, severity table, and label model below
-> are forward-stable.
 
 > For the behavior changed in this diff, do current tests appear to
 > expose that behavior to a meaningful test discriminator?
@@ -59,17 +50,21 @@ header (`[suppressions]`) and can be overridden per-PR via labels.
 
 | Aspect | Value |
 |---|---|
-| Workflow | `.github/workflows/ripr.yml` (added in PR #153) |
+| Workflow | `.github/workflows/ripr.yml` |
 | Trigger | PR open / sync; can be forced via `ripr` label or skipped via `ripr-waive` label |
 | Runner | `ubuntu-latest` |
 | Base LEM | 4 |
 | Default PR? | yes |
 | Blocking | no (advisory) |
-| Outputs | `target/ripr/ripr.json`, `target/ripr/ripr.sarif`, GitHub step summary |
+| Outputs | `target/ripr/pr/repo-exposure.json`, `target/ripr/pr/repo-exposure.md`, `target/ripr/review/comments.json`, `target/ripr/review/comments.md`, GitHub step summary, non-blocking annotations |
 
 The workflow triggers on Rust diffs (paths under `apps/**`, `crates/**`,
 `xtask/**`, `Cargo.toml`, `Cargo.lock`, `ripr.toml`,
-`policy/ripr-suppressions.toml`).
+`policy/ripr-suppressions.toml`). It installs `ripr`, runs
+`cargo xtask ripr-pr`, runs `cargo xtask ripr-review-comments`, verifies both
+output contracts with `--check`, uploads the PR and review artifact trees, and
+emits non-blocking annotations from `comments[]` only. `summary_only[]` remains
+in the step summary and artifacts.
 
 ## Labels
 

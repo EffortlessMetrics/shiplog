@@ -20,6 +20,34 @@ cargo xtask <subcommand>
 
 ## Commands
 
+### `cargo xtask badges`
+
+Regenerates committed public Shields endpoint JSON under `badges/`. The command
+anchors all paths at the workspace root, writes detailed intermediate output
+under `target/xtask/badges/`, supports `RIPR_BIN`, and validates the minimal
+Shields endpoint shape (`schemaVersion`, `label`, `message`, `color`).
+
+Use `cargo xtask badges --check` in CI to regenerate into `target/` and fail if
+committed endpoint JSON has drifted.
+
+### `cargo xtask ripr-pr`
+
+Produces PR-scoped RIPR exposure evidence under `target/ripr/pr/`. The command
+uses explicit base/head refs when supplied, otherwise resolves GitHub Actions
+base/head environment variables and falls back to `origin/main..HEAD`.
+
+Use `cargo xtask ripr-pr --check` to verify the required JSON and Markdown
+contract files exist and are readable.
+
+### `cargo xtask ripr-review-comments`
+
+Produces PR-scoped RIPR review guidance under `target/ripr/review/` by running
+`ripr review-comments` with explicit root/base/head/out arguments. The command
+does not post to GitHub.
+
+Use `cargo xtask ripr-review-comments --check` to verify `comments.json` and
+`comments.md` exist and are readable.
+
 ### `cargo xtask check-policy-schemas`
 
 Validates every `policy/*.toml` file for a well-formed common header:
