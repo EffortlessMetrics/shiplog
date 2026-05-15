@@ -230,7 +230,7 @@ done_when = "A product test proves first run, repair plan, manual evidence repai
 [[work_item]]
 id = "repair-loop-release-prep"
 title = "release: prepare evidence repair loop release"
-status = "completed"
+status = "in_progress"
 expected_files = [
   "Cargo.toml",
   "apps/shiplog/Cargo.toml",
@@ -251,10 +251,11 @@ commands = [
   "cargo test -p shiplog --test intake_cold_start",
   "cargo test -p shiplog --test cli_integration -- repair",
   "cargo clippy --workspace --all-targets --all-features --locked -- -D warnings",
+  "cargo install --path apps/shiplog --locked --root target/release-install-local --force",
   "cargo xtask check-policy-schemas",
   "cargo xtask check-file-policy --mode blocking-allowlist",
   "cargo xtask check-executable-files --mode blocking-allowlist",
   "cargo xtask check-no-panic-family --mode blocking-allowlist",
   "git diff --check",
 ]
-done_when = "0.8.0 version metadata, release notes, readiness ledger, handoff, and proof commands are copy-ready without claiming the release has been published."
+done_when = "0.8.0 is tagged, release assets smoke, crates.io and GitHub release are verified, and release-prep artifacts remain copy-ready."

@@ -386,6 +386,9 @@ Expected files:
 Validation:
 
 ```bash
+bash scripts/package-version-audit.sh
+bash scripts/package-boundary-audit.sh
+bash scripts/publish-dry-run.sh
 cargo test -p shiplog --test front_door_first_pack_smoke
 cargo test -p shiplog --test intake_cold_start
 cargo test -p shiplog --test cli_integration -- repair
@@ -394,6 +397,7 @@ cargo install --path apps/shiplog --locked --root target/release-install-local -
 cargo xtask check-policy-schemas
 cargo xtask check-file-policy --mode blocking-allowlist
 cargo xtask check-executable-files --mode blocking-allowlist
+cargo xtask check-no-panic-family --mode blocking-allowlist
 git diff --check
 ```
 
