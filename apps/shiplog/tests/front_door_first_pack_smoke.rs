@@ -432,4 +432,22 @@ fn repair_loop_improves_first_packet_without_provider_mutation() {
             && diff_stdout.contains(&repair_id),
         "repair proof: repair diff should show the manual no-events repair clearing. stdout:\n{diff_stdout}"
     );
+
+    let quality_diff_assert = shiplog_cmd(tmp.path())
+        .args(["runs", "diff", "--out", out_arg, "--latest"])
+        .assert()
+        .success();
+    let quality_diff_stdout = String::from_utf8_lossy(&quality_diff_assert.get_output().stdout);
+    assert!(
+        quality_diff_stdout.contains("Packet quality diff:")
+            && quality_diff_stdout.contains("manual evidence count 0 -> 1")
+            && quality_diff_stdout
+                .contains("packet readiness Needs evidence -> Ready with caveats")
+            && quality_diff_stdout.contains("claim candidates 0 -> 1")
+            && quality_diff_stdout.contains(MANUAL_NO_EVENTS_REPAIR_KEY)
+            && quality_diff_stdout.contains("Still weak:")
+            && quality_diff_stdout.contains("packet evidence: manual_only")
+            && quality_diff_stdout.contains("shiplog share explain manager"),
+        "repair proof: runs diff should show packet quality movement after repair. stdout:\n{quality_diff_stdout}"
+    );
 }

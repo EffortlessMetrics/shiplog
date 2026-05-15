@@ -379,6 +379,7 @@ out/<run_id>/
 | `refresh <source>` | Re-fetch events while preserving curated `workstreams.yaml` |
 | `workstreams list/validate/create/rename/move/split/receipts/receipt/delete` | Inspect, validate, and safely edit workstream curation |
 | `runs list/show/compare` | Discover runs, inspect their artifacts, and compare source/workstream changes |
+| `runs diff` | Compare latest packet quality movement across runs |
 | `review` / `review weekly` / `review fixups` | Inspect a run for skipped sources, weak curation, evidence debt, and next steps |
 | `open packet/workstreams/intake-report/out` | Open run artifacts, or print their paths when opening is unavailable |
 | `report validate/summarize/export-agent-pack` | Validate and summarize durable intake reports for tooling |

@@ -847,6 +847,22 @@ enum RunsCommand {
         #[arg(long)]
         to_period: Option<String>,
     },
+
+    /// Compare packet quality movement across runs.
+    Diff {
+        /// Output directory containing shiplog runs.
+        #[arg(long, default_value = "./out")]
+        out: PathBuf,
+        /// Compare the latest two runs.
+        #[arg(long)]
+        latest: bool,
+        /// Earlier run ID to compare from. Use "latest" for the most recent run.
+        #[arg(long)]
+        from: Option<String>,
+        /// Later run ID to compare to. Use "latest" for the most recent run.
+        #[arg(long)]
+        to: Option<String>,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -11781,6 +11797,17 @@ struct RunComparison {
     contracted_workstreams: Vec<(String, isize)>,
 }
 
+struct RunQualitySnapshot {
+    summary: RunSummary,
+    report_path: Option<PathBuf>,
+    packet_readiness: Option<String>,
+    packet_evidence_strength: Option<String>,
+    claim_candidate_count: Option<usize>,
+    repair_report: Option<RepairDiffReport>,
+    manual_event_count: usize,
+    skipped_sources: Vec<ConfiguredSourceSkip>,
+}
+
 fn load_run_summaries(out_dir: &Path) -> Result<Vec<RunSummary>> {
     discover_run_dirs(out_dir)?
         .iter()
@@ -12053,6 +12080,377 @@ fn print_run_compare(comparison: &RunComparison) {
     println!("Next:");
     println!("1. shiplog review --run {}", to.run_id);
     println!("2. shiplog render --run {} --mode scaffold", to.run_id);
+}
+
+fn run_quality_diff_command(
+    out_dir: &Path,
+    latest: bool,
+    from: Option<String>,
+    to: Option<String>,
+) -> Result<()> {
+    let Some((from_dir, to_dir)) = resolve_run_quality_diff_dirs(out_dir, latest, from, to)? else {
+        return Ok(());
+    };
+    let from = load_run_quality_snapshot(&from_dir)?;
+    let to = load_run_quality_snapshot(&to_dir)?;
+    print_run_quality_diff(&from, &to);
+    Ok(())
+}
+
+fn resolve_run_quality_diff_dirs(
+    out_dir: &Path,
+    latest: bool,
+    from: Option<String>,
+    to: Option<String>,
+) -> Result<Option<(PathBuf, PathBuf)>> {
+    if latest && (from.is_some() || to.is_some()) {
+        anyhow::bail!("use either --latest or --from/--to, not both")
+    }
+
+    if latest || (from.is_none() && to.is_none()) {
+        let runs = find_run_dirs_for_repair(out_dir)?;
+        if runs.len() < 2 {
+            println!("Packet quality diff: fewer than two runs found");
+            println!("Out: {}", out_dir.display());
+            println!("Runs: {}", runs.len());
+            println!("Next:");
+            println!("  {}", intake_create_run_command_for_out(out_dir));
+            return Ok(None);
+        }
+        return Ok(Some((runs[1].clone(), runs[0].clone())));
+    }
+
+    match (from, to) {
+        (Some(from), Some(to)) => Ok(Some((
+            resolve_run_selector(out_dir, &from)?,
+            resolve_run_selector(out_dir, &to)?,
+        ))),
+        _ => anyhow::bail!("runs diff requires --latest or both --from and --to"),
+    }
+}
+
+fn load_run_quality_snapshot(run_dir: &Path) -> Result<RunQualitySnapshot> {
+    let summary = load_run_summary(run_dir)?;
+    let ingest =
+        load_run_ingest(run_dir).with_context(|| format!("load run {}", run_dir.display()))?;
+    let manual_event_count = ingest
+        .events
+        .iter()
+        .filter(|event| sources_match(event.source.system.as_str(), "manual"))
+        .count();
+    let skipped_sources = configured_source_skips(&summary.warnings);
+    let report_path = run_dir.join("intake.report.json");
+
+    let mut packet_readiness = None;
+    let mut packet_evidence_strength = None;
+    let mut claim_candidate_count = None;
+    let mut repair_report = None;
+    let report_path = if report_path.exists() {
+        validate_intake_report(&report_path)?;
+        let report_text = std::fs::read_to_string(&report_path)
+            .with_context(|| format!("read {}", report_path.display()))?;
+        let report_json: serde_json::Value = serde_json::from_str(&report_text)
+            .with_context(|| format!("parse {}", report_path.display()))?;
+        packet_readiness = report_packet_readiness_status(&report_json);
+        packet_evidence_strength = report_packet_evidence_strength(&report_json);
+        claim_candidate_count = report_claim_candidate_count(&report_json);
+        if report_json.get("repair_items").is_some() {
+            repair_report = Some(repair_diff_report(report_path.clone(), &report_json)?);
+        }
+        Some(report_path)
+    } else {
+        None
+    };
+
+    Ok(RunQualitySnapshot {
+        summary,
+        report_path,
+        packet_readiness,
+        packet_evidence_strength,
+        claim_candidate_count,
+        repair_report,
+        manual_event_count,
+        skipped_sources,
+    })
+}
+
+fn report_packet_readiness_status(report_json: &serde_json::Value) -> Option<String> {
+    report_json
+        .get("packet_quality")
+        .and_then(|quality| quality.get("packet_readiness"))
+        .and_then(|readiness| readiness.get("status"))
+        .and_then(serde_json::Value::as_str)
+        .or_else(|| {
+            report_json
+                .get("readiness")
+                .and_then(serde_json::Value::as_str)
+        })
+        .map(str::to_string)
+}
+
+fn report_packet_evidence_strength(report_json: &serde_json::Value) -> Option<String> {
+    report_json
+        .get("packet_quality")
+        .and_then(|quality| quality.get("evidence_strength"))
+        .and_then(serde_json::Value::as_array)?
+        .iter()
+        .find(|item| item.get("scope").and_then(serde_json::Value::as_str) == Some("packet"))
+        .and_then(|item| item.get("status"))
+        .and_then(serde_json::Value::as_str)
+        .map(str::to_string)
+}
+
+fn report_claim_candidate_count(report_json: &serde_json::Value) -> Option<usize> {
+    report_json
+        .get("packet_quality")
+        .and_then(|quality| quality.get("claim_candidates"))
+        .and_then(serde_json::Value::as_array)
+        .map(Vec::len)
+}
+
+fn print_run_quality_diff(from: &RunQualitySnapshot, to: &RunQualitySnapshot) {
+    let repair_diff = from
+        .repair_report
+        .as_ref()
+        .zip(to.repair_report.as_ref())
+        .map(|(older, newer)| build_repair_diff(older, newer));
+    let (improved, regressed, still_weak) = run_quality_diff_groups(from, to, repair_diff.as_ref());
+
+    println!(
+        "Packet quality diff: {} -> {}",
+        from.summary.run_id, to.summary.run_id
+    );
+    println!("From: {}", from.summary.run_dir.display());
+    println!("To: {}", to.summary.run_dir.display());
+    println!();
+
+    println!("Reports:");
+    println!(
+        "- from: {}",
+        from.report_path
+            .as_ref()
+            .map(|path| path.display().to_string())
+            .unwrap_or_else(|| "not found".to_string())
+    );
+    println!(
+        "- to: {}",
+        to.report_path
+            .as_ref()
+            .map(|path| path.display().to_string())
+            .unwrap_or_else(|| "not found".to_string())
+    );
+    println!();
+
+    print_quality_diff_group("Improved", &improved);
+    print_quality_diff_group("Regressed", &regressed);
+    print_quality_diff_group("Still weak", &still_weak);
+    println!();
+
+    println!("Next:");
+    println!("1. shiplog open packet --run {}", to.summary.run_id);
+    println!(
+        "2. shiplog share explain manager --run {}",
+        to.summary.run_id
+    );
+}
+
+fn run_quality_diff_groups(
+    from: &RunQualitySnapshot,
+    to: &RunQualitySnapshot,
+    repair_diff: Option<&RepairDiff>,
+) -> (Vec<String>, Vec<String>, Vec<String>) {
+    let mut improved = Vec::new();
+    let mut regressed = Vec::new();
+    let mut still_weak = Vec::new();
+
+    push_count_movement(
+        "evidence events",
+        from.summary.event_count,
+        to.summary.event_count,
+        &mut improved,
+        &mut regressed,
+    );
+    push_count_movement(
+        "manual evidence count",
+        from.manual_event_count,
+        to.manual_event_count,
+        &mut improved,
+        &mut regressed,
+    );
+    push_inverse_count_movement(
+        "coverage gaps",
+        from.summary.gap_count,
+        to.summary.gap_count,
+        &mut improved,
+        &mut regressed,
+    );
+    push_optional_count_movement(
+        "claim candidates",
+        from.claim_candidate_count,
+        to.claim_candidate_count,
+        &mut improved,
+        &mut regressed,
+    );
+    push_readiness_movement(from, to, &mut improved, &mut regressed);
+
+    if let Some(diff) = repair_diff {
+        for item in &diff.cleared {
+            improved.push(format!("repair {} cleared", item.repair_key));
+        }
+        for item in &diff.new {
+            regressed.push(format!("repair {} opened", item.repair_key));
+        }
+        for (old_item, new_item) in &diff.changed {
+            regressed.push(format!(
+                "repair {} changed ({} -> {})",
+                new_item.repair_key, old_item.repair_id, new_item.repair_id
+            ));
+        }
+        for item in &diff.still_open {
+            still_weak.push(format!("repair {} still open", item.repair_key));
+        }
+    } else if from.report_path.is_none() || to.report_path.is_none() {
+        still_weak.push(
+            "packet quality report unavailable; rerun intake to generate intake.report.json"
+                .to_string(),
+        );
+    }
+
+    for skipped in &to.skipped_sources {
+        still_weak.push(format!(
+            "{} skipped: {}",
+            display_source_label(&skipped.source),
+            skipped.reason
+        ));
+    }
+    if to.summary.gap_count > 0 {
+        still_weak.push(format!("coverage gaps remain: {}", to.summary.gap_count));
+    }
+    match to.packet_readiness.as_deref() {
+        Some(status) if normalized_quality_status(status) != "ready" => {
+            still_weak.push(format!(
+                "packet readiness: {}",
+                quality_status_label(status)
+            ));
+        }
+        None => still_weak.push("packet readiness unavailable".to_string()),
+        _ => {}
+    }
+    if let Some(strength) = to.packet_evidence_strength.as_deref()
+        && strength != "strong"
+    {
+        still_weak.push(format!("packet evidence: {strength}"));
+    }
+    if to.claim_candidate_count == Some(0) {
+        still_weak.push("claim candidates absent".to_string());
+    }
+
+    (improved, regressed, still_weak)
+}
+
+fn push_count_movement(
+    label: &str,
+    from: usize,
+    to: usize,
+    improved: &mut Vec<String>,
+    regressed: &mut Vec<String>,
+) {
+    if to > from {
+        improved.push(format!("{label} {from} -> {to}"));
+    } else if to < from {
+        regressed.push(format!("{label} {from} -> {to}"));
+    }
+}
+
+fn push_inverse_count_movement(
+    label: &str,
+    from: usize,
+    to: usize,
+    improved: &mut Vec<String>,
+    regressed: &mut Vec<String>,
+) {
+    if to < from {
+        improved.push(format!("{label} {from} -> {to}"));
+    } else if to > from {
+        regressed.push(format!("{label} {from} -> {to}"));
+    }
+}
+
+fn push_optional_count_movement(
+    label: &str,
+    from: Option<usize>,
+    to: Option<usize>,
+    improved: &mut Vec<String>,
+    regressed: &mut Vec<String>,
+) {
+    let (Some(from), Some(to)) = (from, to) else {
+        return;
+    };
+    push_count_movement(label, from, to, improved, regressed);
+}
+
+fn push_readiness_movement(
+    from: &RunQualitySnapshot,
+    to: &RunQualitySnapshot,
+    improved: &mut Vec<String>,
+    regressed: &mut Vec<String>,
+) {
+    let (Some(from_status), Some(to_status)) = (
+        from.packet_readiness.as_deref(),
+        to.packet_readiness.as_deref(),
+    ) else {
+        return;
+    };
+    if normalized_quality_status(from_status) == normalized_quality_status(to_status) {
+        return;
+    }
+
+    let message = format!(
+        "packet readiness {} -> {}",
+        quality_status_label(from_status),
+        quality_status_label(to_status)
+    );
+    if readiness_rank(to_status) > readiness_rank(from_status) {
+        improved.push(message);
+    } else {
+        regressed.push(message);
+    }
+}
+
+fn normalized_quality_status(status: &str) -> String {
+    status.trim().to_ascii_lowercase().replace(['-', ' '], "_")
+}
+
+fn readiness_rank(status: &str) -> i32 {
+    match normalized_quality_status(status).as_str() {
+        "ready" => 4,
+        "ready_with_caveats" => 3,
+        "needs_repair" => 2,
+        "needs_evidence" => 1,
+        _ => 0,
+    }
+}
+
+fn quality_status_label(status: &str) -> String {
+    match normalized_quality_status(status).as_str() {
+        "ready" => "Ready".to_string(),
+        "ready_with_caveats" => "Ready with caveats".to_string(),
+        "needs_repair" => "Needs repair".to_string(),
+        "needs_evidence" => "Needs evidence".to_string(),
+        _ => status.to_string(),
+    }
+}
+
+fn print_quality_diff_group(label: &str, items: &[String]) {
+    println!("{label}:");
+    if items.is_empty() {
+        println!("- None");
+    } else {
+        for item in items {
+            println!("- {item}");
+        }
+    }
+    println!();
 }
 
 fn print_named_list(label: &str, values: &[String]) {
