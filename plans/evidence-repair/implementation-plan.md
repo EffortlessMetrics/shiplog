@@ -95,7 +95,7 @@ Every behavior PR body should include:
 
 Title: `feat(report): add receipt-derived repair items`
 
-Status: ready
+Status: landed in [#296](https://github.com/EffortlessMetrics/shiplog/pull/296)
 
 Depends on:
 
@@ -154,7 +154,7 @@ Follow-up:
 
 Title: `feat(repair): render latest repair plan`
 
-Status: blocked on PR 1
+Status: landed in [#297](https://github.com/EffortlessMetrics/shiplog/pull/297)
 
 Depends on:
 
@@ -205,7 +205,7 @@ Follow-up:
 
 Title: `feat(journal): add from-repair flow`
 
-Status: blocked on PR 2
+Status: in review in [#298](https://github.com/EffortlessMetrics/shiplog/pull/298)
 
 Depends on:
 

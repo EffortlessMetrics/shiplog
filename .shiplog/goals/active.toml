@@ -72,6 +72,11 @@ number = 297
 title = "feat(repair): render latest repair plan"
 url = "https://github.com/EffortlessMetrics/shiplog/pull/297"
 
+[[completed_pr]]
+number = 298
+title = "feat(journal): add from-repair flow"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/298"
+
 [[work_item]]
 id = "repair-loop-spec"
 title = "docs(spec): define evidence repair loop contract"
@@ -162,7 +167,7 @@ done_when = "shiplog repair plan --latest prints copyable, safe repair guidance 
 [[work_item]]
 id = "journal-from-repair"
 title = "feat(journal): add from-repair flow"
-status = "pending"
+status = "completed"
 expected_files = [
   "apps/shiplog/src/**",
   "apps/shiplog/tests/**",
