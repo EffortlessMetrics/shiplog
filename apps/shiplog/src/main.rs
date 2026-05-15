@@ -1942,7 +1942,7 @@ struct IntakeReportRepairReceiptRef {
 struct IntakeReportPacketQuality {
     packet_readiness: IntakeReportPacketReadiness,
     evidence_strength: Vec<IntakeReportEvidenceStrength>,
-    claim_candidates: Vec<serde_json::Value>,
+    claim_candidates: Vec<IntakeReportClaimCandidate>,
     share_posture: Vec<serde_json::Value>,
 }
 
@@ -1976,6 +1976,22 @@ struct IntakeReportQualityReceiptRef {
     source_key: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     repair_key: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct IntakeReportClaimCandidate {
+    claim_id: String,
+    title: String,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    supporting_repair_keys: Vec<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    supporting_sources: Vec<String>,
+    evidence_strength: String,
+    supporting_receipt_refs: Vec<IntakeReportQualityReceiptRef>,
+    missing_context_prompts: Vec<String>,
+    safe_profiles: Vec<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    caveats: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]

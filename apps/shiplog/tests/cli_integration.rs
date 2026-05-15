@@ -4512,6 +4512,32 @@ user = "octo"
             .iter()
             .any(|command| command.as_str().unwrap().contains("shiplog share manager"))
     );
+    let claim_candidates = report_json["packet_quality"]["claim_candidates"]
+        .as_array()
+        .expect("packet_quality should expose claim_candidates");
+    assert!(
+        claim_candidates.iter().any(|candidate| {
+            candidate["evidence_strength"].as_str() == Some("manual_only")
+                && candidate["supporting_sources"]
+                    .as_array()
+                    .is_some_and(|sources| {
+                        sources
+                            .iter()
+                            .any(|source| source.as_str() == Some("manual"))
+                    })
+                && candidate["missing_context_prompts"]
+                    .as_array()
+                    .is_some_and(|prompts| !prompts.is_empty())
+                && candidate["safe_profiles"]
+                    .as_array()
+                    .is_some_and(|profiles| {
+                        profiles
+                            .iter()
+                            .any(|profile| profile.as_str() == Some("manager"))
+                    })
+        }),
+        "manual-only intake should emit a conservative claim candidate with prompts"
+    );
 
     let packet = std::fs::read_to_string(run_dir.join("packet.md")).unwrap();
     assert_packet_opens_with_coverage(&packet);
