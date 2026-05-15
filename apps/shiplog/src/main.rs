@@ -5234,17 +5234,14 @@ fn run_journal_add(args: JournalAddArgs) -> Result<()> {
 }
 
 fn resolve_journal_repair_context(args: &JournalAddArgs) -> Result<Option<JournalRepairContext>> {
-    if args.from_repair.is_none() {
+    let Some(from_repair) = args.from_repair.as_deref() else {
         if args.out.is_some() || args.run.is_some() || args.latest {
             anyhow::bail!("journal add --out, --run, and --latest require --from-repair");
         }
         return Ok(None);
-    }
+    };
 
-    let repair_id = required_text_arg(
-        "--from-repair",
-        args.from_repair.as_deref().expect("checked above"),
-    )?;
+    let repair_id = required_text_arg("--from-repair", from_repair)?;
     let out_dir = args.out.as_deref().unwrap_or_else(|| Path::new("./out"));
     let Some(report_path) =
         resolve_repair_plan_report_path(out_dir, args.run.clone(), args.latest)?
