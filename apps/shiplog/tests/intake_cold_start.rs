@@ -223,7 +223,7 @@ fn cold_start_intake_report_records_packet_quality_evidence_strength() {
         packet_quality["claim_candidates"]
             .as_array()
             .is_some_and(Vec::is_empty),
-        "evidence-strength PR must not generate claim candidates yet"
+        "zero-evidence cold start must not generate claim candidates"
     );
 }
 

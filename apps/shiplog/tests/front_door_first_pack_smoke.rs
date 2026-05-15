@@ -277,6 +277,12 @@ fn repair_loop_improves_first_packet_without_provider_mutation() {
         Some("needs_context"),
         "repair proof: cold report should classify packet evidence as needing context"
     );
+    assert!(
+        first_report["packet_quality"]["claim_candidates"]
+            .as_array()
+            .is_some_and(Vec::is_empty),
+        "repair proof: cold zero-evidence report should not emit claim candidates"
+    );
 
     let manual_repair = repair_item_by_key(&first_report, MANUAL_NO_EVENTS_REPAIR_KEY)
         .expect("repair proof: cold report should expose the no-events manual repair item");
@@ -359,6 +365,31 @@ fn repair_loop_improves_first_packet_without_provider_mutation() {
         evidence_strength_status(&repaired_report, "packet"),
         Some("manual_only"),
         "repair proof: repaired report should classify the packet as manual-only until provider receipts are available"
+    );
+    let claim_candidates = repaired_report["packet_quality"]["claim_candidates"]
+        .as_array()
+        .expect("repair proof: repaired report should expose claim_candidates");
+    assert!(
+        claim_candidates.iter().any(|candidate| {
+            candidate["title"]
+                .as_str()
+                .is_some_and(|title| title.contains("Manual evidence repair"))
+                && candidate["evidence_strength"].as_str() == Some("manual_only")
+                && candidate["supporting_receipt_refs"]
+                    .as_array()
+                    .is_some_and(|refs| !refs.is_empty())
+                && candidate["missing_context_prompts"]
+                    .as_array()
+                    .is_some_and(|prompts| !prompts.is_empty())
+                && candidate["safe_profiles"]
+                    .as_array()
+                    .is_some_and(|profiles| {
+                        profiles
+                            .iter()
+                            .any(|profile| profile.as_str() == Some("manager"))
+                    })
+        }),
+        "repair proof: repaired report should emit a manual-only claim candidate with receipts and prompts (claim_candidates={claim_candidates:?})"
     );
     assert!(
         repair_item_by_key(&repaired_report, MANUAL_NO_EVENTS_REPAIR_KEY).is_none(),

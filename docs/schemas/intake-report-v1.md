@@ -253,9 +253,9 @@ artifacts
 derived from existing report receipts and durable artifacts. Readers must not
 re-query providers or scrape `intake.report.md` to recover packet quality.
 
-Current writers populate packet readiness and evidence strength. Claim
-candidates and share posture are present as arrays but may be empty until those
-later implementation slices land.
+Current writers populate packet readiness, evidence strength, and conservative
+claim candidates when receipts support them. `share_posture` is present as an
+array but may be empty until that later implementation slice lands.
 
 When present, `packet_quality` includes:
 
@@ -318,9 +318,19 @@ artifacts
 ```
 
 Claim candidates are evidence scaffolds, not generated performance-review
-prose. When later writers populate `claim_candidates`, each candidate must have
-`supporting_receipt_refs`, `missing_context_prompts`, and `safe_profiles`.
-It must not invent impact, beneficiaries, or accomplishments.
+prose. Each candidate includes:
+
+```text
+claim_id
+title
+evidence_strength
+supporting_receipt_refs
+missing_context_prompts
+safe_profiles
+```
+
+Candidates may also include `supporting_sources`, `supporting_repair_keys`, and
+`caveats`. They must not invent impact, beneficiaries, or accomplishments.
 
 ## Machine Actions
 

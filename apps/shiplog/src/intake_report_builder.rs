@@ -69,6 +69,8 @@ pub(crate) fn build_intake_report(
     });
     let packet_quality = build_packet_quality(PacketQualityInputs {
         readiness,
+        events: &events,
+        workstreams: &workstreams,
         included_sources: &included_sources,
         source_freshness: &source_freshness,
         repair_items: &repair_items,
@@ -448,6 +450,8 @@ struct RepairItemInputs<'a> {
 
 struct PacketQualityInputs<'a> {
     readiness: &'a str,
+    events: &'a [EventEnvelope],
+    workstreams: &'a WorkstreamsFile,
     included_sources: &'a [IntakeReportIncludedSource],
     source_freshness: &'a [IntakeReportSourceFreshness],
     repair_items: &'a [IntakeReportRepairItem],
@@ -460,11 +464,12 @@ struct PacketQualityInputs<'a> {
 fn build_packet_quality(inputs: PacketQualityInputs<'_>) -> IntakeReportPacketQuality {
     let evidence_strength = build_evidence_strength(&inputs);
     let packet_readiness = build_packet_readiness(&inputs, &evidence_strength);
+    let claim_candidates = build_claim_candidates(&inputs, &evidence_strength);
 
     IntakeReportPacketQuality {
         packet_readiness,
         evidence_strength,
-        claim_candidates: Vec::new(),
+        claim_candidates,
         share_posture: Vec::new(),
     }
 }
@@ -672,6 +677,173 @@ fn build_evidence_strength(inputs: &PacketQualityInputs<'_>) -> Vec<IntakeReport
     }
 
     strengths
+}
+
+fn build_claim_candidates(
+    inputs: &PacketQualityInputs<'_>,
+    evidence_strength: &[IntakeReportEvidenceStrength],
+) -> Vec<IntakeReportClaimCandidate> {
+    if inputs.events.is_empty() {
+        return Vec::new();
+    }
+
+    let packet_strength = evidence_strength
+        .iter()
+        .find(|item| item.scope == "packet")
+        .map(|item| item.status.as_str())
+        .unwrap_or("needs_context");
+    let events_by_id = inputs
+        .events
+        .iter()
+        .map(|event| (event.id.0.as_str(), event))
+        .collect::<HashMap<_, _>>();
+    let mut candidates = Vec::new();
+    let mut seen_ids = BTreeSet::new();
+
+    for workstream in inputs.workstreams.workstreams.iter().take(5) {
+        let supporting_events = workstream
+            .events
+            .iter()
+            .filter_map(|id| events_by_id.get(id.0.as_str()).copied())
+            .collect::<Vec<_>>();
+        if supporting_events.is_empty() {
+            continue;
+        }
+
+        let title = claim_candidate_title(workstream, &supporting_events);
+        let claim_id = unique_claim_id(&title, &mut seen_ids);
+        let supporting_sources = claim_supporting_sources(&supporting_events);
+        let evidence_strength = claim_evidence_strength(&supporting_sources, packet_strength);
+        let mut caveats = Vec::new();
+        if evidence_strength == "manual_only" {
+            caveats.push("Only manual evidence currently supports this candidate.".to_string());
+        } else if evidence_strength == "partial" {
+            caveats.push(format!("Packet evidence strength is {packet_strength}."));
+        }
+
+        candidates.push(IntakeReportClaimCandidate {
+            claim_id,
+            title,
+            supporting_repair_keys: Vec::new(),
+            supporting_sources,
+            evidence_strength: evidence_strength.to_string(),
+            supporting_receipt_refs: claim_receipt_refs(inputs, &supporting_events),
+            missing_context_prompts: claim_missing_context_prompts(evidence_strength),
+            safe_profiles: vec!["manager".to_string()],
+            caveats,
+        });
+    }
+
+    candidates
+}
+
+fn claim_candidate_title(workstream: &Workstream, events: &[&EventEnvelope]) -> String {
+    if is_generic_workstream_title(&workstream.title)
+        && let Some(title) = events.first().map(|event| event_claim_title(event))
+    {
+        return title;
+    }
+    workstream.title.clone()
+}
+
+fn is_generic_workstream_title(title: &str) -> bool {
+    let normalized = title.trim().to_ascii_lowercase();
+    normalized == "misc"
+        || normalized == "manual/general"
+        || normalized == "general"
+        || normalized.ends_with("/general")
+}
+
+fn event_claim_title(event: &EventEnvelope) -> String {
+    match &event.payload {
+        EventPayload::PullRequest(pr) => pr.title.clone(),
+        EventPayload::Review(review) => format!("Review support for {}", review.pull_title),
+        EventPayload::Manual(manual) => manual.title.clone(),
+    }
+}
+
+fn unique_claim_id(title: &str, seen_ids: &mut BTreeSet<String>) -> String {
+    let base = {
+        let token = action_token(title);
+        if token.is_empty() {
+            "claim_workstream".to_string()
+        } else {
+            format!("claim_{token}")
+        }
+    };
+    if seen_ids.insert(base.clone()) {
+        return base;
+    }
+
+    let mut suffix = 2_u64;
+    loop {
+        let candidate = format!("{base}_{suffix}");
+        if seen_ids.insert(candidate.clone()) {
+            return candidate;
+        }
+        suffix += 1;
+    }
+}
+
+fn claim_supporting_sources(events: &[&EventEnvelope]) -> Vec<String> {
+    let mut sources = events
+        .iter()
+        .map(|event| claim_source_key(event).to_string())
+        .collect::<Vec<_>>();
+    sources.sort();
+    sources.dedup();
+    sources
+}
+
+fn claim_source_key(event: &EventEnvelope) -> &'static str {
+    match &event.source.system {
+        shiplog::schema::event::SourceSystem::Github => "github",
+        shiplog::schema::event::SourceSystem::JsonImport => "json",
+        shiplog::schema::event::SourceSystem::LocalGit => "git",
+        shiplog::schema::event::SourceSystem::Manual => "manual",
+        shiplog::schema::event::SourceSystem::Unknown => "unknown",
+        shiplog::schema::event::SourceSystem::Other(_) => "unknown",
+        _ => "unknown",
+    }
+}
+
+fn claim_evidence_strength(sources: &[String], packet_strength: &str) -> &'static str {
+    if sources.is_empty() {
+        "needs_context"
+    } else if sources.iter().all(|source| source == "manual") {
+        "manual_only"
+    } else if packet_strength == "strong" {
+        "strong"
+    } else {
+        "partial"
+    }
+}
+
+fn claim_receipt_refs(
+    inputs: &PacketQualityInputs<'_>,
+    supporting_events: &[&EventEnvelope],
+) -> Vec<IntakeReportQualityReceiptRef> {
+    let mut refs = Vec::new();
+    for source in claim_supporting_sources(supporting_events) {
+        refs.push(quality_source_receipt_ref("included_sources", &source));
+    }
+    refs.push(quality_receipt_ref("artifacts"));
+    if !inputs.evidence_debt.is_empty() {
+        refs.push(quality_receipt_ref("evidence_debt"));
+    }
+    refs
+}
+
+fn claim_missing_context_prompts(evidence_strength: &str) -> Vec<String> {
+    let mut prompts = vec![
+        "What changed after this work?".to_string(),
+        "Who benefited?".to_string(),
+        "What evidence would strengthen this claim?".to_string(),
+    ];
+    if evidence_strength == "manual_only" {
+        prompts.push("Which source-backed receipt could confirm this?".to_string());
+    }
+    prompts
 }
 
 fn source_quality_gap_count(source_freshness: &[IntakeReportSourceFreshness]) -> usize {
