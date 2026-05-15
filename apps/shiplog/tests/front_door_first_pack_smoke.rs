@@ -183,6 +183,20 @@ fn install_to_first_pack_smoke() {
     );
 
     let body = fs::read_to_string(&report_md).expect("read intake.report.md");
+    let packet_body = fs::read_to_string(&packet).expect("read packet.md");
+
+    assert!(
+        packet_body.starts_with("# Packet Readiness\n\n"),
+        "smoke: packet.md must lead with the Packet Readiness section. packet:\n{packet_body}"
+    );
+    assert!(
+        packet_body.contains("Needs evidence."),
+        "smoke: Packet Readiness section must summarize cold-start readiness. packet:\n{packet_body}"
+    );
+    assert!(
+        packet_body.contains("Still weak:") && packet_body.contains("needs_context"),
+        "smoke: Packet Readiness section must surface weak evidence state. packet:\n{packet_body}"
+    );
 
     // (b) Redaction status. Internal profile on a first-run; the
     // exact phrasing is part of the contract because reviewers scan
@@ -353,6 +367,12 @@ fn repair_loop_improves_first_packet_without_provider_mutation() {
 
     let repaired_packet =
         fs::read_to_string(repaired_run.join("packet.md")).expect("read repaired packet.md");
+    assert!(
+        repaired_packet.starts_with("# Packet Readiness\n\n")
+            && repaired_packet.contains("Ready with caveats.")
+            && repaired_packet.contains("manual_only"),
+        "repair proof: repaired packet should render packet readiness and manual-only evidence strength. packet:\n{repaired_packet}"
+    );
     assert!(
         repaired_packet.contains("Manual evidence repair") && repaired_packet.contains(&repair_id),
         "repair proof: repaired packet should contain the journal repair evidence. packet:\n{repaired_packet}"

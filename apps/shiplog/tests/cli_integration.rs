@@ -71,9 +71,10 @@ fn collect_json_into(tmp: &Path) -> PathBuf {
 }
 
 fn assert_packet_opens_with_coverage(packet: &str) {
+    let trimmed = packet.trim_start();
     assert!(
-        packet.trim_start().starts_with("## Coverage and Limits"),
-        "packet should put coverage and gaps first"
+        trimmed.starts_with("# Packet Readiness") || trimmed.starts_with("## Coverage and Limits"),
+        "packet should put readiness or coverage and gaps first"
     );
 
     let coverage = packet
@@ -85,6 +86,12 @@ fn assert_packet_opens_with_coverage(packet: &str) {
     let workstreams = packet
         .find("## Workstreams")
         .expect("packet should include workstreams section");
+    if let Some(readiness) = packet.find("# Packet Readiness") {
+        assert!(
+            readiness < coverage,
+            "packet readiness should appear before coverage when present"
+        );
+    }
     assert!(
         coverage < summary && summary < workstreams,
         "packet section order should be coverage, summary, then workstreams"
@@ -4508,6 +4515,10 @@ user = "octo"
 
     let packet = std::fs::read_to_string(run_dir.join("packet.md")).unwrap();
     assert_packet_opens_with_coverage(&packet);
+    assert!(
+        packet.contains("Ready with caveats.") && packet.contains("manual_only"),
+        "manual-only packet should surface readiness caveats in packet.md"
+    );
     assert!(packet.contains("- Manual: 1 event"));
     assert!(packet.contains("Skipped:\n- None recorded\n"));
     assert!(packet.contains("Known gaps:\n- Manual events are user-provided\n"));

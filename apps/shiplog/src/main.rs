@@ -2324,6 +2324,7 @@ fn run_intake(args: IntakeArgs) -> Result<()> {
     )?;
     let report = build_intake_report(&result, &out, &args.config, &intake_plan.explanations)?;
     write_intake_report(&result.outputs.out_dir, &report)?;
+    write_packet_readiness_section(&result.outputs.packet_md, &report)?;
     let include_footer_out = intake_footer_should_include_out(args.out.as_ref(), &config_model);
     let include_footer_config = intake_footer_should_include_config(&args.config);
 
@@ -2671,6 +2672,90 @@ fn write_intake_report(run_dir: &Path, report: &IntakeReport) -> Result<()> {
         .with_context(|| format!("write {}", run_dir.join("intake.report.json").display()))?;
 
     Ok(())
+}
+
+fn write_packet_readiness_section(packet_path: &Path, report: &IntakeReport) -> Result<()> {
+    let packet = std::fs::read_to_string(packet_path)
+        .with_context(|| format!("read {}", packet_path.display()))?;
+    let section = render_packet_readiness_packet_section(report);
+    std::fs::write(packet_path, format!("{section}{packet}"))
+        .with_context(|| format!("write {}", packet_path.display()))?;
+    Ok(())
+}
+
+fn render_packet_readiness_packet_section(report: &IntakeReport) -> String {
+    let mut out = String::new();
+    let readiness = &report.packet_quality.packet_readiness;
+
+    out.push_str("# Packet Readiness\n\n");
+    out.push_str(&readiness.summary);
+    out.push_str("\n\n");
+
+    render_packet_readiness_group(
+        &mut out,
+        "Strong",
+        report
+            .packet_quality
+            .evidence_strength
+            .iter()
+            .filter(|item| item.status == "strong" && item.scope != "artifacts"),
+    );
+    render_packet_readiness_group(
+        &mut out,
+        "Still weak",
+        report
+            .packet_quality
+            .evidence_strength
+            .iter()
+            .filter(|item| item.status != "strong" && item.scope != "artifacts"),
+    );
+
+    out.push_str("Next:\n");
+    if readiness.next_actions.is_empty() {
+        out.push_str("- No next action recorded.\n");
+    } else {
+        for command in &readiness.next_actions {
+            out.push_str(&format!("- `{command}`\n"));
+        }
+    }
+    out.push('\n');
+
+    out
+}
+
+fn render_packet_readiness_group<'a>(
+    out: &mut String,
+    label: &str,
+    items: impl Iterator<Item = &'a IntakeReportEvidenceStrength>,
+) {
+    out.push_str(label);
+    out.push_str(":\n");
+
+    let mut wrote = false;
+    for item in items {
+        wrote = true;
+        out.push_str(&format!(
+            "- {}: {} (`{}`)\n",
+            packet_readiness_scope_label(&item.scope),
+            item.reason,
+            item.status
+        ));
+    }
+    if !wrote {
+        out.push_str("- None yet.\n");
+    }
+    out.push('\n');
+}
+
+fn packet_readiness_scope_label(scope: &str) -> String {
+    match scope {
+        "packet" => "Packet".to_string(),
+        scope if scope.starts_with("source:") => {
+            let source = scope.trim_start_matches("source:");
+            format!("{} source", display_source_label(source))
+        }
+        other => other.replace('_', " "),
+    }
 }
 
 fn render_intake_report_markdown(report: &IntakeReport) -> String {
