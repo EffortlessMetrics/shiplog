@@ -188,6 +188,45 @@ fn cold_start_succeeds_with_needs_evidence_readiness_when_no_events() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+#[test]
+fn cold_start_intake_report_records_packet_quality_evidence_strength() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+
+    cold_start_cmd(tmp.path(), &out).assert().success();
+
+    let run = first_run_dir(&out);
+    let report: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(run.join("intake.report.json")).unwrap()).unwrap();
+
+    let packet_quality = report["packet_quality"]
+        .as_object()
+        .expect("intake.report.json must expose packet_quality");
+    assert_eq!(
+        packet_quality["packet_readiness"]["status"], "needs_evidence",
+        "packet_quality must translate cold-start readiness into a machine-readable packet readiness status"
+    );
+    let evidence_strength = packet_quality["evidence_strength"]
+        .as_array()
+        .expect("packet_quality must expose evidence_strength");
+    assert!(
+        evidence_strength.iter().any(|item| {
+            item["scope"].as_str() == Some("packet")
+                && item["status"].as_str() == Some("needs_context")
+                && item["receipt_refs"]
+                    .as_array()
+                    .is_some_and(|refs| !refs.is_empty())
+        }),
+        "packet_quality must classify a zero-evidence packet as needs_context with receipt refs (evidence_strength={evidence_strength:?})"
+    );
+    assert!(
+        packet_quality["claim_candidates"]
+            .as_array()
+            .is_some_and(Vec::is_empty),
+        "evidence-strength PR must not generate claim candidates yet"
+    );
+}
+
 // Edge defaults
 // ─────────────────────────────────────────────────────────────────────────
 //

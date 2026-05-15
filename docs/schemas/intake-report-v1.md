@@ -54,9 +54,9 @@ next_commands
 artifacts
 ```
 
-Current writers also include optional top-level `actions` and `repair_items`
-arrays. Older v1 reports may not have them, so readers should treat either
-field as absent rather than invalid when loading historical reports.
+Current writers also include optional top-level `actions`, `repair_items`, and
+`packet_quality`. Older v1 reports may not have them, so readers should treat
+these fields as absent rather than invalid when loading historical reports.
 
 Consumers should treat display strings, paths, command strings, and ordering as
 best-effort user-facing guidance. They are stable enough to show to a user, but
@@ -246,6 +246,81 @@ next_commands
 actions
 artifacts
 ```
+
+## Packet Quality
+
+`packet_quality` is the optional review-ready packet quality object. It is
+derived from existing report receipts and durable artifacts. Readers must not
+re-query providers or scrape `intake.report.md` to recover packet quality.
+
+Current writers populate packet readiness and evidence strength. Claim
+candidates and share posture are present as arrays but may be empty until those
+later implementation slices land.
+
+When present, `packet_quality` includes:
+
+```text
+packet_readiness
+evidence_strength
+claim_candidates
+share_posture
+```
+
+`packet_readiness` includes:
+
+```text
+status
+summary
+reasons
+next_actions
+```
+
+Known packet readiness statuses are:
+
+```text
+ready
+ready_with_caveats
+needs_evidence
+needs_context
+blocked
+```
+
+`evidence_strength` is a receipt-backed list of scoped assessments. It is not a
+productivity score, performance rating, ranking, or employee-quality signal.
+Each item includes:
+
+```text
+scope
+status
+reason
+receipt_refs
+```
+
+Known evidence strength statuses are:
+
+```text
+strong
+partial
+manual_only
+source_skipped
+needs_context
+```
+
+`receipt_refs[].field` points at report receipts such as:
+
+```text
+included_sources
+source_freshness
+repair_items
+needs_attention
+evidence_debt
+artifacts
+```
+
+Claim candidates are evidence scaffolds, not generated performance-review
+prose. When later writers populate `claim_candidates`, each candidate must have
+`supporting_receipt_refs`, `missing_context_prompts`, and `safe_profiles`.
+It must not invent impact, beneficiaries, or accomplishments.
 
 ## Machine Actions
 

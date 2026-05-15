@@ -310,6 +310,68 @@ fn assert_intake_report_schema_contract(report_json: &serde_json::Value) {
             "repair receipt ref schema should allow field {field:?}"
         );
     }
+    let packet_quality_properties = schema["$defs"]["packet_quality"]["allOf"][1]["properties"]
+        .as_object()
+        .expect("packet_quality schema should document object properties");
+    for field in [
+        "packet_readiness",
+        "evidence_strength",
+        "claim_candidates",
+        "share_posture",
+    ] {
+        assert!(
+            packet_quality_properties.contains_key(field),
+            "packet_quality schema should document {field:?}"
+        );
+    }
+    let evidence_strength_values =
+        schema["$defs"]["evidence_strength"]["allOf"][1]["properties"]["status"]["enum"]
+            .as_array()
+            .expect("evidence_strength schema should document status values");
+    for status in [
+        "strong",
+        "partial",
+        "manual_only",
+        "source_skipped",
+        "needs_context",
+    ] {
+        assert!(
+            evidence_strength_values
+                .iter()
+                .any(|value| value.as_str() == Some(status)),
+            "evidence_strength schema should allow status {status:?}"
+        );
+    }
+    let packet_readiness_values =
+        schema["$defs"]["packet_readiness"]["allOf"][1]["properties"]["status"]["enum"]
+            .as_array()
+            .expect("packet_readiness schema should document status values");
+    for status in ["ready", "ready_with_caveats", "needs_evidence", "blocked"] {
+        assert!(
+            packet_readiness_values
+                .iter()
+                .any(|value| value.as_str() == Some(status)),
+            "packet_readiness schema should allow status {status:?}"
+        );
+    }
+    let quality_receipt_values =
+        schema["$defs"]["quality_receipt_ref"]["allOf"][1]["properties"]["field"]["enum"]
+            .as_array()
+            .expect("quality receipt ref schema should document receipt fields");
+    for field in [
+        "included_sources",
+        "source_freshness",
+        "repair_items",
+        "needs_attention",
+        "artifacts",
+    ] {
+        assert!(
+            quality_receipt_values
+                .iter()
+                .any(|value| value.as_str() == Some(field)),
+            "quality receipt ref schema should allow field {field:?}"
+        );
+    }
 }
 
 fn assert_schema_field_names_are_not_secret_bearing(value: &serde_json::Value) {
@@ -409,6 +471,43 @@ fn assert_golden_intake_report(run_dir: &Path, readiness: &str) -> (String, serd
             "intake.report.json should expose array field {key}"
         );
     }
+    let packet_quality = report_json["packet_quality"]
+        .as_object()
+        .expect("intake.report.json should expose packet_quality");
+    assert!(
+        packet_quality["packet_readiness"].is_object(),
+        "packet_quality should expose packet_readiness"
+    );
+    assert!(
+        packet_quality["evidence_strength"]
+            .as_array()
+            .is_some_and(|items| !items.is_empty()),
+        "packet_quality should expose non-empty evidence_strength"
+    );
+    assert!(
+        packet_quality["claim_candidates"].is_array(),
+        "packet_quality should expose claim_candidates"
+    );
+    assert!(
+        packet_quality["share_posture"].is_array(),
+        "packet_quality should expose share_posture"
+    );
+    assert!(
+        packet_quality["evidence_strength"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|item| {
+                item["scope"].as_str() == Some("packet")
+                    && item["status"]
+                        .as_str()
+                        .is_some_and(|status| !status.is_empty())
+                    && item["receipt_refs"]
+                        .as_array()
+                        .is_some_and(|refs| !refs.is_empty())
+            }),
+        "packet_quality evidence_strength should include a receipt-backed packet scope"
+    );
     for repair in report_json["repair_sources"]
         .as_array()
         .expect("repair_sources should be an array")
@@ -6880,6 +6979,46 @@ fn report_validate_accepts_legacy_reports_without_repair_items() {
         .as_object_mut()
         .expect("report should be an object")
         .remove("repair_items");
+    std::fs::write(
+        &report_path,
+        format!("{}\n", serde_json::to_string_pretty(&report).unwrap()),
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .args([
+            "report",
+            "validate",
+            "--path",
+            report_path.to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Report valid:"));
+}
+
+#[test]
+fn report_validate_accepts_legacy_reports_without_packet_quality() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args(["intake", "--out", out.to_str().unwrap(), "--no-open"])
+        .assert()
+        .success();
+
+    let report_path = first_run_dir(&out).join("intake.report.json");
+    let mut report: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&report_path).unwrap()).unwrap();
+    report
+        .as_object_mut()
+        .expect("report should be an object")
+        .remove("packet_quality");
     std::fs::write(
         &report_path,
         format!("{}\n", serde_json::to_string_pretty(&report).unwrap()),

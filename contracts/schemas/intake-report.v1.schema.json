@@ -110,6 +110,9 @@
         "$ref": "#/$defs/repair_item"
       }
     },
+    "packet_quality": {
+      "$ref": "#/$defs/packet_quality"
+    },
     "curation_notes": {
       "$ref": "#/$defs/string_array"
     },
@@ -577,6 +580,333 @@
             }
           }
         }
+      ]
+    },
+    "packet_quality": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "required": [
+            "packet_readiness",
+            "evidence_strength",
+            "claim_candidates",
+            "share_posture"
+          ],
+          "properties": {
+            "packet_readiness": {
+              "$ref": "#/$defs/packet_readiness"
+            },
+            "evidence_strength": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/evidence_strength"
+              }
+            },
+            "claim_candidates": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/claim_candidate"
+              }
+            },
+            "share_posture": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/share_posture"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "packet_readiness": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "required": [
+            "status",
+            "summary",
+            "reasons",
+            "next_actions"
+          ],
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "ready",
+                "ready_with_caveats",
+                "needs_evidence",
+                "needs_context",
+                "blocked"
+              ]
+            },
+            "summary": {
+              "type": "string",
+              "minLength": 1
+            },
+            "reasons": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/packet_readiness_reason"
+              }
+            },
+            "next_actions": {
+              "$ref": "#/$defs/string_array"
+            }
+          }
+        }
+      ]
+    },
+    "packet_readiness_reason": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "required": [
+            "kind",
+            "summary",
+            "receipt_refs"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "minLength": 1
+            },
+            "summary": {
+              "type": "string",
+              "minLength": 1
+            },
+            "receipt_refs": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/quality_receipt_ref"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "evidence_strength": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "required": [
+            "scope",
+            "status",
+            "reason",
+            "receipt_refs"
+          ],
+          "properties": {
+            "scope": {
+              "type": "string",
+              "minLength": 1
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "strong",
+                "partial",
+                "manual_only",
+                "source_skipped",
+                "needs_context"
+              ]
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            },
+            "receipt_refs": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/quality_receipt_ref"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "quality_receipt_ref": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "required": [
+            "field"
+          ],
+          "properties": {
+            "field": {
+              "type": "string",
+              "enum": [
+                "included_sources",
+                "skipped_sources",
+                "source_decisions",
+                "source_freshness",
+                "repair_sources",
+                "repair_items",
+                "good",
+                "needs_attention",
+                "evidence_debt",
+                "top_fixups",
+                "journal_suggestions",
+                "share_commands",
+                "next_commands",
+                "actions",
+                "artifacts"
+              ]
+            },
+            "source_key": {
+              "$ref": "#/$defs/source_key"
+            },
+            "repair_key": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      ]
+    },
+    "claim_candidate": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "required": [
+            "claim_id",
+            "title",
+            "evidence_strength",
+            "supporting_receipt_refs",
+            "missing_context_prompts",
+            "safe_profiles"
+          ],
+          "properties": {
+            "claim_id": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^claim_[a-z0-9_]+$"
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1
+            },
+            "evidence_strength": {
+              "type": "string",
+              "enum": [
+                "strong",
+                "partial",
+                "manual_only",
+                "source_skipped",
+                "needs_context"
+              ]
+            },
+            "supporting_repair_keys": {
+              "$ref": "#/$defs/string_array"
+            },
+            "supporting_sources": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/source_key"
+              }
+            },
+            "supporting_receipt_refs": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/quality_receipt_ref"
+              }
+            },
+            "missing_context_prompts": {
+              "$ref": "#/$defs/string_array"
+            },
+            "safe_profiles": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/share_profile"
+              }
+            },
+            "caveats": {
+              "$ref": "#/$defs/string_array"
+            },
+            "related_artifacts": {
+              "$ref": "#/$defs/string_array"
+            },
+            "suppressed_profiles": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/share_profile"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "share_posture": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "required": [
+            "profile",
+            "status",
+            "included",
+            "removed",
+            "blocked",
+            "next_actions",
+            "receipt_refs"
+          ],
+          "properties": {
+            "profile": {
+              "$ref": "#/$defs/share_profile"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "ready",
+                "ready_with_caveats",
+                "blocked",
+                "not_generated"
+              ]
+            },
+            "included": {
+              "$ref": "#/$defs/string_array"
+            },
+            "removed": {
+              "$ref": "#/$defs/string_array"
+            },
+            "blocked": {
+              "$ref": "#/$defs/string_array"
+            },
+            "next_actions": {
+              "$ref": "#/$defs/string_array"
+            },
+            "receipt_refs": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/quality_receipt_ref"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "share_profile": {
+      "type": "string",
+      "enum": [
+        "manager",
+        "public"
       ]
     },
     "evidence_debt": {

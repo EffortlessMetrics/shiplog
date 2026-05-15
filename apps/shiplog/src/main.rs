@@ -1824,6 +1824,7 @@ struct IntakeReport {
     source_freshness: Vec<IntakeReportSourceFreshness>,
     repair_sources: Vec<IntakeReportRepairSource>,
     repair_items: Vec<IntakeReportRepairItem>,
+    packet_quality: IntakeReportPacketQuality,
     curation_notes: Vec<String>,
     good: Vec<String>,
     needs_attention: Vec<String>,
@@ -1935,6 +1936,46 @@ struct IntakeReportRepairReceiptRef {
     field: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     source_key: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct IntakeReportPacketQuality {
+    packet_readiness: IntakeReportPacketReadiness,
+    evidence_strength: Vec<IntakeReportEvidenceStrength>,
+    claim_candidates: Vec<serde_json::Value>,
+    share_posture: Vec<serde_json::Value>,
+}
+
+#[derive(Debug, Serialize)]
+struct IntakeReportPacketReadiness {
+    status: String,
+    summary: String,
+    reasons: Vec<IntakeReportPacketReadinessReason>,
+    next_actions: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct IntakeReportPacketReadinessReason {
+    kind: String,
+    summary: String,
+    receipt_refs: Vec<IntakeReportQualityReceiptRef>,
+}
+
+#[derive(Debug, Serialize)]
+struct IntakeReportEvidenceStrength {
+    scope: String,
+    status: String,
+    reason: String,
+    receipt_refs: Vec<IntakeReportQualityReceiptRef>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct IntakeReportQualityReceiptRef {
+    field: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    source_key: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    repair_key: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -2862,7 +2903,7 @@ const INTAKE_REPORT_REQUIRED_FIELDS: &[&str] = &[
     "next_commands",
     "artifacts",
 ];
-const INTAKE_REPORT_OPTIONAL_FIELDS: &[&str] = &["actions", "repair_items"];
+const INTAKE_REPORT_OPTIONAL_FIELDS: &[&str] = &["actions", "repair_items", "packet_quality"];
 const INTAKE_REPORT_ARRAY_FIELDS: &[&str] = &[
     "included_sources",
     "skipped_sources",
@@ -2962,6 +3003,40 @@ const INTAKE_REPAIR_RECEIPT_FIELD_VALUES: &[&str] = &[
     "actions",
     "artifacts",
 ];
+const INTAKE_PACKET_READINESS_STATUS_VALUES: &[&str] = &[
+    "ready",
+    "ready_with_caveats",
+    "needs_evidence",
+    "needs_context",
+    "blocked",
+];
+const INTAKE_EVIDENCE_STRENGTH_STATUS_VALUES: &[&str] = &[
+    "strong",
+    "partial",
+    "manual_only",
+    "source_skipped",
+    "needs_context",
+];
+const INTAKE_QUALITY_RECEIPT_FIELD_VALUES: &[&str] = &[
+    "included_sources",
+    "skipped_sources",
+    "source_decisions",
+    "source_freshness",
+    "repair_sources",
+    "repair_items",
+    "good",
+    "needs_attention",
+    "evidence_debt",
+    "top_fixups",
+    "journal_suggestions",
+    "share_commands",
+    "next_commands",
+    "actions",
+    "artifacts",
+];
+const INTAKE_SHARE_PROFILE_VALUES: &[&str] = &["manager", "public"];
+const INTAKE_SHARE_POSTURE_STATUS_VALUES: &[&str] =
+    &["ready", "ready_with_caveats", "blocked", "not_generated"];
 const AGENT_PACK_SCHEMA_VERSION: u64 = 1;
 
 fn validate_intake_report_command(
@@ -3727,6 +3802,9 @@ fn validate_report_items(report: &serde_json::Value) -> Result<()> {
             validate_report_repair_item(item)?;
         }
     }
+    if let Some(packet_quality) = report.get("packet_quality") {
+        validate_report_packet_quality(packet_quality)?;
+    }
 
     Ok(())
 }
@@ -3907,6 +3985,257 @@ fn validate_report_repair_receipt_ref(item: &serde_json::Value) -> Result<()> {
         }
     }
 
+    Ok(())
+}
+
+fn validate_report_packet_quality(item: &serde_json::Value) -> Result<()> {
+    let object = item
+        .as_object()
+        .ok_or_else(|| anyhow::anyhow!("intake report packet_quality must be an object"))?;
+    for required in [
+        "packet_readiness",
+        "evidence_strength",
+        "claim_candidates",
+        "share_posture",
+    ] {
+        if !object.contains_key(required) {
+            anyhow::bail!("intake report packet_quality missing field {required:?}")
+        }
+    }
+    for key in object.keys() {
+        ensure_field_name_not_secret_bearing(key)?;
+    }
+
+    validate_report_packet_readiness(object_field(item, "packet_readiness")?)?;
+    let evidence_strength = json_array(item, "evidence_strength")?;
+    if evidence_strength.is_empty() {
+        anyhow::bail!("intake report packet_quality evidence_strength must not be empty")
+    }
+    for strength in evidence_strength {
+        validate_report_evidence_strength(strength)?;
+    }
+    for candidate in json_array(item, "claim_candidates")? {
+        validate_report_claim_candidate(candidate)?;
+    }
+    for posture in json_array(item, "share_posture")? {
+        validate_report_share_posture(posture)?;
+    }
+
+    Ok(())
+}
+
+fn validate_report_packet_readiness(item: &serde_json::Value) -> Result<()> {
+    let object = item
+        .as_object()
+        .ok_or_else(|| anyhow::anyhow!("intake report packet_readiness must be an object"))?;
+    for required in ["status", "summary", "reasons", "next_actions"] {
+        if !object.contains_key(required) {
+            anyhow::bail!("intake report packet_readiness missing field {required:?}")
+        }
+    }
+    for key in object.keys() {
+        ensure_field_name_not_secret_bearing(key)?;
+    }
+    let status = string_field(item, "status")?;
+    if !INTAKE_PACKET_READINESS_STATUS_VALUES.contains(&status.as_str()) {
+        anyhow::bail!("intake report packet_readiness status {status:?} is not supported")
+    }
+    ensure_string_field(item, "summary")?;
+    let reasons = json_array(item, "reasons")?;
+    if reasons.is_empty() {
+        anyhow::bail!("intake report packet_readiness reasons must not be empty")
+    }
+    for reason in reasons {
+        validate_report_packet_readiness_reason(reason)?;
+    }
+    ensure_string_array_field(item, "next_actions", "packet_readiness")?;
+
+    Ok(())
+}
+
+fn validate_report_packet_readiness_reason(item: &serde_json::Value) -> Result<()> {
+    let object = item
+        .as_object()
+        .ok_or_else(|| anyhow::anyhow!("intake report packet_readiness reasons must be objects"))?;
+    for required in ["kind", "summary", "receipt_refs"] {
+        if !object.contains_key(required) {
+            anyhow::bail!("intake report packet_readiness reason missing field {required:?}")
+        }
+    }
+    for key in object.keys() {
+        ensure_field_name_not_secret_bearing(key)?;
+    }
+    ensure_string_field(item, "kind")?;
+    ensure_string_field(item, "summary")?;
+    validate_quality_receipt_refs(item, "packet_readiness reason")
+}
+
+fn validate_report_evidence_strength(item: &serde_json::Value) -> Result<()> {
+    let object = item
+        .as_object()
+        .ok_or_else(|| anyhow::anyhow!("intake report evidence_strength items must be objects"))?;
+    for required in ["scope", "status", "reason", "receipt_refs"] {
+        if !object.contains_key(required) {
+            anyhow::bail!("intake report evidence_strength item missing field {required:?}")
+        }
+    }
+    for key in object.keys() {
+        ensure_field_name_not_secret_bearing(key)?;
+    }
+    ensure_string_field(item, "scope")?;
+    let status = string_field(item, "status")?;
+    if !INTAKE_EVIDENCE_STRENGTH_STATUS_VALUES.contains(&status.as_str()) {
+        anyhow::bail!("intake report evidence_strength status {status:?} is not supported")
+    }
+    ensure_string_field(item, "reason")?;
+    validate_quality_receipt_refs(item, "evidence_strength item")
+}
+
+fn validate_quality_receipt_refs(item: &serde_json::Value, owner: &str) -> Result<()> {
+    let receipt_refs = json_array(item, "receipt_refs")?;
+    if receipt_refs.is_empty() {
+        anyhow::bail!("intake report {owner} receipt_refs must not be empty")
+    }
+    for receipt_ref in receipt_refs {
+        validate_report_quality_receipt_ref(receipt_ref)?;
+    }
+    Ok(())
+}
+
+fn validate_report_quality_receipt_ref(item: &serde_json::Value) -> Result<()> {
+    let object = item.as_object().ok_or_else(|| {
+        anyhow::anyhow!("intake report packet_quality receipt_refs must be objects")
+    })?;
+    if !object.contains_key("field") {
+        anyhow::bail!("intake report packet_quality receipt_refs item missing field \"field\"")
+    }
+    for key in object.keys() {
+        ensure_field_name_not_secret_bearing(key)?;
+    }
+
+    let field = string_field(item, "field")?;
+    if !INTAKE_QUALITY_RECEIPT_FIELD_VALUES.contains(&field.as_str()) {
+        anyhow::bail!("intake report packet_quality receipt_refs field {field:?} is not supported")
+    }
+    if let Some(source_key) = item.get("source_key") {
+        let Some(source_key) = source_key.as_str() else {
+            anyhow::bail!("intake report packet_quality receipt_refs source_key must be a string")
+        };
+        if !INTAKE_SOURCE_KEY_VALUES.contains(&source_key) {
+            anyhow::bail!(
+                "intake report packet_quality receipt_refs source_key {source_key:?} is not supported"
+            )
+        }
+    }
+    if let Some(repair_key) = item.get("repair_key") {
+        let Some(repair_key) = repair_key.as_str() else {
+            anyhow::bail!("intake report packet_quality receipt_refs repair_key must be a string")
+        };
+        if repair_key.trim().is_empty() {
+            anyhow::bail!("intake report packet_quality receipt_refs repair_key must not be empty")
+        }
+    }
+
+    Ok(())
+}
+
+fn validate_report_claim_candidate(item: &serde_json::Value) -> Result<()> {
+    let object = item
+        .as_object()
+        .ok_or_else(|| anyhow::anyhow!("intake report claim_candidates items must be objects"))?;
+    for required in [
+        "claim_id",
+        "title",
+        "evidence_strength",
+        "supporting_receipt_refs",
+        "missing_context_prompts",
+        "safe_profiles",
+    ] {
+        if !object.contains_key(required) {
+            anyhow::bail!("intake report claim_candidates item missing field {required:?}")
+        }
+    }
+    for key in object.keys() {
+        ensure_field_name_not_secret_bearing(key)?;
+    }
+    let claim_id = string_field(item, "claim_id")?;
+    if !claim_id.starts_with("claim_")
+        || !claim_id
+            .chars()
+            .all(|ch| ch.is_ascii_lowercase() || ch.is_ascii_digit() || ch == '_')
+    {
+        anyhow::bail!("intake report claim_candidates claim_id must match claim_[a-z0-9_]+")
+    }
+    ensure_string_field(item, "title")?;
+    let status = string_field(item, "evidence_strength")?;
+    if !INTAKE_EVIDENCE_STRENGTH_STATUS_VALUES.contains(&status.as_str()) {
+        anyhow::bail!(
+            "intake report claim_candidates evidence_strength {status:?} is not supported"
+        )
+    }
+    validate_quality_receipt_refs_with_field(item, "supporting_receipt_refs")?;
+    ensure_string_array_field(item, "missing_context_prompts", "claim_candidates")?;
+    validate_share_profile_array(item, "safe_profiles", "claim_candidates")?;
+
+    Ok(())
+}
+
+fn validate_report_share_posture(item: &serde_json::Value) -> Result<()> {
+    let object = item
+        .as_object()
+        .ok_or_else(|| anyhow::anyhow!("intake report share_posture items must be objects"))?;
+    for required in [
+        "profile",
+        "status",
+        "included",
+        "removed",
+        "blocked",
+        "next_actions",
+        "receipt_refs",
+    ] {
+        if !object.contains_key(required) {
+            anyhow::bail!("intake report share_posture item missing field {required:?}")
+        }
+    }
+    for key in object.keys() {
+        ensure_field_name_not_secret_bearing(key)?;
+    }
+    let profile = string_field(item, "profile")?;
+    if !INTAKE_SHARE_PROFILE_VALUES.contains(&profile.as_str()) {
+        anyhow::bail!("intake report share_posture profile {profile:?} is not supported")
+    }
+    let status = string_field(item, "status")?;
+    if !INTAKE_SHARE_POSTURE_STATUS_VALUES.contains(&status.as_str()) {
+        anyhow::bail!("intake report share_posture status {status:?} is not supported")
+    }
+    ensure_string_array_field(item, "included", "share_posture")?;
+    ensure_string_array_field(item, "removed", "share_posture")?;
+    ensure_string_array_field(item, "blocked", "share_posture")?;
+    ensure_string_array_field(item, "next_actions", "share_posture")?;
+    validate_quality_receipt_refs(item, "share_posture item")
+}
+
+fn validate_quality_receipt_refs_with_field(item: &serde_json::Value, field: &str) -> Result<()> {
+    let receipt_refs = json_array(item, field)?;
+    if receipt_refs.is_empty() {
+        anyhow::bail!("intake report field {field:?} must not be empty")
+    }
+    for receipt_ref in receipt_refs {
+        validate_report_quality_receipt_ref(receipt_ref)?;
+    }
+    Ok(())
+}
+
+fn validate_share_profile_array(item: &serde_json::Value, field: &str, owner: &str) -> Result<()> {
+    let profiles = json_array(item, field)?;
+    for profile in profiles {
+        let Some(profile) = profile.as_str() else {
+            anyhow::bail!("intake report {owner} {field} entries must be strings")
+        };
+        if !INTAKE_SHARE_PROFILE_VALUES.contains(&profile) {
+            anyhow::bail!("intake report {owner} {field} profile {profile:?} is not supported")
+        }
+    }
     Ok(())
 }
 
@@ -4120,6 +4449,15 @@ fn optional_json_array<'a>(
 
 fn ensure_string_field(value: &serde_json::Value, field: &str) -> Result<()> {
     string_field(value, field).map(|_| ())
+}
+
+fn ensure_string_array_field(value: &serde_json::Value, field: &str, owner: &str) -> Result<()> {
+    for item in json_array(value, field)? {
+        if !item.is_string() {
+            anyhow::bail!("intake report {owner} {field} entries must be strings")
+        }
+    }
+    Ok(())
 }
 
 fn ensure_nested_string_field(value: &serde_json::Value, field: &str, parent: &str) -> Result<()> {

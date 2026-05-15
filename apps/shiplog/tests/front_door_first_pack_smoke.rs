@@ -111,6 +111,18 @@ fn source_event_count(report: &Value, source_key: &str) -> u64 {
         .unwrap_or(0)
 }
 
+fn packet_quality_status(report: &Value) -> Option<&str> {
+    report["packet_quality"]["packet_readiness"]["status"].as_str()
+}
+
+fn evidence_strength_status<'a>(report: &'a Value, scope: &str) -> Option<&'a str> {
+    report["packet_quality"]["evidence_strength"]
+        .as_array()?
+        .iter()
+        .find(|item| item["scope"].as_str() == Some(scope))
+        .and_then(|item| item["status"].as_str())
+}
+
 /// The "does the front door work?" receipt. Drive the cargo-built
 /// `shiplog` binary (the same one `cargo install shiplog` produces)
 /// against an empty directory with every provider token cleared, then
@@ -241,6 +253,16 @@ fn repair_loop_improves_first_packet_without_provider_mutation() {
         0,
         "repair proof: the cold first packet should have no manual evidence yet"
     );
+    assert_eq!(
+        packet_quality_status(&first_report),
+        Some("needs_evidence"),
+        "repair proof: cold report should expose machine-readable packet readiness"
+    );
+    assert_eq!(
+        evidence_strength_status(&first_report, "packet"),
+        Some("needs_context"),
+        "repair proof: cold report should classify packet evidence as needing context"
+    );
 
     let manual_repair = repair_item_by_key(&first_report, MANUAL_NO_EVENTS_REPAIR_KEY)
         .expect("repair proof: cold report should expose the no-events manual repair item");
@@ -313,6 +335,16 @@ fn repair_loop_improves_first_packet_without_provider_mutation() {
         source_event_count(&repaired_report, "manual"),
         1,
         "repair proof: repaired run should include the journal event as manual evidence"
+    );
+    assert_eq!(
+        packet_quality_status(&repaired_report),
+        Some("ready_with_caveats"),
+        "repair proof: repaired report should improve packet readiness while manual-only caveats remain"
+    );
+    assert_eq!(
+        evidence_strength_status(&repaired_report, "packet"),
+        Some("manual_only"),
+        "repair proof: repaired report should classify the packet as manual-only until provider receipts are available"
     );
     assert!(
         repair_item_by_key(&repaired_report, MANUAL_NO_EVENTS_REPAIR_KEY).is_none(),

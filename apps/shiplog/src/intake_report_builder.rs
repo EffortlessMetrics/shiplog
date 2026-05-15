@@ -46,6 +46,8 @@ pub(crate) fn build_intake_report(
         &result.configured.failures,
         explanations,
     );
+    let included_sources = build_included_sources(result);
+    let skipped_sources_report = build_skipped_sources(result);
     let actions = intake_report_actions(
         &repair_sources,
         &top_fixups,
@@ -64,6 +66,16 @@ pub(crate) fn build_intake_report(
         actions: &actions,
         next_commands: &next_commands,
         artifacts: &artifacts,
+    });
+    let packet_quality = build_packet_quality(PacketQualityInputs {
+        readiness,
+        included_sources: &included_sources,
+        source_freshness: &source_freshness,
+        repair_items: &repair_items,
+        needs_attention: &attention,
+        evidence_debt: &evidence_debt,
+        artifacts: &artifacts,
+        next_commands: &next_commands,
     });
 
     Ok(IntakeReport {
@@ -84,12 +96,13 @@ pub(crate) fn build_intake_report(
             markdown: report_markdown_path(result).display().to_string(),
             json: report_json_path(result).display().to_string(),
         },
-        included_sources: build_included_sources(result),
-        skipped_sources: build_skipped_sources(result),
+        included_sources,
+        skipped_sources: skipped_sources_report,
         source_decisions: intake_source_decision_reports(explanations),
         source_freshness,
         repair_sources,
         repair_items,
+        packet_quality,
         curation_notes,
         good,
         needs_attention: attention,
@@ -431,6 +444,321 @@ struct RepairItemInputs<'a> {
     actions: &'a [IntakeReportAction],
     next_commands: &'a [String],
     artifacts: &'a [IntakeReportArtifact],
+}
+
+struct PacketQualityInputs<'a> {
+    readiness: &'a str,
+    included_sources: &'a [IntakeReportIncludedSource],
+    source_freshness: &'a [IntakeReportSourceFreshness],
+    repair_items: &'a [IntakeReportRepairItem],
+    needs_attention: &'a [String],
+    evidence_debt: &'a [IntakeReportEvidenceDebt],
+    artifacts: &'a [IntakeReportArtifact],
+    next_commands: &'a [String],
+}
+
+fn build_packet_quality(inputs: PacketQualityInputs<'_>) -> IntakeReportPacketQuality {
+    let evidence_strength = build_evidence_strength(&inputs);
+    let packet_readiness = build_packet_readiness(&inputs, &evidence_strength);
+
+    IntakeReportPacketQuality {
+        packet_readiness,
+        evidence_strength,
+        claim_candidates: Vec::new(),
+        share_posture: Vec::new(),
+    }
+}
+
+fn build_packet_readiness(
+    inputs: &PacketQualityInputs<'_>,
+    evidence_strength: &[IntakeReportEvidenceStrength],
+) -> IntakeReportPacketReadiness {
+    let packet_strength_status = evidence_strength
+        .iter()
+        .find(|item| item.scope == "packet")
+        .map(|item| item.status.as_str())
+        .unwrap_or("needs_context");
+    let (mut status, mut summary) = match inputs.readiness {
+        "Ready for review" => ("ready", "Ready for review."),
+        "Needs curation" => ("ready_with_caveats", "Ready with caveats."),
+        "Needs evidence" => ("needs_evidence", "Needs evidence."),
+        "Needs repair" => ("blocked", "Blocked until repair."),
+        _ => ("needs_context", "Needs context."),
+    };
+    if status == "ready" && packet_strength_status != "strong" {
+        status = "ready_with_caveats";
+        summary = "Ready with caveats.";
+    }
+    let mut reasons = Vec::new();
+
+    if inputs
+        .needs_attention
+        .iter()
+        .any(|item| item.contains("No events collected"))
+    {
+        reasons.push(IntakeReportPacketReadinessReason {
+            kind: "missing_evidence".to_string(),
+            summary: "No evidence events were collected.".to_string(),
+            receipt_refs: repair_aware_receipt_refs(
+                "needs_attention",
+                inputs.repair_items,
+                "manual:manual_evidence_missing:no_events",
+            ),
+        });
+    }
+    if !inputs.repair_items.is_empty() {
+        reasons.push(IntakeReportPacketReadinessReason {
+            kind: "open_repair_items".to_string(),
+            summary: format!("{} repair item(s) remain open.", inputs.repair_items.len()),
+            receipt_refs: vec![quality_receipt_ref("repair_items")],
+        });
+    }
+    if !inputs.evidence_debt.is_empty() {
+        reasons.push(IntakeReportPacketReadinessReason {
+            kind: "evidence_debt".to_string(),
+            summary: format!(
+                "{} evidence debt item(s) need review.",
+                inputs.evidence_debt.len()
+            ),
+            receipt_refs: vec![quality_receipt_ref("evidence_debt")],
+        });
+    }
+    if reasons.is_empty() {
+        reasons.push(IntakeReportPacketReadinessReason {
+            kind: "evidence_strength".to_string(),
+            summary: format!("Packet evidence strength is {packet_strength_status}."),
+            receipt_refs: vec![quality_receipt_ref("included_sources")],
+        });
+    }
+
+    IntakeReportPacketReadiness {
+        status: status.to_string(),
+        summary: summary.to_string(),
+        reasons,
+        next_actions: inputs.next_commands.iter().take(3).cloned().collect(),
+    }
+}
+
+fn build_evidence_strength(inputs: &PacketQualityInputs<'_>) -> Vec<IntakeReportEvidenceStrength> {
+    let mut strengths = Vec::new();
+    let total_events = inputs
+        .included_sources
+        .iter()
+        .map(|source| source.event_count)
+        .sum::<usize>();
+    let manual_events = inputs
+        .included_sources
+        .iter()
+        .filter(|source| source.source_key == "manual")
+        .map(|source| source.event_count)
+        .sum::<usize>();
+    let source_backed_events = total_events.saturating_sub(manual_events);
+    let source_gap_count = source_quality_gap_count(inputs.source_freshness);
+
+    let (packet_status, packet_reason) = if total_events == 0 {
+        (
+            "needs_context",
+            "No evidence events were collected; add manual evidence or configure a source."
+                .to_string(),
+        )
+    } else if source_backed_events == 0 {
+        if source_gap_count > 0 {
+            (
+                "manual_only",
+                format!(
+                    "Manual evidence is present, but {source_gap_count} source(s) are skipped, stale, cached, or unavailable."
+                ),
+            )
+        } else {
+            (
+                "manual_only",
+                "Evidence is present, but it only comes from manual evidence.".to_string(),
+            )
+        }
+    } else if source_gap_count > 0
+        || !inputs.repair_items.is_empty()
+        || !inputs.evidence_debt.is_empty()
+    {
+        (
+            "partial",
+            format!(
+                "Source-backed evidence is present, with {source_gap_count} source gap(s), {} open repair item(s), and {} evidence debt item(s).",
+                inputs.repair_items.len(),
+                inputs.evidence_debt.len()
+            ),
+        )
+    } else {
+        (
+            "strong",
+            "Source-backed receipts are present and no open repair item directly undermines the packet."
+                .to_string(),
+        )
+    };
+    strengths.push(IntakeReportEvidenceStrength {
+        scope: "packet".to_string(),
+        status: packet_status.to_string(),
+        reason: packet_reason,
+        receipt_refs: packet_evidence_receipts(inputs, total_events, source_gap_count),
+    });
+
+    for source in inputs.included_sources {
+        let (status, reason) = if source.event_count == 0 {
+            (
+                "needs_context",
+                format!(
+                    "{} ran but collected no evidence events.",
+                    source.source_label
+                ),
+            )
+        } else if source.source_key == "manual" {
+            (
+                "manual_only",
+                format!(
+                    "{} contributed {}.",
+                    source.source_label,
+                    event_count_phrase(source.event_count)
+                ),
+            )
+        } else {
+            (
+                "strong",
+                format!(
+                    "{} contributed source-backed {}.",
+                    source.source_label,
+                    event_count_phrase(source.event_count)
+                ),
+            )
+        };
+        strengths.push(IntakeReportEvidenceStrength {
+            scope: format!("source:{}", source.source_key),
+            status: status.to_string(),
+            reason,
+            receipt_refs: vec![quality_source_receipt_ref(
+                "included_sources",
+                &source.source_key,
+            )],
+        });
+    }
+
+    for freshness in inputs.source_freshness {
+        let Some(status) = evidence_strength_for_freshness(&freshness.status) else {
+            continue;
+        };
+        let reason = freshness.reason.clone().unwrap_or_else(|| {
+            format!(
+                "{} source freshness is {}.",
+                freshness.source_label, freshness.status
+            )
+        });
+        strengths.push(IntakeReportEvidenceStrength {
+            scope: format!("source:{}", freshness.source_key),
+            status: status.to_string(),
+            reason,
+            receipt_refs: vec![quality_source_receipt_ref(
+                "source_freshness",
+                &freshness.source_key,
+            )],
+        });
+    }
+
+    if !inputs.artifacts.is_empty() {
+        strengths.push(IntakeReportEvidenceStrength {
+            scope: "artifacts".to_string(),
+            status: "strong".to_string(),
+            reason: "Run artifacts are recorded for packet, ledger, coverage, and report review."
+                .to_string(),
+            receipt_refs: vec![quality_receipt_ref("artifacts")],
+        });
+    }
+
+    strengths
+}
+
+fn source_quality_gap_count(source_freshness: &[IntakeReportSourceFreshness]) -> usize {
+    source_freshness
+        .iter()
+        .filter(|freshness| evidence_strength_for_freshness(&freshness.status).is_some())
+        .count()
+}
+
+fn evidence_strength_for_freshness(status: &str) -> Option<&'static str> {
+    match status {
+        "skipped" | "unavailable" => Some("source_skipped"),
+        "stale" | "cached" => Some("partial"),
+        _ => None,
+    }
+}
+
+fn packet_evidence_receipts(
+    inputs: &PacketQualityInputs<'_>,
+    total_events: usize,
+    source_gap_count: usize,
+) -> Vec<IntakeReportQualityReceiptRef> {
+    let mut refs = Vec::new();
+    if total_events == 0 {
+        refs.push(quality_receipt_ref("needs_attention"));
+        refs.extend(repair_key_receipt_refs(
+            inputs.repair_items,
+            "manual:manual_evidence_missing:no_events",
+        ));
+    } else {
+        refs.push(quality_receipt_ref("included_sources"));
+    }
+    if source_gap_count > 0 {
+        refs.push(quality_receipt_ref("source_freshness"));
+    }
+    if !inputs.repair_items.is_empty() {
+        refs.push(quality_receipt_ref("repair_items"));
+    }
+    if !inputs.evidence_debt.is_empty() {
+        refs.push(quality_receipt_ref("evidence_debt"));
+    }
+    refs
+}
+
+fn repair_aware_receipt_refs(
+    field: &str,
+    repair_items: &[IntakeReportRepairItem],
+    repair_key: &str,
+) -> Vec<IntakeReportQualityReceiptRef> {
+    let mut refs = vec![quality_receipt_ref(field)];
+    refs.extend(repair_key_receipt_refs(repair_items, repair_key));
+    refs
+}
+
+fn repair_key_receipt_refs(
+    repair_items: &[IntakeReportRepairItem],
+    repair_key: &str,
+) -> Vec<IntakeReportQualityReceiptRef> {
+    repair_items
+        .iter()
+        .filter(|item| item.repair_key == repair_key)
+        .map(|item| quality_repair_receipt_ref(&item.repair_key))
+        .collect()
+}
+
+fn quality_receipt_ref(field: &str) -> IntakeReportQualityReceiptRef {
+    IntakeReportQualityReceiptRef {
+        field: field.to_string(),
+        source_key: None,
+        repair_key: None,
+    }
+}
+
+fn quality_source_receipt_ref(field: &str, source_key: &str) -> IntakeReportQualityReceiptRef {
+    IntakeReportQualityReceiptRef {
+        field: field.to_string(),
+        source_key: Some(source_key.to_string()),
+        repair_key: None,
+    }
+}
+
+fn quality_repair_receipt_ref(repair_key: &str) -> IntakeReportQualityReceiptRef {
+    IntakeReportQualityReceiptRef {
+        field: "repair_items".to_string(),
+        source_key: None,
+        repair_key: Some(repair_key.to_string()),
+    }
 }
 
 fn build_repair_items(inputs: RepairItemInputs<'_>) -> Vec<IntakeReportRepairItem> {
