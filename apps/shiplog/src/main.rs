@@ -1223,6 +1223,11 @@ enum ShareCommand {
     Manager(ShareOptions),
     /// Render the public-safe packet profile.
     Public(ShareOptions),
+    /// Explain what a share profile would include, remove, or block.
+    Explain {
+        #[command(subcommand)]
+        cmd: ShareExplainCommand,
+    },
     /// Check whether a share profile is ready without writing files.
     Verify {
         #[command(subcommand)]
@@ -1247,6 +1252,30 @@ struct ShareOptions {
     /// Also write a zip next to the run folder.
     #[arg(long)]
     zip: bool,
+}
+
+#[derive(Subcommand, Debug)]
+enum ShareExplainCommand {
+    /// Explain the manager-safe share profile without rendering it.
+    Manager(ShareExplainOptions),
+    /// Explain the public-safe share profile without rendering it.
+    Public(ShareExplainOptions),
+}
+
+#[derive(Args, Debug)]
+struct ShareExplainOptions {
+    /// Output directory containing run folders.
+    #[arg(long, default_value = "./out")]
+    out: PathBuf,
+    /// Run ID to explain (uses most recent if not specified).
+    #[arg(long)]
+    run: Option<String>,
+    /// Explain the most recent run explicitly.
+    #[arg(long)]
+    latest: bool,
+    /// Redaction key. If omitted, SHIPLOG_REDACT_KEY is checked.
+    #[arg(long)]
+    redact_key: Option<String>,
 }
 
 #[derive(Subcommand, Debug)]
@@ -10578,6 +10607,247 @@ fn verify_share_profile(options: ShareVerifyOptions, bundle_profile: BundleProfi
     }
 
     Ok(())
+}
+
+fn explain_share_profile(
+    options: ShareExplainOptions,
+    bundle_profile: BundleProfile,
+) -> Result<()> {
+    let (redaction_key, redaction_key_source) =
+        resolve_redaction_key(options.redact_key, "SHIPLOG_REDACT_KEY");
+    let run_dir = resolve_render_run_dir(&options.out, options.run, options.latest)?;
+    let ingest =
+        load_run_ingest(&run_dir).with_context(|| format!("load run {}", run_dir.display()))?;
+    let coverage = ingest.coverage;
+    let events = ingest.events;
+    let (workstreams, ws_source, ws_path) = load_effective_workstreams_for_run(&run_dir)?;
+    let validation_errors = validate_workstreams_against_events(&workstreams, &events);
+    let skipped_sources = configured_source_skips(&coverage.warnings);
+    let source_counts = review_source_event_counts(&coverage.sources, &events, &skipped_sources);
+    let gap_count = coverage_gap_count(&coverage);
+    let profile_dir = run_dir.join("profiles").join(bundle_profile.as_str());
+    let profile_packet = profile_dir.join("packet.md");
+    let manifest_path = profile_dir.join(SHARE_MANIFEST_FILENAME);
+    let out_arg = quote_cli_value(&options.out.display().to_string());
+    let run_arg = quote_cli_value(&coverage.run_id.to_string());
+    let share_command = format!("shiplog share {bundle_profile} --out {out_arg} --run {run_arg}");
+    let verify_command = share_explain_verify_command(&bundle_profile, &out_arg, &run_arg);
+
+    let mut blocked = Vec::new();
+    if redaction_key.is_none() {
+        blocked.push("missing SHIPLOG_REDACT_KEY (or --redact-key)".to_string());
+    }
+
+    let mut needs_review = Vec::new();
+    if gap_count > 0 {
+        needs_review.push(format!("{gap_count} coverage gap(s) should be reviewed."));
+    }
+    for skipped in &skipped_sources {
+        needs_review.push(format!(
+            "{} skipped: {}",
+            display_source_label(&skipped.source),
+            skipped.reason
+        ));
+    }
+    for error in &validation_errors {
+        needs_review.push(format!("Workstream issue: {error}"));
+    }
+    if matches!(bundle_profile, BundleProfile::Public) {
+        needs_review.push(
+            "Public profile should be reviewed after rendering; strict scan is a guardrail, not a guarantee."
+                .to_string(),
+        );
+    }
+
+    println!("{} profile:", share_profile_title(&bundle_profile));
+    println!("Run: {}", coverage.run_id);
+    println!("Directory: {}", run_dir.display());
+    println!("Workstreams: {}", ws_path.display());
+    println!("Workstream source: {}", workstream_source_label(ws_source));
+    println!(
+        "Status: {}",
+        if blocked.is_empty() {
+            "ready to render"
+        } else {
+            "blocked"
+        }
+    );
+    println!(
+        "Redaction key: {}",
+        share_explain_redaction_key_status(redaction_key_source)
+    );
+    println!();
+
+    println!("Included:");
+    for item in share_explain_included_items(
+        &bundle_profile,
+        events.len(),
+        &source_counts,
+        workstreams.workstreams.len(),
+    ) {
+        println!("- {item}");
+    }
+    println!();
+
+    println!("Removed:");
+    for item in share_explain_removed_items(&bundle_profile) {
+        println!("- {item}");
+    }
+    println!();
+
+    println!("Blocked:");
+    if blocked.is_empty() {
+        println!("- None");
+    } else {
+        for item in &blocked {
+            println!("- {item}");
+        }
+    }
+    println!();
+
+    println!("Needs review:");
+    if needs_review.is_empty() {
+        println!("- None");
+    } else {
+        for item in &needs_review {
+            println!("- {item}");
+        }
+    }
+    println!();
+
+    println!("Artifacts:");
+    if profile_packet.exists() {
+        println!("- Profile packet: {}", profile_packet.display());
+    } else {
+        println!("- Profile packet: not written yet");
+    }
+    if manifest_path.exists() {
+        println!("- Share manifest: {}", manifest_path.display());
+    } else {
+        println!("- Share manifest: not written yet");
+    }
+    println!();
+
+    println!("Share safety:");
+    match bundle_profile {
+        BundleProfile::Manager => {
+            println!("- Manager profile keeps review context while using deterministic aliases.");
+            println!("- Share with someone who may need receipt-level context.");
+        }
+        BundleProfile::Public => {
+            println!("- Public profile uses the strictest redaction profile.");
+            println!("- Review the rendered packet before sharing outside your organization.");
+        }
+        BundleProfile::Internal => {}
+    }
+    println!("- Redaction is deterministic for a stable key; changing the key changes aliases.");
+    println!();
+
+    println!("Next:");
+    if redaction_key.is_none() {
+        println!("1. export SHIPLOG_REDACT_KEY=replace-with-a-stable-secret");
+        println!("2. {verify_command}");
+        println!("3. {share_command}");
+    } else {
+        println!("1. {verify_command}");
+        println!("2. {share_command}");
+    }
+
+    Ok(())
+}
+
+fn share_explain_verify_command(
+    bundle_profile: &BundleProfile,
+    out_arg: &str,
+    run_arg: &str,
+) -> String {
+    let strict = if matches!(bundle_profile, BundleProfile::Public) {
+        " --strict"
+    } else {
+        ""
+    };
+    format!("shiplog share verify {bundle_profile} --out {out_arg} --run {run_arg}{strict}")
+}
+
+fn share_profile_title(bundle_profile: &BundleProfile) -> &'static str {
+    match bundle_profile {
+        BundleProfile::Internal => "Internal",
+        BundleProfile::Manager => "Manager",
+        BundleProfile::Public => "Public",
+    }
+}
+
+fn share_explain_redaction_key_status(source: RedactionKeySource) -> &'static str {
+    match source {
+        RedactionKeySource::Explicit => "available from --redact-key",
+        RedactionKeySource::Env => "available from SHIPLOG_REDACT_KEY",
+        RedactionKeySource::None => "missing",
+    }
+}
+
+fn share_explain_included_items(
+    bundle_profile: &BundleProfile,
+    event_count: usize,
+    source_counts: &[(String, usize)],
+    workstream_count: usize,
+) -> Vec<String> {
+    let mut included = vec![
+        "packet readiness and claim candidates".to_string(),
+        format!(
+            "{} across {} workstream(s)",
+            event_count_phrase(event_count),
+            workstream_count
+        ),
+    ];
+    if source_counts.is_empty() {
+        included.push("source-backed evidence counts: none collected".to_string());
+    } else {
+        let source_summary = source_counts
+            .iter()
+            .map(|(source, count)| {
+                format!(
+                    "{}: {}",
+                    display_source_label(source),
+                    event_count_phrase(*count)
+                )
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+        included.push(format!("source-backed evidence counts: {source_summary}"));
+    }
+    included.push("approved receipt links selected by the packet renderer".to_string());
+    match bundle_profile {
+        BundleProfile::Manager => {
+            included.push("manager-safe workstream summaries and receipt context".to_string());
+        }
+        BundleProfile::Public => {
+            included
+                .push("public-safe summaries with the lowest default receipt density".to_string());
+        }
+        BundleProfile::Internal => {}
+    }
+    included
+}
+
+fn share_explain_removed_items(bundle_profile: &BundleProfile) -> Vec<String> {
+    let mut removed = vec![
+        "raw redaction key values".to_string(),
+        "opaque provider identifiers".to_string(),
+        "private source identifiers where redaction policy applies".to_string(),
+    ];
+    match bundle_profile {
+        BundleProfile::Manager => {
+            removed.push("full internal-only packet density".to_string());
+        }
+        BundleProfile::Public => {
+            removed.push("receipt appendix detail by default".to_string());
+            removed.push(
+                "raw private URLs and original names where strict redaction applies".to_string(),
+            );
+        }
+        BundleProfile::Internal => {}
+    }
+    removed
 }
 
 struct StrictPublicPacketScan {
