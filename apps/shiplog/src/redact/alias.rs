@@ -1,14 +1,49 @@
 //! Deterministic alias generation and persistence helpers.
 
 use anyhow::{Context, Result};
-use hmac::{Hmac, KeyInit, Mac};
 use serde::{Deserialize, Serialize};
-use sha2::Sha256;
+use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
-type HmacSha256 = Hmac<Sha256>;
+const SHA256_BLOCK_SIZE: usize = 64;
+const HMAC_IPAD: u8 = 0x36;
+const HMAC_OPAD: u8 = 0x5C;
+
+/// RFC 2104 HMAC-SHA256 over the concatenation of `parts`.
+fn hmac_sha256(key: &[u8], parts: &[&[u8]]) -> [u8; 32] {
+    let mut key_block = [0u8; SHA256_BLOCK_SIZE];
+    if key.len() > SHA256_BLOCK_SIZE {
+        let digested = Sha256::digest(key);
+        key_block[..digested.len()].copy_from_slice(&digested);
+    } else {
+        key_block[..key.len()].copy_from_slice(key);
+    }
+
+    let mut inner_pad = [HMAC_IPAD; SHA256_BLOCK_SIZE];
+    let mut outer_pad = [HMAC_OPAD; SHA256_BLOCK_SIZE];
+    for i in 0..SHA256_BLOCK_SIZE {
+        inner_pad[i] ^= key_block[i];
+        outer_pad[i] ^= key_block[i];
+    }
+
+    let mut inner = Sha256::new();
+    inner.update(inner_pad);
+    for part in parts {
+        inner.update(part);
+    }
+    let inner_hash = inner.finalize();
+
+    let mut outer = Sha256::new();
+    outer.update(outer_pad);
+    outer.update(inner_hash);
+    let out = outer.finalize();
+
+    let mut result = [0u8; 32];
+    result.copy_from_slice(&out);
+    result
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 struct AliasCache {
@@ -92,12 +127,8 @@ impl DeterministicAliasStore {
             }
         }
 
-        let mut mac = HmacSha256::new_from_slice(&self.key)
-            .expect("HMAC-SHA256 accepts keys of any length");
-        mac.update(kind.as_bytes());
-        mac.update(b"\n");
-        mac.update(value.as_bytes());
-        let hash = hex::encode(mac.finalize().into_bytes());
+        let digest = hmac_sha256(&self.key, &[kind.as_bytes(), b"\n", value.as_bytes()]);
+        let hash = hex::encode(digest);
         let alias = format!("{kind}-{}", &hash[..12]);
 
         if let Ok(mut cache) = self.cache.lock() {
@@ -111,6 +142,32 @@ impl DeterministicAliasStore {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn hmac_sha256_matches_rfc4231_test_case_1() {
+        let key = [0x0bu8; 20];
+        let data = b"Hi There";
+        let expected: [u8; 32] = [
+            0xb0, 0x34, 0x4c, 0x61, 0xd8, 0xdb, 0x38, 0x53, 0x5c, 0xa8, 0xaf, 0xce, 0xaf, 0x0b,
+            0xf1, 0x2b, 0x88, 0x1d, 0xc2, 0x00, 0xc9, 0x83, 0x3d, 0xa7, 0x26, 0xe9, 0x37, 0x6c,
+            0x2e, 0x32, 0xcf, 0xf7,
+        ];
+        let mac = hmac_sha256(&key, &[data.as_slice()]);
+        assert_eq!(mac, expected);
+    }
+
+    #[test]
+    fn hmac_sha256_matches_rfc4231_long_key_case() {
+        let key = [0xaau8; 131];
+        let data = b"Test Using Larger Than Block-Size Key - Hash Key First";
+        let expected: [u8; 32] = [
+            0x60, 0xe4, 0x31, 0x59, 0x1e, 0xe0, 0xb6, 0x7f, 0x0d, 0x8a, 0x26, 0xaa, 0xcb, 0xf5,
+            0xb7, 0x7f, 0x8e, 0x0b, 0xc6, 0x21, 0x37, 0x28, 0xc5, 0x14, 0x05, 0x46, 0x04, 0x0f,
+            0x0e, 0xe3, 0x7f, 0x54,
+        ];
+        let mac = hmac_sha256(&key, &[data.as_slice()]);
+        assert_eq!(mac, expected);
+    }
 
     #[test]
     fn aliases_are_stable_for_same_key_and_value() {

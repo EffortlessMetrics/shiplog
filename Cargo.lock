@@ -2282,7 +2282,6 @@ dependencies = [
  "criterion",
  "git2",
  "hex",
- "hmac",
  "insta",
  "itertools 0.14.0",
  "mutants",
