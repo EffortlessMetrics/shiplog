@@ -962,6 +962,54 @@ fn first_repair_id_without_action(report: &serde_json::Value, action_kind: &str)
         .to_string()
 }
 
+fn write_repair_diff_report(
+    base_report: &serde_json::Value,
+    out: &Path,
+    run_id: &str,
+    repair_items: serde_json::Value,
+) -> PathBuf {
+    let run_dir = out.join(run_id);
+    std::fs::create_dir_all(&run_dir).unwrap();
+    std::fs::write(run_dir.join("ledger.events.jsonl"), "").unwrap();
+    let report_path = run_dir.join("intake.report.json");
+    let mut report = base_report.clone();
+    report["run_id"] = serde_json::json!(run_id);
+    report["run_dir"] = serde_json::json!(run_dir.display().to_string());
+    report["reports"]["json"] = serde_json::json!(report_path.display().to_string());
+    report["repair_items"] = repair_items;
+    std::fs::write(
+        &report_path,
+        format!("{}\n", serde_json::to_string_pretty(&report).unwrap()),
+    )
+    .unwrap();
+    report_path
+}
+
+fn repair_diff_item(
+    repair_id: &str,
+    repair_key: &str,
+    reason: &str,
+    command: &str,
+    clears_when: &str,
+) -> serde_json::Value {
+    serde_json::json!({
+        "repair_id": repair_id,
+        "repair_key": repair_key,
+        "kind": "manual_evidence_missing",
+        "reason": reason,
+        "action": {
+            "kind": "journal_add",
+            "command": command
+        },
+        "clears_when": clears_when,
+        "receipt_refs": [
+            {
+                "field": "evidence_debt"
+            }
+        ]
+    })
+}
+
 fn all_run_dirs(out: &Path) -> Vec<PathBuf> {
     let mut runs: Vec<_> = std::fs::read_dir(out)
         .unwrap()
@@ -7026,6 +7074,207 @@ fn repair_plan_run_rejects_path_traversal() -> CliTestResult {
         .stderr(predicate::str::contains(
             "repair plan --run must be a single run directory name",
         ));
+
+    Ok(())
+}
+
+#[test]
+fn repair_diff_latest_shows_cleared_new_still_open_and_changed_items() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let out = tmp.path().join("out");
+    let out_arg = out.to_string_lossy().to_string();
+    run_intake_without_provider_tokens(tmp.path(), &out);
+    let (_, base_report) = load_first_intake_report(&out);
+
+    write_repair_diff_report(
+        &base_report,
+        &out,
+        "run_900_old",
+        serde_json::json!([
+            repair_diff_item(
+                "repair_001_still_old",
+                "manual:still",
+                "still open",
+                "shiplog journal add --from-repair repair_001_still_old",
+                "manual event exists"
+            ),
+            repair_diff_item(
+                "repair_002_changed_old",
+                "manual:changed",
+                "old reason",
+                "shiplog journal add --from-repair repair_002_changed_old",
+                "old clear condition"
+            ),
+            repair_diff_item(
+                "repair_003_cleared_old",
+                "manual:cleared",
+                "cleared reason",
+                "shiplog journal add --from-repair repair_003_cleared_old",
+                "cleared condition"
+            )
+        ]),
+    );
+    write_repair_diff_report(
+        &base_report,
+        &out,
+        "run_901_new",
+        serde_json::json!([
+            repair_diff_item(
+                "repair_001_still_new",
+                "manual:still",
+                "still open",
+                "shiplog journal add --from-repair repair_001_still_old",
+                "manual event exists"
+            ),
+            repair_diff_item(
+                "repair_002_changed_new",
+                "manual:changed",
+                "new reason",
+                "shiplog journal add --from-repair repair_002_changed_new",
+                "new clear condition"
+            ),
+            repair_diff_item(
+                "repair_004_new",
+                "manual:new",
+                "new reason",
+                "shiplog journal add --from-repair repair_004_new",
+                "new condition"
+            )
+        ]),
+    );
+
+    shiplog_cmd()
+        .args(["repair", "diff", "--out", out_arg.as_str(), "--latest"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "Repair diff: run_900_old -> run_901_new",
+        ))
+        .stdout(predicate::str::contains("Cleared: 1"))
+        .stdout(predicate::str::contains("manual:cleared"))
+        .stdout(predicate::str::contains("New: 1"))
+        .stdout(predicate::str::contains("manual:new"))
+        .stdout(predicate::str::contains("Still open: 1"))
+        .stdout(predicate::str::contains("manual:still"))
+        .stdout(predicate::str::contains("Changed: 1"))
+        .stdout(predicate::str::contains("manual:changed"))
+        .stdout(predicate::str::contains("Reason: old reason -> new reason"))
+        .stdout(predicate::str::contains(
+            "Clears when: old clear condition -> new clear condition",
+        ));
+
+    Ok(())
+}
+
+#[test]
+fn repair_diff_latest_without_two_reports_prints_next_command() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let out = tmp.path().join("missing-out");
+    let out_arg = out.to_string_lossy().to_string();
+
+    shiplog_cmd()
+        .args(["repair", "diff", "--out", out_arg.as_str(), "--latest"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "fewer than two compatible repair reports found",
+        ))
+        .stdout(predicate::str::contains("Compatible reports: 0"))
+        .stdout(predicate::str::contains(
+            "shiplog intake --last-6-months --explain",
+        ));
+
+    Ok(())
+}
+
+#[test]
+fn repair_diff_latest_reports_legacy_reports_without_repair_items() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let out = tmp.path().join("out");
+    let out_arg = out.to_string_lossy().to_string();
+    run_intake_without_provider_tokens(tmp.path(), &out);
+    let (original_report_path, base_report) = load_first_intake_report(&out);
+    let mut original_legacy_report = base_report.clone();
+    original_legacy_report
+        .as_object_mut()
+        .expect("report should be an object")
+        .remove("repair_items");
+    std::fs::write(
+        &original_report_path,
+        format!(
+            "{}\n",
+            serde_json::to_string_pretty(&original_legacy_report)?
+        ),
+    )?;
+
+    let mut legacy_report = base_report.clone();
+    legacy_report
+        .as_object_mut()
+        .expect("report should be an object")
+        .remove("repair_items");
+    write_repair_diff_report(
+        &legacy_report,
+        &out,
+        "run_901_legacy",
+        serde_json::json!([]),
+    );
+    let legacy_path = out.join("run_901_legacy").join("intake.report.json");
+    let mut legacy_report_text: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&legacy_path)?)?;
+    legacy_report_text
+        .as_object_mut()
+        .expect("report should be an object")
+        .remove("repair_items");
+    std::fs::write(
+        &legacy_path,
+        format!("{}\n", serde_json::to_string_pretty(&legacy_report_text)?),
+    )?;
+
+    write_repair_diff_report(
+        &base_report,
+        &out,
+        "run_900_compatible",
+        serde_json::json!([]),
+    );
+
+    shiplog_cmd()
+        .args(["repair", "diff", "--out", out_arg.as_str(), "--latest"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "fewer than two compatible repair reports found",
+        ))
+        .stdout(predicate::str::contains("Compatible reports: 1"))
+        .stdout(predicate::str::contains(
+            "Skipped reports without repair_items:",
+        ))
+        .stdout(predicate::str::contains(
+            "shiplog intake --last-6-months --explain",
+        ));
+
+    Ok(())
+}
+
+#[test]
+fn repair_diff_latest_handles_empty_repair_queues() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let out = tmp.path().join("out");
+    let out_arg = out.to_string_lossy().to_string();
+    run_intake_without_provider_tokens(tmp.path(), &out);
+    let (_, base_report) = load_first_intake_report(&out);
+
+    write_repair_diff_report(&base_report, &out, "run_900_old", serde_json::json!([]));
+    write_repair_diff_report(&base_report, &out, "run_901_new", serde_json::json!([]));
+
+    shiplog_cmd()
+        .args(["repair", "diff", "--out", out_arg.as_str(), "--latest"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Cleared: 0"))
+        .stdout(predicate::str::contains("New: 0"))
+        .stdout(predicate::str::contains("Still open: 0"))
+        .stdout(predicate::str::contains("Changed: 0"))
+        .stdout(predicate::str::contains("No repair state changes."));
 
     Ok(())
 }

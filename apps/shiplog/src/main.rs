@@ -983,6 +983,15 @@ enum RepairCommand {
         #[arg(long)]
         latest: bool,
     },
+    /// Compare repair item state across the latest two compatible reports.
+    Diff {
+        /// Output directory containing shiplog runs.
+        #[arg(long, default_value = "./out")]
+        out: PathBuf,
+        /// Compare the most recent compatible reports explicitly.
+        #[arg(long)]
+        latest: bool,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -3186,6 +3195,231 @@ fn repair_plan_command(out_dir: &Path, run: Option<String>, latest: bool) -> Res
     Ok(())
 }
 
+#[derive(Debug)]
+struct RepairDiffReport {
+    report_path: PathBuf,
+    run_id: String,
+    rerun_command: String,
+    items: BTreeMap<String, RepairDiffItem>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct RepairDiffItem {
+    repair_id: String,
+    repair_key: String,
+    kind: String,
+    reason: String,
+    action_kind: String,
+    action_command: Option<String>,
+    clears_when: String,
+}
+
+fn repair_diff_command(out_dir: &Path, latest: bool) -> Result<()> {
+    if !latest {
+        println!("Repair diff: using latest compatible reports");
+    }
+
+    let (reports, skipped_without_items) = load_repair_diff_reports(out_dir)?;
+    if reports.len() < 2 {
+        println!("Repair diff: fewer than two compatible repair reports found");
+        println!("Out: {}", out_dir.display());
+        println!("Compatible reports: {}", reports.len());
+        if !skipped_without_items.is_empty() {
+            print_skipped_repair_diff_reports(&skipped_without_items);
+        }
+        println!("Next:");
+        if let Some(report) = reports.first() {
+            println!("  {}", report.rerun_command);
+        } else {
+            println!("  {}", intake_create_run_command_for_out(out_dir));
+        }
+        return Ok(());
+    }
+
+    let newer = &reports[0];
+    let older = &reports[1];
+    let diff = build_repair_diff(older, newer);
+
+    println!("Repair diff: {} -> {}", older.run_id, newer.run_id);
+    println!("Older: {}", older.report_path.display());
+    println!("Newer: {}", newer.report_path.display());
+    if !skipped_without_items.is_empty() {
+        print_skipped_repair_diff_reports(&skipped_without_items);
+    }
+
+    print_repair_diff_group("Cleared", &diff.cleared);
+    print_repair_diff_group("New", &diff.new);
+    print_repair_diff_group("Still open", &diff.still_open);
+    print_repair_diff_changed_group(&diff.changed);
+
+    if diff.cleared.is_empty()
+        && diff.new.is_empty()
+        && diff.still_open.is_empty()
+        && diff.changed.is_empty()
+    {
+        println!("No repair state changes.");
+    }
+
+    Ok(())
+}
+
+fn load_repair_diff_reports(out_dir: &Path) -> Result<(Vec<RepairDiffReport>, Vec<PathBuf>)> {
+    let mut reports = Vec::new();
+    let mut skipped_without_items = Vec::new();
+    for run_dir in find_run_dirs_for_repair(out_dir)? {
+        let report_path = run_dir.join("intake.report.json");
+        if !report_path.exists() {
+            continue;
+        }
+        validate_intake_report(&report_path)?;
+        let report_text = std::fs::read_to_string(&report_path)
+            .with_context(|| format!("read {}", report_path.display()))?;
+        let report_json: serde_json::Value = serde_json::from_str(&report_text)
+            .with_context(|| format!("parse {}", report_path.display()))?;
+        if report_json.get("repair_items").is_none() {
+            skipped_without_items.push(report_path);
+            continue;
+        }
+        reports.push(repair_diff_report(report_path, &report_json)?);
+        if reports.len() == 2 {
+            break;
+        }
+    }
+    Ok((reports, skipped_without_items))
+}
+
+fn repair_diff_report(
+    report_path: PathBuf,
+    report_json: &serde_json::Value,
+) -> Result<RepairDiffReport> {
+    let mut items = BTreeMap::new();
+    for item in json_array(report_json, "repair_items")? {
+        let item = repair_diff_item(item)?;
+        if items.insert(item.repair_key.clone(), item).is_some() {
+            anyhow::bail!(
+                "intake report {} has duplicate repair_key values",
+                report_path.display()
+            );
+        }
+    }
+    Ok(RepairDiffReport {
+        report_path,
+        run_id: string_field(report_json, "run_id")?,
+        rerun_command: repair_plan_rerun_command(report_json)?,
+        items,
+    })
+}
+
+fn repair_diff_item(item: &serde_json::Value) -> Result<RepairDiffItem> {
+    let action = object_field(item, "action")?;
+    Ok(RepairDiffItem {
+        repair_id: string_field(item, "repair_id")?,
+        repair_key: string_field(item, "repair_key")?,
+        kind: string_field(item, "kind")?,
+        reason: string_field(item, "reason")?,
+        action_kind: string_field(action, "kind")?,
+        action_command: optional_report_string(action, "command")?,
+        clears_when: string_field(item, "clears_when")?,
+    })
+}
+
+#[derive(Debug)]
+struct RepairDiff {
+    cleared: Vec<RepairDiffItem>,
+    new: Vec<RepairDiffItem>,
+    still_open: Vec<RepairDiffItem>,
+    changed: Vec<(RepairDiffItem, RepairDiffItem)>,
+}
+
+fn build_repair_diff(older: &RepairDiffReport, newer: &RepairDiffReport) -> RepairDiff {
+    let mut cleared = Vec::new();
+    let mut new = Vec::new();
+    let mut still_open = Vec::new();
+    let mut changed = Vec::new();
+
+    for (repair_key, old_item) in &older.items {
+        match newer.items.get(repair_key) {
+            Some(new_item) if repair_diff_item_changed(old_item, new_item) => {
+                changed.push((old_item.clone(), new_item.clone()));
+            }
+            Some(new_item) => still_open.push(new_item.clone()),
+            None => cleared.push(old_item.clone()),
+        }
+    }
+
+    for (repair_key, new_item) in &newer.items {
+        if !older.items.contains_key(repair_key) {
+            new.push(new_item.clone());
+        }
+    }
+
+    RepairDiff {
+        cleared,
+        new,
+        still_open,
+        changed,
+    }
+}
+
+fn repair_diff_item_changed(old_item: &RepairDiffItem, new_item: &RepairDiffItem) -> bool {
+    old_item.reason != new_item.reason
+        || old_item.action_kind != new_item.action_kind
+        || old_item.action_command != new_item.action_command
+        || old_item.clears_when != new_item.clears_when
+}
+
+fn print_skipped_repair_diff_reports(skipped_without_items: &[PathBuf]) {
+    println!(
+        "Skipped reports without repair_items: {}",
+        skipped_without_items.len()
+    );
+    for report_path in skipped_without_items {
+        println!("  - {}", report_path.display());
+    }
+}
+
+fn print_repair_diff_group(label: &str, items: &[RepairDiffItem]) {
+    println!("{label}: {}", items.len());
+    for item in items {
+        println!("  - {} [{}] {}", item.repair_key, item.kind, item.repair_id);
+    }
+}
+
+fn print_repair_diff_changed_group(items: &[(RepairDiffItem, RepairDiffItem)]) {
+    println!("Changed: {}", items.len());
+    for (old_item, new_item) in items {
+        println!(
+            "  - {} [{}] {} -> {}",
+            new_item.repair_key, new_item.kind, old_item.repair_id, new_item.repair_id
+        );
+        if old_item.reason != new_item.reason {
+            println!("    Reason: {} -> {}", old_item.reason, new_item.reason);
+        }
+        if old_item.action_kind != new_item.action_kind
+            || old_item.action_command != new_item.action_command
+        {
+            println!(
+                "    Action: {} -> {}",
+                repair_diff_action_label(old_item),
+                repair_diff_action_label(new_item)
+            );
+        }
+        if old_item.clears_when != new_item.clears_when {
+            println!(
+                "    Clears when: {} -> {}",
+                old_item.clears_when, new_item.clears_when
+            );
+        }
+    }
+}
+
+fn repair_diff_action_label(item: &RepairDiffItem) -> String {
+    match &item.action_command {
+        Some(command) => format!("{} ({command})", item.action_kind),
+        None => item.action_kind.clone(),
+    }
+}
+
 fn resolve_repair_plan_report_path(
     out_dir: &Path,
     run: Option<String>,
@@ -3221,8 +3455,12 @@ fn validate_repair_plan_run_id(run_id: &str) -> Result<()> {
 }
 
 fn find_latest_run_dir_for_repair_plan(out_dir: &Path) -> Result<Option<PathBuf>> {
+    Ok(find_run_dirs_for_repair(out_dir)?.into_iter().next())
+}
+
+fn find_run_dirs_for_repair(out_dir: &Path) -> Result<Vec<PathBuf>> {
     if !out_dir.exists() {
-        return Ok(None);
+        return Ok(Vec::new());
     }
 
     let mut runs: Vec<_> = std::fs::read_dir(out_dir)?
@@ -3232,7 +3470,7 @@ fn find_latest_run_dir_for_repair_plan(out_dir: &Path) -> Result<Option<PathBuf>
         .collect();
     runs.sort_by_key(|entry| std::cmp::Reverse(entry.file_name()));
 
-    Ok(runs.into_iter().next().map(|entry| entry.path()))
+    Ok(runs.into_iter().map(|entry| entry.path()).collect())
 }
 
 fn repair_plan_rerun_command(report_json: &serde_json::Value) -> Result<String> {
