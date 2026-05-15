@@ -55,6 +55,8 @@ pub(crate) fn build_intake_report(
     let repair_items = build_repair_items(RepairItemInputs {
         repair_sources: &repair_sources,
         source_freshness: &source_freshness,
+        out_dir,
+        config_path,
         needs_attention: &attention,
         evidence_debt: &evidence_debt,
         top_fixups: &top_fixups,
@@ -420,6 +422,8 @@ struct RepairItemDraft {
 struct RepairItemInputs<'a> {
     repair_sources: &'a [IntakeReportRepairSource],
     source_freshness: &'a [IntakeReportSourceFreshness],
+    out_dir: &'a Path,
+    config_path: &'a Path,
     needs_attention: &'a [String],
     evidence_debt: &'a [IntakeReportEvidenceDebt],
     top_fixups: &'a [IntakeReportFixup],
@@ -433,6 +437,8 @@ fn build_repair_items(inputs: RepairItemInputs<'_>) -> Vec<IntakeReportRepairIte
     let RepairItemInputs {
         repair_sources,
         source_freshness,
+        out_dir,
+        config_path,
         needs_attention,
         evidence_debt,
         top_fixups,
@@ -521,7 +527,7 @@ fn build_repair_items(inputs: RepairItemInputs<'_>) -> Vec<IntakeReportRepairIte
                     )
                 }),
                 action_kind: "rerun_intake".to_string(),
-                action_command: intake_rerun_command(next_commands),
+                action_command: intake_rerun_command(next_commands, config_path, out_dir),
                 clears_when: format!(
                     "{} source contributes fresh evidence on a rerun",
                     freshness.source_label
@@ -686,12 +692,22 @@ fn source_freshness_repair_kind(status: &str) -> Option<&'static str> {
     }
 }
 
-fn intake_rerun_command(next_commands: &[String]) -> Option<String> {
+fn intake_rerun_command(
+    next_commands: &[String],
+    config_path: &Path,
+    out_dir: &Path,
+) -> Option<String> {
     next_commands
         .iter()
         .find(|command| command.contains("shiplog intake "))
         .cloned()
-        .or_else(|| Some("shiplog intake --last-6-months --explain".to_string()))
+        .or_else(|| {
+            Some(format!(
+                "shiplog intake --config {} --out {} --last-6-months --explain",
+                quote_cli_value(&config_path.display().to_string()),
+                quote_cli_value(&out_dir.display().to_string())
+            ))
+        })
 }
 
 fn repair_id_token(repair_key: &str) -> String {
@@ -700,5 +716,44 @@ fn repair_id_token(repair_key: &str) -> String {
         token[..48].trim_end_matches('_').to_string()
     } else {
         token
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn intake_rerun_command_preserves_report_context_in_fallback() {
+        let command = intake_rerun_command(
+            &[],
+            Path::new("configs/shiplog.toml"),
+            Path::new("out/review packets"),
+        )
+        .expect("fallback rerun command should be present");
+
+        assert!(command.contains("shiplog intake"));
+        assert!(command.contains("--config \"configs/shiplog.toml\""));
+        assert!(command.contains("--out \"out/review packets\""));
+        assert!(command.contains("--last-6-months --explain"));
+    }
+
+    #[test]
+    fn intake_rerun_command_prefers_existing_intake_guidance() {
+        let command = intake_rerun_command(
+            &[
+                "shiplog doctor --config shiplog.toml".to_string(),
+                "shiplog intake --config custom.toml --out out/custom --last-6-months --explain"
+                    .to_string(),
+            ],
+            Path::new("shiplog.toml"),
+            Path::new("out"),
+        )
+        .expect("existing rerun command should be reused");
+
+        assert_eq!(
+            command,
+            "shiplog intake --config custom.toml --out out/custom --last-6-months --explain"
+        );
     }
 }
