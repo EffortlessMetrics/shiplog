@@ -88,6 +88,8 @@ point back to report receipts.
 
 - [`rapid-first-intake.md`](rapid-first-intake.md) for the first run from an
   empty directory.
+- [`review-ready-packet.md`](review-ready-packet.md) for interpreting readiness,
+  claim candidates, missing context, and share posture after repair.
 - [`review-cycle.md`](review-cycle.md) for repeat review workflows.
 - [`../schemas/intake-report-v1.md`](../schemas/intake-report-v1.md) for the
   report fields that repair commands consume.

@@ -310,6 +310,8 @@ same intake → report → review → share verify shape a real run uses.
 - [`docs/guides/review-cycle.md`](review-cycle.md) — repeat review cycles.
 - [`docs/guides/evidence-repair-loop.md`](evidence-repair-loop.md) — turn a
   rough first packet into a better rerun packet.
+- [`docs/guides/review-ready-packet.md`](review-ready-packet.md) — interpret
+  readiness, claim candidates, missing context, and share posture.
 - [`docs/config-reference.md`](../config-reference.md) — full `shiplog.toml`
   field reference.
 - [`docs/schemas/intake-report-v1.md`](../schemas/intake-report-v1.md) — the

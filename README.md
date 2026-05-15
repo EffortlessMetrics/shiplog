@@ -109,7 +109,10 @@ practical review-cycle walkthrough, see
 [docs/config-reference.md](docs/config-reference.md).
 When the first packet is rough, use
 [docs/guides/evidence-repair-loop.md](docs/guides/evidence-repair-loop.md) to
-turn report receipts into local journal repair and a better rerun packet.
+turn report receipts into local journal repair and a better rerun packet. Then
+use [docs/guides/review-ready-packet.md](docs/guides/review-ready-packet.md)
+to interpret readiness, claim candidates, missing-context prompts, and share
+posture.
 
 From a repository checkout, you can rehearse the rescue path without provider
 tokens:

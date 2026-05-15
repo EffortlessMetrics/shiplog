@@ -260,6 +260,36 @@ fn evidence_repair_loop_guide_documents_report_derived_flow() {
 }
 
 #[test]
+fn review_ready_packet_guide_documents_quality_flow() {
+    let doc_path = repo_root().join("docs/guides/review-ready-packet.md");
+    let doc = std::fs::read_to_string(&doc_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", doc_path.display()));
+
+    for needle in [
+        "shiplog intake --last-6-months --explain",
+        "shiplog repair plan --latest",
+        "shiplog journal add --from-repair <repair_id>",
+        "shiplog repair diff --latest",
+        "shiplog runs diff --latest",
+        "shiplog open packet --latest",
+        "Packet Readiness",
+        "Claim Candidates",
+        "manual_only",
+        "missing-context prompts",
+        "shiplog share explain manager --latest",
+        "shiplog share explain public --latest",
+        "shiplog share verify public --latest --strict",
+        "not write `profiles/<profile>/packet.md`",
+        "Shiplog should not invent",
+    ] {
+        assert!(
+            doc.contains(needle),
+            "review-ready packet guide should mention {needle:?}"
+        );
+    }
+}
+
+#[test]
 fn documented_help_commands_stay_available() {
     shiplog_cmd()
         .arg("--help")

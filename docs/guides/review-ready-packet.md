@@ -1,0 +1,182 @@
+# Review-ready packet guide
+
+Use this after a first intake has produced a packet and you want to know whether
+it is ready to support a self-review conversation. The goal is not to generate
+performance-review prose. The goal is to turn repaired evidence into a
+defensible scaffold: readiness, claim candidates, missing-context prompts, and
+share posture.
+
+The loop is:
+
+```text
+collect -> repair -> rerun -> compare -> interpret -> share
+```
+
+## Run the first packet
+
+Start with intake and read the report before editing anything.
+
+```bash
+shiplog intake --last-6-months --explain
+shiplog open intake-report --latest
+shiplog open packet --latest
+```
+
+Read these sections first:
+
+- `Packet readiness`: whether the packet is ready, caveated, repairable, or
+  still missing evidence.
+- `Source Freshness` and `Skipped Sources`: what was included or unavailable.
+- `Repair items`: safe local actions derived from report receipts.
+- `Evidence debt`: curation or context gaps that can weaken the packet.
+
+If the packet has no evidence, do not treat that as failure. Treat it as the
+first diagnostic run.
+
+## Repair locally
+
+Print the repair queue:
+
+```bash
+shiplog repair plan --latest
+```
+
+For a missing manual-evidence repair item, add a local journal event from the
+report-derived repair ID:
+
+```bash
+shiplog journal add --from-repair <repair_id>
+```
+
+This writes `manual_events.yaml`. It does not mutate GitHub, Jira, Linear,
+GitLab, or any provider record. Replace generated placeholder context with what
+actually happened before relying on the packet.
+
+## Rerun and compare
+
+After the repair, rerun intake and compare both repair state and packet quality.
+
+```bash
+shiplog intake --last-6-months --explain
+shiplog repair diff --latest
+shiplog runs diff --latest
+shiplog open packet --latest
+```
+
+Read `repair diff` first:
+
+- `Cleared`: a repair key was present in the older report and absent in the
+  newer report.
+- `New`: a repair key appears only in the newer report.
+- `Still open`: the same repair remains.
+- `Changed`: the repair key remains but the action, reason, or clear condition
+  changed.
+
+Then read `runs diff`:
+
+- `Improved`: evidence counts, manual evidence, readiness, claim candidates, or
+  cleared repairs moved in a better direction.
+- `Regressed`: evidence, gaps, readiness, claim candidates, or repair state got
+  worse.
+- `Still weak`: skipped sources, open repairs, manual-only evidence, missing
+  candidates, or other caveats still need human judgment.
+
+The useful outcome is not "no warnings." The useful outcome is knowing exactly
+what improved and what still needs context.
+
+## Interpret packet readiness
+
+Open `packet.md` and start at `Packet Readiness`.
+
+Common states:
+
+- `Ready`: the packet has source-backed evidence and no open repair blockers.
+- `Ready with caveats`: useful, but still has source gaps, manual-only evidence,
+  evidence debt, or open caveats.
+- `Needs repair`: fixable report-derived repair items remain.
+- `Needs evidence`: there is not enough evidence to support claims yet.
+
+Do not hide caveats. A caveated packet is often still useful if the packet says
+what evidence supports it and what remains weak.
+
+## Use claim candidates safely
+
+Read `Claim Candidates` as scaffolding, not prose.
+
+Each candidate should tell you:
+
+- the claim title;
+- evidence strength;
+- supporting sources and receipts;
+- caveats;
+- missing-context prompts;
+- safe share profiles.
+
+Use candidates to decide what you can defend. Do not copy them as final review
+paragraphs without adding your own specific context. Shiplog should not invent
+impact, outcomes, or performance narratives.
+
+When a candidate has `manual_only` evidence, answer the missing-context prompt:
+
+```text
+Which source-backed receipt could confirm this?
+```
+
+If there is no receipt, keep the claim narrow or leave it out.
+
+## Explain share posture
+
+Before rendering a manager or public profile, ask what the profile would include,
+remove, and block.
+
+```bash
+shiplog share explain manager --latest
+shiplog share explain public --latest
+```
+
+The command is read-only. It does not require `SHIPLOG_REDACT_KEY`, and it does
+not write `profiles/<profile>/packet.md` or `share.manifest.json`. Use it to
+answer:
+
+- what the profile includes;
+- what redaction removes;
+- whether the missing redaction key blocks rendering;
+- what still needs review before sharing.
+
+When you are ready to write a share profile:
+
+```bash
+export SHIPLOG_REDACT_KEY=replace-with-a-stable-secret
+shiplog share verify manager --latest
+shiplog share manager --latest --zip
+```
+
+For public sharing, use the strict public verification path:
+
+```bash
+shiplog share verify public --latest --strict
+shiplog share public --latest --zip
+```
+
+Strict verification is a guardrail, not a privacy guarantee. Review the rendered
+public packet before it leaves your organization.
+
+## Stop conditions
+
+Stop and use the packet when:
+
+- readiness is `Ready` or `Ready with caveats`;
+- the caveats are visible and acceptable for your audience;
+- claim candidates are backed by receipts or explicitly marked as manual-only;
+- missing-context prompts have been answered in your own words;
+- share posture says the target profile is not blocked.
+
+Keep repairing when:
+
+- readiness is `Needs evidence`;
+- a repair item has a safe local action you can complete;
+- a skipped source would materially change the claims;
+- a claim candidate depends only on memory and has no supporting receipt.
+
+The defensible path is: collect, repair, rerun, compare, prepare, share.
+
