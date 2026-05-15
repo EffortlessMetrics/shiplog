@@ -107,6 +107,9 @@ practical review-cycle walkthrough, see
 [docs/guides/review-cycle.md](docs/guides/review-cycle.md). For the complete
 `shiplog.toml` field reference, see
 [docs/config-reference.md](docs/config-reference.md).
+When the first packet is rough, use
+[docs/guides/evidence-repair-loop.md](docs/guides/evidence-repair-loop.md) to
+turn report receipts into local journal repair and a better rerun packet.
 
 From a repository checkout, you can rehearse the rescue path without provider
 tokens:
@@ -375,7 +378,7 @@ out/<run_id>/
 | `review` / `review weekly` / `review fixups` | Inspect a run for skipped sources, weak curation, evidence debt, and next steps |
 | `open packet/workstreams/intake-report/out` | Open run artifacts, or print their paths when opening is unavailable |
 | `report validate/summarize/export-agent-pack` | Validate and summarize durable intake reports for tooling |
-| `repair plan` | Print receipt-derived repair guidance from the latest intake report |
+| `repair plan` / `repair diff` | Print receipt-derived repair guidance from intake reports and compare repair state across reruns |
 | `merge` | Merge existing run directories into one packet |
 | `import` | Import an existing run directory and re-render |
 | `run <source>` | Legacy: collect + render in one shot |

@@ -303,6 +303,8 @@ same intake → report → review → share verify shape a real run uses.
 - [`docs/guides/review-deadline.md`](review-deadline.md) — deadline-pressure
   flow for users with an established setup.
 - [`docs/guides/review-cycle.md`](review-cycle.md) — repeat review cycles.
+- [`docs/guides/evidence-repair-loop.md`](evidence-repair-loop.md) — turn a
+  rough first packet into a better rerun packet.
 - [`docs/config-reference.md`](../config-reference.md) — full `shiplog.toml`
   field reference.
 - [`docs/schemas/intake-report-v1.md`](../schemas/intake-report-v1.md) — the

@@ -40,25 +40,75 @@
 //!    what makes the first pack defensible.
 
 use assert_cmd::Command;
+use serde_json::Value;
 use std::fs;
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
 
+const MANUAL_NO_EVENTS_REPAIR_KEY: &str = "manual:manual_evidence_missing:no_events";
+
+fn shiplog_cmd(tmp: &Path) -> Command {
+    let mut cmd = Command::from_std(std::process::Command::new(env!("CARGO_BIN_EXE_shiplog")));
+    cmd.current_dir(tmp)
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY");
+    cmd
+}
+
 /// Locate the run directory created under `--out`. Cold-start runs
 /// produce a sortable-timestamp + short-hash subdirectory; this test
 /// only cares about the first (and typically only) one.
-fn first_run_dir(out_root: &Path) -> PathBuf {
+fn sorted_run_dirs(out_root: &Path) -> Vec<PathBuf> {
     let mut entries: Vec<_> = fs::read_dir(out_root)
         .expect("read out root")
         .filter_map(|entry| entry.ok())
         .filter(|entry| entry.file_type().map(|t| t.is_dir()).unwrap_or(false))
+        .map(|entry| entry.path())
         .collect();
-    entries.sort_by_key(|entry| entry.file_name());
+    entries.sort();
     entries
+}
+
+fn first_run_dir(out_root: &Path) -> PathBuf {
+    sorted_run_dirs(out_root)
         .into_iter()
         .next()
         .expect("install-to-first-pack smoke: at least one run directory must exist under --out")
-        .path()
+}
+
+fn latest_run_dir(out_root: &Path) -> PathBuf {
+    sorted_run_dirs(out_root)
+        .into_iter()
+        .next_back()
+        .expect("install-to-first-pack smoke: at least one run directory must exist under --out")
+}
+
+fn read_report_json(run: &Path) -> Value {
+    let report_path = run.join("intake.report.json");
+    serde_json::from_str(
+        &fs::read_to_string(&report_path).expect("read intake.report.json for product proof"),
+    )
+    .expect("intake.report.json must be valid JSON for product proof")
+}
+
+fn repair_item_by_key<'a>(report: &'a Value, repair_key: &str) -> Option<&'a Value> {
+    report["repair_items"]
+        .as_array()
+        .expect("intake.report.json must expose repair_items")
+        .iter()
+        .find(|item| item["repair_key"].as_str() == Some(repair_key))
+}
+
+fn source_event_count(report: &Value, source_key: &str) -> u64 {
+    report["included_sources"]
+        .as_array()
+        .expect("intake.report.json must expose included_sources")
+        .iter()
+        .find(|source| source["source_key"].as_str() == Some(source_key))
+        .and_then(|source| source["event_count"].as_u64())
+        .unwrap_or(0)
 }
 
 /// The "does the front door work?" receipt. Drive the cargo-built
@@ -75,12 +125,7 @@ fn install_to_first_pack_smoke() {
     // `cargo install shiplog` or a release download. `CARGO_BIN_EXE_shiplog`
     // points at the cargo-built artifact for this workspace, which is
     // byte-identical to a `cargo install` output for the same toolchain.
-    let assert = Command::from_std(std::process::Command::new(env!("CARGO_BIN_EXE_shiplog")))
-        .current_dir(tmp.path())
-        .env_remove("GITHUB_TOKEN")
-        .env_remove("GITLAB_TOKEN")
-        .env_remove("JIRA_TOKEN")
-        .env_remove("LINEAR_API_KEY")
+    let assert = shiplog_cmd(tmp.path())
         .args([
             "intake",
             "--last-6-months",
@@ -165,5 +210,131 @@ fn install_to_first_pack_smoke() {
     assert!(
         body.contains("No events collected"),
         "smoke: intake.report.md must surface the missing-evidence gap in plain language (looked for `No events collected`). body:\n{body}"
+    );
+}
+
+/// Product proof for the evidence repair loop. A first run with no provider
+/// tokens is rough but actionable: the report emits a manual repair item,
+/// `journal add --from-repair` records local evidence, rerunning intake clears
+/// that repair key, and the next packet contains the new evidence. Every
+/// command runs with provider tokens removed; the only write is local journal
+/// evidence.
+#[test]
+fn repair_loop_improves_first_packet_without_provider_mutation() {
+    let tmp = TempDir::new().expect("tempdir for repair loop proof");
+    let out = tmp.path().join("out");
+    let out_arg = out.to_str().expect("--out path must be utf-8");
+
+    shiplog_cmd(tmp.path())
+        .args(["intake", "--last-6-months", "--out", out_arg, "--no-open"])
+        .assert()
+        .success();
+
+    let first_run = first_run_dir(&out);
+    let first_report = read_report_json(&first_run);
+    assert_eq!(
+        first_report["readiness"], "Needs evidence",
+        "repair proof: the cold first packet should honestly start as Needs evidence"
+    );
+    assert_eq!(
+        source_event_count(&first_report, "manual"),
+        0,
+        "repair proof: the cold first packet should have no manual evidence yet"
+    );
+
+    let manual_repair = repair_item_by_key(&first_report, MANUAL_NO_EVENTS_REPAIR_KEY)
+        .expect("repair proof: cold report should expose the no-events manual repair item");
+    assert_eq!(
+        manual_repair["action"]["kind"], "journal_add",
+        "repair proof: manual no-events repair must be a local journal action"
+    );
+    let repair_id = manual_repair["repair_id"]
+        .as_str()
+        .expect("repair proof: manual repair should have a repair_id")
+        .to_string();
+    let repair_command = manual_repair["action"]["command"]
+        .as_str()
+        .expect("repair proof: manual repair should have a command");
+    assert!(
+        repair_command.contains("--from-repair") && !repair_command.contains("export "),
+        "repair proof: manual repair command should be local and report-derived. command={repair_command:?}"
+    );
+
+    let plan_assert = shiplog_cmd(tmp.path())
+        .args(["repair", "plan", "--out", out_arg, "--latest"])
+        .assert()
+        .success();
+    let plan_stdout = String::from_utf8_lossy(&plan_assert.get_output().stdout);
+    assert!(
+        plan_stdout.contains(&repair_id)
+            && plan_stdout.contains("Command: shiplog journal add --from-repair"),
+        "repair proof: repair plan should print the copyable journal repair command. stdout:\n{plan_stdout}"
+    );
+
+    let journal_assert = shiplog_cmd(tmp.path())
+        .args([
+            "journal",
+            "add",
+            "--from-repair",
+            repair_id.as_str(),
+            "--out",
+            out_arg,
+            "--latest",
+        ])
+        .assert()
+        .success();
+    let journal_stdout = String::from_utf8_lossy(&journal_assert.get_output().stdout);
+    assert!(
+        journal_stdout.contains(&format!("Repair: {repair_id}"))
+            && journal_stdout.contains("Clears when: manual source contributes"),
+        "repair proof: journal repair should echo the report-derived repair context. stdout:\n{journal_stdout}"
+    );
+    assert!(
+        tmp.path().join("manual_events.yaml").exists(),
+        "repair proof: journal repair should write local manual evidence only"
+    );
+
+    shiplog_cmd(tmp.path())
+        .args(["intake", "--last-6-months", "--out", out_arg, "--no-open"])
+        .assert()
+        .success();
+
+    let repaired_run = latest_run_dir(&out);
+    assert_ne!(
+        first_run, repaired_run,
+        "repair proof: rerun should write a fresh run directory"
+    );
+    let repaired_report = read_report_json(&repaired_run);
+    assert_ne!(
+        repaired_report["readiness"], "Needs evidence",
+        "repair proof: repaired run should no longer be zero-evidence"
+    );
+    assert_eq!(
+        source_event_count(&repaired_report, "manual"),
+        1,
+        "repair proof: repaired run should include the journal event as manual evidence"
+    );
+    assert!(
+        repair_item_by_key(&repaired_report, MANUAL_NO_EVENTS_REPAIR_KEY).is_none(),
+        "repair proof: the no-events manual repair key should clear after journal evidence"
+    );
+
+    let repaired_packet =
+        fs::read_to_string(repaired_run.join("packet.md")).expect("read repaired packet.md");
+    assert!(
+        repaired_packet.contains("Manual evidence repair") && repaired_packet.contains(&repair_id),
+        "repair proof: repaired packet should contain the journal repair evidence. packet:\n{repaired_packet}"
+    );
+
+    let diff_assert = shiplog_cmd(tmp.path())
+        .args(["repair", "diff", "--out", out_arg, "--latest"])
+        .assert()
+        .success();
+    let diff_stdout = String::from_utf8_lossy(&diff_assert.get_output().stdout);
+    assert!(
+        diff_stdout.contains("Cleared:")
+            && diff_stdout.contains(MANUAL_NO_EVENTS_REPAIR_KEY)
+            && diff_stdout.contains(&repair_id),
+        "repair proof: repair diff should show the manual no-events repair clearing. stdout:\n{diff_stdout}"
     );
 }
