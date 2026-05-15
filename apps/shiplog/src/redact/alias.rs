@@ -1,11 +1,14 @@
 //! Deterministic alias generation and persistence helpers.
 
 use anyhow::{Context, Result};
+use hmac::{Hmac, KeyInit, Mac};
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
+use sha2::Sha256;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
+
+type HmacSha256 = Hmac<Sha256>;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct AliasCache {
@@ -16,7 +19,7 @@ struct AliasCache {
 /// Canonical alias cache filename emitted in run directories.
 pub const CACHE_FILENAME: &str = "redaction.aliases.json";
 
-/// Thread-safe deterministic alias store backed by keyed SHA-256.
+/// Thread-safe deterministic alias store backed by HMAC-SHA256.
 #[derive(Debug)]
 pub(crate) struct DeterministicAliasStore {
     key: Vec<u8>,
@@ -89,13 +92,12 @@ impl DeterministicAliasStore {
             }
         }
 
-        let mut hasher = Sha256::new();
-        hasher.update(&self.key);
-        hasher.update(b"\n");
-        hasher.update(kind.as_bytes());
-        hasher.update(b"\n");
-        hasher.update(value.as_bytes());
-        let hash = hex::encode(hasher.finalize());
+        let mut mac = HmacSha256::new_from_slice(&self.key)
+            .expect("HMAC-SHA256 accepts keys of any length");
+        mac.update(kind.as_bytes());
+        mac.update(b"\n");
+        mac.update(value.as_bytes());
+        let hash = hex::encode(mac.finalize().into_bytes());
         let alias = format!("{kind}-{}", &hash[..12]);
 
         if let Ok(mut cache) = self.cache.lock() {

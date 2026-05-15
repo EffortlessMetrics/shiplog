@@ -30,6 +30,7 @@ serde_json.workspace = true
 serde_yaml.workspace = true
 url.workspace = true
 hex.workspace = true
+hmac.workspace = true
 sha2.workspace = true
 toml.workspace = true
 itertools.workspace = true
