@@ -205,7 +205,7 @@ Follow-up:
 
 Title: `feat(journal): add from-repair flow`
 
-Status: in progress
+Status: in review in [#298](https://github.com/EffortlessMetrics/shiplog/pull/298)
 
 Depends on:
 
