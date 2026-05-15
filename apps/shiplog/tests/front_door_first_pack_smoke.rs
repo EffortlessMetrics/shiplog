@@ -450,4 +450,48 @@ fn repair_loop_improves_first_packet_without_provider_mutation() {
             && quality_diff_stdout.contains("shiplog share explain manager"),
         "repair proof: runs diff should show packet quality movement after repair. stdout:\n{quality_diff_stdout}"
     );
+
+    let manager_share_assert = shiplog_cmd(tmp.path())
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args(["share", "explain", "manager", "--out", out_arg, "--latest"])
+        .assert()
+        .success();
+    let manager_share_stdout = String::from_utf8_lossy(&manager_share_assert.get_output().stdout);
+    assert!(
+        manager_share_stdout.contains("Manager profile:")
+            && manager_share_stdout.contains("Included:")
+            && manager_share_stdout.contains("Removed:")
+            && manager_share_stdout.contains("Blocked:\n- missing SHIPLOG_REDACT_KEY")
+            && manager_share_stdout.contains("shiplog share verify manager"),
+        "repair proof: manager share explain should describe blocked share posture without rendering. stdout:\n{manager_share_stdout}"
+    );
+
+    let public_share_assert = shiplog_cmd(tmp.path())
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args(["share", "explain", "public", "--out", out_arg, "--latest"])
+        .assert()
+        .success();
+    let public_share_stdout = String::from_utf8_lossy(&public_share_assert.get_output().stdout);
+    assert!(
+        public_share_stdout.contains("Public profile:")
+            && public_share_stdout.contains("Included:")
+            && public_share_stdout.contains("Removed:")
+            && public_share_stdout.contains("Blocked:\n- missing SHIPLOG_REDACT_KEY")
+            && public_share_stdout.contains("Public profile uses the strictest redaction profile.")
+            && public_share_stdout.contains("shiplog share verify public")
+            && public_share_stdout.contains("--strict"),
+        "repair proof: public share explain should describe blocked public posture without rendering. stdout:\n{public_share_stdout}"
+    );
+
+    assert!(
+        !repaired_run.join("profiles/manager/packet.md").exists()
+            && !repaired_run.join("profiles/public/packet.md").exists()
+            && !repaired_run
+                .join("profiles/manager/share.manifest.json")
+                .exists()
+            && !repaired_run
+                .join("profiles/public/share.manifest.json")
+                .exists(),
+        "repair proof: share explain must not write profile packets or manifests"
+    );
 }
