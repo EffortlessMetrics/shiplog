@@ -105,6 +105,7 @@ fn intake_report_schema_docs_describe_v1_contract() {
         "shiplog report validate --path out/<run>/intake.report.json",
         "shiplog report summarize --latest",
         "shiplog report export-agent-pack --latest --output agent-pack.json",
+        "shiplog repair plan --latest",
         "schema_version",
         "Ready for review",
         "Needs curation",

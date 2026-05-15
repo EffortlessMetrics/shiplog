@@ -18,6 +18,7 @@ shiplog report validate --latest
 shiplog report validate --path out/<run>/intake.report.json
 shiplog report summarize --latest
 shiplog report export-agent-pack --latest --output agent-pack.json
+shiplog repair plan --latest
 ```
 
 ## Compatibility
@@ -180,7 +181,8 @@ without user confirmation in future UI or agent surfaces.
 ## Repair Items
 
 `repair_items` is the machine-readable repair queue for future local UI/TUI,
-agent, and `shiplog repair` surfaces. Each item is derived from existing intake
+agent, and `shiplog repair` surfaces. `shiplog repair plan --latest` renders
+this queue from the latest report. Each item is derived from existing intake
 report receipts. Readers must not re-query providers or scrape
 `intake.report.md` to decide whether a repair is real.
 

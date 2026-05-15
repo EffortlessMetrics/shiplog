@@ -670,6 +670,11 @@ pub(super) fn dispatch() -> Result<()> {
                 export_agent_pack_command(&out, run, latest, path, output)?;
             }
         },
+        Command::Repair { cmd } => match cmd {
+            RepairCommand::Plan { out, run, latest } => {
+                repair_plan_command(&out, run, latest)?;
+            }
+        },
         Command::Merge {
             inputs,
             out,

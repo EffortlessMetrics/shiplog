@@ -16,6 +16,8 @@ use std::path::{Path, PathBuf};
 use std::process::Command as StdCommand;
 use tempfile::TempDir;
 
+type CliTestResult = Result<(), Box<dyn std::error::Error>>;
+
 fn shiplog_cmd() -> Command {
     Command::from_std(std::process::Command::new(env!("CARGO_BIN_EXE_shiplog")))
 }
@@ -6590,6 +6592,161 @@ fn report_validate_accepts_legacy_reports_without_repair_items() {
         .assert()
         .success()
         .stdout(predicate::str::contains("Report valid:"));
+}
+
+#[test]
+fn repair_plan_latest_renders_repair_items_from_latest_report() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let out = tmp.path().join("out");
+    let out_arg = out.to_string_lossy().to_string();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args(["intake", "--out", out_arg.as_str(), "--no-open"])
+        .assert()
+        .success();
+
+    shiplog_cmd()
+        .args(["repair", "plan", "--out", out_arg.as_str(), "--latest"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Repair plan:"))
+        .stdout(predicate::str::contains("Repair queue:"))
+        .stdout(predicate::str::contains("repair_"))
+        .stdout(predicate::str::contains("manual_evidence_missing"))
+        .stdout(predicate::str::contains("Action: journal_add"))
+        .stdout(predicate::str::contains("Command: shiplog journal add"))
+        .stdout(predicate::str::contains("Receipts:"));
+
+    Ok(())
+}
+
+#[test]
+fn repair_plan_latest_without_runs_prints_intake_command() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let out = tmp.path().join("missing runs");
+    let out_arg = out.to_string_lossy().to_string();
+
+    shiplog_cmd()
+        .args(["repair", "plan", "--out", out_arg.as_str(), "--latest"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "Repair plan: no latest intake report found",
+        ))
+        .stdout(predicate::str::contains(
+            "shiplog intake --last-6-months --explain",
+        ))
+        .stdout(predicate::str::contains("--out"))
+        .stdout(predicate::str::contains(out_arg));
+
+    Ok(())
+}
+
+#[test]
+fn repair_plan_latest_handles_legacy_report_without_repair_items() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let out = tmp.path().join("out");
+    let out_arg = out.to_string_lossy().to_string();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args(["intake", "--out", out_arg.as_str(), "--no-open"])
+        .assert()
+        .success();
+
+    let report_path = first_run_dir(&out).join("intake.report.json");
+    let report_text = std::fs::read_to_string(&report_path)?;
+    let mut report: serde_json::Value = serde_json::from_str(&report_text)?;
+    let Some(report_object) = report.as_object_mut() else {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "report should be an object",
+        )
+        .into());
+    };
+    report_object.remove("repair_items");
+    std::fs::write(
+        &report_path,
+        format!("{}\n", serde_json::to_string_pretty(&report)?),
+    )?;
+
+    shiplog_cmd()
+        .args(["repair", "plan", "--out", out_arg.as_str(), "--latest"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "Repair items: unavailable in this compatible v1 report.",
+        ))
+        .stdout(predicate::str::contains(
+            "shiplog intake --last-6-months --explain",
+        ))
+        .stdout(predicate::str::contains("--out"));
+
+    Ok(())
+}
+
+#[test]
+fn repair_plan_latest_handles_empty_repair_queue() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let out = tmp.path().join("out");
+    let out_arg = out.to_string_lossy().to_string();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args(["intake", "--out", out_arg.as_str(), "--no-open"])
+        .assert()
+        .success();
+
+    let report_path = first_run_dir(&out).join("intake.report.json");
+    let report_text = std::fs::read_to_string(&report_path)?;
+    let mut report: serde_json::Value = serde_json::from_str(&report_text)?;
+    report["repair_items"] = serde_json::json!([]);
+    std::fs::write(
+        &report_path,
+        format!("{}\n", serde_json::to_string_pretty(&report)?),
+    )?;
+
+    shiplog_cmd()
+        .args(["repair", "plan", "--out", out_arg.as_str(), "--latest"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Repair queue: 0 item(s)"))
+        .stdout(predicate::str::contains("No repair items found."));
+
+    Ok(())
+}
+
+#[test]
+fn repair_plan_latest_rejects_invalid_report_json() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let out = tmp.path().join("out");
+    let run = out.join("run_bad");
+    std::fs::create_dir_all(&run)?;
+    std::fs::write(run.join("ledger.events.jsonl"), "")?;
+    std::fs::write(run.join("intake.report.json"), "not json\n")?;
+    let out_arg = out.to_string_lossy().to_string();
+
+    shiplog_cmd()
+        .args(["repair", "plan", "--out", out_arg.as_str(), "--latest"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("parse"))
+        .stderr(predicate::str::contains("intake.report.json"));
+
+    Ok(())
 }
 
 #[test]

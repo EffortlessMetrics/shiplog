@@ -139,7 +139,7 @@ done_when = "Reports expose stable repair items derived from existing receipts w
 [[work_item]]
 id = "repair-plan-cli"
 title = "feat(cli): add repair plan command"
-status = "pending"
+status = "completed"
 expected_files = [
   "apps/shiplog/src/**",
   "apps/shiplog/tests/**",

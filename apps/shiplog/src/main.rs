@@ -259,6 +259,12 @@ enum Command {
         cmd: ReportCommand,
     },
 
+    /// Render repair guidance from durable intake report receipts.
+    Repair {
+        #[command(subcommand)]
+        cmd: RepairCommand,
+    },
+
     /// Merge existing run directories into one packet.
     Merge {
         /// Input run directory containing ledger.events.jsonl and coverage.manifest.json.
@@ -948,6 +954,22 @@ enum ReportCommand {
         /// Write the agent pack JSON to this path instead of stdout.
         #[arg(long)]
         output: Option<PathBuf>,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum RepairCommand {
+    /// Print a receipt-derived repair queue from the latest intake report.
+    Plan {
+        /// Output directory containing shiplog runs.
+        #[arg(long, default_value = "./out")]
+        out: PathBuf,
+        /// Run ID to read (uses most recent if not specified).
+        #[arg(long)]
+        run: Option<String>,
+        /// Read the most recent run explicitly.
+        #[arg(long)]
+        latest: bool,
     },
 }
 
@@ -3109,6 +3131,141 @@ fn export_agent_pack_command(
     }
 
     Ok(())
+}
+
+fn repair_plan_command(out_dir: &Path, run: Option<String>, latest: bool) -> Result<()> {
+    let Some(report_path) = resolve_repair_plan_report_path(out_dir, run, latest)? else {
+        println!("Repair plan: no latest intake report found");
+        println!("Out: {}", out_dir.display());
+        println!("Next:");
+        println!("  {}", intake_create_run_command_for_out(out_dir));
+        return Ok(());
+    };
+
+    let validation = validate_intake_report(&report_path)?;
+    let report_text = std::fs::read_to_string(&report_path)
+        .with_context(|| format!("read {}", report_path.display()))?;
+    let report_json: serde_json::Value = serde_json::from_str(&report_text)
+        .with_context(|| format!("parse {}", report_path.display()))?;
+
+    println!("Repair plan: {}", report_path.display());
+    println!("Run: {}", validation.run_id);
+    println!("Readiness: {}", validation.readiness);
+
+    if report_json.get("repair_items").is_none() {
+        println!("Repair items: unavailable in this compatible v1 report.");
+        println!("Next:");
+        println!("  {}", repair_plan_rerun_command(&report_json)?);
+        return Ok(());
+    }
+
+    let repair_items = json_array(&report_json, "repair_items")?;
+    println!("Repair queue: {} item(s)", repair_items.len());
+
+    if repair_items.is_empty() {
+        println!("No repair items found.");
+        return Ok(());
+    }
+
+    for (index, item) in repair_items.iter().enumerate() {
+        print_repair_plan_item(index + 1, item)?;
+    }
+
+    Ok(())
+}
+
+fn resolve_repair_plan_report_path(
+    out_dir: &Path,
+    run: Option<String>,
+    latest: bool,
+) -> Result<Option<PathBuf>> {
+    if latest && run.is_some() {
+        anyhow::bail!("use either --latest or --run, not both")
+    }
+
+    match run.as_deref() {
+        Some("latest") | None => Ok(find_latest_run_dir_for_repair_plan(out_dir)?
+            .map(|run_dir| run_dir.join("intake.report.json"))),
+        Some(run_id) => Ok(Some(out_dir.join(run_id).join("intake.report.json"))),
+    }
+}
+
+fn find_latest_run_dir_for_repair_plan(out_dir: &Path) -> Result<Option<PathBuf>> {
+    if !out_dir.exists() {
+        return Ok(None);
+    }
+
+    let mut runs: Vec<_> = std::fs::read_dir(out_dir)?
+        .filter_map(|entry| entry.ok())
+        .filter(|entry| entry.path().is_dir())
+        .filter(|entry| entry.path().join("ledger.events.jsonl").exists())
+        .collect();
+    runs.sort_by_key(|entry| std::cmp::Reverse(entry.file_name()));
+
+    Ok(runs.into_iter().next().map(|entry| entry.path()))
+}
+
+fn repair_plan_rerun_command(report_json: &serde_json::Value) -> Result<String> {
+    let config_path = PathBuf::from(string_field(report_json, "config_path")?);
+    let out_dir = PathBuf::from(string_field(report_json, "out_dir")?);
+    Ok(intake_rerun_command(
+        &config_path,
+        &out_dir,
+        intake_footer_should_include_config(&config_path),
+        !is_default_out_setting(&out_dir),
+    ))
+}
+
+fn print_repair_plan_item(index: usize, item: &serde_json::Value) -> Result<()> {
+    let repair_id = string_field(item, "repair_id")?;
+    let kind = string_field(item, "kind")?;
+    let reason = string_field(item, "reason")?;
+    let clears_when = string_field(item, "clears_when")?;
+    let action = object_field(item, "action")?;
+    let action_kind = string_field(action, "kind")?;
+
+    println!("{index}. {repair_id} [{kind}]");
+    if let Some(source_label) = item.get("source_label").and_then(|value| value.as_str()) {
+        println!("   Source: {source_label}");
+    }
+    println!("   Reason: {reason}");
+    println!("   Action: {action_kind}");
+    match optional_report_string(action, "command")? {
+        Some(command) => println!("   Command: {command}"),
+        None => println!("   Command: no safe copyable command"),
+    }
+    println!("   Clears when: {clears_when}");
+    println!(
+        "   Receipts: {}",
+        repair_receipt_labels(json_array(item, "receipt_refs")?)?.join(", ")
+    );
+
+    Ok(())
+}
+
+fn optional_report_string(value: &serde_json::Value, field: &str) -> Result<Option<String>> {
+    match value.get(field) {
+        Some(value) => {
+            let Some(value) = value.as_str() else {
+                anyhow::bail!("intake report field {field:?} must be a string")
+            };
+            Ok(Some(value.to_string()))
+        }
+        None => Ok(None),
+    }
+}
+
+fn repair_receipt_labels(receipt_refs: &[serde_json::Value]) -> Result<Vec<String>> {
+    let mut labels = Vec::new();
+    for receipt_ref in receipt_refs {
+        let field = string_field(receipt_ref, "field")?;
+        if let Some(source_key) = optional_report_string(receipt_ref, "source_key")? {
+            labels.push(format!("{field}:{source_key}"));
+        } else {
+            labels.push(field);
+        }
+    }
+    Ok(labels)
 }
 
 fn resolve_intake_report_path(
