@@ -305,7 +305,7 @@ Follow-up:
 
 Title: `test(product): prove repair loop improves first packet`
 
-Status: in progress
+Status: in review in [#300](https://github.com/EffortlessMetrics/shiplog/pull/300)
 
 Depends on:
 

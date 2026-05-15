@@ -82,6 +82,11 @@ number = 299
 title = "feat(repair): diff latest repair states"
 url = "https://github.com/EffortlessMetrics/shiplog/pull/299"
 
+[[completed_pr]]
+number = 300
+title = "test(product): prove repair loop improves first packet"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/300"
+
 [[work_item]]
 id = "repair-loop-spec"
 title = "docs(spec): define evidence repair loop contract"
