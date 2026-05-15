@@ -921,6 +921,47 @@ fn first_run_dir(out: &Path) -> PathBuf {
         .expect("expected a shiplog run directory")
 }
 
+fn run_intake_without_provider_tokens(tmp: &Path, out: &Path) {
+    shiplog_cmd()
+        .current_dir(tmp)
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args(["intake", "--out", out.to_str().unwrap(), "--no-open"])
+        .assert()
+        .success();
+}
+
+fn load_first_intake_report(out: &Path) -> (PathBuf, serde_json::Value) {
+    let report_path = first_run_dir(out).join("intake.report.json");
+    let report: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&report_path).unwrap()).unwrap();
+    (report_path, report)
+}
+
+fn first_repair_id_with_action(report: &serde_json::Value, action_kind: &str) -> String {
+    report["repair_items"]
+        .as_array()
+        .expect("repair_items should be an array")
+        .iter()
+        .find(|item| item["action"]["kind"].as_str() == Some(action_kind))
+        .and_then(|item| item["repair_id"].as_str())
+        .expect("expected repair item with action kind")
+        .to_string()
+}
+
+fn first_repair_id_without_action(report: &serde_json::Value, action_kind: &str) -> String {
+    report["repair_items"]
+        .as_array()
+        .expect("repair_items should be an array")
+        .iter()
+        .find(|item| item["action"]["kind"].as_str() != Some(action_kind))
+        .and_then(|item| item["repair_id"].as_str())
+        .expect("expected repair item with different action kind")
+        .to_string()
+}
+
 fn all_run_dirs(out: &Path) -> Vec<PathBuf> {
     let mut runs: Vec<_> = std::fs::read_dir(out)
         .unwrap()
@@ -1514,6 +1555,221 @@ fn journal_add_dry_run_does_not_write() {
         !manual_events.exists(),
         "journal add --dry-run should not create manual_events.yaml"
     );
+}
+
+#[test]
+fn journal_add_from_repair_appends_report_derived_manual_event() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let out = tmp.path().join("out");
+    let manual_events = tmp.path().join("manual_events.yaml");
+    run_intake_without_provider_tokens(tmp.path(), &out);
+    let (_, report) = load_first_intake_report(&out);
+    let repair_id = first_repair_id_with_action(&report, "journal_add");
+
+    shiplog_cmd()
+        .args([
+            "journal",
+            "add",
+            "--events",
+            manual_events.to_str().unwrap(),
+            "--out",
+            out.to_str().unwrap(),
+            "--from-repair",
+            repair_id.as_str(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Added manual event:"))
+        .stdout(predicate::str::contains(format!("Repair: {repair_id}")))
+        .stdout(predicate::str::contains(
+            "shiplog intake --last-6-months --explain",
+        ));
+
+    let file: ManualEventsFile = serde_yaml::from_str(&std::fs::read_to_string(&manual_events)?)?;
+    assert_eq!(file.events.len(), 1);
+    let entry = &file.events[0];
+    assert!(entry.id.contains(&repair_id));
+    assert_eq!(entry.title, format!("Manual evidence repair ({repair_id})"));
+    assert!(
+        entry
+            .description
+            .as_deref()
+            .unwrap_or_default()
+            .contains("Report-derived repair")
+    );
+    let window_until =
+        NaiveDate::parse_from_str(report["window"]["until"].as_str().unwrap(), "%Y-%m-%d")?;
+    assert_eq!(
+        entry.date,
+        ManualDate::Single(window_until - Duration::days(1))
+    );
+    assert!(entry.tags.contains(&"shiplog-repair".to_string()));
+    assert!(entry.tags.contains(&repair_id));
+    assert!(entry.tags.contains(&"manual_evidence_missing".to_string()));
+
+    Ok(())
+}
+
+#[test]
+fn journal_add_from_repair_rejects_missing_latest_report() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let out = tmp.path().join("missing-out");
+    let manual_events = tmp.path().join("manual_events.yaml");
+
+    shiplog_cmd()
+        .args([
+            "journal",
+            "add",
+            "--events",
+            manual_events.to_str().unwrap(),
+            "--out",
+            out.to_str().unwrap(),
+            "--from-repair",
+            "repair_001_manual_missing",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("No latest intake report found"))
+        .stderr(predicate::str::contains(
+            "shiplog intake --last-6-months --explain",
+        ));
+
+    assert!(!manual_events.exists());
+
+    Ok(())
+}
+
+#[test]
+fn journal_add_from_repair_lists_valid_ids_for_unknown_repair() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let out = tmp.path().join("out");
+    let manual_events = tmp.path().join("repair_manual_events.yaml");
+    run_intake_without_provider_tokens(tmp.path(), &out);
+    let (_, report) = load_first_intake_report(&out);
+    let valid_repair_id = first_repair_id_with_action(&report, "journal_add");
+
+    shiplog_cmd()
+        .args([
+            "journal",
+            "add",
+            "--events",
+            manual_events.to_str().unwrap(),
+            "--out",
+            out.to_str().unwrap(),
+            "--from-repair",
+            "repair_999_missing",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("unknown repair id"))
+        .stderr(predicate::str::contains("Valid repair IDs:"))
+        .stderr(predicate::str::contains(valid_repair_id));
+
+    assert!(!manual_events.exists());
+
+    Ok(())
+}
+
+#[test]
+fn journal_add_from_repair_rejects_non_journal_action() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let out = tmp.path().join("out");
+    let manual_events = tmp.path().join("repair_manual_events.yaml");
+    run_intake_without_provider_tokens(tmp.path(), &out);
+    let (_, report) = load_first_intake_report(&out);
+    let repair_id = first_repair_id_without_action(&report, "journal_add");
+
+    shiplog_cmd()
+        .args([
+            "journal",
+            "add",
+            "--events",
+            manual_events.to_str().unwrap(),
+            "--out",
+            out.to_str().unwrap(),
+            "--from-repair",
+            repair_id.as_str(),
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("uses action kind"))
+        .stderr(predicate::str::contains("not journal_add"))
+        .stderr(
+            predicate::str::contains("Safe command:").or(predicate::str::contains("Guidance:")),
+        );
+
+    assert!(!manual_events.exists());
+
+    Ok(())
+}
+
+#[test]
+fn journal_add_from_repair_rejects_legacy_report_without_repair_items() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let out = tmp.path().join("out");
+    let manual_events = tmp.path().join("repair_manual_events.yaml");
+    run_intake_without_provider_tokens(tmp.path(), &out);
+    let (report_path, mut report) = load_first_intake_report(&out);
+    report
+        .as_object_mut()
+        .expect("report should be an object")
+        .remove("repair_items");
+    std::fs::write(
+        &report_path,
+        format!("{}\n", serde_json::to_string_pretty(&report)?),
+    )?;
+
+    shiplog_cmd()
+        .args([
+            "journal",
+            "add",
+            "--events",
+            manual_events.to_str().unwrap(),
+            "--out",
+            out.to_str().unwrap(),
+            "--from-repair",
+            "repair_001_manual_evidence",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("does not include repair_items"))
+        .stderr(predicate::str::contains(
+            "shiplog intake --last-6-months --explain",
+        ));
+
+    assert!(!manual_events.exists());
+
+    Ok(())
+}
+
+#[test]
+fn journal_add_rejects_repair_lookup_flags_without_from_repair() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let out = tmp.path().join("out");
+    let manual_events = tmp.path().join("manual_events.yaml");
+
+    shiplog_cmd()
+        .args([
+            "journal",
+            "add",
+            "--events",
+            manual_events.to_str().unwrap(),
+            "--out",
+            out.to_str().unwrap(),
+            "--date",
+            "2026-05-08",
+            "--title",
+            "Normal journal entry",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "journal add --out, --run, and --latest require --from-repair",
+        ));
+
+    assert!(!manual_events.exists());
+
+    Ok(())
 }
 
 #[test]
@@ -6620,6 +6876,7 @@ fn repair_plan_latest_renders_repair_items_from_latest_report() -> CliTestResult
         .stdout(predicate::str::contains("manual_evidence_missing"))
         .stdout(predicate::str::contains("Action: journal_add"))
         .stdout(predicate::str::contains("Command: shiplog journal add"))
+        .stdout(predicate::str::contains("--from-repair"))
         .stdout(predicate::str::contains("Receipts:"));
 
     Ok(())

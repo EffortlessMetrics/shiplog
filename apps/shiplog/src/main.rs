@@ -546,6 +546,18 @@ struct JournalAddArgs {
     /// Manual events YAML file to create or append to.
     #[arg(long, default_value = MANUAL_EVENTS_FILENAME)]
     events: PathBuf,
+    /// Resolve a manual-evidence repair item from the latest intake report.
+    #[arg(long = "from-repair")]
+    from_repair: Option<String>,
+    /// Output directory containing shiplog runs for --from-repair lookup.
+    #[arg(long)]
+    out: Option<PathBuf>,
+    /// Run ID to read for --from-repair lookup (uses most recent if not specified).
+    #[arg(long)]
+    run: Option<String>,
+    /// Read the most recent run explicitly for --from-repair lookup.
+    #[arg(long)]
+    latest: bool,
     /// Stable event ID. Defaults to `manual-<date>-<slugified-title>`.
     #[arg(long)]
     id: Option<String>,
@@ -563,7 +575,7 @@ struct JournalAddArgs {
     end: Option<NaiveDate>,
     /// Factual title for the work.
     #[arg(long)]
-    title: String,
+    title: Option<String>,
     /// Optional context. Keep this factual, not performance-review prose.
     #[arg(long)]
     description: Option<String>,
@@ -5093,16 +5105,66 @@ events: []
     )
 }
 
+#[derive(Debug)]
+struct JournalRepairContext {
+    report_path: PathBuf,
+    repair_id: String,
+    kind: String,
+    reason: String,
+    clears_when: String,
+    source_label: Option<String>,
+    default_date: NaiveDate,
+    rerun_command: String,
+}
+
 fn run_journal_add(args: JournalAddArgs) -> Result<()> {
-    let date = resolve_journal_date(args.date, args.start, args.end)?;
-    let id = match args.id {
+    let repair_context = resolve_journal_repair_context(&args)?;
+    let JournalAddArgs {
+        events,
+        from_repair: _,
+        out: _,
+        run: _,
+        latest: _,
+        id,
+        event_type,
+        date,
+        start,
+        end,
+        title,
+        description,
+        workstream,
+        mut tags,
+        receipts,
+        impact,
+        dry_run,
+    } = args;
+
+    let date = if date.is_none() && start.is_none() && end.is_none() {
+        match &repair_context {
+            Some(repair) => ManualDate::Single(repair.default_date),
+            None => resolve_journal_date(date, start, end)?,
+        }
+    } else {
+        resolve_journal_date(date, start, end)?
+    };
+    let title = match optional_text_arg(title) {
+        Some(title) => title,
+        None => match &repair_context {
+            Some(repair) => journal_repair_default_title(repair),
+            None => anyhow::bail!("journal add requires --title"),
+        },
+    };
+    let id = match id {
         Some(id) => required_text_arg("--id", &id)?,
-        None => generated_journal_id(&date, &args.title),
+        None => match &repair_context {
+            Some(repair) => generated_journal_repair_id(&date, &repair.repair_id),
+            None => generated_journal_id(&date, &title),
+        },
     };
     validate_journal_id(&id)?;
 
-    let mut file = if args.events.exists() {
-        read_manual_events(&args.events)?
+    let mut file = if events.exists() {
+        read_manual_events(&events)?
     } else {
         create_empty_file()
     };
@@ -5115,29 +5177,38 @@ fn run_journal_add(args: JournalAddArgs) -> Result<()> {
     if file.events.iter().any(|entry| entry.id == id) {
         anyhow::bail!(
             "manual event id {id:?} already exists in {}; use --id for a distinct entry",
-            args.events.display()
+            events.display()
         );
+    }
+    if let Some(repair) = &repair_context {
+        tags.push("shiplog-repair".to_string());
+        tags.push(repair.repair_id.clone());
+        tags.push(repair.kind.clone());
     }
 
     let entry = ManualEventEntry {
         id,
-        event_type: args.event_type.into(),
+        event_type: event_type.into(),
         date,
-        title: required_text_arg("--title", &args.title)?,
-        description: optional_text_arg(args.description),
-        workstream: optional_text_arg(args.workstream),
-        tags: normalize_journal_tags(args.tags)?,
-        receipts: parse_journal_receipts(&args.receipts)?,
-        impact: optional_text_arg(args.impact),
+        title,
+        description: optional_text_arg(description).or_else(|| {
+            repair_context
+                .as_ref()
+                .map(journal_repair_default_description)
+        }),
+        workstream: optional_text_arg(workstream),
+        tags: normalize_journal_tags(tags)?,
+        receipts: parse_journal_receipts(&receipts)?,
+        impact: optional_text_arg(impact),
     };
 
-    if args.dry_run {
-        print_journal_entry("Would add manual event", &args.events, &entry);
+    if dry_run {
+        print_journal_entry("Would add manual event", &events, &entry);
+        print_journal_repair_context(repair_context.as_ref());
         return Ok(());
     }
 
-    if let Some(parent) = args
-        .events
+    if let Some(parent) = events
         .parent()
         .filter(|parent| !parent.as_os_str().is_empty())
     {
@@ -5146,13 +5217,147 @@ fn run_journal_add(args: JournalAddArgs) -> Result<()> {
     }
 
     file.events.push(entry.clone());
-    write_manual_events(&args.events, &file)?;
+    write_manual_events(&events, &file)?;
 
-    print_journal_entry("Added manual event", &args.events, &entry);
-    println!("Next:");
-    println!("  shiplog collect multi --last-6-months");
+    print_journal_entry("Added manual event", &events, &entry);
+    print_journal_repair_context(repair_context.as_ref());
+    if let Some(repair) = &repair_context {
+        println!("Next:");
+        println!("  {}", repair.rerun_command);
+        println!("  shiplog repair plan --latest");
+    } else {
+        println!("Next:");
+        println!("  shiplog collect multi --last-6-months");
+    }
 
     Ok(())
+}
+
+fn resolve_journal_repair_context(args: &JournalAddArgs) -> Result<Option<JournalRepairContext>> {
+    if args.from_repair.is_none() {
+        if args.out.is_some() || args.run.is_some() || args.latest {
+            anyhow::bail!("journal add --out, --run, and --latest require --from-repair");
+        }
+        return Ok(None);
+    }
+
+    let repair_id = required_text_arg(
+        "--from-repair",
+        args.from_repair.as_deref().expect("checked above"),
+    )?;
+    let out_dir = args.out.as_deref().unwrap_or_else(|| Path::new("./out"));
+    let Some(report_path) =
+        resolve_repair_plan_report_path(out_dir, args.run.clone(), args.latest)?
+    else {
+        anyhow::bail!(
+            "No latest intake report found in {}. Create one with: {}",
+            out_dir.display(),
+            intake_create_run_command_for_out(out_dir)
+        );
+    };
+
+    validate_intake_report(&report_path)?;
+    let report_text = std::fs::read_to_string(&report_path)
+        .with_context(|| format!("read {}", report_path.display()))?;
+    let report_json: serde_json::Value = serde_json::from_str(&report_text)
+        .with_context(|| format!("parse {}", report_path.display()))?;
+
+    if report_json.get("repair_items").is_none() {
+        anyhow::bail!(
+            "Latest intake report {} does not include repair_items. Rerun intake with: {}",
+            report_path.display(),
+            repair_plan_rerun_command(&report_json)?
+        );
+    }
+
+    let repair_items = json_array(&report_json, "repair_items")?;
+    let valid_ids = repair_item_ids(repair_items)?;
+    let Some(item) = repair_items.iter().find(|item| {
+        item.get("repair_id").and_then(|value| value.as_str()) == Some(repair_id.as_str())
+    }) else {
+        anyhow::bail!(
+            "unknown repair id {repair_id:?}. Valid repair IDs: {}",
+            valid_repair_id_list(&valid_ids)
+        );
+    };
+
+    let action = object_field(item, "action")?;
+    let action_kind = string_field(action, "kind")?;
+    if action_kind != "journal_add" {
+        anyhow::bail!(
+            "repair id {repair_id:?} uses action kind {action_kind:?}, not journal_add. {}",
+            non_journal_repair_guidance(action)?
+        );
+    }
+
+    Ok(Some(JournalRepairContext {
+        report_path,
+        repair_id,
+        kind: string_field(item, "kind")?,
+        reason: string_field(item, "reason")?,
+        clears_when: string_field(item, "clears_when")?,
+        source_label: optional_report_string(item, "source_label")?,
+        default_date: journal_repair_report_default_date(&report_json)?,
+        rerun_command: repair_plan_rerun_command(&report_json)?,
+    }))
+}
+
+fn repair_item_ids(repair_items: &[serde_json::Value]) -> Result<Vec<String>> {
+    repair_items
+        .iter()
+        .map(|item| string_field(item, "repair_id"))
+        .collect()
+}
+
+fn valid_repair_id_list(valid_ids: &[String]) -> String {
+    if valid_ids.is_empty() {
+        "none".to_string()
+    } else {
+        valid_ids.join(", ")
+    }
+}
+
+fn non_journal_repair_guidance(action: &serde_json::Value) -> Result<String> {
+    Ok(match optional_report_string(action, "command")? {
+        Some(command) => format!("Safe command: {command}"),
+        None => "Guidance: run `shiplog repair plan --latest` for this item.".to_string(),
+    })
+}
+
+fn journal_repair_report_default_date(report_json: &serde_json::Value) -> Result<NaiveDate> {
+    let window = object_field(report_json, "window")?;
+    let since = string_field(window, "since")?;
+    let until = string_field(window, "until")?;
+    let since = NaiveDate::parse_from_str(&since, "%Y-%m-%d")
+        .with_context(|| format!("parse intake report window.since {since:?}"))?;
+    let until = NaiveDate::parse_from_str(&until, "%Y-%m-%d")
+        .with_context(|| format!("parse intake report window.until {until:?}"))?;
+    let last_included_date = until
+        .checked_sub_signed(Duration::days(1))
+        .ok_or_else(|| anyhow::anyhow!("intake report window.until is out of supported range"))?;
+    Ok(std::cmp::max(since, last_included_date))
+}
+
+fn journal_repair_default_title(repair: &JournalRepairContext) -> String {
+    match &repair.source_label {
+        Some(source_label) => format!("{source_label} evidence repair ({})", repair.repair_id),
+        None => format!("Evidence repair ({})", repair.repair_id),
+    }
+}
+
+fn journal_repair_default_description(repair: &JournalRepairContext) -> String {
+    format!(
+        "Report-derived repair {}: {} Clears when: {}",
+        repair.repair_id, repair.reason, repair.clears_when
+    )
+}
+
+fn print_journal_repair_context(repair: Option<&JournalRepairContext>) {
+    if let Some(repair) = repair {
+        println!("Repair: {}", repair.repair_id);
+        println!("Report: {}", repair.report_path.display());
+        println!("Clears when: {}", repair.clears_when);
+    }
 }
 
 fn run_journal_list(args: JournalListArgs) -> Result<()> {
@@ -5374,12 +5579,20 @@ fn resolve_journal_date(
 }
 
 fn generated_journal_id(date: &ManualDate, title: &str) -> String {
-    let date_label = match date {
-        ManualDate::Single(date) => date.to_string(),
-        ManualDate::Range { start, end } => format!("{start}-to-{end}"),
-    };
+    let date_label = journal_date_id_label(date);
     let slug = slugify_journal_title(title);
     format!("manual-{date_label}-{slug}")
+}
+
+fn generated_journal_repair_id(date: &ManualDate, repair_id: &str) -> String {
+    format!("manual-{}-{repair_id}", journal_date_id_label(date))
+}
+
+fn journal_date_id_label(date: &ManualDate) -> String {
+    match date {
+        ManualDate::Single(date) => date.to_string(),
+        ManualDate::Range { start, end } => format!("{start}-to-{end}"),
+    }
 }
 
 fn slugify_journal_title(title: &str) -> String {

@@ -656,6 +656,11 @@ fn build_repair_items(inputs: RepairItemInputs<'_>) -> Vec<IntakeReportRepairIte
                 idx + 1,
                 repair_id_token(&draft.repair_key)
             );
+            let action_command = if draft.action_kind == "journal_add" {
+                Some(format!("shiplog journal add --from-repair {repair_id}"))
+            } else {
+                draft.action_command
+            };
             IntakeReportRepairItem {
                 repair_id,
                 repair_key: draft.repair_key,
@@ -665,7 +670,7 @@ fn build_repair_items(inputs: RepairItemInputs<'_>) -> Vec<IntakeReportRepairIte
                 reason: draft.reason,
                 action: IntakeReportRepairAction {
                     kind: draft.action_kind,
-                    command: draft.action_command,
+                    command: action_command,
                 },
                 clears_when: draft.clears_when,
                 receipt_refs: draft.receipt_refs,

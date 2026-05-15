@@ -162,7 +162,7 @@ done_when = "shiplog repair plan --latest prints copyable, safe repair guidance 
 [[work_item]]
 id = "journal-from-repair"
 title = "feat(journal): add from-repair flow"
-status = "pending"
+status = "completed"
 expected_files = [
   "apps/shiplog/src/**",
   "apps/shiplog/tests/**",
