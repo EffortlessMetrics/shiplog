@@ -365,7 +365,7 @@ out/<run_id>/
 | `config validate/explain/migrate` | Validate `shiplog.toml`, print resolved settings, or add version metadata |
 | `cache stats/inspect/clean` | Inspect and safely clean source API cache databases |
 | `identify jira/linear` | Print provider user IDs for source configuration |
-| `journal add/list/edit` | Append, inspect, and correct factual manual evidence in `manual_events.yaml` |
+| `journal add/list/edit` | Append, inspect, correct, or add factual manual evidence from a repair ID in `manual_events.yaml` |
 | `collect <source>` | Fetch events from a source and generate packet artifacts |
 | `collect multi` | Collect enabled sources from `shiplog.toml` into one merged packet |
 | `render` | Re-render packet from existing ledger and workstreams |

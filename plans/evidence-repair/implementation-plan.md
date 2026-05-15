@@ -1,8 +1,9 @@
 # Evidence Repair Loop Implementation Plan
 
-Status: active
+Status: completed
 Owner: product/cli
 Created: 2026-05-14
+Completed: 2026-05-15
 
 Related proposal:
 [`SHIPLOG-PROP-0002-evidence-repair-loop`](../../docs/proposals/SHIPLOG-PROP-0002-evidence-repair-loop.md)
@@ -10,8 +11,8 @@ Related spec:
 [`SHIPLOG-SPEC-0005-evidence-repair-loop`](../../docs/specs/SHIPLOG-SPEC-0005-evidence-repair-loop.md)
 Related ADR:
 [`SHIPLOG-ADR-0006-repair-actions-are-receipt-derived`](../../docs/adr/SHIPLOG-ADR-0006-repair-actions-are-receipt-derived.md)
-Active goal:
-[`active.toml`](../../.shiplog/goals/active.toml)
+Archived goal:
+[`2026-05-15-evidence-repair-0.8.0.toml`](../../.shiplog/goals/archive/2026-05-15-evidence-repair-0.8.0.toml)
 
 ## Purpose
 
@@ -54,6 +55,9 @@ Release checkpoint:
 - [`v0.7.0`](https://github.com/EffortlessMetrics/shiplog/releases/tag/v0.7.0)
   shipped the crate-surface contraction and made `shiplog` the intentional
   public package surface.
+- [`v0.8.0`](https://github.com/EffortlessMetrics/shiplog/releases/tag/v0.8.0)
+  shipped the Evidence Repair Loop as product behavior: repair items, repair
+  plan, journal repair, repair diff, guide, and end-to-end proof.
 
 Landed setup PRs:
 
@@ -63,6 +67,16 @@ Landed setup PRs:
   added the Evidence Repair Loop spec.
 - [#294](https://github.com/EffortlessMetrics/shiplog/pull/294):
   added the receipt-derived repair-actions ADR.
+- [#301](https://github.com/EffortlessMetrics/shiplog/pull/301):
+  prepared the `v0.8.0` release artifacts before the tag and publish steps.
+
+Closure receipt:
+
+- `v0.8.0` is tagged, published to crates.io, public on GitHub with release
+  assets, and archived in
+  [`.shiplog/goals/archive/2026-05-15-evidence-repair-0.8.0.toml`](../../.shiplog/goals/archive/2026-05-15-evidence-repair-0.8.0.toml).
+- The next lane should start with the Review-Ready Packet Quality proposal;
+  do not keep adding repair-loop work under this completed lane.
 
 ## Operating Rules
 
@@ -364,21 +378,21 @@ Follow-up:
 
 Title: `release: prepare evidence repair loop release`
 
-Status: landed in [#301](https://github.com/EffortlessMetrics/shiplog/pull/301)
+Status: shipped in [`v0.8.0`](https://github.com/EffortlessMetrics/shiplog/releases/tag/v0.8.0)
 
 Scope:
 
 - Freeze changelog/release notes for the repair-loop release.
 - Confirm `cargo install shiplog` behavior and release-install smoke still pass.
 - Validate schema docs, guide links, policy gates, and product proof.
-- Archive or roll forward the active goal only after the release ships.
+- Archive the active goal after the release ships.
 
 Expected files:
 
 - `CHANGELOG.md`
 - `docs/release/**`
 - `RELEASE_HANDOFF_0.8.0.md`
-- `.shiplog/goals/active.toml`
+- `.shiplog/goals/archive/2026-05-15-evidence-repair-0.8.0.toml`
 - `policy/publish-allowlist.toml`, if the release target marker changes
 - Cargo version files and `Cargo.lock`, if the release-prep PR bumps the
   release target
@@ -399,6 +413,8 @@ cargo xtask check-file-policy --mode blocking-allowlist
 cargo xtask check-executable-files --mode blocking-allowlist
 cargo xtask check-no-panic-family --mode blocking-allowlist
 git diff --check
+scripts/release-install-smoke.ps1 -Version v0.8.0
+cargo install shiplog --version 0.8.0 --locked --root target/release-verify/v0.8.0/cargo-install --force
 ```
 
 Rollback:
