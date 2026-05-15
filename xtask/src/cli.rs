@@ -69,6 +69,15 @@ enum Command {
     /// Verify Clippy exceptions in source vs `policy/clippy-exceptions.toml`.
     CheckClippyExceptions(FilePolicyModeArgs),
 
+    /// Regenerate public Shields endpoint badges under `badges/`.
+    Badges(CheckArgs),
+
+    /// Produce PR-scoped RIPR repo exposure evidence under `target/ripr/pr/`.
+    RiprPr(CheckArgs),
+
+    /// Produce PR-scoped RIPR review guidance under `target/ripr/review/`.
+    RiprReviewComments(CheckArgs),
+
     /// No-panic baseline commands.
     NoPanic(NoPanicArgs),
 
@@ -117,6 +126,13 @@ pub struct BaselineArgs {
     /// dedicated PR.
     #[arg(long)]
     pub reset: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct CheckArgs {
+    /// Check generated output contract/drift without updating committed files.
+    #[arg(long)]
+    pub check: bool,
 }
 
 #[derive(Debug, Args)]
@@ -276,6 +292,11 @@ impl Cli {
                 &workspace_root,
                 parse_mode(&args.mode)?,
             ),
+            Command::Badges(args) => tasks::badges::run(&workspace_root, args.check),
+            Command::RiprPr(args) => tasks::ripr::pr(&workspace_root, args.check),
+            Command::RiprReviewComments(args) => {
+                tasks::ripr::review_comments(&workspace_root, args.check)
+            }
             Command::NoPanic(np) => match np.command {
                 NoPanicCommand::Baseline(args) => {
                     tasks::no_panic::baseline(&workspace_root, args.reset)

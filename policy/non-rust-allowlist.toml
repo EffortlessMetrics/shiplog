@@ -107,6 +107,16 @@ expires = "permanent"
 # ── Release / package proof ────────────────────────────────────────────
 
 [[allow]]
+id = "non-rust-ripr-annotations"
+path = "scripts/ripr-annotations.py"
+category = "ci_tooling"
+language = "python"
+owner = "policy"
+reason = "Transforms RIPR review comments[] into non-blocking GitHub Actions warning annotations; summary_only[] stays in artifacts and step summaries."
+created = "2026-05-13"
+expires = "permanent"
+
+[[allow]]
 id = "non-rust-release-scripts-sh"
 glob = "scripts/*.sh"
 category = "release_tooling"
@@ -215,6 +225,22 @@ owner = "policy"
 reason = "JSON Schemas for shiplog persisted contracts (intake-report, agent-pack today; ci-plan and ci-actuals added in PR #142)."
 broad_glob_reason = "Schemas under contracts/schemas/ are inert JSON; per-file enumeration tracks generated artifact paths but adds no review value."
 created = "2026-05-09"
+expires = "permanent"
+
+
+[[allow]]
+id = "non-rust-generated-badge-endpoints"
+glob = "badges/*.json"
+category = "generated_badge_endpoint"
+language = "json"
+owner = "release/ci"
+surface = "docs"
+classification = "generated"
+reason = "Generated Shields endpoint JSON for public README badges."
+generated_by = "cargo xtask badges"
+covered_by = ["cargo xtask badges --check"]
+broad_glob_reason = "Only committed JSON endpoint files under badges/ are public badge surfaces; badge ownership applies uniformly."
+created = "2026-05-13"
 expires = "permanent"
 
 # ── Test fixtures and examples ─────────────────────────────────────────

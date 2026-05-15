@@ -51,6 +51,19 @@ Prints a human summary of every policy ledger: file name, status, and
 the count of top-level array-of-table entries. Useful for spot-checking
 ledger growth without opening each file.
 
+
+### `cargo xtask badges`
+
+Regenerates committed public Shields endpoint JSON under `badges/` from repo-scoped evidence. Use `cargo xtask badges --check` to regenerate into `target/xtask/badges/` and fail if committed endpoints drift. The command anchors paths at the workspace root and honors `RIPR_BIN` for local or CI tool overrides.
+
+### `cargo xtask ripr-pr`
+
+Produces diff-scoped RIPR PR exposure evidence under `target/ripr/pr/`. Use `cargo xtask ripr-pr --check` to validate that the required JSON and Markdown contract files exist and are readable.
+
+### `cargo xtask ripr-review-comments`
+
+Produces diff-scoped RIPR review guidance under `target/ripr/review/` by invoking `ripr review-comments` with explicit root, base, head, and output paths. Use `cargo xtask ripr-review-comments --check` to validate the generated comments contract.
+
 ## Override workspace root
 
 For tests / development outside the repo:
