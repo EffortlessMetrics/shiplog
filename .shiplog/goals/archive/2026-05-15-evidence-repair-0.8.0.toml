@@ -1,13 +1,17 @@
 id = "shiplog-evidence-repair-quality"
 title = "Shiplog evidence repair quality lane"
-status = "active"
+status = "completed"
 owner = "codex"
 created = "2026-05-14"
+completed = "2026-05-15"
+archived_reason = "v0.8.0 shipped; the Evidence Repair Loop is product behavior and the next lane should move to review-ready packet quality instead of extending repair plumbing."
 
 proposal = "docs/proposals/SHIPLOG-PROP-0002-evidence-repair-loop.md"
 crate_surface_archive = ".shiplog/goals/archive/2026-05-14-crate-surface-0.7.0.toml"
-release_checkpoint = "v0.7.0"
-next_release_target = "v0.8.0"
+previous_release_checkpoint = "v0.7.0"
+release_checkpoint = "v0.8.0"
+next_lane = "Review-Ready Packet Quality"
+next_lane_status = "not active; start with a proposal PR"
 
 objective = """
 Make Shiplog better after the 0.7.0 crate-surface cut: turn trustworthy
@@ -47,6 +51,54 @@ tag = "v0.7.0"
 github_release = "https://github.com/EffortlessMetrics/shiplog/releases/tag/v0.7.0"
 crates_io = "https://crates.io/crates/shiplog/0.7.0"
 meaning = "Crate boundaries are stable enough to resume product-quality work."
+
+[[released_checkpoint]]
+version = "0.8.0"
+tag = "v0.8.0"
+github_release = "https://github.com/EffortlessMetrics/shiplog/releases/tag/v0.8.0"
+crates_io = "https://crates.io/crates/shiplog/0.8.0"
+workflow_run = "https://github.com/EffortlessMetrics/shiplog/actions/runs/25934420182"
+meaning = "Evidence Repair Loop shipped as product behavior: repair items, repair plan, journal repair, repair diff, guide, and end-to-end proof."
+
+[[release_receipt]]
+kind = "tag"
+command = "git push origin v0.8.0"
+result = "v0.8.0 points at b72a5dda9e965ab7bae4381d586499424071c7dc"
+
+[[release_receipt]]
+kind = "github_release"
+command = "gh release view v0.8.0 --json tagName,isDraft,isPrerelease,publishedAt,url,assets"
+result = "Release is non-draft, non-prerelease, marked latest, and has SHA256SUMS.txt plus Linux, macOS x86_64, macOS aarch64, and Windows x86_64 assets."
+
+[[release_receipt]]
+kind = "crates_io"
+command = "cargo publish -p shiplog --locked"
+result = "Published shiplog v0.8.0 to registry crates-io."
+
+[[release_receipt]]
+kind = "release_workflow"
+command = "gh run view 25934420182 --json status,conclusion,jobs,url"
+result = "Release workflow completed successfully after rerunning a transient rust-lld dry-run failure; preflight, all platform builds, asset upload, release validation, and release integration tests passed."
+
+[[release_receipt]]
+kind = "release_asset_smoke"
+command = "scripts\\release-install-smoke.ps1 -Version v0.8.0"
+result = "Downloaded Windows release asset, verified SHA256SUMS entry, smoked binary, and passed no-network review rescue demo."
+
+[[release_receipt]]
+kind = "crates_io_install_smoke"
+command = "cargo install shiplog --version 0.8.0 --locked --root target/release-verify/v0.8.0/cargo-install --force"
+result = "Installed shiplog 0.8.0 from crates.io and smoked version/help/init/collect/render commands."
+
+[[release_receipt]]
+kind = "known_gap"
+command = "bash scripts/verify-release.sh v0.8.0"
+result = "Timed out in the local Windows bash session; equivalent GitHub-release, checksum, release-asset, crates.io-install, and binary smoke checks were verified with PowerShell-native commands."
+
+[[completed_pr]]
+number = 292
+title = "docs(goal): archive 0.7 cut and start repair lane"
+url = "https://github.com/EffortlessMetrics/shiplog/pull/292"
 
 [[completed_pr]]
 number = 293
@@ -230,7 +282,7 @@ done_when = "A product test proves first run, repair plan, manual evidence repai
 [[work_item]]
 id = "repair-loop-release-prep"
 title = "release: prepare evidence repair loop release"
-status = "in_progress"
+status = "completed"
 expected_files = [
   "Cargo.toml",
   "apps/shiplog/Cargo.toml",
@@ -241,7 +293,7 @@ expected_files = [
   "CHANGELOG.md",
   "docs/release/**",
   "RELEASE_HANDOFF_0.8.0.md",
-  ".shiplog/goals/active.toml",
+  ".shiplog/goals/archive/2026-05-15-evidence-repair-0.8.0.toml",
 ]
 commands = [
   "bash scripts/package-version-audit.sh",
