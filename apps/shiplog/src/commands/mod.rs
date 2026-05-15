@@ -674,6 +674,9 @@ pub(super) fn dispatch() -> Result<()> {
             RepairCommand::Plan { out, run, latest } => {
                 repair_plan_command(&out, run, latest)?;
             }
+            RepairCommand::Diff { out, latest } => {
+                repair_diff_command(&out, latest)?;
+            }
         },
         Command::Merge {
             inputs,

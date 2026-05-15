@@ -182,7 +182,7 @@ done_when = "Manual-evidence repair IDs can drive a safe journal add flow withou
 [[work_item]]
 id = "repair-diff"
 title = "feat(repair): compare latest repair states"
-status = "pending"
+status = "completed"
 expected_files = [
   "apps/shiplog/src/**",
   "apps/shiplog/tests/**",
