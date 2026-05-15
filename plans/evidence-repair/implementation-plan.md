@@ -258,7 +258,7 @@ Follow-up:
 
 Title: `feat(repair): diff latest repair states`
 
-Status: in progress
+Status: in review in [#299](https://github.com/EffortlessMetrics/shiplog/pull/299)
 
 Depends on:
 
