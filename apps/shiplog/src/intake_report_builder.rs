@@ -729,8 +729,14 @@ mod tests {
             &[],
             Path::new("configs/shiplog.toml"),
             Path::new("out/review packets"),
-        )
-        .expect("fallback rerun command should be present");
+        );
+        assert!(
+            command.is_some(),
+            "fallback rerun command should be present"
+        );
+        let Some(command) = command else {
+            return;
+        };
 
         assert!(command.contains("shiplog intake"));
         assert!(command.contains("--config \"configs/shiplog.toml\""));
@@ -748,8 +754,11 @@ mod tests {
             ],
             Path::new("shiplog.toml"),
             Path::new("out"),
-        )
-        .expect("existing rerun command should be reused");
+        );
+        assert!(command.is_some(), "existing rerun command should be reused");
+        let Some(command) = command else {
+            return;
+        };
 
         assert_eq!(
             command,
