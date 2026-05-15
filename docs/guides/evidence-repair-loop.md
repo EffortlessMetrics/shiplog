@@ -50,6 +50,7 @@ After adding evidence, rerun intake.
 ```bash
 shiplog intake --last-6-months --explain
 shiplog repair diff --latest
+shiplog runs diff --latest
 ```
 
 Read the diff groups this way:
@@ -68,8 +69,9 @@ shiplog open packet --latest
 ```
 
 The useful outcome is not "all warnings disappeared." The useful outcome is that
-the next packet contains more evidence, the cleared repair keys are visible, and
-any remaining repair items still point back to report receipts.
+the next packet contains more evidence, the cleared repair keys are visible,
+`runs diff` shows packet-quality movement, and any remaining repair items still
+point back to report receipts.
 
 ## Safety checks
 

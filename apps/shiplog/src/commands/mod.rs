@@ -558,6 +558,14 @@ pub(super) fn dispatch() -> Result<()> {
                 let comparison = compare_runs(&from_dir, &to_dir)?;
                 print_run_compare(&comparison);
             }
+            RunsCommand::Diff {
+                out,
+                latest,
+                from,
+                to,
+            } => {
+                run_quality_diff_command(&out, latest, from, to)?;
+            }
         },
         Command::Review { cmd, options } => match cmd {
             Some(ReviewCommand::Weekly {

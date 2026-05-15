@@ -243,6 +243,7 @@ fn evidence_repair_loop_guide_documents_report_derived_flow() {
         "shiplog repair plan --latest",
         "shiplog journal add --from-repair <repair_id>",
         "shiplog repair diff --latest",
+        "shiplog runs diff --latest",
         "shiplog open packet --latest",
         "Cleared",
         "New",
@@ -317,6 +318,14 @@ fn documented_help_commands_stay_available() {
         .success()
         .stdout(predicate::str::contains("--from-period"))
         .stdout(predicate::str::contains("--to-period"));
+
+    shiplog_cmd()
+        .args(["runs", "diff", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--latest"))
+        .stdout(predicate::str::contains("--from"))
+        .stdout(predicate::str::contains("--to"));
 
     shiplog_cmd()
         .args(["render", "--help"])
