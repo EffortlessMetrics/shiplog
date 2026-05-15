@@ -364,7 +364,7 @@ Follow-up:
 
 Title: `release: prepare evidence repair loop release`
 
-Status: in progress
+Status: landed in [#301](https://github.com/EffortlessMetrics/shiplog/pull/301)
 
 Scope:
 
