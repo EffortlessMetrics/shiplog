@@ -104,6 +104,12 @@
         "$ref": "#/$defs/repair_source"
       }
     },
+    "repair_items": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/repair_item"
+      }
+    },
     "curation_notes": {
       "$ref": "#/$defs/string_array"
     },
@@ -442,6 +448,132 @@
             },
             "commands": {
               "$ref": "#/$defs/string_array"
+            }
+          }
+        }
+      ]
+    },
+    "repair_item": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "required": [
+            "repair_id",
+            "repair_key",
+            "kind",
+            "reason",
+            "action",
+            "clears_when",
+            "receipt_refs"
+          ],
+          "properties": {
+            "repair_id": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^repair_[a-z0-9_]+$"
+            },
+            "repair_key": {
+              "type": "string",
+              "minLength": 1
+            },
+            "source_key": {
+              "$ref": "#/$defs/source_key"
+            },
+            "source_label": {
+              "type": "string",
+              "minLength": 1
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "manual_evidence_missing",
+                "source_skipped_configuration",
+                "source_freshness_stale",
+                "source_cached_only",
+                "evidence_debt_open",
+                "share_redaction_required",
+                "artifact_missing_or_unopened"
+              ]
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            },
+            "action": {
+              "$ref": "#/$defs/repair_action"
+            },
+            "clears_when": {
+              "type": "string",
+              "minLength": 1
+            },
+            "receipt_refs": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/repair_receipt_ref"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "repair_action": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "journal_add",
+                "configure_source",
+                "rerun_intake",
+                "open_artifact",
+                "no_safe_action"
+              ]
+            },
+            "command": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      ]
+    },
+    "repair_receipt_ref": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "required": [
+            "field"
+          ],
+          "properties": {
+            "field": {
+              "type": "string",
+              "enum": [
+                "source_decisions",
+                "source_freshness",
+                "repair_sources",
+                "needs_attention",
+                "evidence_debt",
+                "top_fixups",
+                "journal_suggestions",
+                "next_commands",
+                "actions",
+                "artifacts"
+              ]
+            },
+            "source_key": {
+              "$ref": "#/$defs/source_key"
             }
           }
         }

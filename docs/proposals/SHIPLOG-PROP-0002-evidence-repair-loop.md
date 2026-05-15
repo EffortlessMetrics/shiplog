@@ -60,6 +60,7 @@ guessing:
 - `source_decisions`;
 - `source_freshness`;
 - `repair_sources`;
+- `needs_attention`;
 - `evidence_debt`;
 - `journal_suggestions`;
 - `next_commands`;
@@ -166,6 +167,7 @@ Repair planning may read:
 - `source_decisions`;
 - `source_freshness`;
 - `repair_sources`;
+- `needs_attention`;
 - `evidence_debt`;
 - `journal_suggestions`;
 - `next_commands`;

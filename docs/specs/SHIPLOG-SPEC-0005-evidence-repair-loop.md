@@ -148,6 +148,7 @@ Repair planning may read only existing intake report receipts:
 - `source_decisions`;
 - `source_freshness`;
 - `repair_sources`;
+- `needs_attention`;
 - `evidence_debt`;
 - `top_fixups`;
 - `journal_suggestions`;

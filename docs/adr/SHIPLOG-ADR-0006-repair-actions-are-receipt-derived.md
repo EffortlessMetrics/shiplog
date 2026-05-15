@@ -54,6 +54,7 @@ Allowed receipt inputs are the fields named by
 - `source_decisions`;
 - `source_freshness`;
 - `repair_sources`;
+- `needs_attention`;
 - `evidence_debt`;
 - `top_fixups`;
 - `journal_suggestions`;

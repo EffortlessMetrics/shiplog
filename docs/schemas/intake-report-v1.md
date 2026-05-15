@@ -40,6 +40,7 @@ reports
 included_sources
 skipped_sources
 source_decisions
+source_freshness
 repair_sources
 curation_notes
 good
@@ -52,9 +53,9 @@ next_commands
 artifacts
 ```
 
-Current writers also include the optional top-level `actions` array. Older v1
-reports may not have it, so readers should treat it as absent rather than
-invalid when loading historical reports.
+Current writers also include optional top-level `actions` and `repair_items`
+arrays. Older v1 reports may not have them, so readers should treat either
+field as absent rather than invalid when loading historical reports.
 
 Consumers should treat display strings, paths, command strings, and ordering as
 best-effort user-facing guidance. They are stable enough to show to a user, but
@@ -175,6 +176,74 @@ thin_workstream
 `top_fixups`, `journal_suggestions`, `share_commands`, and `next_commands` are
 operator guidance. Commands should be shown as suggestions and should not be run
 without user confirmation in future UI or agent surfaces.
+
+## Repair Items
+
+`repair_items` is the machine-readable repair queue for future local UI/TUI,
+agent, and `shiplog repair` surfaces. Each item is derived from existing intake
+report receipts. Readers must not re-query providers or scrape
+`intake.report.md` to decide whether a repair is real.
+
+Each item includes:
+
+```text
+repair_id
+repair_key
+kind
+reason
+action
+clears_when
+receipt_refs
+```
+
+Source-owned repairs also include:
+
+```text
+source_key
+source_label
+```
+
+Known repair item kinds are:
+
+```text
+manual_evidence_missing
+source_skipped_configuration
+source_freshness_stale
+source_cached_only
+evidence_debt_open
+share_redaction_required
+artifact_missing_or_unopened
+```
+
+`action.kind` uses this vocabulary:
+
+```text
+journal_add
+configure_source
+rerun_intake
+open_artifact
+no_safe_action
+```
+
+`action.command` is optional. When present, it is display-and-copy guidance and
+still requires explicit user confirmation. Provider setup guidance may name an
+environment variable or config key, but it must not include secret values.
+
+`receipt_refs[].field` points at the report receipt fields that justify the
+item. Known receipt fields are:
+
+```text
+source_decisions
+source_freshness
+repair_sources
+needs_attention
+evidence_debt
+top_fixups
+journal_suggestions
+next_commands
+actions
+artifacts
+```
 
 ## Machine Actions
 
