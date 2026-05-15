@@ -95,3 +95,24 @@ owner = "release"
 reason = "Hits crates.io for publish dry-run."
 created = "2026-05-09"
 expires = "permanent"
+[[allow]]
+id = "proc-cargo-install-ripr"
+binary = "cargo"
+argv_shape = ["install", "ripr", "--locked"]
+network_reach = true
+called_by = [".github/workflows/ripr.yml", ".github/workflows/badge-endpoints.yml"]
+owner = "release/ci"
+reason = "Installs ripr for PR-scoped evidence and public badge endpoint generation."
+created = "2026-05-13"
+review_after = "2026-09-13"
+
+[[allow]]
+id = "proc-python-ripr-annotations"
+binary = "python"
+argv_shape = ["scripts/ripr-annotations.py"]
+network_reach = false
+called_by = [".github/workflows/ripr.yml"]
+owner = "release/ci"
+reason = "Emits non-blocking GitHub annotations from ripr review comments[]."
+created = "2026-05-13"
+expires = "permanent"

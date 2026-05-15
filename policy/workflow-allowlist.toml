@@ -89,14 +89,31 @@ expires = "permanent"
 [[entry]]
 path = ".github/workflows/ripr.yml"
 owner = "policy"
-reason = "ripr advisory lane. Stub in PR #153 emits target/ripr/ripr.json + .sarif on Rust-diff PRs without doing real analysis (follow-up release replaces the stub with real ripr integration). Reads ripr.toml + policy/ripr-suppressions.toml. Never blocks merge."
-permissions = ["contents:read"]
+reason = "ripr advisory lane. Runs PR-scoped exposure evidence and review guidance via `cargo xtask ripr-pr` and `cargo xtask ripr-review-comments`, uploads target/ripr/pr and target/ripr/review artifacts, and emits non-blocking changed-line annotations from comments[]. Never blocks merge."
+permissions = ["contents:read", "checks:write"]
 secrets_used = []
 external_actions = [
   "actions/checkout@v6.0.2",
+  "dtolnay/rust-toolchain@master",
+  "Swatinem/rust-cache@v2",
   "actions/upload-artifact@v7",
 ]
 created = "2026-05-10"
+expires = "permanent"
+
+[[entry]]
+path = ".github/workflows/badge-endpoints.yml"
+owner = "release/ci"
+reason = "Refreshes generated public Shields endpoint JSON under badges/ on main pushes or manual dispatch, then opens a pull request instead of pushing directly to main."
+permissions = ["contents:write", "pull-requests:write"]
+secrets_used = []
+external_actions = [
+  "actions/checkout@v6.0.2",
+  "dtolnay/rust-toolchain@master",
+  "Swatinem/rust-cache@v2",
+  "peter-evans/create-pull-request@v7",
+]
+created = "2026-05-13"
 expires = "permanent"
 
 [[entry]]

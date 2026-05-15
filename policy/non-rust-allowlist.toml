@@ -80,6 +80,40 @@ broad_glob_reason = "One handoff per release; the prefix glob keeps adding new r
 created = "2026-05-09"
 expires = "permanent"
 
+
+[[allow]]
+id = "non-rust-badge-endpoints"
+glob = "badges/*.json"
+category = "generated_badge_endpoint"
+language = "json"
+owner = "release/ci"
+reason = "Generated Shields endpoint JSON for public README badges."
+generated_by = "cargo xtask badges"
+covered_by = ["cargo xtask badges --check"]
+broad_glob_reason = "All committed JSON files under badges/ are generated public Shields endpoint surfaces."
+created = "2026-05-13"
+expires = "permanent"
+
+[[allow]]
+id = "non-rust-badge-docs"
+path = "badges/README.md"
+category = "documentation"
+language = "markdown"
+owner = "docs"
+reason = "Documents generated public badge endpoints and regeneration commands."
+created = "2026-05-13"
+expires = "permanent"
+
+[[allow]]
+id = "non-rust-ripr-annotations"
+path = "scripts/ripr-annotations.py"
+category = "ci_tooling"
+language = "python"
+owner = "release/ci"
+reason = "Converts ripr review comments[] into non-blocking GitHub workflow annotations."
+created = "2026-05-13"
+expires = "permanent"
+
 # ── CI surface ─────────────────────────────────────────────────────────
 
 [[allow]]

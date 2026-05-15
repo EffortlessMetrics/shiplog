@@ -4,14 +4,12 @@
 lane on every PR (added in PR #153) and answers a mutation-shaped question
 **without** running mutations:
 
-> **v0.5.0 status:** The lane in PR #153 ships as a **stub** — the
-> workflow, configuration, and contract artifacts (`target/ripr/ripr.json`
-> + `.sarif`) are wired so downstream tooling (PR plan, CI actuals,
-> future required-check promotion) can treat the lane as live, but the
-> stub does not perform real exposure analysis and always reports zero
-> findings. Real ripr integration is a follow-up release. The
-> doctrine, suppressions schema, severity table, and label model below
-> are forward-stable.
+> **v0.5.0 status:** The lane now shells out to `ripr` through xtask
+> wrappers and publishes diff-scoped contract artifacts under
+> `target/ripr/pr/` and `target/ripr/review/`. Those artifacts are advisory
+> PR evidence only. Public README badges are generated separately from
+> repo-scoped evidence by `cargo xtask badges`. The doctrine, suppressions
+> schema, severity table, and label model below are forward-stable.
 
 > For the behavior changed in this diff, do current tests appear to
 > expose that behavior to a meaningful test discriminator?
@@ -65,7 +63,7 @@ header (`[suppressions]`) and can be overridden per-PR via labels.
 | Base LEM | 4 |
 | Default PR? | yes |
 | Blocking | no (advisory) |
-| Outputs | `target/ripr/ripr.json`, `target/ripr/ripr.sarif`, GitHub step summary |
+| Outputs | `target/ripr/pr/repo-exposure.json`, `target/ripr/pr/repo-exposure.md`, `target/ripr/review/comments.json`, `target/ripr/review/comments.md`, GitHub step summary, non-blocking annotations |
 
 The workflow triggers on Rust diffs (paths under `apps/**`, `crates/**`,
 `xtask/**`, `Cargo.toml`, `Cargo.lock`, `ripr.toml`,

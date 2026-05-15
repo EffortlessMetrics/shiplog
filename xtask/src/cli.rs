@@ -42,6 +42,15 @@ enum Command {
     /// CI economics commands (forecast, actuals).
     Ci(CiArgs),
 
+    /// Regenerate or check public Shields badge endpoint JSON under `badges/`.
+    Badges(CheckArgs),
+
+    /// Produce or check PR-scoped RIPR exposure evidence under `target/ripr/pr/`.
+    RiprPr(CheckArgs),
+
+    /// Produce or check RIPR review guidance under `target/ripr/review/`.
+    RiprReviewComments(CheckArgs),
+
     /// Verify the non-Rust file allowlist (`policy/non-rust-allowlist.toml`).
     CheckFilePolicy(FilePolicyModeArgs),
 
@@ -95,6 +104,13 @@ enum Command {
     /// (and vice versa). Exemptions are explicit in
     /// `[actuals_exemptions].not_subscribed`.
     CheckActualsCoverage(FilePolicyModeArgs),
+}
+
+#[derive(Debug, Args)]
+pub struct CheckArgs {
+    /// Check existing generated outputs without updating committed files.
+    #[arg(long)]
+    pub check: bool,
 }
 
 #[derive(Debug, Args)]
@@ -212,6 +228,11 @@ impl Cli {
             Command::PackageBoundary => tasks::package_boundary::run(&workspace_root),
             Command::PackageVersion => tasks::package_version::run(&workspace_root),
             Command::PolicyReport => tasks::policy_report::run(&workspace_root),
+            Command::Badges(args) => tasks::badges::run(&workspace_root, args.check),
+            Command::RiprPr(args) => tasks::ripr_pr::pr(&workspace_root, args.check),
+            Command::RiprReviewComments(args) => {
+                tasks::ripr_pr::review_comments(&workspace_root, args.check)
+            }
             Command::Ci(ci) => match ci.command {
                 CiCommand::Plan(args) => tasks::ci_plan::run(tasks::ci_plan::PlanInputs {
                     workspace_root,
