@@ -259,20 +259,20 @@ workflow = ".github/workflows/mutation-testing.yml"
 labels = ["mutation", "full-ci"]
 note = "Triggered by label (mutation / full-ci), risk pack, or severe ripr finding. PR #155 wired the label trigger; the workflow's job-level if-guard accepts mutation or full-ci. Risk-pack auto-application of the mutation label is a follow-up."
 
-# ── ripr advisory (added in PR #153) ───────────────────────────────────
+# ── ripr advisory ─────────────────────────────────────────────────────
 
 [lane.ripr_advisory]
-description = "Static reachable-mutant exposure analysis on Rust diffs."
+description = "Static repo exposure and changed-line review guidance on Rust diffs."
 intent = "oracle-gap detection"
 runner = "ubuntu_24_04"
 base_lem = 4
 default_pr = true
 blocking = false
 workflow = ".github/workflows/ripr.yml"
-workflow_name = "ripr"
-job_name = "advisory"
+workflow_name = "RIPR PR Evidence"
+job_name = "ripr evidence"
 labels = ["ripr", "ripr-waive"]
-outputs = ["target/ripr/ripr.json", "target/ripr/ripr.sarif"]
+outputs = ["target/ripr/pr/repo-exposure.json", "target/ripr/pr/repo-exposure.md", "target/ripr/review/comments.json", "target/ripr/review/comments.md"]
 
 # ── Bot review lanes (advisory, external AI multiplier 4x) ─────────────
 

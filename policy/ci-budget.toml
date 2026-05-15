@@ -44,8 +44,8 @@ release_check = "release-check"
 # one workflow `if:` or listed here.
 #
 # - `ripr` / `ripr-waive`: ripr.yml is paths-driven (Rust diffs), not
-#   label-driven. Honoring these labels is part of the real ripr
-#   integration follow-up release; the v0.5.0 lane is a stub.
+#   label-driven. Label force/waive behavior remains a follow-up routing
+#   decision while the current lane emits advisory PR evidence.
 # - `release-check`: release.yml triggers on tag push / workflow_dispatch
 #   only. There is no PR-time release-check pathway today.
 # - `ci-budget-ack` / `ci-budget-override`: spend-authorization labels

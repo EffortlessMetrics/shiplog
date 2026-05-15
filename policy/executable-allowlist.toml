@@ -83,3 +83,12 @@ expires = "permanent"
 # are listed in non-rust-allowlist.toml under the `scripts/*.ps1` glob but NOT
 # here, because PowerShell scripts are invoked as `pwsh path/to/script.ps1`
 # (they don't need the executable bit; git tree mode is 100644).
+
+[[allow]]
+id = "exec-ripr-annotations"
+path = "scripts/ripr-annotations.py"
+interpreter = "python3"
+owner = "release/ci"
+reason = "CI helper emits non-blocking annotations from RIPR review-comments JSON; invoked by .github/workflows/ripr.yml."
+created = "2026-05-13"
+expires = "permanent"

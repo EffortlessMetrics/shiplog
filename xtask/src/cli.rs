@@ -95,6 +95,48 @@ enum Command {
     /// (and vice versa). Exemptions are explicit in
     /// `[actuals_exemptions].not_subscribed`.
     CheckActualsCoverage(FilePolicyModeArgs),
+
+    /// Regenerate committed public badge endpoint JSON under `badges/`.
+    Badges(BadgesArgs),
+
+    /// Produce PR-scoped RIPR repo exposure evidence under `target/ripr/pr/`.
+    RiprPr(RiprPrArgs),
+
+    /// Produce RIPR changed-line review guidance under `target/ripr/review/`.
+    RiprReviewComments(RiprReviewArgs),
+}
+
+#[derive(Debug, Args)]
+pub struct BadgesArgs {
+    /// Check committed badge endpoints for drift without updating `badges/`.
+    #[arg(long)]
+    pub check: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct RiprPrArgs {
+    /// Check existing RIPR PR artifacts instead of regenerating them.
+    #[arg(long)]
+    pub check: bool,
+
+    /// Base revision for PR diff evidence.
+    #[arg(long, env = "RIPR_BASE", default_value = "origin/main")]
+    pub base: String,
+}
+
+#[derive(Debug, Args)]
+pub struct RiprReviewArgs {
+    /// Check existing RIPR review artifacts instead of regenerating them.
+    #[arg(long)]
+    pub check: bool,
+
+    /// Base revision for changed-line review guidance.
+    #[arg(long, env = "RIPR_BASE", default_value = "origin/main")]
+    pub base: String,
+
+    /// Head revision for changed-line review guidance.
+    #[arg(long, env = "RIPR_HEAD", default_value = "HEAD")]
+    pub head: String,
 }
 
 #[derive(Debug, Args)]
@@ -295,6 +337,11 @@ impl Cli {
             }
             Command::CheckActualsCoverage(args) => {
                 tasks::check_actuals_coverage::run(&workspace_root, parse_mode(&args.mode)?)
+            }
+            Command::Badges(args) => tasks::badges::run(&workspace_root, args.check),
+            Command::RiprPr(args) => tasks::ripr::pr(&workspace_root, args.check, &args.base),
+            Command::RiprReviewComments(args) => {
+                tasks::ripr::review_comments(&workspace_root, args.check, &args.base, &args.head)
             }
         }
     }

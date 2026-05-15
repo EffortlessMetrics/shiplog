@@ -89,11 +89,13 @@ expires = "permanent"
 [[entry]]
 path = ".github/workflows/ripr.yml"
 owner = "policy"
-reason = "ripr advisory lane. Stub in PR #153 emits target/ripr/ripr.json + .sarif on Rust-diff PRs without doing real analysis (follow-up release replaces the stub with real ripr integration). Reads ripr.toml + policy/ripr-suppressions.toml. Never blocks merge."
-permissions = ["contents:read"]
+reason = "Advisory RIPR PR evidence workflow. Produces target/ripr/pr repo exposure evidence and target/ripr/review review guidance, appends guidance to the step summary, emits non-blocking annotations from comments[] only, and uploads ripr-pr/ripr-review artifacts. Never posts inline comments or blocks merge by default."
+permissions = ["contents:read", "checks:write"]
 secrets_used = []
 external_actions = [
   "actions/checkout@v6.0.2",
+  "dtolnay/rust-toolchain@stable",
+  "Swatinem/rust-cache@v2",
   "actions/upload-artifact@v7",
 ]
 created = "2026-05-10"
@@ -260,4 +262,19 @@ external_actions = [
   "EffortlessMetrics/droid-action-safe@7c1377ccbacddc95560d1570547a5baa51de01ec",
 ]
 created = "2026-05-09"
+expires = "permanent"
+
+[[entry]]
+path = ".github/workflows/badge-endpoints.yml"
+owner = "release/ci"
+reason = "Regenerates committed public Shields endpoint JSON under badges/ on main pushes or manual dispatch and opens a badge refresh PR instead of pushing directly to main."
+permissions = ["contents:write", "pull-requests:write"]
+secrets_used = []
+external_actions = [
+  "actions/checkout@v6.0.2",
+  "dtolnay/rust-toolchain@stable",
+  "Swatinem/rust-cache@v2",
+  "peter-evans/create-pull-request@v7",
+]
+created = "2026-05-13"
 expires = "permanent"
