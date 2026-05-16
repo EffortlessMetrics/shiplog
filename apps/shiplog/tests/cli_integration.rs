@@ -5056,10 +5056,10 @@ fn intake_summary_and_report_skipped_sources_mirror_skipped_decisions() {
 }
 
 #[test]
-fn intake_source_decisions_reflect_runtime_source_failures() {
+fn intake_created_git_config_outside_repo_points_to_current_repo() {
     let Some(repo) = create_local_git_repo() else {
         eprintln!(
-            "skipping intake_source_decisions_reflect_runtime_source_failures: git not available"
+            "skipping intake_created_git_config_outside_repo_points_to_current_repo: git not available"
         );
         return;
     };
@@ -5080,6 +5080,10 @@ fn intake_source_decisions_reflect_runtime_source_failures() {
             config.to_str().unwrap(),
             "--out",
             out.to_str().unwrap(),
+            "--source",
+            "git",
+            "--source",
+            "manual",
             "--no-open",
             "--explain",
         ])
@@ -5087,12 +5091,18 @@ fn intake_source_decisions_reflect_runtime_source_failures() {
         .success();
     let stdout = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
 
-    assert!(stdout.contains("Skipped:\n- GitHub: GITHUB_TOKEN not found"));
-    assert!(stdout.contains("- Local git: collect configured git source:"));
-    assert!(stdout.contains("- Local git: skipped, collect configured git source:"));
+    assert!(stdout.contains("Collected:\n- Local git: success"));
+    assert!(stdout.contains("- Local git: included, repo"));
     assert!(
-        !stdout.contains("- Local git: included, repo"),
-        "source decisions should not report Local git as included after runtime collection fails"
+        !stdout.contains("- Local git: skipped"),
+        "intake-created config should point at the current git repository when --config is outside cwd. stdout:\n{stdout}"
+    );
+
+    let normalized_repo_path = repo.path().display().to_string().replace('\\', "/");
+    let config_text = std::fs::read_to_string(&config).unwrap();
+    assert!(
+        config_text.contains(&format!("repo = \"{normalized_repo_path}\"")),
+        "intake-created git config should preserve the current repo path. config:\n{config_text}"
     );
 
     let run_dir = first_run_dir(&out);
@@ -5100,17 +5110,78 @@ fn intake_source_decisions_reflect_runtime_source_failures() {
         serde_json::from_str(&std::fs::read_to_string(run_dir.join("intake.report.json")).unwrap())
             .unwrap();
     assert!(
-        report_json["source_decisions"]
+        report_json["included_sources"]
             .as_array()
             .unwrap()
             .iter()
-            .any(|decision| decision["source_key"] == "git"
-                && decision["decision"] == "skipped"
-                && decision["reason"]
-                    .as_str()
-                    .is_some_and(|reason| reason.contains("collect configured git source"))),
-        "source_decisions should reflect runtime Local git failure"
+            .any(|source| source["source_key"] == "git"),
+        "intake-created config should collect the current git repository"
     );
+}
+
+#[test]
+fn intake_source_decisions_skip_configured_git_directory_that_is_not_repo() {
+    let tmp = TempDir::new().unwrap();
+    let not_repo = tmp.path().join("not-a-repo");
+    let config = tmp.path().join("shiplog.toml");
+    let out = tmp.path().join("out");
+    std::fs::create_dir_all(&not_repo).unwrap();
+    std::fs::write(
+        &config,
+        r#"[shiplog]
+config_version = 1
+
+[defaults]
+window = "last-6-months"
+profile = "internal"
+
+[sources.git]
+enabled = true
+repo = "./not-a-repo"
+include_merges = false
+
+[sources.manual]
+enabled = true
+events = "./manual_events.yaml"
+user = "Tester"
+"#,
+    )
+    .unwrap();
+
+    let assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args([
+            "intake",
+            "--config",
+            config.to_str().unwrap(),
+            "--out",
+            out.to_str().unwrap(),
+            "--source",
+            "git",
+            "--source",
+            "manual",
+            "--no-open",
+            "--explain",
+        ])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
+
+    assert!(stdout.contains("- Local git: skipped, repo"));
+    assert!(stdout.contains("is not a git repo"));
+    assert!(
+        !stdout.contains("collect configured git source"),
+        "non-repository git paths should be diagnosed before runtime collection. stdout:\n{stdout}"
+    );
+
+    let run_dir = first_run_dir(&out);
+    let report_json: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(run_dir.join("intake.report.json")).unwrap())
+            .unwrap();
     assert!(
         report_json["skipped_sources"]
             .as_array()
@@ -5119,8 +5190,22 @@ fn intake_source_decisions_reflect_runtime_source_failures() {
             .any(|source| source["source_key"] == "git"
                 && source["reason"]
                     .as_str()
-                    .is_some_and(|reason| reason.contains("collect configured git source"))),
-        "skipped_sources should include runtime Local git failure"
+                    .is_some_and(|reason| reason.contains("is not a git repo"))),
+        "skipped_sources should include the preflight Local git repair reason"
+    );
+
+    let source_failures: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(run_dir.join("source.failures.json")).unwrap(),
+    )
+    .unwrap();
+    assert!(
+        source_failures["failures"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|failure| failure["source"] == "git"
+                && failure["kind"] == "local_source_unavailable"),
+        "source failure receipt should classify an existing non-repo directory as local_source_unavailable"
     );
 }
 

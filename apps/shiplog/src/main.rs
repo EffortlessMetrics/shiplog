@@ -5167,7 +5167,7 @@ fn ensure_intake_config(
 
     let selected = selected_intake_sources(requested_sources);
     let source_explanations = intake_autodetect_explanations(requested_sources, &selected);
-    let config = render_init_config(&selected);
+    let config = render_intake_config(config_path, &selected);
     write_init_file(config_path, &config)?;
 
     if init_source_enabled(&selected, InitSource::Manual) {
@@ -5422,16 +5422,29 @@ fn prepare_intake_sources(
                 .filter(|path| !path.as_os_str().is_empty())
                 .map(|path| resolve_config_path(&base_dir, path))
             {
-                Some(repo) if repo.exists() => {
-                    push_intake_include(&mut plan, "git", format!("repo {} found", repo.display()));
-                }
-                Some(repo) => {
+                Some(repo) if !repo.exists() => {
                     source.enabled = false;
                     push_intake_skip(
                         &mut plan,
                         "git",
                         format!("repo {} not found", repo.display()),
                     );
+                }
+                Some(repo) => {
+                    if git2::Repository::open(&repo).is_ok() {
+                        push_intake_include(
+                            &mut plan,
+                            "git",
+                            format!("repo {} found", repo.display()),
+                        );
+                    } else {
+                        source.enabled = false;
+                        push_intake_skip(
+                            &mut plan,
+                            "git",
+                            format!("repo {} is not a git repo", repo.display()),
+                        );
+                    }
                 }
                 None => {
                     source.enabled = false;
@@ -5819,6 +5832,31 @@ fn write_init_file(path: &Path, contents: &str) -> Result<()> {
 }
 
 fn render_init_config(selected: &[InitSource]) -> String {
+    render_init_config_with_git_repo(selected, ".")
+}
+
+fn render_intake_config(config_path: &Path, selected: &[InitSource]) -> String {
+    let git_repo =
+        intake_created_git_repo_default(config_path, selected).unwrap_or_else(|| ".".to_string());
+    render_init_config_with_git_repo(selected, &git_repo)
+}
+
+fn intake_created_git_repo_default(config_path: &Path, selected: &[InitSource]) -> Option<String> {
+    if !init_source_enabled(selected, InitSource::Git) || !Path::new(".git").exists() {
+        return None;
+    }
+
+    let base_dir = config_base_dir(config_path);
+    if same_path_or_string(&base_dir, Path::new(".")) {
+        return None;
+    }
+
+    std::env::current_dir()
+        .ok()
+        .map(|path| path.display().to_string())
+}
+
+fn render_init_config_with_git_repo(selected: &[InitSource], git_repo: &str) -> String {
     let github = init_source_enabled(selected, InitSource::Github);
     let gitlab = init_source_enabled(selected, InitSource::Gitlab);
     let jira = init_source_enabled(selected, InitSource::Jira);
@@ -5826,6 +5864,7 @@ fn render_init_config(selected: &[InitSource]) -> String {
     let git = init_source_enabled(selected, InitSource::Git);
     let json = init_source_enabled(selected, InitSource::Json);
     let manual = init_source_enabled(selected, InitSource::Manual);
+    let git_repo = toml_basic_string(git_repo);
 
     format!(
         r#"# shiplog local configuration.
@@ -5877,7 +5916,7 @@ project = ""
 
 [sources.git]
 enabled = {git}
-repo = "."
+repo = {git_repo}
 author = ""
 include_merges = false
 
@@ -5895,6 +5934,11 @@ user = "Your Name"
 key_env = "SHIPLOG_REDACT_KEY"
 "#
     )
+}
+
+fn toml_basic_string(value: &str) -> String {
+    let escaped = value.replace('\\', "/").replace('"', "\\\"");
+    format!("\"{escaped}\"")
 }
 
 fn render_manual_events_template() -> String {
