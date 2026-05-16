@@ -258,7 +258,7 @@ fn install_to_first_pack_smoke() {
     // opinion of the pack).
     assert!(
         body.contains("Packet readiness: **Needs evidence**"),
-        "smoke: intake.report.md must lead with `Packet readiness: **Needs evidence**` on a cold-start with no tokens. body:\n{body}"
+        "smoke: intake.report.md must include `Packet readiness: **Needs evidence**` on a cold-start with no tokens. body:\n{body}"
     );
     assert!(
         body.contains("No events collected"),
