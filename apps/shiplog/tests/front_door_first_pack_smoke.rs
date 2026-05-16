@@ -424,7 +424,8 @@ fn repair_loop_improves_first_packet_without_provider_mutation() {
     assert!(
         repaired_packet.starts_with("# Packet Readiness\n\n")
             && repaired_packet.contains("Ready with caveats.")
-            && repaired_packet.contains("manual_only"),
+            && repaired_packet.contains("manual_only")
+            && !repaired_packet.contains("- None yet."),
         "repair proof: repaired packet should render packet readiness and manual-only evidence strength. packet:\n{repaired_packet}"
     );
     assert!(
