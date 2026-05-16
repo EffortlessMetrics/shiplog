@@ -5729,6 +5729,7 @@ fn runs_compare_summarizes_cross_run_changes_without_writing_artifacts() {
         .assert()
         .success();
     let stdout = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
+    let out_hint = format!("--out \"{}\"", tmp.path().display());
 
     assert!(stdout.contains("Compare: run_fixture -> run_all_sources"));
     assert!(stdout.contains("Events:"));
@@ -5746,7 +5747,8 @@ fn runs_compare_summarizes_cross_run_changes_without_writing_artifacts() {
     assert!(stdout.contains("Coverage:"));
     assert!(stdout.contains("- from: Complete, gaps: 0"));
     assert!(stdout.contains("- to: Complete, gaps: 0"));
-    assert!(stdout.contains("shiplog review --run run_all_sources"));
+    assert!(stdout.contains(&format!("shiplog review {out_hint}")));
+    assert!(stdout.contains("--run run_all_sources"));
 
     assert_eq!(
         from_packet_before,
@@ -5834,12 +5836,14 @@ until = "2025-07-01"
         .assert()
         .success();
     let stdout = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
+    let out_hint = format!("--out \"{}\"", tmp.path().display());
 
     assert!(stdout.contains("Compare: run_fixture -> run_period_to"));
     assert!(stdout.contains("- from: 3"));
     assert!(stdout.contains("- to: 8"));
     assert!(stdout.contains("- Added: Local git, GitLab, Jira, JSON, Linear, Manual"));
-    assert!(stdout.contains("shiplog review --run run_period_to"));
+    assert!(stdout.contains(&format!("shiplog review {out_hint}")));
+    assert!(stdout.contains("--run run_period_to"));
 }
 
 #[test]
@@ -5896,6 +5900,7 @@ fn review_latest_summarizes_run_attention_items_without_writing_artifacts() {
         .assert()
         .success();
     let stdout = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
+    let out_hint = format!("--out \"{}\"", tmp.path().display());
 
     assert!(stdout.contains("Run: run_fixture"));
     assert!(stdout.contains("Coverage:"));
@@ -5906,7 +5911,8 @@ fn review_latest_summarizes_run_attention_items_without_writing_artifacts() {
     assert!(stdout.contains("Evidence debt:"));
     assert!(stdout.contains("- No obvious evidence debt detected."));
     assert!(stdout.contains("Next:"));
-    assert!(stdout.contains("shiplog render --run run_fixture --mode scaffold"));
+    assert!(stdout.contains(&format!("shiplog render {out_hint}")));
+    assert!(stdout.contains("--run run_fixture --mode scaffold"));
 
     assert_eq!(
         packet_before,
@@ -5936,6 +5942,7 @@ fn review_weekly_summarizes_latest_run_without_writing_artifacts() {
         .assert()
         .success();
     let stdout = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
+    let out_hint = format!("--out \"{}\"", tmp.path().display());
 
     assert!(stdout.contains("Weekly review: run_fixture"));
     assert!(stdout.contains("New evidence:"));
@@ -5944,7 +5951,8 @@ fn review_weekly_summarizes_latest_run_without_writing_artifacts() {
     assert!(stdout.contains("Evidence debt:"));
     assert!(stdout.contains("- No obvious evidence debt detected."));
     assert!(stdout.contains("Next:"));
-    assert!(stdout.contains("shiplog render --run run_fixture --mode scaffold"));
+    assert!(stdout.contains(&format!("shiplog render {out_hint}")));
+    assert!(stdout.contains("--run run_fixture --mode scaffold"));
 
     assert_eq!(
         packet_before,
@@ -6503,22 +6511,25 @@ fn review_surfaces_packet_quality_evidence_debt_categories() {
         .assert()
         .success();
     let stdout = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
+    let out_hint = format!("--out \"{}\"", out.display());
 
     for needle in [
-        "[warning] no-selected-receipts",
-        "[info] thin-workstream",
-        "[warning] large-misc-workstream",
-        "[info] code-only-workstream",
-        "[info] ticket-only-workstream",
-        "[info] manual-only-workstream",
-        "[info] too-many-selected-receipts",
-        "shiplog workstreams receipts --run run_quality_debt --workstream <title>",
-        "shiplog workstreams split --run run_quality_debt",
-        "shiplog journal add --date",
-        "shiplog journal list",
+        "[warning] no-selected-receipts".to_string(),
+        "[info] thin-workstream".to_string(),
+        "[warning] large-misc-workstream".to_string(),
+        "[info] code-only-workstream".to_string(),
+        "[info] ticket-only-workstream".to_string(),
+        "[info] manual-only-workstream".to_string(),
+        "[info] too-many-selected-receipts".to_string(),
+        format!("shiplog workstreams receipts {out_hint}"),
+        "--run run_quality_debt --workstream <title>".to_string(),
+        format!("shiplog workstreams split {out_hint}"),
+        "--run run_quality_debt".to_string(),
+        "shiplog journal add --date".to_string(),
+        "shiplog journal list".to_string(),
     ] {
         assert!(
-            stdout.contains(needle),
+            stdout.contains(&needle),
             "review output should mention {needle:?}"
         );
     }
@@ -7556,7 +7567,14 @@ fn runs_diff_latest_reports_quality_without_writing() -> CliTestResult {
         .stdout(predicate::str::contains("Packet quality diff:"))
         .stdout(predicate::str::contains("manual evidence count 0 -> 1"))
         .stdout(predicate::str::contains("claim candidates 0 -> 1"))
-        .stdout(predicate::str::contains("shiplog share explain manager"));
+        .stdout(predicate::str::contains(format!(
+            "shiplog open packet --out \"{}\"",
+            out.display()
+        )))
+        .stdout(predicate::str::contains(format!(
+            "shiplog share explain manager --out \"{}\"",
+            out.display()
+        )));
     let after = file_tree_manifest(tmp.path());
 
     assert_eq!(before, after, "runs diff should not write or rewrite files");

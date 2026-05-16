@@ -556,7 +556,7 @@ pub(super) fn dispatch() -> Result<()> {
                 let from_dir = resolve_compare_run_dir(&out, &config, "from", from, from_period)?;
                 let to_dir = resolve_compare_run_dir(&out, &config, "to", to, to_period)?;
                 let comparison = compare_runs(&from_dir, &to_dir)?;
-                print_run_compare(&comparison);
+                print_run_compare(&comparison, &out);
             }
             RunsCommand::Diff {
                 out,
@@ -575,7 +575,7 @@ pub(super) fn dispatch() -> Result<()> {
                 strict,
             }) => {
                 let run_dir = resolve_render_run_dir(&out, run, latest)?;
-                print_weekly_review(&run_dir, strict)?;
+                print_weekly_review(&run_dir, &out, strict)?;
             }
             Some(ReviewCommand::Fixups {
                 out,
@@ -595,7 +595,7 @@ pub(super) fn dispatch() -> Result<()> {
                     &options.config,
                     options.period,
                 )?;
-                print_review(&run_dir, options.strict)?;
+                print_review(&run_dir, &options.out, options.strict)?;
             }
         },
         Command::Open { cmd } => match cmd {

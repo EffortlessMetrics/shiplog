@@ -908,7 +908,7 @@ mod tests {
     use chrono::TimeZone;
     use proptest::prelude::*;
     use std::io::{ErrorKind, Read, Write};
-    use std::net::{TcpListener, TcpStream};
+    use std::net::{SocketAddr, TcpListener, TcpStream};
     use std::sync::{Arc, Mutex};
     use std::thread::{self, JoinHandle};
     use std::time::{Duration as StdDuration, Instant};
@@ -1365,7 +1365,8 @@ mod tests {
             listener
                 .set_nonblocking(true)
                 .context("set fixture server nonblocking")?;
-            let base_url = format!("http://{}", listener.local_addr()?);
+            let addr = listener.local_addr()?;
+            let base_url = format!("http://{addr}");
             let requests = Arc::new(Mutex::new(Vec::new()));
             let thread_requests = Arc::clone(&requests);
             let thread_base_url = base_url.clone();
@@ -1377,6 +1378,7 @@ mod tests {
                     expected_requests,
                 )
             });
+            wait_for_recorded_fixture_server(addr)?;
 
             Ok(Self {
                 base_url,
@@ -1413,11 +1415,14 @@ mod tests {
         while fixture_request_count(&requests)? < expected_requests {
             match listener.accept() {
                 Ok((mut stream, _peer)) => {
-                    let request_line = handle_recorded_github_request(&mut stream, base_url)?;
-                    requests
-                        .lock()
-                        .map_err(|_| anyhow!("recorded fixture request log was poisoned"))?
-                        .push(request_line);
+                    if let Some(request_line) =
+                        handle_recorded_github_request(&mut stream, base_url)?
+                    {
+                        requests
+                            .lock()
+                            .map_err(|_| anyhow!("recorded fixture request log was poisoned"))?
+                            .push(request_line);
+                    }
                 }
                 Err(err) if err.kind() == ErrorKind::WouldBlock => {
                     if Instant::now() > deadline {
@@ -1435,6 +1440,33 @@ mod tests {
         Ok(())
     }
 
+    fn wait_for_recorded_fixture_server(addr: SocketAddr) -> anyhow::Result<()> {
+        let deadline = Instant::now() + StdDuration::from_secs(5);
+        loop {
+            match TcpStream::connect(addr) {
+                Ok(stream) => {
+                    drop(stream);
+                    return Ok(());
+                }
+                Err(err)
+                    if matches!(
+                        err.kind(),
+                        ErrorKind::ConnectionRefused
+                            | ErrorKind::Interrupted
+                            | ErrorKind::TimedOut
+                            | ErrorKind::WouldBlock
+                    ) =>
+                {
+                    if Instant::now() > deadline {
+                        return Err(err).context("connect recorded GitHub fixture server");
+                    }
+                    thread::sleep(StdDuration::from_millis(10));
+                }
+                Err(err) => return Err(err).context("connect recorded GitHub fixture server"),
+            }
+        }
+    }
+
     fn fixture_request_count(requests: &Arc<Mutex<Vec<String>>>) -> anyhow::Result<usize> {
         requests
             .lock()
@@ -1445,7 +1477,7 @@ mod tests {
     fn handle_recorded_github_request(
         stream: &mut TcpStream,
         base_url: &str,
-    ) -> anyhow::Result<String> {
+    ) -> anyhow::Result<Option<String>> {
         let mut buf = [0_u8; 4096];
         let mut received = Vec::new();
         loop {
@@ -1453,6 +1485,9 @@ mod tests {
                 .read(&mut buf)
                 .context("read recorded GitHub fixture request")?;
             if n == 0 {
+                if received.is_empty() {
+                    return Ok(None);
+                }
                 break;
             }
             received.extend_from_slice(&buf[..n]);
@@ -1485,7 +1520,7 @@ mod tests {
         stream
             .flush()
             .context("flush recorded GitHub fixture response")?;
-        Ok(request_line)
+        Ok(Some(request_line))
     }
 
     fn recorded_github_fixture_response(target: &str, base_url: &str) -> (&'static str, String) {
