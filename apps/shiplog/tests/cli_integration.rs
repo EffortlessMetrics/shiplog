@@ -4676,7 +4676,8 @@ user = "octo"
     assert!(stdout.contains("- Manual: success"));
     assert!(stdout.contains("Evidence debt:"));
     assert!(stdout.contains("Intake readiness:"));
-    assert!(stdout.contains("Packet readiness: Needs curation"));
+    assert!(stdout.contains("Intake status: Needs curation"));
+    assert!(stdout.contains("Packet readiness: Ready with caveats"));
     assert!(stdout.contains("- Packet rendered"));
     assert!(stdout.contains("- Review inspection completed"));
     assert!(stdout.contains("shiplog share explain manager --out"));
@@ -4765,7 +4766,8 @@ user = "octo"
     assert!(stdout.contains("Source decisions:"));
     assert!(stdout.contains("- Manual: included, manual_events.yaml found"));
     assert!(stdout.contains("Intake readiness:"));
-    assert!(stdout.contains("Packet readiness: Ready for review"));
+    assert!(stdout.contains("Intake status: Ready for review"));
+    assert!(stdout.contains("Packet readiness: Ready with caveats"));
     assert!(stdout.contains("Needs attention:\n- None"));
     assert!(stdout.contains("shiplog share explain manager --out"));
     assert!(!stdout.contains("--bundle-profile manager"));
@@ -4776,7 +4778,8 @@ user = "octo"
     assert_ledger_event_count(&run_dir, 1);
 
     let (report_md, report_json) = assert_golden_intake_report(&run_dir, "Ready for review");
-    assert!(report_md.contains("Packet readiness: **Ready for review**"));
+    assert!(report_md.contains("Intake status: **Ready for review**"));
+    assert!(report_md.contains("Packet readiness: **Ready with caveats**"));
     assert!(report_md.contains("- Manual: 1 event"));
     assert!(report_md.contains("## Share Commands"));
     assert!(report_md.contains("shiplog share manager"));
@@ -5629,7 +5632,10 @@ status = "done"
         .stdout(predicate::str::contains("- Linear: missing LINEAR_API_KEY"))
         .stdout(predicate::str::contains("Skipped sources:"))
         .stdout(predicate::str::contains("Intake readiness:"))
-        .stdout(predicate::str::contains("Packet readiness: Needs curation"))
+        .stdout(predicate::str::contains("Intake status: Needs curation"))
+        .stdout(predicate::str::contains(
+            "Packet readiness: Ready with caveats",
+        ))
         .stdout(predicate::str::contains(
             "- Jira skipped: missing JIRA_TOKEN",
         ))

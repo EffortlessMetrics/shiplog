@@ -2681,7 +2681,8 @@ fn action_risk(command: &str) -> &'static str {
 
 fn print_intake_readiness_report(report: &IntakeReport) {
     println!("Intake readiness:");
-    println!("Packet readiness: {}", report.readiness);
+    println!("Intake status: {}", report.readiness);
+    println!("Packet readiness: {}", packet_readiness_display(report));
     println!();
     println!("Good:");
     for item in &report.good {
@@ -2890,7 +2891,11 @@ fn render_intake_report_markdown(report: &IntakeReport) -> String {
     let mut out = String::new();
     out.push_str("# Review Intake Report\n\n");
     out.push_str(&format!("Run: `{}`\n\n", report.run_id));
-    out.push_str(&format!("Packet readiness: **{}**\n\n", report.readiness));
+    out.push_str(&format!("Intake status: **{}**\n\n", report.readiness));
+    out.push_str(&format!(
+        "Packet readiness: **{}**\n\n",
+        packet_readiness_display(report)
+    ));
     out.push_str(&format!(
         "Window: `{}`..`{}` ({})\n\n",
         report.window.since, report.window.until, report.window.label
@@ -3087,6 +3092,15 @@ implicitly fresh; see `## Skipped Sources` and `## Source Decisions` for the res
     }
 
     out
+}
+
+fn packet_readiness_display(report: &IntakeReport) -> String {
+    let summary = report.packet_quality.packet_readiness.summary.trim();
+    if summary.is_empty() {
+        report.readiness.clone()
+    } else {
+        summary.trim_end_matches('.').to_string()
+    }
 }
 
 const INTAKE_REPORT_SCHEMA_VERSION: u64 = 1;
