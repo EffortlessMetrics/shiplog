@@ -36,7 +36,8 @@ release approval.
   and routes visible share handoffs through read-only `share explain` commands
   without reprinting direct manager/public render actions in the machine-action
   summary; `intake.report.md` now follows the same non-duplicating window
-  display contract (#364, #365, #367, #369, #370).
+  display contract and shows read-only share explanation before render commands
+  (#364, #365, #367, #369, #370, #371).
 
 ## [0.9.0] - Unreleased candidate
 

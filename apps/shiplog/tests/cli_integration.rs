@@ -675,6 +675,7 @@ fn assert_golden_intake_report(run_dir: &Path, readiness: &str) -> (String, serd
         "## Next Commands",
         "## Evidence Debt",
         "## Top Fixups",
+        "## Share Explain Commands",
         "## Share Commands",
         "## Artifacts",
     ] {
@@ -683,6 +684,22 @@ fn assert_golden_intake_report(run_dir: &Path, readiness: &str) -> (String, serd
             "intake.report.md should contain {section:?}"
         );
     }
+    let share_explain_idx = report_md
+        .find("## Share Explain Commands")
+        .expect("intake.report.md should include share explain commands");
+    let share_render_idx = report_md
+        .find("## Share Commands")
+        .expect("intake.report.md should include share render commands");
+    assert!(
+        share_explain_idx < share_render_idx,
+        "intake.report.md should show read-only share explanation before render commands"
+    );
+    assert!(
+        report_md.contains("shiplog share explain manager")
+            && report_md.contains("shiplog share explain public")
+            && report_md.contains("Share explain commands are read-only"),
+        "intake.report.md should include read-only share explain commands"
+    );
 
     for forbidden in [
         "stable-env-key",
