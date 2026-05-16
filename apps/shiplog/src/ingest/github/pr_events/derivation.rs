@@ -38,37 +38,33 @@ pub(super) fn pr_event_id(repo_full_name: &str, number: u64) -> EventId {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::TimeZone;
+    use chrono::Duration;
 
-    fn t(y: i32, m: u32, d: u32) -> DateTime<Utc> {
-        Utc.with_ymd_and_hms(y, m, d, 0, 0, 0).unwrap()
-    }
+    const CREATED: DateTime<Utc> = DateTime::<Utc>::UNIX_EPOCH;
 
     #[test]
     fn merged_mode_prefers_merged_then_falls_back_to_created() {
-        let created = t(2025, 1, 1);
-        let merged = t(2025, 1, 5);
+        let merged = CREATED + Duration::days(5);
         assert_eq!(
-            occurred_at_for_mode("merged", created, Some(merged)),
+            occurred_at_for_mode("merged", CREATED, Some(merged)),
             merged
         );
-        assert_eq!(occurred_at_for_mode("merged", created, None), created);
+        assert_eq!(occurred_at_for_mode("merged", CREATED, None), CREATED);
     }
 
     #[test]
     fn created_mode_always_uses_created() {
-        let created = t(2025, 1, 1);
-        let merged = t(2025, 1, 5);
+        let merged = CREATED + Duration::days(5);
         assert_eq!(
-            occurred_at_for_mode("created", created, Some(merged)),
-            created
+            occurred_at_for_mode("created", CREATED, Some(merged)),
+            CREATED
         );
     }
 
     #[test]
     fn state_reflects_merge_presence() {
         assert_eq!(
-            state_from_merged_at(Some(t(2025, 1, 1))),
+            state_from_merged_at(Some(CREATED)),
             PullRequestState::Merged
         );
         assert_eq!(state_from_merged_at(None), PullRequestState::Unknown);

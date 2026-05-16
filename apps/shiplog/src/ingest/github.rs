@@ -1483,13 +1483,13 @@ mod tests {
         let body = if target.starts_with("/search/issues?")
             && target_has_query_param(target, "per_page", "1")
         {
-            include_str!("../../../tests/fixtures/github-warm-rerun/search_meta.json")
+            include_str!("../../tests/fixtures/github-warm-rerun/search_meta.json")
         } else if target.starts_with("/search/issues?")
             && target_has_query_param(target, "per_page", "100")
         {
-            include_str!("../../../tests/fixtures/github-warm-rerun/search_items.json")
+            include_str!("../../tests/fixtures/github-warm-rerun/search_items.json")
         } else if target == "/repos/acme/widgets/pulls/1" {
-            include_str!("../../../tests/fixtures/github-warm-rerun/pr_details.json")
+            include_str!("../../tests/fixtures/github-warm-rerun/pr_details.json")
         } else {
             r#"{"message":"unexpected recorded fixture request"}"#
         };
