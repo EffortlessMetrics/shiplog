@@ -8130,7 +8130,20 @@ fn repair_diff_latest_shows_cleared_new_still_open_and_changed_items() -> CliTes
         .stdout(predicate::str::contains("Reason: old reason -> new reason"))
         .stdout(predicate::str::contains(
             "Clears when: old clear condition -> new clear condition",
-        ));
+        ))
+        .stdout(predicate::str::contains("Next:"))
+        .stdout(predicate::str::contains(format!(
+            "shiplog runs diff --out \"{}\" --latest",
+            out.display()
+        )))
+        .stdout(predicate::str::contains(format!(
+            "shiplog open packet --out \"{}\" --run run_901_new",
+            out.display()
+        )))
+        .stdout(predicate::str::contains(format!(
+            "shiplog share explain manager --out \"{}\" --run run_901_new",
+            out.display()
+        )));
     let after = file_tree_manifest(tmp.path());
 
     assert_eq!(

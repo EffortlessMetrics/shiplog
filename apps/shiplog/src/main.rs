@@ -3548,6 +3548,19 @@ fn repair_diff_command(out_dir: &Path, latest: bool) -> Result<()> {
         println!("No repair state changes.");
     }
 
+    let out_arg = quote_cli_value(&out_dir.display().to_string());
+    println!();
+    println!("Next:");
+    println!("1. shiplog runs diff --out {out_arg} --latest");
+    println!(
+        "2. shiplog open packet --out {out_arg} --run {}",
+        newer.run_id
+    );
+    println!(
+        "3. shiplog share explain manager --out {out_arg} --run {}",
+        newer.run_id
+    );
+
     Ok(())
 }
 
