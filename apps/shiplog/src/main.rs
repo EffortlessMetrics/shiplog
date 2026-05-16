@@ -13882,19 +13882,34 @@ fn open_existing_path(path: &Path, label: &str, next_step: &str, print_path: boo
 
 fn open_or_print_path(path: &Path, print_path: bool) -> Result<()> {
     let display_path = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+    let display_label = display_path_for_cli(&display_path);
 
     if print_path {
-        println!("{}", display_path.display());
+        println!("{display_label}");
         return Ok(());
     }
 
     if try_open_path(&display_path) {
-        println!("Opened: {}", display_path.display());
+        println!("Opened: {display_label}");
     } else {
-        println!("{}", display_path.display());
+        println!("{display_label}");
     }
 
     Ok(())
+}
+
+fn display_path_for_cli(path: &Path) -> String {
+    strip_windows_verbatim_prefix(&path.display().to_string())
+}
+
+fn strip_windows_verbatim_prefix(path: &str) -> String {
+    if let Some(rest) = path.strip_prefix(r"\\?\UNC\") {
+        format!(r"\\{rest}")
+    } else if let Some(rest) = path.strip_prefix(r"\\?\") {
+        rest.to_string()
+    } else {
+        path.to_string()
+    }
 }
 
 fn try_open_path(path: &Path) -> bool {

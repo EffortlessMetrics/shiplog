@@ -6888,7 +6888,8 @@ fn open_packet_latest_prints_packet_path_when_forced() {
         .assert()
         .success()
         .stdout(predicate::str::contains("run_fixture"))
-        .stdout(predicate::str::contains("packet.md"));
+        .stdout(predicate::str::contains("packet.md"))
+        .stdout(predicate::str::contains("\\\\?\\").not());
 }
 
 #[test]
