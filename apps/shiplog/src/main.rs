@@ -14174,7 +14174,7 @@ fn normalized_source_key(source: &str) -> String {
     match source
         .trim()
         .to_ascii_lowercase()
-        .replace('-', "_")
+        .replace(['-', ' '], "_")
         .as_str()
     {
         "json_import" | "jsonimport" => "json".to_string(),
@@ -14550,6 +14550,11 @@ mod tests {
             (
                 "git",
                 "current directory is not a git repo",
+                IntakeRepairKind::LocalSourceUnavailable,
+            ),
+            (
+                "Local git",
+                "repo /tmp/not-a-repo is not a git repo",
                 IntakeRepairKind::LocalSourceUnavailable,
             ),
             (
