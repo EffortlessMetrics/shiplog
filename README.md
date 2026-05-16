@@ -275,6 +275,8 @@ shiplog journal edit --id manual-2026-05-08-debugged-customer-import-incident \
 
 `shiplog review` suggests a copy-paste `journal add` command when a broad
 workstream has implementation receipts but no manual outcome note.
+When a run has an intake report, the suggested command targets the configured
+`[sources.manual].events` file instead of assuming `./manual_events.yaml`.
 `journal edit` replaces only the fields you pass; repeated `--tag` or
 `--receipt` values replace those lists for the selected entry.
 `shiplog review fixups` narrows the output to the top read-only curation

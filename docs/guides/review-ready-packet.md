@@ -68,9 +68,11 @@ shiplog repair plan --out "$OUT" --latest
 shiplog journal add --from-repair <repair_id> --out "$OUT" --latest
 ```
 
-This writes `manual_events.yaml`. It does not mutate GitHub, Jira, Linear,
-GitLab, or any provider record. Replace generated placeholder context with what
-actually happened before relying on the packet.
+This writes the configured manual evidence file: `manual_events.yaml` for the
+default scaffold, or the path from `[sources.manual].events` when your config
+points somewhere else. It does not mutate GitHub, Jira, Linear, GitLab, or any
+provider record. Replace generated placeholder context with what actually
+happened before relying on the packet.
 
 ## Rerun and compare
 
