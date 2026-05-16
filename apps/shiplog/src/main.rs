@@ -39,7 +39,7 @@ use shiplog::workstreams::{RepoClusterer, WORKSTREAM_RECEIPT_RENDER_LIMIT};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fs::File;
 use std::io::Read;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 mod intake_report_builder;
 use intake_report_builder::build_intake_report;
 
@@ -5927,6 +5927,7 @@ events: []
 #[derive(Debug)]
 struct JournalRepairContext {
     report_path: PathBuf,
+    manual_events_path: Option<PathBuf>,
     repair_id: String,
     kind: String,
     reason: String,
@@ -5937,7 +5938,16 @@ struct JournalRepairContext {
 }
 
 fn run_journal_add(args: JournalAddArgs) -> Result<()> {
+    let mut args = args;
     let repair_context = resolve_journal_repair_context(&args)?;
+    if args.from_repair.is_some() && args.events == PathBuf::from(MANUAL_EVENTS_FILENAME) {
+        if let Some(events) = repair_context
+            .as_ref()
+            .and_then(|repair| repair.manual_events_path.clone())
+        {
+            args.events = events;
+        }
+    }
     let JournalAddArgs {
         events,
         from_repair: _,
@@ -6108,6 +6118,7 @@ fn resolve_journal_repair_context(args: &JournalAddArgs) -> Result<Option<Journa
 
     Ok(Some(JournalRepairContext {
         report_path,
+        manual_events_path: journal_repair_manual_events_path(&report_json),
         repair_id,
         kind: string_field(item, "kind")?,
         reason: string_field(item, "reason")?,
@@ -6116,6 +6127,35 @@ fn resolve_journal_repair_context(args: &JournalAddArgs) -> Result<Option<Journa
         default_date: journal_repair_report_default_date(&report_json)?,
         rerun_command: repair_plan_rerun_command(&report_json)?,
     }))
+}
+
+fn journal_repair_manual_events_path(report_json: &serde_json::Value) -> Option<PathBuf> {
+    let config_path = PathBuf::from(report_json.get("config_path")?.as_str()?);
+    let config = load_shiplog_config(&config_path).ok()?;
+    let manual = config.sources.manual.as_ref()?;
+    if !manual.enabled {
+        return None;
+    }
+    let events = manual.events.as_ref()?;
+    Some(clean_config_path(&resolve_config_path(
+        &config_base_dir(&config_path),
+        events,
+    )))
+}
+
+fn clean_config_path(path: &Path) -> PathBuf {
+    let mut cleaned = PathBuf::new();
+    for component in path.components() {
+        match component {
+            Component::CurDir => {}
+            _ => cleaned.push(component.as_os_str()),
+        }
+    }
+    if cleaned.as_os_str().is_empty() {
+        path.to_path_buf()
+    } else {
+        cleaned
+    }
 }
 
 fn repair_item_ids(repair_items: &[serde_json::Value]) -> Result<Vec<String>> {
@@ -6172,6 +6212,9 @@ fn print_journal_repair_context(repair: Option<&JournalRepairContext>) {
     if let Some(repair) = repair {
         println!("Repair: {}", repair.repair_id);
         println!("Report: {}", repair.report_path.display());
+        if let Some(events) = &repair.manual_events_path {
+            println!("Manual events: {}", events.display());
+        }
         println!("Clears when: {}", repair.clears_when);
     }
 }

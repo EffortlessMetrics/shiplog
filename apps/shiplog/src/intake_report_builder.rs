@@ -1180,7 +1180,7 @@ fn build_repair_items(inputs: RepairItemInputs<'_>) -> Vec<IntakeReportRepairIte
                 repair_id_token(&draft.repair_key)
             );
             let action_command = if draft.action_kind == "journal_add" {
-                Some(format!("shiplog journal add --from-repair {repair_id}"))
+                Some(journal_add_repair_command(&repair_id, out_dir))
             } else {
                 draft.action_command
             };
@@ -1245,6 +1245,13 @@ fn repair_id_token(repair_key: &str) -> String {
     } else {
         token
     }
+}
+
+fn journal_add_repair_command(repair_id: &str, out_dir: &Path) -> String {
+    format!(
+        "shiplog journal add --from-repair {repair_id} --out {} --latest",
+        quote_cli_value(&out_dir.display().to_string())
+    )
 }
 
 #[cfg(test)]
