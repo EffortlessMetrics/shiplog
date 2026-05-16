@@ -4799,6 +4799,75 @@ fn intake_summary_and_report_skipped_sources_mirror_skipped_decisions() {
 }
 
 #[test]
+fn intake_source_decisions_reflect_runtime_source_failures() {
+    let Some(repo) = create_local_git_repo() else {
+        eprintln!(
+            "skipping intake_source_decisions_reflect_runtime_source_failures: git not available"
+        );
+        return;
+    };
+    let scratch = repo.path().join("scratch");
+    std::fs::create_dir_all(&scratch).unwrap();
+    let config = scratch.join("shiplog.toml");
+    let out = scratch.join("out");
+
+    let assert = shiplog_cmd()
+        .current_dir(repo.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args([
+            "intake",
+            "--config",
+            config.to_str().unwrap(),
+            "--out",
+            out.to_str().unwrap(),
+            "--no-open",
+            "--explain",
+        ])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
+
+    assert!(stdout.contains("Skipped:\n- GitHub: GITHUB_TOKEN not found"));
+    assert!(stdout.contains("- Local git: collect configured git source:"));
+    assert!(stdout.contains("- Local git: skipped, collect configured git source:"));
+    assert!(
+        !stdout.contains("- Local git: included, repo"),
+        "source decisions should not report Local git as included after runtime collection fails"
+    );
+
+    let run_dir = first_run_dir(&out);
+    let report_json: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(run_dir.join("intake.report.json")).unwrap())
+            .unwrap();
+    assert!(
+        report_json["source_decisions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|decision| decision["source_key"] == "git"
+                && decision["decision"] == "skipped"
+                && decision["reason"]
+                    .as_str()
+                    .is_some_and(|reason| reason.contains("collect configured git source"))),
+        "source_decisions should reflect runtime Local git failure"
+    );
+    assert!(
+        report_json["skipped_sources"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|source| source["source_key"] == "git"
+                && source["reason"]
+                    .as_str()
+                    .is_some_and(|reason| reason.contains("collect configured git source"))),
+        "skipped_sources should include runtime Local git failure"
+    );
+}
+
+#[test]
 fn golden_intake_manager_share_missing_key_fails_closed() {
     let tmp = TempDir::new().unwrap();
     let out = tmp.path().join("out");

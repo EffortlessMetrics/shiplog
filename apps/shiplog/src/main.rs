@@ -2410,7 +2410,7 @@ fn run_intake(args: IntakeArgs) -> Result<()> {
     print_intake_skipped_sources(&report.skipped_sources);
     if args.explain {
         println!();
-        print_intake_explanations(&intake_plan.explanations);
+        print_intake_source_decisions(&report.source_decisions);
     }
     println!();
 
@@ -4742,29 +4742,56 @@ fn ensure_no_secret_sentinels(label: &str, text: &str) -> Result<()> {
 
 fn intake_source_decision_reports(
     explanations: &[IntakeSourceExplanation],
+    failures: &[ConfiguredSourceFailure],
 ) -> Vec<IntakeReportSourceDecision> {
-    explanations
-        .iter()
-        .map(|explanation| {
-            let identity = intake_report_source_identity(&explanation.name);
-            let hint = intake_source_hint(explanation);
-            let (hint_label, hint_lines) = hint
-                .map(|hint| (Some(hint.label.to_string()), hint.lines))
-                .unwrap_or((None, Vec::new()));
-            IntakeReportSourceDecision {
-                source: identity.source,
-                source_key: identity.source_key,
-                source_label: identity.source_label,
-                decision: match explanation.decision {
-                    IntakeSourceDecision::Included => "included".to_string(),
-                    IntakeSourceDecision::Skipped => "skipped".to_string(),
-                },
-                reason: explanation.reason.clone(),
-                hint_label,
-                hint_lines,
-            }
-        })
-        .collect()
+    let mut seen = BTreeSet::new();
+    let mut decisions = Vec::new();
+
+    for failure in failures {
+        push_intake_source_decision_report(
+            &mut decisions,
+            &mut seen,
+            &IntakeSourceExplanation {
+                name: failure.name.clone(),
+                decision: IntakeSourceDecision::Skipped,
+                reason: failure.error.clone(),
+            },
+        );
+    }
+
+    for explanation in explanations {
+        push_intake_source_decision_report(&mut decisions, &mut seen, explanation);
+    }
+
+    decisions
+}
+
+fn push_intake_source_decision_report(
+    decisions: &mut Vec<IntakeReportSourceDecision>,
+    seen: &mut BTreeSet<String>,
+    explanation: &IntakeSourceExplanation,
+) {
+    let identity = intake_report_source_identity(&explanation.name);
+    if !seen.insert(identity.source_key.clone()) {
+        return;
+    }
+
+    let hint = intake_source_hint(explanation);
+    let (hint_label, hint_lines) = hint
+        .map(|hint| (Some(hint.label.to_string()), hint.lines))
+        .unwrap_or((None, Vec::new()));
+    decisions.push(IntakeReportSourceDecision {
+        source: identity.source,
+        source_key: identity.source_key,
+        source_label: identity.source_label,
+        decision: match explanation.decision {
+            IntakeSourceDecision::Included => "included".to_string(),
+            IntakeSourceDecision::Skipped => "skipped".to_string(),
+        },
+        reason: explanation.reason.clone(),
+        hint_label,
+        hint_lines,
+    });
 }
 
 fn build_source_freshness_report(
@@ -5522,27 +5549,21 @@ fn push_intake_explanation(
     });
 }
 
-fn print_intake_explanations(explanations: &[IntakeSourceExplanation]) {
+fn print_intake_source_decisions(decisions: &[IntakeReportSourceDecision]) {
     println!("Source decisions:");
-    if explanations.is_empty() {
+    if decisions.is_empty() {
         println!("- None");
         return;
     }
 
-    for explanation in explanations {
-        let decision = match explanation.decision {
-            IntakeSourceDecision::Included => "included",
-            IntakeSourceDecision::Skipped => "skipped",
-        };
+    for decision in decisions {
         println!(
             "- {}: {}, {}",
-            display_source_label(&explanation.name),
-            decision,
-            explanation.reason
+            decision.source_label, decision.decision, decision.reason
         );
-        if let Some(hint) = intake_source_hint(explanation) {
-            println!("  {}:", hint.label);
-            for line in hint.lines {
+        if let Some(label) = &decision.hint_label {
+            println!("  {label}:");
+            for line in &decision.hint_lines {
                 println!("    {line}");
             }
         }

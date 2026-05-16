@@ -101,7 +101,7 @@ pub(crate) fn build_intake_report(
         },
         included_sources,
         skipped_sources: skipped_sources_report,
-        source_decisions: intake_source_decision_reports(explanations),
+        source_decisions: intake_source_decision_reports(explanations, &result.configured.failures),
         source_freshness,
         repair_sources,
         repair_items,
