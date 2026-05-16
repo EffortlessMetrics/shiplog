@@ -3103,6 +3103,15 @@ fn packet_readiness_display(report: &IntakeReport) -> String {
     }
 }
 
+fn packet_readiness_display_from_json(report: &serde_json::Value) -> Option<String> {
+    report
+        .pointer("/packet_quality/packet_readiness/summary")
+        .and_then(|summary| summary.as_str())
+        .map(str::trim)
+        .filter(|summary| !summary.is_empty())
+        .map(|summary| summary.trim_end_matches('.').to_string())
+}
+
 const INTAKE_REPORT_SCHEMA_VERSION: u64 = 1;
 const INTAKE_REPORT_REQUIRED_FIELDS: &[&str] = &[
     "schema_version",
@@ -3278,7 +3287,14 @@ fn validate_intake_report_command(
     println!("Report valid: {}", report_path.display());
     println!("Schema: v{}", validation.schema_version);
     println!("Run: {}", validation.run_id);
-    println!("Readiness: {}", validation.readiness);
+    println!("Intake status: {}", validation.readiness);
+    let report_text = std::fs::read_to_string(&report_path)
+        .with_context(|| format!("read {}", report_path.display()))?;
+    let report_json: serde_json::Value = serde_json::from_str(&report_text)
+        .with_context(|| format!("parse {}", report_path.display()))?;
+    if let Some(readiness) = packet_readiness_display_from_json(&report_json) {
+        println!("Packet readiness: {readiness}");
+    }
     println!("Artifacts: {} checked", validation.artifacts_checked);
     println!("Markdown: {}", validation.markdown_path.display());
 
@@ -3315,7 +3331,10 @@ fn summarize_intake_report_command(
 
     println!("Report summary: {}", report_path.display());
     println!("Run: {}", validation.run_id);
-    println!("Readiness: {}", validation.readiness);
+    println!("Intake status: {}", validation.readiness);
+    if let Some(readiness) = packet_readiness_display_from_json(&report_json) {
+        println!("Packet readiness: {readiness}");
+    }
     println!("Window: {window_label} ({window_since}..{window_until})");
     println!(
         "Sources: {} included, {} skipped",
@@ -3473,7 +3492,10 @@ fn repair_plan_command(out_dir: &Path, run: Option<String>, latest: bool) -> Res
 
     println!("Repair plan: {}", report_path.display());
     println!("Run: {}", validation.run_id);
-    println!("Readiness: {}", validation.readiness);
+    println!("Intake status: {}", validation.readiness);
+    if let Some(readiness) = packet_readiness_display_from_json(&report_json) {
+        println!("Packet readiness: {readiness}");
+    }
 
     if report_json.get("repair_items").is_none() {
         println!("Repair items: unavailable in this compatible v1 report.");

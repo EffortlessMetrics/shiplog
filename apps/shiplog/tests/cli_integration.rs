@@ -7544,7 +7544,8 @@ fn report_validate_accepts_latest_and_direct_path() {
         .success()
         .stdout(predicate::str::contains("Report valid:"))
         .stdout(predicate::str::contains("Schema: v1"))
-        .stdout(predicate::str::contains("Readiness:"))
+        .stdout(predicate::str::contains("Intake status:"))
+        .stdout(predicate::str::contains("Packet readiness:"))
         .stdout(predicate::str::contains("Artifacts:"));
 
     shiplog_cmd()
@@ -7863,6 +7864,8 @@ fn repair_plan_latest_renders_repair_items_from_latest_report() -> CliTestResult
         .assert()
         .success()
         .stdout(predicate::str::contains("Repair plan:"))
+        .stdout(predicate::str::contains("Intake status:"))
+        .stdout(predicate::str::contains("Packet readiness:"))
         .stdout(predicate::str::contains("Repair queue:"))
         .stdout(predicate::str::contains("repair_"))
         .stdout(predicate::str::contains("manual_evidence_missing"))
@@ -7953,6 +7956,7 @@ fn repair_plan_latest_handles_legacy_report_without_repair_items() -> CliTestRes
         .into());
     };
     report_object.remove("repair_items");
+    report_object.remove("packet_quality");
     std::fs::write(
         &report_path,
         format!("{}\n", serde_json::to_string_pretty(&report)?),
@@ -7962,6 +7966,8 @@ fn repair_plan_latest_handles_legacy_report_without_repair_items() -> CliTestRes
         .args(["repair", "plan", "--out", out_arg.as_str(), "--latest"])
         .assert()
         .success()
+        .stdout(predicate::str::contains("Intake status:"))
+        .stdout(predicate::str::contains("Packet readiness:").not())
         .stdout(predicate::str::contains(
             "Repair items: unavailable in this compatible v1 report.",
         ))
@@ -8937,7 +8943,8 @@ fn report_summarize_prints_operator_view_without_writing() {
         .assert()
         .success()
         .stdout(predicate::str::contains("Report summary:"))
-        .stdout(predicate::str::contains("Readiness:"))
+        .stdout(predicate::str::contains("Intake status:"))
+        .stdout(predicate::str::contains("Packet readiness:"))
         .stdout(predicate::str::contains("Sources:"))
         .stdout(predicate::str::contains("Evidence debt:"))
         .stdout(predicate::str::contains("Top repairs:"))
