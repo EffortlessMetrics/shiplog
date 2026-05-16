@@ -5,7 +5,7 @@
 //! `import`, and `run` commands over the workspace engine and adapter crates.
 
 use anyhow::{Context, Result};
-use chrono::{DateTime, Datelike, Duration, Months, NaiveDate, Utc};
+use chrono::{DateTime, Duration, NaiveDate, Utc};
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use regex::{Regex, RegexBuilder};
 use reqwest::blocking::Client;
@@ -40,7 +40,14 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
+mod cli;
 mod intake_report_builder;
+#[cfg(test)]
+use cli::date_window::resolve_date_window_for_today;
+use cli::date_window::{
+    DateArgs, ResolvedWindow, WindowLabel, checked_window, resolve_date_window,
+};
+use cli::redaction_key::{RedactionKey, RedactionKeySource, resolve_redaction_key};
 use intake_report_builder::build_intake_report;
 
 #[derive(Parser, Debug)]
@@ -1544,25 +1551,6 @@ enum Source {
     },
 }
 
-#[derive(Args, Debug, Clone, Default)]
-struct DateArgs {
-    /// Start date (inclusive), YYYY-MM-DD.
-    #[arg(long)]
-    since: Option<NaiveDate>,
-    /// End date (exclusive), YYYY-MM-DD.
-    #[arg(long)]
-    until: Option<NaiveDate>,
-    /// Use the last six months, ending today.
-    #[arg(long)]
-    last_6_months: bool,
-    /// Use the previous calendar quarter.
-    #[arg(long)]
-    last_quarter: bool,
-    /// Use a calendar year.
-    #[arg(long)]
-    year: Option<i32>,
-}
-
 #[derive(Args, Debug, Clone)]
 struct IntakeArgs {
     /// Path to shiplog.toml. Created with rescue-mode defaults if missing.
@@ -1601,22 +1589,6 @@ struct ConfigWindowArgs {
     /// Use a named `periods.<name>` window from shiplog.toml.
     #[arg(long)]
     period: Option<String>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct ResolvedWindow {
-    since: NaiveDate,
-    until: NaiveDate,
-    label: WindowLabel,
-    period: Option<String>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum WindowLabel {
-    Explicit,
-    LastSixMonths,
-    LastQuarter,
-    Year(i32),
 }
 
 const CONFIG_FILENAME: &str = "shiplog.toml";
@@ -2095,205 +2067,6 @@ struct PriorCuration {
     source_path: PathBuf,
     destination_path: PathBuf,
     copied: bool,
-}
-
-#[derive(Debug, Clone)]
-struct RedactionKey {
-    key: Option<String>,
-    source: RedactionKeySource,
-}
-
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
-enum RedactionKeySource {
-    Explicit,
-    Env,
-    None,
-}
-
-impl RedactionKeySource {
-    fn as_str(self) -> &'static str {
-        match self {
-            Self::Explicit => "explicit",
-            Self::Env => "env",
-            Self::None => "none",
-        }
-    }
-}
-
-impl RedactionKey {
-    fn resolve(redact_key: Option<String>, bundle_profile: &BundleProfile) -> Result<Self> {
-        Self::resolve_with_env(redact_key, bundle_profile, "SHIPLOG_REDACT_KEY")
-    }
-
-    fn resolve_for_share(
-        redact_key: Option<String>,
-        bundle_profile: &BundleProfile,
-    ) -> Result<Self> {
-        let key_env = "SHIPLOG_REDACT_KEY";
-        let (key, source) = resolve_redaction_key(redact_key, key_env);
-        if key.is_none() {
-            core::hint::cold_path();
-            anyhow::bail!(share_command_key_error(bundle_profile, key_env));
-        }
-        Ok(Self { key, source })
-    }
-
-    fn resolve_with_env(
-        redact_key: Option<String>,
-        bundle_profile: &BundleProfile,
-        key_env: &str,
-    ) -> Result<Self> {
-        let (key, source) = resolve_redaction_key(redact_key, key_env);
-        if key.is_none() && !matches!(bundle_profile, BundleProfile::Internal) {
-            core::hint::cold_path();
-            anyhow::bail!(share_profile_key_error(bundle_profile, key_env));
-        }
-        Ok(Self { key, source })
-    }
-
-    fn engine_key(&self) -> &str {
-        self.key.as_deref().unwrap_or("")
-    }
-
-    fn render_profiles(&self) -> bool {
-        self.key.is_some()
-    }
-
-    fn source(&self) -> RedactionKeySource {
-        self.source
-    }
-}
-
-fn resolve_redaction_key(
-    redact_key: Option<String>,
-    key_env: &str,
-) -> (Option<String>, RedactionKeySource) {
-    if let Some(key) = redact_key {
-        return (Some(key), RedactionKeySource::Explicit);
-    }
-    if let Ok(key) = std::env::var(key_env) {
-        return (Some(key), RedactionKeySource::Env);
-    }
-    (None, RedactionKeySource::None)
-}
-
-fn share_profile_key_error(bundle_profile: &BundleProfile, key_env: &str) -> String {
-    format!(
-        "{bundle_profile} profile requires --redact-key or {key_env}.\n\
-         Try:\n\
-           export {key_env}=replace-with-a-stable-secret\n\
-           rerun this command with --bundle-profile {bundle_profile}\n\
-         For an internal-only packet, use --bundle-profile internal."
-    )
-}
-
-fn share_command_key_error(bundle_profile: &BundleProfile, key_env: &str) -> String {
-    format!(
-        "{bundle_profile} share requires --redact-key or {key_env}.\n\
-         Try:\n\
-           export {key_env}=replace-with-a-stable-secret\n\
-           shiplog share {bundle_profile} --latest\n\
-         For an internal-only packet, use `shiplog render --bundle-profile internal`."
-    )
-}
-
-impl ResolvedWindow {
-    fn window_label(&self) -> String {
-        let label = match self.label {
-            WindowLabel::Explicit => format!("{}..{}", self.since, self.until),
-            WindowLabel::LastSixMonths => {
-                format!("last-6-months ({}..{})", self.since, self.until)
-            }
-            WindowLabel::LastQuarter => {
-                format!("last-quarter ({}..{})", self.since, self.until)
-            }
-            WindowLabel::Year(year) => format!("{year} ({}..{})", self.since, self.until),
-        };
-        if let Some(period) = &self.period {
-            format!("{period} ({}..{})", self.since, self.until)
-        } else {
-            label
-        }
-    }
-
-    fn with_period(mut self, period: impl Into<String>) -> Self {
-        self.period = Some(period.into());
-        self
-    }
-}
-
-fn resolve_date_window(args: DateArgs) -> Result<ResolvedWindow> {
-    resolve_date_window_for_today(args, Utc::now().date_naive())
-}
-
-fn resolve_date_window_for_today(args: DateArgs, today: NaiveDate) -> Result<ResolvedWindow> {
-    match (args.since, args.until) {
-        (Some(since), Some(until)) => return checked_window(since, until, WindowLabel::Explicit),
-        (Some(_), None) | (None, Some(_)) => {
-            anyhow::bail!("provide both --since and --until, or use a date preset")
-        }
-        (None, None) => {}
-    }
-
-    let preset_count = usize::from(args.last_6_months)
-        + usize::from(args.last_quarter)
-        + usize::from(args.year.is_some());
-    if preset_count > 1 {
-        anyhow::bail!("choose only one date preset: --last-6-months, --last-quarter, or --year")
-    }
-
-    if let Some(year) = args.year {
-        let since = NaiveDate::from_ymd_opt(year, 1, 1)
-            .ok_or_else(|| anyhow::anyhow!("invalid --year value: {year}"))?;
-        let until = NaiveDate::from_ymd_opt(year + 1, 1, 1)
-            .ok_or_else(|| anyhow::anyhow!("invalid --year value: {year}"))?;
-        return checked_window(since, until, WindowLabel::Year(year));
-    }
-
-    if args.last_quarter {
-        let start_of_current_quarter = quarter_start(today.year(), today.month())?;
-        let previous_quarter_anchor = start_of_current_quarter
-            .checked_sub_months(Months::new(3))
-            .ok_or_else(|| anyhow::anyhow!("could not resolve --last-quarter"))?;
-        return checked_window(
-            previous_quarter_anchor,
-            start_of_current_quarter,
-            WindowLabel::LastQuarter,
-        );
-    }
-
-    let since = today
-        .checked_sub_months(Months::new(6))
-        .ok_or_else(|| anyhow::anyhow!("could not resolve --last-6-months"))?;
-    checked_window(since, today, WindowLabel::LastSixMonths)
-}
-
-fn checked_window(
-    since: NaiveDate,
-    until: NaiveDate,
-    label: WindowLabel,
-) -> Result<ResolvedWindow> {
-    if since >= until {
-        anyhow::bail!("date window must satisfy --since < --until")
-    }
-    Ok(ResolvedWindow {
-        since,
-        until,
-        label,
-        period: None,
-    })
-}
-
-fn quarter_start(year: i32, month: u32) -> Result<NaiveDate> {
-    let start_month = match month {
-        1..=3 => 1,
-        4..=6 => 4,
-        7..=9 => 7,
-        10..=12 => 10,
-        _ => anyhow::bail!("invalid month while resolving quarter: {month}"),
-    };
-    NaiveDate::from_ymd_opt(year, start_month, 1)
-        .ok_or_else(|| anyhow::anyhow!("invalid quarter start for {year}-{start_month:02}"))
 }
 
 fn run_init(sources: Vec<InitSource>, dry_run: bool, force: bool) -> Result<()> {
