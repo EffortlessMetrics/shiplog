@@ -8887,7 +8887,7 @@ fn optional_config_path(base_dir: &Path, value: Option<&PathBuf>) -> Option<Path
 }
 
 fn resolve_config_path(base_dir: &Path, path: &Path) -> PathBuf {
-    if path.is_absolute() {
+    if path.is_absolute() || base_dir == Path::new(".") {
         path.to_path_buf()
     } else {
         base_dir.join(path)

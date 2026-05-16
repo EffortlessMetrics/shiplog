@@ -42,6 +42,9 @@ release approval.
 - Aligned the crates.io README with the review-ready packet loop so install
   readers see `repair plan`, journal repair, `repair diff`, `runs diff`, and
   read-only `share explain` before manager/public rendering (#374).
+- Fixed default `./out` display in intake handoffs so Windows dogfood no longer
+  shows noisy `././out` paths when the config lives in the current directory
+  (#375).
 
 ## [0.9.0] - Unreleased candidate
 
