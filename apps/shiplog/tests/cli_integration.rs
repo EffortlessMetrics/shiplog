@@ -30,6 +30,14 @@ fn repo_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
 
+fn redaction_key_env_command(key_env: &str) -> String {
+    if cfg!(windows) {
+        format!("$env:{key_env}='replace-with-a-stable-secret'")
+    } else {
+        format!("export {key_env}=replace-with-a-stable-secret")
+    }
+}
+
 fn example_config(name: &str) -> PathBuf {
     repo_root().join("examples/configs").join(name)
 }
@@ -4499,9 +4507,9 @@ user = "octo"
                 "public profile requires --redact-key or SHIPLOG_TEST_REDACT_KEY_FOR_CONFIG",
             )
             .and(predicate::str::contains("Try:"))
-            .and(predicate::str::contains(
-                "export SHIPLOG_TEST_REDACT_KEY_FOR_CONFIG=replace-with-a-stable-secret",
-            ))
+            .and(predicate::str::contains(redaction_key_env_command(
+                "SHIPLOG_TEST_REDACT_KEY_FOR_CONFIG",
+            )))
             .and(predicate::str::contains(
                 "rerun this command with --bundle-profile public",
             )),
@@ -6272,9 +6280,9 @@ fn collect_json_public_profile_without_key_fails_closed() {
         .stderr(
             predicate::str::contains("public profile requires --redact-key or SHIPLOG_REDACT_KEY")
                 .and(predicate::str::contains("Try:"))
-                .and(predicate::str::contains(
-                    "export SHIPLOG_REDACT_KEY=replace-with-a-stable-secret",
-                ))
+                .and(predicate::str::contains(redaction_key_env_command(
+                    "SHIPLOG_REDACT_KEY",
+                )))
                 .and(predicate::str::contains(
                     "rerun this command with --bundle-profile public",
                 )),
@@ -10347,9 +10355,9 @@ fn render_public_profile_without_key_fails_closed() {
         .stderr(
             predicate::str::contains("public profile requires --redact-key or SHIPLOG_REDACT_KEY")
                 .and(predicate::str::contains("Try:"))
-                .and(predicate::str::contains(
-                    "export SHIPLOG_REDACT_KEY=replace-with-a-stable-secret",
-                ))
+                .and(predicate::str::contains(redaction_key_env_command(
+                    "SHIPLOG_REDACT_KEY",
+                )))
                 .and(predicate::str::contains(
                     "rerun this command with --bundle-profile public",
                 )),
@@ -10414,9 +10422,9 @@ fn share_manager_without_key_fails_closed() {
         .stderr(
             predicate::str::contains("manager share requires --redact-key or SHIPLOG_REDACT_KEY")
                 .and(predicate::str::contains("Try:"))
-                .and(predicate::str::contains(
-                    "export SHIPLOG_REDACT_KEY=replace-with-a-stable-secret",
-                ))
+                .and(predicate::str::contains(redaction_key_env_command(
+                    "SHIPLOG_REDACT_KEY",
+                )))
                 .and(predicate::str::contains("shiplog share manager --latest")),
         );
 
@@ -10551,7 +10559,8 @@ fn share_explain_latest_profiles_are_read_only() {
         let stdout = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
         assert!(
             stdout.contains("Profile packet: not written yet")
-                && stdout.contains("Share manifest: not written yet"),
+                && stdout.contains("Share manifest: not written yet")
+                && stdout.contains(&redaction_key_env_command("SHIPLOG_REDACT_KEY")),
             "share explain {profile} should describe existing share artifacts without rendering. stdout:\n{stdout}"
         );
     }

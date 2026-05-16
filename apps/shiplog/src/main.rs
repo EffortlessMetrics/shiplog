@@ -2177,21 +2177,31 @@ fn resolve_redaction_key(
     (None, RedactionKeySource::None)
 }
 
+fn redaction_key_env_command(key_env: &str) -> String {
+    if cfg!(windows) {
+        format!("$env:{key_env}='replace-with-a-stable-secret'")
+    } else {
+        format!("export {key_env}=replace-with-a-stable-secret")
+    }
+}
+
 fn share_profile_key_error(bundle_profile: &BundleProfile, key_env: &str) -> String {
+    let key_command = redaction_key_env_command(key_env);
     format!(
         "{bundle_profile} profile requires --redact-key or {key_env}.\n\
          Try:\n\
-           export {key_env}=replace-with-a-stable-secret\n\
+           {key_command}\n\
            rerun this command with --bundle-profile {bundle_profile}\n\
          For an internal-only packet, use --bundle-profile internal."
     )
 }
 
 fn share_command_key_error(bundle_profile: &BundleProfile, key_env: &str) -> String {
+    let key_command = redaction_key_env_command(key_env);
     format!(
         "{bundle_profile} share requires --redact-key or {key_env}.\n\
          Try:\n\
-           export {key_env}=replace-with-a-stable-secret\n\
+           {key_command}\n\
            shiplog share {bundle_profile} --latest\n\
          For an internal-only packet, use `shiplog render --bundle-profile internal`."
     )
@@ -11006,7 +11016,7 @@ fn explain_share_profile(
 
     println!("Next:");
     if redaction_key.is_none() {
-        println!("1. export SHIPLOG_REDACT_KEY=replace-with-a-stable-secret");
+        println!("1. {}", redaction_key_env_command("SHIPLOG_REDACT_KEY"));
         println!("2. {verify_command}");
         println!("3. {share_command}");
     } else {
