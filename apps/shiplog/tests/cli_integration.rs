@@ -7172,6 +7172,7 @@ fn open_packet_latest_prints_packet_path_when_forced() {
     let tmp = TempDir::new().unwrap();
     collect_json_into(tmp.path());
 
+    let before = file_tree_manifest(tmp.path());
     let assert = shiplog_cmd()
         .args([
             "open",
@@ -7186,6 +7187,12 @@ fn open_packet_latest_prints_packet_path_when_forced() {
         .stdout(predicate::str::contains("run_fixture"))
         .stdout(predicate::str::contains("packet.md"));
     let stdout = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
+    let after = file_tree_manifest(tmp.path());
+
+    assert_eq!(
+        before, after,
+        "open packet --latest --print-path should not write or rewrite files"
+    );
     assert!(
         !stdout.contains(r"\\?\"),
         "open packet --print-path should not expose a Windows verbatim path prefix: {stdout}"
