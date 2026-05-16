@@ -5366,9 +5366,21 @@ cache_dir = "./.cache"
     assert!(stdout.contains("- Linear: create configured Linear ingestor"));
     assert!(stdout.contains("Invalid issue status: waiting"));
     assert!(stdout.contains("Source decisions:"));
-    assert!(stdout.contains("- GitLab: included"));
-    assert!(stdout.contains("- Jira: included"));
-    assert!(stdout.contains("- Linear: included"));
+    assert!(stdout.contains("- GitLab: skipped, create configured GitLab ingestor"));
+    assert!(stdout.contains("- Jira: skipped, create configured Jira ingestor"));
+    assert!(stdout.contains("- Linear: skipped, create configured Linear ingestor"));
+    assert!(
+        !stdout.contains("- GitLab: included"),
+        "runtime GitLab filter failure should override stale preflight inclusion"
+    );
+    assert!(
+        !stdout.contains("- Jira: included"),
+        "runtime Jira filter failure should override stale preflight inclusion"
+    );
+    assert!(
+        !stdout.contains("- Linear: included"),
+        "runtime Linear filter failure should override stale preflight inclusion"
+    );
     assert!(stdout.contains("Repair sources:"));
     assert!(stdout.contains("kind: invalid_filter"));
     assert!(stdout.contains("Set sources.gitlab.state to opened, merged, closed, or all."));
@@ -5407,6 +5419,25 @@ cache_dir = "./.cache"
         );
     }
     assert_eq!(report_json["skipped_sources"].as_array().unwrap().len(), 3);
+    let source_decisions = report_json["source_decisions"].as_array().unwrap();
+    for source_key in ["gitlab", "jira", "linear"] {
+        assert!(
+            source_decisions.iter().any(|decision| {
+                decision["source_key"] == source_key
+                    && decision["decision"] == "skipped"
+                    && decision["reason"]
+                        .as_str()
+                        .is_some_and(|reason| reason.starts_with("create configured"))
+            }),
+            "source_decisions should report {source_key} runtime filter failure as skipped"
+        );
+        assert!(
+            !source_decisions.iter().any(|decision| {
+                decision["source_key"] == source_key && decision["decision"] == "included"
+            }),
+            "source_decisions should not keep stale {source_key} inclusion after runtime failure"
+        );
+    }
     let repairs = report_json["repair_sources"].as_array().unwrap();
     assert!(repairs.iter().any(|repair| {
         repair["source"] == "gitlab"
