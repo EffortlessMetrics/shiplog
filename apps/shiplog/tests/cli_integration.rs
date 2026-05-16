@@ -8102,6 +8102,7 @@ fn repair_diff_latest_shows_cleared_new_still_open_and_changed_items() -> CliTes
         ]),
     );
 
+    let before = file_tree_manifest(tmp.path());
     shiplog_cmd()
         .args(["repair", "diff", "--out", out_arg.as_str(), "--latest"])
         .assert()
@@ -8121,6 +8122,12 @@ fn repair_diff_latest_shows_cleared_new_still_open_and_changed_items() -> CliTes
         .stdout(predicate::str::contains(
             "Clears when: old clear condition -> new clear condition",
         ));
+    let after = file_tree_manifest(tmp.path());
+
+    assert_eq!(
+        before, after,
+        "repair diff should not write or rewrite files"
+    );
 
     Ok(())
 }
