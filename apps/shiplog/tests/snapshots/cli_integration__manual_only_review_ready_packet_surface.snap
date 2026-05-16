@@ -1,0 +1,36 @@
+---
+source: apps/shiplog/tests/cli_integration.rs
+expression: "review_ready_packet_surface(&packet,\nout.to_str().expect(\"--out path should be utf-8\"),\nrun_dir.file_name().and_then(|name|\nname.to_str()).expect(\"run directory should have a utf-8 name\"))"
+---
+# Packet Readiness
+
+Ready with caveats.
+
+Still weak:
+- Packet: Evidence is present, but it only comes from manual evidence. (`manual_only`)
+- Manual source: Manual contributed 1 event. (`manual_only`)
+
+Next:
+- `shiplog repair plan --out "<OUT>" --latest`
+- `shiplog render --out "<OUT>" --run <RUN_ID> --bundle-profile manager`
+
+# Claim Candidates
+
+## Platform Reliability
+
+Evidence strength: `manual_only`
+
+Evidence:
+- Sources: manual
+- Receipt: included_sources source:manual
+- Receipt: artifacts
+- Receipt: evidence_debt
+
+Caveats:
+- Only manual evidence currently supports this candidate.
+
+Missing context:
+- What changed after this work?
+- Who benefited?
+- What evidence would strengthen this claim?
+- Which source-backed receipt could confirm this?

@@ -109,6 +109,25 @@ fn assert_packet_uses_summary_appendix(packet: &str) {
     );
 }
 
+fn section_between<'a>(text: &'a str, start: &str, end: &str) -> &'a str {
+    let start_index = text
+        .find(start)
+        .unwrap_or_else(|| panic!("expected section start {start:?} in:\n{text}"));
+    let rest = &text[start_index..];
+    let end_index = rest
+        .find(end)
+        .unwrap_or_else(|| panic!("expected section end {end:?} after {start:?} in:\n{text}"));
+    &rest[..end_index]
+}
+
+fn review_ready_packet_surface(packet: &str, out_arg: &str, run_id: &str) -> String {
+    let readiness = section_between(packet, "# Packet Readiness", "\n# Claim Candidates");
+    let claims = section_between(packet, "# Claim Candidates", "\n## Coverage and Limits");
+    format!("{}\n\n{}\n", readiness.trim_end(), claims.trim_end())
+        .replace(out_arg, "<OUT>")
+        .replace(run_id, "<RUN_ID>")
+}
+
 fn assert_intake_artifacts(run_dir: &Path) {
     for artifact in [
         "packet.md",
@@ -4699,6 +4718,17 @@ user = "octo"
 
     let packet = std::fs::read_to_string(run_dir.join("packet.md")).unwrap();
     assert_packet_opens_with_coverage(&packet);
+    insta::assert_snapshot!(
+        "manual_only_review_ready_packet_surface",
+        review_ready_packet_surface(
+            &packet,
+            out.to_str().expect("--out path should be utf-8"),
+            run_dir
+                .file_name()
+                .and_then(|name| name.to_str())
+                .expect("run directory should have a utf-8 name")
+        )
+    );
     assert!(
         packet.contains("Ready with caveats.") && packet.contains("manual_only"),
         "manual-only packet should surface readiness caveats in packet.md"
