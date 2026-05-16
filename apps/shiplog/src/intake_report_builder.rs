@@ -40,7 +40,7 @@ pub(crate) fn build_intake_report(
         &signals,
     ));
     let curation_notes = intake_curation_notes(result);
-    let next_commands = build_next_commands(
+    let mut next_commands = build_next_commands(
         result,
         out_dir,
         config_path,
@@ -59,13 +59,13 @@ pub(crate) fn build_intake_report(
     );
     let included_sources = build_included_sources(result);
     let skipped_sources_report = build_skipped_sources(result, explanations);
-    let actions = intake_report_actions(
+    let mut actions = intake_report_actions(
         &repair_sources,
         &top_fixups,
         &share_commands,
         &next_commands,
     );
-    let repair_items = build_repair_items(RepairItemInputs {
+    let mut repair_items = build_repair_items(RepairItemInputs {
         repair_sources: &repair_sources,
         source_freshness: &source_freshness,
         out_dir,
@@ -78,6 +78,28 @@ pub(crate) fn build_intake_report(
         next_commands: &next_commands,
         artifacts: &artifacts,
     });
+    if !repair_items.is_empty() {
+        prepend_repair_plan_next_command(&mut next_commands, out_dir);
+        actions = intake_report_actions(
+            &repair_sources,
+            &top_fixups,
+            &share_commands,
+            &next_commands,
+        );
+        repair_items = build_repair_items(RepairItemInputs {
+            repair_sources: &repair_sources,
+            source_freshness: &source_freshness,
+            out_dir,
+            config_path,
+            needs_attention: &attention,
+            evidence_debt: &evidence_debt,
+            top_fixups: &top_fixups,
+            journal_suggestions: &journal_suggestions,
+            actions: &actions,
+            next_commands: &next_commands,
+            artifacts: &artifacts,
+        });
+    }
     let packet_quality = build_packet_quality(PacketQualityInputs {
         readiness,
         events: &events,
@@ -304,6 +326,23 @@ fn build_next_commands(
             .manual_context_workstreams
             .first()
             .map(|workstream| workstream.title.as_str()),
+    )
+}
+
+fn prepend_repair_plan_next_command(next_commands: &mut Vec<String>, out_dir: &Path) {
+    if next_commands
+        .iter()
+        .any(|command| command.starts_with("shiplog repair plan "))
+    {
+        return;
+    }
+    next_commands.insert(0, repair_plan_next_command(out_dir));
+}
+
+fn repair_plan_next_command(out_dir: &Path) -> String {
+    format!(
+        "shiplog repair plan --out {} --latest",
+        quote_cli_value(&out_dir.display().to_string())
     )
 }
 
