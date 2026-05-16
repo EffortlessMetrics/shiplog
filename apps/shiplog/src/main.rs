@@ -4701,10 +4701,17 @@ fn resolve_report_path(report_path: &Path, raw: &str) -> PathBuf {
     if path.is_absolute() {
         path
     } else {
-        report_path
+        let report_relative = report_path
             .parent()
             .unwrap_or_else(|| Path::new("."))
-            .join(path)
+            .join(&path);
+        if report_relative.exists() {
+            report_relative
+        } else if path.exists() {
+            path
+        } else {
+            report_relative
+        }
     }
 }
 
