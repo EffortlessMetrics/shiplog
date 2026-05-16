@@ -15,7 +15,7 @@ pub(crate) fn build_intake_report(
     let (workstreams, _, _) = load_effective_workstreams_for_run(&result.outputs.out_dir)?;
     let validation_errors = validate_workstreams_against_events(&workstreams, &events);
     let signals = workstream_quality_signals(&workstreams, &events);
-    let manual_events_path = configured_manual_events_path(config_path);
+    let manual_events_path = configured_manual_events_path(config_path, false);
 
     let good = build_completion_signals(result);
     let attention = build_attention_items(result, &coverage, &events, &validation_errors, &signals);

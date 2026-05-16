@@ -1065,6 +1065,16 @@ fn load_first_intake_report(out: &Path) -> (PathBuf, serde_json::Value) {
     (report_path, report)
 }
 
+fn report_source_event_count(report: &serde_json::Value, source_key: &str) -> u64 {
+    report["included_sources"]
+        .as_array()
+        .expect("report should expose included_sources")
+        .iter()
+        .find(|source| source["source_key"].as_str() == Some(source_key))
+        .and_then(|source| source["event_count"].as_u64())
+        .unwrap_or(0)
+}
+
 fn remove_packet_quality_from_report(report_path: &Path) -> CliTestResult {
     let mut report: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(report_path)?)?;
@@ -1936,6 +1946,103 @@ user = "octo"
     assert!(
         file.events[0].id.contains(&repair_id),
         "journal repair should append the report-derived repair event to the configured manual events file"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn journal_repair_rerun_includes_manual_when_source_filter_disabled_it() -> CliTestResult {
+    let Some(tmp) = create_local_git_repo() else {
+        return Ok(());
+    };
+    run_git(
+        tmp.path(),
+        &[
+            "remote",
+            "add",
+            "origin",
+            "https://github.com/EffortlessMetrics/shiplog.git",
+        ],
+    );
+    let out = tmp.path().join("out");
+    let out_arg = out.to_str().unwrap();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args(["intake", "--source", "git", "--out", out_arg, "--no-open"])
+        .assert()
+        .success();
+
+    let config = std::fs::read_to_string(tmp.path().join("shiplog.toml"))?;
+    assert!(
+        config.contains("[sources.manual]\nenabled = false"),
+        "source-filtered intake should preserve manual as disabled in generated config"
+    );
+    let (_, first_report) = load_first_intake_report(&out);
+    assert_eq!(
+        report_source_event_count(&first_report, "manual"),
+        0,
+        "source-filtered first run should not collect manual evidence"
+    );
+    let repair_id = first_repair_id_with_action(&first_report, "journal_add");
+
+    let journal_assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .args([
+            "journal",
+            "add",
+            "--from-repair",
+            repair_id.as_str(),
+            "--out",
+            out_arg,
+            "--latest",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Added manual event:"))
+        .stdout(predicate::str::contains("File: manual_events.yaml"))
+        .stdout(predicate::str::contains("--source git --source manual"));
+    let journal_stdout = String::from_utf8(journal_assert.get_output().stdout.clone())?;
+    assert!(
+        journal_stdout.contains("shiplog intake --last-6-months --explain"),
+        "journal repair should still print the rerun command. stdout:\n{journal_stdout}"
+    );
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args([
+            "intake",
+            "--source",
+            "git",
+            "--source",
+            "manual",
+            "--out",
+            out_arg,
+            "--no-open",
+        ])
+        .assert()
+        .success();
+
+    let repaired_run = all_run_dirs(&out)
+        .into_iter()
+        .next_back()
+        .expect("rerun should create a latest run");
+    let repaired_report: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(
+        repaired_run.join("intake.report.json"),
+    )?)?;
+    assert_eq!(
+        report_source_event_count(&repaired_report, "manual"),
+        1,
+        "printed source-filtered rerun path should collect the repair journal event"
     );
 
     Ok(())

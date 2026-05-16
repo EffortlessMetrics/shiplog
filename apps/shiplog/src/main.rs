@@ -3754,12 +3754,64 @@ fn find_run_dirs_for_repair(out_dir: &Path) -> Result<Vec<PathBuf>> {
 fn repair_plan_rerun_command(report_json: &serde_json::Value) -> Result<String> {
     let config_path = PathBuf::from(string_field(report_json, "config_path")?);
     let out_dir = PathBuf::from(string_field(report_json, "out_dir")?);
-    Ok(intake_rerun_command(
+    let mut command = intake_rerun_command(
         &config_path,
         &out_dir,
         intake_footer_should_include_config(&config_path),
         !is_default_out_setting(&out_dir),
-    ))
+    );
+    for source in repair_plan_rerun_sources(report_json) {
+        command.push_str(" --source ");
+        command.push_str(&source);
+    }
+    Ok(command)
+}
+
+fn repair_plan_rerun_sources(report_json: &serde_json::Value) -> Vec<String> {
+    if !report_manual_source_disabled(report_json) {
+        return Vec::new();
+    }
+
+    let mut sources = Vec::new();
+    if let Some(included_sources) = report_json
+        .get("included_sources")
+        .and_then(|value| value.as_array())
+    {
+        for source in included_sources {
+            let Some(source_key) = source.get("source_key").and_then(|value| value.as_str()) else {
+                continue;
+            };
+            if matches!(
+                source_key,
+                "github" | "gitlab" | "jira" | "linear" | "git" | "json" | "manual"
+            ) && !sources.iter().any(|existing| existing == source_key)
+            {
+                sources.push(source_key.to_string());
+            }
+        }
+    }
+    if !sources.iter().any(|source| source == "manual") {
+        sources.push("manual".to_string());
+    }
+    sources
+}
+
+fn report_manual_source_disabled(report_json: &serde_json::Value) -> bool {
+    let Some(config_path) = report_json
+        .get("config_path")
+        .and_then(|value| value.as_str())
+        .map(PathBuf::from)
+    else {
+        return false;
+    };
+    let Ok(config) = load_shiplog_config(&config_path) else {
+        return false;
+    };
+    config
+        .sources
+        .manual
+        .as_ref()
+        .is_some_and(|manual| !manual.enabled)
 }
 
 fn print_repair_plan_item(index: usize, item: &serde_json::Value) -> Result<()> {
@@ -5495,27 +5547,32 @@ fn prepare_intake_sources(
     if let Some(source) = config.sources.manual.as_mut() {
         if !intake_source_in_scope(explicit_sources, InitSource::Manual) {
             source.enabled = false;
-        } else if source.enabled {
-            if source
-                .events
-                .as_ref()
-                .is_none_or(|path| path.as_os_str().is_empty())
-            {
-                source.events = Some(PathBuf::from(MANUAL_EVENTS_FILENAME));
+        } else {
+            if explicit_sources.contains(&InitSource::Manual) {
+                source.enabled = true;
             }
-            let events = source
-                .events
-                .as_ref()
-                .map(|path| resolve_config_path(&base_dir, path))
-                .expect("manual events path set above");
-            let existed = events.exists();
-            if !events.exists() {
-                write_init_file(&events, &render_manual_events_template())?;
-            }
-            if existed {
-                push_intake_include(&mut plan, "manual", "manual_events.yaml found");
-            } else {
-                push_intake_include(&mut plan, "manual", "manual_events.yaml created");
+            if source.enabled {
+                if source
+                    .events
+                    .as_ref()
+                    .is_none_or(|path| path.as_os_str().is_empty())
+                {
+                    source.events = Some(PathBuf::from(MANUAL_EVENTS_FILENAME));
+                }
+                let events = source
+                    .events
+                    .as_ref()
+                    .map(|path| resolve_config_path(&base_dir, path))
+                    .expect("manual events path set above");
+                let existed = events.exists();
+                if !events.exists() {
+                    write_init_file(&events, &render_manual_events_template())?;
+                }
+                if existed {
+                    push_intake_include(&mut plan, "manual", "manual_events.yaml found");
+                } else {
+                    push_intake_include(&mut plan, "manual", "manual_events.yaml created");
+                }
             }
         }
     }
@@ -6190,7 +6247,7 @@ fn repair_plan_command_for_out(out_dir: &Path) -> String {
 }
 
 fn journal_repair_manual_events_path(report_json: &serde_json::Value) -> Option<PathBuf> {
-    report_configured_manual_events_path(report_json)
+    report_configured_manual_events_path_for_repair(report_json)
 }
 
 fn run_configured_manual_events_path(run_dir: &Path) -> Option<PathBuf> {
@@ -6201,13 +6258,20 @@ fn run_configured_manual_events_path(run_dir: &Path) -> Option<PathBuf> {
 
 fn report_configured_manual_events_path(report_json: &serde_json::Value) -> Option<PathBuf> {
     let config_path = PathBuf::from(report_json.get("config_path")?.as_str()?);
-    configured_manual_events_path(&config_path)
+    configured_manual_events_path(&config_path, false)
 }
 
-fn configured_manual_events_path(config_path: &Path) -> Option<PathBuf> {
+fn report_configured_manual_events_path_for_repair(
+    report_json: &serde_json::Value,
+) -> Option<PathBuf> {
+    let config_path = PathBuf::from(report_json.get("config_path")?.as_str()?);
+    configured_manual_events_path(&config_path, true)
+}
+
+fn configured_manual_events_path(config_path: &Path, include_disabled: bool) -> Option<PathBuf> {
     let config = load_shiplog_config(config_path).ok()?;
     let manual = config.sources.manual.as_ref()?;
-    if !manual.enabled {
+    if !manual.enabled && !include_disabled {
         return None;
     }
     let events = manual.events.as_ref()?;
