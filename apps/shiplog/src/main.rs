@@ -5197,7 +5197,7 @@ fn intake_readiness_next_steps(
         ));
     }
     steps.push(format!(
-        "shiplog render --out {out_arg} --run {run_id} --bundle-profile manager"
+        "shiplog share explain manager --out {out_arg} --run {run_id}"
     ));
 
     steps

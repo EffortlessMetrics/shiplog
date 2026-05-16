@@ -4671,8 +4671,8 @@ user = "octo"
     assert!(stdout.contains("Packet readiness: Needs curation"));
     assert!(stdout.contains("- Packet rendered"));
     assert!(stdout.contains("- Review inspection completed"));
-    assert!(stdout.contains("shiplog render --out"));
-    assert!(stdout.contains("--bundle-profile manager"));
+    assert!(stdout.contains("shiplog share explain manager --out"));
+    assert!(!stdout.contains("--bundle-profile manager"));
     assert!(stdout.contains("Open:"));
     assert!(stdout.contains("Open later:"));
     assert_eq!(
@@ -4759,8 +4759,8 @@ user = "octo"
     assert!(stdout.contains("Intake readiness:"));
     assert!(stdout.contains("Packet readiness: Ready for review"));
     assert!(stdout.contains("Needs attention:\n- None"));
-    assert!(stdout.contains("shiplog render --out"));
-    assert!(stdout.contains("--bundle-profile manager"));
+    assert!(stdout.contains("shiplog share explain manager --out"));
+    assert!(!stdout.contains("--bundle-profile manager"));
     assert!(stdout.contains("shiplog open packet --out"));
 
     let run_dir = first_run_dir(&out);
@@ -5099,7 +5099,8 @@ coverage = "./all-source.coverage.json"
     assert!(stdout.contains("- Packet rendered"));
     assert!(stdout.contains("- Evidence ledger written"));
     assert!(stdout.contains("- Coverage manifest written"));
-    assert!(stdout.contains("shiplog render --out"));
+    assert!(stdout.contains("shiplog share explain manager --out"));
+    assert!(!stdout.contains("--bundle-profile manager"));
     assert!(stdout.contains("shiplog open packet --out"));
 
     let run_dir = first_run_dir(&out);
