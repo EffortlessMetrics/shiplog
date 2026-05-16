@@ -461,11 +461,19 @@ fn build_skipped_sources(
 }
 
 fn build_journal_suggestions(top_fixups: &[IntakeReportFixup]) -> Vec<String> {
+    let mut seen = BTreeSet::new();
     top_fixups
         .iter()
-        .map(|fixup| fixup.command.as_str())
-        .filter(|command| command.starts_with("shiplog journal add "))
-        .map(str::to_string)
+        .filter_map(|fixup| {
+            if !fixup.command.starts_with("shiplog journal add ") {
+                return None;
+            }
+            if seen.insert(fixup.command.clone()) {
+                Some(fixup.command.clone())
+            } else {
+                None
+            }
+        })
         .collect()
 }
 
@@ -1332,5 +1340,36 @@ mod tests {
             command,
             "shiplog intake --config custom.toml --out out/custom --last-6-months --explain"
         );
+    }
+
+    #[test]
+    fn journal_suggestions_dedupe_repeated_copyable_commands() {
+        let duplicate = "shiplog journal add --date 2026-05-16 --title \"Outcome note for shiplog\" --workstream shiplog".to_string();
+        let top_fixups = vec![
+            IntakeReportFixup {
+                id: "fixup_manual_context_shiplog".to_string(),
+                kind: "manual_context".to_string(),
+                title: "Add outcome context for \"shiplog\"".to_string(),
+                detail: None,
+                command: duplicate.clone(),
+            },
+            IntakeReportFixup {
+                id: "fixup_code_context_shiplog".to_string(),
+                kind: "code_context".to_string(),
+                title: "Add outcome context for code-only workstream \"shiplog\"".to_string(),
+                detail: None,
+                command: duplicate.clone(),
+            },
+            IntakeReportFixup {
+                id: "fixup_select_receipts_shiplog".to_string(),
+                kind: "select_receipts".to_string(),
+                title: "Select anchor receipts for \"shiplog\"".to_string(),
+                detail: None,
+                command: "shiplog workstreams receipts --out out --run run_1 --workstream shiplog"
+                    .to_string(),
+            },
+        ];
+
+        assert_eq!(build_journal_suggestions(&top_fixups), vec![duplicate]);
     }
 }
