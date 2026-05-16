@@ -29,6 +29,10 @@ release approval.
   discovered during local-history dogfood (#340, #341, #343, #346).
 - Kept advisory proof surfaces out of the release path by refreshing RIPR lane
   docs to describe the landed advisory stub as non-release-blocking (#357).
+- Clarified review-ready readiness wording from dogfood: intake/report/repair
+  surfaces now distinguish legacy `Intake status` from packet-quality
+  `Packet readiness`, including compatible behavior for old reports without
+  `packet_quality` (#364, #365).
 
 ## [0.9.0] - Unreleased candidate
 

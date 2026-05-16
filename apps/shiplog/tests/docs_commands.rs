@@ -397,7 +397,7 @@ fn release_hold_docs_record_post_0_8_soak_receipts() {
 
     for needle in [
         "#337", "#338", "#339", "#340", "#341", "#342", "#343", "#344", "#345", "#346", "#347",
-        "#348", "#349", "#350", "#351", "#352", "#357",
+        "#348", "#349", "#350", "#351", "#352", "#357", "#364", "#365",
     ] {
         assert!(
             hold.contains(needle) && readiness.contains(needle),
@@ -417,6 +417,9 @@ fn release_hold_docs_record_post_0_8_soak_receipts() {
         "repair diff",
         "RIPR",
         "non-release-blocking",
+        "Intake status",
+        "Packet readiness",
+        "packet_quality",
     ] {
         assert!(
             hold.contains(needle) || readiness.contains(needle),
