@@ -5940,13 +5940,13 @@ struct JournalRepairContext {
 fn run_journal_add(args: JournalAddArgs) -> Result<()> {
     let mut args = args;
     let repair_context = resolve_journal_repair_context(&args)?;
-    if args.from_repair.is_some() && args.events == PathBuf::from(MANUAL_EVENTS_FILENAME) {
-        if let Some(events) = repair_context
+    if args.from_repair.is_some()
+        && args.events == Path::new(MANUAL_EVENTS_FILENAME)
+        && let Some(events) = repair_context
             .as_ref()
             .and_then(|repair| repair.manual_events_path.clone())
-        {
-            args.events = events;
-        }
+    {
+        args.events = events;
     }
     let JournalAddArgs {
         events,
