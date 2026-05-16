@@ -1,0 +1,38 @@
+---
+source: apps/shiplog/tests/front_door_first_pack_smoke.rs
+expression: "review_ready_packet_surface(&repaired_packet, out_arg,\nrepaired_run.file_name().and_then(|name|\nname.to_str()).expect(\"repaired run directory should have a utf-8 name\"))"
+---
+# Packet Readiness
+
+Ready with caveats.
+
+Strong:
+- None yet.
+
+Still weak:
+- Packet: Evidence is present, but it only comes from manual evidence. (`manual_only`)
+- Manual source: Manual contributed 1 event. (`manual_only`)
+
+Next:
+- `shiplog render --out "<OUT>" --run <RUN_ID> --bundle-profile manager`
+
+# Claim Candidates
+
+## Manual evidence repair (repair_001_manual_manual_evidence_missing_no_events)
+
+Evidence strength: `manual_only`
+
+Evidence:
+- Sources: manual
+- Receipt: included_sources source:manual
+- Receipt: artifacts
+- Receipt: evidence_debt
+
+Caveats:
+- Only manual evidence currently supports this candidate.
+
+Missing context:
+- What changed after this work?
+- Who benefited?
+- What evidence would strengthen this claim?
+- Which source-backed receipt could confirm this?

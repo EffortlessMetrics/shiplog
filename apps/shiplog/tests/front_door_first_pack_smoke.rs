@@ -123,6 +123,25 @@ fn evidence_strength_status<'a>(report: &'a Value, scope: &str) -> Option<&'a st
         .and_then(|item| item["status"].as_str())
 }
 
+fn slice_between<'a>(text: &'a str, start: &str, end: &str) -> &'a str {
+    let start_index = text
+        .find(start)
+        .unwrap_or_else(|| panic!("expected section start {start:?} in:\n{text}"));
+    let rest = &text[start_index..];
+    let end_index = rest
+        .find(end)
+        .unwrap_or_else(|| panic!("expected section end {end:?} after {start:?} in:\n{text}"));
+    &rest[..end_index]
+}
+
+fn review_ready_packet_surface(packet: &str, out_arg: &str, run_id: &str) -> String {
+    let readiness = slice_between(packet, "# Packet Readiness", "\n# Claim Candidates");
+    let claims = slice_between(packet, "# Claim Candidates", "\n## Coverage and Limits");
+    format!("{}\n\n{}\n", readiness.trim_end(), claims.trim_end())
+        .replace(out_arg, "<OUT>")
+        .replace(run_id, "<RUN_ID>")
+}
+
 /// The "does the front door work?" receipt. Drive the cargo-built
 /// `shiplog` binary (the same one `cargo install shiplog` produces)
 /// against an empty directory with every provider token cleared, then
@@ -419,6 +438,17 @@ fn repair_loop_improves_first_packet_without_provider_mutation() {
     assert!(
         repaired_packet.contains("Manual evidence repair") && repaired_packet.contains(&repair_id),
         "repair proof: repaired packet should contain the journal repair evidence. packet:\n{repaired_packet}"
+    );
+    insta::assert_snapshot!(
+        "review_ready_repaired_packet_surface",
+        review_ready_packet_surface(
+            &repaired_packet,
+            out_arg,
+            repaired_run
+                .file_name()
+                .and_then(|name| name.to_str())
+                .expect("repaired run directory should have a utf-8 name")
+        )
     );
 
     let diff_assert = shiplog_cmd(tmp.path())
