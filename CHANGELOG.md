@@ -7,9 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.9.0] - 2026-05-15
+Post-0.8 status: the review-ready packet work below is on `main` as an
+unreleased 0.9 candidate. Release execution is paused while 0.8 gets soak time;
+do not treat the 0.9 version metadata as tag, crates.io publish, or GitHub
+release approval.
 
-shiplog 0.9.0 is the **review-ready packet release**. It builds on the 0.8
+## [0.9.0] - Unreleased candidate
+
+shiplog 0.9.0 is the planned **review-ready packet release**. It builds on the 0.8
 Evidence Repair Loop by turning repaired evidence into conservative packet
 quality guidance: readiness, evidence strength, receipt-backed claim
 candidates, missing-context prompts, share posture explanation, and quality
@@ -45,7 +50,10 @@ movement across reruns.
 ### Release
 
 - Bumped workspace packages and normal workspace dependency requirements from
-  `0.8.0` to `0.9.0`.
+  `0.8.0` to `0.9.0` as candidate metadata.
+- Paused 0.9 release execution after the shipped 0.8 cut; no 0.9 tag,
+  crates.io publish, or GitHub release should be created while the release hold
+  remains active.
 
 ## [0.8.0] - 2026-05-15
 
