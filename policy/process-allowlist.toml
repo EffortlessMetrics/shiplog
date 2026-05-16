@@ -75,6 +75,17 @@ created = "2026-05-09"
 expires = "permanent"
 
 [[allow]]
+id = "proc-bash-check-release-hold"
+binary = "bash"
+argv_shape = ["scripts/check-release-hold.sh", "<tag>"]
+network_reach = false
+called_by = [".github/workflows/release.yml"]
+owner = "release"
+reason = "Fails held release tags before package proof, binary builds, or GitHub release creation."
+created = "2026-05-16"
+expires = "permanent"
+
+[[allow]]
 id = "proc-bash-package-proof"
 binary = "bash"
 argv_shape = ["scripts/package-proof.sh"]

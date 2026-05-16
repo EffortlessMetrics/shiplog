@@ -3,6 +3,7 @@
 use assert_cmd::Command;
 use predicates::prelude::*;
 use std::path::{Path, PathBuf};
+use std::process::Command as StdCommand;
 use tempfile::TempDir;
 
 fn shiplog_cmd() -> Command {
@@ -293,6 +294,77 @@ fn review_ready_packet_guide_documents_quality_flow() {
             "review-ready packet guide should mention {needle:?}"
         );
     }
+}
+
+#[test]
+fn release_hold_guard_blocks_held_0_9_tag() {
+    let root = repo_root();
+    let workflow_path = root.join(".github/workflows/release.yml");
+    let hold_path = root.join("docs/release/0.9.0-release-hold.md");
+    let readiness_path = root.join("docs/release/0.9.0-readiness.md");
+    let process_allowlist_path = root.join("policy/process-allowlist.toml");
+
+    let workflow = std::fs::read_to_string(&workflow_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", workflow_path.display()));
+    let hold = std::fs::read_to_string(&hold_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", hold_path.display()));
+    let readiness = std::fs::read_to_string(&readiness_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", readiness_path.display()));
+    let process_allowlist = std::fs::read_to_string(&process_allowlist_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", process_allowlist_path.display()));
+
+    assert!(
+        workflow.contains("bash scripts/check-release-hold.sh"),
+        "release workflow should run the release-hold guard before release proof"
+    );
+    assert!(
+        hold.contains("scripts/check-release-hold.sh")
+            && readiness.contains("scripts/check-release-hold.sh"),
+        "release hold/readiness docs should name the workflow guard"
+    );
+    assert!(
+        process_allowlist.contains("proc-bash-check-release-hold"),
+        "release-hold workflow process should be receipted in the process allowlist"
+    );
+
+    if cfg!(windows) {
+        eprintln!(
+            "skipping release hold guard execution on Windows; workflow runs this guard on Ubuntu"
+        );
+        return;
+    }
+
+    if StdCommand::new("bash").arg("--version").output().is_err() {
+        eprintln!("skipping release hold guard execution: bash not available");
+        return;
+    }
+
+    let blocked = StdCommand::new("bash")
+        .current_dir(&root)
+        .arg("scripts/check-release-hold.sh")
+        .arg("v0.9.0")
+        .output()
+        .expect("run release hold guard for v0.9.0");
+    assert!(
+        !blocked.status.success(),
+        "release hold guard should block v0.9.0 while hold receipt exists"
+    );
+    let blocked_stderr = String::from_utf8_lossy(&blocked.stderr);
+    assert!(
+        blocked_stderr.contains("release hold blocks v0.9.0"),
+        "blocked stderr should explain the held release tag. stderr:\n{blocked_stderr}"
+    );
+
+    let allowed = StdCommand::new("bash")
+        .current_dir(&root)
+        .arg("scripts/check-release-hold.sh")
+        .arg("v0.8.0")
+        .output()
+        .expect("run release hold guard for v0.8.0");
+    assert!(
+        allowed.status.success(),
+        "release hold guard should allow tags outside the active 0.9 hold"
+    );
 }
 
 #[test]
