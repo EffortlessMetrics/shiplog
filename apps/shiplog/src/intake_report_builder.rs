@@ -15,29 +15,39 @@ pub(crate) fn build_intake_report(
     let (workstreams, _, _) = load_effective_workstreams_for_run(&result.outputs.out_dir)?;
     let validation_errors = validate_workstreams_against_events(&workstreams, &events);
     let signals = workstream_quality_signals(&workstreams, &events);
+    let manual_events_path = configured_manual_events_path(config_path);
 
     let good = build_completion_signals(result);
     let attention = build_attention_items(result, &coverage, &events, &validation_errors, &signals);
     let readiness = intake_readiness(&validation_errors, &events, &attention);
-    let evidence_debt = build_evidence_debt(
+    let evidence_debt = build_evidence_debt(EvidenceDebtInput {
         out_dir,
-        &run_id,
-        &coverage,
-        &events,
-        &skipped_sources,
-        &workstreams,
-        &validation_errors,
-        &signals,
-    );
+        run_id: &run_id,
+        manual_events_path: manual_events_path.as_deref(),
+        coverage: &coverage,
+        events: &events,
+        skipped_sources: &skipped_sources,
+        workstreams: &workstreams,
+        validation_errors: &validation_errors,
+        signals: &signals,
+    });
     let top_fixups = map_top_fixups(review_fixups(
         &run_id,
         out_dir,
+        manual_events_path.as_deref(),
         &skipped_sources,
         &validation_errors,
         &signals,
     ));
     let curation_notes = intake_curation_notes(result);
-    let next_commands = build_next_commands(result, out_dir, config_path, &run_id, &signals);
+    let next_commands = build_next_commands(
+        result,
+        out_dir,
+        config_path,
+        manual_events_path.as_deref(),
+        &run_id,
+        &signals,
+    );
     let artifacts = build_artifacts(result);
     let repair_sources = intake_repair_source_reports(explanations, &result.configured.failures);
     let journal_suggestions = build_journal_suggestions(&top_fixups);
@@ -241,35 +251,17 @@ fn intake_readiness(
     }
 }
 
-fn build_evidence_debt(
-    out_dir: &Path,
-    run_id: &str,
-    coverage: &CoverageManifest,
-    events: &[EventEnvelope],
-    skipped_sources: &[ConfiguredSourceSkip],
-    workstreams: &WorkstreamsFile,
-    validation_errors: &[String],
-    signals: &WorkstreamQualitySignals<'_>,
-) -> Vec<IntakeReportEvidenceDebt> {
-    detect_evidence_debt(EvidenceDebtInput {
-        out_dir,
-        run_id,
-        coverage,
-        events,
-        skipped_sources,
-        workstreams,
-        validation_errors,
-        signals,
-    })
-    .iter()
-    .map(|item| IntakeReportEvidenceDebt {
-        severity: item.severity.label().to_string(),
-        kind: item.kind.label().to_string(),
-        summary: item.summary.clone(),
-        detail: item.detail.clone(),
-        next_step: item.next_step.clone(),
-    })
-    .collect()
+fn build_evidence_debt(input: EvidenceDebtInput<'_>) -> Vec<IntakeReportEvidenceDebt> {
+    detect_evidence_debt(input)
+        .iter()
+        .map(|item| IntakeReportEvidenceDebt {
+            severity: item.severity.label().to_string(),
+            kind: item.kind.label().to_string(),
+            summary: item.summary.clone(),
+            detail: item.detail.clone(),
+            next_step: item.next_step.clone(),
+        })
+        .collect()
 }
 
 fn map_top_fixups(fixups: Vec<ReviewFixup>) -> Vec<IntakeReportFixup> {
@@ -290,6 +282,7 @@ fn build_next_commands(
     result: &ConfiguredRunResult,
     out_dir: &Path,
     config_path: &Path,
+    manual_events_path: Option<&Path>,
     run_id: &str,
     signals: &WorkstreamQualitySignals<'_>,
 ) -> Vec<String> {
@@ -297,6 +290,7 @@ fn build_next_commands(
         run_id,
         out_dir,
         config_path,
+        manual_events_path,
         &result.configured.failures,
         signals
             .no_receipt_workstreams

@@ -4689,6 +4689,186 @@ user = "octo"
 }
 
 #[test]
+fn intake_journal_suggestions_use_configured_manual_events_path() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let out = tmp.path().join("out");
+    let config_dir = tmp.path().join("config");
+    let manual_dir = config_dir.join("journal");
+    std::fs::create_dir_all(&manual_dir)?;
+    let config_path = config_dir.join("shiplog.toml");
+    let events_path = config_dir.join("json.events.jsonl");
+    let coverage_path = config_dir.join("json.coverage.json");
+    let manual_events = manual_dir.join("manual_events.yaml");
+    let events: Vec<_> = (0..10)
+        .map(|idx| {
+            fixture_pr_event(
+                SourceSystem::Github,
+                "acme/platform",
+                700 + idx as u64,
+                &format!("Platform reliability fix {}", idx + 1),
+                2 + idx,
+            )
+        })
+        .collect();
+    let coverage = CoverageManifest {
+        run_id: RunId("run_configured_manual_next_steps".into()),
+        generated_at: fixture_time(20),
+        user: "octo".into(),
+        window: fixture_window(),
+        mode: "fixture".into(),
+        sources: vec!["github".into(), "manual".into()],
+        slices: vec![CoverageSlice {
+            window: fixture_window(),
+            query: "github fixture".into(),
+            total_count: events.len() as u64,
+            fetched: events.len() as u64,
+            incomplete_results: Some(false),
+            notes: vec!["fixture".into()],
+        }],
+        warnings: vec![],
+        completeness: Completeness::Complete,
+    };
+    write_events_jsonl(&events_path, &events);
+    write_coverage_manifest(&coverage_path, &coverage);
+    std::fs::write(
+        &manual_events,
+        "version: 1\ngenerated_at: 2026-01-01T00:00:00Z\nevents: []\n",
+    )?;
+    std::fs::write(
+        &config_path,
+        r#"[defaults]
+window = "year:2025"
+include_reviews = true
+
+[user]
+label = "octo"
+
+[sources.json]
+enabled = true
+events = "./json.events.jsonl"
+coverage = "./json.coverage.json"
+
+[sources.manual]
+enabled = true
+events = "./journal/manual_events.yaml"
+user = "octo"
+"#,
+    )?;
+
+    let assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args([
+            "intake",
+            "--out",
+            out.to_str().unwrap(),
+            "--config",
+            config_path.to_str().unwrap(),
+            "--year",
+            "2025",
+            "--no-open",
+        ])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
+    let manual_events_arg = manual_events.display().to_string();
+
+    assert!(stdout.contains("shiplog journal add --date"));
+    assert!(stdout.contains("--events"));
+    assert!(stdout.contains(&manual_events_arg));
+
+    let run_dir = first_run_dir(&out);
+    let packet_before = std::fs::read_to_string(run_dir.join("packet.md"))?;
+    let coverage_before = std::fs::read_to_string(run_dir.join("coverage.manifest.json"))?;
+    let report_json: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(
+        run_dir.join("intake.report.json"),
+    )?)?;
+    for (field, commands) in [
+        (
+            "next_commands",
+            report_json["next_commands"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter_map(|command| command.as_str())
+                .collect::<Vec<_>>(),
+        ),
+        (
+            "top_fixups",
+            report_json["top_fixups"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter_map(|fixup| fixup["command"].as_str())
+                .collect::<Vec<_>>(),
+        ),
+        (
+            "evidence_debt",
+            report_json["evidence_debt"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter_map(|debt| debt["next_step"].as_str())
+                .collect::<Vec<_>>(),
+        ),
+    ] {
+        let journal_commands: Vec<_> = commands
+            .into_iter()
+            .filter(|command| command.contains("shiplog journal add --date"))
+            .collect();
+        assert!(
+            !journal_commands.is_empty(),
+            "{field} should include at least one direct journal add suggestion"
+        );
+        for command in journal_commands {
+            assert!(
+                command.contains("--events") && command.contains(&manual_events_arg),
+                "{field} journal command should target configured manual events file: {command}"
+            );
+        }
+    }
+
+    let review_assert = shiplog_cmd()
+        .args(["review", "--out", out.to_str().unwrap(), "--latest"])
+        .assert()
+        .success();
+    let review_stdout = String::from_utf8(review_assert.get_output().stdout.clone())?;
+    assert!(review_stdout.contains("shiplog journal add --date"));
+    assert!(review_stdout.contains("--events"));
+    assert!(review_stdout.contains(&manual_events_arg));
+
+    let fixups_assert = shiplog_cmd()
+        .args([
+            "review",
+            "fixups",
+            "--out",
+            out.to_str().unwrap(),
+            "--latest",
+            "--commands-only",
+        ])
+        .assert()
+        .success();
+    let fixups_stdout = String::from_utf8(fixups_assert.get_output().stdout.clone())?;
+    assert!(fixups_stdout.contains("shiplog journal add --date"));
+    assert!(fixups_stdout.contains("--events"));
+    assert!(fixups_stdout.contains(&manual_events_arg));
+
+    assert_eq!(
+        packet_before,
+        std::fs::read_to_string(run_dir.join("packet.md"))?
+    );
+    assert_eq!(
+        coverage_before,
+        std::fs::read_to_string(run_dir.join("coverage.manifest.json"))?
+    );
+
+    Ok(())
+}
+
+#[test]
 fn golden_intake_all_source_fixture_surfaces_every_source_without_network() {
     let tmp = TempDir::new().unwrap();
     let out = tmp.path().join("out");

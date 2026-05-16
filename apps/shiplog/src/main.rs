@@ -5114,6 +5114,7 @@ fn intake_readiness_next_steps(
     run_id: &str,
     out_dir: &Path,
     config_path: &Path,
+    manual_events_path: Option<&Path>,
     failures: &[ConfiguredSourceFailure],
     first_no_receipt_workstream: Option<&str>,
     first_broad_workstream: Option<&str>,
@@ -5123,7 +5124,7 @@ fn intake_readiness_next_steps(
     let mut steps = Vec::new();
 
     if let Some(title) = first_manual_context_workstream {
-        steps.push(journal_add_next_step(title));
+        steps.push(journal_add_next_step(title, manual_events_path));
     }
     if let Some(title) = first_no_receipt_workstream {
         steps.push(format!(
@@ -6130,15 +6131,29 @@ fn resolve_journal_repair_context(args: &JournalAddArgs) -> Result<Option<Journa
 }
 
 fn journal_repair_manual_events_path(report_json: &serde_json::Value) -> Option<PathBuf> {
+    report_configured_manual_events_path(report_json)
+}
+
+fn run_configured_manual_events_path(run_dir: &Path) -> Option<PathBuf> {
+    let report_text = std::fs::read_to_string(run_dir.join("intake.report.json")).ok()?;
+    let report_json: serde_json::Value = serde_json::from_str(&report_text).ok()?;
+    report_configured_manual_events_path(&report_json)
+}
+
+fn report_configured_manual_events_path(report_json: &serde_json::Value) -> Option<PathBuf> {
     let config_path = PathBuf::from(report_json.get("config_path")?.as_str()?);
-    let config = load_shiplog_config(&config_path).ok()?;
+    configured_manual_events_path(&config_path)
+}
+
+fn configured_manual_events_path(config_path: &Path) -> Option<PathBuf> {
+    let config = load_shiplog_config(config_path).ok()?;
     let manual = config.sources.manual.as_ref()?;
     if !manual.enabled {
         return None;
     }
     let events = manual.events.as_ref()?;
     Some(clean_config_path(&resolve_config_path(
-        &config_base_dir(&config_path),
+        &config_base_dir(config_path),
         events,
     )))
 }
@@ -12703,6 +12718,7 @@ struct WorkstreamEvidenceProfile {
 struct EvidenceDebtInput<'a> {
     out_dir: &'a Path,
     run_id: &'a str,
+    manual_events_path: Option<&'a Path>,
     coverage: &'a CoverageManifest,
     events: &'a [EventEnvelope],
     skipped_sources: &'a [ConfiguredSourceSkip],
@@ -12903,9 +12919,11 @@ fn print_review(run_dir: &Path, out_dir: &Path, strict: bool) -> Result<()> {
     let (workstreams, source, path) = load_effective_workstreams_for_run(run_dir)?;
     let validation_errors = validate_workstreams_against_events(&workstreams, &events);
     let signals = workstream_quality_signals(&workstreams, &events);
+    let manual_events_path = run_configured_manual_events_path(run_dir);
     let evidence_debt = detect_evidence_debt(EvidenceDebtInput {
         out_dir,
         run_id: &run_id,
+        manual_events_path: manual_events_path.as_deref(),
         coverage: &coverage,
         events: &events,
         skipped_sources: &skipped_sources,
@@ -12989,6 +13007,7 @@ fn print_review(run_dir: &Path, out_dir: &Path, strict: bool) -> Result<()> {
     print_review_next_steps(
         out_dir,
         &run_id,
+        manual_events_path.as_deref(),
         !validation_errors.is_empty(),
         signals
             .no_receipt_workstreams
@@ -13036,9 +13055,11 @@ fn print_review_fixups(
     let (workstreams, _, _) = load_effective_workstreams_for_run(run_dir)?;
     let validation_errors = validate_workstreams_against_events(&workstreams, &events);
     let signals = workstream_quality_signals(&workstreams, &events);
+    let manual_events_path = run_configured_manual_events_path(run_dir);
     let fixups = review_fixups(
         &run_id,
         out_dir,
+        manual_events_path.as_deref(),
         &skipped_sources,
         &validation_errors,
         &signals,
@@ -13049,7 +13070,13 @@ fn print_review_fixups(
             println!("# No journal templates found for {run_id}.");
         } else {
             for workstream in templates.iter().take(5) {
-                println!("{}", journal_add_template_next_step(&workstream.title));
+                println!(
+                    "{}",
+                    journal_add_template_next_step(
+                        &workstream.title,
+                        manual_events_path.as_deref(),
+                    )
+                );
             }
         }
         return Ok(());
@@ -13158,6 +13185,7 @@ fn stable_fixup_id(kind: ReviewFixupKind, subject: Option<&str>) -> String {
 fn review_fixups(
     run_id: &str,
     out_dir: &Path,
+    manual_events_path: Option<&Path>,
     skipped_sources: &[ConfiguredSourceSkip],
     validation_errors: &[String],
     signals: &WorkstreamQualitySignals<'_>,
@@ -13233,7 +13261,7 @@ fn review_fixups(
                 "{} event(s) are grouped here, but none are manual outcome notes.",
                 workstream.events.len()
             )),
-            journal_add_next_step(&workstream.title),
+            journal_add_next_step(&workstream.title, manual_events_path),
         ));
     }
 
@@ -13306,7 +13334,7 @@ fn review_fixups(
                 "{} ticket event(s) are grouped here without code or manual context.",
                 workstream.events.len()
             )),
-            journal_add_next_step(&workstream.title),
+            journal_add_next_step(&workstream.title, manual_events_path),
         ));
     }
 
@@ -13322,7 +13350,7 @@ fn review_fixups(
                 "{} code/review event(s) are grouped here without ticket or manual context.",
                 workstream.events.len()
             )),
-            journal_add_next_step(&workstream.title),
+            journal_add_next_step(&workstream.title, manual_events_path),
         ));
     }
 
@@ -13457,7 +13485,10 @@ fn detect_evidence_debt(input: EvidenceDebtInput<'_>) -> Vec<EvidenceDebt> {
             .detail(workstream_title_sample(
                 &input.signals.manual_context_workstreams,
             ))
-            .next_step(journal_add_next_step(&first.title)),
+            .next_step(journal_add_next_step(
+                &first.title,
+                input.manual_events_path,
+            )),
         );
     }
 
@@ -13552,6 +13583,7 @@ fn detect_evidence_debt(input: EvidenceDebtInput<'_>) -> Vec<EvidenceDebt> {
             ))
             .next_step(journal_add_next_step(
                 &input.signals.code_only_workstreams[0].title,
+                input.manual_events_path,
             )),
         );
     }
@@ -13571,6 +13603,7 @@ fn detect_evidence_debt(input: EvidenceDebtInput<'_>) -> Vec<EvidenceDebt> {
             ))
             .next_step(journal_add_next_step(
                 &input.signals.ticket_only_workstreams[0].title,
+                input.manual_events_path,
             )),
         );
     }
@@ -13692,6 +13725,7 @@ fn workstream_title_sample(workstreams: &[&Workstream]) -> String {
 fn print_review_next_steps(
     out_dir: &Path,
     run_id: &str,
+    manual_events_path: Option<&Path>,
     has_validation_errors: bool,
     first_no_receipt_workstream: Option<&str>,
     first_broad_workstream: Option<&str>,
@@ -13721,7 +13755,10 @@ fn print_review_next_steps(
         step += 1;
     }
     if let Some(title) = first_manual_context_workstream {
-        println!("{step}. {}", journal_add_next_step(title));
+        println!(
+            "{step}. {}",
+            journal_add_next_step(title, manual_events_path)
+        );
         step += 1;
     }
     if has_skipped_sources {
@@ -13732,23 +13769,36 @@ fn print_review_next_steps(
     println!("{step}. shiplog render --out {out_arg} --run {run_id} --mode scaffold");
 }
 
-fn journal_add_next_step(workstream_title: &str) -> String {
-    format!(
+fn journal_add_next_step(workstream_title: &str, manual_events_path: Option<&Path>) -> String {
+    let mut command = format!(
         "shiplog journal add --date {} --title {} --workstream {}",
         Utc::now().date_naive(),
         quote_cli_value(&format!("Outcome note for {workstream_title}")),
         quote_cli_value(workstream_title)
-    )
+    );
+    if let Some(events) = manual_events_path {
+        command.push_str(" --events ");
+        command.push_str(&quote_cli_value(&events.display().to_string()));
+    }
+    command
 }
 
-fn journal_add_template_next_step(workstream_title: &str) -> String {
-    format!(
+fn journal_add_template_next_step(
+    workstream_title: &str,
+    manual_events_path: Option<&Path>,
+) -> String {
+    let mut command = format!(
         "shiplog journal add --date {} --title {} --workstream {} --description {}",
         Utc::now().date_naive(),
         quote_cli_value(&format!("Outcome note for {workstream_title}")),
         quote_cli_value(workstream_title),
         quote_cli_value("<replace with factual context or outcome>")
-    )
+    );
+    if let Some(events) = manual_events_path {
+        command.push_str(" --events ");
+        command.push_str(&quote_cli_value(&events.display().to_string()));
+    }
+    command
 }
 
 fn quote_display_title(value: &str) -> String {
