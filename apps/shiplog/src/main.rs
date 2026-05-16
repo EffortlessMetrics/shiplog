@@ -3329,6 +3329,7 @@ fn summarize_intake_report_command(
     let share_commands = json_array(&report_json, "share_commands")?;
     let share_explain_commands = report_share_explain_commands(&report_json, &validation.run_id)?;
     let actions = optional_json_array(&report_json, "actions")?;
+    let visible_actions = report_summary_visible_actions(actions);
     let packet_path = string_field(&report_json, "packet_path")?;
 
     println!("Report summary: {}", report_path.display());
@@ -3348,7 +3349,7 @@ fn summarize_intake_report_command(
     println!("Repair items: {} actions", repair_items.len());
     println!("Fixups: {} actions", top_fixups.len());
     println!("Share commands: {}", share_commands.len());
-    println!("Machine actions: {}", actions.len());
+    println!("Machine actions: {}", visible_actions.len());
     println!("Artifacts: {} checked", validation.artifacts_checked);
     println!("Packet: {packet_path}");
     println!("Intake report: {}", validation.markdown_path.display());
@@ -3358,7 +3359,7 @@ fn summarize_intake_report_command(
     print_report_summary_items("Repair items", repair_items, "kind", "reason")?;
     print_report_summary_items("Top fixups", top_fixups, "title", "command")?;
     print_report_summary_command_strings("Share explain next", &share_explain_commands);
-    print_report_summary_items("Machine actions", actions, "label", "command")?;
+    print_report_summary_items("Machine actions", &visible_actions, "label", "command")?;
 
     Ok(())
 }
@@ -3381,6 +3382,24 @@ fn report_share_explain_commands(
         format!("shiplog share explain manager --out {out_arg} --run {run_id}"),
         format!("shiplog share explain public --out {out_arg} --run {run_id}"),
     ])
+}
+
+fn report_summary_visible_actions(actions: &[serde_json::Value]) -> Vec<serde_json::Value> {
+    actions
+        .iter()
+        .filter(|action| {
+            let Some(command) = action.get("command").and_then(|value| value.as_str()) else {
+                return true;
+            };
+            !is_share_render_command(command)
+        })
+        .cloned()
+        .collect()
+}
+
+fn is_share_render_command(command: &str) -> bool {
+    let command = command.trim_start();
+    command.starts_with("shiplog share manager ") || command.starts_with("shiplog share public ")
 }
 
 fn export_agent_pack_command(

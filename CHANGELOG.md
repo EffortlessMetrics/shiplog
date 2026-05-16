@@ -33,8 +33,9 @@ release approval.
   surfaces now distinguish legacy `Intake status` from packet-quality
   `Packet readiness`, including compatible behavior for old reports without
   `packet_quality`; `report summarize` also now keeps its window label singular
-  and routes share handoffs through read-only `share explain` commands (#364,
-  #365, #367).
+  and routes visible share handoffs through read-only `share explain` commands
+  without reprinting direct manager/public render actions in the machine-action
+  summary (#364, #365, #367, #369).
 
 ## [0.9.0] - Unreleased candidate
 

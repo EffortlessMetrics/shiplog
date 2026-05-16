@@ -8930,6 +8930,33 @@ fn report_summarize_prints_operator_view_without_writing() {
 
     let run_dir = first_run_dir(&out);
     let report_path = run_dir.join("intake.report.json");
+    let mut report_json: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&report_path).unwrap()).unwrap();
+    let actions = report_json
+        .get_mut("actions")
+        .and_then(serde_json::Value::as_array_mut)
+        .expect("intake report should include machine actions");
+    actions.push(serde_json::json!({
+        "id": "action_share_manager_summary_regression",
+        "kind": "share_manager",
+        "label": "Render manager share",
+        "command": format!("shiplog share manager --out \"{}\" --run run_summary", out.display()),
+        "writes": true,
+        "risk": "medium"
+    }));
+    actions.push(serde_json::json!({
+        "id": "action_share_public_summary_regression",
+        "kind": "share_public",
+        "label": "Render public share",
+        "command": format!("shiplog share public --out \"{}\" --run run_summary", out.display()),
+        "writes": true,
+        "risk": "high"
+    }));
+    std::fs::write(
+        &report_path,
+        serde_json::to_string_pretty(&report_json).unwrap(),
+    )
+    .unwrap();
     let report_modified = std::fs::metadata(&report_path).unwrap().modified().unwrap();
 
     let assert = shiplog_cmd()
