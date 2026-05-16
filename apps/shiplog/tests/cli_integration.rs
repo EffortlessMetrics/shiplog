@@ -1046,6 +1046,20 @@ fn load_first_intake_report(out: &Path) -> (PathBuf, serde_json::Value) {
     (report_path, report)
 }
 
+fn remove_packet_quality_from_report(report_path: &Path) -> CliTestResult {
+    let mut report: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(report_path)?)?;
+    report
+        .as_object_mut()
+        .expect("report should be an object")
+        .remove("packet_quality");
+    std::fs::write(
+        report_path,
+        format!("{}\n", serde_json::to_string_pretty(&report)?),
+    )?;
+    Ok(())
+}
+
 fn first_repair_id_with_action(report: &serde_json::Value, action_kind: &str) -> String {
     report["repair_items"]
         .as_array()
@@ -7578,6 +7592,64 @@ fn runs_diff_latest_reports_quality_without_writing() -> CliTestResult {
     let after = file_tree_manifest(tmp.path());
 
     assert_eq!(before, after, "runs diff should not write or rewrite files");
+
+    Ok(())
+}
+
+#[test]
+fn runs_diff_latest_handles_legacy_reports_without_packet_quality() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let out = tmp.path().join("out");
+    let out_arg = out.to_string_lossy().to_string();
+
+    run_intake_without_provider_tokens(tmp.path(), &out);
+    let (_, first_report) = load_first_intake_report(&out);
+    let repair_id = first_repair_id_with_action(&first_report, "journal_add");
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args([
+            "journal",
+            "add",
+            "--from-repair",
+            repair_id.as_str(),
+            "--out",
+            out_arg.as_str(),
+            "--latest",
+        ])
+        .assert()
+        .success();
+    run_intake_without_provider_tokens(tmp.path(), &out);
+
+    let run_dirs = all_run_dirs(&out);
+    assert!(
+        run_dirs.len() >= 2,
+        "legacy packet-quality diff test needs two run directories"
+    );
+    for run_dir in &run_dirs {
+        remove_packet_quality_from_report(&run_dir.join("intake.report.json"))?;
+    }
+
+    let before = file_tree_manifest(tmp.path());
+    shiplog_cmd()
+        .args(["runs", "diff", "--out", out_arg.as_str(), "--latest"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Packet quality diff:"))
+        .stdout(predicate::str::contains("Reports:"))
+        .stdout(predicate::str::contains(
+            "Improved:\n- evidence events 0 -> 1\n- manual evidence count 0 -> 1\n- packet readiness Needs evidence -> Ready for review",
+        ))
+        .stdout(predicate::str::contains("packet readiness: Ready for review").not())
+        .stdout(predicate::str::contains(format!(
+            "shiplog open packet --out \"{}\"",
+            out.display()
+        )));
+    let after = file_tree_manifest(tmp.path());
+
+    assert_eq!(
+        before, after,
+        "runs diff should not write or rewrite legacy report files"
+    );
 
     Ok(())
 }

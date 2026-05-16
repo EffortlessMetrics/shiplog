@@ -12342,7 +12342,7 @@ fn run_quality_diff_groups(
         still_weak.push(format!("coverage gaps remain: {}", to.summary.gap_count));
     }
     match to.packet_readiness.as_deref() {
-        Some(status) if normalized_quality_status(status) != "ready" => {
+        Some(status) if !is_ready_quality_status(status) => {
             still_weak.push(format!(
                 "packet readiness: {}",
                 quality_status_label(status)
@@ -12438,7 +12438,7 @@ fn normalized_quality_status(status: &str) -> String {
 
 fn readiness_rank(status: &str) -> i32 {
     match normalized_quality_status(status).as_str() {
-        "ready" => 4,
+        "ready" | "ready_for_review" => 4,
         "ready_with_caveats" => 3,
         "needs_repair" => 2,
         "needs_evidence" => 1,
@@ -12446,9 +12446,17 @@ fn readiness_rank(status: &str) -> i32 {
     }
 }
 
+fn is_ready_quality_status(status: &str) -> bool {
+    matches!(
+        normalized_quality_status(status).as_str(),
+        "ready" | "ready_for_review"
+    )
+}
+
 fn quality_status_label(status: &str) -> String {
     match normalized_quality_status(status).as_str() {
         "ready" => "Ready".to_string(),
+        "ready_for_review" => "Ready for review".to_string(),
         "ready_with_caveats" => "Ready with caveats".to_string(),
         "needs_repair" => "Needs repair".to_string(),
         "needs_evidence" => "Needs evidence".to_string(),
