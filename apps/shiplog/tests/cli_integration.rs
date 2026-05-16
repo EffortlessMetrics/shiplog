@@ -2723,6 +2723,76 @@ events = "./manual_events.yaml"
 }
 
 #[test]
+fn intake_default_out_paths_do_not_duplicate_current_dir() {
+    let tmp = TempDir::new().unwrap();
+    let fixtures = fixture_dir();
+    let events = fixtures
+        .join("ledger.events.jsonl")
+        .display()
+        .to_string()
+        .replace('\\', "/");
+    let coverage = fixtures
+        .join("coverage.manifest.json")
+        .display()
+        .to_string()
+        .replace('\\', "/");
+    write_manual_events(&tmp.path().join("manual_events.yaml"));
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        format!(
+            r#"[shiplog]
+config_version = 1
+
+[defaults]
+out = "./out"
+window = "year:2025"
+profile = "internal"
+
+[sources.json]
+enabled = true
+events = "{events}"
+coverage = "{coverage}"
+
+[sources.manual]
+enabled = true
+events = "./manual_events.yaml"
+"#
+        ),
+    )
+    .unwrap();
+
+    let assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["intake", "--no-open", "--explain"])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
+    let normalized_stdout = stdout.replace('\\', "/");
+
+    assert!(
+        !normalized_stdout.contains("././out"),
+        "default out display should not duplicate the current directory. stdout:\n{stdout}"
+    );
+    assert!(
+        normalized_stdout.contains("Packet: ./out/"),
+        "default out paths should stay copyable and compact. stdout:\n{stdout}"
+    );
+    assert!(
+        normalized_stdout.contains("--out \"./out\""),
+        "handoff commands should use the compact default out path. stdout:\n{stdout}"
+    );
+
+    let run_dir = first_run_dir(&tmp.path().join("out"));
+    let report_json: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(run_dir.join("intake.report.json")).unwrap())
+            .unwrap();
+    assert_eq!(
+        report_json["out_dir"], "./out",
+        "intake.report.json should preserve compact default out display"
+    );
+}
+
+#[test]
 fn doctor_requires_redaction_key_for_share_profile_defaults() {
     let tmp = TempDir::new().unwrap();
     std::fs::write(
