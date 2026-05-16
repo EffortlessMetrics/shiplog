@@ -4742,6 +4742,63 @@ coverage = "./all-source.coverage.json"
 }
 
 #[test]
+fn intake_summary_and_report_skipped_sources_mirror_skipped_decisions() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+
+    let assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args([
+            "intake",
+            "--out",
+            out.to_str().unwrap(),
+            "--no-open",
+            "--explain",
+        ])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
+
+    assert!(stdout.contains("Skipped:\n- GitHub: GITHUB_TOKEN not found"));
+    assert!(
+        !stdout.contains("Skipped:\n- None\n\nSource decisions:\n- GitHub: skipped"),
+        "summary should not say no sources were skipped while source decisions list skipped sources"
+    );
+
+    let run_dir = first_run_dir(&out);
+    let report_json: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(run_dir.join("intake.report.json")).unwrap())
+            .unwrap();
+    let decisions = report_json["source_decisions"].as_array().unwrap();
+    let skipped_sources = report_json["skipped_sources"].as_array().unwrap();
+    let skipped_decisions = decisions
+        .iter()
+        .filter(|decision| decision["decision"].as_str() == Some("skipped"))
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        skipped_sources.len(),
+        skipped_decisions.len(),
+        "skipped_sources should mirror skipped source decisions"
+    );
+    for decision in skipped_decisions {
+        let source_key = decision["source_key"].as_str().unwrap();
+        let reason = decision["reason"].as_str().unwrap();
+        assert!(
+            skipped_sources.iter().any(|source| {
+                source["source_key"].as_str() == Some(source_key)
+                    && source["reason"].as_str() == Some(reason)
+            }),
+            "skipped decision {source_key:?} should be present in skipped_sources"
+        );
+    }
+}
+
+#[test]
 fn golden_intake_manager_share_missing_key_fails_closed() {
     let tmp = TempDir::new().unwrap();
     let out = tmp.path().join("out");
