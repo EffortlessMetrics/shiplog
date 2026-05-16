@@ -117,10 +117,10 @@ pub(crate) fn build_intake_report(
         schema_version: 1,
         run_id: run_id.clone(),
         readiness: readiness.to_string(),
-        config_path: config_path.display().to_string(),
-        out_dir: out_dir.display().to_string(),
-        run_dir: result.outputs.out_dir.display().to_string(),
-        packet_path: result.outputs.packet_md.display().to_string(),
+        config_path: display_path_for_cli(config_path),
+        out_dir: display_path_for_cli(out_dir),
+        run_dir: display_path_for_cli(&result.outputs.out_dir),
+        packet_path: display_path_for_cli(&result.outputs.packet_md),
         period: result.window.period.clone(),
         window: IntakeReportWindow {
             since: result.window.since.to_string(),
@@ -128,8 +128,8 @@ pub(crate) fn build_intake_report(
             label: result.window.window_label(),
         },
         reports: IntakeReportFiles {
-            markdown: report_markdown_path(result).display().to_string(),
-            json: report_json_path(result).display().to_string(),
+            markdown: display_path_for_cli(&report_markdown_path(result)),
+            json: display_path_for_cli(&report_json_path(result)),
         },
         included_sources,
         skipped_sources: skipped_sources_report,
@@ -352,44 +352,44 @@ fn build_artifacts(result: &ConfiguredRunResult) -> Vec<IntakeReportArtifact> {
     let mut artifacts = vec![
         IntakeReportArtifact {
             label: "packet".to_string(),
-            path: result.outputs.packet_md.display().to_string(),
+            path: display_path_for_cli(&result.outputs.packet_md),
         },
         IntakeReportArtifact {
             label: "ledger".to_string(),
-            path: result.outputs.ledger_events_jsonl.display().to_string(),
+            path: display_path_for_cli(&result.outputs.ledger_events_jsonl),
         },
         IntakeReportArtifact {
             label: "coverage".to_string(),
-            path: result.outputs.coverage_manifest_json.display().to_string(),
+            path: display_path_for_cli(&result.outputs.coverage_manifest_json),
         },
         IntakeReportArtifact {
             label: format!("workstreams ({})", result.ws_source),
-            path: result.outputs.workstreams_yaml.display().to_string(),
+            path: display_path_for_cli(&result.outputs.workstreams_yaml),
         },
         IntakeReportArtifact {
             label: "bundle manifest".to_string(),
-            path: result.outputs.bundle_manifest_json.display().to_string(),
+            path: display_path_for_cli(&result.outputs.bundle_manifest_json),
         },
         IntakeReportArtifact {
             label: "intake report markdown".to_string(),
-            path: report_markdown_path(result).display().to_string(),
+            path: display_path_for_cli(&report_markdown_path(result)),
         },
         IntakeReportArtifact {
             label: "intake report json".to_string(),
-            path: report_json_path(result).display().to_string(),
+            path: display_path_for_cli(&report_json_path(result)),
         },
     ];
     if let Some(zip_path) = &result.outputs.zip_path {
         artifacts.push(IntakeReportArtifact {
             label: "zip bundle".to_string(),
-            path: zip_path.display().to_string(),
+            path: display_path_for_cli(zip_path),
         });
     }
     let source_failures_path = result.outputs.out_dir.join(SOURCE_FAILURES_FILENAME);
     if source_failures_path.exists() {
         artifacts.push(IntakeReportArtifact {
             label: "source failures".to_string(),
-            path: source_failures_path.display().to_string(),
+            path: display_path_for_cli(&source_failures_path),
         });
     }
     artifacts
