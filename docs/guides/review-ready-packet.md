@@ -12,6 +12,18 @@ The loop is:
 collect -> repair -> rerun -> compare -> interpret -> share
 ```
 
+For dogfood or review-cycle soak runs, use an explicit output directory and keep
+using it for every follow-up command. This keeps artifacts out of unrelated
+`./out` runs and makes `--latest` resolve the packet you are actively repairing.
+
+```bash
+OUT=./out/review-ready-soak
+```
+
+The examples below use the default `./out` for brevity. If you set `OUT`, add
+`--out "$OUT"` to each command, or use the copy-ready commands printed by
+`intake`, `review`, `repair diff`, and `runs diff`.
+
 ## Run the first packet
 
 Start with intake and read the report before editing anything.
@@ -48,6 +60,14 @@ report-derived repair ID:
 shiplog journal add --from-repair <repair_id>
 ```
 
+If you used a non-default output directory, keep the same output directory on
+the repair commands:
+
+```bash
+shiplog repair plan --out "$OUT" --latest
+shiplog journal add --from-repair <repair_id> --out "$OUT" --latest
+```
+
 This writes `manual_events.yaml`. It does not mutate GitHub, Jira, Linear,
 GitLab, or any provider record. Replace generated placeholder context with what
 actually happened before relying on the packet.
@@ -61,6 +81,15 @@ shiplog intake --last-6-months --explain
 shiplog repair diff --latest
 shiplog runs diff --latest
 shiplog open packet --latest
+```
+
+With a non-default output directory:
+
+```bash
+shiplog intake --last-6-months --explain --out "$OUT"
+shiplog repair diff --out "$OUT" --latest
+shiplog runs diff --out "$OUT" --latest
+shiplog open packet --out "$OUT" --latest
 ```
 
 Read `repair diff` first:
@@ -80,6 +109,10 @@ Then read `runs diff`:
   worse.
 - `Still weak`: skipped sources, open repairs, manual-only evidence, missing
   candidates, or other caveats still need human judgment.
+
+Treat the `Next:` commands from `runs diff` as the handoff. They should preserve
+the selected `--out` directory and point at `open packet` and `share explain`
+before any write-producing share command.
 
 The useful outcome is not "no warnings." The useful outcome is knowing exactly
 what improved and what still needs context.
@@ -134,6 +167,13 @@ shiplog share explain manager --latest
 shiplog share explain public --latest
 ```
 
+For a soak run:
+
+```bash
+shiplog share explain manager --out "$OUT" --latest
+shiplog share explain public --out "$OUT" --latest
+```
+
 The command is read-only. It does not require `SHIPLOG_REDACT_KEY`, and it does
 not write `profiles/<profile>/packet.md` or `share.manifest.json`. Use it to
 answer:
@@ -161,6 +201,10 @@ shiplog share public --latest --zip
 Strict verification is a guardrail, not a privacy guarantee. Review the rendered
 public packet before it leaves your organization.
 
+Do not use the share commands as a reason to cut a release. In the post-0.8 soak
+lane, the goal is to prove the packet is understandable and share-safe before
+deciding whether the unreleased 0.9 candidate should ship.
+
 ## Stop conditions
 
 Stop and use the packet when:
@@ -179,4 +223,3 @@ Keep repairing when:
 - a claim candidate depends only on memory and has no supporting receipt.
 
 The defensible path is: collect, repair, rerun, compare, prepare, share.
-
