@@ -13,15 +13,14 @@ Release       → tag-triggered, blocking, ship readiness
 It is part of the [Rust 1.95 / 0.5.0 quality
 rollout](rust-1.95-rollout.md).
 
-**Important:** the lane assignments below are **tentative and advisory** in
-v0.5.0. They describe the intended steady state. Encoding them as TOML
-happens in PR #146 (`policy/ci-lanes.toml`, `policy/ci-budget.toml`,
-`policy/ci-risk-packs.toml`). Phase 6 splits the wiring across three PRs:
-PR #153 adds the `ripr.yml` advisory lane, PR #154 carves out the bounded
-stochastic PR-fast lane, and PR #155 routes broad BDD/property/fuzz/mutation
-to nightly + label + risk pack. Tightening cache economics happens in
-PR #147; CI actuals (the LEM feedback loop) land in PR #148. Hard enforcement
-of lane budgets is a follow-up release decision, not v0.5.0.
+**Important:** this document began as the v0.5.0 lane-routing plan. The
+advisory-vs-blocking doctrine remains current, but several planned lanes have
+since landed. PR #146 encoded lane policy in TOML, PR #153 added the `ripr.yml`
+advisory stub, PR #154 carved out bounded stochastic smoke lanes, and PR #155
+routes broad BDD/property/fuzz/mutation to nightly + label + risk pack.
+Tightening cache economics happened in PR #147; CI actuals (the LEM feedback
+loop) landed in PR #148. Hard enforcement of lane budgets remains a separate
+release decision.
 
 This document changes how the rollout PRs are reviewed; it does not by itself
 move any workflow.
@@ -58,7 +57,7 @@ below.
 | `ci.yml` (`check`) | Workspace builds, formats, lints (`-D warnings`), tests, doc-tests, doc build, release build, canary publish dry-run | PR + push (Ubuntu + Windows matrix) | unchanged |
 | `ci.yml` (`deny`) | `cargo deny check` — bans, advisories, licenses, sources | PR + push | unchanged |
 | `ci.yml` (`msrv`) | Workspace compiles on declared MSRV | PR + push | redundant with `check` while toolchain pin == MSRV; consider removing in PR #147 |
-| **(planned, PR #153)** `ripr.yml` | Reachable-mutant exposure analysis | not present | added as advisory |
+| `ripr.yml` (PR #153) | Reachable-mutant exposure analysis | advisory stub on Rust diffs; never release-blocking | real analysis remains a follow-up release, advisory unless deliberately promoted |
 | **(planned, PR #154)** bounded proptest smoke | Selected high-value invariants (redaction alias stability, bundle manifest paths, coverage/gap accounting, intake.report.json shape, share.manifest checksum/path rules, source.failures.json classification, period/window resolution, journal/manual event ID stability) at 16–64 cases per selected test | full proptest sweep across all crates today | bounded smoke on PR fast; full sweep moves to nightly + risk-pack PR-targeted |
 | **(planned, PR #154)** quick-fuzz of touched targets | Compile + 30–90s fuzz of the parser/serde target the PR touches (or one canonical anchor if PR is tooling) | quick fuzz × 9 targets on every PR (~15 min) today | touched-target smoke on PR fast; full 9-target matrix moves to nightly + label |
 | **(planned, PR #154)** BDD critical-flow smoke | One or two CLI critical flows (e.g. `intake` happy path + `share verify public --strict`) | full 4-job BDD matrix on every PR today | smoke on PR fast; affected feature files routed by risk pack PR-targeted; full BDD suite moves to nightly |
@@ -218,10 +217,12 @@ Release lane claim boundary:
   smoke tests. The release-readiness doc (`docs/release/0.5.0-readiness.md`,
   PR #157) carries the explicit known-non-blockers list.
 
-## How `ripr` fits (planned)
+## How `ripr` fits today
 
-`ripr` is a fast oracle-exposure filter for PRs. It runs in the PR fast lane
-as advisory only and does not block merges. Its job:
+`ripr` is a fast oracle-exposure filter for PRs. The current workflow is an
+advisory stub that emits the contract artifacts but does not run real exposure
+analysis yet. It runs in the PR fast lane as advisory only and does not block
+merges or releases. Its eventual job:
 
 - Flag mutants that are reachable from the PR change, so the reviewer knows
   which targeted-mutation runs would be productive.

@@ -422,6 +422,46 @@ fn release_hold_docs_record_post_0_8_soak_receipts() {
 }
 
 #[test]
+fn ci_docs_keep_ripr_advisory_and_non_release_blocking() {
+    let root = repo_root();
+    let lanes_path = root.join("docs/ci/test-evidence-lanes.md");
+    let ripr_path = root.join("docs/ci/ripr.md");
+    let workflow_path = root.join(".github/workflows/ripr.yml");
+
+    let lanes = std::fs::read_to_string(&lanes_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", lanes_path.display()));
+    let ripr = std::fs::read_to_string(&ripr_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", ripr_path.display()));
+    let workflow = std::fs::read_to_string(&workflow_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", workflow_path.display()));
+
+    for needle in [
+        "advisory stub on Rust diffs; never release-blocking",
+        "real analysis remains a follow-up release",
+        "does not block",
+        "merges or releases",
+        "Hard enforcement of lane budgets remains",
+        "release decision",
+        "## How `ripr` fits today",
+    ] {
+        assert!(
+            lanes.contains(needle),
+            "test evidence lanes doc should keep ripr advisory posture current: {needle:?}"
+        );
+    }
+
+    assert!(
+        !lanes.contains("**(planned, PR #153)** `ripr.yml`"),
+        "test evidence lanes doc should not describe the landed ripr workflow as planned"
+    );
+    assert!(
+        ripr.contains("Blocking | no (advisory)")
+            && workflow.contains("Always advisory: never blocks merge"),
+        "ripr operating docs and workflow should keep the lane advisory"
+    );
+}
+
+#[test]
 fn documented_help_commands_stay_available() {
     shiplog_cmd()
         .arg("--help")
