@@ -178,6 +178,13 @@ thin_workstream
 operator guidance. Commands should be shown as suggestions and should not be run
 without user confirmation in future UI or agent surfaces.
 
+The human Markdown report also renders a derived `Share Explain Commands`
+section before `Share Commands`. These read-only commands let the user inspect
+manager/public share posture before running the write-producing render
+commands from `share_commands`. This does not add a top-level JSON field;
+scripts should continue to use `share_commands` for render-command receipts and
+`shiplog share explain <profile> --latest` for posture explanation.
+
 ## Repair Items
 
 `repair_items` is the machine-readable repair queue for future local UI/TUI,
