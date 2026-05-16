@@ -4644,7 +4644,7 @@ user = "octo"
     )
     .unwrap();
 
-    shiplog_cmd()
+    let assert = shiplog_cmd()
         .current_dir(tmp.path())
         .env_remove("GITHUB_TOKEN")
         .env_remove("GITLAB_TOKEN")
@@ -4660,19 +4660,26 @@ user = "octo"
             "--no-open",
         ])
         .assert()
-        .success()
-        .stdout(predicate::str::contains("Review intake complete."))
-        .stdout(predicate::str::contains("- JSON: success"))
-        .stdout(predicate::str::contains("- Manual: success"))
-        .stdout(predicate::str::contains("Evidence debt:"))
-        .stdout(predicate::str::contains("Next:"))
-        .stdout(predicate::str::contains("Intake readiness:"))
-        .stdout(predicate::str::contains("Packet readiness: Needs curation"))
-        .stdout(predicate::str::contains("- Packet rendered"))
-        .stdout(predicate::str::contains("- Review inspection completed"))
-        .stdout(predicate::str::contains("shiplog render --out"))
-        .stdout(predicate::str::contains("--bundle-profile manager"))
-        .stdout(predicate::str::contains("Open later:"));
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
+
+    assert!(stdout.contains("Review intake complete."));
+    assert!(stdout.contains("- JSON: success"));
+    assert!(stdout.contains("- Manual: success"));
+    assert!(stdout.contains("Evidence debt:"));
+    assert!(stdout.contains("Intake readiness:"));
+    assert!(stdout.contains("Packet readiness: Needs curation"));
+    assert!(stdout.contains("- Packet rendered"));
+    assert!(stdout.contains("- Review inspection completed"));
+    assert!(stdout.contains("shiplog render --out"));
+    assert!(stdout.contains("--bundle-profile manager"));
+    assert!(stdout.contains("Open:"));
+    assert!(stdout.contains("Open later:"));
+    assert_eq!(
+        stdout.lines().filter(|line| *line == "Next:").count(),
+        1,
+        "intake should print one top-level next-action block. stdout:\n{stdout}"
+    );
 
     let run_dir = first_run_dir(&out);
     assert!(run_dir.join("packet.md").exists(), "missing intake packet");

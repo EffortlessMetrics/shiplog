@@ -2419,7 +2419,7 @@ fn run_intake(args: IntakeArgs) -> Result<()> {
     println!("- {}", report.reports.markdown);
     println!("- {}", report.reports.json);
     println!();
-    print_review(&result.outputs.out_dir, &out, false)?;
+    print_review_with_options(&result.outputs.out_dir, &out, false, false)?;
     println!();
     print_intake_readiness_report(&report);
     println!();
@@ -2456,7 +2456,7 @@ fn print_intake_next_step_footer(
 ) {
     println!("Review pack written to: {}", report.run_dir);
     println!();
-    println!("Next:");
+    println!("Open:");
     println!(
         "  {}",
         intake_open_latest_command("intake-report", out_dir, include_out)
@@ -13072,6 +13072,15 @@ fn print_weekly_review(run_dir: &Path, out_dir: &Path, strict: bool) -> Result<(
 }
 
 fn print_review(run_dir: &Path, out_dir: &Path, strict: bool) -> Result<()> {
+    print_review_with_options(run_dir, out_dir, strict, true)
+}
+
+fn print_review_with_options(
+    run_dir: &Path,
+    out_dir: &Path,
+    strict: bool,
+    include_next_steps: bool,
+) -> Result<()> {
     let ingest =
         load_run_ingest(run_dir).with_context(|| format!("load run {}", run_dir.display()))?;
     let coverage = ingest.coverage;
@@ -13166,25 +13175,27 @@ fn print_review(run_dir: &Path, out_dir: &Path, strict: bool) -> Result<()> {
     print_evidence_debt(&evidence_debt);
     println!();
 
-    print_review_next_steps(
-        out_dir,
-        &run_id,
-        manual_events_path.as_deref(),
-        !validation_errors.is_empty(),
-        signals
-            .no_receipt_workstreams
-            .first()
-            .map(|workstream| workstream.title.as_str()),
-        signals
-            .broad_workstreams
-            .first()
-            .map(|workstream| workstream.title.as_str()),
-        signals
-            .manual_context_workstreams
-            .first()
-            .map(|workstream| workstream.title.as_str()),
-        !skipped_sources.is_empty(),
-    );
+    if include_next_steps {
+        print_review_next_steps(
+            out_dir,
+            &run_id,
+            manual_events_path.as_deref(),
+            !validation_errors.is_empty(),
+            signals
+                .no_receipt_workstreams
+                .first()
+                .map(|workstream| workstream.title.as_str()),
+            signals
+                .broad_workstreams
+                .first()
+                .map(|workstream| workstream.title.as_str()),
+            signals
+                .manual_context_workstreams
+                .first()
+                .map(|workstream| workstream.title.as_str()),
+            !skipped_sources.is_empty(),
+        );
+    }
 
     if strict && !evidence_debt.is_empty() {
         anyhow::bail!(
