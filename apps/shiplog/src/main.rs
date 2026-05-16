@@ -2781,21 +2781,21 @@ fn render_packet_readiness_group<'a>(
     label: &str,
     items: impl Iterator<Item = &'a IntakeReportEvidenceStrength>,
 ) {
+    let mut items = items.peekable();
+    if items.peek().is_none() {
+        return;
+    }
+
     out.push_str(label);
     out.push_str(":\n");
 
-    let mut wrote = false;
     for item in items {
-        wrote = true;
         out.push_str(&format!(
             "- {}: {} (`{}`)\n",
             packet_readiness_scope_label(&item.scope),
             item.reason,
             item.status
         ));
-    }
-    if !wrote {
-        out.push_str("- None yet.\n");
     }
     out.push('\n');
 }

@@ -6,9 +6,6 @@ expression: "review_ready_packet_surface(&repaired_packet, out_arg,\nrepaired_ru
 
 Ready with caveats.
 
-Strong:
-- None yet.
-
 Still weak:
 - Packet: Evidence is present, but it only comes from manual evidence. (`manual_only`)
 - Manual source: Manual contributed 1 event. (`manual_only`)
