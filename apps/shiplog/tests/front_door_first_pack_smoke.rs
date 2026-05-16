@@ -185,6 +185,10 @@ fn install_to_first_pack_smoke() {
         stdout.contains("Needs evidence:") && stdout.contains("shiplog journal add"),
         "smoke: Needs evidence stdout must include the manual-evidence repair hint. stdout:\n{stdout}"
     );
+    assert!(
+        stdout.contains("shiplog repair plan --out") && stdout.contains("--latest"),
+        "smoke: intake stdout must route repairable packets through repair plan first. stdout:\n{stdout}"
+    );
 
     // (a) The two artifacts the user opens first must exist. Without
     // them, no framing assertion below is meaningful.
@@ -260,6 +264,10 @@ fn install_to_first_pack_smoke() {
         body.contains("No events collected"),
         "smoke: intake.report.md must surface the missing-evidence gap in plain language (looked for `No events collected`). body:\n{body}"
     );
+    assert!(
+        body.contains("shiplog repair plan --out") && body.contains("--latest"),
+        "smoke: intake.report.md must route repairable packets through repair plan before direct fixes. body:\n{body}"
+    );
 }
 
 /// Product proof for the evidence repair loop. A first run with no provider
@@ -289,6 +297,17 @@ fn repair_loop_improves_first_packet_without_provider_mutation() {
         source_event_count(&first_report, "manual"),
         0,
         "repair proof: the cold first packet should have no manual evidence yet"
+    );
+    let first_next_commands = first_report["next_commands"]
+        .as_array()
+        .expect("repair proof: report should expose next_commands");
+    let first_next = first_next_commands
+        .first()
+        .and_then(|command| command.as_str())
+        .expect("repair proof: report should expose at least one next command");
+    assert!(
+        first_next.starts_with("shiplog repair plan --out") && first_next.ends_with(" --latest"),
+        "repair proof: first next command should send users to repair plan. next_commands={first_next_commands:?}"
     );
     assert_eq!(
         packet_quality_status(&first_report),
