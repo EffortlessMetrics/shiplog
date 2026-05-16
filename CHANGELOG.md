@@ -12,6 +12,20 @@ unreleased 0.9 candidate. Release execution is paused while 0.8 gets soak time;
 do not treat the 0.9 version metadata as tag, crates.io publish, or GitHub
 release approval.
 
+### Post-0.8 soak
+
+- Recorded and guarded the paused 0.9 release posture; release-hold receipts
+  stay active and do not authorize tag, crates.io publish, or GitHub release
+  execution (#337, #342).
+- Tightened review-ready dogfood rough edges: repairable intakes route through
+  `repair plan`, journal repairs keep manual evidence enabled on rerun, intake
+  prints one main `Next:` block, the final share handoff uses read-only
+  `share explain manager`, and duplicate journal repair items are collapsed
+  (#338, #344, #345, #347, #348).
+- Strengthened post-0.8 proof with golden/no-write coverage for review-ready
+  packets, `open packet`, `repair diff`, and the repeated journal guidance
+  discovered during local-history dogfood (#340, #341, #343, #346).
+
 ## [0.9.0] - Unreleased candidate
 
 shiplog 0.9.0 is the planned **review-ready packet release**. It builds on the 0.8

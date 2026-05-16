@@ -391,7 +391,10 @@ fn release_hold_docs_record_post_0_8_soak_receipts() {
         "paused readiness ledger should record post-0.8 soak evidence"
     );
 
-    for needle in ["#337", "#338", "#339", "#340", "#341"] {
+    for needle in [
+        "#337", "#338", "#339", "#340", "#341", "#342", "#343", "#344", "#345", "#346", "#347",
+        "#348",
+    ] {
         assert!(
             hold.contains(needle) && readiness.contains(needle),
             "hold and readiness docs should both record {needle}"
@@ -402,7 +405,10 @@ fn release_hold_docs_record_post_0_8_soak_receipts() {
         "do not lift the release hold",
         "not release approval",
         "shiplog open packet --latest --print-path",
+        "shiplog repair diff --latest",
+        "shiplog share explain manager",
         "journal suggestions",
+        "journal repair items",
     ] {
         assert!(
             hold.contains(needle) || readiness.contains(needle),
