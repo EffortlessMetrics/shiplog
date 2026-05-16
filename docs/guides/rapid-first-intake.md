@@ -118,10 +118,12 @@ pack and what's missing." Read the sections in this order:
     when talking to a reviewer.
 11. **Top Fixups / Journal Suggestions** — the highest-value curation
     actions, with copy-ready commands.
-12. **Share Commands** — exact commands to render manager and public
-    profiles.
-13. **Next Commands** — what to run next (rerun, curate, share).
-14. **Artifacts** — every file path the run produced.
+12. **Share Explain Commands** — read-only commands that explain manager
+    and public posture before rendering.
+13. **Share Commands** — exact commands to render manager and public
+    profiles after you have checked the posture.
+14. **Next Commands** — what to run next (rerun, curate, share).
+15. **Artifacts** — every file path the run produced.
 
 You do not have to read every section. **Header → Source Freshness →
 Skipped Sources → Needs Attention** is enough to decide whether the

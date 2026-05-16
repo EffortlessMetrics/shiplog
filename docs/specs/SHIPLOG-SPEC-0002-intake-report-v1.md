@@ -186,9 +186,10 @@ a different order is better for a time-pressured reviewer:
 9. Evidence Debt.
 10. Good / Needs Attention.
 11. Top Fixups / Journal Suggestions.
-12. Share Commands.
-13. Next Commands.
-14. Artifacts.
+12. Share Explain Commands.
+13. Share Commands.
+14. Next Commands.
+15. Artifacts.
 
 The Markdown report may use friendly labels, prose, and reordered details that
 help a reviewer scan the result. It must not be the only source of a machine

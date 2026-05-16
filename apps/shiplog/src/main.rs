@@ -3074,12 +3074,20 @@ implicitly fresh; see `## Skipped Sources` and `## Source Decisions` for the res
     }
     out.push('\n');
 
+    out.push_str("## Share Explain Commands\n\n");
+    for command in intake_report_share_explain_commands(report) {
+        out.push_str(&format!("- `{command}`\n"));
+    }
+    out.push_str(
+        "\nShare explain commands are read-only; use them before rendering manager or public share artifacts.\n\n",
+    );
+
     out.push_str("## Share Commands\n\n");
     for command in &report.share_commands {
         out.push_str(&format!("- `{command}`\n"));
     }
     out.push_str(
-        "\nShare commands require `--redact-key` or `SHIPLOG_REDACT_KEY` at execution time.\n\n",
+        "\nShare commands render manager/public artifacts and require `--redact-key` or `SHIPLOG_REDACT_KEY` at execution time.\n\n",
     );
 
     out.push_str("## Next Commands\n\n");
@@ -3094,6 +3102,20 @@ implicitly fresh; see `## Skipped Sources` and `## Source Decisions` for the res
     }
 
     out
+}
+
+fn intake_report_share_explain_commands(report: &IntakeReport) -> Vec<String> {
+    let out_arg = quote_cli_value(&report.out_dir);
+    vec![
+        format!(
+            "shiplog share explain manager --out {out_arg} --run {}",
+            report.run_id
+        ),
+        format!(
+            "shiplog share explain public --out {out_arg} --run {}",
+            report.run_id
+        ),
+    ]
 }
 
 fn packet_readiness_display(report: &IntakeReport) -> String {
@@ -3166,6 +3188,7 @@ const INTAKE_REPORT_MARKDOWN_SECTIONS: &[&str] = &[
     "## Next Commands",
     "## Evidence Debt",
     "## Top Fixups",
+    "## Share Explain Commands",
     "## Share Commands",
     "## Artifacts",
 ];
