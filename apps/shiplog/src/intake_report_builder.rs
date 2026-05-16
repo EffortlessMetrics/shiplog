@@ -1104,11 +1104,15 @@ fn build_repair_items(inputs: RepairItemInputs<'_>) -> Vec<IntakeReportRepairIte
         );
     }
 
+    let mut seen_journal_repair_commands = BTreeSet::new();
     for fixup in top_fixups {
         if !journal_suggestions
             .iter()
             .any(|suggestion| suggestion == &fixup.command)
         {
+            continue;
+        }
+        if !seen_journal_repair_commands.insert(fixup.command.clone()) {
             continue;
         }
         push_repair_item_draft(
@@ -1371,5 +1375,63 @@ mod tests {
         ];
 
         assert_eq!(build_journal_suggestions(&top_fixups), vec![duplicate]);
+    }
+
+    #[test]
+    fn repair_items_dedupe_repeated_journal_fixups() {
+        let duplicate = "shiplog journal add --date 2026-05-16 --title \"Outcome note for shiplog\" --workstream shiplog".to_string();
+        let top_fixups = vec![
+            IntakeReportFixup {
+                id: "fixup_manual_context_shiplog".to_string(),
+                kind: "manual_context".to_string(),
+                title: "Add outcome context for \"shiplog\"".to_string(),
+                detail: None,
+                command: duplicate.clone(),
+            },
+            IntakeReportFixup {
+                id: "fixup_code_context_shiplog".to_string(),
+                kind: "code_context".to_string(),
+                title: "Add outcome context for code-only workstream \"shiplog\"".to_string(),
+                detail: None,
+                command: duplicate,
+            },
+        ];
+        let journal_suggestions = build_journal_suggestions(&top_fixups);
+        let repair_items = build_repair_items(RepairItemInputs {
+            repair_sources: &[],
+            source_freshness: &[],
+            out_dir: Path::new("out"),
+            config_path: Path::new("shiplog.toml"),
+            needs_attention: &[],
+            evidence_debt: &[],
+            top_fixups: &top_fixups,
+            journal_suggestions: &journal_suggestions,
+            actions: &[],
+            next_commands: &[],
+            artifacts: &[],
+        });
+
+        let journal_items = repair_items
+            .iter()
+            .filter(|item| item.kind == "manual_evidence_missing")
+            .collect::<Vec<_>>();
+        assert_eq!(
+            journal_items.len(),
+            1,
+            "duplicate journal commands should create one repair item"
+        );
+        assert_eq!(
+            journal_items[0].reason,
+            "Add outcome context for \"shiplog\""
+        );
+        assert_eq!(journal_items[0].action.kind, "journal_add");
+        assert!(
+            journal_items[0]
+                .action
+                .command
+                .as_deref()
+                .is_some_and(|command| command.starts_with("shiplog journal add --from-repair ")),
+            "journal repair item should expose the canonical repair command"
+        );
     }
 }
