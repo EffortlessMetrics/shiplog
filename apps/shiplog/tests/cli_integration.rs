@@ -8932,7 +8932,7 @@ fn report_summarize_prints_operator_view_without_writing() {
     let report_path = run_dir.join("intake.report.json");
     let report_modified = std::fs::metadata(&report_path).unwrap().modified().unwrap();
 
-    shiplog_cmd()
+    let assert = shiplog_cmd()
         .args([
             "report",
             "summarize",
@@ -8950,9 +8950,21 @@ fn report_summarize_prints_operator_view_without_writing() {
         .stdout(predicate::str::contains("Top repairs:"))
         .stdout(predicate::str::contains("missing_token"))
         .stdout(predicate::str::contains("Top fixups:"))
-        .stdout(predicate::str::contains("Share next:"))
+        .stdout(predicate::str::contains("Share explain next:"))
+        .stdout(predicate::str::contains("shiplog share explain manager"))
+        .stdout(predicate::str::contains("shiplog share explain public"))
+        .stdout(predicate::str::contains("shiplog share manager").not())
         .stdout(predicate::str::contains("Packet:"))
         .stdout(predicate::str::contains("Intake report:"));
+    let stdout = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
+    let window_line = stdout
+        .lines()
+        .find(|line| line.starts_with("Window: "))
+        .expect("report summarize should print a Window line");
+    assert!(
+        !window_line.contains(") ("),
+        "window line should not duplicate the date range: {window_line}"
+    );
 
     assert_eq!(
         report_modified,
