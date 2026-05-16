@@ -35,7 +35,8 @@ release approval.
   `packet_quality`; `report summarize` also now keeps its window label singular
   and routes visible share handoffs through read-only `share explain` commands
   without reprinting direct manager/public render actions in the machine-action
-  summary (#364, #365, #367, #369).
+  summary; `intake.report.md` now follows the same non-duplicating window
+  display contract (#364, #365, #367, #369, #370).
 
 ## [0.9.0] - Unreleased candidate
 

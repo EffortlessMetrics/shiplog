@@ -477,9 +477,29 @@ fn assert_golden_intake_report(run_dir: &Path, readiness: &str) -> (String, serd
         report_json["window"]["until"].as_str().is_some(),
         "intake.report.json should expose the resolved window until date"
     );
-    assert!(
-        report_json["window"]["label"].as_str().is_some(),
-        "intake.report.json should expose the resolved window label"
+    let window_since = report_json["window"]["since"]
+        .as_str()
+        .expect("intake.report.json should expose the resolved window since date");
+    let window_until = report_json["window"]["until"]
+        .as_str()
+        .expect("intake.report.json should expose the resolved window until date");
+    let window_label = report_json["window"]["label"]
+        .as_str()
+        .expect("intake.report.json should expose the resolved window label");
+    let expected_window_display =
+        if window_label.contains(window_since) && window_label.contains(window_until) {
+            window_label.to_string()
+        } else {
+            format!("{window_label} ({window_since}..{window_until})")
+        };
+    let window_line = report_md
+        .lines()
+        .find(|line| line.starts_with("Window: "))
+        .expect("intake.report.md should contain a Window line");
+    assert_eq!(
+        window_line,
+        format!("Window: `{expected_window_display}`"),
+        "intake.report.md should render the resolved window without duplicating the date range"
     );
 
     for key in [

@@ -2896,10 +2896,12 @@ fn render_intake_report_markdown(report: &IntakeReport) -> String {
         "Packet readiness: **{}**\n\n",
         packet_readiness_display(report)
     ));
-    out.push_str(&format!(
-        "Window: `{}`..`{}` ({})\n\n",
-        report.window.since, report.window.until, report.window.label
-    ));
+    let window_display = report_window_display(
+        &report.window.label,
+        &report.window.since,
+        &report.window.until,
+    );
+    out.push_str(&format!("Window: `{window_display}`\n\n"));
     if let Some(period) = &report.period {
         out.push_str(&format!("Period: `{period}`\n\n"));
     }
