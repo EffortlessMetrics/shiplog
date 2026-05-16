@@ -1091,6 +1091,19 @@ fn write_repair_diff_report(
     let run_dir = out.join(run_id);
     std::fs::create_dir_all(&run_dir).unwrap();
     std::fs::write(run_dir.join("ledger.events.jsonl"), "").unwrap();
+    if let Some(base_run_dir) = base_report["run_dir"].as_str().map(PathBuf::from) {
+        let base_coverage = base_run_dir.join("coverage.manifest.json");
+        if base_coverage.exists() {
+            let mut coverage: serde_json::Value =
+                serde_json::from_str(&std::fs::read_to_string(base_coverage).unwrap()).unwrap();
+            coverage["run_id"] = serde_json::json!(run_id);
+            std::fs::write(
+                run_dir.join("coverage.manifest.json"),
+                format!("{}\n", serde_json::to_string_pretty(&coverage).unwrap()),
+            )
+            .unwrap();
+        }
+    }
     let report_path = run_dir.join("intake.report.json");
     let mut report = base_report.clone();
     report["run_id"] = serde_json::json!(run_id);
@@ -1767,8 +1780,20 @@ fn journal_add_from_repair_appends_report_derived_manual_event() -> CliTestResul
     let out = tmp.path().join("out");
     let manual_events = tmp.path().join("manual_events.yaml");
     run_intake_without_provider_tokens(tmp.path(), &out);
-    let (_, report) = load_first_intake_report(&out);
+    let (report_path, mut report) = load_first_intake_report(&out);
     let repair_id = first_repair_id_with_action(&report, "journal_add");
+    let repair_items = report["repair_items"]
+        .as_array_mut()
+        .expect("repair_items should be an array");
+    let repair = repair_items
+        .iter_mut()
+        .find(|item| item["repair_id"] == repair_id)
+        .expect("selected repair item should exist");
+    repair["reason"] = serde_json::json!("Add outcome context for \"Customer Reliability\"");
+    std::fs::write(
+        &report_path,
+        format!("{}\n", serde_json::to_string_pretty(&report)?),
+    )?;
 
     shiplog_cmd()
         .args([
@@ -1785,15 +1810,21 @@ fn journal_add_from_repair_appends_report_derived_manual_event() -> CliTestResul
         .success()
         .stdout(predicate::str::contains("Added manual event:"))
         .stdout(predicate::str::contains(format!("Repair: {repair_id}")))
+        .stdout(predicate::str::contains("Workstream: Customer Reliability"))
         .stdout(predicate::str::contains(
             "shiplog intake --last-6-months --explain",
-        ));
+        ))
+        .stdout(predicate::str::contains(format!(
+            "shiplog repair plan --out \"{}\" --latest",
+            out.display()
+        )));
 
     let file: ManualEventsFile = serde_yaml::from_str(&std::fs::read_to_string(&manual_events)?)?;
     assert_eq!(file.events.len(), 1);
     let entry = &file.events[0];
     assert!(entry.id.contains(&repair_id));
     assert_eq!(entry.title, format!("Manual evidence repair ({repair_id})"));
+    assert_eq!(entry.workstream.as_deref(), Some("Customer Reliability"));
     assert!(
         entry
             .description
@@ -8052,6 +8083,57 @@ fn repair_diff_latest_handles_empty_repair_queues() -> CliTestResult {
         .stdout(predicate::str::contains("Still open: 0"))
         .stdout(predicate::str::contains("Changed: 0"))
         .stdout(predicate::str::contains("No repair state changes."));
+
+    Ok(())
+}
+
+#[test]
+fn runs_diff_reports_changed_repairs_as_neutral_changes() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let out = tmp.path().join("out");
+    let out_arg = out.to_string_lossy().to_string();
+    run_intake_without_provider_tokens(tmp.path(), &out);
+    let (_, base_report) = load_first_intake_report(&out);
+
+    write_repair_diff_report(
+        &base_report,
+        &out,
+        "run_900_old",
+        serde_json::json!([repair_diff_item(
+            "repair_001_changed_old",
+            "manual:changed",
+            "old reason",
+            "shiplog journal add --from-repair repair_001_changed_old",
+            "old clear condition"
+        )]),
+    );
+    write_repair_diff_report(
+        &base_report,
+        &out,
+        "run_901_new",
+        serde_json::json!([repair_diff_item(
+            "repair_001_changed_new",
+            "manual:changed",
+            "new reason",
+            "shiplog journal add --from-repair repair_001_changed_new",
+            "new clear condition"
+        )]),
+    );
+
+    let assert = shiplog_cmd()
+        .args(["runs", "diff", "--out", out_arg.as_str(), "--latest"])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
+
+    assert!(
+        stdout.contains("Changed:\n- repair manual:changed changed"),
+        "changed repair items should be surfaced as neutral changes. stdout:\n{stdout}"
+    );
+    assert!(
+        !stdout.contains("Regressed:\n- repair manual:changed"),
+        "changed repair items should not be labeled as regressions. stdout:\n{stdout}"
+    );
 
     Ok(())
 }

@@ -107,6 +107,8 @@ Then read `runs diff`:
 
 - `Improved`: evidence counts, manual evidence, readiness, claim candidates, or
   cleared repairs moved in a better direction.
+- `Changed`: a repair key stayed open but its reason, action, or clear
+  condition changed. Treat this as neutral until you inspect the reason.
 - `Regressed`: evidence, gaps, readiness, claim candidates, or repair state got
   worse.
 - `Still weak`: skipped sources, open repairs, manual-only evidence, missing
