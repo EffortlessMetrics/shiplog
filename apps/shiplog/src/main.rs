@@ -3318,6 +3318,7 @@ fn summarize_intake_report_command(
     let window_label = string_field(window, "label")?;
     let window_since = string_field(window, "since")?;
     let window_until = string_field(window, "until")?;
+    let window_display = report_window_display(&window_label, &window_since, &window_until);
 
     let included_sources = json_array(&report_json, "included_sources")?;
     let skipped_sources = json_array(&report_json, "skipped_sources")?;
@@ -3326,6 +3327,7 @@ fn summarize_intake_report_command(
     let top_fixups = json_array(&report_json, "top_fixups")?;
     let evidence_debt = json_array(&report_json, "evidence_debt")?;
     let share_commands = json_array(&report_json, "share_commands")?;
+    let share_explain_commands = report_share_explain_commands(&report_json, &validation.run_id)?;
     let actions = optional_json_array(&report_json, "actions")?;
     let packet_path = string_field(&report_json, "packet_path")?;
 
@@ -3335,7 +3337,7 @@ fn summarize_intake_report_command(
     if let Some(readiness) = packet_readiness_display_from_json(&report_json) {
         println!("Packet readiness: {readiness}");
     }
-    println!("Window: {window_label} ({window_since}..{window_until})");
+    println!("Window: {window_display}");
     println!(
         "Sources: {} included, {} skipped",
         included_sources.len(),
@@ -3355,10 +3357,30 @@ fn summarize_intake_report_command(
     print_report_repair_summary_items("Top repairs", repair_sources)?;
     print_report_summary_items("Repair items", repair_items, "kind", "reason")?;
     print_report_summary_items("Top fixups", top_fixups, "title", "command")?;
-    print_report_summary_strings("Share next", share_commands)?;
+    print_report_summary_command_strings("Share explain next", &share_explain_commands);
     print_report_summary_items("Machine actions", actions, "label", "command")?;
 
     Ok(())
+}
+
+fn report_window_display(label: &str, since: &str, until: &str) -> String {
+    if label.contains(since) && label.contains(until) {
+        label.to_string()
+    } else {
+        format!("{label} ({since}..{until})")
+    }
+}
+
+fn report_share_explain_commands(
+    report_json: &serde_json::Value,
+    run_id: &str,
+) -> Result<Vec<String>> {
+    let out_dir = string_field(report_json, "out_dir")?;
+    let out_arg = quote_cli_value(&out_dir);
+    Ok(vec![
+        format!("shiplog share explain manager --out {out_arg} --run {run_id}"),
+        format!("shiplog share explain public --out {out_arg} --run {run_id}"),
+    ])
 }
 
 fn export_agent_pack_command(
@@ -4656,24 +4678,19 @@ fn print_report_repair_summary_items(label: &str, items: &[serde_json::Value]) -
     Ok(())
 }
 
-fn print_report_summary_strings(label: &str, items: &[serde_json::Value]) -> Result<()> {
+fn print_report_summary_command_strings(label: &str, items: &[String]) {
     println!("{label}:");
     if items.is_empty() {
         println!("- none");
-        return Ok(());
+        return;
     }
 
     for item in items.iter().take(3) {
-        let item = item
-            .as_str()
-            .ok_or_else(|| anyhow::anyhow!("intake report summary item must be a string"))?;
         println!("- {item}");
     }
     if items.len() > 3 {
         println!("- ... and {} more", items.len() - 3);
     }
-
-    Ok(())
 }
 
 fn validate_report_markdown(markdown_path: &Path) -> Result<()> {
