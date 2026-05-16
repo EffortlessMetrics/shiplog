@@ -20,6 +20,7 @@ pub(crate) fn build_intake_report(
     let attention = build_attention_items(result, &coverage, &events, &validation_errors, &signals);
     let readiness = intake_readiness(&validation_errors, &events, &attention);
     let evidence_debt = build_evidence_debt(
+        out_dir,
         &run_id,
         &coverage,
         &events,
@@ -241,6 +242,7 @@ fn intake_readiness(
 }
 
 fn build_evidence_debt(
+    out_dir: &Path,
     run_id: &str,
     coverage: &CoverageManifest,
     events: &[EventEnvelope],
@@ -250,6 +252,7 @@ fn build_evidence_debt(
     signals: &WorkstreamQualitySignals<'_>,
 ) -> Vec<IntakeReportEvidenceDebt> {
     detect_evidence_debt(EvidenceDebtInput {
+        out_dir,
         run_id,
         coverage,
         events,

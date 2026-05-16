@@ -2431,7 +2431,7 @@ fn run_intake(args: IntakeArgs) -> Result<()> {
     println!("- {}", report.reports.markdown);
     println!("- {}", report.reports.json);
     println!();
-    print_review(&result.outputs.out_dir, false)?;
+    print_review(&result.outputs.out_dir, &out, false)?;
     println!();
     print_intake_readiness_report(&report);
     println!();
@@ -12039,11 +12039,12 @@ fn set_intersection(left: &BTreeSet<String>, right: &BTreeSet<String>) -> Vec<St
     left.intersection(right).cloned().collect()
 }
 
-fn print_run_compare(comparison: &RunComparison) {
+fn print_run_compare(comparison: &RunComparison, out_dir: &Path) {
     let from = &comparison.from.summary;
     let to = &comparison.to.summary;
     let event_delta = to.event_count as isize - from.event_count as isize;
     let gap_delta = to.gap_count as isize - from.gap_count as isize;
+    let out_arg = quote_cli_value(&out_dir.display().to_string());
 
     println!("Compare: {} -> {}", from.run_id, to.run_id);
     println!("From: {}", from.run_dir.display());
@@ -12085,8 +12086,11 @@ fn print_run_compare(comparison: &RunComparison) {
     println!();
 
     println!("Next:");
-    println!("1. shiplog review --run {}", to.run_id);
-    println!("2. shiplog render --run {} --mode scaffold", to.run_id);
+    println!("1. shiplog review --out {out_arg} --run {}", to.run_id);
+    println!(
+        "2. shiplog render --out {out_arg} --run {} --mode scaffold",
+        to.run_id
+    );
 }
 
 fn run_quality_diff_command(
@@ -12100,7 +12104,7 @@ fn run_quality_diff_command(
     };
     let from = load_run_quality_snapshot(&from_dir)?;
     let to = load_run_quality_snapshot(&to_dir)?;
-    print_run_quality_diff(&from, &to);
+    print_run_quality_diff(out_dir, &from, &to);
     Ok(())
 }
 
@@ -12215,13 +12219,14 @@ fn report_claim_candidate_count(report_json: &serde_json::Value) -> Option<usize
         .map(Vec::len)
 }
 
-fn print_run_quality_diff(from: &RunQualitySnapshot, to: &RunQualitySnapshot) {
+fn print_run_quality_diff(out_dir: &Path, from: &RunQualitySnapshot, to: &RunQualitySnapshot) {
     let repair_diff = from
         .repair_report
         .as_ref()
         .zip(to.repair_report.as_ref())
         .map(|(older, newer)| build_repair_diff(older, newer));
     let (improved, regressed, still_weak) = run_quality_diff_groups(from, to, repair_diff.as_ref());
+    let out_arg = quote_cli_value(&out_dir.display().to_string());
 
     println!(
         "Packet quality diff: {} -> {}",
@@ -12254,9 +12259,12 @@ fn print_run_quality_diff(from: &RunQualitySnapshot, to: &RunQualitySnapshot) {
     println!();
 
     println!("Next:");
-    println!("1. shiplog open packet --run {}", to.summary.run_id);
     println!(
-        "2. shiplog share explain manager --run {}",
+        "1. shiplog open packet --out {out_arg} --run {}",
+        to.summary.run_id
+    );
+    println!(
+        "2. shiplog share explain manager --out {out_arg} --run {}",
         to.summary.run_id
     );
 }
@@ -12621,6 +12629,7 @@ struct WorkstreamEvidenceProfile {
 }
 
 struct EvidenceDebtInput<'a> {
+    out_dir: &'a Path,
     run_id: &'a str,
     coverage: &'a CoverageManifest,
     events: &'a [EventEnvelope],
@@ -12772,7 +12781,7 @@ fn is_misc_workstream_title(workstream: &Workstream) -> bool {
     )
 }
 
-fn print_weekly_review(run_dir: &Path, strict: bool) -> Result<()> {
+fn print_weekly_review(run_dir: &Path, out_dir: &Path, strict: bool) -> Result<()> {
     let ingest =
         load_run_ingest(run_dir).with_context(|| format!("load run {}", run_dir.display()))?;
     let coverage = ingest.coverage;
@@ -12809,10 +12818,10 @@ fn print_weekly_review(run_dir: &Path, strict: bool) -> Result<()> {
     }
     println!();
 
-    print_review(run_dir, strict)
+    print_review(run_dir, out_dir, strict)
 }
 
-fn print_review(run_dir: &Path, strict: bool) -> Result<()> {
+fn print_review(run_dir: &Path, out_dir: &Path, strict: bool) -> Result<()> {
     let ingest =
         load_run_ingest(run_dir).with_context(|| format!("load run {}", run_dir.display()))?;
     let coverage = ingest.coverage;
@@ -12823,6 +12832,7 @@ fn print_review(run_dir: &Path, strict: bool) -> Result<()> {
     let validation_errors = validate_workstreams_against_events(&workstreams, &events);
     let signals = workstream_quality_signals(&workstreams, &events);
     let evidence_debt = detect_evidence_debt(EvidenceDebtInput {
+        out_dir,
         run_id: &run_id,
         coverage: &coverage,
         events: &events,
@@ -12905,6 +12915,7 @@ fn print_review(run_dir: &Path, strict: bool) -> Result<()> {
     println!();
 
     print_review_next_steps(
+        out_dir,
         &run_id,
         !validation_errors.is_empty(),
         signals
@@ -13280,6 +13291,7 @@ fn review_fixups(
 
 fn detect_evidence_debt(input: EvidenceDebtInput<'_>) -> Vec<EvidenceDebt> {
     let mut debt = Vec::new();
+    let out_arg = quote_cli_value(&input.out_dir.display().to_string());
 
     for skipped in input.skipped_sources {
         debt.push(
@@ -13323,7 +13335,7 @@ fn detect_evidence_debt(input: EvidenceDebtInput<'_>) -> Vec<EvidenceDebt> {
                 warning.clone(),
             )
             .next_step(format!(
-                "Run `shiplog runs show --run {}` to inspect this run.",
+                "Run `shiplog runs show --out {out_arg} --run {}` to inspect this run.",
                 input.run_id
             )),
         );
@@ -13341,9 +13353,10 @@ fn detect_evidence_debt(input: EvidenceDebtInput<'_>) -> Vec<EvidenceDebt> {
                     slice.query, slice.fetched, slice.total_count
                 ),
             )
-            .next_step(
-                "Run `shiplog intake --last-6-months --explain` after repairing source setup.",
-            ),
+            .next_step(format!(
+                "Run `{}` after repairing source setup.",
+                intake_create_run_command_for_out(input.out_dir)
+            )),
         );
     }
 
@@ -13390,7 +13403,7 @@ fn detect_evidence_debt(input: EvidenceDebtInput<'_>) -> Vec<EvidenceDebt> {
                 &input.signals.no_receipt_workstreams,
             ))
             .next_step(format!(
-                "Run `shiplog workstreams receipts --run {} --workstream <title>`.",
+                "Run `shiplog workstreams receipts --out {out_arg} --run {} --workstream <title>`.",
                 input.run_id
             )),
         );
@@ -13409,7 +13422,7 @@ fn detect_evidence_debt(input: EvidenceDebtInput<'_>) -> Vec<EvidenceDebt> {
             )
             .detail(workstream_title_sample(&input.signals.too_many_receipt_workstreams))
             .next_step(format!(
-                "Run `shiplog workstreams receipts --run {} --workstream <title>` and keep the strongest anchors.",
+                "Run `shiplog workstreams receipts --out {out_arg} --run {} --workstream <title>` and keep the strongest anchors.",
                 input.run_id
             )),
         );
@@ -13427,7 +13440,7 @@ fn detect_evidence_debt(input: EvidenceDebtInput<'_>) -> Vec<EvidenceDebt> {
             )
             .detail(workstream_title_sample(&input.signals.thin_workstreams))
             .next_step(format!(
-                "Run `shiplog workstreams receipts --run {} --workstream <title>` to confirm the anchor.",
+                "Run `shiplog workstreams receipts --out {out_arg} --run {} --workstream <title>` to confirm the anchor.",
                 input.run_id
             )),
         );
@@ -13446,7 +13459,7 @@ fn detect_evidence_debt(input: EvidenceDebtInput<'_>) -> Vec<EvidenceDebt> {
             )
             .detail(workstream_title_sample(&input.signals.large_misc_workstreams))
             .next_step(format!(
-                "Run `shiplog workstreams split --run {} --from <title> --to \"<new workstream>\" --matching \"<pattern>\" --create`.",
+                "Run `shiplog workstreams split --out {out_arg} --run {} --from <title> --to \"<new workstream>\" --matching \"<pattern>\" --create`.",
                 input.run_id
             )),
         );
@@ -13519,7 +13532,7 @@ fn detect_evidence_debt(input: EvidenceDebtInput<'_>) -> Vec<EvidenceDebt> {
             )
             .detail(workstream_title_sample(&input.signals.broad_workstreams))
             .next_step(format!(
-                "Run `shiplog workstreams split --run {} --from <title> --to \"<new workstream>\" --matching \"<pattern>\" --create`.",
+                "Run `shiplog workstreams split --out {out_arg} --run {} --from <title> --to \"<new workstream>\" --matching \"<pattern>\" --create`.",
                 input.run_id
             )),
         );
@@ -13538,7 +13551,7 @@ fn detect_evidence_debt(input: EvidenceDebtInput<'_>) -> Vec<EvidenceDebt> {
                 input.workstreams.workstreams.len()
             ))
             .next_step(format!(
-                "Run `shiplog workstreams validate --run {}`.",
+                "Run `shiplog workstreams validate --out {out_arg} --run {}`.",
                 input.run_id
             )),
         );
@@ -13558,7 +13571,7 @@ fn detect_evidence_debt(input: EvidenceDebtInput<'_>) -> Vec<EvidenceDebt> {
                 "Ledger has events but no workstream assignments.",
             )
             .next_step(format!(
-                "Run `shiplog workstreams validate --run {}`.",
+                "Run `shiplog workstreams validate --out {out_arg} --run {}`.",
                 input.run_id
             )),
         );
@@ -13605,6 +13618,7 @@ fn workstream_title_sample(workstreams: &[&Workstream]) -> String {
 }
 
 fn print_review_next_steps(
+    out_dir: &Path,
     run_id: &str,
     has_validation_errors: bool,
     first_no_receipt_workstream: Option<&str>,
@@ -13614,21 +13628,22 @@ fn print_review_next_steps(
 ) {
     println!("Next:");
     let mut step = 1usize;
+    let out_arg = quote_cli_value(&out_dir.display().to_string());
 
     if has_validation_errors {
-        println!("{step}. shiplog workstreams validate --run {run_id}");
+        println!("{step}. shiplog workstreams validate --out {out_arg} --run {run_id}");
         step += 1;
     }
     if let Some(title) = first_no_receipt_workstream {
         println!(
-            "{step}. shiplog workstreams receipts --run {run_id} --workstream {}",
+            "{step}. shiplog workstreams receipts --out {out_arg} --run {run_id} --workstream {}",
             quote_cli_value(title)
         );
         step += 1;
     }
     if let Some(title) = first_broad_workstream {
         println!(
-            "{step}. shiplog workstreams split --run {run_id} --from {} --to \"<new workstream>\" --matching \"<pattern>\" --create",
+            "{step}. shiplog workstreams split --out {out_arg} --run {run_id} --from {} --to \"<new workstream>\" --matching \"<pattern>\" --create",
             quote_cli_value(title)
         );
         step += 1;
@@ -13642,7 +13657,7 @@ fn print_review_next_steps(
         step += 1;
     }
 
-    println!("{step}. shiplog render --run {run_id} --mode scaffold");
+    println!("{step}. shiplog render --out {out_arg} --run {run_id} --mode scaffold");
 }
 
 fn journal_add_next_step(workstream_title: &str) -> String {
