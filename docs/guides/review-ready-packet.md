@@ -115,6 +115,11 @@ Read `repair diff` first:
 - `Changed`: the repair key remains but the action, reason, or clear condition
   changed.
 
+After a successful comparison, `repair diff` prints a `Next:` handoff to
+`runs diff`, `open packet`, and `share explain manager`. Use that handoff when
+you are following a non-default `--out` directory; it preserves the newer run ID
+so the next commands stay on the repaired packet.
+
 Then read `runs diff`:
 
 - `Improved`: evidence counts, manual evidence, readiness, claim candidates, or
@@ -126,9 +131,9 @@ Then read `runs diff`:
 - `Still weak`: skipped sources, open repairs, manual-only evidence, missing
   candidates, or other caveats still need human judgment.
 
-Treat the `Next:` commands from `runs diff` as the handoff. They should preserve
-the selected `--out` directory and point at `open packet` and `share explain`
-before any write-producing share command.
+Treat the `Next:` commands from `repair diff` and `runs diff` as the handoff.
+They should preserve the selected `--out` directory and point at `open packet`
+and `share explain` before any write-producing share command.
 
 The useful outcome is not "no warnings." The useful outcome is knowing exactly
 what improved and what still needs context.
@@ -203,6 +208,15 @@ When you are ready to write a share profile:
 
 ```bash
 export SHIPLOG_REDACT_KEY=replace-with-a-stable-secret
+shiplog share verify manager --latest
+shiplog share manager --latest --zip
+```
+
+On PowerShell, use the platform-specific redaction-key setup printed by
+`share explain`:
+
+```powershell
+$env:SHIPLOG_REDACT_KEY='replace-with-a-stable-secret'
 shiplog share verify manager --latest
 shiplog share manager --latest --zip
 ```

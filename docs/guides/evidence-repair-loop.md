@@ -68,6 +68,11 @@ Then open the packet again.
 shiplog open packet --latest
 ```
 
+Successful `repair diff` output also prints a `Next:` handoff to `runs diff`,
+`open packet`, and `share explain manager`. Prefer those printed commands when
+you are using a non-default `--out` directory because they preserve the selected
+output path and repaired run ID.
+
 The useful outcome is not "all warnings disappeared." The useful outcome is that
 the next packet contains more evidence, the cleared repair keys are visible,
 `runs diff` shows packet-quality movement, and any remaining repair items still
