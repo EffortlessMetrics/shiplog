@@ -1359,6 +1359,8 @@ mod tests {
         handle: Option<JoinHandle<anyhow::Result<()>>>,
     }
 
+    const RECORDED_FIXTURE_READY_TARGET: &str = "/__shiplog_fixture_ready";
+
     impl RecordedGithubServer {
         fn start(expected_requests: usize) -> anyhow::Result<Self> {
             let listener = TcpListener::bind("127.0.0.1:0").context("bind fixture server")?;
@@ -1415,6 +1417,15 @@ mod tests {
         while fixture_request_count(&requests)? < expected_requests {
             match listener.accept() {
                 Ok((mut stream, _peer)) => {
+                    stream
+                        .set_nonblocking(false)
+                        .context("set recorded GitHub fixture stream blocking")?;
+                    stream
+                        .set_read_timeout(Some(StdDuration::from_secs(5)))
+                        .context("set recorded GitHub fixture read timeout")?;
+                    stream
+                        .set_write_timeout(Some(StdDuration::from_secs(5)))
+                        .context("set recorded GitHub fixture write timeout")?;
                     if let Some(request_line) =
                         handle_recorded_github_request(&mut stream, base_url)?
                     {
@@ -1444,9 +1455,39 @@ mod tests {
         let deadline = Instant::now() + StdDuration::from_secs(5);
         loop {
             match TcpStream::connect(addr) {
-                Ok(stream) => {
-                    drop(stream);
-                    return Ok(());
+                Ok(mut stream) => {
+                    let request = format!(
+                        "GET {RECORDED_FIXTURE_READY_TARGET} HTTP/1.1\r\nHost: {addr}\r\nConnection: close\r\n\r\n"
+                    );
+                    let probe_result = stream
+                        .write_all(request.as_bytes())
+                        .and_then(|()| stream.flush())
+                        .and_then(|()| {
+                            let mut response = Vec::new();
+                            stream.read_to_end(&mut response).map(|_| ())
+                        });
+                    match probe_result {
+                        Ok(()) => return Ok(()),
+                        Err(err)
+                            if matches!(
+                                err.kind(),
+                                ErrorKind::BrokenPipe
+                                    | ErrorKind::ConnectionAborted
+                                    | ErrorKind::ConnectionReset
+                                    | ErrorKind::Interrupted
+                                    | ErrorKind::TimedOut
+                                    | ErrorKind::WouldBlock
+                            ) =>
+                        {
+                            if Instant::now() > deadline {
+                                return Err(err).context("probe recorded GitHub fixture server");
+                            }
+                            thread::sleep(StdDuration::from_millis(10));
+                        }
+                        Err(err) => {
+                            return Err(err).context("probe recorded GitHub fixture server");
+                        }
+                    }
                 }
                 Err(err)
                     if matches!(
@@ -1481,9 +1522,19 @@ mod tests {
         let mut buf = [0_u8; 4096];
         let mut received = Vec::new();
         loop {
-            let n = stream
-                .read(&mut buf)
-                .context("read recorded GitHub fixture request")?;
+            let n = match stream.read(&mut buf) {
+                Ok(n) => n,
+                Err(err)
+                    if received.is_empty()
+                        && matches!(
+                            err.kind(),
+                            ErrorKind::ConnectionAborted | ErrorKind::ConnectionReset
+                        ) =>
+                {
+                    return Ok(None);
+                }
+                Err(err) => return Err(err).context("read recorded GitHub fixture request"),
+            };
             if n == 0 {
                 if received.is_empty() {
                     return Ok(None);
@@ -1509,6 +1560,17 @@ mod tests {
             .split_whitespace()
             .nth(1)
             .ok_or_else(|| anyhow!("recorded GitHub fixture request had no target"))?;
+        if target == RECORDED_FIXTURE_READY_TARGET {
+            let response =
+                "HTTP/1.1 204 No Content\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+            stream
+                .write_all(response.as_bytes())
+                .context("write recorded GitHub fixture readiness response")?;
+            stream
+                .flush()
+                .context("flush recorded GitHub fixture readiness response")?;
+            return Ok(None);
+        }
         let (status, body) = recorded_github_fixture_response(target, base_url);
         let response = format!(
             "HTTP/1.1 {status}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
