@@ -287,15 +287,17 @@ fn build_evidence_debt(input: EvidenceDebtInput<'_>) -> Vec<IntakeReportEvidence
 }
 
 fn map_top_fixups(fixups: Vec<ReviewFixup>) -> Vec<IntakeReportFixup> {
+    let mut seen_commands = std::collections::BTreeSet::new();
     fixups
-        .iter()
+        .into_iter()
+        .filter(|fixup| seen_commands.insert(fixup.command.clone()))
         .take(5)
         .map(|fixup| IntakeReportFixup {
-            id: fixup.id.clone(),
+            id: fixup.id,
             kind: fixup.kind.label().to_string(),
-            title: fixup.title.clone(),
-            detail: fixup.detail.clone(),
-            command: fixup.command.clone(),
+            title: fixup.title,
+            detail: fixup.detail,
+            command: fixup.command,
         })
         .collect()
 }
@@ -1375,6 +1377,43 @@ mod tests {
         ];
 
         assert_eq!(build_journal_suggestions(&top_fixups), vec![duplicate]);
+    }
+
+    #[test]
+    fn top_fixups_dedupe_repeated_copyable_commands() {
+        let duplicate = "shiplog journal add --date 2026-05-16 --title \"Outcome note for shiplog\" --workstream shiplog".to_string();
+        let top_fixups = map_top_fixups(vec![
+            make_review_fixup(
+                ReviewFixupKind::ManualContext,
+                Some("shiplog"),
+                "Add outcome context for \"shiplog\"".to_string(),
+                None,
+                duplicate.clone(),
+            ),
+            make_review_fixup(
+                ReviewFixupKind::CodeContext,
+                Some("shiplog"),
+                "Add outcome context for code-only workstream \"shiplog\"".to_string(),
+                None,
+                duplicate.clone(),
+            ),
+            make_review_fixup(
+                ReviewFixupKind::SelectReceipts,
+                Some("shiplog"),
+                "Select anchor receipts for \"shiplog\"".to_string(),
+                None,
+                "shiplog workstreams receipts --out out --run run_1 --workstream shiplog"
+                    .to_string(),
+            ),
+        ]);
+
+        assert_eq!(top_fixups.len(), 2);
+        assert_eq!(top_fixups[0].command, duplicate);
+        assert_eq!(top_fixups[0].title, "Add outcome context for \"shiplog\"");
+        assert_eq!(
+            top_fixups[1].command,
+            "shiplog workstreams receipts --out out --run run_1 --workstream shiplog"
+        );
     }
 
     #[test]

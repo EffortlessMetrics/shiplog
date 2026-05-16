@@ -37,7 +37,8 @@ release approval.
   without reprinting direct manager/public render actions in the machine-action
   summary; `intake.report.md` now follows the same non-duplicating window
   display contract and shows read-only share explanation before render commands
-  (#364, #365, #367, #369, #370, #371).
+  while repeated copyable `Top Fixups` commands are collapsed (#364, #365,
+  #367, #369, #370, #371, #372).
 
 ## [0.9.0] - Unreleased candidate
 

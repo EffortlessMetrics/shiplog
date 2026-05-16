@@ -629,6 +629,18 @@ fn assert_golden_intake_report(run_dir: &Path, readiness: &str) -> (String, serd
             "generated fixup should expose a stable kind"
         );
     }
+    let mut seen_fixup_commands = std::collections::BTreeSet::new();
+    for command in report_json["top_fixups"]
+        .as_array()
+        .expect("top_fixups should be an array")
+        .iter()
+        .filter_map(|fixup| fixup["command"].as_str())
+    {
+        assert!(
+            seen_fixup_commands.insert(command.to_string()),
+            "top_fixups should not repeat the same copyable command: {command}"
+        );
+    }
     for action in report_json["actions"]
         .as_array()
         .expect("actions should be an array")
