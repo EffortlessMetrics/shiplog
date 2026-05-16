@@ -25,8 +25,14 @@ cargo install shiplog --features llm
 ```bash
 # Fast review-deadline path
 shiplog intake --last-6-months --explain
+shiplog repair plan --latest
+shiplog journal add --from-repair <repair_id>
+shiplog intake --last-6-months --explain
+shiplog repair diff --latest
+shiplog runs diff --latest
 shiplog open intake-report --latest
 shiplog open packet --latest
+shiplog share explain manager --latest
 ```
 
 For repeatable setup:
@@ -71,10 +77,11 @@ shiplog render --latest
 shiplog render --latest --receipt-limit 3 --appendix summary
 shiplog render --latest --mode scaffold
 shiplog render --latest --mode receipts
+shiplog share explain manager --latest
 shiplog share verify manager --latest
 ```
 
-Output goes to `out/<run_id>/` containing `packet.md`, `ledger.events.jsonl`, `coverage.manifest.json`, and optional redacted profiles. Share commands also write `profiles/<profile>/share.manifest.json` with the share profile, redaction-key source, coverage status, and SHA-256 checksums for the packet and optional zip. Use `--mode packet` for the default packet, `--mode scaffold` for prompts and evidence anchors, or `--mode receipts` for a dense audit view. Use `--receipt-limit <N>` to cap main-section receipts and `--appendix full|summary|none` to control appendix density; `--receipt-limit 0` shows no main-section receipts. The packet coverage block lists completed sources with event counts, skipped configured sources, and known gaps before the detailed coverage metadata.
+Output goes to `out/<run_id>/` containing `packet.md`, `ledger.events.jsonl`, `coverage.manifest.json`, and optional redacted profiles. Rendering share commands also write `profiles/<profile>/share.manifest.json` with the share profile, redaction-key source, coverage status, and SHA-256 checksums for the packet and optional zip. Use `share explain` before rendering when you want to see what a profile includes, removes, and blocks without writing profile artifacts. Use `--mode packet` for the default packet, `--mode scaffold` for prompts and evidence anchors, or `--mode receipts` for a dense audit view. Use `--receipt-limit <N>` to cap main-section receipts and `--appendix full|summary|none` to control appendix density; `--receipt-limit 0` shows no main-section receipts. The packet coverage block lists completed sources with event counts, skipped configured sources, and known gaps before the detailed coverage metadata.
 
 ## Commands
 
@@ -91,13 +98,17 @@ Output goes to `out/<run_id>/` containing `packet.md`, `ledger.events.jsonl`, `c
 | `collect multi` | Collect enabled sources from `shiplog.toml` into one merged packet |
 | `render` | Re-render packet from existing ledger and workstreams |
 | `share manager/public` | Render manager/public-safe outputs with fail-closed redaction-key checks |
+| `share explain manager/public` | Explain included, removed, and blocked share-profile posture without writing artifacts |
 | `share verify manager/public` | Preflight share readiness without writing share artifacts |
 | `share verify manifest` | Verify an existing share manifest and packet/zip checksums |
 | `refresh <source>` | Re-fetch events while preserving curated `workstreams.yaml` |
 | `review` | Inspect coverage, evidence debt, fixups, and next commands without writing artifacts |
 | `workstreams list/validate/create/rename/move/split/receipts/receipt/delete` | Inspect, validate, and safely edit workstream curation |
 | `runs list/show/compare` | Discover runs and inspect or compare their sources, counts, coverage, and paths |
+| `runs diff` | Compare packet-quality movement across the latest runs |
 | `open packet/workstreams/intake-report/out` | Open run artifacts, or print their paths when opening is unavailable |
+| `report validate/summarize/export-agent-pack` | Validate and summarize intake reports for humans, agents, and support tooling |
+| `repair plan/diff` | Print receipt-derived repair guidance from intake reports and compare repair state across reruns |
 | `merge` | Merge existing run directories into one packet |
 | `import` | Import an existing run directory and re-render |
 | `run <source>` | Legacy: collect + render in one shot |
@@ -159,6 +170,7 @@ explicitly.
 
 - **Receipts-first.** Every claim traces to fetched evidence. Missing data is explicitly flagged, never silently omitted.
 - **Coverage tracking.** A coverage manifest documents API query windows, pagination limits, and gaps.
+- **Repair and packet-quality loop.** Intake reports can produce repair plans, repair diffs, packet readiness, claim candidates, and quality diffs without writing review prose.
 - **Deterministic redaction.** Three profiles (internal/manager/public) with keyed SHA-256 aliasing. Same key = same aliases across runs.
 - **User-owned workstreams.** Auto-generated suggestions in `workstreams.suggested.yaml`; your curated `workstreams.yaml` is never overwritten.
 - **SQLite API cache.** GitHub, GitLab, Jira, and Linear API responses are cached locally to avoid redundant requests on re-runs.
@@ -177,6 +189,8 @@ This produces `profiles/manager/packet.md` (context preserved, details stripped)
 ## Links
 
 - [Repository](https://github.com/EffortlessMetrics/shiplog) -- Full README, architecture, and crate descriptions.
+- [Evidence repair loop guide](https://github.com/EffortlessMetrics/shiplog/blob/main/docs/guides/evidence-repair-loop.md) -- Turn report receipts into local journal repair and a better rerun packet.
+- [Review-ready packet guide](https://github.com/EffortlessMetrics/shiplog/blob/main/docs/guides/review-ready-packet.md) -- Interpret readiness, claim candidates, missing context, and share posture.
 - [Review-cycle guide](https://github.com/EffortlessMetrics/shiplog/blob/main/docs/guides/review-cycle.md) -- The fastest path from setup to a curated, share-safe packet.
 - [CHANGELOG](https://github.com/EffortlessMetrics/shiplog/blob/main/CHANGELOG.md) -- Release history.
 - [ROADMAP](https://github.com/EffortlessMetrics/shiplog/blob/main/ROADMAP.md) -- What is planned and what is out of scope.
