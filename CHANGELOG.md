@@ -16,15 +16,19 @@ release approval.
 
 - Recorded and guarded the paused 0.9 release posture; release-hold receipts
   stay active and do not authorize tag, crates.io publish, or GitHub release
-  execution (#337, #342).
+  execution (#337, #342, #349).
 - Tightened review-ready dogfood rough edges: repairable intakes route through
   `repair plan`, journal repairs keep manual evidence enabled on rerun, intake
   prints one main `Next:` block, the final share handoff uses read-only
-  `share explain manager`, and duplicate journal repair items are collapsed
-  (#338, #344, #345, #347, #348).
+  `share explain manager`, duplicate journal repair items are collapsed,
+  Windows redaction-key setup is shell-native, and `repair diff` hands off to
+  the next review-ready commands (#338, #344, #345, #347, #348, #350, #351,
+  #352).
 - Strengthened post-0.8 proof with golden/no-write coverage for review-ready
   packets, `open packet`, `repair diff`, and the repeated journal guidance
   discovered during local-history dogfood (#340, #341, #343, #346).
+- Kept advisory proof surfaces out of the release path by refreshing RIPR lane
+  docs to describe the landed advisory stub as non-release-blocking (#357).
 
 ## [0.9.0] - Unreleased candidate
 
