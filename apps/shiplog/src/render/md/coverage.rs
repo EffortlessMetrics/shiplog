@@ -244,3 +244,396 @@ fn fetched_percent(slice: &CoverageSlice) -> u64 {
         100
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::{NaiveDate, TimeZone, Utc};
+    use shiplog::ids::{EventId, RunId};
+    use shiplog::schema::coverage::TimeWindow;
+    use shiplog::schema::event::{
+        Actor, EventKind, EventPayload, Link, PullRequestEvent, PullRequestState, RepoRef,
+        RepoVisibility, SourceRef, SourceSystem,
+    };
+
+    fn coverage_manifest() -> CoverageManifest {
+        CoverageManifest {
+            run_id: RunId("test_run".into()),
+            generated_at: Utc.timestamp_opt(0, 0).single().unwrap_or_default(),
+            user: "tester".into(),
+            window: TimeWindow {
+                since: NaiveDate::from_ymd_opt(2025, 1, 1).unwrap_or_default(),
+                until: NaiveDate::from_ymd_opt(2025, 2, 1).unwrap_or_default(),
+            },
+            mode: "merged".into(),
+            sources: vec!["github".into()],
+            slices: vec![],
+            warnings: vec![],
+            completeness: Completeness::Complete,
+        }
+    }
+
+    fn slice(query: &str, fetched: u64, total: u64, incomplete: Option<bool>) -> CoverageSlice {
+        CoverageSlice {
+            window: TimeWindow {
+                since: NaiveDate::from_ymd_opt(2025, 1, 1).unwrap_or_default(),
+                until: NaiveDate::from_ymd_opt(2025, 2, 1).unwrap_or_default(),
+            },
+            query: query.to_string(),
+            total_count: total,
+            fetched,
+            incomplete_results: incomplete,
+            notes: vec![],
+        }
+    }
+
+    fn pr_event(system: SourceSystem) -> EventEnvelope {
+        EventEnvelope {
+            id: EventId::from_parts(["github", "pr", "acme/foo", "1"]),
+            kind: EventKind::PullRequest,
+            occurred_at: Utc.timestamp_opt(0, 0).single().unwrap_or_default(),
+            actor: Actor {
+                login: "user".into(),
+                id: None,
+            },
+            repo: RepoRef {
+                full_name: "acme/foo".into(),
+                html_url: Some("https://github.com/acme/foo".into()),
+                visibility: RepoVisibility::Unknown,
+            },
+            payload: EventPayload::PullRequest(PullRequestEvent {
+                number: 1,
+                title: "PR 1".into(),
+                state: PullRequestState::Merged,
+                created_at: Utc.timestamp_opt(0, 0).single().unwrap_or_default(),
+                merged_at: Some(Utc.timestamp_opt(0, 0).single().unwrap_or_default()),
+                additions: Some(1),
+                deletions: Some(0),
+                changed_files: Some(1),
+                touched_paths_hint: vec![],
+                window: Some(TimeWindow {
+                    since: NaiveDate::from_ymd_opt(2025, 1, 1).unwrap_or_default(),
+                    until: NaiveDate::from_ymd_opt(2025, 2, 1).unwrap_or_default(),
+                }),
+            }),
+            tags: vec![],
+            links: vec![Link {
+                label: "pr".into(),
+                url: "https://github.com/acme/foo/pull/1".into(),
+            }],
+            source: SourceRef {
+                system,
+                url: None,
+                opaque_id: None,
+            },
+        }
+    }
+
+    #[test]
+    fn render_coverage_happy_path_emits_expected_sections() {
+        let mut out = String::new();
+        let coverage = coverage_manifest();
+        let events: Vec<EventEnvelope> = vec![];
+
+        render_coverage(&mut out, &coverage, &events);
+
+        assert!(out.starts_with("## Coverage and Limits\n\n"));
+        assert!(out.contains("Included:\n- GitHub: 0 events\n"));
+        assert!(out.contains("- Fetched events: not reported by query slices\n"));
+        assert!(out.contains("Skipped:\n- None recorded\n"));
+        assert!(out.contains("Known gaps:\n- None recorded\n"));
+        assert!(out.contains("Details:\n"));
+        assert!(out.contains("- **Date window:** 2025-01-01 to 2025-02-01\n"));
+        assert!(out.contains("- **Mode:** merged\n"));
+        assert!(out.contains("- **Sources:** GitHub\n"));
+        assert!(out.contains("- **Completeness:** Complete\n"));
+    }
+
+    #[test]
+    fn render_coverage_with_events_counts_per_source_and_flags_manual_gap() {
+        let mut out = String::new();
+        let mut coverage = coverage_manifest();
+        coverage.sources = vec!["github".into(), "manual".into()];
+        coverage.slices = vec![slice("author:me", 5, 5, Some(false))];
+        let events = vec![
+            pr_event(SourceSystem::Github),
+            pr_event(SourceSystem::Github),
+            pr_event(SourceSystem::Manual),
+        ];
+
+        render_coverage(&mut out, &coverage, &events);
+
+        assert!(out.contains("- GitHub: 2 events\n"));
+        assert!(out.contains("- Manual: 1 event\n"));
+        assert!(out.contains("- Manual events are user-provided\n"));
+        assert!(out.contains("- Query slices: 1 slice, fetched 5 of 5 reported results\n"));
+    }
+
+    #[test]
+    fn render_query_slice_summary_empty_reports_not_reported() {
+        let mut out = String::new();
+        render_query_slice_summary(&mut out, &[]);
+        assert_eq!(out, "- Fetched events: not reported by query slices\n");
+    }
+
+    #[test]
+    fn render_query_slice_summary_single_uses_singular_slice() {
+        let mut out = String::new();
+        render_query_slice_summary(&mut out, &[slice("q", 3, 4, None)]);
+        assert_eq!(
+            out,
+            "- Query slices: 1 slice, fetched 3 of 4 reported results\n"
+        );
+    }
+
+    #[test]
+    fn render_query_slice_summary_multi_uses_plural_slices_and_sums() {
+        let mut out = String::new();
+        let slices = vec![slice("q1", 3, 4, None), slice("q2", 7, 10, None)];
+        render_query_slice_summary(&mut out, &slices);
+        assert_eq!(
+            out,
+            "- Query slices: 2 slices, fetched 10 of 14 reported results\n"
+        );
+    }
+
+    #[test]
+    fn render_skipped_sources_empty_emits_none_recorded() {
+        let mut out = String::new();
+        render_skipped_sources(&mut out, &[]);
+        assert_eq!(out, "Skipped:\n- None recorded\n\n");
+    }
+
+    #[test]
+    fn render_skipped_sources_non_empty_lists_each() {
+        let mut out = String::new();
+        let skipped = vec![
+            SkippedSource {
+                source: "github",
+                reason: "rate limit",
+            },
+            SkippedSource {
+                source: "gitlab",
+                reason: "auth failure",
+            },
+        ];
+        render_skipped_sources(&mut out, &skipped);
+        assert_eq!(
+            out,
+            "Skipped:\n- GitHub: rate limit\n- GitLab: auth failure\n\n"
+        );
+    }
+
+    #[test]
+    fn render_known_gaps_clean_emits_none_recorded() {
+        let mut out = String::new();
+        let coverage = coverage_manifest();
+        render_known_gaps(&mut out, &coverage, &[]);
+        assert_eq!(out, "Known gaps:\n- None recorded\n\n");
+    }
+
+    #[test]
+    fn render_completeness_gap_complete_returns_false_no_emit() {
+        let mut out = String::new();
+        let emitted = render_completeness_gap(&mut out, &Completeness::Complete);
+        assert!(!emitted);
+        assert!(out.is_empty());
+    }
+
+    #[test]
+    fn render_completeness_gap_partial_emits_line_and_returns_true() {
+        let mut out = String::new();
+        let emitted = render_completeness_gap(&mut out, &Completeness::Partial);
+        assert!(emitted);
+        assert_eq!(out, "- Overall completeness is Partial\n");
+    }
+
+    #[test]
+    fn render_completeness_gap_unknown_emits_line() {
+        let mut out = String::new();
+        let emitted = render_completeness_gap(&mut out, &Completeness::Unknown);
+        assert!(emitted);
+        assert_eq!(out, "- Overall completeness is Unknown\n");
+    }
+
+    #[test]
+    fn render_warning_gaps_filters_skipped_source_format() {
+        let mut out = String::new();
+        let warnings = vec![
+            "Configured source github was skipped: rate limit".to_string(),
+            "Pagination capped at 1000 results".to_string(),
+            "Configured source gitlab was skipped: auth".to_string(),
+            "Another general warning".to_string(),
+        ];
+        let emitted = render_warning_gaps(&mut out, &warnings);
+        assert!(emitted);
+        assert_eq!(
+            out,
+            "- Pagination capped at 1000 results\n- Another general warning\n"
+        );
+    }
+
+    #[test]
+    fn render_warning_gaps_returns_false_when_all_filtered() {
+        let mut out = String::new();
+        let warnings = vec!["Configured source github was skipped: rate limit".to_string()];
+        let emitted = render_warning_gaps(&mut out, &warnings);
+        assert!(!emitted);
+        assert!(out.is_empty());
+    }
+
+    #[test]
+    fn render_manual_source_gap_source_only_emits() {
+        let mut out = String::new();
+        let mut coverage = coverage_manifest();
+        coverage.sources = vec!["manual".into()];
+        let emitted = render_manual_source_gap(&mut out, &coverage, &[]);
+        assert!(emitted);
+        assert_eq!(out, "- Manual events are user-provided\n");
+    }
+
+    #[test]
+    fn render_manual_source_gap_event_only_emits() {
+        let mut out = String::new();
+        let coverage = coverage_manifest(); // sources = ["github"]
+        let events = vec![pr_event(SourceSystem::Manual)];
+        let emitted = render_manual_source_gap(&mut out, &coverage, &events);
+        assert!(emitted);
+        assert_eq!(out, "- Manual events are user-provided\n");
+    }
+
+    #[test]
+    fn render_manual_source_gap_neither_returns_false() {
+        let mut out = String::new();
+        let coverage = coverage_manifest();
+        let events = vec![pr_event(SourceSystem::Github)];
+        let emitted = render_manual_source_gap(&mut out, &coverage, &events);
+        assert!(!emitted);
+        assert!(out.is_empty());
+    }
+
+    #[test]
+    fn render_manual_source_gap_both_emits_single_line() {
+        let mut out = String::new();
+        let mut coverage = coverage_manifest();
+        coverage.sources = vec!["github".into(), "manual".into()];
+        let events = vec![pr_event(SourceSystem::Manual)];
+        let emitted = render_manual_source_gap(&mut out, &coverage, &events);
+        assert!(emitted);
+        assert_eq!(out, "- Manual events are user-provided\n");
+    }
+
+    #[test]
+    fn render_slice_quality_gaps_incomplete_singular() {
+        let mut out = String::new();
+        let slices = vec![slice("q", 5, 5, Some(true))];
+        let emitted = render_slice_quality_gaps(&mut out, &slices);
+        assert!(emitted);
+        assert_eq!(out, "- 1 query slice reported incomplete results\n");
+    }
+
+    #[test]
+    fn render_slice_quality_gaps_incomplete_plural() {
+        let mut out = String::new();
+        let slices = vec![slice("q1", 5, 5, Some(true)), slice("q2", 3, 3, Some(true))];
+        let emitted = render_slice_quality_gaps(&mut out, &slices);
+        assert!(emitted);
+        assert_eq!(out, "- 2 query slices reported incomplete results\n");
+    }
+
+    #[test]
+    fn render_slice_quality_gaps_capped_singular() {
+        let mut out = String::new();
+        let slices = vec![slice("q", 5, 10, Some(false))];
+        let emitted = render_slice_quality_gaps(&mut out, &slices);
+        assert!(emitted);
+        assert_eq!(out, "- 1 query slice fetched fewer results than reported\n");
+    }
+
+    #[test]
+    fn render_slice_quality_gaps_capped_plural() {
+        let mut out = String::new();
+        let slices = vec![
+            slice("q1", 5, 10, Some(false)),
+            slice("q2", 7, 20, Some(false)),
+        ];
+        let emitted = render_slice_quality_gaps(&mut out, &slices);
+        assert!(emitted);
+        assert_eq!(
+            out,
+            "- 2 query slices fetched fewer results than reported\n"
+        );
+    }
+
+    #[test]
+    fn render_slice_quality_gaps_incomplete_and_capped_together() {
+        let mut out = String::new();
+        let slices = vec![
+            slice("q1", 5, 10, Some(true)),
+            slice("q2", 3, 3, Some(true)),
+            slice("q3", 7, 20, Some(false)),
+        ];
+        let emitted = render_slice_quality_gaps(&mut out, &slices);
+        assert!(emitted);
+        assert_eq!(
+            out,
+            "- 2 query slices reported incomplete results\n\
+             - 2 query slices fetched fewer results than reported\n"
+        );
+    }
+
+    #[test]
+    fn render_slice_quality_gaps_clean_returns_false() {
+        let mut out = String::new();
+        let slices = vec![slice("q", 10, 10, Some(false))];
+        let emitted = render_slice_quality_gaps(&mut out, &slices);
+        assert!(!emitted);
+        assert!(out.is_empty());
+    }
+
+    #[test]
+    fn fetched_percent_zero_total_returns_one_hundred() {
+        let s = slice("q", 0, 0, None);
+        assert_eq!(fetched_percent(&s), 100);
+    }
+
+    #[test]
+    fn fetched_percent_truncates_toward_zero() {
+        let s = slice("q", 1, 3, None);
+        assert_eq!(fetched_percent(&s), 33);
+    }
+
+    #[test]
+    fn fetched_percent_full_fetch_is_one_hundred() {
+        let s = slice("q", 7, 7, None);
+        assert_eq!(fetched_percent(&s), 100);
+    }
+
+    #[test]
+    fn render_capped_slice_details_truncates_past_three() {
+        let mut out = String::new();
+        let slices = vec![
+            slice("q1", 1, 10, None),
+            slice("q2", 2, 10, None),
+            slice("q3", 3, 10, None),
+            slice("q4", 4, 10, None),
+            slice("q5", 5, 10, None),
+        ];
+        render_capped_slice_details(&mut out, &slices);
+        assert!(out.contains("- **Slicing applied (API caps):**\n"));
+        assert!(out.contains("    - q1: fetched 1/10 (10%)\n"));
+        assert!(out.contains("    - q2: fetched 2/10 (20%)\n"));
+        assert!(out.contains("    - q3: fetched 3/10 (30%)\n"));
+        assert!(!out.contains("q4:"));
+        assert!(!out.contains("q5:"));
+        assert!(out.contains("    - ... and 2 more\n"));
+    }
+
+    #[test]
+    fn render_capped_slice_details_empty_when_no_capped() {
+        let mut out = String::new();
+        let slices = vec![slice("q", 10, 10, None)];
+        render_capped_slice_details(&mut out, &slices);
+        assert!(out.is_empty());
+    }
+}
