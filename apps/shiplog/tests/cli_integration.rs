@@ -1815,6 +1815,83 @@ fn journal_add_from_repair_appends_report_derived_manual_event() -> CliTestResul
 }
 
 #[test]
+fn journal_add_from_repair_uses_report_config_manual_events_when_events_omitted() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let config_dir = tmp.path().join("config");
+    std::fs::create_dir_all(&config_dir)?;
+    let config_path = config_dir.join("shiplog.toml");
+    let manual_events = config_dir.join("manual_events.yaml");
+    let default_manual_events = tmp.path().join("manual_events.yaml");
+    let out = tmp.path().join("custom-out");
+
+    std::fs::write(
+        &config_path,
+        r#"[defaults]
+window = "last-6-months"
+
+[sources.manual]
+enabled = true
+events = "./manual_events.yaml"
+user = "octo"
+"#,
+    )?;
+    std::fs::write(
+        &manual_events,
+        "version: 1\ngenerated_at: 2026-01-01T00:00:00Z\nevents: []\n",
+    )?;
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args([
+            "intake",
+            "--config",
+            config_path.to_str().unwrap(),
+            "--out",
+            out.to_str().unwrap(),
+            "--no-open",
+        ])
+        .assert()
+        .success();
+    let (_, report) = load_first_intake_report(&out);
+    let repair_id = first_repair_id_with_action(&report, "journal_add");
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args([
+            "journal",
+            "add",
+            "--from-repair",
+            repair_id.as_str(),
+            "--out",
+            out.to_str().unwrap(),
+            "--latest",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Added manual event:"))
+        .stdout(predicate::str::contains(
+            manual_events.display().to_string(),
+        ));
+
+    assert!(
+        !default_manual_events.exists(),
+        "journal repair should not create the cwd default manual_events.yaml when the report config points elsewhere"
+    );
+    let file: ManualEventsFile = serde_yaml::from_str(&std::fs::read_to_string(&manual_events)?)?;
+    assert_eq!(file.events.len(), 1);
+    assert!(
+        file.events[0].id.contains(&repair_id),
+        "journal repair should append the report-derived repair event to the configured manual events file"
+    );
+
+    Ok(())
+}
+
+#[test]
 fn journal_add_from_repair_rejects_missing_latest_report() -> CliTestResult {
     let tmp = TempDir::new()?;
     let out = tmp.path().join("missing-out");
@@ -7352,7 +7429,10 @@ fn repair_plan_latest_accepts_relative_out_report_paths() -> CliTestResult {
         .success()
         .stdout(predicate::str::contains("Repair plan:"))
         .stdout(predicate::str::contains("Repair queue:"))
-        .stdout(predicate::str::contains("--from-repair"));
+        .stdout(predicate::str::contains(
+            "shiplog journal add --from-repair",
+        ))
+        .stdout(predicate::str::contains("--out \"relative-out\" --latest"));
 
     Ok(())
 }
