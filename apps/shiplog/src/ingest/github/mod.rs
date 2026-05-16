@@ -3,6 +3,8 @@
 //! Collects PR/review events, tracks coverage slices, and marks partial
 //! completeness when search caps or incomplete API responses are detected.
 
+mod pr_events;
+
 use crate::cache::{ApiCache, CacheKey, CacheLookup};
 use crate::coverage::{day_windows, month_windows, week_windows, window_len_days};
 use anyhow::{Context, Result, anyhow};
@@ -14,8 +16,8 @@ use shiplog::ids::{EventId, RunId};
 use shiplog::ports::{IngestOutput, Ingestor};
 use shiplog::schema::coverage::{Completeness, CoverageManifest, CoverageSlice, TimeWindow};
 use shiplog::schema::event::{
-    Actor, EventEnvelope, EventKind, EventPayload, Link, PullRequestEvent, PullRequestState,
-    RepoRef, RepoVisibility, ReviewEvent, SourceRef, SourceSystem,
+    Actor, EventEnvelope, EventKind, EventPayload, Link, RepoRef, RepoVisibility, ReviewEvent,
+    SourceRef, SourceSystem,
 };
 use shiplog::schema::freshness::{FreshnessStatus, SourceFreshness};
 use std::path::PathBuf;
@@ -486,116 +488,7 @@ impl GithubIngestor {
         client: &Client,
         items: Vec<SearchIssueItem>,
     ) -> Result<Vec<EventEnvelope>> {
-        let mut out = Vec::new();
-        for item in items {
-            if let Some(pr_ref) = &item.pull_request {
-                let html_base = self.html_base_url();
-                let (repo_full_name, repo_html_url) =
-                    repo_from_repo_url(&item.repository_url, &html_base);
-
-                let (title, created_at, merged_at, additions, deletions, changed_files, visibility) =
-                    if self.fetch_details {
-                        match self.fetch_pr_details(client, &pr_ref.url) {
-                            Ok(d) => {
-                                let vis = if d.base.repo.private_field {
-                                    RepoVisibility::Private
-                                } else {
-                                    RepoVisibility::Public
-                                };
-                                (
-                                    d.title,
-                                    d.created_at,
-                                    d.merged_at,
-                                    Some(d.additions),
-                                    Some(d.deletions),
-                                    Some(d.changed_files),
-                                    vis,
-                                )
-                            }
-                            Err(_) => {
-                                // If details fail, fall back to search fields.
-                                (
-                                    item.title.clone(),
-                                    item.created_at.unwrap_or_else(Utc::now),
-                                    None,
-                                    None,
-                                    None,
-                                    None,
-                                    RepoVisibility::Unknown,
-                                )
-                            }
-                        }
-                    } else {
-                        (
-                            item.title.clone(),
-                            item.created_at.unwrap_or_else(Utc::now),
-                            None,
-                            None,
-                            None,
-                            None,
-                            RepoVisibility::Unknown,
-                        )
-                    };
-
-                let occurred_at = match self.mode.as_str() {
-                    "created" => created_at,
-                    _ => merged_at.unwrap_or(created_at),
-                };
-
-                let state = if merged_at.is_some() {
-                    PullRequestState::Merged
-                } else {
-                    PullRequestState::Unknown
-                };
-
-                let id = EventId::from_parts([
-                    "github",
-                    "pr",
-                    &repo_full_name,
-                    &item.number.to_string(),
-                ]);
-
-                let ev = EventEnvelope {
-                    id,
-                    kind: EventKind::PullRequest,
-                    occurred_at,
-                    actor: Actor {
-                        login: self.user.clone(),
-                        id: None,
-                    },
-                    repo: RepoRef {
-                        full_name: repo_full_name,
-                        html_url: Some(repo_html_url),
-                        visibility,
-                    },
-                    payload: EventPayload::PullRequest(PullRequestEvent {
-                        number: item.number,
-                        title,
-                        state,
-                        created_at,
-                        merged_at,
-                        additions,
-                        deletions,
-                        changed_files,
-                        touched_paths_hint: vec![],
-                        window: None,
-                    }),
-                    tags: vec![],
-                    links: vec![Link {
-                        label: "pr".into(),
-                        url: item.html_url.clone(),
-                    }],
-                    source: SourceRef {
-                        system: SourceSystem::Github,
-                        url: Some(pr_ref.url.clone()),
-                        opaque_id: Some(item.id.to_string()),
-                    },
-                };
-
-                out.push(ev);
-            }
-        }
-        Ok(out)
+        pr_events::items_to_pr_events(self, client, items)
     }
 
     #[mutants::skip]
@@ -907,6 +800,7 @@ mod tests {
     use super::*;
     use chrono::TimeZone;
     use proptest::prelude::*;
+    use shiplog::schema::event::PullRequestState;
     use std::io::{ErrorKind, Read, Write};
     use std::net::{SocketAddr, TcpListener, TcpStream};
     use std::sync::{Arc, Mutex};
@@ -1589,13 +1483,13 @@ mod tests {
         let body = if target.starts_with("/search/issues?")
             && target_has_query_param(target, "per_page", "1")
         {
-            include_str!("../../tests/fixtures/github-warm-rerun/search_meta.json")
+            include_str!("../../../tests/fixtures/github-warm-rerun/search_meta.json")
         } else if target.starts_with("/search/issues?")
             && target_has_query_param(target, "per_page", "100")
         {
-            include_str!("../../tests/fixtures/github-warm-rerun/search_items.json")
+            include_str!("../../../tests/fixtures/github-warm-rerun/search_items.json")
         } else if target == "/repos/acme/widgets/pulls/1" {
-            include_str!("../../tests/fixtures/github-warm-rerun/pr_details.json")
+            include_str!("../../../tests/fixtures/github-warm-rerun/pr_details.json")
         } else {
             r#"{"message":"unexpected recorded fixture request"}"#
         };
