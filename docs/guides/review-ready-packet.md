@@ -45,6 +45,11 @@ Read these sections first:
 If the packet has no evidence, do not treat that as failure. Treat it as the
 first diagnostic run.
 
+If the packet has source-backed evidence but still says `Needs curation` or
+`Ready with caveats`, treat that as a usable but unfinished packet. Real
+history often needs outcome context, receipt trimming, or workstream splitting
+before the claim candidates are defensible.
+
 ## Repair locally
 
 Print the repair queue:
@@ -52,6 +57,9 @@ Print the repair queue:
 ```bash
 shiplog repair plan --latest
 ```
+
+Run the repair plan before copying individual fix commands from the packet. It
+groups safe local actions first and keeps advisory items explicit.
 
 For a missing manual-evidence repair item, add a local journal event from the
 report-derived repair ID:
@@ -73,6 +81,10 @@ default scaffold, or the path from `[sources.manual].events` when your config
 points somewhere else. It does not mutate GitHub, Jira, Linear, GitLab, or any
 provider record. Replace generated placeholder context with what actually
 happened before relying on the packet.
+
+Some repair-plan entries intentionally have `no safe copyable command`. Those
+are still useful: they name evidence debt, source posture, or share posture that
+needs judgment instead of pretending Shiplog can fix it automatically.
 
 ## Rerun and compare
 
