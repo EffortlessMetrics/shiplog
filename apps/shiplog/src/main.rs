@@ -5979,7 +5979,9 @@ struct JournalRepairContext {
     clears_when: String,
     source_label: Option<String>,
     default_date: NaiveDate,
+    default_workstream: Option<String>,
     rerun_command: String,
+    repair_plan_command: String,
 }
 
 fn run_journal_add(args: JournalAddArgs) -> Result<()> {
@@ -6070,7 +6072,11 @@ fn run_journal_add(args: JournalAddArgs) -> Result<()> {
                 .as_ref()
                 .map(journal_repair_default_description)
         }),
-        workstream: optional_text_arg(workstream),
+        workstream: optional_text_arg(workstream).or_else(|| {
+            repair_context
+                .as_ref()
+                .and_then(|repair| repair.default_workstream.clone())
+        }),
         tags: normalize_journal_tags(tags)?,
         receipts: parse_journal_receipts(&receipts)?,
         impact: optional_text_arg(impact),
@@ -6098,7 +6104,7 @@ fn run_journal_add(args: JournalAddArgs) -> Result<()> {
     if let Some(repair) = &repair_context {
         println!("Next:");
         println!("  {}", repair.rerun_command);
-        println!("  shiplog repair plan --latest");
+        println!("  {}", repair.repair_plan_command);
     } else {
         println!("Next:");
         println!("  shiplog collect multi --last-6-months");
@@ -6170,8 +6176,17 @@ fn resolve_journal_repair_context(args: &JournalAddArgs) -> Result<Option<Journa
         clears_when: string_field(item, "clears_when")?,
         source_label: optional_report_string(item, "source_label")?,
         default_date: journal_repair_report_default_date(&report_json)?,
+        default_workstream: journal_repair_default_workstream(&string_field(item, "reason")?),
         rerun_command: repair_plan_rerun_command(&report_json)?,
+        repair_plan_command: repair_plan_command_for_out(out_dir),
     }))
+}
+
+fn repair_plan_command_for_out(out_dir: &Path) -> String {
+    format!(
+        "shiplog repair plan --out {} --latest",
+        quote_cli_value(&out_dir.display().to_string())
+    )
 }
 
 fn journal_repair_manual_events_path(report_json: &serde_json::Value) -> Option<PathBuf> {
@@ -6251,6 +6266,42 @@ fn journal_repair_report_default_date(report_json: &serde_json::Value) -> Result
         .checked_sub_signed(Duration::days(1))
         .ok_or_else(|| anyhow::anyhow!("intake report window.until is out of supported range"))?;
     Ok(std::cmp::max(since, last_included_date))
+}
+
+fn journal_repair_default_workstream(reason: &str) -> Option<String> {
+    for marker in [
+        "Add outcome context for code-only workstream ",
+        "Add outcome context for ticket-only workstream ",
+        "Add outcome context for ",
+    ] {
+        if let Some(raw) = reason.strip_prefix(marker) {
+            return parse_quoted_value(raw);
+        }
+    }
+    None
+}
+
+fn parse_quoted_value(raw: &str) -> Option<String> {
+    let mut chars = raw.trim_start().chars();
+    if chars.next()? != '"' {
+        return None;
+    }
+
+    let mut value = String::new();
+    let mut escaped = false;
+    for ch in chars {
+        if escaped {
+            value.push(ch);
+            escaped = false;
+        } else if ch == '\\' {
+            escaped = true;
+        } else if ch == '"' {
+            return Some(value);
+        } else {
+            value.push(ch);
+        }
+    }
+    None
 }
 
 fn journal_repair_default_title(repair: &JournalRepairContext) -> String {
@@ -12348,7 +12399,8 @@ fn print_run_quality_diff(out_dir: &Path, from: &RunQualitySnapshot, to: &RunQua
         .as_ref()
         .zip(to.repair_report.as_ref())
         .map(|(older, newer)| build_repair_diff(older, newer));
-    let (improved, regressed, still_weak) = run_quality_diff_groups(from, to, repair_diff.as_ref());
+    let (improved, changed, regressed, still_weak) =
+        run_quality_diff_groups(from, to, repair_diff.as_ref());
     let out_arg = quote_cli_value(&out_dir.display().to_string());
 
     println!(
@@ -12377,6 +12429,7 @@ fn print_run_quality_diff(out_dir: &Path, from: &RunQualitySnapshot, to: &RunQua
     println!();
 
     print_quality_diff_group("Improved", &improved);
+    print_quality_diff_group("Changed", &changed);
     print_quality_diff_group("Regressed", &regressed);
     print_quality_diff_group("Still weak", &still_weak);
     println!();
@@ -12396,8 +12449,9 @@ fn run_quality_diff_groups(
     from: &RunQualitySnapshot,
     to: &RunQualitySnapshot,
     repair_diff: Option<&RepairDiff>,
-) -> (Vec<String>, Vec<String>, Vec<String>) {
+) -> (Vec<String>, Vec<String>, Vec<String>, Vec<String>) {
     let mut improved = Vec::new();
+    let mut changed = Vec::new();
     let mut regressed = Vec::new();
     let mut still_weak = Vec::new();
 
@@ -12439,7 +12493,7 @@ fn run_quality_diff_groups(
             regressed.push(format!("repair {} opened", item.repair_key));
         }
         for (old_item, new_item) in &diff.changed {
-            regressed.push(format!(
+            changed.push(format!(
                 "repair {} changed ({} -> {})",
                 new_item.repair_key, old_item.repair_id, new_item.repair_id
             ));
@@ -12483,7 +12537,7 @@ fn run_quality_diff_groups(
         still_weak.push("claim candidates absent".to_string());
     }
 
-    (improved, regressed, still_weak)
+    (improved, changed, regressed, still_weak)
 }
 
 fn push_count_movement(
