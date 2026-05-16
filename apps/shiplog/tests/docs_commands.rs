@@ -372,6 +372,46 @@ fn release_hold_guard_blocks_held_0_9_tag() {
 }
 
 #[test]
+fn release_hold_docs_record_post_0_8_soak_receipts() {
+    let root = repo_root();
+    let hold_path = root.join("docs/release/0.9.0-release-hold.md");
+    let readiness_path = root.join("docs/release/0.9.0-readiness.md");
+
+    let hold = std::fs::read_to_string(&hold_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", hold_path.display()));
+    let readiness = std::fs::read_to_string(&readiness_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", readiness_path.display()));
+
+    assert!(
+        hold.contains("## Soak Receipts"),
+        "release hold receipt should summarize post-0.8 soak hardening"
+    );
+    assert!(
+        readiness.contains("## Post-0.8 Soak Evidence"),
+        "paused readiness ledger should record post-0.8 soak evidence"
+    );
+
+    for needle in ["#337", "#338", "#339", "#340", "#341"] {
+        assert!(
+            hold.contains(needle) && readiness.contains(needle),
+            "hold and readiness docs should both record {needle}"
+        );
+    }
+
+    for needle in [
+        "do not lift the release hold",
+        "not release approval",
+        "shiplog open packet --latest --print-path",
+        "journal suggestions",
+    ] {
+        assert!(
+            hold.contains(needle) || readiness.contains(needle),
+            "soak evidence docs should mention {needle:?}"
+        );
+    }
+}
+
+#[test]
 fn documented_help_commands_stay_available() {
     shiplog_cmd()
         .arg("--help")
