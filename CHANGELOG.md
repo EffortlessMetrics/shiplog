@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-05-15
+
+shiplog 0.9.0 is the **review-ready packet release**. It builds on the 0.8
+Evidence Repair Loop by turning repaired evidence into conservative packet
+quality guidance: readiness, evidence strength, receipt-backed claim
+candidates, missing-context prompts, share posture explanation, and quality
+movement across reruns.
+
+### Added
+
+- Added the review-ready packet quality source-of-truth stack: proposal, spec,
+  ADR, and user guide. The contract keeps claim candidates as evidence
+  scaffolds, not generated performance-review prose (#307-#309, #318).
+- Added machine-readable `packet_quality` to `intake.report.json`, including
+  packet readiness, evidence strength, claim candidates, and share posture
+  compatibility fields while preserving old compatible v1 reports (#311,
+  #313).
+- Added `Packet Readiness` and `Claim Candidates` sections to `packet.md` so a
+  repaired packet leads with what is strong, what remains weak, which claims are
+  receipt-backed, and what context the user still needs to supply (#312, #314).
+- Added `shiplog share explain manager|public` as a read-only share posture
+  command. It reports included, removed, blocked, and needs-review items without
+  requiring a redaction key or writing profile artifacts (#315).
+- Added `shiplog runs diff --latest` to show packet quality movement across
+  reruns, including readiness changes, evidence counts, manual repair effects,
+  claim candidate movement, repair state, skipped sources, and remaining
+  weaknesses (#316).
+
+### Tests
+
+- Extended the front-door product proof through the review-ready loop: cold
+  intake, repair plan, journal repair, rerun, repair diff, readiness
+  improvement, claim candidate appearance, quality diff, and share posture
+  explanation without provider mutation or share artifact writes (#317).
+
+### Release
+
+- Bumped workspace packages and normal workspace dependency requirements from
+  `0.8.0` to `0.9.0`.
+
 ## [0.8.0] - 2026-05-15
 
 shiplog 0.8.0 is the **evidence repair loop release**. It turns the honest

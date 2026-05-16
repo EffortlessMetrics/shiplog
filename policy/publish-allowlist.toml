@@ -3,14 +3,14 @@ policy = "publish-allowlist"
 owner = "release"
 status = "blocking"
 
-# 0.8 continues the 0.7 crate-surface contraction publish control.
+# 0.9 continues the 0.7 crate-surface contraction publish control.
 #
 # Workspace membership is not publish eligibility. Release scripts must publish
 # only the packages listed in publish.default_order. New public crates require
 # an ADR before they can enter the publish order.
 
 [publish]
-release = "0.8"
+release = "0.9"
 default_order = ["shiplog"]
 transitional_exceptions = []
 
