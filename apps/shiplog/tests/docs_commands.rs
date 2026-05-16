@@ -203,6 +203,36 @@ fn agent_pack_schema_docs_describe_v1_contract() {
 }
 
 #[test]
+fn crate_readme_documents_review_ready_loop() {
+    let doc_path = repo_root().join("apps/shiplog/README.md");
+    let doc = std::fs::read_to_string(&doc_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", doc_path.display()));
+
+    for needle in [
+        "shiplog intake --last-6-months --explain",
+        "shiplog repair plan --latest",
+        "shiplog journal add --from-repair <repair_id>",
+        "shiplog repair diff --latest",
+        "shiplog runs diff --latest",
+        "shiplog share explain manager --latest",
+        "Use `share explain` before rendering",
+        "`share explain manager/public`",
+        "`runs diff`",
+        "`repair plan/diff`",
+        "packet readiness",
+        "claim candidates",
+        "without writing profile artifacts",
+        "Evidence repair loop guide",
+        "Review-ready packet guide",
+    ] {
+        assert!(
+            doc.contains(needle),
+            "crate README should mention {needle:?}"
+        );
+    }
+}
+
+#[test]
 fn install_guide_documents_current_install_paths() {
     let doc_path = repo_root().join("docs/install.md");
     let doc = std::fs::read_to_string(&doc_path)
@@ -401,7 +431,7 @@ fn release_hold_docs_record_post_0_8_soak_receipts() {
     for needle in [
         "#337", "#338", "#339", "#340", "#341", "#342", "#343", "#344", "#345", "#346", "#347",
         "#348", "#349", "#350", "#351", "#352", "#357", "#364", "#365", "#367", "#369", "#370",
-        "#371", "#372", "#373",
+        "#371", "#372", "#373", "#374",
     ] {
         assert!(
             hold.contains(needle) && readiness.contains(needle),
@@ -430,6 +460,8 @@ fn release_hold_docs_record_post_0_8_soak_receipts() {
         "explain posture before rendering",
         "Top Fixups",
         "JSON contract",
+        "crates.io README",
+        "quality-diff",
     ] {
         assert!(
             hold.contains(needle) || readiness.contains(needle),

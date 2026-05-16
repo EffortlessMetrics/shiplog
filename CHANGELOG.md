@@ -39,6 +39,9 @@ release approval.
   display contract and shows read-only share explanation before render commands
   while repeated copyable `Top Fixups` commands are collapsed (#364, #365,
   #367, #369, #370, #371, #372, #373).
+- Aligned the crates.io README with the review-ready packet loop so install
+  readers see `repair plan`, journal repair, `repair diff`, `runs diff`, and
+  read-only `share explain` before manager/public rendering (#374).
 
 ## [0.9.0] - Unreleased candidate
 
