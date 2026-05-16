@@ -272,6 +272,10 @@ fn review_ready_packet_guide_documents_quality_flow() {
         "shiplog repair diff --latest",
         "shiplog runs diff --latest",
         "shiplog open packet --latest",
+        "OUT=./out/review-ready-soak",
+        "shiplog repair plan --out \"$OUT\" --latest",
+        "shiplog runs diff --out \"$OUT\" --latest",
+        "shiplog share explain manager --out \"$OUT\" --latest",
         "Packet Readiness",
         "Claim Candidates",
         "manual_only",
@@ -280,6 +284,8 @@ fn review_ready_packet_guide_documents_quality_flow() {
         "shiplog share explain public --latest",
         "shiplog share verify public --latest --strict",
         "not write `profiles/<profile>/packet.md`",
+        "copy-ready commands printed by",
+        "post-0.8 soak",
         "Shiplog should not invent",
     ] {
         assert!(
