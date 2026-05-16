@@ -7149,6 +7149,33 @@ fn repair_plan_latest_renders_repair_items_from_latest_report() -> CliTestResult
 }
 
 #[test]
+fn repair_plan_latest_accepts_relative_out_report_paths() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let out_arg = "relative-out";
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args(["intake", "--out", out_arg, "--no-open"])
+        .assert()
+        .success();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["repair", "plan", "--out", out_arg, "--latest"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Repair plan:"))
+        .stdout(predicate::str::contains("Repair queue:"))
+        .stdout(predicate::str::contains("--from-repair"));
+
+    Ok(())
+}
+
+#[test]
 fn repair_plan_latest_without_runs_prints_intake_command() -> CliTestResult {
     let tmp = TempDir::new()?;
     let out = tmp.path().join("missing runs");
