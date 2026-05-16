@@ -1126,6 +1126,42 @@ fn all_run_dirs(out: &Path) -> Vec<PathBuf> {
     runs
 }
 
+fn file_tree_manifest(root: &Path) -> Vec<(String, u64, Option<std::time::SystemTime>)> {
+    fn visit(
+        root: &Path,
+        dir: &Path,
+        entries: &mut Vec<(String, u64, Option<std::time::SystemTime>)>,
+    ) {
+        let mut children: Vec<_> = std::fs::read_dir(dir)
+            .unwrap_or_else(|err| panic!("read {}: {err}", dir.display()))
+            .filter_map(Result::ok)
+            .collect();
+        children.sort_by_key(|entry| entry.path());
+        for child in children {
+            let path = child.path();
+            let metadata = child
+                .metadata()
+                .unwrap_or_else(|err| panic!("metadata {}: {err}", path.display()));
+            if metadata.is_dir() {
+                visit(root, &path, entries);
+            } else if metadata.is_file() {
+                let relative = path
+                    .strip_prefix(root)
+                    .unwrap_or_else(|err| panic!("strip prefix {}: {err}", path.display()))
+                    .to_string_lossy()
+                    .replace('\\', "/");
+                entries.push((relative, metadata.len(), metadata.modified().ok()));
+            }
+        }
+    }
+
+    let mut entries = Vec::new();
+    if root.exists() {
+        visit(root, root, &mut entries);
+    }
+    entries
+}
+
 // ── 1. --version flag ──────────────────────────────────────────────────────
 
 #[test]
@@ -7462,6 +7498,46 @@ fn repair_diff_latest_handles_empty_repair_queues() -> CliTestResult {
 }
 
 #[test]
+fn runs_diff_latest_reports_quality_without_writing() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let out = tmp.path().join("out");
+    let out_arg = out.to_string_lossy().to_string();
+
+    run_intake_without_provider_tokens(tmp.path(), &out);
+    let (_, first_report) = load_first_intake_report(&out);
+    let repair_id = first_repair_id_with_action(&first_report, "journal_add");
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args([
+            "journal",
+            "add",
+            "--from-repair",
+            repair_id.as_str(),
+            "--out",
+            out_arg.as_str(),
+            "--latest",
+        ])
+        .assert()
+        .success();
+    run_intake_without_provider_tokens(tmp.path(), &out);
+
+    let before = file_tree_manifest(tmp.path());
+    shiplog_cmd()
+        .args(["runs", "diff", "--out", out_arg.as_str(), "--latest"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Packet quality diff:"))
+        .stdout(predicate::str::contains("manual evidence count 0 -> 1"))
+        .stdout(predicate::str::contains("claim candidates 0 -> 1"))
+        .stdout(predicate::str::contains("shiplog share explain manager"));
+    let after = file_tree_manifest(tmp.path());
+
+    assert_eq!(before, after, "runs diff should not write or rewrite files");
+
+    Ok(())
+}
+
+#[test]
 fn report_validate_rejects_unknown_source_key() {
     let tmp = TempDir::new().unwrap();
     let out = tmp.path().join("out");
@@ -9585,6 +9661,40 @@ fn share_explain_public_without_key_reports_public_posture_without_writing() {
             .join("run_fixture/profiles/public/share.manifest.json")
             .exists(),
         "public explain should not write the share manifest"
+    );
+}
+
+#[test]
+fn share_explain_latest_profiles_are_read_only() {
+    let tmp = TempDir::new().unwrap();
+    collect_json_into(tmp.path());
+    let before = file_tree_manifest(tmp.path());
+
+    for profile in ["manager", "public"] {
+        let assert = shiplog_cmd()
+            .env_remove("SHIPLOG_REDACT_KEY")
+            .args([
+                "share",
+                "explain",
+                profile,
+                "--out",
+                tmp.path().to_str().unwrap(),
+                "--latest",
+            ])
+            .assert()
+            .success();
+        let stdout = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
+        assert!(
+            stdout.contains("Profile packet: not written yet")
+                && stdout.contains("Share manifest: not written yet"),
+            "share explain {profile} should describe existing share artifacts without rendering. stdout:\n{stdout}"
+        );
+    }
+
+    let after = file_tree_manifest(tmp.path());
+    assert_eq!(
+        before, after,
+        "share explain --latest should not write or rewrite files"
     );
 }
 
