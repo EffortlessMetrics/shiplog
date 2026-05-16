@@ -48,7 +48,7 @@ pub(crate) fn build_intake_report(
         explanations,
     );
     let included_sources = build_included_sources(result);
-    let skipped_sources_report = build_skipped_sources(result);
+    let skipped_sources_report = build_skipped_sources(result, explanations);
     let actions = intake_report_actions(
         &repair_sources,
         &top_fixups,
@@ -390,21 +390,41 @@ fn build_included_sources(result: &ConfiguredRunResult) -> Vec<IntakeReportInclu
         .collect()
 }
 
-fn build_skipped_sources(result: &ConfiguredRunResult) -> Vec<IntakeReportSkippedSource> {
-    result
-        .configured
-        .failures
-        .iter()
-        .map(|failure| {
-            let identity = intake_report_source_identity(&failure.name);
-            IntakeReportSkippedSource {
+fn build_skipped_sources(
+    result: &ConfiguredRunResult,
+    explanations: &[IntakeSourceExplanation],
+) -> Vec<IntakeReportSkippedSource> {
+    let mut seen = BTreeSet::new();
+    let mut skipped_sources = Vec::new();
+
+    for explanation in explanations {
+        if !matches!(explanation.decision, IntakeSourceDecision::Skipped) {
+            continue;
+        }
+        let identity = intake_report_source_identity(&explanation.name);
+        if seen.insert(identity.source_key.clone()) {
+            skipped_sources.push(IntakeReportSkippedSource {
+                source: identity.source,
+                source_key: identity.source_key,
+                source_label: identity.source_label,
+                reason: explanation.reason.clone(),
+            });
+        }
+    }
+
+    for failure in &result.configured.failures {
+        let identity = intake_report_source_identity(&failure.name);
+        if seen.insert(identity.source_key.clone()) {
+            skipped_sources.push(IntakeReportSkippedSource {
                 source: identity.source,
                 source_key: identity.source_key,
                 source_label: identity.source_label,
                 reason: failure.error.clone(),
-            }
-        })
-        .collect()
+            });
+        }
+    }
+
+    skipped_sources
 }
 
 fn build_journal_suggestions(top_fixups: &[IntakeReportFixup]) -> Vec<String> {

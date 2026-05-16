@@ -2407,19 +2407,7 @@ fn run_intake(args: IntakeArgs) -> Result<()> {
             event_count_phrase(ingest.events.len())
         );
     }
-    if result.configured.failures.is_empty() {
-        println!("Skipped:");
-        println!("- None");
-    } else {
-        println!("Skipped:");
-        for failure in &result.configured.failures {
-            println!(
-                "- {}: {}",
-                display_source_label(&failure.name),
-                failure.error
-            );
-        }
-    }
+    print_intake_skipped_sources(&report.skipped_sources);
     if args.explain {
         println!();
         print_intake_explanations(&intake_plan.explanations);
@@ -5558,6 +5546,18 @@ fn print_intake_explanations(explanations: &[IntakeSourceExplanation]) {
                 println!("    {line}");
             }
         }
+    }
+}
+
+fn print_intake_skipped_sources(skipped_sources: &[IntakeReportSkippedSource]) {
+    println!("Skipped:");
+    if skipped_sources.is_empty() {
+        println!("- None");
+        return;
+    }
+
+    for skipped in skipped_sources {
+        println!("- {}: {}", skipped.source_label, skipped.reason);
     }
 }
 
