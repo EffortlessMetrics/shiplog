@@ -11242,6 +11242,64 @@ user = "shiplog test"
 }
 
 #[test]
+fn share_explain_manager_surfaces_open_source_repairs_without_writing() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let out = tmp.path().join("out");
+    let out_arg = out.to_string_lossy().to_string();
+
+    run_intake_without_provider_tokens(tmp.path(), &out);
+    let (_, first_report) = load_first_intake_report(&out);
+    let repair_id = first_repair_id_with_action(&first_report, "journal_add");
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args([
+            "journal",
+            "add",
+            "--from-repair",
+            repair_id.as_str(),
+            "--out",
+            out_arg.as_str(),
+            "--latest",
+        ])
+        .assert()
+        .success();
+    run_intake_without_provider_tokens(tmp.path(), &out);
+
+    let before = file_tree_manifest(tmp.path());
+    let assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args([
+            "share",
+            "explain",
+            "manager",
+            "--out",
+            out_arg.as_str(),
+            "--latest",
+        ])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
+    let after = file_tree_manifest(tmp.path());
+
+    assert!(
+        stdout.contains("Open source repair:")
+            && stdout.contains("GitHub needs repair: GITHUB_TOKEN not found"),
+        "share explain should name source repairs that remain open after journal-only repair. stdout:\n{stdout}"
+    );
+    assert!(
+        !stdout.contains("Needs review:\n- None"),
+        "share explain should not claim nothing needs review while source repairs remain open. stdout:\n{stdout}"
+    );
+    assert_eq!(
+        before, after,
+        "share explain should remain read-only while surfacing open source repairs"
+    );
+
+    Ok(())
+}
+
+#[test]
 fn share_explain_public_without_key_reports_public_posture_without_writing() {
     let tmp = TempDir::new().unwrap();
     collect_json_into(tmp.path());
