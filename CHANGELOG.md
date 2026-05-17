@@ -64,6 +64,9 @@ release approval.
 - Kept repairable intake `Next` handoffs on the repair loop by routing journal
   fixes through `repair plan` / `journal add --from-repair` instead of repeating
   direct `journal add --date` commands in the top-level handoff (#381).
+- Kept repairable intake `Next` handoffs read-first by suppressing other
+  write-producing commands, such as direct workstream splits, once `repair plan`
+  is available (#382).
 
 ## [0.9.0] - Unreleased candidate
 

@@ -5318,6 +5318,12 @@ user = "octo"
             .all(|command| !command.contains("shiplog journal add --date")),
         "top-level next commands should not bypass repair items with direct journal add commands: {next_commands:?}"
     );
+    assert!(
+        next_commands
+            .iter()
+            .all(|command| !command.contains("shiplog workstreams split ")),
+        "top-level next commands should not advertise write-producing workstream edits while repair plan is the first handoff: {next_commands:?}"
+    );
     for (field, commands) in [
         (
             "top_fixups",
