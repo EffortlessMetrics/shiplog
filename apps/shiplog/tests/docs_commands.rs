@@ -552,7 +552,7 @@ fn release_hold_docs_record_post_0_8_soak_receipts() {
         "#348", "#349", "#350", "#351", "#352", "#357", "#364", "#365", "#367", "#369", "#370",
         "#371", "#372", "#373", "#374", "#375", "#376", "#377", "#378", "#379", "#380", "#381",
         "#382", "#383", "#384", "#385", "#386", "#387", "#388", "#389", "#390", "#391", "#392",
-        "#393", "#394", "#395", "#396", "#397",
+        "#393", "#394", "#395", "#396", "#397", "#398",
     ] {
         assert!(
             hold.contains(needle) && readiness.contains(needle),
@@ -620,12 +620,64 @@ fn release_hold_docs_record_post_0_8_soak_receipts() {
         "before publish dry-run proof can run",
         "review-ready loop transcript",
         "fail-closed manager verification",
+        "release decision",
+        "keep the 0.9 hold active",
+        "owner approval and final release preflight are not present",
     ] {
         assert!(
             hold.contains(needle) || readiness.contains(needle),
             "soak evidence docs should mention {needle:?}"
         );
     }
+}
+
+#[test]
+fn release_decision_keeps_0_9_hold_without_execution() {
+    let root = repo_root();
+    let decision_path = root.join("docs/release/0.9.0-release-decision.md");
+    let hold_path = root.join("docs/release/0.9.0-release-hold.md");
+    let readiness_path = root.join("docs/release/0.9.0-readiness.md");
+    let matrix_path = root.join("docs/product/review-ready-dogfood-matrix.md");
+
+    let decision = std::fs::read_to_string(&decision_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", decision_path.display()));
+    let hold = std::fs::read_to_string(&hold_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", hold_path.display()));
+    let readiness = std::fs::read_to_string(&readiness_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", readiness_path.display()));
+    let matrix = std::fs::read_to_string(&matrix_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", matrix_path.display()));
+
+    for needle in [
+        "**Decision:** keep hold",
+        "Do not tag, publish to crates.io, create a GitHub release",
+        "A. Keep hold",
+        "B. Resume 0.9 release",
+        "C. Fold more hardening into main and reassess",
+        "#390",
+        "#397",
+        "Owner explicitly approves release execution",
+        "not met",
+        "crates.io latest remains `shiplog = \"0.8.0\"`",
+        "scripts/check-release-hold.sh",
+        "owner_approved_release_execution",
+        "final release preflight has not been rerun",
+        "Likely next non-release lane",
+        "guided setup/doctor",
+    ] {
+        assert!(
+            decision.contains(needle),
+            "release decision should mention {needle:?}"
+        );
+    }
+
+    assert!(
+        hold.contains("0.9.0-release-decision.md")
+            && readiness.contains("0.9.0-release-decision.md")
+            && matrix.contains("0.9.0-release-decision.md")
+            && matrix.contains("Current decision: keep the `v0.9.0` hold active (#398)"),
+        "hold, readiness, and matrix docs should link the release decision without lifting the hold"
+    );
 }
 
 #[test]

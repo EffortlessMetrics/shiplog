@@ -5,6 +5,7 @@
 > GitHub release execution.
 > **Companion docs:** [`docs/release/0.9.0-release-hold.md`](../release/0.9.0-release-hold.md),
 > [`docs/release/0.9.0-readiness.md`](../release/0.9.0-readiness.md),
+> [`docs/release/0.9.0-release-decision.md`](../release/0.9.0-release-decision.md),
 > [`docs/guides/review-ready-packet.md`](../guides/review-ready-packet.md),
 > [`review-ready loop transcript`](review-ready-loop-transcript.md).
 
@@ -77,6 +78,8 @@ The next test PR should prefer small assertions around these gaps:
 
 Use this matrix to decide whether the review-ready loop has been dogfooded
 enough to ask for a release decision. It is not itself the release decision.
+
+Current decision: keep the `v0.9.0` hold active (#398).
 
 The matrix is green enough to consider resuming 0.9 only when:
 

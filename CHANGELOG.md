@@ -120,6 +120,9 @@ release approval.
   manual repair, showing repair diff, runs diff, packet readiness, claim
   candidates, read-only share explanation, and fail-closed manager verification
   without lifting the 0.9 release hold (#397).
+- Recorded the 0.9 release decision gate: keep the hold active because soak
+  evidence is useful but owner approval and final release preflight are not
+  present (#398).
 
 ## [0.9.0] - Unreleased candidate
 
