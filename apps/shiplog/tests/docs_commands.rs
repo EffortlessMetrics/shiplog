@@ -481,7 +481,7 @@ fn release_hold_docs_record_post_0_8_soak_receipts() {
         "#337", "#338", "#339", "#340", "#341", "#342", "#343", "#344", "#345", "#346", "#347",
         "#348", "#349", "#350", "#351", "#352", "#357", "#364", "#365", "#367", "#369", "#370",
         "#371", "#372", "#373", "#374", "#375", "#376", "#377", "#378", "#379", "#380", "#381",
-        "#382", "#383", "#384", "#385", "#386", "#387", "#388", "#389", "#390", "#391",
+        "#382", "#383", "#384", "#385", "#386", "#387", "#388", "#389", "#390", "#391", "#392",
     ] {
         assert!(
             hold.contains(needle) && readiness.contains(needle),
@@ -534,6 +534,9 @@ fn release_hold_docs_record_post_0_8_soak_receipts() {
         "top-level README",
         "review-ready dogfood matrix",
         "trusted-vs-needs-exercise ledger",
+        "legacy",
+        "report quality gaps",
+        "packet-readiness improvement",
     ] {
         assert!(
             hold.contains(needle) || readiness.contains(needle),
@@ -582,9 +585,11 @@ fn review_ready_dogfood_matrix_documents_soak_flows() {
         "Old report without `packet_quality`",
         "Manager `share explain` without key",
         "Public share explain/verify path",
-        "public `share explain` surfaces strict-review caveats",
-        "repaired rerun `Next` chooses `repair diff` before `repair plan`",
-        "old reports degrade gracefully",
+        "Public `share explain` now has targeted proof",
+        "packet debt, strict-review caveats",
+        "`share explain` and `runs diff` now avoid inventing",
+        "reports without `packet_quality`",
+        "hand off to `repair diff` before planning again",
         "no-write surfaces remain no-write",
         "repair diff cannot clear provider repair items without provider evidence",
         "not itself the release decision",
