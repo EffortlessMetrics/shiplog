@@ -5,6 +5,16 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Existing semver tag to release, e.g. v0.8.1"
+        required: true
+        type: string
+      owner_approved_release_execution:
+        description: "Owner explicitly approved release execution"
+        required: true
+        type: boolean
+        default: false
 
 env:
   CARGO_TERM_COLOR: always
@@ -17,13 +27,49 @@ jobs:
   release-preflight:
     name: Release Preflight
     runs-on: ubuntu-latest
+    outputs:
+      release_tag: ${{ steps.release_tag.outputs.release_tag }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v6.0.2
 
+      - name: Resolve release tag
+        id: release_tag
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          INPUT_RELEASE_TAG: ${{ inputs.release_tag }}
+          INPUT_OWNER_APPROVED: ${{ inputs.owner_approved_release_execution }}
+        run: |
+          set -euo pipefail
+
+          tag="$REF_NAME"
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            if [[ "$INPUT_OWNER_APPROVED" != "true" ]]; then
+              echo "manual release workflow dispatch requires owner approval" >&2
+              exit 1
+            fi
+            tag="$INPUT_RELEASE_TAG"
+          fi
+
+          if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "release workflow requires an explicit semver tag like v0.8.1; got '$tag'" >&2
+            exit 1
+          fi
+
+          echo "release_tag=$tag" >> "$GITHUB_OUTPUT"
+
       - name: Release hold guard
-        run: bash scripts/check-release-hold.sh "${GITHUB_REF_NAME:-}"
+        run: bash scripts/check-release-hold.sh "${{ steps.release_tag.outputs.release_tag }}"
+
+      - name: Checkout manual dispatch tag
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          git fetch --depth=1 origin "refs/tags/${{ steps.release_tag.outputs.release_tag }}:refs/tags/${{ steps.release_tag.outputs.release_tag }}"
+          git checkout --detach "${{ steps.release_tag.outputs.release_tag }}"
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@master
@@ -70,6 +116,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6.0.2
+        with:
+          ref: ${{ needs.release-preflight.outputs.release_tag }}
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@master
@@ -124,24 +172,28 @@ jobs:
   create-release:
     name: Create Release
     runs-on: ubuntu-latest
-    needs: build-binary
+    needs: [release-preflight, build-binary]
     outputs:
       version: ${{ steps.version.outputs.version }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v6.0.2
+        with:
+          ref: ${{ needs.release-preflight.outputs.release_tag }}
 
       - name: Extract version
         id: version
         run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
+          VERSION=${{ needs.release-preflight.outputs.release_tag }}
+          VERSION=${VERSION#v}
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Create Release
         id: create_release
         uses: softprops/action-gh-release@v3
         with:
+          tag_name: ${{ needs.release-preflight.outputs.release_tag }}
           draft: true
           generate_release_notes: true
         env:
@@ -151,7 +203,7 @@ jobs:
   upload-assets:
     name: Upload Assets
     runs-on: ubuntu-latest
-    needs: [build-binary, create-release]
+    needs: [release-preflight, build-binary, create-release]
 
     steps:
       - name: Download all artifacts
@@ -168,6 +220,7 @@ jobs:
       - name: Upload assets
         uses: softprops/action-gh-release@v3
         with:
+          tag_name: ${{ needs.release-preflight.outputs.release_tag }}
           fail_on_unmatched_files: true
           overwrite_files: true
           files: |
@@ -183,11 +236,13 @@ jobs:
   release-validation:
     name: Release Validation
     runs-on: ubuntu-latest
-    needs: [build-binary, create-release]
+    needs: [release-preflight, build-binary, create-release]
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v6.0.2
+        with:
+          ref: ${{ needs.release-preflight.outputs.release_tag }}
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@master
@@ -264,11 +319,13 @@ jobs:
   release-test:
     name: Release Integration Tests
     runs-on: ubuntu-latest
-    needs: [build-binary, create-release]
+    needs: [release-preflight, build-binary, create-release]
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v6.0.2
+        with:
+          ref: ${{ needs.release-preflight.outputs.release_tag }}
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@master

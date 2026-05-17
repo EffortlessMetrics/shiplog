@@ -112,6 +112,10 @@ release approval.
   predate claim candidates or share posture: `report validate`, `runs diff`,
   and `share explain` keep working and prompt rerun for richer review-ready
   signals (#395).
+- Guarded paused release execution so manual `release.yml` dispatches require a
+  semver tag and owner approval before release proof starts, while
+  `scripts/check-release-hold.sh` rejects branch refs and held `v0.9.0` release
+  attempts (#396).
 
 ## [0.9.0] - Unreleased candidate
 

@@ -9,6 +9,16 @@ if [[ -z "$tag" && -n "${GITHUB_REF_NAME:-}" ]]; then
   tag="$GITHUB_REF_NAME"
 fi
 
+if [[ -z "$tag" ]]; then
+  echo "release hold guard requires an explicit release tag like v0.8.1" >&2
+  exit 2
+fi
+
+if [[ ! "$tag" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  echo "release hold guard requires a semver release tag like v0.8.1; got '$tag'" >&2
+  exit 2
+fi
+
 hold_file="docs/release/0.9.0-release-hold.md"
 
 case "$tag" in
@@ -21,8 +31,4 @@ case "$tag" in
     ;;
 esac
 
-if [[ -n "$tag" ]]; then
-  echo "release hold check passed for $tag"
-else
-  echo "release hold check passed without a tag ref"
-fi
+echo "release hold check passed for $tag"
