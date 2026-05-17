@@ -282,6 +282,77 @@ pub(crate) fn setup_status_needs_action(status: &SetupStatus) -> bool {
     )
 }
 
+pub(crate) fn print_sources_status(status: &SetupStatus) {
+    println!("Source setup status:");
+    println!(
+        "{:<11} {:<7} {:<18} {:<15} reason",
+        "source_key", "enabled", "status", "source_label"
+    );
+    for source in &status.sources {
+        println!(
+            "{:<11} {:<7} {:<18} {:<15} {}",
+            source.key,
+            if source.enabled { "yes" } else { "no" },
+            setup_item_status_key(source.status),
+            source.label,
+            source.reason
+        );
+    }
+
+    let mut seen = BTreeSet::new();
+    let source_actions: Vec<&SetupNextAction> = status
+        .sources
+        .iter()
+        .filter_map(|source| source.next_action.as_ref())
+        .filter(|action| seen.insert(action.command.clone()))
+        .collect();
+
+    println!();
+    println!("Next:");
+    if source_actions.is_empty() {
+        if status
+            .sources
+            .iter()
+            .any(|source| source.status == SetupItemStatus::Ready)
+        {
+            println!("1. shiplog intake --last-6-months --explain [writes] - collect evidence");
+        } else {
+            println!("1. shiplog doctor --setup [read-only] - inspect setup prerequisites");
+        }
+        return;
+    }
+
+    for (index, action) in source_actions.iter().enumerate() {
+        println!(
+            "{}. {} [{}] - {}",
+            index + 1,
+            action.command,
+            write_label(action.writes),
+            action.label
+        );
+        println!("   Reason: {}", action.reason);
+    }
+}
+
+pub(crate) fn source_status_needs_action(status: &SetupStatus) -> bool {
+    let any_ready_source = status
+        .sources
+        .iter()
+        .any(|source| source.status == SetupItemStatus::Ready);
+    !any_ready_source
+        || status.sources.iter().any(|source| {
+            source.enabled
+                && matches!(
+                    source.status,
+                    SetupItemStatus::Unavailable
+                        | SetupItemStatus::Blocked
+                        | SetupItemStatus::StaleConfig
+                        | SetupItemStatus::Missing
+                        | SetupItemStatus::Malformed
+                )
+        })
+}
+
 pub(crate) fn setup_overall_status_label(status: SetupOverallStatus) -> &'static str {
     match status {
         SetupOverallStatus::Ready => "Ready",
@@ -377,6 +448,22 @@ fn setup_item_status_label(status: SetupItemStatus) -> &'static str {
         SetupItemStatus::Malformed => "malformed",
         SetupItemStatus::OptionalAbsent => "optional absent",
         SetupItemStatus::NotGenerated => "not generated",
+    }
+}
+
+fn setup_item_status_key(status: SetupItemStatus) -> &'static str {
+    match status {
+        SetupItemStatus::Ready => "ready",
+        SetupItemStatus::ReadyWithCaveats => "ready_with_caveats",
+        SetupItemStatus::Disabled => "disabled",
+        SetupItemStatus::Unavailable => "unavailable",
+        SetupItemStatus::Blocked => "blocked",
+        SetupItemStatus::StaleConfig => "stale_config",
+        SetupItemStatus::Unknown => "unknown",
+        SetupItemStatus::Missing => "missing",
+        SetupItemStatus::Malformed => "malformed",
+        SetupItemStatus::OptionalAbsent => "optional_absent",
+        SetupItemStatus::NotGenerated => "not_generated",
     }
 }
 

@@ -140,6 +140,9 @@ release approval.
 - Added `shiplog doctor --setup` as a read-only, no-network setup readiness
   view over the typed doctor model, including grouped readiness output,
   read/write next-action labels, and no secret-value disclosure (#403).
+- Added `shiplog sources status` as the source-only projection of setup
+  readiness, with canonical source keys, enabled/status/reason rows,
+  source-specific next actions, and no share-profile or credential noise (#404).
 
 ## [0.9.0] - Unreleased candidate
 
