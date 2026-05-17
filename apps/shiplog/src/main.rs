@@ -40,6 +40,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fs::File;
 use std::io::Read;
 use std::path::{Component, Path, PathBuf};
+mod doctor;
 mod intake_report_builder;
 use intake_report_builder::build_intake_report;
 
@@ -6983,6 +6984,7 @@ impl DoctorReport {
 }
 
 fn run_doctor(config_path: &Path, sources: &[InitSource]) -> Result<()> {
+    let _setup_status = doctor::build_setup_status(config_path, sources);
     let mut report = DoctorReport::default();
 
     if !config_path.exists() {

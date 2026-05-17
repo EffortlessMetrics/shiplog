@@ -134,6 +134,9 @@ release approval.
 - Recorded the Guided Setup / Doctor ADR: doctor and `sources status` are setup
   readiness surfaces, not dry-run intake engines, and must stay no-network and
   no-write by default (#401).
+- Added the internal setup readiness model for Guided Setup / Doctor, covering
+  source, local-file, credential, share-profile, next-action, and overall setup
+  state without adding a CLI surface yet (#402).
 
 ## [0.9.0] - Unreleased candidate
 
