@@ -95,6 +95,11 @@ release approval.
 - Added a review-ready dogfood matrix for the paused 0.9 candidate so the
   clean-directory, repaired-packet, skipped-source, old-report, and share
   posture flows are explicit before any release-resume decision (#391).
+- Pinned targeted dogfood-matrix checks for the paused 0.9 candidate: public
+  `share explain` now keeps packet debt and strict-review caveats visible
+  without writing, legacy share explanations prompt rerun for review-ready
+  signals, and `runs diff` no longer reports packet-readiness improvement from
+  reports that lack `packet_quality` (#392).
 
 ## [0.9.0] - Unreleased candidate
 

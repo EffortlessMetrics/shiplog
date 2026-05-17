@@ -8985,9 +8985,13 @@ fn runs_diff_latest_handles_legacy_reports_without_packet_quality() -> CliTestRe
         .stdout(
             predicate::str::contains("source:github:source_skipped_configuration cleared").not(),
         )
+        .stdout(predicate::str::contains("packet readiness unavailable"))
         .stdout(predicate::str::contains(
-            "packet readiness Needs evidence -> Ready for review",
+            "packet quality unavailable; rerun intake for review-ready signals",
         ))
+        .stdout(
+            predicate::str::contains("packet readiness Needs evidence -> Ready for review").not(),
+        )
         .stdout(predicate::str::contains("packet readiness: Ready for review").not())
         .stdout(predicate::str::contains(format!(
             "shiplog open packet --out \"{}\"",
@@ -11285,6 +11289,117 @@ fn share_explain_public_without_key_reports_public_posture_without_writing() {
             .exists(),
         "public explain should not write the share manifest"
     );
+}
+
+#[test]
+fn share_explain_public_surfaces_packet_debt_without_writing() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let out = tmp.path().join("out");
+    run_intake_without_provider_tokens(tmp.path(), &out);
+    let (report_path, mut report) = load_first_intake_report(&out);
+    let evidence_debt_summary = "Public packet needs human outcome context.";
+    report["evidence_debt"] = serde_json::json!([
+        {
+            "severity": "info",
+            "kind": "manual-context",
+            "summary": evidence_debt_summary,
+            "detail": "Injected fixture public-share debt",
+            "next_step": "shiplog journal add --date 2025-01-15 --title \"Outcome note\""
+        }
+    ]);
+    report["packet_quality"]["packet_readiness"]["summary"] =
+        serde_json::json!("Ready with caveats.");
+    std::fs::write(
+        &report_path,
+        format!("{}\n", serde_json::to_string_pretty(&report)?),
+    )?;
+
+    let before = file_tree_manifest(tmp.path());
+    let assert = shiplog_cmd()
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args([
+            "share",
+            "explain",
+            "public",
+            "--out",
+            out.to_str().unwrap(),
+            "--latest",
+        ])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
+    let after = file_tree_manifest(tmp.path());
+
+    assert!(
+        stdout.contains("Packet readiness: Ready with caveats"),
+        "public share explain should surface packet readiness caveats. stdout:\n{stdout}"
+    );
+    assert!(
+        stdout.contains(&format!("Evidence debt: {evidence_debt_summary}")),
+        "public share explain should surface packet evidence debt. stdout:\n{stdout}"
+    );
+    assert!(
+        stdout.contains(
+            "Public profile should be reviewed after rendering; strict scan is a guardrail"
+        ),
+        "public share explain should keep strict-review caveats visible. stdout:\n{stdout}"
+    );
+    assert!(
+        stdout.contains("shiplog share verify public")
+            && stdout.contains("--strict")
+            && stdout.contains("Render when ready:"),
+        "public share explain should route rendering through strict verification. stdout:\n{stdout}"
+    );
+    assert_eq!(
+        before, after,
+        "public share explain should remain read-only while surfacing packet debt"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn share_explain_legacy_report_without_packet_quality_prompts_rerun_without_writing()
+-> CliTestResult {
+    let tmp = TempDir::new()?;
+    let out = tmp.path().join("out");
+    run_intake_without_provider_tokens(tmp.path(), &out);
+    let (report_path, _) = load_first_intake_report(&out);
+    remove_packet_quality_from_report(&report_path)?;
+
+    let before = file_tree_manifest(tmp.path());
+    for profile in ["manager", "public"] {
+        let assert = shiplog_cmd()
+            .env_remove("SHIPLOG_REDACT_KEY")
+            .args([
+                "share",
+                "explain",
+                profile,
+                "--out",
+                out.to_str().unwrap(),
+                "--latest",
+            ])
+            .assert()
+            .success();
+        let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
+
+        assert!(
+            stdout.contains("Packet quality unavailable: rerun intake for review-ready signals."),
+            "share explain {profile} should prompt rerun for legacy reports. stdout:\n{stdout}"
+        );
+        assert!(
+            !stdout.contains("Packet readiness: Ready")
+                && !stdout.contains("Packet readiness: Ready for review"),
+            "share explain {profile} should not invent readiness for legacy reports. stdout:\n{stdout}"
+        );
+    }
+    let after = file_tree_manifest(tmp.path());
+    assert_eq!(
+        before, after,
+        "share explain should not write while explaining legacy report quality gaps"
+    );
+
+    Ok(())
 }
 
 #[test]

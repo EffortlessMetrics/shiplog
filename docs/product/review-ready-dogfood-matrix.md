@@ -61,18 +61,14 @@ The product claim is narrow:
 | 3 | Local git plus malformed manual journal | Malformed manual journals block copyable journal repair handoffs and route the user to setup repair instead (#377). | Keep a narrow regression test so future wording or repair-plan edits cannot reintroduce unsafe copyable journal commands. |
 | 4 | Repaired manual-only packet | Manual repair can improve the packet, rerun intake, and hand off to `repair diff` before planning again (#343, #344, #388). | Confirm `runs diff` shows quality movement without overstating source-backed confidence for manual-only evidence. |
 | 5 | Skipped provider sources | Autodetected skipped GitHub/GitLab/Jira/Linear/JSON sources stay visible across coverage, packet, review output, and `share explain` (#386). Repair diff requires matching source evidence before clearing provider source repairs (#387). | Add targeted proof that a journal-only rerun cannot clear provider repair items and that skipped-source caveats remain visible in share posture. |
-| 6 | Old report without `packet_quality` | Compatible old reports remain valid; report-facing commands can explain that richer packet-quality signals require rerunning intake (#365). | Harden `runs diff`, `share explain`, and packet-opening paths against reports missing `packet_quality`, `claim_candidates`, `share_posture`, or `repair_items`. |
+| 6 | Old report without `packet_quality` | Compatible old reports remain valid; report-facing commands can explain that richer packet-quality signals require rerunning intake (#365). `share explain` and `runs diff` now avoid inventing packet-quality readiness for reports without `packet_quality` (#392). | Harden packet-opening paths and reports missing nested `claim_candidates`, `share_posture`, or `repair_items`. |
 | 7 | Manager `share explain` without key | `share explain manager` is read-only, surfaces packet readiness and evidence debt, and labels follow-up writes as `Render when ready` (#347, #378, #389). | Pin no-write behavior so explanation cannot create profile artifacts after future edits. |
-| 8 | Public share explain/verify path | Public sharing stays separated into read-only explanation and fail-closed verification/rendering; strict public verification remains the safer pre-render path (#315, #347, #389). | Exercise public `share explain` with packet debt and strict-review caveats, then verify public rendering still requires the expected redaction/profile guardrails. |
+| 8 | Public share explain/verify path | Public sharing stays separated into read-only explanation and fail-closed verification/rendering; strict public verification remains the safer pre-render path (#315, #347, #389). Public `share explain` now has targeted proof for packet debt, strict-review caveats, and no-write behavior (#392). | Keep public verify/render guardrails covered as the share profile evolves. |
 
 ## Targeted test backlog
 
 The next test PR should prefer small assertions around these gaps:
 
-- public `share explain` surfaces strict-review caveats together with packet
-  debt;
-- repaired rerun `Next` chooses `repair diff` before `repair plan`;
-- old reports degrade gracefully in `share` and `runs` commands;
 - no-write surfaces remain no-write after future edits;
 - repair diff cannot clear provider repair items without provider evidence.
 

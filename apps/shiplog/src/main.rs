@@ -11325,7 +11325,12 @@ fn append_share_explain_report_needs_review(
         return Ok(());
     };
 
-    if let Some(readiness) = packet_readiness_display_from_json(report_json)
+    if report_json.get("packet_quality").is_none() {
+        push_unique_needs_review(
+            needs_review,
+            "Packet quality unavailable: rerun intake for review-ready signals.".to_string(),
+        );
+    } else if let Some(readiness) = packet_readiness_display_from_json(report_json)
         && !matches!(readiness.as_str(), "Ready" | "Ready for review")
     {
         push_unique_needs_review(needs_review, format!("Packet readiness: {readiness}"));
@@ -12387,6 +12392,7 @@ struct RunComparison {
 struct RunQualitySnapshot {
     summary: RunSummary,
     report_path: Option<PathBuf>,
+    packet_quality_present: bool,
     packet_readiness: Option<String>,
     packet_evidence_strength: Option<String>,
     claim_candidate_count: Option<usize>,
@@ -12735,6 +12741,7 @@ fn load_run_quality_snapshot(run_dir: &Path) -> Result<RunQualitySnapshot> {
     let mut packet_readiness = None;
     let mut packet_evidence_strength = None;
     let mut claim_candidate_count = None;
+    let mut packet_quality_present = false;
     let mut repair_report = None;
     let report_path = if report_path.exists() {
         validate_intake_report(&report_path)?;
@@ -12742,6 +12749,7 @@ fn load_run_quality_snapshot(run_dir: &Path) -> Result<RunQualitySnapshot> {
             .with_context(|| format!("read {}", report_path.display()))?;
         let report_json: serde_json::Value = serde_json::from_str(&report_text)
             .with_context(|| format!("parse {}", report_path.display()))?;
+        packet_quality_present = report_json.get("packet_quality").is_some();
         packet_readiness = report_packet_readiness_status(&report_json);
         packet_evidence_strength = report_packet_evidence_strength(&report_json);
         claim_candidate_count = report_claim_candidate_count(&report_json);
@@ -12756,6 +12764,7 @@ fn load_run_quality_snapshot(run_dir: &Path) -> Result<RunQualitySnapshot> {
     Ok(RunQualitySnapshot {
         summary,
         report_path,
+        packet_quality_present,
         packet_readiness,
         packet_evidence_strength,
         claim_candidate_count,
@@ -12771,11 +12780,6 @@ fn report_packet_readiness_status(report_json: &serde_json::Value) -> Option<Str
         .and_then(|quality| quality.get("packet_readiness"))
         .and_then(|readiness| readiness.get("status"))
         .and_then(serde_json::Value::as_str)
-        .or_else(|| {
-            report_json
-                .get("readiness")
-                .and_then(serde_json::Value::as_str)
-        })
         .map(str::to_string)
 }
 
@@ -12942,6 +12946,10 @@ fn run_quality_diff_groups(
         }
         None => still_weak.push("packet readiness unavailable".to_string()),
         _ => {}
+    }
+    if to.report_path.is_some() && !to.packet_quality_present {
+        still_weak
+            .push("packet quality unavailable; rerun intake for review-ready signals".to_string());
     }
     if let Some(strength) = to.packet_evidence_strength.as_deref()
         && strength != "strong"
