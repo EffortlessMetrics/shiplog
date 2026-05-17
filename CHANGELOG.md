@@ -123,6 +123,10 @@ release approval.
 - Recorded the 0.9 release decision gate: keep the hold active because soak
   evidence is useful but owner approval and final release preflight are not
   present (#398).
+- Proposed the next non-release Guided Setup / Doctor lane so setup readiness,
+  source status, local-file validity, credential presence, share prerequisites,
+  and read/write next actions can be made explicit before intake, repair, or
+  share commands (#399).
 
 ## [0.9.0] - Unreleased candidate
 
