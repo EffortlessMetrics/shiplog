@@ -40,6 +40,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fs::File;
 use std::io::Read;
 use std::path::{Component, Path, PathBuf};
+mod doctor;
 mod intake_report_builder;
 use intake_report_builder::build_intake_report;
 
