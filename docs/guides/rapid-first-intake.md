@@ -116,14 +116,17 @@ pack and what's missing." Read the sections in this order:
 9. **Evidence Debt** — quality gaps the run detected, severity-ranked.
 10. **Good / Needs Attention** — the readiness summary you'd lead with
     when talking to a reviewer.
-11. **Top Fixups / Journal Suggestions** — the highest-value curation
-    actions, with copy-ready commands.
-12. **Share Explain Commands** — read-only commands that explain manager
+11. **Repair Items** — receipt-derived actions; use `repair plan` before
+    copying write-producing fix commands.
+12. **Top Fixups / Journal Suggestions** — the highest-value curation
+    actions, with contextual copy-ready commands.
+13. **Share Explain Commands** — read-only commands that explain manager
     and public posture before rendering.
-13. **Share Commands** — exact commands to render manager and public
+14. **Share Commands** — exact commands to render manager and public
     profiles after you have checked the posture.
-14. **Next Commands** — what to run next (rerun, curate, share).
-15. **Artifacts** — every file path the run produced.
+15. **Next Commands** — the read-first handoff, usually `repair plan` before
+    any write-producing curation command.
+16. **Artifacts** — every file path the run produced.
 
 You do not have to read every section. **Header → Source Freshness →
 Skipped Sources → Needs Attention** is enough to decide whether the
@@ -186,9 +189,22 @@ events. The run is honest, not broken. Add evidence and rerun.
 
 ## Add manual evidence
 
-The fastest way to add evidence between intake runs is `shiplog
-journal add`. It writes to `manual_events.yaml` with a normalised
-shape — no hand-editing under deadline pressure.
+When intake reports a missing manual-evidence repair item, start with the
+repair queue:
+
+```bash
+shiplog repair plan --latest
+shiplog journal add --from-repair <repair_id>
+```
+
+`journal add --from-repair` reads the latest `intake.report.json`, verifies the
+repair item is a local journal action, and writes to `manual_events.yaml` with
+the repair ID preserved as a receipt. This is the safest path when the report
+already knows what repair would improve the packet.
+
+If you are adding a manual event that is not tied to a repair item, use
+`shiplog journal add` directly. It writes to `manual_events.yaml` with a
+normalised shape — no hand-editing under deadline pressure.
 
 ```bash
 shiplog journal add \
