@@ -28,9 +28,12 @@ pub(super) fn dispatch() -> Result<()> {
         Command::Doctor {
             config,
             sources,
+            setup,
             repair_plan,
         } => {
-            if repair_plan {
+            if setup {
+                run_doctor_setup(&config, &sources)?;
+            } else if repair_plan {
                 run_doctor_repair_plan(&config, &sources)?;
             } else {
                 run_doctor(&config, &sources)?;

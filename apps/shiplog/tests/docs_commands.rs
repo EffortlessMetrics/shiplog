@@ -28,6 +28,7 @@ fn config_reference_documents_current_surface() {
         "shiplog config validate --config shiplog.toml",
         "shiplog config explain --config shiplog.toml",
         "shiplog doctor --config shiplog.toml",
+        "shiplog doctor --config shiplog.toml --setup",
         "shiplog doctor --config shiplog.toml --repair-plan",
         "[shiplog]",
         "config_version = 1",
@@ -77,6 +78,7 @@ fn config_reference_documents_current_surface() {
         "SHIPLOG_REDACT_KEY",
         "config validate",
         "doctor",
+        "doctor --setup",
         "doctor --repair-plan",
     ] {
         assert!(
@@ -875,6 +877,7 @@ fn documented_help_commands_stay_available() {
         .args(["doctor", "--help"])
         .assert()
         .success()
+        .stdout(predicate::str::contains("--setup"))
         .stdout(predicate::str::contains("--repair-plan"));
 
     shiplog_cmd()

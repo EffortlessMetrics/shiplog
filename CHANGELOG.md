@@ -137,6 +137,9 @@ release approval.
 - Added the internal setup readiness model for Guided Setup / Doctor, covering
   source, local-file, credential, share-profile, next-action, and overall setup
   state without adding a CLI surface yet (#402).
+- Added `shiplog doctor --setup` as a read-only, no-network setup readiness
+  view over the typed doctor model, including grouped readiness output,
+  read/write next-action labels, and no secret-value disclosure (#403).
 
 ## [0.9.0] - Unreleased candidate
 

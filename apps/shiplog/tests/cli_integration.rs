@@ -1406,6 +1406,7 @@ fn doctor_help_shows_options() {
         .success()
         .stdout(predicate::str::contains("--config"))
         .stdout(predicate::str::contains("--source"))
+        .stdout(predicate::str::contains("--setup"))
         .stdout(predicate::str::contains("--repair-plan"));
 }
 
@@ -2926,6 +2927,146 @@ events = "./manual_events.yaml"
         .stdout(predicate::str::contains("JSON: ok"))
         .stdout(predicate::str::contains("Manual: ok"))
         .stdout(predicate::str::contains("Redaction: ok"));
+}
+
+#[test]
+fn doctor_setup_prints_readiness_without_writing_outputs() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    git2::Repository::init(tmp.path())?;
+    std::fs::write(
+        tmp.path().join("manual_events.yaml"),
+        "version: 1\ngenerated_at: 2026-01-01T00:00:00Z\nevents: []\n",
+    )?;
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[shiplog]
+config_version = 1
+
+[defaults]
+out = "./out"
+window = "last-6-months"
+profile = "internal"
+
+[sources.git]
+enabled = true
+repo = "."
+
+[sources.manual]
+enabled = true
+events = "./manual_events.yaml"
+"#,
+    )?;
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["doctor", "--setup"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "Setup readiness: Ready with caveats",
+        ))
+        .stdout(predicate::str::contains("Ready:"))
+        .stdout(predicate::str::contains("Local git"))
+        .stdout(predicate::str::contains("Manual journal"))
+        .stdout(predicate::str::contains("Disabled:"))
+        .stdout(predicate::str::contains("GitHub"))
+        .stdout(predicate::str::contains("Next:"))
+        .stdout(predicate::str::contains("[read-only]"));
+
+    assert!(
+        !tmp.path().join("out").exists(),
+        "doctor --setup should not write run artifacts"
+    );
+    Ok(())
+}
+
+#[test]
+fn doctor_setup_reports_malformed_manual_as_read_only_setup_block() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    std::fs::write(tmp.path().join("manual_events.yaml"), "version: nope\n")?;
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[shiplog]
+config_version = 1
+
+[defaults]
+out = "./out"
+window = "last-6-months"
+profile = "internal"
+
+[sources.manual]
+enabled = true
+events = "./manual_events.yaml"
+"#,
+    )?;
+
+    let assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["doctor", "--setup"])
+        .assert()
+        .failure()
+        .stdout(predicate::str::contains("Setup readiness: Blocked"))
+        .stdout(predicate::str::contains("Blocked:"))
+        .stdout(predicate::str::contains("Manual journal"))
+        .stdout(predicate::str::contains("manual_events.yaml malformed"))
+        .stdout(predicate::str::contains("Next:"))
+        .stdout(predicate::str::contains("shiplog doctor --setup"))
+        .stdout(predicate::str::contains("[read-only]"));
+    let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
+
+    assert!(
+        !stdout.contains("journal add --from-repair"),
+        "doctor --setup should not offer repair commands that need a valid journal"
+    );
+    assert!(
+        !tmp.path().join("out").exists(),
+        "doctor --setup should not write run artifacts"
+    );
+    Ok(())
+}
+
+#[test]
+fn doctor_setup_reports_token_presence_without_exposing_values() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    std::fs::write(
+        tmp.path().join("manual_events.yaml"),
+        "version: 1\ngenerated_at: 2026-01-01T00:00:00Z\nevents: []\n",
+    )?;
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[shiplog]
+config_version = 1
+
+[defaults]
+out = "./out"
+window = "last-6-months"
+profile = "internal"
+
+[sources.github]
+enabled = true
+user = "octo"
+
+[sources.manual]
+enabled = true
+events = "./manual_events.yaml"
+"#,
+    )?;
+
+    let assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env("GITHUB_TOKEN", "shiplog-secret-token")
+        .args(["doctor", "--setup"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("GitHub token"))
+        .stdout(predicate::str::contains("GITHUB_TOKEN present"));
+    let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
+
+    assert!(
+        !stdout.contains("shiplog-secret-token"),
+        "doctor --setup should report credential presence without printing values"
+    );
+    Ok(())
 }
 
 #[test]
