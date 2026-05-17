@@ -2,7 +2,7 @@
 //!
 //! Exposes `init`, `doctor`, `intake`, `config`, `collect`, `render`,
 //! `refresh`, `workstreams`, `runs`, `review`, `journal`, `open`, `report`, `merge`,
-//! `import`, and `run` commands over the workspace engine and adapter crates.
+//! `import`, `sources`, and `run` commands over the workspace engine and adapter crates.
 
 use anyhow::{Context, Result};
 use chrono::{DateTime, Datelike, Duration, Months, NaiveDate, Utc};
@@ -90,6 +90,12 @@ enum Command {
     Config {
         #[command(subcommand)]
         cmd: ConfigCommand,
+    },
+
+    /// Inspect source setup readiness without collecting data.
+    Sources {
+        #[command(subcommand)]
+        cmd: SourcesCommand,
     },
 
     /// List and explain named review periods from shiplog.toml.
@@ -467,6 +473,22 @@ enum ConfigCommand {
         #[arg(long)]
         dry_run: bool,
     },
+}
+
+#[derive(Subcommand, Debug)]
+enum SourcesCommand {
+    /// Print source setup readiness without provider network calls or writes.
+    Status(SourcesStatusArgs),
+}
+
+#[derive(Args, Debug)]
+struct SourcesStatusArgs {
+    /// Path to shiplog.toml.
+    #[arg(long, default_value = CONFIG_FILENAME)]
+    config: PathBuf,
+    /// Limit status to one or more sources.
+    #[arg(long = "source", value_enum)]
+    sources: Vec<InitSource>,
 }
 
 #[derive(Subcommand, Debug)]
@@ -7034,6 +7056,15 @@ fn run_doctor_setup(config_path: &Path, sources: &[InitSource]) -> Result<()> {
             "doctor setup found {}",
             doctor::setup_overall_status_label(status.overall_status)
         );
+    }
+    Ok(())
+}
+
+fn run_sources_status(config_path: &Path, sources: &[InitSource]) -> Result<()> {
+    let status = doctor::build_setup_status(config_path, sources);
+    doctor::print_sources_status(&status);
+    if doctor::source_status_needs_action(&status) {
+        anyhow::bail!("source status found setup action(s)");
     }
     Ok(())
 }

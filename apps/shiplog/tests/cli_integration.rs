@@ -1372,6 +1372,7 @@ fn help_shows_all_subcommands() {
         .stdout(predicate::str::contains("init"))
         .stdout(predicate::str::contains("doctor"))
         .stdout(predicate::str::contains("config"))
+        .stdout(predicate::str::contains("sources"))
         .stdout(predicate::str::contains("cache"))
         .stdout(predicate::str::contains("journal"))
         .stdout(predicate::str::contains("collect"))
@@ -1408,6 +1409,22 @@ fn doctor_help_shows_options() {
         .stdout(predicate::str::contains("--source"))
         .stdout(predicate::str::contains("--setup"))
         .stdout(predicate::str::contains("--repair-plan"));
+}
+
+#[test]
+fn sources_help_shows_status_options() {
+    shiplog_cmd()
+        .args(["sources", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("status"));
+
+    shiplog_cmd()
+        .args(["sources", "status", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--config"))
+        .stdout(predicate::str::contains("--source"));
 }
 
 #[test]
@@ -3065,6 +3082,141 @@ events = "./manual_events.yaml"
     assert!(
         !stdout.contains("shiplog-secret-token"),
         "doctor --setup should report credential presence without printing values"
+    );
+    Ok(())
+}
+
+#[test]
+fn sources_status_prints_source_only_readiness_without_writing_outputs() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    git2::Repository::init(tmp.path())?;
+    std::fs::write(
+        tmp.path().join("manual_events.yaml"),
+        "version: 1\ngenerated_at: 2026-01-01T00:00:00Z\nevents: []\n",
+    )?;
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[shiplog]
+config_version = 1
+
+[defaults]
+out = "./out"
+window = "last-6-months"
+profile = "manager"
+
+[sources.git]
+enabled = true
+repo = "."
+
+[sources.manual]
+enabled = true
+events = "./manual_events.yaml"
+"#,
+    )?;
+
+    let assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args(["sources", "status"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Source setup status:"))
+        .stdout(predicate::str::contains("source_key"))
+        .stdout(predicate::str::contains("source_label"))
+        .stdout(predicate::str::contains("git"))
+        .stdout(predicate::str::contains("Local git"))
+        .stdout(predicate::str::contains("manual"))
+        .stdout(predicate::str::contains("Manual journal"))
+        .stdout(predicate::str::contains("Next:"));
+    let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
+
+    assert!(
+        !stdout.contains("Manager share"),
+        "sources status should not include share-profile readiness"
+    );
+    assert!(
+        !stdout.contains("Redaction key"),
+        "sources status should not include credential/share noise"
+    );
+    assert!(
+        !tmp.path().join("out").exists(),
+        "sources status should not write run artifacts"
+    );
+    Ok(())
+}
+
+#[test]
+fn sources_status_reports_configured_provider_token_gap() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[shiplog]
+config_version = 1
+
+[defaults]
+out = "./out"
+window = "last-6-months"
+profile = "internal"
+
+[sources.github]
+enabled = true
+user = "octo"
+"#,
+    )?;
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .args(["sources", "status"])
+        .assert()
+        .failure()
+        .stdout(predicate::str::contains("github"))
+        .stdout(predicate::str::contains("GitHub"))
+        .stdout(predicate::str::contains("unavailable"))
+        .stdout(predicate::str::contains("GITHUB_TOKEN not set"))
+        .stdout(predicate::str::contains("set GITHUB_TOKEN"))
+        .stdout(predicate::str::contains("[read-only]"));
+
+    assert!(
+        !tmp.path().join("out").exists(),
+        "sources status should not write run artifacts"
+    );
+    Ok(())
+}
+
+#[test]
+fn sources_status_reports_token_presence_without_exposing_values() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[shiplog]
+config_version = 1
+
+[defaults]
+out = "./out"
+window = "last-6-months"
+profile = "internal"
+
+[sources.github]
+enabled = true
+user = "octo"
+"#,
+    )?;
+
+    let assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env("GITHUB_TOKEN", "shiplog-source-secret-token")
+        .args(["sources", "status", "--source", "github"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("github"))
+        .stdout(predicate::str::contains("ready"))
+        .stdout(predicate::str::contains("token present"));
+    let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
+
+    assert!(
+        !stdout.contains("shiplog-source-secret-token"),
+        "sources status should report token presence without printing values"
     );
     Ok(())
 }

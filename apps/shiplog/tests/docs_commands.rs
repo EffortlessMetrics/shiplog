@@ -29,6 +29,7 @@ fn config_reference_documents_current_surface() {
         "shiplog config explain --config shiplog.toml",
         "shiplog doctor --config shiplog.toml",
         "shiplog doctor --config shiplog.toml --setup",
+        "shiplog sources status --config shiplog.toml",
         "shiplog doctor --config shiplog.toml --repair-plan",
         "[shiplog]",
         "config_version = 1",
@@ -79,6 +80,7 @@ fn config_reference_documents_current_surface() {
         "config validate",
         "doctor",
         "doctor --setup",
+        "sources status",
         "doctor --repair-plan",
     ] {
         assert!(
@@ -848,6 +850,7 @@ fn documented_help_commands_stay_available() {
         .stdout(predicate::str::contains("cache"))
         .stdout(predicate::str::contains("identify"))
         .stdout(predicate::str::contains("report"))
+        .stdout(predicate::str::contains("sources"))
         .stdout(predicate::str::contains("periods"));
 
     shiplog_cmd()
@@ -879,6 +882,13 @@ fn documented_help_commands_stay_available() {
         .success()
         .stdout(predicate::str::contains("--setup"))
         .stdout(predicate::str::contains("--repair-plan"));
+
+    shiplog_cmd()
+        .args(["sources", "status", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--config"))
+        .stdout(predicate::str::contains("--source"));
 
     shiplog_cmd()
         .args(["periods", "--help"])

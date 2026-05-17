@@ -56,6 +56,10 @@ pub(super) fn dispatch() -> Result<()> {
             }
         },
 
+        Command::Sources { cmd } => match cmd {
+            SourcesCommand::Status(args) => run_sources_status(&args.config, &args.sources)?,
+        },
+
         Command::Periods { cmd } => match cmd {
             PeriodsCommand::List(args) => run_periods_list(args)?,
             PeriodsCommand::Explain(args) => run_periods_explain(args)?,
