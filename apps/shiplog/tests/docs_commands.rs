@@ -431,7 +431,7 @@ fn release_hold_docs_record_post_0_8_soak_receipts() {
     for needle in [
         "#337", "#338", "#339", "#340", "#341", "#342", "#343", "#344", "#345", "#346", "#347",
         "#348", "#349", "#350", "#351", "#352", "#357", "#364", "#365", "#367", "#369", "#370",
-        "#371", "#372", "#373", "#374", "#375", "#376", "#377", "#378", "#379", "#380",
+        "#371", "#372", "#373", "#374", "#375", "#376", "#377", "#378", "#379", "#380", "#381",
     ] {
         assert!(
             hold.contains(needle) && readiness.contains(needle),
@@ -468,6 +468,7 @@ fn release_hold_docs_record_post_0_8_soak_receipts() {
         "Needs review",
         "outcome-context evidence debt",
         "zero-event sources",
+        "journal add --from-repair",
     ] {
         assert!(
             hold.contains(needle) || readiness.contains(needle),

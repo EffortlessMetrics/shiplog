@@ -61,6 +61,9 @@ release approval.
 - Reduced first-run output noise so zero-event sources no longer appear as
   positive evidence in the `Good` list while still remaining visible in source
   status and evidence caveats (#380).
+- Kept repairable intake `Next` handoffs on the repair loop by routing journal
+  fixes through `repair plan` / `journal add --from-repair` instead of repeating
+  direct `journal add --date` commands in the top-level handoff (#381).
 
 ## [0.9.0] - Unreleased candidate
 
