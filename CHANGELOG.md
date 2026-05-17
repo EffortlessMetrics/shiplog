@@ -84,6 +84,9 @@ release approval.
   items now clear only when the newer report includes evidence from that source,
   so disappearing optional-source scope is not reported as packet improvement
   (#387).
+- Routed repaired rerun intake handoffs to `repair diff --latest` before
+  `repair plan`, so the post-repair path moves into comparison instead of
+  sending users back to the planning step first (#388).
 
 ## [0.9.0] - Unreleased candidate
 

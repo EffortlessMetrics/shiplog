@@ -57,6 +57,7 @@ pub(crate) fn build_intake_report(
         &run_id,
         &signals,
     );
+    let prior_repair_report_exists = has_prior_repair_report(out_dir, &result.outputs.out_dir)?;
     if manual_journal_add_blocked {
         next_commands.retain(|command| !is_journal_add_command(command));
     }
@@ -91,6 +92,9 @@ pub(crate) fn build_intake_report(
     });
     if !repair_items.is_empty() {
         prepend_repair_plan_next_command(&mut next_commands, out_dir);
+        if prior_repair_report_exists {
+            prepend_repair_diff_next_command(&mut next_commands, out_dir);
+        }
         next_commands.retain(|command| !action_writes(command));
         actions = intake_report_actions(
             &repair_sources,
@@ -356,11 +360,61 @@ fn prepend_repair_plan_next_command(next_commands: &mut Vec<String>, out_dir: &P
     next_commands.insert(0, repair_plan_next_command(out_dir));
 }
 
+fn prepend_repair_diff_next_command(next_commands: &mut Vec<String>, out_dir: &Path) {
+    if next_commands
+        .iter()
+        .any(|command| command.starts_with("shiplog repair diff "))
+    {
+        return;
+    }
+    next_commands.insert(0, repair_diff_next_command(out_dir));
+}
+
 fn repair_plan_next_command(out_dir: &Path) -> String {
     format!(
         "shiplog repair plan --out {} --latest",
         quote_cli_value(&out_dir.display().to_string())
     )
+}
+
+fn repair_diff_next_command(out_dir: &Path) -> String {
+    format!(
+        "shiplog repair diff --out {} --latest",
+        quote_cli_value(&out_dir.display().to_string())
+    )
+}
+
+fn has_prior_repair_report(out_dir: &Path, current_run_dir: &Path) -> Result<bool> {
+    for run_dir in find_run_dirs_for_repair(out_dir)? {
+        if same_report_run_dir(&run_dir, current_run_dir) {
+            continue;
+        }
+        let report_path = run_dir.join("intake.report.json");
+        let Ok(report_text) = std::fs::read_to_string(&report_path) else {
+            continue;
+        };
+        let Ok(report_json) = serde_json::from_str::<serde_json::Value>(&report_text) else {
+            continue;
+        };
+        if report_json
+            .get("repair_items")
+            .and_then(|items| items.as_array())
+            .is_some_and(|items| !items.is_empty())
+        {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
+fn same_report_run_dir(left: &Path, right: &Path) -> bool {
+    if left == right {
+        return true;
+    }
+    match (left.canonicalize(), right.canonicalize()) {
+        (Ok(left), Ok(right)) => left == right,
+        _ => false,
+    }
 }
 
 fn build_artifacts(result: &ConfiguredRunResult) -> Vec<IntakeReportArtifact> {
