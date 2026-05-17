@@ -481,7 +481,7 @@ fn release_hold_docs_record_post_0_8_soak_receipts() {
         "#337", "#338", "#339", "#340", "#341", "#342", "#343", "#344", "#345", "#346", "#347",
         "#348", "#349", "#350", "#351", "#352", "#357", "#364", "#365", "#367", "#369", "#370",
         "#371", "#372", "#373", "#374", "#375", "#376", "#377", "#378", "#379", "#380", "#381",
-        "#382", "#383", "#384", "#385", "#386", "#387", "#388", "#389", "#390",
+        "#382", "#383", "#384", "#385", "#386", "#387", "#388", "#389", "#390", "#391",
     ] {
         assert!(
             hold.contains(needle) && readiness.contains(needle),
@@ -532,10 +532,67 @@ fn release_hold_docs_record_post_0_8_soak_receipts() {
         "write-producing commands",
         "rapid first-intake guide",
         "top-level README",
+        "review-ready dogfood matrix",
+        "trusted-vs-needs-exercise ledger",
     ] {
         assert!(
             hold.contains(needle) || readiness.contains(needle),
             "soak evidence docs should mention {needle:?}"
+        );
+    }
+}
+
+#[test]
+fn review_ready_dogfood_matrix_documents_soak_flows() {
+    let root = repo_root();
+    let matrix_path = root.join("docs/product/review-ready-dogfood-matrix.md");
+    let hold_path = root.join("docs/release/0.9.0-release-hold.md");
+    let readiness_path = root.join("docs/release/0.9.0-readiness.md");
+
+    let matrix = std::fs::read_to_string(&matrix_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", matrix_path.display()));
+    let hold = std::fs::read_to_string(&hold_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", hold_path.display()));
+    let readiness = std::fs::read_to_string(&readiness_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", readiness_path.display()));
+
+    assert!(
+        hold.contains("review-ready dogfood matrix") && readiness.contains("#391"),
+        "release hold/readiness docs should link the dogfood matrix without lifting the hold"
+    );
+
+    for needle in [
+        "0.9 remains paused",
+        "does not approve tag, publish",
+        "GitHub release execution",
+        "git tag v0.9.0",
+        "cargo publish -p shiplog --locked",
+        "shiplog intake --last-6-months --explain",
+        "shiplog repair plan --latest",
+        "shiplog journal add --from-repair <repair_id>",
+        "shiplog repair diff --latest",
+        "shiplog runs diff --latest",
+        "shiplog share explain manager --latest",
+        "shiplog share verify manager --latest",
+        "Empty directory, no tokens",
+        "Local git plus empty valid manual journal",
+        "Local git plus malformed manual journal",
+        "Repaired manual-only packet",
+        "Skipped provider sources",
+        "Old report without `packet_quality`",
+        "Manager `share explain` without key",
+        "Public share explain/verify path",
+        "public `share explain` surfaces strict-review caveats",
+        "repaired rerun `Next` chooses `repair diff` before `repair plan`",
+        "old reports degrade gracefully",
+        "no-write surfaces remain no-write",
+        "repair diff cannot clear provider repair items without provider evidence",
+        "not itself the release decision",
+        "owner explicitly approves release execution",
+    ] {
+        assert!(
+            matrix.contains(needle),
+            "review-ready dogfood matrix should mention {needle:?}"
         );
     }
 }

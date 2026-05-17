@@ -92,6 +92,9 @@ release approval.
   during post-0.8 dogfood (#389).
 - Consolidated the late post-0.8 release-hold ledger so #375-#389 can be
   audited by product risk without implying 0.9 release approval (#390).
+- Added a review-ready dogfood matrix for the paused 0.9 candidate so the
+  clean-directory, repaired-packet, skipped-source, old-report, and share
+  posture flows are explicit before any release-resume decision (#391).
 
 ## [0.9.0] - Unreleased candidate
 
