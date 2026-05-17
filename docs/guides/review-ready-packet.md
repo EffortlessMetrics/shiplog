@@ -42,6 +42,12 @@ Read these sections first:
 - `Repair items`: safe local actions derived from report receipts.
 - `Evidence debt`: curation or context gaps that can weaken the packet.
 
+When repair items exist, the top-level `Next` handoff is intentionally
+read-first: it should point at `repair plan` before write-producing commands.
+Direct `journal add`, workstream split, or receipt-trimming commands may still
+appear inside `Evidence debt` or `Top Fixups` as context, but use `repair plan`
+to decide which actions are safe and receipt-backed.
+
 If the packet has no evidence, do not treat that as failure. Treat it as the
 first diagnostic run.
 

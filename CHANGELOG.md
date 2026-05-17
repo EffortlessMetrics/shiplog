@@ -67,6 +67,9 @@ release approval.
 - Kept repairable intake `Next` handoffs read-first by suppressing other
   write-producing commands, such as direct workstream splits, once `repair plan`
   is available (#382).
+- Documented the read-first repair handoff in the review-ready and evidence
+  repair guides so direct write commands in evidence debt are treated as context,
+  not the first action (#383).
 
 ## [0.9.0] - Unreleased candidate
 

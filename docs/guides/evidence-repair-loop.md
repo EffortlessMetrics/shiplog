@@ -43,6 +43,11 @@ item is a `journal_add` action, adds tags that preserve the repair ID, and fills
 safe default title/description/date values from the report. You can still add
 specific receipts, workstream, or impact text when you have them.
 
+If the intake report also shows direct fix commands in `Evidence debt` or
+`Top Fixups`, treat them as contextual hints. The read-first handoff is
+`repair plan`: it separates copyable local repairs from advisory items such as
+receipt trimming, workstream splitting, and share-posture review.
+
 ## Rerun and compare
 
 After adding evidence, rerun intake.

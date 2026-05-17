@@ -287,6 +287,9 @@ fn evidence_repair_loop_guide_documents_report_derived_flow() {
         "Changed",
         "intake.report.json",
         "provider tickets or source records are edited",
+        "read-first handoff",
+        "receipt trimming",
+        "workstream splitting",
     ] {
         assert!(
             doc.contains(needle),
@@ -319,6 +322,8 @@ fn review_ready_packet_guide_documents_quality_flow() {
         "manual_only",
         "missing-context prompts",
         "Run the repair plan before copying individual fix commands",
+        "top-level `Next` handoff is intentionally",
+        "write-producing commands",
         "no safe copyable command",
         "shiplog share explain manager --latest",
         "shiplog share explain public --latest",
@@ -432,7 +437,7 @@ fn release_hold_docs_record_post_0_8_soak_receipts() {
         "#337", "#338", "#339", "#340", "#341", "#342", "#343", "#344", "#345", "#346", "#347",
         "#348", "#349", "#350", "#351", "#352", "#357", "#364", "#365", "#367", "#369", "#370",
         "#371", "#372", "#373", "#374", "#375", "#376", "#377", "#378", "#379", "#380", "#381",
-        "#382",
+        "#382", "#383",
     ] {
         assert!(
             hold.contains(needle) && readiness.contains(needle),
