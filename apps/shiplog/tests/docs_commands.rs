@@ -390,12 +390,15 @@ fn review_ready_packet_guide_documents_quality_flow() {
 fn release_hold_guard_blocks_held_0_9_tag() {
     let root = repo_root();
     let workflow_path = root.join(".github/workflows/release.yml");
+    let guard_path = root.join("scripts/check-release-hold.sh");
     let hold_path = root.join("docs/release/0.9.0-release-hold.md");
     let readiness_path = root.join("docs/release/0.9.0-readiness.md");
     let process_allowlist_path = root.join("policy/process-allowlist.toml");
 
     let workflow = std::fs::read_to_string(&workflow_path)
         .unwrap_or_else(|err| panic!("read {}: {err}", workflow_path.display()));
+    let guard = std::fs::read_to_string(&guard_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", guard_path.display()));
     let hold = std::fs::read_to_string(&hold_path)
         .unwrap_or_else(|err| panic!("read {}: {err}", hold_path.display()));
     let readiness = std::fs::read_to_string(&readiness_path)
@@ -406,6 +409,38 @@ fn release_hold_guard_blocks_held_0_9_tag() {
     assert!(
         workflow.contains("bash scripts/check-release-hold.sh"),
         "release workflow should run the release-hold guard before release proof"
+    );
+    assert!(
+        workflow.contains("release_tag:")
+            && workflow.contains("owner_approved_release_execution")
+            && workflow.contains("steps.release_tag.outputs.release_tag"),
+        "manual release workflow dispatch should require an explicit tag and owner approval"
+    );
+    let resolve_tag_index = workflow
+        .find("Resolve release tag")
+        .expect("release workflow should resolve the release tag");
+    let hold_guard_index = workflow
+        .find("Release hold guard")
+        .expect("release workflow should run the release-hold guard");
+    let publish_dry_run_index = workflow
+        .find("scripts/publish-dry-run.sh")
+        .expect("release workflow should keep publish dry-run proof explicit");
+    assert!(
+        resolve_tag_index < hold_guard_index && hold_guard_index < publish_dry_run_index,
+        "release workflow should resolve/approve the tag and run the hold guard before publish dry-run proof"
+    );
+    assert!(
+        !workflow.contains("needs: [build-binary, create-release]"),
+        "release workflow jobs after artifact build should depend on release-preflight so they cannot bypass the hold guard"
+    );
+    assert!(
+        workflow.matches("needs: [release-preflight").count() >= 4,
+        "release workflow should route all release-producing and release-test jobs through release-preflight"
+    );
+    assert!(
+        guard.contains("requires an explicit release tag")
+            && guard.contains("requires a semver release tag"),
+        "release-hold guard should reject missing or branch-like release refs"
     );
     assert!(
         hold.contains("scripts/check-release-hold.sh")
@@ -445,6 +480,41 @@ fn release_hold_guard_blocks_held_0_9_tag() {
         "blocked stderr should explain the held release tag. stderr:\n{blocked_stderr}"
     );
 
+    let missing_tag = StdCommand::new("bash")
+        .current_dir(&root)
+        .env_remove("GITHUB_REF")
+        .env_remove("GITHUB_REF_NAME")
+        .arg("scripts/check-release-hold.sh")
+        .output()
+        .expect("run release hold guard without a tag");
+    assert!(
+        !missing_tag.status.success(),
+        "release hold guard should reject missing release tag input"
+    );
+    let missing_tag_stderr = String::from_utf8_lossy(&missing_tag.stderr);
+    assert!(
+        missing_tag_stderr.contains("requires an explicit release tag"),
+        "missing-tag stderr should explain explicit release tag requirement. stderr:\n{missing_tag_stderr}"
+    );
+
+    let branch_ref = StdCommand::new("bash")
+        .current_dir(&root)
+        .env_remove("GITHUB_REF")
+        .env_remove("GITHUB_REF_NAME")
+        .arg("scripts/check-release-hold.sh")
+        .arg("main")
+        .output()
+        .expect("run release hold guard for a branch ref");
+    assert!(
+        !branch_ref.status.success(),
+        "release hold guard should reject branch refs before release proof"
+    );
+    let branch_ref_stderr = String::from_utf8_lossy(&branch_ref.stderr);
+    assert!(
+        branch_ref_stderr.contains("requires a semver release tag"),
+        "branch-ref stderr should explain semver release tag requirement. stderr:\n{branch_ref_stderr}"
+    );
+
     let allowed = StdCommand::new("bash")
         .current_dir(&root)
         .arg("scripts/check-release-hold.sh")
@@ -482,7 +552,7 @@ fn release_hold_docs_record_post_0_8_soak_receipts() {
         "#348", "#349", "#350", "#351", "#352", "#357", "#364", "#365", "#367", "#369", "#370",
         "#371", "#372", "#373", "#374", "#375", "#376", "#377", "#378", "#379", "#380", "#381",
         "#382", "#383", "#384", "#385", "#386", "#387", "#388", "#389", "#390", "#391", "#392",
-        "#393", "#394", "#395",
+        "#393", "#394", "#395", "#396",
     ] {
         assert!(
             hold.contains(needle) && readiness.contains(needle),
@@ -544,6 +614,10 @@ fn release_hold_docs_record_post_0_8_soak_receipts() {
         "rendered Markdown",
         "partial `packet_quality`",
         "richer review-ready signals",
+        "manual release workflow dispatch",
+        "owner approval",
+        "semver tag",
+        "before publish dry-run proof can run",
     ] {
         assert!(
             hold.contains(needle) || readiness.contains(needle),

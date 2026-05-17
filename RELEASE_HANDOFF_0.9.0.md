@@ -40,6 +40,7 @@ Do not run release execution for 0.9.0 while the hold receipt is active:
 - do not create or push `v0.9.0`;
 - do not publish `shiplog 0.9.0` to crates.io;
 - do not create, undraft, or mark latest a 0.9.0 GitHub release;
+- do not manually dispatch `release.yml` for `v0.9.0`;
 - do not run release-install smoke against 0.9.0 assets.
 
 ## Resume Criteria
@@ -55,9 +56,12 @@ Resume 0.9 release execution only for a concrete reason:
 
 - Update [`docs/release/0.9.0-release-hold.md`](docs/release/0.9.0-release-hold.md)
   with the release-resume decision.
+- Record explicit owner approval for release execution.
 - Rerun package version, package boundary, publish dry-run, product proof,
   docs/share/runs CLI tests, clippy, policy gates, no-panic, and local install
   smoke from current `main`.
+- If using manual `release.yml` dispatch, provide a semver `release_tag` and set
+  `owner_approved_release_execution`; branch refs are not release inputs.
 - Replace paused handoff wording with fresh copy-ready tag, publish, GitHub
   release, and post-tag smoke commands.
 
@@ -72,4 +76,3 @@ Resume 0.9 release execution only for a concrete reason:
 ## Owner
 
 `EffortlessMetrics`. Release driver: project owner.
-
