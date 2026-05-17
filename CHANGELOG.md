@@ -45,6 +45,9 @@ release approval.
 - Fixed default `./out` display in intake handoffs so Windows dogfood no longer
   shows noisy `././out` paths when the config lives in the current directory
   (#375).
+- Normalized intake and review-ready path display so Windows dogfood shows
+  stable slash-separated artifact paths next to copyable `--out "./out"`
+  handoffs (#376).
 
 ## [0.9.0] - Unreleased candidate
 

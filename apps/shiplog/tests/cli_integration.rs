@@ -1896,6 +1896,10 @@ fn journal_add_from_repair_appends_report_derived_manual_event() -> CliTestResul
         .success()
         .stdout(predicate::str::contains("Added manual event:"))
         .stdout(predicate::str::contains(format!("Repair: {repair_id}")))
+        .stdout(predicate::str::contains(format!(
+            "Report: {}",
+            report_path.display().to_string().replace('\\', "/")
+        )))
         .stdout(predicate::str::contains("Workstream: Customer Reliability"))
         .stdout(predicate::str::contains(
             "shiplog intake --last-6-months --explain",
@@ -2691,7 +2695,11 @@ fn doctor_accepts_fixture_safe_sources() {
         tmp.path().join("coverage.manifest.json"),
     )
     .unwrap();
-    write_manual_events(&tmp.path().join("manual_events.yaml"));
+    std::fs::write(
+        tmp.path().join("manual_events.yaml"),
+        "version: 1\ngenerated_at: 2026-01-01T00:00:00Z\nevents: []\n",
+    )
+    .unwrap();
     std::fs::write(
         tmp.path().join("shiplog.toml"),
         r#"[defaults]
@@ -2774,6 +2782,10 @@ events = "./manual_events.yaml"
         "default out display should not duplicate the current directory. stdout:\n{stdout}"
     );
     assert!(
+        !stdout.contains("./out\\"),
+        "default out display should not mix slash styles. stdout:\n{stdout}"
+    );
+    assert!(
         normalized_stdout.contains("Packet: ./out/"),
         "default out paths should stay copyable and compact. stdout:\n{stdout}"
     );
@@ -2789,6 +2801,59 @@ events = "./manual_events.yaml"
     assert_eq!(
         report_json["out_dir"], "./out",
         "intake.report.json should preserve compact default out display"
+    );
+    for field in ["run_dir", "packet_path"] {
+        let value = report_json[field]
+            .as_str()
+            .unwrap_or_else(|| panic!("intake report field {field} should be a string"));
+        assert!(
+            !value.contains('\\'),
+            "intake report {field} should use stable slash display: {value:?}"
+        );
+    }
+    for artifact in report_json["artifacts"]
+        .as_array()
+        .expect("intake report should expose artifacts")
+    {
+        let path = artifact["path"]
+            .as_str()
+            .expect("artifact path should be a string");
+        assert!(
+            !path.contains('\\'),
+            "artifact paths should use stable slash display: {path:?}"
+        );
+    }
+
+    let repair_plan = shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["repair", "plan", "--out", "./out", "--latest"])
+        .assert()
+        .success();
+    let repair_plan_stdout = String::from_utf8(repair_plan.get_output().stdout.clone()).unwrap();
+    assert!(
+        !repair_plan_stdout.contains("./out\\"),
+        "repair plan should not mix slash styles. stdout:\n{repair_plan_stdout}"
+    );
+    assert!(
+        repair_plan_stdout.contains("Repair plan: ./out/"),
+        "repair plan should use stable slash display. stdout:\n{repair_plan_stdout}"
+    );
+
+    let share_explain = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args(["share", "explain", "manager", "--out", "./out", "--latest"])
+        .assert()
+        .success();
+    let share_explain_stdout =
+        String::from_utf8(share_explain.get_output().stdout.clone()).unwrap();
+    assert!(
+        !share_explain_stdout.contains("./out\\"),
+        "share explain should not mix slash styles. stdout:\n{share_explain_stdout}"
+    );
+    assert!(
+        share_explain_stdout.contains("Directory: ./out/"),
+        "share explain should use stable slash display. stdout:\n{share_explain_stdout}"
     );
 }
 

@@ -2406,7 +2406,10 @@ fn run_intake(args: IntakeArgs) -> Result<()> {
         println!("Config: {}", args.config.display());
     }
     println!("Run: {}", result.run_id);
-    println!("Packet: {}", result.outputs.packet_md.display());
+    println!(
+        "Packet: {}",
+        display_path_for_cli(&result.outputs.packet_md)
+    );
     println!();
 
     println!("Collected:");
@@ -3544,7 +3547,7 @@ fn export_agent_pack_command(
 fn repair_plan_command(out_dir: &Path, run: Option<String>, latest: bool) -> Result<()> {
     let Some(report_path) = resolve_repair_plan_report_path(out_dir, run, latest)? else {
         println!("Repair plan: no latest intake report found");
-        println!("Out: {}", out_dir.display());
+        println!("Out: {}", display_path_for_cli(out_dir));
         println!("Next:");
         println!("  {}", intake_create_run_command_for_out(out_dir));
         return Ok(());
@@ -3556,7 +3559,7 @@ fn repair_plan_command(out_dir: &Path, run: Option<String>, latest: bool) -> Res
     let report_json: serde_json::Value = serde_json::from_str(&report_text)
         .with_context(|| format!("parse {}", report_path.display()))?;
 
-    println!("Repair plan: {}", report_path.display());
+    println!("Repair plan: {}", display_path_for_cli(&report_path));
     println!("Run: {}", validation.run_id);
     println!("Intake status: {}", validation.readiness);
     if let Some(readiness) = packet_readiness_display_from_json(&report_json) {
@@ -3631,8 +3634,8 @@ fn repair_diff_command(out_dir: &Path, latest: bool) -> Result<()> {
     let diff = build_repair_diff(older, newer);
 
     println!("Repair diff: {} -> {}", older.run_id, newer.run_id);
-    println!("Older: {}", older.report_path.display());
-    println!("Newer: {}", newer.report_path.display());
+    println!("Older: {}", display_path_for_cli(&older.report_path));
+    println!("Newer: {}", display_path_for_cli(&newer.report_path));
     if !skipped_without_items.is_empty() {
         print_skipped_repair_diff_reports(&skipped_without_items);
     }
@@ -6505,9 +6508,9 @@ fn journal_repair_default_description(repair: &JournalRepairContext) -> String {
 fn print_journal_repair_context(repair: Option<&JournalRepairContext>) {
     if let Some(repair) = repair {
         println!("Repair: {}", repair.repair_id);
-        println!("Report: {}", repair.report_path.display());
+        println!("Report: {}", display_path_for_cli(&repair.report_path));
         if let Some(events) = &repair.manual_events_path {
-            println!("Manual events: {}", events.display());
+            println!("Manual events: {}", display_path_for_cli(events));
         }
         println!("Clears when: {}", repair.clears_when);
     }
@@ -10405,7 +10408,7 @@ fn event_count_phrase(count: usize) -> String {
 fn print_outputs(outputs: &shiplog::engine::RunOutputs, ws_source: WorkstreamSource) {
     println!(
         "- {} ({})",
-        outputs.packet_md.display(),
+        display_path_for_cli(&outputs.packet_md),
         match ws_source {
             WorkstreamSource::Curated => "using your curated workstreams.yaml",
             WorkstreamSource::Suggested =>
@@ -10413,31 +10416,37 @@ fn print_outputs(outputs: &shiplog::engine::RunOutputs, ws_source: WorkstreamSou
             WorkstreamSource::Generated => "newly generated",
         }
     );
-    println!("- {}", outputs.workstreams_yaml.display());
-    println!("- {}", outputs.ledger_events_jsonl.display());
-    println!("- {}", outputs.coverage_manifest_json.display());
+    println!("- {}", display_path_for_cli(&outputs.workstreams_yaml));
+    println!("- {}", display_path_for_cli(&outputs.ledger_events_jsonl));
+    println!(
+        "- {}",
+        display_path_for_cli(&outputs.coverage_manifest_json)
+    );
     let source_failures = outputs.out_dir.join(SOURCE_FAILURES_FILENAME);
     if source_failures.exists() {
-        println!("- {}", source_failures.display());
+        println!("- {}", display_path_for_cli(&source_failures));
     }
-    println!("- {}", outputs.bundle_manifest_json.display());
+    println!("- {}", display_path_for_cli(&outputs.bundle_manifest_json));
     if let Some(ref z) = outputs.zip_path {
-        println!("- {}", z.display());
+        println!("- {}", display_path_for_cli(z));
     }
 }
 
 fn print_outputs_simple(outputs: &shiplog::engine::RunOutputs) {
-    println!("- {}", outputs.packet_md.display());
-    println!("- {}", outputs.workstreams_yaml.display());
-    println!("- {}", outputs.ledger_events_jsonl.display());
-    println!("- {}", outputs.coverage_manifest_json.display());
+    println!("- {}", display_path_for_cli(&outputs.packet_md));
+    println!("- {}", display_path_for_cli(&outputs.workstreams_yaml));
+    println!("- {}", display_path_for_cli(&outputs.ledger_events_jsonl));
+    println!(
+        "- {}",
+        display_path_for_cli(&outputs.coverage_manifest_json)
+    );
     let source_failures = outputs.out_dir.join(SOURCE_FAILURES_FILENAME);
     if source_failures.exists() {
-        println!("- {}", source_failures.display());
+        println!("- {}", display_path_for_cli(&source_failures));
     }
-    println!("- {}", outputs.bundle_manifest_json.display());
+    println!("- {}", display_path_for_cli(&outputs.bundle_manifest_json));
     if let Some(ref z) = outputs.zip_path {
-        println!("- {}", z.display());
+        println!("- {}", display_path_for_cli(z));
     }
 }
 
@@ -10754,7 +10763,7 @@ fn verify_share_manifest(options: ShareManifestVerifyOptions) -> Result<()> {
 
     println!("Share manifest verify: {bundle_profile}");
     println!("Run: {}", coverage.run_id);
-    println!("Directory: {}", run_dir.display());
+    println!("Directory: {}", display_path_for_cli(&run_dir));
     println!("Manifest: {}", manifest_path.display());
     println!();
     println!("Good:");
@@ -10908,7 +10917,7 @@ fn verify_share_profile(options: ShareVerifyOptions, bundle_profile: BundleProfi
     println!("Share verify: {bundle_profile}");
     println!("Run: {}", coverage.run_id);
     println!("Directory: {}", run_dir.display());
-    println!("Workstreams: {}", ws_path.display());
+    println!("Workstreams: {}", display_path_for_cli(&ws_path));
     println!();
     println!("Good:");
     for item in &good {
@@ -11042,8 +11051,8 @@ fn explain_share_profile(
 
     println!("{} profile:", share_profile_title(&bundle_profile));
     println!("Run: {}", coverage.run_id);
-    println!("Directory: {}", run_dir.display());
-    println!("Workstreams: {}", ws_path.display());
+    println!("Directory: {}", display_path_for_cli(&run_dir));
+    println!("Workstreams: {}", display_path_for_cli(&ws_path));
     println!("Workstream source: {}", workstream_source_label(ws_source));
     println!(
         "Status: {}",
@@ -11098,12 +11107,15 @@ fn explain_share_profile(
 
     println!("Artifacts:");
     if profile_packet.exists() {
-        println!("- Profile packet: {}", profile_packet.display());
+        println!(
+            "- Profile packet: {}",
+            display_path_for_cli(&profile_packet)
+        );
     } else {
         println!("- Profile packet: not written yet");
     }
     if manifest_path.exists() {
-        println!("- Share manifest: {}", manifest_path.display());
+        println!("- Share manifest: {}", display_path_for_cli(&manifest_path));
     } else {
         println!("- Share manifest: not written yet");
     }
@@ -12591,8 +12603,8 @@ fn print_run_quality_diff(out_dir: &Path, from: &RunQualitySnapshot, to: &RunQua
         "Packet quality diff: {} -> {}",
         from.summary.run_id, to.summary.run_id
     );
-    println!("From: {}", from.summary.run_dir.display());
-    println!("To: {}", to.summary.run_dir.display());
+    println!("From: {}", display_path_for_cli(&from.summary.run_dir));
+    println!("To: {}", display_path_for_cli(&to.summary.run_dir));
     println!();
 
     println!("Reports:");
@@ -12600,14 +12612,14 @@ fn print_run_quality_diff(out_dir: &Path, from: &RunQualitySnapshot, to: &RunQua
         "- from: {}",
         from.report_path
             .as_ref()
-            .map(|path| path.display().to_string())
+            .map(|path| display_path_for_cli(path))
             .unwrap_or_else(|| "not found".to_string())
     );
     println!(
         "- to: {}",
         to.report_path
             .as_ref()
-            .map(|path| path.display().to_string())
+            .map(|path| display_path_for_cli(path))
             .unwrap_or_else(|| "not found".to_string())
     );
     println!();
@@ -13160,7 +13172,7 @@ fn print_weekly_review(run_dir: &Path, out_dir: &Path, strict: bool) -> Result<(
     let counts = review_source_event_counts(&coverage.sources, &events, &skipped_sources);
 
     println!("Weekly review: {}", coverage.run_id);
-    println!("Directory: {}", run_dir.display());
+    println!("Directory: {}", display_path_for_cli(run_dir));
     println!(
         "Window: {}..{}",
         coverage.window.since, coverage.window.until
@@ -13224,7 +13236,7 @@ fn print_review_with_options(
     });
 
     println!("Run: {run_id}");
-    println!("Directory: {}", run_dir.display());
+    println!("Directory: {}", display_path_for_cli(run_dir));
     println!(
         "Window: {}..{}",
         coverage.window.since, coverage.window.until
@@ -13261,7 +13273,7 @@ fn print_review_with_options(
         workstreams.workstreams.len(),
         workstream_source_label(source)
     );
-    println!("- Workstreams file: {}", path.display());
+    println!("- Workstreams file: {}", display_path_for_cli(&path));
     println!(
         "- Workstreams with no selected receipts: {}",
         signals.no_receipt_workstreams.len()
@@ -14242,7 +14254,7 @@ fn open_or_print_path(path: &Path, print_path: bool) -> Result<()> {
 }
 
 fn display_path_for_cli(path: &Path) -> String {
-    strip_windows_verbatim_prefix(&path.display().to_string())
+    strip_windows_verbatim_prefix(&path.display().to_string()).replace('\\', "/")
 }
 
 fn strip_windows_verbatim_prefix(path: &str) -> String {

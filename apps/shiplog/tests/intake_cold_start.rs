@@ -62,6 +62,10 @@ fn first_run_dir(out_root: &Path) -> PathBuf {
         .path()
 }
 
+fn cli_display_path(path: &Path) -> String {
+    path.display().to_string().replace('\\', "/")
+}
+
 /// § 2 — one-command happy path. From an empty directory with no provider
 /// tokens, `shiplog intake --last-6-months` must produce the full set of
 /// review-pack artifacts the doc promises a first-time user: `packet.md`,
@@ -105,10 +109,10 @@ fn cold_start_stdout_prints_review_pack_next_steps() {
         stdout.contains("Review pack written to:"),
         "rapid-first-intake.md § 2: intake stdout must name where the review pack was written. stdout:\n{stdout}"
     );
+    let run_display = cli_display_path(&run);
     assert!(
-        stdout.contains(&run.display().to_string()),
-        "rapid-first-intake.md § 2: intake stdout must include the concrete run directory {}. stdout:\n{stdout}",
-        run.display()
+        stdout.contains(&run_display),
+        "rapid-first-intake.md § 2: intake stdout must include the concrete run directory {run_display}. stdout:\n{stdout}"
     );
     assert!(
         stdout.contains("shiplog open intake-report") && stdout.contains("--latest"),
