@@ -13962,42 +13962,59 @@ fn detect_evidence_debt(input: EvidenceDebtInput<'_>) -> Vec<EvidenceDebt> {
         );
     }
 
-    if !input.signals.code_only_workstreams.is_empty() {
+    let manual_context_titles: HashSet<_> = input
+        .signals
+        .manual_context_workstreams
+        .iter()
+        .map(|workstream| workstream.title.as_str())
+        .collect();
+    let code_only_without_manual_context = input
+        .signals
+        .code_only_workstreams
+        .iter()
+        .copied()
+        .filter(|workstream| !manual_context_titles.contains(workstream.title.as_str()))
+        .collect::<Vec<_>>();
+    let ticket_only_without_manual_context = input
+        .signals
+        .ticket_only_workstreams
+        .iter()
+        .copied()
+        .filter(|workstream| !manual_context_titles.contains(workstream.title.as_str()))
+        .collect::<Vec<_>>();
+
+    if !code_only_without_manual_context.is_empty() {
         debt.push(
             EvidenceDebt::new(
                 EvidenceDebtSeverity::Info,
                 EvidenceDebtKind::CodeOnlyWorkstream,
                 format!(
                     "{} workstream(s) only have code or review receipts.",
-                    input.signals.code_only_workstreams.len()
+                    code_only_without_manual_context.len()
                 ),
             )
-            .detail(workstream_title_sample(
-                &input.signals.code_only_workstreams,
-            ))
+            .detail(workstream_title_sample(&code_only_without_manual_context))
             .next_step(manual_context_next_step(
                 &input,
-                &input.signals.code_only_workstreams[0].title,
+                &code_only_without_manual_context[0].title,
             )),
         );
     }
 
-    if !input.signals.ticket_only_workstreams.is_empty() {
+    if !ticket_only_without_manual_context.is_empty() {
         debt.push(
             EvidenceDebt::new(
                 EvidenceDebtSeverity::Info,
                 EvidenceDebtKind::TicketOnlyWorkstream,
                 format!(
                     "{} workstream(s) only have ticket receipts.",
-                    input.signals.ticket_only_workstreams.len()
+                    ticket_only_without_manual_context.len()
                 ),
             )
-            .detail(workstream_title_sample(
-                &input.signals.ticket_only_workstreams,
-            ))
+            .detail(workstream_title_sample(&ticket_only_without_manual_context))
             .next_step(manual_context_next_step(
                 &input,
-                &input.signals.ticket_only_workstreams[0].title,
+                &ticket_only_without_manual_context[0].title,
             )),
         );
     }

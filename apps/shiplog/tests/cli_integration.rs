@@ -7147,6 +7147,10 @@ fn review_suggests_journal_add_for_broad_workstream_without_manual_context() {
     assert!(stdout.contains("shiplog journal add --date"));
     assert!(stdout.contains("--title \"Outcome note for acme/platform\""));
     assert!(stdout.contains("--workstream \"acme/platform\""));
+    assert!(
+        !stdout.contains("[info] code-only-workstream"),
+        "manual-context debt should cover broad code-only workstreams without printing a duplicate outcome-context debt item. stdout:\n{stdout}"
+    );
 
     assert_eq!(
         packet_before,

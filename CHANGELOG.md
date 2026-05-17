@@ -55,6 +55,9 @@ release approval.
 - Made `share explain manager|public` surface packet readiness and report
   evidence debt in `Needs review`, so a caveated packet no longer appears
   share-clean just because coverage gaps and skipped sources are absent (#378).
+- Reduced repeated outcome-context evidence debt so broad code-only/ticket-only
+  workstreams covered by the manual-context repair no longer print duplicate
+  `journal add` guidance under a second label (#379).
 
 ## [0.9.0] - Unreleased candidate
 
