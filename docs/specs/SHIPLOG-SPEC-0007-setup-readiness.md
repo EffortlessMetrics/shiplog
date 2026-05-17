@@ -202,11 +202,12 @@ added, it must preserve this contract and add schema validation in the same PR.
 - `ready`: the source prerequisites are locally usable.
 - `disabled`: the source is intentionally off.
 - `unavailable`: an enabled or autodetected source is missing an external
-  prerequisite such as an environment variable or configured path.
+  or local prerequisite such as an environment variable or configured path.
 - `blocked`: a local setup defect prevents safe source use, such as malformed
   manual journal syntax.
-- `stale_config`: config exists but is incompatible, deprecated, or points at
-  a missing local path.
+- `stale_config`: config exists and can be read, but uses incompatible,
+  deprecated, or migrated source settings. Missing configured paths are
+  `unavailable`, not `stale_config`.
 - `unknown`: Shiplog cannot determine readiness from allowed local checks.
 
 ### Local File Status
@@ -289,10 +290,16 @@ Rules:
 
 - local Git is `ready` only when the configured or current directory is a Git
   worktree and basic repository metadata is readable;
-- manual is `ready` only when the configured journal file exists and validates;
-- manual is `blocked` when the configured journal exists but is malformed;
-- manual may be `missing` through the local-file item while the source status is
-  `unavailable` or `blocked`, depending on whether manual evidence is enabled;
+- manual is `disabled` when config turns manual evidence off, and disabled
+  manual evidence does not require the journal file to exist or validate;
+- enabled manual evidence is `ready` only when the configured journal file
+  exists and validates;
+- enabled manual evidence is `unavailable` when the configured journal file is
+  missing;
+- enabled manual evidence is `blocked` when the configured journal exists but
+  is malformed;
+- manual may also report `missing` or `malformed` through `local_files[]`; the
+  source status still follows the enabled/disabled rules above;
 - token-backed providers are `unavailable` when enabled but the required env var
   is absent;
 - token-backed providers are `disabled` when config turns them off;
