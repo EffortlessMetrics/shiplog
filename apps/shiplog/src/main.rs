@@ -3594,6 +3594,7 @@ struct RepairDiffReport {
     report_path: PathBuf,
     run_id: String,
     rerun_command: String,
+    included_source_keys: BTreeSet<String>,
     items: BTreeMap<String, RepairDiffItem>,
 }
 
@@ -3713,8 +3714,21 @@ fn repair_diff_report(
         report_path,
         run_id: string_field(report_json, "run_id")?,
         rerun_command: repair_plan_rerun_command(report_json)?,
+        included_source_keys: repair_diff_included_source_keys(report_json)?,
         items,
     })
+}
+
+fn repair_diff_included_source_keys(report_json: &serde_json::Value) -> Result<BTreeSet<String>> {
+    let mut keys = BTreeSet::new();
+    for source in optional_json_array(report_json, "included_sources")? {
+        if let Some(source_key) = source.get("source_key").and_then(serde_json::Value::as_str) {
+            keys.insert(normalized_source_key(source_key));
+        } else if let Some(source_name) = source.get("source").and_then(serde_json::Value::as_str) {
+            keys.insert(normalized_source_key(source_name));
+        }
+    }
+    Ok(keys)
 }
 
 fn repair_diff_item(item: &serde_json::Value) -> Result<RepairDiffItem> {
@@ -3743,6 +3757,10 @@ fn build_repair_diff(older: &RepairDiffReport, newer: &RepairDiffReport) -> Repa
     let mut new = Vec::new();
     let mut still_open = Vec::new();
     let mut changed = Vec::new();
+    let has_unproven_source_repairs = older
+        .items
+        .values()
+        .any(|item| source_repair_still_needs_evidence(item, newer));
 
     for (repair_key, old_item) in &older.items {
         match newer.items.get(repair_key) {
@@ -3750,7 +3768,15 @@ fn build_repair_diff(older: &RepairDiffReport, newer: &RepairDiffReport) -> Repa
                 changed.push((old_item.clone(), new_item.clone()));
             }
             Some(new_item) => still_open.push(new_item.clone()),
-            None => cleared.push(old_item.clone()),
+            None if repair_absence_counts_as_cleared(
+                old_item,
+                newer,
+                has_unproven_source_repairs,
+            ) =>
+            {
+                cleared.push(old_item.clone());
+            }
+            None => still_open.push(old_item.clone()),
         }
     }
 
@@ -3766,6 +3792,41 @@ fn build_repair_diff(older: &RepairDiffReport, newer: &RepairDiffReport) -> Repa
         still_open,
         changed,
     }
+}
+
+fn repair_absence_counts_as_cleared(
+    old_item: &RepairDiffItem,
+    newer: &RepairDiffReport,
+    has_unproven_source_repairs: bool,
+) -> bool {
+    if source_repair_key(&old_item.repair_key).is_some() {
+        return !source_repair_still_needs_evidence(old_item, newer);
+    }
+    if has_unproven_source_repairs
+        && matches!(
+            old_item.repair_key.as_str(),
+            "evidence_debt:missing_source" | "evidence_debt:partial_coverage"
+        )
+    {
+        return false;
+    }
+    true
+}
+
+fn source_repair_still_needs_evidence(old_item: &RepairDiffItem, newer: &RepairDiffReport) -> bool {
+    let Some(source_key) = source_repair_key(&old_item.repair_key) else {
+        return false;
+    };
+    !newer
+        .included_source_keys
+        .iter()
+        .any(|included| sources_match(included, source_key))
+}
+
+fn source_repair_key(repair_key: &str) -> Option<&str> {
+    let rest = repair_key.strip_prefix("source:")?;
+    let (source_key, _kind) = rest.split_once(':')?;
+    Some(source_key)
 }
 
 fn repair_diff_item_changed(old_item: &RepairDiffItem, new_item: &RepairDiffItem) -> bool {
@@ -12814,13 +12875,22 @@ fn run_quality_diff_groups(
         &mut improved,
         &mut regressed,
     );
-    push_inverse_count_movement(
-        "coverage gaps",
-        from.summary.gap_count,
-        to.summary.gap_count,
-        &mut improved,
-        &mut regressed,
-    );
+    let has_unproven_source_repairs =
+        repair_diff.is_some_and(|diff| diff.still_open.iter().any(is_source_repair_item));
+    if has_unproven_source_repairs && from.summary.gap_count > to.summary.gap_count {
+        changed.push(format!(
+            "coverage gaps {} -> {} (source scope changed; source repairs still need evidence)",
+            from.summary.gap_count, to.summary.gap_count
+        ));
+    } else {
+        push_inverse_count_movement(
+            "coverage gaps",
+            from.summary.gap_count,
+            to.summary.gap_count,
+            &mut improved,
+            &mut regressed,
+        );
+    }
     push_optional_count_movement(
         "claim candidates",
         from.claim_candidate_count,
@@ -12883,6 +12953,10 @@ fn run_quality_diff_groups(
     }
 
     (improved, changed, regressed, still_weak)
+}
+
+fn is_source_repair_item(item: &RepairDiffItem) -> bool {
+    source_repair_key(&item.repair_key).is_some()
 }
 
 fn push_count_movement(

@@ -80,6 +80,10 @@ release approval.
   rendering, so `packet.md`, `coverage.manifest.json`, review output, and
   `share explain` no longer disagree about GitHub/GitLab/Jira/Linear/JSON
   skips during first-run dogfood (#386).
+- Kept repair and quality diffs honest after journal-only repair: source repair
+  items now clear only when the newer report includes evidence from that source,
+  so disappearing optional-source scope is not reported as packet improvement
+  (#387).
 
 ## [0.9.0] - Unreleased candidate
 
