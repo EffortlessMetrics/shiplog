@@ -8,6 +8,7 @@ tokens in environment variables.
 Use these commands before collecting:
 
 ```bash
+shiplog init --guided
 shiplog config validate --config shiplog.toml
 shiplog config explain --config shiplog.toml
 shiplog doctor --config shiplog.toml
@@ -16,8 +17,12 @@ shiplog sources status --config shiplog.toml
 shiplog doctor --config shiplog.toml --repair-plan
 ```
 
-`config validate` checks the file shape, configured date window, enabled source
-settings, enum values, and local paths without requiring provider tokens.
+`init --guided` creates local-first setup files: local git when the current
+directory is a repository, a valid manual journal, JSON import only when the
+expected files exist, and token-backed provider sections left disabled until
+their env vars and identities are configured. `config validate` checks the file
+shape, configured date window, enabled source settings, enum values, and local
+paths without requiring provider tokens.
 `config explain` prints the resolved defaults and enabled sources. `doctor`
 adds readiness checks such as token presence, identity discovery, output
 writability, and redaction-key safety. `doctor --setup` is read-only and

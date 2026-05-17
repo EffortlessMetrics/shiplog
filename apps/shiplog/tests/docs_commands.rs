@@ -25,6 +25,7 @@ fn config_reference_documents_current_surface() {
         .unwrap_or_else(|err| panic!("read {}: {err}", doc_path.display()));
 
     for needle in [
+        "shiplog init --guided",
         "shiplog config validate --config shiplog.toml",
         "shiplog config explain --config shiplog.toml",
         "shiplog doctor --config shiplog.toml",
@@ -875,6 +876,12 @@ fn documented_help_commands_stay_available() {
         .stdout(predicate::str::contains("--profile"))
         .stdout(predicate::str::contains("--no-open"))
         .stdout(predicate::str::contains("--explain"));
+
+    shiplog_cmd()
+        .args(["init", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--guided"));
 
     shiplog_cmd()
         .args(["doctor", "--help"])

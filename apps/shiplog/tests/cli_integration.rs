@@ -1396,7 +1396,8 @@ fn init_help_shows_options() {
         .success()
         .stdout(predicate::str::contains("--source"))
         .stdout(predicate::str::contains("--dry-run"))
-        .stdout(predicate::str::contains("--force"));
+        .stdout(predicate::str::contains("--force"))
+        .stdout(predicate::str::contains("--guided"));
 }
 
 #[test]
@@ -1727,6 +1728,82 @@ fn init_creates_config_and_manual_events() {
 }
 
 #[test]
+fn init_guided_creates_local_first_setup_without_token_providers() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    git2::Repository::init(tmp.path())?;
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["init", "--guided"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Initialized guided shiplog setup"))
+        .stdout(predicate::str::contains("shiplog doctor --setup"))
+        .stdout(predicate::str::contains("shiplog sources status"))
+        .stdout(predicate::str::contains(
+            "shiplog collect multi --last-6-months",
+        ))
+        .stdout(predicate::str::contains("export GITHUB_TOKEN").not());
+
+    let config = std::fs::read_to_string(tmp.path().join("shiplog.toml"))?;
+    assert!(config.contains("[sources.git]\nenabled = true"));
+    assert!(config.contains("[sources.manual]\nenabled = true"));
+    assert!(config.contains("[sources.github]\n# Set GITHUB_TOKEN"));
+    assert!(config.contains(
+        "[sources.github]\n# Set GITHUB_TOKEN. Use either user or me = true.\nenabled = false"
+    ));
+    assert!(config.contains(
+        "[sources.gitlab]\n# Set GITLAB_TOKEN. Use either user or me = true.\nenabled = false"
+    ));
+    assert!(config.contains("[sources.jira]\n# Set JIRA_TOKEN, JIRA_AUTH_USER, user, and instance before enabling.\nenabled = false"));
+    assert!(config.contains(
+        "[sources.linear]\n# Set LINEAR_API_KEY and user_id before enabling.\nenabled = false"
+    ));
+    assert!(config.contains("# Set SHIPLOG_REDACT_KEY before manager or public share rendering."));
+
+    let manual = std::fs::read_to_string(tmp.path().join("manual_events.yaml"))?;
+    assert!(manual.contains("version: 1"));
+    assert!(manual.contains("events: []"));
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["doctor", "--setup"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Local git"))
+        .stdout(predicate::str::contains("Manual journal"));
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["sources", "status"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("git"))
+        .stdout(predicate::str::contains("manual"));
+
+    Ok(())
+}
+
+#[test]
+fn init_guided_dry_run_does_not_write_files() -> CliTestResult {
+    let tmp = TempDir::new()?;
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["init", "--guided", "--dry-run"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Would write guided shiplog.toml"))
+        .stdout(predicate::str::contains("[sources.manual]"))
+        .stdout(predicate::str::contains("enabled = true"))
+        .stdout(predicate::str::contains("[sources.github]"))
+        .stdout(predicate::str::contains("enabled = false"));
+
+    assert!(!tmp.path().join("shiplog.toml").exists());
+    assert!(!tmp.path().join("manual_events.yaml").exists());
+    Ok(())
+}
+
+#[test]
 fn init_dry_run_does_not_write_files() {
     let tmp = TempDir::new().unwrap();
 
@@ -1788,9 +1865,15 @@ fn init_force_overwrites_existing_files() {
         .success();
 
     let config = std::fs::read_to_string(tmp.path().join("shiplog.toml")).unwrap();
-    assert!(config.contains("[sources.jira]\nenabled = true"));
-    assert!(config.contains("[sources.linear]\nenabled = true"));
-    assert!(config.contains("[sources.github]\nenabled = false"));
+    assert!(config.contains(
+        "[sources.jira]\n# Set JIRA_TOKEN, JIRA_AUTH_USER, user, and instance before enabling.\nenabled = true"
+    ));
+    assert!(config.contains(
+        "[sources.linear]\n# Set LINEAR_API_KEY and user_id before enabling.\nenabled = true"
+    ));
+    assert!(config.contains(
+        "[sources.github]\n# Set GITHUB_TOKEN. Use either user or me = true.\nenabled = false"
+    ));
     assert!(config.contains("[sources.manual]\nenabled = false"));
 }
 

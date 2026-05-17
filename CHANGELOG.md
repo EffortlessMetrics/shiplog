@@ -143,6 +143,10 @@ release approval.
 - Added `shiplog sources status` as the source-only projection of setup
   readiness, with canonical source keys, enabled/status/reason rows,
   source-specific next actions, and no share-profile or credential noise (#404).
+- Added non-interactive `shiplog init --guided` defaults for local-first setup:
+  local git when available, valid manual journal scaffolding, JSON import only
+  when files exist, and token-backed provider sections left disabled until
+  configured (#405).
 
 ## [0.9.0] - Unreleased candidate
 

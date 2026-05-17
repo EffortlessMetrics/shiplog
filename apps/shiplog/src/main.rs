@@ -65,6 +65,9 @@ enum Command {
         /// Overwrite existing shiplog.toml or manual_events.yaml.
         #[arg(long)]
         force: bool,
+        /// Use local-first guided defaults before running intake.
+        #[arg(long)]
+        guided: bool,
     },
 
     /// Check local config, source setup, tokens, and output safety.
@@ -2332,13 +2335,21 @@ fn quarter_start(year: i32, month: u32) -> Result<NaiveDate> {
         .ok_or_else(|| anyhow::anyhow!("invalid quarter start for {year}-{start_month:02}"))
 }
 
-fn run_init(sources: Vec<InitSource>, dry_run: bool, force: bool) -> Result<()> {
-    let selected = selected_init_sources(&sources);
+fn run_init(sources: Vec<InitSource>, dry_run: bool, force: bool, guided: bool) -> Result<()> {
+    let selected = if guided {
+        selected_guided_init_sources(&sources)
+    } else {
+        selected_init_sources(&sources)
+    };
     let config = render_init_config(&selected);
     let manual_events = render_manual_events_template();
 
     if dry_run {
-        println!("Would write {CONFIG_FILENAME}:\n\n{config}");
+        if guided {
+            println!("Would write guided {CONFIG_FILENAME}:\n\n{config}");
+        } else {
+            println!("Would write {CONFIG_FILENAME}:\n\n{config}");
+        }
         println!("Would write {MANUAL_EVENTS_FILENAME}:\n\n{manual_events}");
         return Ok(());
     }
@@ -2350,16 +2361,26 @@ fn run_init(sources: Vec<InitSource>, dry_run: bool, force: bool) -> Result<()> 
     write_init_file(config_path, &config)?;
     write_init_file(manual_events_path, &manual_events)?;
 
-    println!("Initialized shiplog:");
+    if guided {
+        println!("Initialized guided shiplog setup:");
+    } else {
+        println!("Initialized shiplog:");
+    }
     println!("  {CONFIG_FILENAME}");
     println!("  {MANUAL_EVENTS_FILENAME}");
     println!();
     println!("Next:");
-    println!("  edit {CONFIG_FILENAME}");
-    for env_var in init_env_vars(&selected) {
-        println!("  export {env_var}=...");
+    if guided {
+        println!("  shiplog doctor --setup");
+        println!("  shiplog sources status");
+        println!("  {}", init_next_command(&selected));
+    } else {
+        println!("  edit {CONFIG_FILENAME}");
+        for env_var in init_env_vars(&selected) {
+            println!("  export {env_var}=...");
+        }
+        println!("  {}", init_next_command(&selected));
     }
-    println!("  {}", init_next_command(&selected));
 
     Ok(())
 }
@@ -6072,6 +6093,22 @@ fn selected_init_sources(sources: &[InitSource]) -> Vec<InitSource> {
     selected
 }
 
+fn selected_guided_init_sources(sources: &[InitSource]) -> Vec<InitSource> {
+    if !sources.is_empty() {
+        return dedupe_sources(sources);
+    }
+
+    let mut selected = Vec::new();
+    if Path::new(".git").exists() {
+        selected.push(InitSource::Git);
+    }
+    if Path::new("ledger.events.jsonl").exists() && Path::new("coverage.manifest.json").exists() {
+        selected.push(InitSource::Json);
+    }
+    selected.push(InitSource::Manual);
+    dedupe_sources(&selected)
+}
+
 fn init_source_enabled(selected: &[InitSource], source: InitSource) -> bool {
     selected.contains(&source)
 }
@@ -6164,6 +6201,8 @@ fn render_init_config_with_git_repo(selected: &[InitSource], git_repo: &str) -> 
         r#"# shiplog local configuration.
 # Tokens stay in environment variables:
 # GITHUB_TOKEN, GITLAB_TOKEN, JIRA_TOKEN, LINEAR_API_KEY, SHIPLOG_REDACT_KEY.
+# Enable token-backed sources only after the matching env var and identity
+# fields below are configured.
 
 [shiplog]
 config_version = 1
@@ -6181,6 +6220,7 @@ preset = "last-6-months"
 label = "Your Name"
 
 [sources.github]
+# Set GITHUB_TOKEN. Use either user or me = true.
 enabled = {github}
 user = ""
 me = {github}
@@ -6188,6 +6228,7 @@ mode = "merged"
 include_reviews = true
 
 [sources.gitlab]
+# Set GITLAB_TOKEN. Use either user or me = true.
 enabled = {gitlab}
 user = ""
 me = {gitlab}
@@ -6196,6 +6237,7 @@ state = "merged"
 include_reviews = true
 
 [sources.jira]
+# Set JIRA_TOKEN, JIRA_AUTH_USER, user, and instance before enabling.
 enabled = {jira}
 user = "your-jira-account-id-or-email"
 auth_user_env = "JIRA_AUTH_USER"
@@ -6203,6 +6245,7 @@ instance = "company.atlassian.net"
 status = "done"
 
 [sources.linear]
+# Set LINEAR_API_KEY and user_id before enabling.
 enabled = {linear}
 user_id = "your-linear-user-id"
 status = "done"
@@ -6225,6 +6268,7 @@ events = "./manual_events.yaml"
 user = "Your Name"
 
 [redaction]
+# Set SHIPLOG_REDACT_KEY before manager or public share rendering.
 key_env = "SHIPLOG_REDACT_KEY"
 "#
     )
