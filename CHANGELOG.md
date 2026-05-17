@@ -73,6 +73,9 @@ release approval.
 - Aligned the rapid first-intake guide with the repair loop so missing manual
   evidence routes through `repair plan` / `journal add --from-repair` before
   direct journal commands (#384).
+- Aligned the top-level README with the read-first repair and share flow so
+  users see `repair plan`, `journal add --from-repair`, `share explain`, and
+  `share verify` before write-producing commands (#385).
 
 ## [0.9.0] - Unreleased candidate
 

@@ -277,6 +277,17 @@ shiplog journal edit --id manual-2026-05-08-debugged-customer-import-incident \
 workstream has implementation receipts but no manual outcome note.
 When a run has an intake report, the suggested command targets the configured
 `[sources.manual].events` file instead of assuming `./manual_events.yaml`.
+For receipt-derived repairs, start with the read-first repair loop instead of
+copying direct write commands from review output:
+
+```bash
+shiplog repair plan --latest
+shiplog journal add --from-repair <repair_id>
+```
+
+Direct `journal add`, workstream split, or receipt-trimming commands in
+`Evidence debt` and `Top Fixups` are contextual hints. `repair plan` separates
+copyable local repairs from advisory items before you write anything.
 `journal edit` replaces only the fields you pass; repeated `--tag` or
 `--receipt` values replace those lists for the selected entry.
 `shiplog review fixups` narrows the output to the top read-only curation
@@ -303,7 +314,9 @@ shiplog render --latest
 shiplog render --latest --receipt-limit 3 --appendix summary
 shiplog render --latest --mode scaffold
 shiplog render --latest --mode receipts
-shiplog share manager --latest
+shiplog share explain manager --latest
+shiplog share verify manager --latest
+shiplog share manager --latest --zip
 shiplog open packet --latest
 ```
 
