@@ -104,6 +104,10 @@ release approval.
   journal-only repair rerun are still named in `Needs review` from report
   receipts, instead of making provider setup gaps look gone at share time
   (#393).
+- Pinned packet/report consistency so `packet.md` readiness, claim candidates,
+  and missing-context prompts stay aligned with `packet_quality`, while
+  `share explain` continues to read report receipts instead of rendered
+  Markdown (#394).
 
 ## [0.9.0] - Unreleased candidate
 

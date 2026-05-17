@@ -136,6 +136,58 @@ fn review_ready_packet_surface(packet: &str, out_arg: &str, run_id: &str) -> Str
         .replace(run_id, "<RUN_ID>")
 }
 
+fn assert_packet_quality_report_matches_packet(report_json: &serde_json::Value, packet: &str) {
+    let packet_quality = report_json
+        .get("packet_quality")
+        .expect("report should expose packet_quality");
+    let readiness = packet_quality
+        .get("packet_readiness")
+        .and_then(|readiness| readiness.get("summary"))
+        .and_then(serde_json::Value::as_str)
+        .expect("packet_readiness summary should be a string")
+        .trim();
+    assert!(
+        packet.contains(readiness),
+        "packet.md should render report packet_readiness summary {readiness:?}"
+    );
+
+    let claim_candidates = packet_quality
+        .get("claim_candidates")
+        .and_then(serde_json::Value::as_array)
+        .expect("claim_candidates should be an array");
+    for candidate in claim_candidates {
+        let title = candidate
+            .get("title")
+            .and_then(serde_json::Value::as_str)
+            .expect("claim candidate title should be a string");
+        let strength = candidate
+            .get("evidence_strength")
+            .and_then(serde_json::Value::as_str)
+            .expect("claim candidate evidence_strength should be a string");
+        assert!(
+            packet.contains(title),
+            "packet.md should render claim candidate title {title:?}"
+        );
+        assert!(
+            packet.contains(&format!("Evidence strength: `{strength}`")),
+            "packet.md should render claim candidate evidence_strength {strength:?}"
+        );
+
+        for prompt in candidate
+            .get("missing_context_prompts")
+            .and_then(serde_json::Value::as_array)
+            .expect("missing_context_prompts should be an array")
+            .iter()
+            .filter_map(serde_json::Value::as_str)
+        {
+            assert!(
+                packet.contains(prompt),
+                "packet.md should render missing-context prompt {prompt:?}"
+            );
+        }
+    }
+}
+
 fn assert_intake_artifacts(run_dir: &Path) {
     for artifact in [
         "packet.md",
@@ -5166,6 +5218,7 @@ user = "octo"
         packet.contains("Ready with caveats.") && packet.contains("manual_only"),
         "manual-only packet should surface readiness caveats in packet.md"
     );
+    assert_packet_quality_report_matches_packet(&report_json, &packet);
     assert!(
         packet.contains("# Claim Candidates")
             && packet.contains("Evidence strength: `manual_only`")
@@ -11294,6 +11347,65 @@ fn share_explain_manager_surfaces_open_source_repairs_without_writing() -> CliTe
     assert_eq!(
         before, after,
         "share explain should remain read-only while surfacing open source repairs"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn share_explain_uses_report_receipts_not_packet_markdown() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let out = tmp.path().join("out");
+    run_intake_without_provider_tokens(tmp.path(), &out);
+    let run_dir = first_run_dir(&out);
+    let (report_path, mut report) = load_first_intake_report(&out);
+    let report_only_debt = "Report-only share posture debt.";
+    let markdown_only_bait = "Markdown-only share posture bait.";
+    report["evidence_debt"] = serde_json::json!([
+        {
+            "severity": "info",
+            "kind": "manual-context",
+            "summary": report_only_debt,
+            "detail": "Injected report-only receipt",
+            "next_step": "shiplog journal add --date 2025-01-15 --title \"Outcome note\""
+        }
+    ]);
+    std::fs::write(
+        &report_path,
+        format!("{}\n", serde_json::to_string_pretty(&report)?),
+    )?;
+    std::fs::write(
+        run_dir.join("packet.md"),
+        format!("# Packet Readiness\n\nReady.\n\n{markdown_only_bait}\n"),
+    )?;
+
+    let before = file_tree_manifest(tmp.path());
+    let assert = shiplog_cmd()
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args([
+            "share",
+            "explain",
+            "manager",
+            "--out",
+            out.to_str().unwrap(),
+            "--latest",
+        ])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
+    let after = file_tree_manifest(tmp.path());
+
+    assert!(
+        stdout.contains(&format!("Evidence debt: {report_only_debt}")),
+        "share explain should use intake.report.json evidence debt. stdout:\n{stdout}"
+    );
+    assert!(
+        !stdout.contains(markdown_only_bait),
+        "share explain should not scrape packet.md for share posture. stdout:\n{stdout}"
+    );
+    assert_eq!(
+        before, after,
+        "share explain should stay read-only while reading report receipts"
     );
 
     Ok(())
