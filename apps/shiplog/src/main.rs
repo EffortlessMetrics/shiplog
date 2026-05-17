@@ -11043,6 +11043,7 @@ fn explain_share_profile(
     let events = ingest.events;
     let (workstreams, ws_source, ws_path) = load_effective_workstreams_for_run(&run_dir)?;
     let validation_errors = validate_workstreams_against_events(&workstreams, &events);
+    let report_json = load_share_explain_report(&run_dir)?;
     let skipped_sources = configured_source_skips(&coverage.warnings);
     let source_counts = review_source_event_counts(&coverage.sources, &events, &skipped_sources);
     let gap_count = coverage_gap_count(&coverage);
@@ -11073,6 +11074,7 @@ fn explain_share_profile(
     for error in &validation_errors {
         needs_review.push(format!("Workstream issue: {error}"));
     }
+    append_share_explain_report_needs_review(&mut needs_review, report_json.as_ref())?;
     if matches!(bundle_profile, BundleProfile::Public) {
         needs_review.push(
             "Public profile should be reviewed after rendering; strict scan is a guardrail, not a guarantee."
@@ -11178,6 +11180,62 @@ fn explain_share_profile(
     }
 
     Ok(())
+}
+
+fn load_share_explain_report(run_dir: &Path) -> Result<Option<serde_json::Value>> {
+    let report_path = run_dir.join("intake.report.json");
+    if !report_path.exists() {
+        return Ok(None);
+    }
+
+    validate_intake_report(&report_path)?;
+    let report_text = std::fs::read_to_string(&report_path)
+        .with_context(|| format!("read {}", report_path.display()))?;
+    let report_json: serde_json::Value = serde_json::from_str(&report_text)
+        .with_context(|| format!("parse {}", report_path.display()))?;
+    Ok(Some(report_json))
+}
+
+fn append_share_explain_report_needs_review(
+    needs_review: &mut Vec<String>,
+    report_json: Option<&serde_json::Value>,
+) -> Result<()> {
+    let Some(report_json) = report_json else {
+        return Ok(());
+    };
+
+    if let Some(readiness) = packet_readiness_display_from_json(report_json)
+        && !matches!(readiness.as_str(), "Ready" | "Ready for review")
+    {
+        push_unique_needs_review(needs_review, format!("Packet readiness: {readiness}"));
+    }
+
+    for debt in optional_json_array(report_json, "evidence_debt")? {
+        let kind = debt
+            .get("kind")
+            .and_then(|value| value.as_str())
+            .unwrap_or_default();
+        if matches!(kind, "missing-source" | "partial-coverage") {
+            continue;
+        }
+        let Some(summary) = debt
+            .get("summary")
+            .and_then(|value| value.as_str())
+            .map(str::trim)
+            .filter(|summary| !summary.is_empty())
+        else {
+            continue;
+        };
+        push_unique_needs_review(needs_review, format!("Evidence debt: {summary}"));
+    }
+
+    Ok(())
+}
+
+fn push_unique_needs_review(needs_review: &mut Vec<String>, item: String) {
+    if !needs_review.iter().any(|existing| existing == &item) {
+        needs_review.push(item);
+    }
 }
 
 fn share_explain_verify_command(

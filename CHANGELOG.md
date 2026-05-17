@@ -52,6 +52,9 @@ release approval.
   malformed, so intake, evidence debt, and `repair plan` point at manual journal
   setup repair instead of copyable `journal add` commands that cannot run
   (#377).
+- Made `share explain manager|public` surface packet readiness and report
+  evidence debt in `Needs review`, so a caveated packet no longer appears
+  share-clean just because coverage gaps and skipped sources are absent (#378).
 
 ## [0.9.0] - Unreleased candidate
 

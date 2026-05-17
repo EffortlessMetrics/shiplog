@@ -10863,6 +10863,119 @@ fn share_explain_manager_without_key_reports_block_without_writing() {
 }
 
 #[test]
+fn share_explain_manager_surfaces_packet_evidence_debt_without_writing() -> CliTestResult {
+    let Some(repo) = create_local_git_repo() else {
+        return Ok(());
+    };
+    let tmp = TempDir::new()?;
+    let out = tmp.path().join("out");
+    let repo_path = repo.path().display().to_string().replace('\\', "/");
+
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        format!(
+            r#"[defaults]
+window = "year:2025"
+
+[user]
+label = "shiplog test"
+
+[sources.git]
+enabled = true
+repo = "{repo_path}"
+include_merges = false
+
+[sources.manual]
+enabled = true
+events = "./manual_events.yaml"
+user = "shiplog test"
+"#
+        ),
+    )?;
+    std::fs::write(
+        tmp.path().join("manual_events.yaml"),
+        "version: 1\ngenerated_at: 2026-01-01T00:00:00Z\nevents: []\n",
+    )?;
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args([
+            "intake",
+            "--out",
+            out.to_str().unwrap(),
+            "--year",
+            "2025",
+            "--no-open",
+            "--explain",
+        ])
+        .assert()
+        .success();
+
+    let (report_path, mut report) = load_first_intake_report(&out);
+    let evidence_debt_summary = "Manual outcome context is missing.";
+    report["evidence_debt"] = serde_json::json!([
+        {
+            "severity": "info",
+            "kind": "manual-context",
+            "summary": evidence_debt_summary,
+            "detail": "Injected fixture evidence debt",
+            "next_step": "shiplog journal add --date 2025-01-15 --title \"Outcome note\""
+        }
+    ]);
+    report["packet_quality"]["packet_readiness"]["summary"] =
+        serde_json::json!("Ready with caveats.");
+    std::fs::write(
+        &report_path,
+        format!("{}\n", serde_json::to_string_pretty(&report)?),
+    )?;
+
+    let readiness = report["packet_quality"]["packet_readiness"]["summary"]
+        .as_str()
+        .expect("packet readiness summary should be present")
+        .trim_end_matches('.');
+
+    let before = file_tree_manifest(tmp.path());
+    let assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args([
+            "share",
+            "explain",
+            "manager",
+            "--out",
+            out.to_str().unwrap(),
+            "--latest",
+        ])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
+    let after = file_tree_manifest(tmp.path());
+
+    assert!(
+        stdout.contains(&format!("Packet readiness: {readiness}")),
+        "share explain should surface packet readiness caveats. stdout:\n{stdout}"
+    );
+    assert!(
+        stdout.contains(&format!("Evidence debt: {evidence_debt_summary}")),
+        "share explain should surface report evidence debt before sharing. stdout:\n{stdout}"
+    );
+    assert!(
+        !stdout.contains("Needs review:\n- None"),
+        "share explain should not claim there is nothing to review when evidence debt exists. stdout:\n{stdout}"
+    );
+    assert_eq!(
+        before, after,
+        "share explain should remain read-only while surfacing evidence debt"
+    );
+
+    Ok(())
+}
+
+#[test]
 fn share_explain_public_without_key_reports_public_posture_without_writing() {
     let tmp = TempDir::new().unwrap();
     collect_json_into(tmp.path());
