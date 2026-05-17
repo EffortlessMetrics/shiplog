@@ -61,6 +61,7 @@ pub(super) fn handle(
                 zip,
                 &engine,
                 redactor,
+                &[],
             )?;
 
             println!("Collected configured sources:");

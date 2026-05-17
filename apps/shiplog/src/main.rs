@@ -2392,6 +2392,7 @@ fn run_intake(args: IntakeArgs) -> Result<()> {
         false,
         &engine,
         redactor,
+        &intake_plan.explanations,
     )?;
     let report = build_intake_report(&result, &out, &args.config, &intake_plan.explanations)?;
     write_intake_report(&result.outputs.out_dir, &report)?;
@@ -9258,6 +9259,7 @@ fn run_configured_multi_pipeline(
     zip: bool,
     engine: &Engine<'_>,
     redactor: &DeterministicRedactor,
+    source_explanations: &[IntakeSourceExplanation],
 ) -> Result<ConfiguredRunResult> {
     let ingest_outputs = configured
         .successes
@@ -9275,15 +9277,24 @@ fn run_configured_multi_pipeline(
         since: window.since,
         until: window.until,
     };
-    if !configured.failures.is_empty() {
-        for failure in &configured.failures {
-            if !merged.coverage.sources.contains(&failure.name) {
-                merged.coverage.sources.push(failure.name.clone());
+    let skipped_sources =
+        configured_skipped_source_records(&configured.failures, source_explanations);
+    if !skipped_sources.is_empty() {
+        for (source, reason) in skipped_sources {
+            if !merged
+                .coverage
+                .sources
+                .iter()
+                .any(|existing| sources_match(existing, source))
+            {
+                merged.coverage.sources.push(source.to_string());
             }
-            merged.coverage.warnings.push(format!(
-                "Configured source {} was skipped: {}",
-                failure.name, failure.error
-            ));
+            if !has_configured_source_skip_warning(&merged.coverage.warnings, source) {
+                merged.coverage.warnings.push(format!(
+                    "Configured source {} was skipped: {}",
+                    source, reason
+                ));
+            }
         }
         merged.coverage.sources.sort();
         merged.coverage.sources.dedup();
@@ -9340,6 +9351,55 @@ fn run_configured_multi_pipeline(
         window,
         prior_curation,
     })
+}
+
+fn configured_skipped_source_records<'a>(
+    failures: &'a [ConfiguredSourceFailure],
+    explanations: &'a [IntakeSourceExplanation],
+) -> Vec<(&'a str, &'a str)> {
+    let mut seen = BTreeSet::new();
+    let mut skipped = Vec::new();
+
+    for failure in failures {
+        push_skipped_source_record(
+            &mut skipped,
+            &mut seen,
+            failure.name.as_str(),
+            failure.error.as_str(),
+        );
+    }
+
+    for explanation in explanations
+        .iter()
+        .filter(|explanation| matches!(explanation.decision, IntakeSourceDecision::Skipped))
+    {
+        push_skipped_source_record(
+            &mut skipped,
+            &mut seen,
+            explanation.name.as_str(),
+            explanation.reason.as_str(),
+        );
+    }
+
+    skipped
+}
+
+fn push_skipped_source_record<'a>(
+    skipped: &mut Vec<(&'a str, &'a str)>,
+    seen: &mut BTreeSet<String>,
+    source: &'a str,
+    reason: &'a str,
+) {
+    if seen.insert(normalized_source_key(source)) {
+        skipped.push((source, reason));
+    }
+}
+
+fn has_configured_source_skip_warning(warnings: &[String], source: &str) -> bool {
+    warnings
+        .iter()
+        .filter_map(|warning| configured_source_skip(warning))
+        .any(|skip| sources_match(&skip.source, source))
 }
 
 fn preserve_prior_curated_workstreams(out: &Path, run_dir: &Path) -> Result<Option<PriorCuration>> {

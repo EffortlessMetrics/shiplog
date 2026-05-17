@@ -76,6 +76,10 @@ release approval.
 - Aligned the top-level README with the read-first repair and share flow so
   users see `repair plan`, `journal add --from-repair`, `share explain`, and
   `share verify` before write-producing commands (#385).
+- Made skipped autodetected sources part of coverage metadata before packet
+  rendering, so `packet.md`, `coverage.manifest.json`, review output, and
+  `share explain` no longer disagree about GitHub/GitLab/Jira/Linear/JSON
+  skips during first-run dogfood (#386).
 
 ## [0.9.0] - Unreleased candidate
 

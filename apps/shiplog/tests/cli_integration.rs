@@ -5560,6 +5560,11 @@ fn intake_summary_and_report_skipped_sources_mirror_skipped_decisions() {
     let report_json: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(run_dir.join("intake.report.json")).unwrap())
             .unwrap();
+    let packet = std::fs::read_to_string(run_dir.join("packet.md")).unwrap();
+    let coverage: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(run_dir.join("coverage.manifest.json")).unwrap(),
+    )
+    .unwrap();
     let decisions = report_json["source_decisions"].as_array().unwrap();
     let skipped_sources = report_json["skipped_sources"].as_array().unwrap();
     let skipped_decisions = decisions
@@ -5583,6 +5588,27 @@ fn intake_summary_and_report_skipped_sources_mirror_skipped_decisions() {
             "skipped decision {source_key:?} should be present in skipped_sources"
         );
     }
+    assert!(
+        packet.contains("Skipped:\n- GitHub: GITHUB_TOKEN not found"),
+        "packet coverage summary should mirror skipped source decisions. packet:\n{packet}"
+    );
+    assert!(
+        !packet.contains("Skipped:\n- None recorded\n\nKnown gaps:"),
+        "packet coverage summary should not claim no skipped sources when the report records skipped decisions"
+    );
+    assert_eq!(
+        coverage["completeness"], "Partial",
+        "coverage manifest should mark autodetected skipped sources as partial"
+    );
+    let warnings = coverage["warnings"].as_array().unwrap();
+    assert!(
+        warnings.iter().any(|warning| {
+            warning
+                .as_str()
+                .is_some_and(|warning| warning.contains("Configured source github was skipped"))
+        }),
+        "coverage warnings should receipt autodetected skipped sources"
+    );
 }
 
 #[test]
@@ -8764,8 +8790,12 @@ fn runs_diff_latest_handles_legacy_reports_without_packet_quality() -> CliTestRe
         .success()
         .stdout(predicate::str::contains("Packet quality diff:"))
         .stdout(predicate::str::contains("Reports:"))
+        .stdout(predicate::str::contains("Improved:"))
+        .stdout(predicate::str::contains("evidence events 0 -> 1"))
+        .stdout(predicate::str::contains("manual evidence count 0 -> 1"))
+        .stdout(predicate::str::contains("coverage gaps 6 -> 0"))
         .stdout(predicate::str::contains(
-            "Improved:\n- evidence events 0 -> 1\n- manual evidence count 0 -> 1\n- packet readiness Needs evidence -> Ready for review",
+            "packet readiness Needs evidence -> Ready for review",
         ))
         .stdout(predicate::str::contains("packet readiness: Ready for review").not())
         .stdout(predicate::str::contains(format!(
