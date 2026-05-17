@@ -5261,6 +5261,14 @@ fn classify_intake_repair_kind(source: &str, reason: &str) -> IntakeRepairKind {
     IntakeRepairKind::SetupRequired
 }
 
+fn manual_journal_add_blocked_for_skips(skipped_sources: &[ConfiguredSourceSkip]) -> bool {
+    skipped_sources.iter().any(|skip| {
+        normalized_source_key(&skip.source) == "manual"
+            && classify_intake_repair_kind(&skip.source, &skip.reason)
+                == IntakeRepairKind::SetupRequired
+    })
+}
+
 fn contains_any(haystack: &str, needles: &[&str]) -> bool {
     needles.iter().any(|needle| haystack.contains(needle))
 }
@@ -5804,11 +5812,7 @@ fn intake_source_hint(explanation: &IntakeSourceExplanation) -> Option<IntakeSou
                 .to_string(),
             "Or disable [sources.json] if JSON import is not part of this intake.".to_string(),
         ],
-        "manual" => vec![
-            "Run `shiplog journal add --date <YYYY-MM-DD> --title <title> --workstream <name>`."
-                .to_string(),
-            format!("Or create {MANUAL_EVENTS_FILENAME} with `shiplog init --force`."),
-        ],
+        "manual" => manual_repair_hint(&reason),
         _ => vec!["Run `shiplog doctor` to inspect source configuration.".to_string()],
     };
 
@@ -5823,6 +5827,33 @@ fn intake_source_hint(explanation: &IntakeSourceExplanation) -> Option<IntakeSou
         label: "Fix",
         lines,
     })
+}
+
+fn manual_repair_hint(reason: &str) -> Vec<String> {
+    if contains_any(
+        reason,
+        &[
+            "parse manual events yaml",
+            "missing field",
+            "unsupported manual events version",
+            "invalid type",
+        ],
+    ) {
+        return vec![
+            format!(
+                "Repair {MANUAL_EVENTS_FILENAME} so it uses the current manual journal schema."
+            ),
+            format!(
+                "Or recreate {MANUAL_EVENTS_FILENAME} with `shiplog init --force` after backing up the current file."
+            ),
+        ];
+    }
+
+    vec![
+        "Run `shiplog journal add --date <YYYY-MM-DD> --title <title> --workstream <name>`."
+            .to_string(),
+        format!("Or create {MANUAL_EVENTS_FILENAME} with `shiplog init --force`."),
+    ]
 }
 
 fn github_repair_hint(reason: &str) -> Vec<String> {
@@ -13016,6 +13047,7 @@ struct EvidenceDebtInput<'a> {
     coverage: &'a CoverageManifest,
     events: &'a [EventEnvelope],
     skipped_sources: &'a [ConfiguredSourceSkip],
+    manual_journal_add_blocked: bool,
     workstreams: &'a WorkstreamsFile,
     validation_errors: &'a [String],
     signals: &'a WorkstreamQualitySignals<'a>,
@@ -13219,6 +13251,7 @@ fn print_review_with_options(
     let events = ingest.events;
     let run_id = coverage.run_id.to_string();
     let skipped_sources = configured_source_skips(&coverage.warnings);
+    let manual_journal_add_blocked = manual_journal_add_blocked_for_skips(&skipped_sources);
     let (workstreams, source, path) = load_effective_workstreams_for_run(run_dir)?;
     let validation_errors = validate_workstreams_against_events(&workstreams, &events);
     let signals = workstream_quality_signals(&workstreams, &events);
@@ -13230,6 +13263,7 @@ fn print_review_with_options(
         coverage: &coverage,
         events: &events,
         skipped_sources: &skipped_sources,
+        manual_journal_add_blocked,
         workstreams: &workstreams,
         validation_errors: &validation_errors,
         signals: &signals,
@@ -13790,10 +13824,7 @@ fn detect_evidence_debt(input: EvidenceDebtInput<'_>) -> Vec<EvidenceDebt> {
             .detail(workstream_title_sample(
                 &input.signals.manual_context_workstreams,
             ))
-            .next_step(journal_add_next_step(
-                &first.title,
-                input.manual_events_path,
-            )),
+            .next_step(manual_context_next_step(&input, &first.title)),
         );
     }
 
@@ -13886,9 +13917,9 @@ fn detect_evidence_debt(input: EvidenceDebtInput<'_>) -> Vec<EvidenceDebt> {
             .detail(workstream_title_sample(
                 &input.signals.code_only_workstreams,
             ))
-            .next_step(journal_add_next_step(
+            .next_step(manual_context_next_step(
+                &input,
                 &input.signals.code_only_workstreams[0].title,
-                input.manual_events_path,
             )),
         );
     }
@@ -13906,9 +13937,9 @@ fn detect_evidence_debt(input: EvidenceDebtInput<'_>) -> Vec<EvidenceDebt> {
             .detail(workstream_title_sample(
                 &input.signals.ticket_only_workstreams,
             ))
-            .next_step(journal_add_next_step(
+            .next_step(manual_context_next_step(
+                &input,
                 &input.signals.ticket_only_workstreams[0].title,
-                input.manual_events_path,
             )),
         );
     }
@@ -14086,6 +14117,14 @@ fn journal_add_next_step(workstream_title: &str, manual_events_path: Option<&Pat
         command.push_str(&quote_cli_value(&events.display().to_string()));
     }
     command
+}
+
+fn manual_context_next_step(input: &EvidenceDebtInput<'_>, workstream_title: &str) -> String {
+    if input.manual_journal_add_blocked {
+        format!("Repair {MANUAL_EVENTS_FILENAME} setup first, then rerun intake.")
+    } else {
+        journal_add_next_step(workstream_title, input.manual_events_path)
+    }
 }
 
 fn journal_add_template_next_step(

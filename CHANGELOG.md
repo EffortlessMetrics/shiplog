@@ -48,6 +48,10 @@ release approval.
 - Normalized intake and review-ready path display so Windows dogfood shows
   stable slash-separated artifact paths next to copyable `--out "./out"`
   handoffs (#376).
+- Blocked journal repair handoffs when the configured manual journal is
+  malformed, so intake, evidence debt, and `repair plan` point at manual journal
+  setup repair instead of copyable `journal add` commands that cannot run
+  (#377).
 
 ## [0.9.0] - Unreleased candidate
 

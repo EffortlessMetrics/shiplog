@@ -1936,6 +1936,130 @@ fn journal_add_from_repair_appends_report_derived_manual_event() -> CliTestResul
 }
 
 #[test]
+fn malformed_manual_journal_blocks_journal_repair_actions() -> CliTestResult {
+    let Some(repo) = create_local_git_repo() else {
+        return Ok(());
+    };
+    let tmp = TempDir::new()?;
+    let out = tmp.path().join("out");
+    let config_path = tmp.path().join("shiplog.toml");
+    let manual_events = tmp.path().join("manual_events.yaml");
+    let repo_path = repo.path().display().to_string().replace('\\', "/");
+
+    std::fs::write(
+        &config_path,
+        format!(
+            r#"[user]
+label = "shiplog test"
+
+[sources.git]
+enabled = true
+repo = "{repo_path}"
+include_merges = false
+
+[sources.manual]
+enabled = true
+events = "./manual_events.yaml"
+"#
+        ),
+    )?;
+    std::fs::write(&manual_events, "events: []\n")?;
+
+    let assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args([
+            "intake",
+            "--config",
+            config_path.to_str().unwrap(),
+            "--out",
+            out.to_str().unwrap(),
+            "--year",
+            "2025",
+            "--no-open",
+            "--explain",
+        ])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
+    assert!(
+        stdout.contains("Repair manual_events.yaml so it uses the current manual journal schema."),
+        "malformed manual journal should print setup repair guidance. stdout:\n{stdout}"
+    );
+    assert!(
+        !stdout.contains("shiplog journal add"),
+        "intake should not advertise journal add while the configured manual journal is malformed. stdout:\n{stdout}"
+    );
+
+    let (_, report) = load_first_intake_report(&out);
+    for field in ["top_fixups", "next_commands"] {
+        assert!(
+            report[field]
+                .as_array()
+                .expect("report field should be an array")
+                .iter()
+                .filter_map(|item| {
+                    if field == "top_fixups" {
+                        item["command"].as_str()
+                    } else {
+                        item.as_str()
+                    }
+                })
+                .all(|command| !command.starts_with("shiplog journal add ")),
+            "{field} should not contain journal add commands while manual journal setup is blocked: {:?}",
+            report[field]
+        );
+    }
+    assert!(
+        report["repair_sources"]
+            .as_array()
+            .expect("repair_sources should be an array")
+            .iter()
+            .filter(|repair| repair["source_key"].as_str() == Some("manual"))
+            .flat_map(|repair| repair["commands"].as_array().into_iter().flatten())
+            .filter_map(|command| command.as_str())
+            .all(|command| !command.contains("shiplog journal add")),
+        "manual repair source guidance should not suggest journal add while the journal file is malformed: {:?}",
+        report["repair_sources"]
+    );
+    assert!(
+        report["repair_items"]
+            .as_array()
+            .expect("repair_items should be an array")
+            .iter()
+            .all(|item| item["action"]["kind"].as_str() != Some("journal_add")),
+        "repair_items should not expose from-repair journal actions while the manual journal is malformed: {:?}",
+        report["repair_items"]
+    );
+    assert!(
+        report["evidence_debt"]
+            .as_array()
+            .expect("evidence_debt should be an array")
+            .iter()
+            .filter_map(|item| item["next_step"].as_str())
+            .all(|next_step| !next_step.starts_with("shiplog journal add ")),
+        "evidence debt should not expose journal add next steps while the manual journal is malformed: {:?}",
+        report["evidence_debt"]
+    );
+
+    let repair_plan = shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["repair", "plan", "--out", out.to_str().unwrap(), "--latest"])
+        .assert()
+        .success();
+    let repair_plan_stdout = String::from_utf8(repair_plan.get_output().stdout.clone())?;
+    assert!(
+        !repair_plan_stdout.contains("journal add --from-repair"),
+        "repair plan should not print from-repair journal commands while manual journal setup is blocked. stdout:\n{repair_plan_stdout}"
+    );
+
+    Ok(())
+}
+
+#[test]
 fn journal_add_from_repair_uses_report_config_manual_events_when_events_omitted() -> CliTestResult {
     let tmp = TempDir::new()?;
     let config_dir = tmp.path().join("config");

@@ -12,6 +12,8 @@ pub(crate) fn build_intake_report(
     let events = ingest.events;
     let run_id = result.run_id.clone();
     let skipped_sources = configured_source_skips(&coverage.warnings);
+    let repair_sources = intake_repair_source_reports(explanations, &result.configured.failures);
+    let manual_journal_add_blocked = manual_journal_add_blocked(&repair_sources);
     let (workstreams, _, _) = load_effective_workstreams_for_run(&result.outputs.out_dir)?;
     let validation_errors = validate_workstreams_against_events(&workstreams, &events);
     let signals = workstream_quality_signals(&workstreams, &events);
@@ -20,18 +22,22 @@ pub(crate) fn build_intake_report(
     let good = build_completion_signals(result);
     let attention = build_attention_items(result, &coverage, &events, &validation_errors, &signals);
     let readiness = intake_readiness(&validation_errors, &events, &attention);
-    let evidence_debt = build_evidence_debt(EvidenceDebtInput {
+    let mut evidence_debt = build_evidence_debt(EvidenceDebtInput {
         out_dir,
         run_id: &run_id,
         manual_events_path: manual_events_path.as_deref(),
         coverage: &coverage,
         events: &events,
         skipped_sources: &skipped_sources,
+        manual_journal_add_blocked,
         workstreams: &workstreams,
         validation_errors: &validation_errors,
         signals: &signals,
     });
-    let top_fixups = map_top_fixups(review_fixups(
+    if manual_journal_add_blocked {
+        suppress_blocked_manual_journal_evidence_debt(&mut evidence_debt);
+    }
+    let mut top_fixups = map_top_fixups(review_fixups(
         &run_id,
         out_dir,
         manual_events_path.as_deref(),
@@ -39,6 +45,9 @@ pub(crate) fn build_intake_report(
         &validation_errors,
         &signals,
     ));
+    if manual_journal_add_blocked {
+        top_fixups.retain(|fixup| !is_journal_add_command(&fixup.command));
+    }
     let curation_notes = intake_curation_notes(result);
     let mut next_commands = build_next_commands(
         result,
@@ -48,8 +57,10 @@ pub(crate) fn build_intake_report(
         &run_id,
         &signals,
     );
+    if manual_journal_add_blocked {
+        next_commands.retain(|command| !is_journal_add_command(command));
+    }
     let artifacts = build_artifacts(result);
-    let repair_sources = intake_repair_source_reports(explanations, &result.configured.failures);
     let journal_suggestions = build_journal_suggestions(&top_fixups);
     let share_commands = build_share_commands(out_dir, &run_id);
     let source_freshness = build_source_freshness_report(
@@ -477,6 +488,30 @@ fn build_journal_suggestions(top_fixups: &[IntakeReportFixup]) -> Vec<String> {
             }
         })
         .collect()
+}
+
+fn manual_journal_add_blocked(repair_sources: &[IntakeReportRepairSource]) -> bool {
+    repair_sources.iter().any(|repair| {
+        repair.source_key == "manual" && repair.kind == IntakeRepairKind::SetupRequired.as_str()
+    })
+}
+
+fn is_journal_add_command(command: &str) -> bool {
+    command.trim_start().starts_with("shiplog journal add ")
+}
+
+fn suppress_blocked_manual_journal_evidence_debt(evidence_debt: &mut [IntakeReportEvidenceDebt]) {
+    for debt in evidence_debt {
+        if debt
+            .next_step
+            .as_deref()
+            .is_some_and(is_journal_add_command)
+        {
+            debt.next_step = Some(format!(
+                "Repair {MANUAL_EVENTS_FILENAME} setup first, then rerun intake."
+            ));
+        }
+    }
 }
 
 fn build_share_commands(out_dir: &Path, run_id: &str) -> Vec<String> {
