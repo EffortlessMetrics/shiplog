@@ -5300,16 +5300,25 @@ user = "octo"
             .is_none_or(|text| !text.contains("Manual collected 0 events"))),
         "intake report good array should not call zero-event manual evidence good={good:?}"
     );
+    let next_commands = report_json["next_commands"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|command| command.as_str())
+        .collect::<Vec<_>>();
+    assert!(
+        next_commands
+            .first()
+            .is_some_and(|command| command.starts_with("shiplog repair plan ")),
+        "repairable intake should route the top-level handoff through repair plan first: {next_commands:?}"
+    );
+    assert!(
+        next_commands
+            .iter()
+            .all(|command| !command.contains("shiplog journal add --date")),
+        "top-level next commands should not bypass repair items with direct journal add commands: {next_commands:?}"
+    );
     for (field, commands) in [
-        (
-            "next_commands",
-            report_json["next_commands"]
-                .as_array()
-                .unwrap()
-                .iter()
-                .filter_map(|command| command.as_str())
-                .collect::<Vec<_>>(),
-        ),
         (
             "top_fixups",
             report_json["top_fixups"]
