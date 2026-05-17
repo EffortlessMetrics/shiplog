@@ -5270,6 +5270,14 @@ user = "octo"
     let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
     let manual_events_arg = manual_events.display().to_string();
 
+    assert!(
+        stdout.contains("- JSON collected 10 events"),
+        "Good section should keep positive evidence contributions visible. stdout:\n{stdout}"
+    );
+    assert!(
+        !stdout.contains("- Manual collected 0 events"),
+        "Good section should not describe a zero-event source as positive evidence. stdout:\n{stdout}"
+    );
     assert!(stdout.contains("shiplog journal add --date"));
     assert!(stdout.contains("--events"));
     assert!(stdout.contains(&manual_events_arg));
@@ -5280,6 +5288,18 @@ user = "octo"
     let report_json: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(
         run_dir.join("intake.report.json"),
     )?)?;
+    let good = report_json["good"].as_array().unwrap();
+    assert!(
+        good.iter()
+            .any(|item| item.as_str() == Some("JSON collected 10 events")),
+        "intake report should keep positive source evidence in good={good:?}"
+    );
+    assert!(
+        good.iter().all(|item| item
+            .as_str()
+            .is_none_or(|text| !text.contains("Manual collected 0 events"))),
+        "intake report good array should not call zero-event manual evidence good={good:?}"
+    );
     for (field, commands) in [
         (
             "next_commands",
