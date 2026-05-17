@@ -5154,6 +5154,7 @@ fn push_intake_report_source_freshness(
 fn intake_repair_source_reports(
     explanations: &[IntakeSourceExplanation],
     failures: &[ConfiguredSourceFailure],
+    config_path: &Path,
 ) -> Vec<IntakeReportRepairSource> {
     let mut seen = BTreeSet::new();
     let mut reports = Vec::new();
@@ -5167,11 +5168,18 @@ fn intake_repair_source_reports(
             &mut seen,
             &explanation.name,
             &explanation.reason,
+            config_path,
         );
     }
 
     for failure in failures {
-        push_intake_repair_source_report(&mut reports, &mut seen, &failure.name, &failure.error);
+        push_intake_repair_source_report(
+            &mut reports,
+            &mut seen,
+            &failure.name,
+            &failure.error,
+            config_path,
+        );
     }
 
     reports
@@ -5182,6 +5190,7 @@ fn push_intake_repair_source_report(
     seen: &mut BTreeSet<(String, String)>,
     name: &str,
     reason: &str,
+    config_path: &Path,
 ) {
     let key = (normalized_source_key(name), reason.to_string());
     if !seen.insert(key) {
@@ -5196,10 +5205,11 @@ fn push_intake_repair_source_report(
     let Some(hint) = intake_source_hint(&explanation) else {
         return;
     };
-    let kind = classify_intake_repair_kind(name, reason)
-        .as_str()
-        .to_string();
+    let repair_kind = classify_intake_repair_kind(name, reason);
+    let kind = repair_kind.as_str().to_string();
     let identity = intake_report_source_identity(name);
+    let commands =
+        intake_repair_source_commands(&identity.source_key, repair_kind, hint.lines, config_path);
 
     reports.push(IntakeReportRepairSource {
         source: identity.source,
@@ -5207,8 +5217,46 @@ fn push_intake_repair_source_report(
         source_label: identity.source_label,
         kind,
         reason: reason.to_string(),
-        commands: hint.lines,
+        commands,
     });
+}
+
+fn intake_repair_source_commands(
+    source_key: &str,
+    repair_kind: IntakeRepairKind,
+    fallback: Vec<String>,
+    config_path: &Path,
+) -> Vec<String> {
+    if !repair_kind_is_setup_blocked(repair_kind) {
+        return fallback;
+    }
+
+    vec![source_setup_status_command(source_key, config_path)]
+}
+
+fn repair_kind_is_setup_blocked(repair_kind: IntakeRepairKind) -> bool {
+    matches!(
+        repair_kind,
+        IntakeRepairKind::MissingToken
+            | IntakeRepairKind::MissingIdentity
+            | IntakeRepairKind::InvalidFilter
+            | IntakeRepairKind::BadInstanceUrl
+            | IntakeRepairKind::AuthRejected
+            | IntakeRepairKind::LocalSourceUnavailable
+            | IntakeRepairKind::MissingFile
+            | IntakeRepairKind::SetupRequired
+    )
+}
+
+fn source_setup_status_command(source_key: &str, config_path: &Path) -> String {
+    let config_arg = quote_cli_value(&config_path.display().to_string());
+    match source_key {
+        "manual" => format!("shiplog doctor --setup --config {config_arg} --source manual"),
+        "github" | "gitlab" | "jira" | "linear" | "git" | "json" => {
+            format!("shiplog sources status --config {config_arg} --source {source_key}")
+        }
+        _ => format!("shiplog doctor --setup --config {config_arg}"),
+    }
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -7227,7 +7275,7 @@ fn push_doctor_source_repair_item(
 ) {
     let before = items.len();
     let reason = reason.into();
-    push_intake_repair_source_report(items, seen, source, &reason);
+    push_intake_repair_source_report(items, seen, source, &reason, config_path);
     if let Some(item) = items.get_mut(before) {
         let rerun = format!(
             "shiplog doctor --config {} --repair-plan",

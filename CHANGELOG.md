@@ -147,6 +147,10 @@ release approval.
   local git when available, valid manual journal scaffolding, JSON import only
   when files exist, and token-backed provider sections left disabled until
   configured (#405).
+- Routed setup-blocked repair items through read-only doctor/source-status
+  handoffs before repair action, so malformed manual journals and provider
+  token gaps no longer expose dead-end journal, token, or identity commands in
+  `repair plan` (#406).
 
 ## [0.9.0] - Unreleased candidate
 

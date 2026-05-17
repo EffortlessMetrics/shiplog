@@ -12,7 +12,8 @@ pub(crate) fn build_intake_report(
     let events = ingest.events;
     let run_id = result.run_id.clone();
     let skipped_sources = configured_source_skips(&coverage.warnings);
-    let repair_sources = intake_repair_source_reports(explanations, &result.configured.failures);
+    let repair_sources =
+        intake_repair_source_reports(explanations, &result.configured.failures, config_path);
     let manual_journal_add_blocked = manual_journal_add_blocked(&repair_sources);
     let (workstreams, _, _) = load_effective_workstreams_for_run(&result.outputs.out_dir)?;
     let validation_errors = validate_workstreams_against_events(&workstreams, &events);
