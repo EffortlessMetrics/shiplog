@@ -116,6 +116,10 @@ release approval.
   semver tag and owner approval before release proof starts, while
   `scripts/check-release-hold.sh` rejects branch refs and held `v0.9.0` release
   attempts (#396).
+- Recorded a final review-ready loop dogfood transcript from local git plus
+  manual repair, showing repair diff, runs diff, packet readiness, claim
+  candidates, read-only share explanation, and fail-closed manager verification
+  without lifting the 0.9 release hold (#397).
 
 ## [0.9.0] - Unreleased candidate
 

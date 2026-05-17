@@ -552,7 +552,7 @@ fn release_hold_docs_record_post_0_8_soak_receipts() {
         "#348", "#349", "#350", "#351", "#352", "#357", "#364", "#365", "#367", "#369", "#370",
         "#371", "#372", "#373", "#374", "#375", "#376", "#377", "#378", "#379", "#380", "#381",
         "#382", "#383", "#384", "#385", "#386", "#387", "#388", "#389", "#390", "#391", "#392",
-        "#393", "#394", "#395", "#396",
+        "#393", "#394", "#395", "#396", "#397",
     ] {
         assert!(
             hold.contains(needle) && readiness.contains(needle),
@@ -618,12 +618,68 @@ fn release_hold_docs_record_post_0_8_soak_receipts() {
         "owner approval",
         "semver tag",
         "before publish dry-run proof can run",
+        "review-ready loop transcript",
+        "fail-closed manager verification",
     ] {
         assert!(
             hold.contains(needle) || readiness.contains(needle),
             "soak evidence docs should mention {needle:?}"
         );
     }
+}
+
+#[test]
+fn review_ready_loop_transcript_records_final_dogfood() {
+    let root = repo_root();
+    let transcript_path = root.join("docs/product/review-ready-loop-transcript.md");
+    let matrix_path = root.join("docs/product/review-ready-dogfood-matrix.md");
+    let hold_path = root.join("docs/release/0.9.0-release-hold.md");
+    let readiness_path = root.join("docs/release/0.9.0-readiness.md");
+
+    let transcript = std::fs::read_to_string(&transcript_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", transcript_path.display()));
+    let matrix = std::fs::read_to_string(&matrix_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", matrix_path.display()));
+    let hold = std::fs::read_to_string(&hold_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", hold_path.display()));
+    let readiness = std::fs::read_to_string(&readiness_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", readiness_path.display()));
+
+    for needle in [
+        "post-0.8 soak receipt",
+        "does not approve tagging, publishing",
+        "sources.git.enabled = true",
+        "shiplog intake --config",
+        "shiplog repair plan --out",
+        "shiplog journal add --from-repair",
+        "shiplog repair diff --out",
+        "shiplog runs diff --out",
+        "shiplog open packet --out",
+        "shiplog share explain manager --out",
+        "shiplog share verify manager --out",
+        "manual:manual_evidence_missing:fixup_manual_context_shiplog",
+        "manual evidence count: 0 -> 1",
+        "packet_readiness = ready_with_caveats",
+        "evidence_strength = partial",
+        "one claim candidate",
+        "Profile packet and share manifest were not written",
+        "manager share requires --redact-key or SHIPLOG_REDACT_KEY",
+        "Did not generate performance-review prose",
+        "explicit owner approval",
+        "temporary dogfood workspace",
+    ] {
+        assert!(
+            transcript.contains(needle),
+            "review-ready loop transcript should mention {needle:?}"
+        );
+    }
+
+    assert!(
+        matrix.contains("review-ready loop transcript")
+            && hold.contains("review-ready loop transcript")
+            && readiness.contains("#397"),
+        "matrix and release docs should link the final dogfood transcript without lifting the hold"
+    );
 }
 
 #[test]
