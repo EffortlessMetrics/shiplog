@@ -58,6 +58,9 @@ release approval.
 - Reduced repeated outcome-context evidence debt so broad code-only/ticket-only
   workstreams covered by the manual-context repair no longer print duplicate
   `journal add` guidance under a second label (#379).
+- Reduced first-run output noise so zero-event sources no longer appear as
+  positive evidence in the `Good` list while still remaining visible in source
+  status and evidence caveats (#380).
 
 ## [0.9.0] - Unreleased candidate
 

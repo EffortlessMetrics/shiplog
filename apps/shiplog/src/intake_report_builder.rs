@@ -167,12 +167,15 @@ fn build_completion_signals(result: &ConfiguredRunResult) -> Vec<String> {
         .configured
         .successes
         .iter()
-        .map(|(name, ingest)| {
-            format!(
-                "{} collected {}",
-                display_source_label(name),
-                event_count_phrase(ingest.events.len())
-            )
+        .filter_map(|(name, ingest)| {
+            let event_count = ingest.events.len();
+            (event_count > 0).then(|| {
+                format!(
+                    "{} collected {}",
+                    display_source_label(name),
+                    event_count_phrase(event_count)
+                )
+            })
         })
         .collect::<Vec<_>>();
     good.extend([
