@@ -108,6 +108,10 @@ release approval.
   and missing-context prompts stay aligned with `packet_quality`, while
   `share explain` continues to read report receipts instead of rendered
   Markdown (#394).
+- Hardened old-report compatibility for partial `packet_quality` reports that
+  predate claim candidates or share posture: `report validate`, `runs diff`,
+  and `share explain` keep working and prompt rerun for richer review-ready
+  signals (#395).
 
 ## [0.9.0] - Unreleased candidate
 

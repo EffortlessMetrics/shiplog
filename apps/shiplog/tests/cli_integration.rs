@@ -1198,6 +1198,23 @@ fn remove_packet_quality_from_report(report_path: &Path) -> CliTestResult {
     Ok(())
 }
 
+fn remove_packet_quality_fields_from_report(report_path: &Path, fields: &[&str]) -> CliTestResult {
+    let mut report: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(report_path)?)?;
+    let packet_quality = report
+        .get_mut("packet_quality")
+        .and_then(serde_json::Value::as_object_mut)
+        .expect("report should expose packet_quality");
+    for field in fields {
+        packet_quality.remove(*field);
+    }
+    std::fs::write(
+        report_path,
+        format!("{}\n", serde_json::to_string_pretty(&report)?),
+    )?;
+    Ok(())
+}
+
 fn first_repair_id_with_action(report: &serde_json::Value, action_kind: &str) -> String {
     report["repair_items"]
         .as_array()
@@ -8270,6 +8287,37 @@ fn report_validate_accepts_legacy_reports_without_packet_quality() {
 }
 
 #[test]
+fn report_validate_accepts_legacy_packet_quality_without_candidates_or_share_posture() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args(["intake", "--out", out.to_str().unwrap(), "--no-open"])
+        .assert()
+        .success();
+
+    let report_path = first_run_dir(&out).join("intake.report.json");
+    remove_packet_quality_fields_from_report(&report_path, &["claim_candidates", "share_posture"])
+        .unwrap();
+
+    shiplog_cmd()
+        .args([
+            "report",
+            "validate",
+            "--path",
+            report_path.to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Report valid:"));
+}
+
+#[test]
 fn repair_plan_latest_renders_repair_items_from_latest_report() -> CliTestResult {
     let tmp = TempDir::new()?;
     let out = tmp.path().join("out");
@@ -9055,6 +9103,67 @@ fn runs_diff_latest_handles_legacy_reports_without_packet_quality() -> CliTestRe
     assert_eq!(
         before, after,
         "runs diff should not write or rewrite legacy report files"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn runs_diff_latest_handles_legacy_packet_quality_without_candidates_or_share_posture()
+-> CliTestResult {
+    let tmp = TempDir::new()?;
+    let out = tmp.path().join("out");
+    let out_arg = out.to_string_lossy().to_string();
+
+    run_intake_without_provider_tokens(tmp.path(), &out);
+    let (_, first_report) = load_first_intake_report(&out);
+    let repair_id = first_repair_id_with_action(&first_report, "journal_add");
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args([
+            "journal",
+            "add",
+            "--from-repair",
+            repair_id.as_str(),
+            "--out",
+            out_arg.as_str(),
+            "--latest",
+        ])
+        .assert()
+        .success();
+    run_intake_without_provider_tokens(tmp.path(), &out);
+
+    let run_dirs = all_run_dirs(&out);
+    assert!(
+        run_dirs.len() >= 2,
+        "legacy partial packet-quality diff test needs two run directories"
+    );
+    for run_dir in &run_dirs {
+        remove_packet_quality_fields_from_report(
+            &run_dir.join("intake.report.json"),
+            &["claim_candidates", "share_posture"],
+        )?;
+    }
+
+    let before = file_tree_manifest(tmp.path());
+    shiplog_cmd()
+        .args(["runs", "diff", "--out", out_arg.as_str(), "--latest"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Packet quality diff:"))
+        .stdout(predicate::str::contains(
+            "packet quality incomplete; rerun intake for review-ready signals",
+        ))
+        .stdout(predicate::str::contains("claim candidates 0 -> 1").not())
+        .stdout(predicate::str::contains(format!(
+            "shiplog open packet --out \"{}\"",
+            out.display()
+        )));
+    let after = file_tree_manifest(tmp.path());
+
+    assert_eq!(
+        before, after,
+        "runs diff should not write or rewrite partial legacy packet-quality reports"
     );
 
     Ok(())
@@ -11567,6 +11676,45 @@ fn share_explain_legacy_report_without_packet_quality_prompts_rerun_without_writ
     assert_eq!(
         before, after,
         "share explain should not write while explaining legacy report quality gaps"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn share_explain_legacy_packet_quality_without_candidates_or_share_posture_prompts_rerun_without_writing()
+-> CliTestResult {
+    let tmp = TempDir::new()?;
+    let out = tmp.path().join("out");
+    run_intake_without_provider_tokens(tmp.path(), &out);
+    let (report_path, _) = load_first_intake_report(&out);
+    remove_packet_quality_fields_from_report(&report_path, &["claim_candidates", "share_posture"])?;
+
+    let before = file_tree_manifest(tmp.path());
+    let assert = shiplog_cmd()
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args([
+            "share",
+            "explain",
+            "manager",
+            "--out",
+            out.to_str().unwrap(),
+            "--latest",
+        ])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
+    let after = file_tree_manifest(tmp.path());
+
+    assert!(
+        stdout.contains(
+            "Packet quality incomplete: rerun intake for claim candidates, share posture signals."
+        ),
+        "share explain should prompt rerun for partial legacy packet_quality. stdout:\n{stdout}"
+    );
+    assert_eq!(
+        before, after,
+        "share explain should not write while explaining partial legacy packet_quality"
     );
 
     Ok(())

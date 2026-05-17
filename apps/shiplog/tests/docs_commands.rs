@@ -482,7 +482,7 @@ fn release_hold_docs_record_post_0_8_soak_receipts() {
         "#348", "#349", "#350", "#351", "#352", "#357", "#364", "#365", "#367", "#369", "#370",
         "#371", "#372", "#373", "#374", "#375", "#376", "#377", "#378", "#379", "#380", "#381",
         "#382", "#383", "#384", "#385", "#386", "#387", "#388", "#389", "#390", "#391", "#392",
-        "#393", "#394",
+        "#393", "#394", "#395",
     ] {
         assert!(
             hold.contains(needle) && readiness.contains(needle),
@@ -542,6 +542,8 @@ fn release_hold_docs_record_post_0_8_soak_receipts() {
         "journal-only repair rerun",
         "report/packet consistency",
         "rendered Markdown",
+        "partial `packet_quality`",
+        "richer review-ready signals",
     ] {
         assert!(
             hold.contains(needle) || readiness.contains(needle),

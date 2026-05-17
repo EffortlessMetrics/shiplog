@@ -4437,12 +4437,7 @@ fn validate_report_packet_quality(item: &serde_json::Value) -> Result<()> {
     let object = item
         .as_object()
         .ok_or_else(|| anyhow::anyhow!("intake report packet_quality must be an object"))?;
-    for required in [
-        "packet_readiness",
-        "evidence_strength",
-        "claim_candidates",
-        "share_posture",
-    ] {
+    for required in ["packet_readiness", "evidence_strength"] {
         if !object.contains_key(required) {
             anyhow::bail!("intake report packet_quality missing field {required:?}")
         }
@@ -4459,10 +4454,10 @@ fn validate_report_packet_quality(item: &serde_json::Value) -> Result<()> {
     for strength in evidence_strength {
         validate_report_evidence_strength(strength)?;
     }
-    for candidate in json_array(item, "claim_candidates")? {
+    for candidate in optional_json_array(item, "claim_candidates")? {
         validate_report_claim_candidate(candidate)?;
     }
-    for posture in json_array(item, "share_posture")? {
+    for posture in optional_json_array(item, "share_posture")? {
         validate_report_share_posture(posture)?;
     }
 
@@ -11331,10 +11326,22 @@ fn append_share_explain_report_needs_review(
             needs_review,
             "Packet quality unavailable: rerun intake for review-ready signals.".to_string(),
         );
-    } else if let Some(readiness) = packet_readiness_display_from_json(report_json)
-        && !matches!(readiness.as_str(), "Ready" | "Ready for review")
-    {
-        push_unique_needs_review(needs_review, format!("Packet readiness: {readiness}"));
+    } else {
+        let missing = missing_packet_quality_review_ready_fields(report_json);
+        if !missing.is_empty() {
+            push_unique_needs_review(
+                needs_review,
+                format!(
+                    "Packet quality incomplete: rerun intake for {} signals.",
+                    missing.join(", ")
+                ),
+            );
+        }
+        if let Some(readiness) = packet_readiness_display_from_json(report_json)
+            && !matches!(readiness.as_str(), "Ready" | "Ready for review")
+        {
+            push_unique_needs_review(needs_review, format!("Packet readiness: {readiness}"));
+        }
     }
 
     for debt in optional_json_array(report_json, "evidence_debt")? {
@@ -11452,6 +11459,24 @@ fn load_share_explain_repair_report(run_dir: &Path) -> Result<Option<RepairDiffR
 
 fn push_open_source_repair_needs_review(needs_review: &mut Vec<String>, summary: &str) {
     push_unique_needs_review(needs_review, format!("Open source repair: {summary}"));
+}
+
+fn missing_packet_quality_review_ready_fields(
+    report_json: &serde_json::Value,
+) -> Vec<&'static str> {
+    let Some(packet_quality) = report_json.get("packet_quality") else {
+        return Vec::new();
+    };
+    let mut missing = Vec::new();
+    for (field, label) in [
+        ("claim_candidates", "claim candidates"),
+        ("share_posture", "share posture"),
+    ] {
+        if packet_quality.get(field).is_none() {
+            missing.push(label);
+        }
+    }
+    missing
 }
 
 fn push_unique_needs_review(needs_review: &mut Vec<String>, item: String) {
@@ -12489,6 +12514,7 @@ struct RunQualitySnapshot {
     summary: RunSummary,
     report_path: Option<PathBuf>,
     packet_quality_present: bool,
+    packet_quality_complete: bool,
     packet_readiness: Option<String>,
     packet_evidence_strength: Option<String>,
     claim_candidate_count: Option<usize>,
@@ -12838,6 +12864,7 @@ fn load_run_quality_snapshot(run_dir: &Path) -> Result<RunQualitySnapshot> {
     let mut packet_evidence_strength = None;
     let mut claim_candidate_count = None;
     let mut packet_quality_present = false;
+    let mut packet_quality_complete = false;
     let mut repair_report = None;
     let report_path = if report_path.exists() {
         validate_intake_report(&report_path)?;
@@ -12846,6 +12873,8 @@ fn load_run_quality_snapshot(run_dir: &Path) -> Result<RunQualitySnapshot> {
         let report_json: serde_json::Value = serde_json::from_str(&report_text)
             .with_context(|| format!("parse {}", report_path.display()))?;
         packet_quality_present = report_json.get("packet_quality").is_some();
+        packet_quality_complete = packet_quality_present
+            && missing_packet_quality_review_ready_fields(&report_json).is_empty();
         packet_readiness = report_packet_readiness_status(&report_json);
         packet_evidence_strength = report_packet_evidence_strength(&report_json);
         claim_candidate_count = report_claim_candidate_count(&report_json);
@@ -12861,6 +12890,7 @@ fn load_run_quality_snapshot(run_dir: &Path) -> Result<RunQualitySnapshot> {
         summary,
         report_path,
         packet_quality_present,
+        packet_quality_complete,
         packet_readiness,
         packet_evidence_strength,
         claim_candidate_count,
@@ -13046,6 +13076,9 @@ fn run_quality_diff_groups(
     if to.report_path.is_some() && !to.packet_quality_present {
         still_weak
             .push("packet quality unavailable; rerun intake for review-ready signals".to_string());
+    } else if to.report_path.is_some() && !to.packet_quality_complete {
+        still_weak
+            .push("packet quality incomplete; rerun intake for review-ready signals".to_string());
     }
     if let Some(strength) = to.packet_evidence_strength.as_deref()
         && strength != "strong"
