@@ -6984,7 +6984,6 @@ impl DoctorReport {
 }
 
 fn run_doctor(config_path: &Path, sources: &[InitSource]) -> Result<()> {
-    let _setup_status = doctor::build_setup_status(config_path, sources);
     let mut report = DoctorReport::default();
 
     if !config_path.exists() {

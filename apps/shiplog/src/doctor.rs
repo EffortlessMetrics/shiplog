@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use super::{
     BundleProfile, ConfigGitSource, ConfigGithubSource, ConfigGitlabSource, ConfigJiraSource,
     ConfigJsonSource, ConfigLinearSource, ConfigManualSource, InitSource, IssueStatus,
@@ -1252,24 +1254,28 @@ mod tests {
     use shiplog::schema::event::ManualEventsFile;
 
     #[test]
-    fn setup_status_blocks_missing_config_with_guided_init_action() {
-        let temp = tempfile::tempdir().unwrap();
+    fn setup_status_blocks_missing_config_with_guided_init_action() -> anyhow::Result<()> {
+        let temp = tempfile::tempdir()?;
         let config = temp.path().join("shiplog.toml");
 
         let status = build_setup_status(&config, &[]);
 
         assert_eq!(status.overall_status, SetupOverallStatus::Blocked);
-        let config_item = find_item(&status.local_files, "config");
+        let config_item = find_item(&status.local_files, "config")?;
         assert_eq!(config_item.status, SetupItemStatus::Missing);
-        let action = config_item.next_action.as_ref().unwrap();
+        let action = config_item
+            .next_action
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("config item should have a next action"))?;
         assert_eq!(action.command, "shiplog init --guided");
         assert!(action.writes);
+        Ok(())
     }
 
     #[test]
-    fn setup_status_marks_local_git_and_manual_ready() {
-        let temp = tempfile::tempdir().unwrap();
-        git2::Repository::init(temp.path()).unwrap();
+    fn setup_status_marks_local_git_and_manual_ready() -> anyhow::Result<()> {
+        let temp = tempfile::tempdir()?;
+        git2::Repository::init(temp.path())?;
         let manual_path = temp.path().join("manual_events.yaml");
         write_manual_events(
             &manual_path,
@@ -1278,8 +1284,7 @@ mod tests {
                 generated_at: chrono::Utc::now(),
                 events: Vec::new(),
             },
-        )
-        .unwrap();
+        )?;
         std::fs::write(
             temp.path().join("shiplog.toml"),
             r#"[shiplog]
@@ -1296,29 +1301,29 @@ repo = "."
 enabled = true
 events = "./manual_events.yaml"
 "#,
-        )
-        .unwrap();
+        )?;
 
         let status = build_setup_status(&temp.path().join("shiplog.toml"), &[]);
 
         assert_ne!(status.overall_status, SetupOverallStatus::Blocked);
         assert_eq!(
-            find_item(&status.sources, "git").status,
+            find_item(&status.sources, "git")?.status,
             SetupItemStatus::Ready
         );
         assert_eq!(
-            find_item(&status.sources, "manual").status,
+            find_item(&status.sources, "manual")?.status,
             SetupItemStatus::Ready
         );
         assert_eq!(
-            find_item(&status.local_files, "manual_events").status,
+            find_item(&status.local_files, "manual_events")?.status,
             SetupItemStatus::Ready
         );
+        Ok(())
     }
 
     #[test]
-    fn setup_status_reports_missing_json_file_as_unavailable() {
-        let temp = tempfile::tempdir().unwrap();
+    fn setup_status_reports_missing_json_file_as_unavailable() -> anyhow::Result<()> {
+        let temp = tempfile::tempdir()?;
         std::fs::write(
             temp.path().join("shiplog.toml"),
             r#"[shiplog]
@@ -1332,21 +1337,21 @@ enabled = true
 events = "./missing.events.jsonl"
 coverage = "./missing.coverage.json"
 "#,
-        )
-        .unwrap();
+        )?;
 
         let status = build_setup_status(&temp.path().join("shiplog.toml"), &[]);
 
         assert_eq!(
-            find_item(&status.sources, "json").status,
+            find_item(&status.sources, "json")?.status,
             SetupItemStatus::Unavailable
         );
         assert_eq!(status.overall_status, SetupOverallStatus::Blocked);
+        Ok(())
     }
 
     #[test]
-    fn setup_status_does_not_validate_disabled_manual_journal() {
-        let temp = tempfile::tempdir().unwrap();
+    fn setup_status_does_not_validate_disabled_manual_journal() -> anyhow::Result<()> {
+        let temp = tempfile::tempdir()?;
         std::fs::write(
             temp.path().join("shiplog.toml"),
             r#"[shiplog]
@@ -1359,21 +1364,21 @@ profile = "internal"
 enabled = false
 events = "./missing_manual_events.yaml"
 "#,
-        )
-        .unwrap();
+        )?;
 
         let status = build_setup_status(&temp.path().join("shiplog.toml"), &[]);
 
-        let manual_source = find_item(&status.sources, "manual");
+        let manual_source = find_item(&status.sources, "manual")?;
         assert_eq!(manual_source.status, SetupItemStatus::Disabled);
-        let manual_file = find_item(&status.local_files, "manual_events");
+        let manual_file = find_item(&status.local_files, "manual_events")?;
         assert_eq!(manual_file.status, SetupItemStatus::OptionalAbsent);
+        Ok(())
     }
 
     #[test]
-    fn setup_status_blocks_malformed_manual_journal() {
-        let temp = tempfile::tempdir().unwrap();
-        std::fs::write(temp.path().join("manual_events.yaml"), "version: nope\n").unwrap();
+    fn setup_status_blocks_malformed_manual_journal() -> anyhow::Result<()> {
+        let temp = tempfile::tempdir()?;
+        std::fs::write(temp.path().join("manual_events.yaml"), "version: nope\n")?;
         std::fs::write(
             temp.path().join("shiplog.toml"),
             r#"[shiplog]
@@ -1386,26 +1391,26 @@ profile = "internal"
 enabled = true
 events = "./manual_events.yaml"
 "#,
-        )
-        .unwrap();
+        )?;
 
         let status = build_setup_status(&temp.path().join("shiplog.toml"), &[]);
 
         assert_eq!(
-            find_item(&status.sources, "manual").status,
+            find_item(&status.sources, "manual")?.status,
             SetupItemStatus::Blocked
         );
         assert_eq!(
-            find_item(&status.local_files, "manual_events").status,
+            find_item(&status.local_files, "manual_events")?.status,
             SetupItemStatus::Malformed
         );
         assert_eq!(status.overall_status, SetupOverallStatus::Blocked);
+        Ok(())
     }
 
-    fn find_item<'a>(items: &'a [SetupItem], key: &str) -> &'a SetupItem {
+    fn find_item<'a>(items: &'a [SetupItem], key: &str) -> anyhow::Result<&'a SetupItem> {
         items
             .iter()
             .find(|item| item.key == key)
-            .unwrap_or_else(|| panic!("missing setup item {key}"))
+            .ok_or_else(|| anyhow::anyhow!("missing setup item {key}"))
     }
 }
