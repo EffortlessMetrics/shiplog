@@ -11,6 +11,7 @@ Still weak:
 - Manual source: Manual contributed 1 event. (`manual_only`)
 
 Next:
+- `shiplog repair diff --out "<OUT>" --latest`
 - `shiplog repair plan --out "<OUT>" --latest`
 - `shiplog share explain manager --out "<OUT>" --run <RUN_ID>`
 

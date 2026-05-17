@@ -8832,6 +8832,110 @@ fn runs_diff_latest_reports_quality_without_writing() -> CliTestResult {
 }
 
 #[test]
+fn repaired_rerun_intake_hands_off_to_repair_diff_first() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let out = tmp.path().join("out");
+    let out_arg = out.to_string_lossy().to_string();
+
+    let first = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args([
+            "intake",
+            "--out",
+            out_arg.as_str(),
+            "--no-open",
+            "--explain",
+        ])
+        .assert()
+        .success();
+    let first_stdout = String::from_utf8(first.get_output().stdout.clone())?;
+    assert!(
+        first_stdout.contains(&format!(
+            "Next:\n1. shiplog repair plan --out \"{}\" --latest",
+            out.display()
+        )),
+        "first repairable intake should start at repair plan. stdout:\n{first_stdout}"
+    );
+    assert!(
+        !first_stdout.contains("shiplog repair diff"),
+        "first repairable intake should not offer repair diff before a prior report exists. stdout:\n{first_stdout}"
+    );
+
+    let (_, first_report) = load_first_intake_report(&out);
+    let repair_id = first_repair_id_with_action(&first_report, "journal_add");
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args([
+            "journal",
+            "add",
+            "--from-repair",
+            repair_id.as_str(),
+            "--out",
+            out_arg.as_str(),
+            "--latest",
+        ])
+        .assert()
+        .success();
+
+    let second = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args([
+            "intake",
+            "--out",
+            out_arg.as_str(),
+            "--no-open",
+            "--explain",
+        ])
+        .assert()
+        .success();
+    let second_stdout = String::from_utf8(second.get_output().stdout.clone())?;
+    assert!(
+        second_stdout.contains(&format!(
+            "Next:\n1. shiplog repair diff --out \"{}\" --latest\n2. shiplog repair plan --out \"{}\" --latest",
+            out.display(),
+            out.display()
+        )),
+        "repaired rerun should hand off to repair diff before planning more work. stdout:\n{second_stdout}"
+    );
+
+    let latest_run = all_run_dirs(&out)
+        .into_iter()
+        .last()
+        .expect("rerun should create a latest run");
+    let latest_report: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(
+        latest_run.join("intake.report.json"),
+    )?)?;
+    let next_commands = latest_report["next_commands"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|command| command.as_str())
+        .collect::<Vec<_>>();
+    assert!(
+        next_commands
+            .first()
+            .is_some_and(|command| command.starts_with("shiplog repair diff ")),
+        "latest report should persist repair diff as the first next command: {next_commands:?}"
+    );
+    assert!(
+        next_commands
+            .get(1)
+            .is_some_and(|command| command.starts_with("shiplog repair plan ")),
+        "latest report should keep repair plan as the second next command: {next_commands:?}"
+    );
+
+    Ok(())
+}
+
+#[test]
 fn runs_diff_latest_handles_legacy_reports_without_packet_quality() -> CliTestResult {
     let tmp = TempDir::new()?;
     let out = tmp.path().join("out");
