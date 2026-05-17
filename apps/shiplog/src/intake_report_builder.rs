@@ -91,7 +91,7 @@ pub(crate) fn build_intake_report(
     });
     if !repair_items.is_empty() {
         prepend_repair_plan_next_command(&mut next_commands, out_dir);
-        next_commands.retain(|command| !is_journal_add_command(command));
+        next_commands.retain(|command| !action_writes(command));
         actions = intake_report_actions(
             &repair_sources,
             &top_fixups,
