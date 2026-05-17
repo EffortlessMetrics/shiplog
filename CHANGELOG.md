@@ -131,6 +131,9 @@ release approval.
   setup status from source freshness, repair readiness, packet readiness, and
   share posture while preserving no-network and no-write doctor boundaries
   (#400).
+- Recorded the Guided Setup / Doctor ADR: doctor and `sources status` are setup
+  readiness surfaces, not dry-run intake engines, and must stay no-network and
+  no-write by default (#401).
 
 ## [0.9.0] - Unreleased candidate
 
