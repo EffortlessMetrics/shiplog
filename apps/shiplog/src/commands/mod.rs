@@ -21,8 +21,9 @@ pub(super) fn dispatch() -> Result<()> {
             sources,
             dry_run,
             force,
+            guided,
         } => {
-            run_init(sources, dry_run, force)?;
+            run_init(sources, dry_run, force, guided)?;
         }
 
         Command::Doctor {
