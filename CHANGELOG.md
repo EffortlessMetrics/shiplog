@@ -127,6 +127,10 @@ release approval.
   source status, local-file validity, credential presence, share prerequisites,
   and read/write next actions can be made explicit before intake, repair, or
   share commands (#399).
+- Defined the setup readiness contract for Guided Setup / Doctor, separating
+  setup status from source freshness, repair readiness, packet readiness, and
+  share posture while preserving no-network and no-write doctor boundaries
+  (#400).
 
 ## [0.9.0] - Unreleased candidate
 
