@@ -70,6 +70,9 @@ release approval.
 - Documented the read-first repair handoff in the review-ready and evidence
   repair guides so direct write commands in evidence debt are treated as context,
   not the first action (#383).
+- Aligned the rapid first-intake guide with the repair loop so missing manual
+  evidence routes through `repair plan` / `journal add --from-repair` before
+  direct journal commands (#384).
 
 ## [0.9.0] - Unreleased candidate
 
