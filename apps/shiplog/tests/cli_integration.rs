@@ -1204,7 +1204,12 @@ fn remove_packet_quality_fields_from_report(report_path: &Path, fields: &[&str])
     let packet_quality = report
         .get_mut("packet_quality")
         .and_then(serde_json::Value::as_object_mut)
-        .expect("report should expose packet_quality");
+        .ok_or_else(|| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "report should expose packet_quality object",
+            )
+        })?;
     for field in fields {
         packet_quality.remove(*field);
     }
