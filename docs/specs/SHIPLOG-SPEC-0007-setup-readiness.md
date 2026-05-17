@@ -436,8 +436,8 @@ Expected proof surfaces:
 
 - [`docs/proposals/SHIPLOG-PROP-0005-guided-setup-doctor.md`](../proposals/SHIPLOG-PROP-0005-guided-setup-doctor.md)
   for product intent and non-goals.
-- Future ADR:
-  `docs/adr/SHIPLOG-ADR-0008-doctor-is-setup-readiness-not-intake.md`.
+- [`docs/adr/SHIPLOG-ADR-0008-doctor-is-setup-readiness-not-intake.md`](../adr/SHIPLOG-ADR-0008-doctor-is-setup-readiness-not-intake.md)
+  for the durable decision that doctor is setup readiness, not intake.
 - Future setup readiness model tests under `apps/shiplog/tests/` or the
   implementation module test tree.
 - Future CLI tests for `doctor --setup` and `sources status` no-write behavior.
