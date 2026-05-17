@@ -90,6 +90,8 @@ release approval.
 - Labeled `share explain` follow-up render commands as "Render when ready" so
   the read-only posture explanation does not look like an immediate write step
   during post-0.8 dogfood (#389).
+- Consolidated the late post-0.8 release-hold ledger so #375-#389 can be
+  audited by product risk without implying 0.9 release approval (#390).
 
 ## [0.9.0] - Unreleased candidate
 
