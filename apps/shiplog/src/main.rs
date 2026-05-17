@@ -11196,6 +11196,7 @@ fn explain_share_profile(
         needs_review.push(format!("Workstream issue: {error}"));
     }
     append_share_explain_report_needs_review(&mut needs_review, report_json.as_ref())?;
+    append_share_explain_prior_open_source_repairs(&mut needs_review, &options.out, &run_dir)?;
     if matches!(bundle_profile, BundleProfile::Public) {
         needs_review.push(
             "Public profile should be reviewed after rendering; strict scan is a guardrail, not a guarantee."
@@ -11355,7 +11356,102 @@ fn append_share_explain_report_needs_review(
         push_unique_needs_review(needs_review, format!("Evidence debt: {summary}"));
     }
 
+    for repair in optional_json_array(report_json, "repair_items")? {
+        let kind = repair
+            .get("kind")
+            .and_then(|value| value.as_str())
+            .unwrap_or_default();
+        let repair_key = repair
+            .get("repair_key")
+            .and_then(|value| value.as_str())
+            .unwrap_or_default();
+        if kind != "source_skipped_configuration" && !repair_key.starts_with("source:") {
+            continue;
+        }
+        let summary = repair
+            .get("reason")
+            .and_then(|value| value.as_str())
+            .map(str::trim)
+            .filter(|summary| !summary.is_empty())
+            .or_else(|| {
+                repair
+                    .get("source_label")
+                    .and_then(|value| value.as_str())
+                    .map(str::trim)
+                    .filter(|label| !label.is_empty())
+            })
+            .unwrap_or(repair_key);
+        push_open_source_repair_needs_review(needs_review, summary);
+    }
+
     Ok(())
+}
+
+fn append_share_explain_prior_open_source_repairs(
+    needs_review: &mut Vec<String>,
+    out_dir: &Path,
+    run_dir: &Path,
+) -> Result<()> {
+    let Some(newer) = load_share_explain_repair_report(run_dir)? else {
+        return Ok(());
+    };
+    let Some(older) = previous_share_explain_repair_report(out_dir, run_dir)? else {
+        return Ok(());
+    };
+
+    let diff = build_repair_diff(&older, &newer);
+    for item in diff
+        .still_open
+        .iter()
+        .filter(|item| is_source_repair_item(item))
+    {
+        push_open_source_repair_needs_review(needs_review, &item.reason);
+    }
+
+    Ok(())
+}
+
+fn previous_share_explain_repair_report(
+    out_dir: &Path,
+    run_dir: &Path,
+) -> Result<Option<RepairDiffReport>> {
+    let current_run_name = run_dir.file_name();
+    let mut found_current = false;
+    for candidate in find_run_dirs_for_repair(out_dir)? {
+        if candidate.file_name() == current_run_name {
+            found_current = true;
+            continue;
+        }
+        if !found_current {
+            continue;
+        }
+        if let Some(report) = load_share_explain_repair_report(&candidate)? {
+            return Ok(Some(report));
+        }
+    }
+    Ok(None)
+}
+
+fn load_share_explain_repair_report(run_dir: &Path) -> Result<Option<RepairDiffReport>> {
+    let report_path = run_dir.join("intake.report.json");
+    if !report_path.exists() {
+        return Ok(None);
+    }
+
+    validate_intake_report(&report_path)?;
+    let report_text = std::fs::read_to_string(&report_path)
+        .with_context(|| format!("read {}", report_path.display()))?;
+    let report_json: serde_json::Value = serde_json::from_str(&report_text)
+        .with_context(|| format!("parse {}", report_path.display()))?;
+    if report_json.get("repair_items").is_none() {
+        return Ok(None);
+    }
+
+    repair_diff_report(report_path, &report_json).map(Some)
+}
+
+fn push_open_source_repair_needs_review(needs_review: &mut Vec<String>, summary: &str) {
+    push_unique_needs_review(needs_review, format!("Open source repair: {summary}"));
 }
 
 fn push_unique_needs_review(needs_review: &mut Vec<String>, item: String) {

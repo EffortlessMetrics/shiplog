@@ -100,6 +100,10 @@ release approval.
   without writing, legacy share explanations prompt rerun for review-ready
   signals, and `runs diff` no longer reports packet-readiness improvement from
   reports that lack `packet_quality` (#392).
+- Tightened `share explain` wording so source repairs that remain open after a
+  journal-only repair rerun are still named in `Needs review` from report
+  receipts, instead of making provider setup gaps look gone at share time
+  (#393).
 
 ## [0.9.0] - Unreleased candidate
 
