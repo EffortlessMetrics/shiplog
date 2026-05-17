@@ -11107,7 +11107,9 @@ fn share_explain_manager_without_key_reports_block_without_writing() {
     assert!(stdout.contains("Needs review:\n- None"));
     assert!(stdout.contains("Profile packet: not written yet"));
     assert!(stdout.contains("Share manifest: not written yet"));
+    assert!(stdout.contains("Render when ready:"));
     assert!(stdout.contains("shiplog share manager --out"));
+    assert!(!stdout.contains("\nNext:\n"));
     assert!(
         !tmp.path()
             .join("run_fixture/profiles/manager/packet.md")
@@ -11268,7 +11270,9 @@ fn share_explain_public_without_key_reports_public_posture_without_writing() {
         )
     );
     assert!(stdout.contains("Public profile uses the strictest redaction profile."));
+    assert!(stdout.contains("Render when ready:"));
     assert!(stdout.contains("shiplog share public --out"));
+    assert!(!stdout.contains("\nNext:\n"));
     assert!(
         !tmp.path()
             .join("run_fixture/profiles/public/packet.md")

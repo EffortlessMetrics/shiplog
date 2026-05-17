@@ -210,6 +210,10 @@ answer:
 - whether the missing redaction key blocks rendering;
 - what still needs review before sharing.
 
+The follow-up render commands are labeled `Render when ready:`. Treat them as
+the path after you have reviewed the posture, not as work that `share explain`
+already performed.
+
 When you are ready to write a share profile:
 
 ```bash

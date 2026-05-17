@@ -11290,7 +11290,7 @@ fn explain_share_profile(
     println!("- Redaction is deterministic for a stable key; changing the key changes aliases.");
     println!();
 
-    println!("Next:");
+    println!("Render when ready:");
     if redaction_key.is_none() {
         println!("1. {}", redaction_key_env_command("SHIPLOG_REDACT_KEY"));
         println!("2. {verify_command}");

@@ -87,6 +87,9 @@ release approval.
 - Routed repaired rerun intake handoffs to `repair diff --latest` before
   `repair plan`, so the post-repair path moves into comparison instead of
   sending users back to the planning step first (#388).
+- Labeled `share explain` follow-up render commands as "Render when ready" so
+  the read-only posture explanation does not look like an immediate write step
+  during post-0.8 dogfood (#389).
 
 ## [0.9.0] - Unreleased candidate
 
