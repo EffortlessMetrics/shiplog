@@ -8,7 +8,10 @@ use super::{
     optional_config_string, required_config_path,
 };
 use shiplog::ingest::manual::read_manual_events;
-use std::path::{Path, PathBuf};
+use std::{
+    collections::BTreeSet,
+    path::{Path, PathBuf},
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct SetupStatus {
@@ -232,6 +235,153 @@ pub(crate) fn build_setup_status(
     build_credential_items(&mut builder, &config);
     build_share_profile_items(&mut builder, &config);
     builder.finish()
+}
+
+pub(crate) fn print_setup_status(status: &SetupStatus) {
+    println!(
+        "Setup readiness: {}",
+        setup_overall_status_label(status.overall_status)
+    );
+
+    let items: Vec<&SetupItem> = status
+        .sources
+        .iter()
+        .chain(status.local_files.iter())
+        .chain(status.credentials.iter())
+        .chain(status.share_profiles.iter())
+        .collect();
+
+    print_setup_group(SetupPrintGroup::Blocked, &items);
+    print_setup_group(SetupPrintGroup::Unavailable, &items);
+    print_setup_group(SetupPrintGroup::Ready, &items);
+    print_setup_group(SetupPrintGroup::Disabled, &items);
+    print_setup_group(SetupPrintGroup::Unknown, &items);
+
+    println!();
+    println!("Next:");
+    if status.next_actions.is_empty() {
+        println!("1. shiplog intake --last-6-months --explain [writes] - collect evidence");
+        return;
+    }
+    for (index, action) in status.next_actions.iter().enumerate() {
+        println!(
+            "{}. {} [{}] - {}",
+            index + 1,
+            action.command,
+            write_label(action.writes),
+            action.label
+        );
+        println!("   Reason: {}", action.reason);
+    }
+}
+
+pub(crate) fn setup_status_needs_action(status: &SetupStatus) -> bool {
+    matches!(
+        status.overall_status,
+        SetupOverallStatus::NeedsSetup | SetupOverallStatus::Blocked
+    )
+}
+
+pub(crate) fn setup_overall_status_label(status: SetupOverallStatus) -> &'static str {
+    match status {
+        SetupOverallStatus::Ready => "Ready",
+        SetupOverallStatus::ReadyWithCaveats => "Ready with caveats",
+        SetupOverallStatus::NeedsSetup => "Needs setup",
+        SetupOverallStatus::Blocked => "Blocked",
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum SetupPrintGroup {
+    Blocked,
+    Unavailable,
+    Ready,
+    Disabled,
+    Unknown,
+}
+
+impl SetupPrintGroup {
+    fn title(self) -> &'static str {
+        match self {
+            Self::Blocked => "Blocked",
+            Self::Unavailable => "Unavailable",
+            Self::Ready => "Ready",
+            Self::Disabled => "Disabled",
+            Self::Unknown => "Unknown",
+        }
+    }
+}
+
+fn print_setup_group(group: SetupPrintGroup, items: &[&SetupItem]) {
+    let mut seen = BTreeSet::new();
+    let mut printed_heading = false;
+    for item in items
+        .iter()
+        .copied()
+        .filter(|item| setup_print_group(item.status) == group)
+    {
+        let next_command = item
+            .next_action
+            .as_ref()
+            .map(|action| action.command.clone())
+            .unwrap_or_default();
+        if !seen.insert((item.label.clone(), item.reason.clone(), next_command)) {
+            continue;
+        }
+        if !printed_heading {
+            println!();
+            println!("{}:", group.title());
+            printed_heading = true;
+        }
+        println!(
+            "- {} [{}; {}]: {}",
+            item.label,
+            setup_item_status_label(item.status),
+            if item.enabled { "enabled" } else { "disabled" },
+            item.reason
+        );
+        if let Some(action) = &item.next_action {
+            println!(
+                "  Next ({}): {}",
+                write_label(action.writes),
+                action.command
+            );
+        }
+    }
+}
+
+fn setup_print_group(status: SetupItemStatus) -> SetupPrintGroup {
+    match status {
+        SetupItemStatus::Blocked | SetupItemStatus::Malformed | SetupItemStatus::StaleConfig => {
+            SetupPrintGroup::Blocked
+        }
+        SetupItemStatus::Unavailable | SetupItemStatus::Missing => SetupPrintGroup::Unavailable,
+        SetupItemStatus::Ready | SetupItemStatus::ReadyWithCaveats => SetupPrintGroup::Ready,
+        SetupItemStatus::Disabled
+        | SetupItemStatus::OptionalAbsent
+        | SetupItemStatus::NotGenerated => SetupPrintGroup::Disabled,
+        SetupItemStatus::Unknown => SetupPrintGroup::Unknown,
+    }
+}
+
+fn setup_item_status_label(status: SetupItemStatus) -> &'static str {
+    match status {
+        SetupItemStatus::Ready => "ready",
+        SetupItemStatus::ReadyWithCaveats => "ready with caveats",
+        SetupItemStatus::Disabled => "disabled",
+        SetupItemStatus::Unavailable => "unavailable",
+        SetupItemStatus::Blocked => "blocked",
+        SetupItemStatus::StaleConfig => "stale config",
+        SetupItemStatus::Unknown => "unknown",
+        SetupItemStatus::Missing => "missing",
+        SetupItemStatus::Malformed => "malformed",
+        SetupItemStatus::OptionalAbsent => "optional absent",
+        SetupItemStatus::NotGenerated => "not generated",
+    }
+}
+
+fn write_label(writes: bool) -> &'static str {
+    if writes { "writes" } else { "read-only" }
 }
 
 impl SetupStatusBuilder {

@@ -75,8 +75,11 @@ enum Command {
         /// Limit checks to one or more sources.
         #[arg(long = "source", value_enum)]
         sources: Vec<InitSource>,
+        /// Print setup readiness without provider network calls or writes.
+        #[arg(long, conflicts_with = "repair_plan")]
+        setup: bool,
         /// Print a read-only setup repair plan instead of active doctor checks.
-        #[arg(long)]
+        #[arg(long, conflicts_with = "setup")]
         repair_plan: bool,
     },
 
@@ -7020,6 +7023,18 @@ fn run_doctor(config_path: &Path, sources: &[InitSource]) -> Result<()> {
         anyhow::bail!("doctor found {} issue(s)", report.errors);
     }
 
+    Ok(())
+}
+
+fn run_doctor_setup(config_path: &Path, sources: &[InitSource]) -> Result<()> {
+    let status = doctor::build_setup_status(config_path, sources);
+    doctor::print_setup_status(&status);
+    if doctor::setup_status_needs_action(&status) {
+        anyhow::bail!(
+            "doctor setup found {}",
+            doctor::setup_overall_status_label(status.overall_status)
+        );
+    }
     Ok(())
 }
 
