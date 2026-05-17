@@ -8540,6 +8540,61 @@ fn repair_diff_latest_shows_cleared_new_still_open_and_changed_items() -> CliTes
 }
 
 #[test]
+fn repair_diff_clears_source_repairs_only_after_source_contributes() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let out = tmp.path().join("out");
+    let out_arg = out.to_string_lossy().to_string();
+    run_intake_without_provider_tokens(tmp.path(), &out);
+    let (_, base_report) = load_first_intake_report(&out);
+
+    write_repair_diff_report(
+        &base_report,
+        &out,
+        "run_900_source_old",
+        serde_json::json!([repair_diff_item(
+            "repair_001_source_github_old",
+            "source:github:source_skipped_configuration",
+            "GitHub needs repair: GITHUB_TOKEN not found",
+            "export GITHUB_TOKEN=...",
+            "GitHub source contributes evidence on a rerun"
+        )]),
+    );
+    let newer_report_path = write_repair_diff_report(
+        &base_report,
+        &out,
+        "run_901_source_new",
+        serde_json::json!([]),
+    );
+    let mut newer_report: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&newer_report_path)?)?;
+    newer_report["included_sources"] = serde_json::json!([
+        {
+            "source": "github",
+            "source_key": "github",
+            "source_label": "GitHub",
+            "event_count": 1,
+            "summary": "GitHub collected 1 event"
+        }
+    ]);
+    std::fs::write(
+        &newer_report_path,
+        format!("{}\n", serde_json::to_string_pretty(&newer_report)?),
+    )?;
+
+    shiplog_cmd()
+        .args(["repair", "diff", "--out", out_arg.as_str(), "--latest"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Cleared: 1"))
+        .stdout(predicate::str::contains(
+            "source:github:source_skipped_configuration",
+        ))
+        .stdout(predicate::str::contains("Still open: 0"));
+
+    Ok(())
+}
+
+#[test]
 fn repair_diff_latest_without_two_reports_prints_next_command() -> CliTestResult {
     let tmp = TempDir::new()?;
     let out = tmp.path().join("missing-out");
@@ -8728,6 +8783,26 @@ fn runs_diff_latest_reports_quality_without_writing() -> CliTestResult {
     run_intake_without_provider_tokens(tmp.path(), &out);
 
     let before = file_tree_manifest(tmp.path());
+    let repair_diff = shiplog_cmd()
+        .args(["repair", "diff", "--out", out_arg.as_str(), "--latest"])
+        .assert()
+        .success();
+    let repair_diff_stdout = String::from_utf8(repair_diff.get_output().stdout.clone())?;
+    assert!(
+        repair_diff_stdout.contains("Still open:")
+            && repair_diff_stdout.contains("source:github:source_skipped_configuration"),
+        "repair diff should keep unproven source repairs open after a journal-only repair. stdout:\n{repair_diff_stdout}"
+    );
+    let repair_diff_cleared = repair_diff_stdout
+        .split("Cleared:")
+        .nth(1)
+        .and_then(|section| section.split("New:").next())
+        .unwrap_or("");
+    assert!(
+        !repair_diff_cleared.contains("source:github:source_skipped_configuration"),
+        "repair diff should not mark an unproven source repair as cleared. stdout:\n{repair_diff_stdout}"
+    );
+
     shiplog_cmd()
         .args(["runs", "diff", "--out", out_arg.as_str(), "--latest"])
         .assert()
@@ -8735,6 +8810,12 @@ fn runs_diff_latest_reports_quality_without_writing() -> CliTestResult {
         .stdout(predicate::str::contains("Packet quality diff:"))
         .stdout(predicate::str::contains("manual evidence count 0 -> 1"))
         .stdout(predicate::str::contains("claim candidates 0 -> 1"))
+        .stdout(predicate::str::contains(
+            "source:github:source_skipped_configuration still open",
+        ))
+        .stdout(
+            predicate::str::contains("source:github:source_skipped_configuration cleared").not(),
+        )
         .stdout(predicate::str::contains(format!(
             "shiplog open packet --out \"{}\"",
             out.display()
@@ -8794,6 +8875,12 @@ fn runs_diff_latest_handles_legacy_reports_without_packet_quality() -> CliTestRe
         .stdout(predicate::str::contains("evidence events 0 -> 1"))
         .stdout(predicate::str::contains("manual evidence count 0 -> 1"))
         .stdout(predicate::str::contains("coverage gaps 6 -> 0"))
+        .stdout(predicate::str::contains(
+            "source:github:source_skipped_configuration still open",
+        ))
+        .stdout(
+            predicate::str::contains("source:github:source_skipped_configuration cleared").not(),
+        )
         .stdout(predicate::str::contains(
             "packet readiness Needs evidence -> Ready for review",
         ))
