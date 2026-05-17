@@ -233,6 +233,29 @@ fn crate_readme_documents_review_ready_loop() {
 }
 
 #[test]
+fn root_readme_documents_read_first_repair_and_share_flow() {
+    let doc_path = repo_root().join("README.md");
+    let doc = std::fs::read_to_string(&doc_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", doc_path.display()));
+
+    for needle in [
+        "shiplog repair plan --latest",
+        "shiplog journal add --from-repair <repair_id>",
+        "read-first repair loop",
+        "Direct `journal add`, workstream split, or receipt-trimming commands",
+        "copyable local repairs from advisory items",
+        "shiplog share explain manager --latest",
+        "shiplog share verify manager --latest",
+        "shiplog share manager --latest --zip",
+    ] {
+        assert!(
+            doc.contains(needle),
+            "root README should mention {needle:?}"
+        );
+    }
+}
+
+#[test]
 fn install_guide_documents_current_install_paths() {
     let doc_path = repo_root().join("docs/install.md");
     let doc = std::fs::read_to_string(&doc_path)
@@ -458,7 +481,7 @@ fn release_hold_docs_record_post_0_8_soak_receipts() {
         "#337", "#338", "#339", "#340", "#341", "#342", "#343", "#344", "#345", "#346", "#347",
         "#348", "#349", "#350", "#351", "#352", "#357", "#364", "#365", "#367", "#369", "#370",
         "#371", "#372", "#373", "#374", "#375", "#376", "#377", "#378", "#379", "#380", "#381",
-        "#382", "#383", "#384",
+        "#382", "#383", "#384", "#385",
     ] {
         assert!(
             hold.contains(needle) && readiness.contains(needle),
@@ -498,6 +521,7 @@ fn release_hold_docs_record_post_0_8_soak_receipts() {
         "journal add --from-repair",
         "write-producing commands",
         "rapid first-intake guide",
+        "top-level README",
     ] {
         assert!(
             hold.contains(needle) || readiness.contains(needle),
