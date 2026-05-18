@@ -84,6 +84,18 @@ impl LocalGitIngestor {
             }
         }
 
+        // Configs produced by `shiplog init --guided` commonly use `repo = "."`.
+        // Use the opened repository workdir so local-only repos without a
+        // remote still have a stable identity.
+        if let Some(name) = repo
+            .workdir()
+            .and_then(|path| path.file_name())
+            .and_then(|name| name.to_str())
+            .filter(|name| !name.is_empty())
+        {
+            return Ok(name.to_string());
+        }
+
         // Fallback to directory name
         self.repo_path
             .file_name()
@@ -480,6 +492,26 @@ mod tests {
 
         let result = ingestor.open_repo();
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_repo_name_uses_workdir_for_dot_repo_without_remote() -> Result<()> {
+        let (_dir, repo) = create_test_repo()?;
+        let ingestor = LocalGitIngestor::new(
+            ".",
+            NaiveDate::from_ymd_opt(2025, 1, 1)
+                .ok_or_else(|| anyhow!("fixture start date should be valid"))?,
+            NaiveDate::from_ymd_opt(2025, 12, 31)
+                .ok_or_else(|| anyhow!("fixture end date should be valid"))?,
+        );
+        let expected = repo
+            .workdir()
+            .and_then(|path| path.file_name())
+            .and_then(|name| name.to_str())
+            .ok_or_else(|| anyhow!("fixture repo should have a named workdir"))?;
+
+        assert_eq!(ingestor.get_repo_name(&repo)?, expected);
+        Ok(())
     }
 
     #[test]
