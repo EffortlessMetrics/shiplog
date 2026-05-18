@@ -91,7 +91,7 @@ setup state as evidence state:
 
 The next implementation PRs should keep this ledger narrow:
 
-- front-door docs alignment.
+- release posture decision after setup-readiness docs alignment.
 
 ## Release decision use
 

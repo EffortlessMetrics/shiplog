@@ -13,6 +13,7 @@ shiplog config validate --config shiplog.toml
 shiplog config explain --config shiplog.toml
 shiplog doctor --config shiplog.toml
 shiplog doctor --config shiplog.toml --setup
+shiplog doctor --config shiplog.toml --setup --json
 shiplog sources status --config shiplog.toml
 shiplog doctor --config shiplog.toml --repair-plan
 ```
@@ -28,11 +29,13 @@ adds readiness checks such as token presence, identity discovery, output
 writability, and redaction-key safety. `doctor --setup` is read-only and
 no-network: it prints setup readiness, source state, credential presence,
 share prerequisites, and read/write next actions without collecting data or
-writing run artifacts. `sources status` is the source-only version of that
+writing run artifacts. `doctor --setup --json` prints the same typed setup model
+for agents and scripts. `sources status` is the source-only version of that
 view: it prints canonical source keys, labels, enabled state, setup status,
-reasons, and source next actions without share-profile noise. `doctor --repair-plan`
-is also read-only: it classifies setup issues and prints source-by-source repair
-commands without collecting data or writing run artifacts.
+reasons, and source next actions without share-profile noise.
+`doctor --repair-plan` is also read-only: it classifies setup issues and prints
+source-by-source repair commands without collecting data or writing run
+artifacts.
 
 For Jira and Linear identity values, run:
 
