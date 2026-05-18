@@ -323,8 +323,9 @@ public
 
 Rules:
 
-- manager share is `blocked` when the selected profile requires redaction and
-  `SHIPLOG_REDACT_KEY` or the configured redaction-key env var is absent;
+- manager share is `blocked` when `SHIPLOG_REDACT_KEY` or the configured
+  redaction-key env var is absent, even when manager is not the default
+  profile, because manager rendering remains available after setup;
 - public share is `blocked` when the redaction key is absent;
 - public share is `ready_with_caveats` or `not_generated` when a strict scan or
   rendered public packet is required before calling the profile ready;
