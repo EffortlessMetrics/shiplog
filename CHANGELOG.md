@@ -183,6 +183,9 @@ GitHub release approval.
 - Made intake prefer `doctor --setup` and `sources status` before repair plan
   when configured setup is blocked, without changing normal repair flow for
   optional autodetected provider skips (#416).
+- Pinned share-readiness consistency so doctor, `share explain`, `share
+  verify`, and manager/public rendering agree on the missing redaction-key
+  blocker without writing profile artifacts (#417).
 
 ## [0.9.0] - Unreleased candidate
 

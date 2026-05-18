@@ -12902,6 +12902,152 @@ fn share_explain_public_without_key_reports_public_posture_without_writing() {
 }
 
 #[test]
+fn share_readiness_missing_key_is_consistent_across_doctor_and_share_commands() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    collect_json_into(tmp.path());
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[shiplog]
+config_version = 1
+
+[defaults]
+out = "./out"
+window = "last-6-months"
+profile = "manager"
+
+[sources.json]
+enabled = true
+events = "./run_fixture/ledger.events.jsonl"
+coverage = "./run_fixture/coverage.manifest.json"
+"#,
+    )?;
+
+    let before = file_tree_manifest(tmp.path());
+
+    let doctor = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args(["doctor", "--setup"])
+        .assert()
+        .failure();
+    let doctor_stdout = String::from_utf8(doctor.get_output().stdout.clone())?;
+    assert!(
+        doctor_stdout.contains("Manager share")
+            && doctor_stdout.contains("Public share")
+            && doctor_stdout.contains("SHIPLOG_REDACT_KEY not set"),
+        "doctor --setup should report the shared redaction setup blocker. stdout:\n{doctor_stdout}"
+    );
+
+    let manager_explain = shiplog_cmd()
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args([
+            "share",
+            "explain",
+            "manager",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+        ])
+        .assert()
+        .success();
+    let manager_explain_stdout = String::from_utf8(manager_explain.get_output().stdout.clone())?;
+    assert!(
+        manager_explain_stdout.contains("Manager profile:")
+            && manager_explain_stdout.contains("Status: blocked")
+            && manager_explain_stdout.contains("Redaction key: missing")
+            && manager_explain_stdout.contains("Blocked:\n- missing SHIPLOG_REDACT_KEY"),
+        "share explain manager should report the same missing-key blocker. stdout:\n{manager_explain_stdout}"
+    );
+
+    let public_explain = shiplog_cmd()
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args([
+            "share",
+            "explain",
+            "public",
+            "--out",
+            tmp.path().to_str().unwrap(),
+            "--run",
+            "run_fixture",
+        ])
+        .assert()
+        .success();
+    let public_explain_stdout = String::from_utf8(public_explain.get_output().stdout.clone())?;
+    assert!(
+        public_explain_stdout.contains("Public profile:")
+            && public_explain_stdout.contains("Status: blocked")
+            && public_explain_stdout.contains("Blocked:\n- missing SHIPLOG_REDACT_KEY")
+            && public_explain_stdout.contains("Public profile should be reviewed after rendering"),
+        "share explain public should report the same missing-key blocker and public review caveat. stdout:\n{public_explain_stdout}"
+    );
+
+    for profile in ["manager", "public"] {
+        let share_stderr = String::from_utf8(
+            shiplog_cmd()
+                .env_remove("SHIPLOG_REDACT_KEY")
+                .args([
+                    "share",
+                    profile,
+                    "--out",
+                    tmp.path().to_str().unwrap(),
+                    "--run",
+                    "run_fixture",
+                ])
+                .assert()
+                .failure()
+                .get_output()
+                .stderr
+                .clone(),
+        )?;
+        assert!(
+            share_stderr.contains(&format!(
+                "{profile} share requires --redact-key or SHIPLOG_REDACT_KEY"
+            )),
+            "share {profile} should fail closed on the same missing key. stderr:\n{share_stderr}"
+        );
+
+        let verify_stderr = String::from_utf8(
+            shiplog_cmd()
+                .env_remove("SHIPLOG_REDACT_KEY")
+                .args([
+                    "share",
+                    "verify",
+                    profile,
+                    "--out",
+                    tmp.path().to_str().unwrap(),
+                    "--run",
+                    "run_fixture",
+                ])
+                .assert()
+                .failure()
+                .get_output()
+                .stderr
+                .clone(),
+        )?;
+        assert!(
+            verify_stderr.contains(&format!(
+                "{profile} share requires --redact-key or SHIPLOG_REDACT_KEY"
+            )),
+            "share verify {profile} should fail closed on the same missing key. stderr:\n{verify_stderr}"
+        );
+    }
+
+    let after = file_tree_manifest(tmp.path());
+    assert_eq!(
+        before, after,
+        "doctor, share explain, share verify, and failed share rendering should not write artifacts while redaction setup is blocked"
+    );
+    assert!(
+        !tmp.path().join("run_fixture/profiles/manager").exists()
+            && !tmp.path().join("run_fixture/profiles/public").exists(),
+        "blocked share readiness checks should not create profile directories"
+    );
+
+    Ok(())
+}
+
+#[test]
 fn share_explain_public_surfaces_packet_debt_without_writing() -> CliTestResult {
     let tmp = TempDir::new()?;
     let out = tmp.path().join("out");
