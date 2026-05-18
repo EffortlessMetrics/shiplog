@@ -7318,10 +7318,13 @@ fn review_setup_status(setup_status: &doctor::SetupStatus) -> status::SetupSumma
     if setup_status
         .sources
         .iter()
-        .chain(setup_status.credentials.iter())
         .any(setup_item_needs_review_setup)
+        || setup_status
+            .credentials
+            .iter()
+            .any(source_credential_item_needs_review_setup)
     {
-        return status::SetupSummaryStatus::ReadyWithCaveats;
+        return status::SetupSummaryStatus::NeedsSetup;
     }
     if setup_status
         .sources
@@ -7357,6 +7360,14 @@ fn setup_item_needs_review_setup(item: &doctor::SetupItem) -> bool {
         )
 }
 
+fn source_credential_item_needs_review_setup(item: &doctor::SetupItem) -> bool {
+    setup_item_needs_review_setup(item)
+        && matches!(
+            item.key.as_str(),
+            "github_token" | "gitlab_token" | "jira_token" | "linear_api_key"
+        )
+}
+
 fn review_setup_reason(
     setup_status: &doctor::SetupStatus,
     setup_summary_status: status::SetupSummaryStatus,
@@ -7378,8 +7389,13 @@ fn review_setup_reason(
     if let Some(item) = setup_status
         .sources
         .iter()
-        .chain(setup_status.credentials.iter())
         .find(|item| setup_item_needs_review_setup(item))
+        .or_else(|| {
+            setup_status
+                .credentials
+                .iter()
+                .find(|item| source_credential_item_needs_review_setup(item))
+        })
     {
         return format!("{}: {}", item.label, item.reason);
     }

@@ -239,6 +239,11 @@ GitHub release approval.
   the #430 agent-readable surface has stable fields, finite statuses,
   write-labelled next actions, receipt refs, no-secret hygiene, and additive
   compatibility rules (#431).
+- Proved `shiplog status --latest --json` stays aligned with existing receipt
+  surfaces: setup blockers match doctor JSON, source blockers match
+  `sources status`, packet readiness matches `intake.report.json`, repair
+  counts/posture match `repair plan`, comparable-run refs match `repair diff`
+  and `runs diff`, and share blockers match `share explain` (#432).
 
 ## [0.9.0] - Unreleased candidate
 
