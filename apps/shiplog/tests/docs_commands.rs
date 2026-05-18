@@ -414,10 +414,74 @@ fn guided_setup_doctor_guide_documents_setup_flow() {
         "does not call the GitHub API",
         "Doctor is not a dry-run intake",
         "read-only command first",
+        "Setup-readiness dogfood matrix",
     ] {
         assert!(
             doc.contains(needle),
             "guided setup doctor guide should mention {needle:?}"
+        );
+    }
+}
+
+#[test]
+fn guided_setup_dogfood_matrix_documents_setup_control_plane() {
+    let root = repo_root();
+    let matrix_path = root.join("docs/product/setup-readiness-dogfood-matrix.md");
+    let hold_path = root.join("docs/release/0.9.0-release-hold.md");
+    let readiness_path = root.join("docs/release/0.9.0-readiness.md");
+
+    let matrix = std::fs::read_to_string(&matrix_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", matrix_path.display()));
+    let hold = std::fs::read_to_string(&hold_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", hold_path.display()));
+    let readiness = std::fs::read_to_string(&readiness_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", readiness_path.display()));
+
+    assert!(
+        hold.contains("setup-readiness dogfood matrix") && readiness.contains("#411"),
+        "release hold/readiness docs should link the setup-readiness dogfood matrix without lifting the hold"
+    );
+
+    for needle in [
+        "0.9 remains paused",
+        "does not approve tag, publish",
+        "manual `release.yml` dispatch",
+        "Setup readiness is a prerequisite signal",
+        "source freshness",
+        "packet readiness",
+        "repair clearance",
+        "share posture",
+        "shiplog init --guided",
+        "shiplog doctor --setup",
+        "shiplog sources status",
+        "shiplog intake --last-6-months --explain",
+        "shiplog repair plan --latest",
+        "shiplog journal add --from-repair <repair_id>",
+        "shiplog repair diff --latest",
+        "shiplog runs diff --latest",
+        "shiplog share explain manager --latest",
+        "Empty directory",
+        "Git repo with no config",
+        "Git repo with guided config",
+        "Malformed manual journal",
+        "Disabled manual source",
+        "Enabled GitHub without token",
+        "Manager share without redaction key",
+        "Public share cautious path",
+        "Old config / old report compatibility",
+        "Windows path/env-var display",
+        "Trusted proof",
+        "Missing proof",
+        "Accepted caveat",
+        "doctor --setup --json",
+        "without scraping text",
+        "not itself the release decision",
+        "Current decision: keep the `v0.9.0` hold active (#398, updated by #410)",
+        "owner explicitly approves any release execution",
+    ] {
+        assert!(
+            matrix.contains(needle),
+            "guided setup dogfood matrix should mention {needle:?}"
         );
     }
 }
