@@ -3975,6 +3975,241 @@ user = "octo"
     Ok(())
 }
 
+#[test]
+fn doctor_setup_json_hardens_older_setup_config_states() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    git2::Repository::init(tmp.path())?;
+    std::fs::write(tmp.path().join("manual_events.yaml"), "version: nope\n")?;
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[shiplog]
+config_version = 1
+
+[defaults]
+out = "./out"
+window = "last-6-months"
+profile = "internal"
+
+[sources.git]
+enabled = true
+repo = "."
+
+[sources.manual]
+enabled = false
+events = "./manual_events.yaml"
+
+[sources.github]
+enabled = true
+user = "octo"
+
+[sources.json]
+enabled = true
+events = "./missing.events.jsonl"
+coverage = "./missing.coverage.json"
+"#,
+    )?;
+
+    let before = file_tree_manifest(tmp.path());
+    let assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args(["doctor", "--setup", "--json"])
+        .assert()
+        .failure();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
+    let after = file_tree_manifest(tmp.path());
+    assert_eq!(
+        before, after,
+        "doctor --setup --json should classify setup compatibility without writes"
+    );
+
+    let json: serde_json::Value = serde_json::from_str(&stdout)?;
+    assert_eq!(json["overall_status"], "needs_setup");
+    assert_eq!(
+        setup_json_item(&json, "local_files", "config")["status"],
+        "ready"
+    );
+    assert_eq!(setup_json_item(&json, "sources", "git")["status"], "ready");
+
+    let manual = setup_json_item(&json, "sources", "manual");
+    assert_eq!(manual["enabled"], false);
+    assert_eq!(manual["status"], "disabled");
+    assert!(
+        !manual["reason"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("malformed"),
+        "disabled manual setup should not validate malformed manual_events.yaml"
+    );
+    assert_eq!(
+        setup_json_item(&json, "local_files", "manual_events")["status"],
+        "optional_absent"
+    );
+
+    let github = setup_json_item(&json, "sources", "github");
+    assert_eq!(github["enabled"], true);
+    assert_eq!(github["status"], "unavailable");
+    assert!(
+        github["reason"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("GITHUB_TOKEN not set")
+    );
+
+    let json_source = setup_json_item(&json, "sources", "json");
+    assert_eq!(json_source["status"], "unavailable");
+    assert!(
+        json_source["reason"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("missing.events.jsonl")
+    );
+
+    let sources = json["sources"].as_array().ok_or_else(|| {
+        std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "sources should be an array",
+        )
+    })?;
+    assert!(
+        sources
+            .iter()
+            .all(|source| source["status"] != "stale_config"),
+        "missing optional credentials, disabled manual setup, and missing local paths should not be stale_config"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn doctor_setup_json_blocks_unsupported_config_version_as_stale_config() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    write_manual_events(&tmp.path().join("manual_events.yaml"));
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[shiplog]
+config_version = 2
+
+[defaults]
+out = "./out"
+window = "last-6-months"
+profile = "internal"
+
+[sources.manual]
+enabled = true
+events = "./manual_events.yaml"
+"#,
+    )?;
+
+    let before = file_tree_manifest(tmp.path());
+    let assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env("SHIPLOG_REDACT_KEY", "stable-redact-key")
+        .args(["doctor", "--setup", "--json"])
+        .assert()
+        .failure();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
+    let after = file_tree_manifest(tmp.path());
+    assert_eq!(
+        before, after,
+        "unsupported config version diagnosis should stay read-only"
+    );
+
+    let json: serde_json::Value = serde_json::from_str(&stdout)?;
+    assert_eq!(json["overall_status"], "blocked");
+    let config = setup_json_item(&json, "local_files", "config");
+    assert_eq!(config["status"], "stale_config");
+    assert!(
+        config["reason"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("unsupported config_version 2")
+    );
+    assert_eq!(
+        config["next_action"]["command"],
+        "shiplog config migrate --config shiplog.toml"
+    );
+    assert_eq!(config["next_action"]["writes"], true);
+    assert_eq!(
+        setup_json_item(&json, "sources", "manual")["status"],
+        "ready"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn doctor_setup_ignores_old_reports_and_reads_current_setup_state() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let old_run = tmp.path().join("out").join("run_legacy");
+    std::fs::create_dir_all(&old_run)?;
+    std::fs::write(
+        old_run.join("intake.report.json"),
+        r#"{
+  "schema_version": 1,
+  "run_id": "run_legacy",
+  "included_sources": [],
+  "skipped_sources": [],
+  "actions": []
+}
+"#,
+    )?;
+    std::fs::write(
+        old_run.join("packet.md"),
+        "# Setup readiness\n\nReady\n\nThis stale packet text must not drive doctor.\n",
+    )?;
+    std::fs::write(tmp.path().join("manual_events.yaml"), "events: []\n")?;
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[shiplog]
+config_version = 1
+
+[defaults]
+out = "./out"
+window = "last-6-months"
+profile = "internal"
+
+[sources.manual]
+enabled = true
+events = "./manual_events.yaml"
+"#,
+    )?;
+
+    let before = file_tree_manifest(tmp.path());
+    let assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env("SHIPLOG_REDACT_KEY", "stable-redact-key")
+        .args(["doctor", "--setup", "--json"])
+        .assert()
+        .failure();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
+    let after = file_tree_manifest(tmp.path());
+    assert_eq!(
+        before, after,
+        "doctor should not rewrite or reinterpret old report artifacts"
+    );
+
+    let json: serde_json::Value = serde_json::from_str(&stdout)?;
+    assert_eq!(json["overall_status"], "blocked");
+    let manual = setup_json_item(&json, "sources", "manual");
+    assert_eq!(manual["status"], "blocked");
+    assert!(
+        manual["reason"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("manual_events.yaml malformed")
+    );
+    assert!(
+        !stdout.contains("run_legacy")
+            && !stdout.contains("packet_quality")
+            && !stdout.contains("Setup readiness\\n\\nReady"),
+        "doctor setup JSON should come from setup files, not old report or packet artifacts"
+    );
+
+    Ok(())
+}
+
 fn setup_json_item<'a>(
     json: &'a serde_json::Value,
     group: &str,

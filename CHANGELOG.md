@@ -194,6 +194,11 @@ GitHub release approval.
   `repo = "."` could pass doctor path readiness but fail intake without an
   `origin` remote; local Git now derives repository identity from the workdir
   before falling back to the configured path name (#419).
+- Hardened setup-readiness compatibility for older and partial setup states:
+  missing optional provider tokens and missing local paths stay `unavailable`,
+  disabled manual journals are not validated as malformed, unsupported config
+  versions are the reserved `stale_config` case, and old reports/packets do not
+  drive doctor setup state (#420).
 
 ## [0.9.0] - Unreleased candidate
 
