@@ -6860,6 +6860,83 @@ fn intake_created_git_config_outside_repo_points_to_current_repo() {
 }
 
 #[test]
+fn guided_git_repo_without_origin_collects_from_dot_repo() {
+    let Some(repo) = create_local_git_repo() else {
+        eprintln!(
+            "skipping guided_git_repo_without_origin_collects_from_dot_repo: git not available"
+        );
+        return;
+    };
+    let out = repo.path().join("out");
+    std::fs::write(
+        repo.path().join("manual_events.yaml"),
+        "version: 1\ngenerated_at: 2026-01-01T00:00:00Z\nevents: []\n",
+    )
+    .unwrap();
+    std::fs::write(
+        repo.path().join("shiplog.toml"),
+        r#"[shiplog]
+config_version = 1
+
+[defaults]
+window = "last-6-months"
+profile = "internal"
+
+[sources.git]
+enabled = true
+repo = "."
+include_merges = false
+
+[sources.manual]
+enabled = true
+events = "./manual_events.yaml"
+"#,
+    )
+    .unwrap();
+
+    let assert = shiplog_cmd()
+        .current_dir(repo.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args([
+            "intake",
+            "--out",
+            out.to_str().unwrap(),
+            "--year",
+            "2025",
+            "--no-open",
+            "--explain",
+        ])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
+
+    assert!(
+        stdout.contains("Collected:\n- Local git: success"),
+        "repo = \".\" should collect local git evidence even when no origin remote exists. stdout:\n{stdout}"
+    );
+    assert!(
+        !stdout.contains("Could not determine repository name"),
+        "local git source should derive repo identity from the workdir before failing setup. stdout:\n{stdout}"
+    );
+
+    let run_dir = first_run_dir(&out);
+    let report_json: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(run_dir.join("intake.report.json")).unwrap())
+            .unwrap();
+    assert!(
+        report_json["included_sources"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|source| source["source_key"] == "git" && source["event_count"] == 1),
+        "report should include the local git event collected from repo = \".\""
+    );
+}
+
+#[test]
 fn intake_source_decisions_skip_configured_git_directory_that_is_not_repo() {
     let tmp = TempDir::new().unwrap();
     let not_repo = tmp.path().join("not-a-repo");

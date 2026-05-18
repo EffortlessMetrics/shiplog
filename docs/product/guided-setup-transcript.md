@@ -211,9 +211,10 @@ Observed:
 - This transcript used the empty-directory/manual-first path. It did not prove a
   token-backed provider setup.
 - A preliminary Git fixture without an origin remote showed a local-git caveat:
-  doctor can prove the repository path is readable, while intake may still need
-  repository identity to collect Git evidence. That belongs in follow-up
-  wording or compatibility hardening, not this transcript PR.
+  doctor could prove the repository path was readable, while intake still
+  needed repository identity to collect Git evidence. The follow-up regression
+  coverage now keeps `repo = "."` local Git intake from failing when no origin
+  remote exists (#419).
 - Manager/public rendering remains blocked until a stable redaction key exists.
 - Public strict verification was not exercised here; it remains covered by the
   share-readiness tests and review-ready matrix.
