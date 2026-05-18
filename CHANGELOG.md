@@ -228,6 +228,10 @@ GitHub release approval.
   latest run discovery, old/malformed `intake.report.json` handling,
   `source.failures.json`, share manifests, and derived repair/runs diff receipt
   pairs without scraping packet Markdown (#428).
+- Added the human `shiplog status --latest` review-loop cockpit, joining setup,
+  latest-run, packet readiness, source, repair, diff, share, blocker,
+  next-action, and receipt summaries while preserving read-only behavior and
+  release-hold posture (#429).
 
 ## [0.9.0] - Unreleased candidate
 

@@ -105,6 +105,9 @@ enum Command {
         cmd: SourcesCommand,
     },
 
+    /// Inspect review-loop state across setup, evidence, repair, diff, and share receipts.
+    Status(StatusArgs),
+
     /// List and explain named review periods from shiplog.toml.
     Periods {
         #[command(subcommand)]
@@ -496,6 +499,19 @@ struct SourcesStatusArgs {
     /// Limit status to one or more sources.
     #[arg(long = "source", value_enum)]
     sources: Vec<InitSource>,
+}
+
+#[derive(Args, Debug)]
+struct StatusArgs {
+    /// Path to shiplog.toml.
+    #[arg(long, default_value = CONFIG_FILENAME)]
+    config: PathBuf,
+    /// Output directory containing run folders.
+    #[arg(long, default_value = "./out")]
+    out: PathBuf,
+    /// Inspect the most recent run explicitly.
+    #[arg(long)]
+    latest: bool,
 }
 
 #[derive(Subcommand, Debug)]
@@ -7169,6 +7185,769 @@ fn run_sources_status(config_path: &Path, sources: &[InitSource]) -> Result<()> 
         anyhow::bail!("source status found setup action(s)");
     }
     Ok(())
+}
+
+fn run_status(args: StatusArgs) -> Result<()> {
+    let _explicit_latest = args.latest;
+    let setup_status = doctor::build_setup_status(&args.config, &[]);
+    let resolution = status::resolve_latest_review_loop_receipts(&args.out);
+    let report_json = load_status_report_json(&resolution);
+    let mut status = status::ReviewLoopStatus::from_inputs(review_loop_status_inputs(
+        &setup_status,
+        &resolution,
+        report_json.as_ref(),
+    ));
+    apply_status_output_context(&mut status, &args.out);
+
+    print_review_loop_status(&status, &resolution);
+    Ok(())
+}
+
+fn review_loop_status_inputs(
+    setup_status: &doctor::SetupStatus,
+    resolution: &status::ReviewLoopReceiptResolution,
+    report_json: Option<&serde_json::Value>,
+) -> status::ReviewLoopStatusInputs {
+    let setup_summary = status_setup_summary(setup_status);
+    let latest_run = resolution
+        .latest_run
+        .as_ref()
+        .map(|run| status::LatestRunSummary::new(&run.run_id, &run.report_path));
+    let mut receipt_refs = status_resolution_receipt_refs(&setup_summary, resolution);
+    let mut inputs = status::ReviewLoopStatusInputs {
+        setup_summary,
+        latest_run,
+        diff_summary: status_diff_summary(resolution),
+        receipt_refs: receipt_refs.clone(),
+        ..status::ReviewLoopStatusInputs::default()
+    };
+
+    if let Some(report_json) = report_json {
+        inputs.packet_readiness = status_packet_readiness(report_json);
+        inputs.source_summary = status_source_summary(report_json, resolution);
+        inputs.repair_summary = status_repair_summary(report_json);
+        inputs.share_summary = status_share_summary(setup_status, resolution);
+        receipt_refs.extend(inputs.packet_readiness.receipt_refs.clone());
+        receipt_refs.extend(inputs.source_summary.receipt_refs.clone());
+        receipt_refs.extend(inputs.repair_summary.receipt_refs.clone());
+        receipt_refs.extend(inputs.share_summary.receipt_refs.clone());
+        inputs.receipt_refs = receipt_refs;
+    }
+
+    inputs
+}
+
+fn load_status_report_json(
+    resolution: &status::ReviewLoopReceiptResolution,
+) -> Option<serde_json::Value> {
+    let latest = resolution.latest_run.as_ref()?;
+    if latest.report_state != status::ResolvedJsonState::Parsed {
+        return None;
+    }
+
+    std::fs::read_to_string(&latest.report_path)
+        .ok()
+        .and_then(|text| serde_json::from_str::<serde_json::Value>(&text).ok())
+}
+
+fn status_setup_summary(setup_status: &doctor::SetupStatus) -> status::SetupStatusSummary {
+    let mut next_actions = Vec::new();
+    let review_setup_status = review_setup_status(setup_status);
+    if !matches!(review_setup_status, status::SetupSummaryStatus::Ready) {
+        next_actions.push(status::StatusNextAction::doctor_setup(
+            "inspect setup readiness before evidence collection",
+        ));
+    }
+    next_actions.extend(
+        setup_status
+            .next_actions
+            .iter()
+            .filter(|action| !is_share_setup_action(action))
+            .map(status_next_action_from_setup),
+    );
+
+    let reason = review_setup_reason(setup_status, review_setup_status);
+    let mut summary = match review_setup_status {
+        status::SetupSummaryStatus::Ready => status::SetupStatusSummary::ready(reason),
+        status::SetupSummaryStatus::ReadyWithCaveats => {
+            status::SetupStatusSummary::ready_with_caveats(reason)
+        }
+        status::SetupSummaryStatus::NeedsSetup => {
+            status::SetupStatusSummary::needs_setup(reason, next_actions)
+        }
+        status::SetupSummaryStatus::Blocked => {
+            status::SetupStatusSummary::blocked(reason, next_actions)
+        }
+        status::SetupSummaryStatus::Unknown => status::SetupStatusSummary::unknown(),
+    };
+    summary.receipt_refs = setup_status_receipt_refs(setup_status);
+    summary
+}
+
+fn review_setup_status(setup_status: &doctor::SetupStatus) -> status::SetupSummaryStatus {
+    if setup_status
+        .local_files
+        .iter()
+        .any(setup_item_blocks_review)
+    {
+        return status::SetupSummaryStatus::Blocked;
+    }
+    if setup_status
+        .local_files
+        .iter()
+        .any(setup_item_missing_review)
+    {
+        return status::SetupSummaryStatus::NeedsSetup;
+    }
+    let any_ready_source = setup_status
+        .sources
+        .iter()
+        .any(|item| matches!(item.status, doctor::SetupItemStatus::Ready));
+    if !any_ready_source {
+        return status::SetupSummaryStatus::NeedsSetup;
+    }
+    if setup_status
+        .sources
+        .iter()
+        .chain(setup_status.credentials.iter())
+        .any(setup_item_needs_review_setup)
+    {
+        return status::SetupSummaryStatus::ReadyWithCaveats;
+    }
+    if setup_status
+        .sources
+        .iter()
+        .any(|item| matches!(item.status, doctor::SetupItemStatus::Disabled))
+    {
+        return status::SetupSummaryStatus::ReadyWithCaveats;
+    }
+    status::SetupSummaryStatus::Ready
+}
+
+fn setup_item_blocks_review(item: &doctor::SetupItem) -> bool {
+    item.enabled
+        && matches!(
+            item.status,
+            doctor::SetupItemStatus::Blocked
+                | doctor::SetupItemStatus::Malformed
+                | doctor::SetupItemStatus::StaleConfig
+        )
+}
+
+fn setup_item_missing_review(item: &doctor::SetupItem) -> bool {
+    item.enabled && matches!(item.status, doctor::SetupItemStatus::Missing)
+}
+
+fn setup_item_needs_review_setup(item: &doctor::SetupItem) -> bool {
+    item.enabled
+        && matches!(
+            item.status,
+            doctor::SetupItemStatus::Unavailable
+                | doctor::SetupItemStatus::Unknown
+                | doctor::SetupItemStatus::OptionalAbsent
+        )
+}
+
+fn review_setup_reason(
+    setup_status: &doctor::SetupStatus,
+    setup_summary_status: status::SetupSummaryStatus,
+) -> String {
+    if let Some(item) = setup_status
+        .local_files
+        .iter()
+        .find(|item| setup_item_blocks_review(item) || setup_item_missing_review(item))
+    {
+        return format!("{}: {}", item.label, item.reason);
+    }
+    if !setup_status
+        .sources
+        .iter()
+        .any(|item| matches!(item.status, doctor::SetupItemStatus::Ready))
+    {
+        return "no source is ready for evidence collection".to_string();
+    }
+    if let Some(item) = setup_status
+        .sources
+        .iter()
+        .chain(setup_status.credentials.iter())
+        .find(|item| setup_item_needs_review_setup(item))
+    {
+        return format!("{}: {}", item.label, item.reason);
+    }
+    if setup_summary_status == status::SetupSummaryStatus::ReadyWithCaveats {
+        return "setup can collect evidence, with optional source caveats".to_string();
+    }
+    "setup can collect evidence".to_string()
+}
+
+fn status_next_action_from_setup(action: &doctor::SetupNextAction) -> status::StatusNextAction {
+    status::StatusNextAction {
+        key: action.key.clone(),
+        label: action.label.clone(),
+        command: action.command.clone(),
+        writes: action.writes,
+        reason: action.reason.clone(),
+        preconditions: Vec::new(),
+        priority: action.priority,
+        receipt_refs: setup_receipt_refs_to_status(&action.receipt_refs),
+    }
+}
+
+fn is_share_setup_action(action: &doctor::SetupNextAction) -> bool {
+    action.key.starts_with("share_")
+        || action.key.contains("shiplog_redact_key")
+        || action.command.starts_with("shiplog share ")
+        || action.label.to_ascii_lowercase().contains("redaction")
+        || action.reason.contains("redaction")
+}
+
+fn setup_status_receipt_refs(setup_status: &doctor::SetupStatus) -> Vec<status::StatusReceiptRef> {
+    let mut refs = Vec::new();
+    for item in setup_status
+        .sources
+        .iter()
+        .chain(setup_status.local_files.iter())
+        .chain(setup_status.credentials.iter())
+        .chain(setup_status.share_profiles.iter())
+    {
+        refs.extend(setup_receipt_refs_to_status(&item.receipt_refs));
+    }
+    refs.sort();
+    refs.dedup();
+    refs
+}
+
+fn setup_receipt_refs_to_status(
+    receipt_refs: &[doctor::SetupReceiptRef],
+) -> Vec<status::StatusReceiptRef> {
+    receipt_refs
+        .iter()
+        .map(|receipt| status::StatusReceiptRef {
+            field: receipt.field.clone(),
+            kind: "setup_readiness".to_string(),
+            path: receipt.path.as_ref().map(|path| display_path_for_cli(path)),
+            key: receipt.key.clone(),
+        })
+        .collect()
+}
+
+fn status_packet_readiness(report_json: &serde_json::Value) -> status::PacketReadinessSummary {
+    let readiness = report_json
+        .get("packet_quality")
+        .and_then(|quality| quality.get("packet_readiness"));
+    let status_value = readiness
+        .and_then(|readiness| readiness.get("status"))
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or_default();
+    let summary = readiness
+        .and_then(|readiness| readiness.get("summary"))
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or("packet readiness receipt is missing");
+
+    match status_value {
+        "ready" => status::PacketReadinessSummary::ready(summary),
+        "ready_with_caveats" => status::PacketReadinessSummary::ready_with_caveats(summary),
+        "needs_evidence" => status::PacketReadinessSummary::needs_evidence(summary),
+        "blocked" | "needs_repair" => status::PacketReadinessSummary::needs_repair(summary),
+        _ => status::PacketReadinessSummary::unknown(),
+    }
+}
+
+fn status_source_summary(
+    report_json: &serde_json::Value,
+    resolution: &status::ReviewLoopReceiptResolution,
+) -> status::SourceStatusSummary {
+    let mut summary = status::SourceStatusSummary::default();
+
+    if let Some(included_sources) = report_json
+        .get("included_sources")
+        .and_then(serde_json::Value::as_array)
+    {
+        for source in included_sources {
+            let source_key = report_string(source, "source_key")
+                .or_else(|| report_string(source, "source"))
+                .unwrap_or_else(|| "unknown".to_string());
+            let source_label = report_string(source, "source_label").unwrap_or(source_key.clone());
+            let event_count = source
+                .get("event_count")
+                .and_then(serde_json::Value::as_u64)
+                .unwrap_or_default() as usize;
+            summary.included.push(status::SourceCountSummary {
+                source_key,
+                source_label,
+                event_count,
+            });
+        }
+        summary.receipt_refs.push(status::StatusReceiptRef::field(
+            "included_sources",
+            "intake_report",
+        ));
+    }
+
+    if let Some(skipped_sources) = report_json
+        .get("skipped_sources")
+        .and_then(serde_json::Value::as_array)
+    {
+        for source in skipped_sources {
+            let source_key = report_string(source, "source_key")
+                .or_else(|| report_string(source, "source"))
+                .unwrap_or_else(|| "unknown".to_string());
+            let source_label = report_string(source, "source_label").unwrap_or(source_key.clone());
+            let reason = report_string(source, "reason").unwrap_or_else(|| "skipped".to_string());
+            let issue = status::SourceIssueSummary {
+                source_key,
+                source_label,
+                reason: reason.clone(),
+            };
+            if reason.to_ascii_lowercase().contains("disabled") {
+                summary.disabled.push(issue);
+            } else {
+                summary.unavailable.push(issue);
+            }
+        }
+        summary.receipt_refs.push(status::StatusReceiptRef::field(
+            "skipped_sources",
+            "intake_report",
+        ));
+    }
+
+    if let Some(source_failures) = &resolution.source_failures {
+        summary.receipt_refs.push(status::StatusReceiptRef::path(
+            "source_failures",
+            "source_failures",
+            source_failures.path.clone(),
+        ));
+    }
+
+    summary
+}
+
+fn status_repair_summary(report_json: &serde_json::Value) -> status::RepairStatusSummary {
+    let mut summary = status::RepairStatusSummary::default();
+    let Some(repair_items) = report_json
+        .get("repair_items")
+        .and_then(serde_json::Value::as_array)
+    else {
+        return summary;
+    };
+
+    summary.open_items = repair_items.len();
+    for item in repair_items {
+        let action = item.get("action").and_then(serde_json::Value::as_object);
+        let action_kind = action
+            .and_then(|action| action.get("kind"))
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or_default();
+        let command = action
+            .and_then(|action| action.get("command"))
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or_default();
+        if action_kind == "journal_add" && action_writes(command) {
+            summary.safe_write_count += 1;
+        } else if action_kind == "configure_source" && action_writes(command) {
+            summary.setup_blocked_write_count += 1;
+        }
+    }
+    summary.receipt_refs.push(status::StatusReceiptRef::field(
+        "repair_items",
+        "intake_report",
+    ));
+    summary
+}
+
+fn status_diff_summary(
+    resolution: &status::ReviewLoopReceiptResolution,
+) -> status::DiffStatusSummary {
+    if resolution.latest_run.is_none() {
+        return status::DiffStatusSummary::unknown();
+    }
+    if resolution.comparable_prior_run.is_none() {
+        return status::DiffStatusSummary::no_prior_comparable_run("no prior comparable run found");
+    }
+    if resolution.derived_diff_receipts.is_empty() {
+        let mut refs = Vec::new();
+        if let Some(prior) = &resolution.comparable_prior_run {
+            refs.push(status::StatusReceiptRef::path(
+                "diff.from_report",
+                "intake_report",
+                prior.report_path.clone(),
+            ));
+        }
+        if let Some(latest) = &resolution.latest_run {
+            refs.push(status::StatusReceiptRef::path(
+                "diff.to_report",
+                "intake_report",
+                latest.report_path.clone(),
+            ));
+        }
+        return status::DiffStatusSummary::not_generated(
+            "prior comparable run is available, but diff receipts were not generated",
+            refs,
+        );
+    }
+
+    let mut refs = Vec::new();
+    for receipt in &resolution.derived_diff_receipts {
+        refs.extend(receipt.receipt_refs.clone());
+    }
+    status::DiffStatusSummary::not_generated(
+        "prior comparable run is available; run repair diff or runs diff to inspect movement",
+        refs,
+    )
+}
+
+fn status_share_summary(
+    setup_status: &doctor::SetupStatus,
+    resolution: &status::ReviewLoopReceiptResolution,
+) -> status::ShareStatusSummary {
+    let mut summary = status::ShareStatusSummary {
+        profiles: setup_status
+            .share_profiles
+            .iter()
+            .map(status_share_profile_from_setup)
+            .collect(),
+        receipt_refs: Vec::new(),
+    };
+    for manifest in &resolution.share_manifests {
+        summary.receipt_refs.push(status::StatusReceiptRef::path(
+            "share_manifest",
+            "share_manifest",
+            manifest.path.clone(),
+        ));
+    }
+    summary
+}
+
+fn status_share_profile_from_setup(item: &doctor::SetupItem) -> status::ShareProfileSummary {
+    let status = match item.status {
+        doctor::SetupItemStatus::Ready => status::ShareProfileStatus::Ready,
+        doctor::SetupItemStatus::ReadyWithCaveats => status::ShareProfileStatus::ReadyWithCaveats,
+        doctor::SetupItemStatus::NotGenerated => status::ShareProfileStatus::NotGenerated,
+        doctor::SetupItemStatus::Unknown => status::ShareProfileStatus::Unknown,
+        _ => status::ShareProfileStatus::Blocked,
+    };
+    status::ShareProfileSummary {
+        profile_key: item.key.clone(),
+        profile_label: item.label.trim_end_matches(" share").to_string(),
+        status,
+        reason: item.reason.clone(),
+        receipt_refs: setup_receipt_refs_to_status(&item.receipt_refs),
+    }
+}
+
+fn status_resolution_receipt_refs(
+    setup_summary: &status::SetupStatusSummary,
+    resolution: &status::ReviewLoopReceiptResolution,
+) -> Vec<status::StatusReceiptRef> {
+    let mut refs = setup_summary.receipt_refs.clone();
+    if let Some(latest_run) = &resolution.latest_run {
+        refs.push(status::StatusReceiptRef::path(
+            "latest_run.report_path",
+            "intake_report",
+            latest_run.report_path.clone(),
+        ));
+    }
+    if let Some(source_failures) = &resolution.source_failures {
+        refs.push(status::StatusReceiptRef::path(
+            "source_failures",
+            "source_failures",
+            source_failures.path.clone(),
+        ));
+    }
+    for manifest in &resolution.share_manifests {
+        refs.push(status::StatusReceiptRef::path(
+            "share_manifest",
+            "share_manifest",
+            manifest.path.clone(),
+        ));
+    }
+    for problem in &resolution.problems {
+        if let Some(path) = &problem.path {
+            refs.push(status::StatusReceiptRef::path(
+                format!("receipt_problem.{}", problem.key),
+                "receipt_problem",
+                path.clone(),
+            ));
+        } else {
+            refs.push(status::StatusReceiptRef::keyed(
+                "receipt_problem",
+                "receipt_problem",
+                problem.key.clone(),
+            ));
+        }
+    }
+    refs
+}
+
+fn report_string(value: &serde_json::Value, field: &str) -> Option<String> {
+    value
+        .get(field)
+        .and_then(serde_json::Value::as_str)
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(std::string::ToString::to_string)
+}
+
+fn apply_status_output_context(review_status: &mut status::ReviewLoopStatus, out_dir: &Path) {
+    if is_default_out_setting(out_dir) {
+        return;
+    }
+    let out_arg = quote_cli_value(&out_dir.display().to_string());
+    for action in &mut review_status.next_actions {
+        action.command = match action.key.as_str() {
+            "intake" => format!("shiplog intake --out {out_arg} --last-6-months --explain"),
+            "repair_plan" => format!("shiplog repair plan --out {out_arg} --latest"),
+            "journal_add_from_repair" => {
+                format!("shiplog journal add --from-repair <repair_id> --out {out_arg} --latest")
+            }
+            "share_explain_manager" => {
+                format!("shiplog share explain manager --out {out_arg} --latest")
+            }
+            _ => action.command.clone(),
+        };
+    }
+}
+
+fn print_review_loop_status(
+    review_status: &status::ReviewLoopStatus,
+    resolution: &status::ReviewLoopReceiptResolution,
+) {
+    println!(
+        "Review loop status: {}",
+        review_overall_status_label(review_status.overall_status)
+    );
+
+    println!();
+    println!("Setup:");
+    println!(
+        "  {} - {}",
+        setup_summary_status_label(review_status.setup_summary.status),
+        review_status.setup_summary.reason
+    );
+
+    println!();
+    println!("Latest run:");
+    if let Some(latest_run) = &review_status.latest_run {
+        println!("  run_id: {}", latest_run.run_id);
+        println!("  report: {}", latest_run.report_path);
+        if let Some(resolved) = &resolution.latest_run {
+            println!(
+                "  report state: {}",
+                resolved_json_state_label(resolved.report_state)
+            );
+        }
+    } else {
+        println!("  none found under {}", resolution.out_dir);
+    }
+
+    println!();
+    println!("Evidence:");
+    println!(
+        "  packet readiness: {} - {}",
+        packet_readiness_status_label(review_status.packet_readiness.status),
+        review_status.packet_readiness.reason
+    );
+    if review_status.source_summary.included.is_empty() {
+        println!("  included sources: none");
+    } else {
+        let included = review_status
+            .source_summary
+            .included
+            .iter()
+            .map(|source| format!("{} {}", source.source_key, source.event_count))
+            .collect::<Vec<_>>()
+            .join(", ");
+        println!("  included sources: {included}");
+    }
+    if review_status.source_summary.unavailable.is_empty() {
+        println!("  unavailable sources: none");
+    } else {
+        println!("  unavailable sources:");
+        for source in &review_status.source_summary.unavailable {
+            println!("    - {}: {}", source.source_label, source.reason);
+        }
+    }
+    if !review_status.source_summary.disabled.is_empty() {
+        println!("  disabled sources:");
+        for source in &review_status.source_summary.disabled {
+            println!("    - {}: {}", source.source_label, source.reason);
+        }
+    }
+
+    println!();
+    println!("Repair:");
+    println!("  open items: {}", review_status.repair_summary.open_items);
+    println!(
+        "  safe writes: {}",
+        review_status.repair_summary.safe_write_count
+    );
+    println!(
+        "  setup-blocked writes: {}",
+        review_status.repair_summary.setup_blocked_write_count
+    );
+    if review_status.repair_summary.applied_not_rerun {
+        println!("  state: repair applied; intake rerun needed");
+    }
+
+    println!();
+    println!("Diff:");
+    println!(
+        "  status: {} - {}",
+        diff_summary_status_label(review_status.diff_summary.status),
+        review_status.diff_summary.reason
+    );
+
+    println!();
+    println!("Share:");
+    if review_status.share_summary.profiles.is_empty() {
+        println!("  not checked yet");
+    } else {
+        for profile in &review_status.share_summary.profiles {
+            println!(
+                "  {}: {} - {}",
+                profile.profile_label,
+                share_profile_status_label(profile.status),
+                profile.reason
+            );
+        }
+    }
+
+    if !review_status.blocking_reasons.is_empty() {
+        println!();
+        println!("Blocking reasons:");
+        for reason in &review_status.blocking_reasons {
+            println!("  - {} [{}]: {}", reason.label, reason.scope, reason.reason);
+        }
+    }
+
+    println!();
+    println!("Next:");
+    if review_status.next_actions.is_empty() {
+        println!("  none");
+    } else {
+        for (index, action) in review_status.next_actions.iter().enumerate() {
+            println!(
+                "  {}. {} [{}] - {}",
+                index + 1,
+                action.command,
+                write_posture_label(action.writes),
+                action.label
+            );
+            println!("     Reason: {}", action.reason);
+            if !action.preconditions.is_empty() {
+                println!("     Preconditions: {}", action.preconditions.join(", "));
+            }
+        }
+    }
+
+    println!();
+    println!("Receipts:");
+    print_review_status_receipts(review_status, resolution);
+    if !resolution.problems.is_empty() {
+        println!();
+        println!("Receipt issues:");
+        for problem in &resolution.problems {
+            match &problem.path {
+                Some(path) => println!(
+                    "  - {} [{}]: {} ({})",
+                    problem.key, problem.status, problem.reason, path
+                ),
+                None => println!(
+                    "  - {} [{}]: {}",
+                    problem.key, problem.status, problem.reason
+                ),
+            }
+        }
+    }
+}
+
+fn print_review_status_receipts(
+    review_status: &status::ReviewLoopStatus,
+    resolution: &status::ReviewLoopReceiptResolution,
+) {
+    println!("  - setup: doctor setup model");
+    let mut printed_paths = BTreeSet::new();
+    for receipt in &review_status.receipt_refs {
+        if let Some(path) = &receipt.path
+            && printed_paths.insert((receipt.kind.clone(), path.clone()))
+        {
+            println!("  - {}: {}", receipt.kind, path);
+        }
+    }
+    if review_status.latest_run.is_none() && printed_paths.is_empty() {
+        println!(
+            "  - out_dir: {} (no run receipts found)",
+            resolution.out_dir
+        );
+    }
+}
+
+fn review_overall_status_label(status: status::ReviewLoopOverallStatus) -> &'static str {
+    match status {
+        status::ReviewLoopOverallStatus::Unknown => "Unknown",
+        status::ReviewLoopOverallStatus::NeedsSetup => "Needs setup",
+        status::ReviewLoopOverallStatus::ReadyToCollect => "Ready to collect",
+        status::ReviewLoopOverallStatus::NeedsEvidence => "Needs evidence",
+        status::ReviewLoopOverallStatus::NeedsRepair => "Needs repair",
+        status::ReviewLoopOverallStatus::RepairInProgress => "Repair in progress",
+        status::ReviewLoopOverallStatus::ReadyWithCaveats => "Ready with caveats",
+        status::ReviewLoopOverallStatus::ReadyToExplainShare => "Ready to explain share",
+        status::ReviewLoopOverallStatus::ShareBlocked => "Share blocked",
+        status::ReviewLoopOverallStatus::ReadyToShare => "Ready to share",
+        status::ReviewLoopOverallStatus::Blocked => "Blocked",
+    }
+}
+
+fn setup_summary_status_label(status: status::SetupSummaryStatus) -> &'static str {
+    match status {
+        status::SetupSummaryStatus::Ready => "ready",
+        status::SetupSummaryStatus::ReadyWithCaveats => "ready with caveats",
+        status::SetupSummaryStatus::NeedsSetup => "needs setup",
+        status::SetupSummaryStatus::Blocked => "blocked",
+        status::SetupSummaryStatus::Unknown => "unknown",
+    }
+}
+
+fn packet_readiness_status_label(status: status::PacketReadinessStatus) -> &'static str {
+    match status {
+        status::PacketReadinessStatus::Ready => "ready",
+        status::PacketReadinessStatus::ReadyWithCaveats => "ready with caveats",
+        status::PacketReadinessStatus::NeedsEvidence => "needs evidence",
+        status::PacketReadinessStatus::NeedsRepair => "needs repair",
+        status::PacketReadinessStatus::Unknown => "unknown",
+    }
+}
+
+fn diff_summary_status_label(status: status::DiffSummaryStatus) -> &'static str {
+    match status {
+        status::DiffSummaryStatus::Available => "available",
+        status::DiffSummaryStatus::NoPriorComparableRun => "no prior comparable run",
+        status::DiffSummaryStatus::NotGenerated => "not generated",
+        status::DiffSummaryStatus::Unknown => "unknown",
+    }
+}
+
+fn share_profile_status_label(status: status::ShareProfileStatus) -> &'static str {
+    match status {
+        status::ShareProfileStatus::Ready => "ready",
+        status::ShareProfileStatus::ReadyWithCaveats => "ready with caveats",
+        status::ShareProfileStatus::Blocked => "blocked",
+        status::ShareProfileStatus::NotGenerated => "not generated",
+        status::ShareProfileStatus::Unknown => "unknown",
+    }
+}
+
+fn resolved_json_state_label(state: status::ResolvedJsonState) -> &'static str {
+    match state {
+        status::ResolvedJsonState::Parsed => "parsed",
+        status::ResolvedJsonState::Missing => "missing",
+        status::ResolvedJsonState::Malformed => "malformed",
+        status::ResolvedJsonState::Unreadable => "unreadable",
+    }
+}
+
+fn write_posture_label(writes: bool) -> &'static str {
+    if writes { "writes" } else { "read-only" }
 }
 
 fn run_doctor_repair_plan(config_path: &Path, sources: &[InitSource]) -> Result<()> {
