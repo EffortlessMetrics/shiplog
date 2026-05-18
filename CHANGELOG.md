@@ -216,6 +216,10 @@ GitHub release approval.
   status vocabulary, receipt-triggered conditions, setup/evidence/repair/share
   boundaries, JSON shape, safety rules, and proof expectations without lifting
   the 0.9 release hold (#425).
+- Recorded the review-loop status ADR: `shiplog status` must read typed models
+  and durable receipts instead of packet/report Markdown, provider probes,
+  implicit intake reruns, share rendering, LLM summaries, or release execution
+  (#426).
 
 ## [0.9.0] - Unreleased candidate
 

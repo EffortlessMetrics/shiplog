@@ -5,6 +5,8 @@ Owner: product/schema
 Created: 2026-05-18
 Related proposal:
 [`SHIPLOG-PROP-0006-review-loop-status`](../proposals/SHIPLOG-PROP-0006-review-loop-status.md)
+Related ADR:
+[`SHIPLOG-ADR-0009-status-reads-receipts-not-packet-prose`](../adr/SHIPLOG-ADR-0009-status-reads-receipts-not-packet-prose.md)
 Related setup spec:
 [`SHIPLOG-SPEC-0007-setup-readiness`](SHIPLOG-SPEC-0007-setup-readiness.md)
 Related report spec:

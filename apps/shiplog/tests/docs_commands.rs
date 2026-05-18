@@ -914,11 +914,14 @@ fn review_loop_status_spec_defines_receipt_contract() {
     let root = repo_root();
     let spec_path = root.join("docs/specs/SHIPLOG-SPEC-0008-review-loop-status.md");
     let proposal_path = root.join("docs/proposals/SHIPLOG-PROP-0006-review-loop-status.md");
+    let adr_path = root.join("docs/adr/SHIPLOG-ADR-0009-status-reads-receipts-not-packet-prose.md");
 
     let spec = std::fs::read_to_string(&spec_path)
         .unwrap_or_else(|err| panic!("read {}: {err}", spec_path.display()));
     let proposal = std::fs::read_to_string(&proposal_path)
         .unwrap_or_else(|err| panic!("read {}: {err}", proposal_path.display()));
+    let adr = std::fs::read_to_string(&adr_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", adr_path.display()));
 
     for needle in [
         "SHIPLOG-SPEC-0008: Review Loop Status",
@@ -992,6 +995,62 @@ fn review_loop_status_spec_defines_receipt_contract() {
         proposal.contains("SHIPLOG-SPEC-0008-review-loop-status.md"),
         "proposal should link the follow-up status spec"
     );
+    assert!(
+        spec.contains("SHIPLOG-ADR-0009-status-reads-receipts-not-packet-prose.md"),
+        "spec should link the follow-up status ADR"
+    );
+    assert!(
+        proposal.contains("SHIPLOG-ADR-0009-status-reads-receipts-not-packet-prose.md"),
+        "proposal should link the follow-up status ADR"
+    );
+    assert!(
+        adr.contains("SHIPLOG-SPEC-0008-review-loop-status.md"),
+        "ADR should link the review-loop status spec"
+    );
+}
+
+#[test]
+fn review_loop_status_adr_keeps_status_receipt_derived() {
+    let adr_path =
+        repo_root().join("docs/adr/SHIPLOG-ADR-0009-status-reads-receipts-not-packet-prose.md");
+    let adr = std::fs::read_to_string(&adr_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", adr_path.display()));
+
+    for needle in [
+        "Status Reads Receipts, Not Packet Prose",
+        "shiplog status",
+        "shiplog status --latest",
+        "shiplog status --latest --json",
+        "typed models and durable machine receipts only",
+        "setup readiness model",
+        "intake.report.json",
+        "repair diff receipts",
+        "runs diff receipts",
+        "share explain, share verify, and share readiness receipts",
+        "bundle and share manifests",
+        "setup readiness != evidence quality",
+        "evidence quality != repair readiness",
+        "repair readiness != share readiness",
+        "share explain != share render",
+        "status != packet prose",
+        "must not:",
+        "scrape `packet.md`",
+        "query GitHub, GitLab, Jira, Linear",
+        "rerun intake implicitly",
+        "mutate config",
+        "run repair commands automatically",
+        "render manager or public share artifacts",
+        "call an LLM",
+        "generate performance-review prose",
+        "disclose secret values",
+        "does not authorize tagging",
+        "release creation, workflow dispatch",
+    ] {
+        assert!(
+            adr.contains(needle),
+            "review-loop status ADR should mention {needle:?}"
+        );
+    }
 }
 
 #[test]

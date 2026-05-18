@@ -4,6 +4,10 @@ Status: proposed
 Owner: product/docs
 Created: 2026-05-18
 Target release: after the paused 0.9.0 review-ready and guided setup decision
+Follow-up spec:
+[`SHIPLOG-SPEC-0008-review-loop-status`](../specs/SHIPLOG-SPEC-0008-review-loop-status.md)
+Architecture decision:
+[`SHIPLOG-ADR-0009-status-reads-receipts-not-packet-prose`](../adr/SHIPLOG-ADR-0009-status-reads-receipts-not-packet-prose.md)
 
 ## Summary
 
