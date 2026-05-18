@@ -207,6 +207,11 @@ GitHub release approval.
   setup-readiness operationalization, include the setup front door in unreleased
   candidate scope, and require explicit owner approval plus current preflight
   before any release execution (#422).
+- Accepted the scheduled 2026-05-18 Factory Droid security scan report with
+  zero findings as hygiene, without changing product or release posture (#423).
+- Proposed the next non-release review-loop status lane so setup, evidence,
+  repair, diff, and share receipts can become one read-only status surface for
+  humans and agents (#424).
 
 ## [0.9.0] - Unreleased candidate
 

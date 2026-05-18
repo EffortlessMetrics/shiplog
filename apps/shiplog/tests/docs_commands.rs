@@ -851,6 +851,65 @@ fn guided_setup_dogfood_matrix_documents_setup_control_plane() {
 }
 
 #[test]
+fn review_loop_status_proposal_defines_receipt_front_panel() {
+    let doc_path = repo_root().join("docs/proposals/SHIPLOG-PROP-0006-review-loop-status.md");
+    let doc = std::fs::read_to_string(&doc_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", doc_path.display()));
+
+    for needle in [
+        "Review Loop Status",
+        "shiplog status --latest",
+        "shiplog status --latest --json",
+        "setup, evidence, repair",
+        "diff, and share receipts",
+        "What state is my review loop in, and what is the next safe action?",
+        "read-only control-plane surface",
+        "overall_status",
+        "setup_summary",
+        "latest_run",
+        "packet_readiness",
+        "source_summary",
+        "repair_summary",
+        "diff_summary",
+        "share_summary",
+        "next_actions[]",
+        "blocking_reasons[]",
+        "receipt_refs[]",
+        "setup blocked -> do not run evidence repair",
+        "share blocked -> do not render manager or public packets",
+        "setup readiness != evidence quality",
+        "repair readiness != share readiness",
+        "share explain != share render",
+        "status != packet prose",
+        "setup readiness model used by `doctor --setup`",
+        "`intake.report.json`",
+        "repair-plan data derived from `repair_items`",
+        "repair-diff report data when available",
+        "runs-diff report data when available",
+        "share explain / share readiness data",
+        "no provider network calls",
+        "no writes",
+        "no Markdown scraping",
+        "no generated performance-review prose",
+        "Status must not:",
+        "query providers",
+        "mutate config",
+        "render share artifacts",
+        "scrape `packet.md`",
+        "call an LLM",
+        "dashboard, TUI, GUI",
+        "release execution",
+        "status reads receipts, not packet prose",
+        "0.9 hold active",
+    ] {
+        assert!(
+            doc.contains(needle),
+            "review-loop status proposal should mention {needle:?}"
+        );
+    }
+}
+
+#[test]
 fn release_hold_guard_blocks_held_0_9_tag() {
     let root = repo_root();
     let workflow_path = root.join(".github/workflows/release.yml");
