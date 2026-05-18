@@ -3826,6 +3826,155 @@ user = "octo"
     Ok(())
 }
 
+#[test]
+fn doctor_setup_json_exposes_agent_safe_decisions_for_blocked_setup() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    git2::Repository::init(tmp.path())?;
+    std::fs::write(tmp.path().join("manual_events.yaml"), "events: []\n")?;
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[shiplog]
+config_version = 1
+
+[defaults]
+out = "./out"
+window = "last-6-months"
+profile = "manager"
+
+[sources.git]
+enabled = true
+repo = "."
+
+[sources.manual]
+enabled = true
+events = "./manual_events.yaml"
+
+[sources.github]
+enabled = true
+user = "octo"
+"#,
+    )?;
+
+    let before = file_tree_manifest(tmp.path());
+    let assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args(["doctor", "--setup", "--json"])
+        .assert()
+        .failure();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
+    let after = file_tree_manifest(tmp.path());
+    assert_eq!(
+        before, after,
+        "doctor --setup --json should be a read-only agent control-plane read"
+    );
+    assert!(
+        !stdout.contains("GITHUB_TOKEN=") && !stdout.contains("SHIPLOG_REDACT_KEY="),
+        "doctor JSON should name credential requirements without printing secret assignments"
+    );
+
+    let json: serde_json::Value = serde_json::from_str(&stdout)?;
+    assert_eq!(json["overall_status"], "needs_setup");
+
+    let git = setup_json_item(&json, "sources", "git");
+    assert_eq!(git["status"], "ready");
+    assert_eq!(git["enabled"], true);
+
+    let manual = setup_json_item(&json, "sources", "manual");
+    assert_eq!(manual["status"], "blocked");
+    assert!(
+        manual["reason"]
+            .as_str()
+            .unwrap()
+            .contains("manual_events.yaml malformed")
+    );
+    assert_eq!(manual["next_action"]["command"], "shiplog doctor --setup");
+    assert_eq!(manual["next_action"]["writes"], false);
+
+    let manual_file = setup_json_item(&json, "local_files", "manual_events");
+    assert_eq!(manual_file["status"], "malformed");
+    assert_eq!(
+        manual_file["next_action"]["command"],
+        "shiplog doctor --setup"
+    );
+    assert_eq!(manual_file["next_action"]["writes"], false);
+
+    let github = setup_json_item(&json, "sources", "github");
+    assert_eq!(github["status"], "unavailable");
+    assert!(
+        github["reason"]
+            .as_str()
+            .unwrap()
+            .contains("GITHUB_TOKEN not set")
+    );
+    assert_eq!(github["next_action"]["command"], "set GITHUB_TOKEN");
+    assert_eq!(github["next_action"]["writes"], false);
+
+    let manager = setup_json_item(&json, "share_profiles", "manager");
+    let public = setup_json_item(&json, "share_profiles", "public");
+    assert_eq!(manager["status"], "blocked");
+    assert_eq!(public["status"], "blocked");
+    assert!(
+        manager["reason"]
+            .as_str()
+            .unwrap()
+            .contains("SHIPLOG_REDACT_KEY not set")
+    );
+    assert!(
+        public["reason"]
+            .as_str()
+            .unwrap()
+            .contains("SHIPLOG_REDACT_KEY not set")
+    );
+
+    let next_commands: Vec<&str> = json["next_actions"]
+        .as_array()
+        .expect("next_actions should be an array")
+        .iter()
+        .map(|action| {
+            action["command"]
+                .as_str()
+                .expect("next action should include command")
+        })
+        .collect();
+    assert!(
+        next_commands.contains(&"shiplog doctor --setup"),
+        "agent JSON should route broken setup back to doctor before repair"
+    );
+    assert!(
+        next_commands.contains(&"set GITHUB_TOKEN"),
+        "agent JSON should expose missing provider credential setup"
+    );
+    assert!(
+        next_commands.contains(&"set SHIPLOG_REDACT_KEY"),
+        "agent JSON should expose missing redaction setup before share rendering"
+    );
+    assert!(
+        next_commands
+            .iter()
+            .all(|command| !command.contains("journal add --from-repair")),
+        "agent JSON should not offer evidence-repair writes while manual setup is malformed"
+    );
+    assert!(
+        next_commands
+            .iter()
+            .all(|command| !command.starts_with("shiplog share manager")
+                && !command.starts_with("shiplog share public")),
+        "agent JSON should not offer share rendering while redaction setup is blocked"
+    );
+    assert!(
+        json["next_actions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|action| action["writes"] == false),
+        "blocked setup guidance should stay read-first and avoid write-producing actions"
+    );
+
+    Ok(())
+}
+
 fn setup_json_item<'a>(
     json: &'a serde_json::Value,
     group: &str,

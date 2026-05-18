@@ -177,6 +177,9 @@ GitHub release approval.
 - Added a doctor/source-status consistency proof so the source-only CLI view
   stays aligned with the setup-readiness JSON model without leaking
   share/redaction setup noise (#414).
+- Added an agent-safe doctor JSON proof so blocked setup state exposes
+  read-only setup actions and withholds dead-end evidence-repair/share-render
+  write commands (#415).
 
 ## [0.9.0] - Unreleased candidate
 
