@@ -5,8 +5,8 @@
 **Hold receipt:** [`docs/release/0.9.0-release-hold.md`](docs/release/0.9.0-release-hold.md)
 **Readiness ledger:** [`docs/release/0.9.0-readiness.md`](docs/release/0.9.0-readiness.md)
 
-> Review-ready packet work is on `main` as an unreleased 0.9 candidate. Do not
-> tag or publish 0.9.0 from this handoff.
+> Review-ready packet and Guided Setup / Doctor work are on `main` as an
+> unreleased 0.9 candidate. Do not tag or publish 0.9.0 from this handoff.
 
 ## Current State
 
@@ -26,8 +26,15 @@
   and needs-review posture without requiring a redaction key or writing profile
   artifacts.
 - `shiplog runs diff --latest` shows packet quality movement across reruns.
+- `shiplog init --guided`, `shiplog doctor --setup`, and
+  `shiplog sources status` provide the guided setup front door before intake.
+- Setup-blocked repairs route to doctor/source-status before repair action, and
+  doctor reports manager/public share setup readiness without rendering
+  profiles.
 - The review-ready packet guide explains the collect, repair, rerun, compare,
   interpret, share loop.
+- The Guided Setup / Doctor guide explains local-only, manual-only,
+  token-backed GitHub, manager-share-ready, and public-share-cautious modes.
 - The front-door product proof covers cold intake through share posture
   explanation without provider mutation.
 

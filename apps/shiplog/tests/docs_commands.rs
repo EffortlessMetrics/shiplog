@@ -588,7 +588,8 @@ fn release_hold_docs_record_post_0_8_soak_receipts() {
         "#348", "#349", "#350", "#351", "#352", "#357", "#364", "#365", "#367", "#369", "#370",
         "#371", "#372", "#373", "#374", "#375", "#376", "#377", "#378", "#379", "#380", "#381",
         "#382", "#383", "#384", "#385", "#386", "#387", "#388", "#389", "#390", "#391", "#392",
-        "#393", "#394", "#395", "#396", "#397", "#398",
+        "#393", "#394", "#395", "#396", "#397", "#398", "#399", "#400", "#401", "#402", "#403",
+        "#404", "#405", "#406", "#407", "#408", "#409", "#410",
     ] {
         assert!(
             hold.contains(needle) && readiness.contains(needle),
@@ -659,6 +660,12 @@ fn release_hold_docs_record_post_0_8_soak_receipts() {
         "release decision",
         "keep the 0.9 hold active",
         "owner approval and final release preflight are not present",
+        "Guided Setup / Doctor",
+        "setup readiness",
+        "shiplog doctor --setup",
+        "shiplog sources status",
+        "shiplog init --guided",
+        "unreleased candidate scope",
     ] {
         assert!(
             hold.contains(needle) || readiness.contains(needle),
@@ -686,20 +693,25 @@ fn release_decision_keeps_0_9_hold_without_execution() {
 
     for needle in [
         "**Decision:** keep hold",
+        "Guided Setup / Doctor",
         "Do not tag, publish to crates.io, create a GitHub release",
-        "A. Keep hold",
-        "B. Resume 0.9 release",
-        "C. Fold more hardening into main and reassess",
+        "A. Keep hold and continue Guided Setup",
+        "B. Cut 0.9 as review-ready packet only",
+        "C. Expand 0.9 scope to include Guided Setup / Doctor and release later",
         "#390",
         "#397",
+        "#409",
+        "#410",
+        "selected for candidate scope only",
+        "landed quickly and cleanly",
         "Owner explicitly approves release execution",
         "not met",
         "crates.io latest remains `shiplog = \"0.8.0\"`",
         "scripts/check-release-hold.sh",
         "owner_approved_release_execution",
         "final release preflight has not been rerun",
-        "Likely next non-release lane",
-        "guided setup/doctor",
+        "does not lift the release hold",
+        "Do not extend Guided Setup / Doctor just to make 0.9 larger",
     ] {
         assert!(
             decision.contains(needle),
@@ -711,7 +723,9 @@ fn release_decision_keeps_0_9_hold_without_execution() {
         hold.contains("0.9.0-release-decision.md")
             && readiness.contains("0.9.0-release-decision.md")
             && matrix.contains("0.9.0-release-decision.md")
-            && matrix.contains("Current decision: keep the `v0.9.0` hold active (#398)"),
+            && matrix.contains(
+                "Current decision: keep the `v0.9.0` hold active (#398, updated by #410)"
+            ),
         "hold, readiness, and matrix docs should link the release decision without lifting the hold"
     );
 }
