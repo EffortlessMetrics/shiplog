@@ -50,6 +50,7 @@ The intended front-door flow is:
 shiplog init --guided
 shiplog doctor --setup
 shiplog sources status
+shiplog doctor --setup --json
 shiplog intake --last-6-months --explain
 shiplog repair plan --latest
 shiplog journal add --from-repair <repair_id>
@@ -59,8 +60,9 @@ shiplog runs diff --latest
 shiplog share explain manager --latest
 ```
 
-Doctor and `sources status` should help humans and agents choose one of these
-safe next moves:
+Doctor, `sources status`, and `doctor --setup --json` should help humans and
+agents choose one of these safe next moves without scraping text or treating
+setup state as evidence state:
 
 - run intake;
 - fix a local file first;
@@ -88,9 +90,7 @@ safe next moves:
 
 The next implementation PRs should keep this ledger narrow:
 
-- JSON output for `shiplog doctor --setup --json` so agents can read the setup
-  model without scraping text;
-- schema or snapshot coverage for setup readiness JSON;
+- schema/example coverage for setup readiness JSON;
 - doctor/source-status consistency tests;
 - setup-blocked repair proof that stays read-first while local setup is broken;
 - share readiness consistency across doctor, share explain, share verify, and
@@ -108,7 +108,7 @@ Current decision: keep the `v0.9.0` hold active (#398, updated by #410).
 The setup lane is ready for a release posture decision only when:
 
 - every row has current proof or an explicit accepted caveat;
-- setup readiness JSON exists or the lack of JSON is consciously accepted;
+- setup readiness JSON exists and schema/examples are pinned;
 - doctor and `sources status` cannot drift on source identity/status;
 - setup-blocked repair and share paths remain read-first/no-write-safe;
 - `v0.9.0` still has not been tagged, published to crates.io, or released on

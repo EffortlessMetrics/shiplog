@@ -14,6 +14,7 @@ The front-door loop is:
 shiplog init --guided
 shiplog doctor --setup
 shiplog sources status
+shiplog doctor --setup --json
 shiplog intake --last-6-months --explain
 shiplog repair plan --latest
 shiplog share explain manager --latest
@@ -54,6 +55,13 @@ Read source-only state when you do not want share or credential noise:
 shiplog sources status
 ```
 
+Read the same setup state as JSON when an agent or script needs to decide the
+next safe command without scraping terminal text:
+
+```bash
+shiplog doctor --setup --json
+```
+
 If doctor reports `Needs setup`, read the blocked/unavailable groups first.
 That state is useful. It means Shiplog found setup work before a later command
 failed or produced a caveated packet.
@@ -72,6 +80,12 @@ failed or produced a caveated packet.
 
 Each item names the reason and, when possible, a next action. The action label
 says whether the command is read-only or writes.
+
+`--json` emits the same setup model with stable keys, status strings, reasons,
+receipt refs, and `writes` flags. It still does not query providers, render
+share packets, mutate config, or print secret values. A `Needs setup` or
+`Blocked` result remains a non-zero command result after the JSON is printed, so
+agents should parse stdout and treat the exit status as the stop signal.
 
 Examples:
 

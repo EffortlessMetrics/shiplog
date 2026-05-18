@@ -6,13 +6,14 @@ use super::{
     ShiplogConfig, config_base_dir, config_redaction_key_env, config_version_state,
     env_var_present, gitlab_api_base, optional_config_string, required_config_path,
 };
+use serde::Serialize;
 use shiplog::ingest::manual::read_manual_events;
 use std::{
     collections::BTreeSet,
     path::{Path, PathBuf},
 };
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub(crate) struct SetupStatus {
     pub(crate) overall_status: SetupOverallStatus,
     pub(crate) sources: Vec<SetupItem>,
@@ -22,7 +23,8 @@ pub(crate) struct SetupStatus {
     pub(crate) next_actions: Vec<SetupNextAction>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub(crate) enum SetupOverallStatus {
     Ready,
     ReadyWithCaveats,
@@ -30,7 +32,8 @@ pub(crate) enum SetupOverallStatus {
     Blocked,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub(crate) enum SetupItemStatus {
     Ready,
     ReadyWithCaveats,
@@ -66,7 +69,7 @@ impl SetupItemStatus {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub(crate) struct SetupItem {
     pub(crate) key: String,
     pub(crate) label: String,
@@ -78,7 +81,7 @@ pub(crate) struct SetupItem {
     pub(crate) receipt_refs: Vec<SetupReceiptRef>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub(crate) struct SetupNextAction {
     pub(crate) key: String,
     pub(crate) label: String,
@@ -89,7 +92,7 @@ pub(crate) struct SetupNextAction {
     pub(crate) receipt_refs: Vec<SetupReceiptRef>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub(crate) struct SetupReceiptRef {
     pub(crate) field: String,
     pub(crate) key: Option<String>,
@@ -498,7 +501,12 @@ impl SetupStatusBuilder {
     }
 
     fn finish(mut self) -> SetupStatus {
-        self.next_actions.sort_by_key(|action| action.priority);
+        self.next_actions.sort_by(|left, right| {
+            left.priority
+                .cmp(&right.priority)
+                .then_with(|| left.key.cmp(&right.key))
+                .then_with(|| left.command.cmp(&right.command))
+        });
         self.next_actions
             .dedup_by(|left, right| left.command == right.command);
 

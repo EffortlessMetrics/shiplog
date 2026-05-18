@@ -31,9 +31,10 @@ pub(super) fn dispatch() -> Result<()> {
             sources,
             setup,
             repair_plan,
+            json,
         } => {
             if setup {
-                run_doctor_setup(&config, &sources)?;
+                run_doctor_setup(&config, &sources, json)?;
             } else if repair_plan {
                 run_doctor_repair_plan(&config, &sources)?;
             } else {
