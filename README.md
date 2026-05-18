@@ -154,6 +154,8 @@ For local UI, agent, or support/debug tooling, export the validated control
 surface with `shiplog report export-agent-pack --latest --output agent-pack.json`;
 the derived schema is documented in
 [docs/schemas/agent-pack-v1.md](docs/schemas/agent-pack-v1.md).
+Setup readiness JSON from `shiplog doctor --setup --json` is documented in
+[docs/schemas/setup-readiness-v1.md](docs/schemas/setup-readiness-v1.md).
 
 ### 1. Initialize local files
 

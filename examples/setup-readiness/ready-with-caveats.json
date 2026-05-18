@@ -1,0 +1,122 @@
+{
+  "overall_status": "ready_with_caveats",
+  "sources": [
+    {
+      "key": "github",
+      "label": "GitHub",
+      "enabled": true,
+      "status": "ready",
+      "reason": "token present, user octo",
+      "next_action": null,
+      "writes": false,
+      "receipt_refs": [
+        {
+          "field": "source",
+          "key": "github",
+          "path": null
+        }
+      ]
+    }
+  ],
+  "local_files": [
+    {
+      "key": "config",
+      "label": "Config",
+      "enabled": true,
+      "status": "ready",
+      "reason": "config_version 1",
+      "next_action": null,
+      "writes": false,
+      "receipt_refs": [
+        {
+          "field": "config",
+          "key": "shiplog.toml",
+          "path": "shiplog.toml"
+        }
+      ]
+    }
+  ],
+  "credentials": [
+    {
+      "key": "github_token",
+      "label": "GitHub token",
+      "enabled": true,
+      "status": "ready",
+      "reason": "GITHUB_TOKEN present",
+      "next_action": null,
+      "writes": false,
+      "receipt_refs": [
+        {
+          "field": "env",
+          "key": "GITHUB_TOKEN",
+          "path": null
+        }
+      ]
+    },
+    {
+      "key": "redaction_key",
+      "label": "Redaction key",
+      "enabled": true,
+      "status": "ready",
+      "reason": "SHIPLOG_REDACT_KEY present",
+      "next_action": null,
+      "writes": false,
+      "receipt_refs": [
+        {
+          "field": "env",
+          "key": "SHIPLOG_REDACT_KEY",
+          "path": null
+        }
+      ]
+    }
+  ],
+  "share_profiles": [
+    {
+      "key": "manager",
+      "label": "Manager share",
+      "enabled": true,
+      "status": "ready_with_caveats",
+      "reason": "SHIPLOG_REDACT_KEY present; manager share needs redaction before rendering",
+      "next_action": {
+        "key": "share_explain_manager",
+        "label": "Explain manager share posture",
+        "command": "shiplog share explain manager --latest",
+        "writes": false,
+        "reason": "read profile posture before rendering",
+        "priority": 8,
+        "receipt_refs": [
+          {
+            "field": "share_profile",
+            "key": "manager",
+            "path": null
+          }
+        ]
+      },
+      "writes": false,
+      "receipt_refs": [
+        {
+          "field": "share_profile",
+          "key": "manager",
+          "path": null
+        }
+      ]
+    }
+  ],
+  "next_actions": [
+    {
+      "key": "share_explain_manager",
+      "label": "Explain manager share posture",
+      "command": "shiplog share explain manager --latest",
+      "writes": false,
+      "reason": "read profile posture before rendering",
+      "priority": 8,
+      "receipt_refs": [
+        {
+          "field": "share_profile",
+          "key": "manager",
+          "path": null
+        }
+      ]
+    }
+  ]
+}

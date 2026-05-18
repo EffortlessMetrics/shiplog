@@ -90,7 +90,6 @@ setup state as evidence state:
 
 The next implementation PRs should keep this ledger narrow:
 
-- schema/example coverage for setup readiness JSON;
 - doctor/source-status consistency tests;
 - setup-blocked repair proof that stays read-first while local setup is broken;
 - share readiness consistency across doctor, share explain, share verify, and

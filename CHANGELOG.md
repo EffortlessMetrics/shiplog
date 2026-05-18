@@ -171,6 +171,9 @@ GitHub release approval.
 - Added `shiplog doctor --setup --json` as a read-only, no-network setup
   readiness control-plane output for agents and scripts, reusing the typed
   doctor model without printing secret values (#412).
+- Added a setup-readiness JSON contract under `contracts/schemas/`, with
+  examples and schema docs for the `doctor --setup --json` control-plane output
+  (#413).
 
 ## [0.9.0] - Unreleased candidate
 

@@ -208,6 +208,342 @@ fn agent_pack_schema_docs_describe_v1_contract() {
 }
 
 #[test]
+fn setup_readiness_schema_docs_and_examples_describe_v1_contract() {
+    let root = repo_root();
+    let doc_path = root.join("docs/schemas/setup-readiness-v1.md");
+    let schema_path = root.join("contracts/schemas/setup-readiness.v1.schema.json");
+    let guide_path = root.join("docs/guides/guided-setup-doctor.md");
+    let matrix_path = root.join("docs/product/setup-readiness-dogfood-matrix.md");
+
+    let doc = std::fs::read_to_string(&doc_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", doc_path.display()));
+    let schema_text = std::fs::read_to_string(&schema_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", schema_path.display()));
+    let guide = std::fs::read_to_string(&guide_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", guide_path.display()));
+    let matrix = std::fs::read_to_string(&matrix_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", matrix_path.display()));
+    let schema: serde_json::Value = serde_json::from_str(&schema_text)
+        .unwrap_or_else(|err| panic!("parse {}: {err}", schema_path.display()));
+
+    assert_eq!(schema["additionalProperties"], false);
+    assert_eq!(
+        schema["properties"]["overall_status"]["$ref"],
+        "#/$defs/overall_status"
+    );
+    assert!(
+        schema["propertyNames"].is_object(),
+        "setup readiness schema should include property-name hygiene"
+    );
+
+    for field in [
+        "overall_status",
+        "sources",
+        "local_files",
+        "credentials",
+        "share_profiles",
+        "next_actions",
+    ] {
+        assert!(
+            schema["required"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|value| value == field),
+            "schema should require {field}"
+        );
+        assert!(
+            doc.contains(field),
+            "setup readiness schema docs should mention {field}"
+        );
+    }
+
+    for needle in [
+        "contracts/schemas/setup-readiness.v1.schema.json",
+        "shiplog doctor --setup --json",
+        "examples/setup-readiness/blocked.json",
+        "examples/setup-readiness/needs-setup.json",
+        "examples/setup-readiness/ready-with-caveats.json",
+        "setup readiness, not evidence freshness",
+        "ready_with_caveats",
+        "needs_setup",
+        "blocked",
+        "next_action.writes",
+        "must not include token values",
+        "does not query providers",
+        "does not mutate config",
+        "does not render share artifacts",
+        "does not scrape `packet.md`",
+    ] {
+        assert!(
+            doc.contains(needle),
+            "setup readiness schema docs should mention {needle:?}"
+        );
+    }
+    assert!(
+        guide.contains("docs/schemas/setup-readiness-v1.md")
+            || guide.contains("../schemas/setup-readiness-v1.md"),
+        "guided setup guide should link setup readiness schema docs"
+    );
+    assert!(
+        !matrix.contains("schema/example coverage for setup readiness JSON"),
+        "dogfood matrix should no longer list schema/example coverage as missing proof"
+    );
+
+    let overall_statuses = schema_string_set(&schema, "/$defs/overall_status/enum");
+    for status in ["ready", "ready_with_caveats", "needs_setup", "blocked"] {
+        assert!(
+            overall_statuses.contains(status),
+            "schema should allow overall status {status}"
+        );
+    }
+
+    let item_statuses = schema_string_set(&schema, "/$defs/item_status/enum");
+    for status in [
+        "ready",
+        "ready_with_caveats",
+        "disabled",
+        "unavailable",
+        "blocked",
+        "stale_config",
+        "unknown",
+        "missing",
+        "malformed",
+        "optional_absent",
+        "not_generated",
+    ] {
+        assert!(
+            item_statuses.contains(status),
+            "schema should allow setup item status {status}"
+        );
+    }
+
+    for example in [
+        "blocked.json",
+        "needs-setup.json",
+        "ready-with-caveats.json",
+    ] {
+        let example_path = root.join("examples/setup-readiness").join(example);
+        let text = std::fs::read_to_string(&example_path)
+            .unwrap_or_else(|err| panic!("read {}: {err}", example_path.display()));
+        let json: serde_json::Value = serde_json::from_str(&text)
+            .unwrap_or_else(|err| panic!("parse {}: {err}", example_path.display()));
+        assert_setup_readiness_example_matches_schema_shape(
+            &json,
+            &overall_statuses,
+            &item_statuses,
+            &example_path,
+        );
+    }
+}
+
+fn schema_string_set(
+    schema: &serde_json::Value,
+    pointer: &str,
+) -> std::collections::BTreeSet<String> {
+    schema
+        .pointer(pointer)
+        .unwrap_or_else(|| panic!("schema pointer {pointer} should exist"))
+        .as_array()
+        .unwrap_or_else(|| panic!("schema pointer {pointer} should be an array"))
+        .iter()
+        .map(|value| {
+            value
+                .as_str()
+                .unwrap_or_else(|| panic!("schema pointer {pointer} should contain strings"))
+                .to_string()
+        })
+        .collect()
+}
+
+fn assert_setup_readiness_example_matches_schema_shape(
+    json: &serde_json::Value,
+    overall_statuses: &std::collections::BTreeSet<String>,
+    item_statuses: &std::collections::BTreeSet<String>,
+    path: &Path,
+) {
+    assert_allowed_object_keys(
+        json,
+        &[
+            "overall_status",
+            "sources",
+            "local_files",
+            "credentials",
+            "share_profiles",
+            "next_actions",
+        ],
+        path,
+    );
+    let overall = json["overall_status"]
+        .as_str()
+        .unwrap_or_else(|| panic!("{} overall_status should be a string", path.display()));
+    assert!(
+        overall_statuses.contains(overall),
+        "{} overall_status {overall:?} should be allowed by schema",
+        path.display()
+    );
+
+    for group in ["sources", "local_files", "credentials", "share_profiles"] {
+        let items = json[group]
+            .as_array()
+            .unwrap_or_else(|| panic!("{} {group} should be an array", path.display()));
+        for item in items {
+            assert_setup_item_matches_schema_shape(item, item_statuses, path);
+        }
+    }
+    let actions = json["next_actions"]
+        .as_array()
+        .unwrap_or_else(|| panic!("{} next_actions should be an array", path.display()));
+    for action in actions {
+        assert_next_action_matches_schema_shape(action, path);
+    }
+    assert_no_secret_sentinel_values(json, path);
+}
+
+fn assert_setup_item_matches_schema_shape(
+    item: &serde_json::Value,
+    item_statuses: &std::collections::BTreeSet<String>,
+    path: &Path,
+) {
+    assert_allowed_object_keys(
+        item,
+        &[
+            "key",
+            "label",
+            "enabled",
+            "status",
+            "reason",
+            "next_action",
+            "writes",
+            "receipt_refs",
+        ],
+        path,
+    );
+    for field in ["key", "label", "reason"] {
+        assert_non_empty_string(item, field, path);
+    }
+    assert!(
+        item["enabled"].is_boolean(),
+        "{} setup item enabled should be boolean",
+        path.display()
+    );
+    assert!(
+        item["writes"].is_boolean(),
+        "{} setup item writes should be boolean",
+        path.display()
+    );
+    let status = item["status"]
+        .as_str()
+        .unwrap_or_else(|| panic!("{} setup item status should be a string", path.display()));
+    assert!(
+        item_statuses.contains(status),
+        "{} setup item status {status:?} should be allowed by schema",
+        path.display()
+    );
+    if !item["next_action"].is_null() {
+        assert_next_action_matches_schema_shape(&item["next_action"], path);
+    }
+    assert_receipt_refs_match_schema_shape(&item["receipt_refs"], path);
+}
+
+fn assert_next_action_matches_schema_shape(action: &serde_json::Value, path: &Path) {
+    assert_allowed_object_keys(
+        action,
+        &[
+            "key",
+            "label",
+            "command",
+            "writes",
+            "reason",
+            "priority",
+            "receipt_refs",
+        ],
+        path,
+    );
+    for field in ["key", "label", "command", "reason"] {
+        assert_non_empty_string(action, field, path);
+    }
+    assert!(
+        action["writes"].is_boolean(),
+        "{} next action writes should be boolean",
+        path.display()
+    );
+    assert!(
+        action["priority"].as_u64().is_some(),
+        "{} next action priority should be a non-negative integer",
+        path.display()
+    );
+    assert_receipt_refs_match_schema_shape(&action["receipt_refs"], path);
+}
+
+fn assert_receipt_refs_match_schema_shape(receipt_refs: &serde_json::Value, path: &Path) {
+    let refs = receipt_refs
+        .as_array()
+        .unwrap_or_else(|| panic!("{} receipt_refs should be an array", path.display()));
+    for receipt in refs {
+        assert_allowed_object_keys(receipt, &["field", "key", "path"], path);
+        assert_non_empty_string(receipt, "field", path);
+        assert!(
+            receipt["key"].is_null() || receipt["key"].as_str().is_some(),
+            "{} receipt key should be string or null",
+            path.display()
+        );
+        assert!(
+            receipt["path"].is_null() || receipt["path"].as_str().is_some(),
+            "{} receipt path should be string or null",
+            path.display()
+        );
+    }
+}
+
+fn assert_allowed_object_keys(json: &serde_json::Value, allowed: &[&str], path: &Path) {
+    let object = json
+        .as_object()
+        .unwrap_or_else(|| panic!("{} should contain objects at this level", path.display()));
+    for required in allowed {
+        assert!(
+            object.contains_key(*required),
+            "{} object should contain required key {required}",
+            path.display()
+        );
+    }
+    for key in object.keys() {
+        assert!(
+            allowed.contains(&key.as_str()),
+            "{} object contains unexpected key {key:?}",
+            path.display()
+        );
+    }
+}
+
+fn assert_non_empty_string(json: &serde_json::Value, field: &str, path: &Path) {
+    assert!(
+        json[field].as_str().is_some_and(|value| !value.is_empty()),
+        "{} field {field} should be a non-empty string",
+        path.display()
+    );
+}
+
+fn assert_no_secret_sentinel_values(json: &serde_json::Value, path: &Path) {
+    let text = serde_json::to_string(json)
+        .unwrap_or_else(|err| panic!("serialize {} for secret scan: {err}", path.display()));
+    for sentinel in [
+        "shiplog-json-source-secret",
+        "shiplog-json-redaction-secret",
+        "replace-with-a-stable-secret",
+        "token_value",
+        "secret_value",
+        "password",
+    ] {
+        assert!(
+            !text.contains(sentinel),
+            "{} should not contain secret sentinel {sentinel:?}",
+            path.display()
+        );
+    }
+}
+
+#[test]
 fn crate_readme_documents_review_ready_loop() {
     let doc_path = repo_root().join("apps/shiplog/README.md");
     let doc = std::fs::read_to_string(&doc_path)

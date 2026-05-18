@@ -1,0 +1,181 @@
+{
+  "overall_status": "needs_setup",
+  "sources": [
+    {
+      "key": "git",
+      "label": "Local git",
+      "enabled": true,
+      "status": "ready",
+      "reason": "repo . readable",
+      "next_action": null,
+      "writes": false,
+      "receipt_refs": [
+        {
+          "field": "source",
+          "key": "git",
+          "path": null
+        }
+      ]
+    },
+    {
+      "key": "manual",
+      "label": "Manual journal",
+      "enabled": true,
+      "status": "ready",
+      "reason": "manual_events.yaml valid",
+      "next_action": null,
+      "writes": false,
+      "receipt_refs": [
+        {
+          "field": "source",
+          "key": "manual",
+          "path": null
+        }
+      ]
+    },
+    {
+      "key": "github",
+      "label": "GitHub",
+      "enabled": true,
+      "status": "unavailable",
+      "reason": "GITHUB_TOKEN not set for configured user octo",
+      "next_action": {
+        "key": "set_github_token",
+        "label": "Set github token",
+        "command": "set GITHUB_TOKEN",
+        "writes": false,
+        "reason": "GITHUB_TOKEN is missing",
+        "priority": 4,
+        "receipt_refs": [
+          {
+            "field": "env",
+            "key": "GITHUB_TOKEN",
+            "path": null
+          }
+        ]
+      },
+      "writes": false,
+      "receipt_refs": [
+        {
+          "field": "source",
+          "key": "github",
+          "path": null
+        }
+      ]
+    }
+  ],
+  "local_files": [
+    {
+      "key": "config",
+      "label": "Config",
+      "enabled": true,
+      "status": "ready",
+      "reason": "config_version 1",
+      "next_action": null,
+      "writes": false,
+      "receipt_refs": [
+        {
+          "field": "config",
+          "key": "shiplog.toml",
+          "path": "shiplog.toml"
+        }
+      ]
+    }
+  ],
+  "credentials": [
+    {
+      "key": "github_token",
+      "label": "GitHub token",
+      "enabled": true,
+      "status": "unavailable",
+      "reason": "GITHUB_TOKEN not set",
+      "next_action": {
+        "key": "set_github_token",
+        "label": "Set GitHub token",
+        "command": "set GITHUB_TOKEN",
+        "writes": false,
+        "reason": "GITHUB_TOKEN is missing",
+        "priority": 4,
+        "receipt_refs": [
+          {
+            "field": "env",
+            "key": "GITHUB_TOKEN",
+            "path": null
+          }
+        ]
+      },
+      "writes": false,
+      "receipt_refs": [
+        {
+          "field": "env",
+          "key": "GITHUB_TOKEN",
+          "path": null
+        }
+      ]
+    }
+  ],
+  "share_profiles": [
+    {
+      "key": "manager",
+      "label": "Manager share",
+      "enabled": true,
+      "status": "blocked",
+      "reason": "SHIPLOG_REDACT_KEY not set; manager share rendering is blocked",
+      "next_action": {
+        "key": "set_shiplog_redact_key",
+        "label": "Set redaction key",
+        "command": "set SHIPLOG_REDACT_KEY",
+        "writes": false,
+        "reason": "SHIPLOG_REDACT_KEY is missing",
+        "priority": 4,
+        "receipt_refs": [
+          {
+            "field": "env",
+            "key": "SHIPLOG_REDACT_KEY",
+            "path": null
+          }
+        ]
+      },
+      "writes": false,
+      "receipt_refs": [
+        {
+          "field": "share_profile",
+          "key": "manager",
+          "path": null
+        }
+      ]
+    }
+  ],
+  "next_actions": [
+    {
+      "key": "set_github_token",
+      "label": "Set GitHub token",
+      "command": "set GITHUB_TOKEN",
+      "writes": false,
+      "reason": "GITHUB_TOKEN is missing",
+      "priority": 4,
+      "receipt_refs": [
+        {
+          "field": "env",
+          "key": "GITHUB_TOKEN",
+          "path": null
+        }
+      ]
+    },
+    {
+      "key": "set_shiplog_redact_key",
+      "label": "Set redaction key",
+      "command": "set SHIPLOG_REDACT_KEY",
+      "writes": false,
+      "reason": "SHIPLOG_REDACT_KEY is missing",
+      "priority": 4,
+      "receipt_refs": [
+        {
+          "field": "env",
+          "key": "SHIPLOG_REDACT_KEY",
+          "path": null
+        }
+      ]
+    }
+  ]
+}

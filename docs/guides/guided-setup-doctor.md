@@ -86,6 +86,8 @@ receipt refs, and `writes` flags. It still does not query providers, render
 share packets, mutate config, or print secret values. A `Needs setup` or
 `Blocked` result remains a non-zero command result after the JSON is printed, so
 agents should parse stdout and treat the exit status as the stop signal.
+The schema is documented in
+[`Setup Readiness v1`](../schemas/setup-readiness-v1.md).
 
 Examples:
 

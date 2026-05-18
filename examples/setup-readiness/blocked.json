@@ -1,0 +1,55 @@
+{
+  "overall_status": "blocked",
+  "sources": [],
+  "local_files": [
+    {
+      "key": "config",
+      "label": "Config",
+      "enabled": true,
+      "status": "missing",
+      "reason": "shiplog.toml not found",
+      "next_action": {
+        "key": "init_guided",
+        "label": "Create guided setup files",
+        "command": "shiplog init --guided",
+        "writes": true,
+        "reason": "shiplog.toml is missing",
+        "priority": 1,
+        "receipt_refs": [
+          {
+            "field": "config",
+            "key": "shiplog.toml",
+            "path": "shiplog.toml"
+          }
+        ]
+      },
+      "writes": true,
+      "receipt_refs": [
+        {
+          "field": "config",
+          "key": "shiplog.toml",
+          "path": "shiplog.toml"
+        }
+      ]
+    }
+  ],
+  "credentials": [],
+  "share_profiles": [],
+  "next_actions": [
+    {
+      "key": "init_guided",
+      "label": "Create guided setup files",
+      "command": "shiplog init --guided",
+      "writes": true,
+      "reason": "shiplog.toml is missing",
+      "priority": 1,
+      "receipt_refs": [
+        {
+          "field": "config",
+          "key": "shiplog.toml",
+          "path": "shiplog.toml"
+        }
+      ]
+    }
+  ]
+}
