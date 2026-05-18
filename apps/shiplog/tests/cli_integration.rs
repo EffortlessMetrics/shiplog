@@ -1767,11 +1767,16 @@ fn init_guided_creates_local_first_setup_without_token_providers() -> CliTestRes
 
     shiplog_cmd()
         .current_dir(tmp.path())
+        .env_remove("SHIPLOG_REDACT_KEY")
         .args(["doctor", "--setup"])
         .assert()
-        .success()
+        .failure()
+        .stdout(predicate::str::contains("Setup readiness: Needs setup"))
         .stdout(predicate::str::contains("Local git"))
-        .stdout(predicate::str::contains("Manual journal"));
+        .stdout(predicate::str::contains("Manual journal"))
+        .stdout(predicate::str::contains("Manager share"))
+        .stdout(predicate::str::contains("Public share"))
+        .stdout(predicate::str::contains("SHIPLOG_REDACT_KEY not set"));
     shiplog_cmd()
         .current_dir(tmp.path())
         .args(["sources", "status"])
@@ -3077,6 +3082,7 @@ events = "./manual_events.yaml"
 
     shiplog_cmd()
         .current_dir(tmp.path())
+        .env("SHIPLOG_REDACT_KEY", "stable-redact-key")
         .args(["doctor", "--setup"])
         .assert()
         .success()
@@ -3095,6 +3101,77 @@ events = "./manual_events.yaml"
         !tmp.path().join("out").exists(),
         "doctor --setup should not write run artifacts"
     );
+    Ok(())
+}
+
+#[test]
+fn doctor_setup_reports_share_profile_blocks_without_writing() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    git2::Repository::init(tmp.path())?;
+    std::fs::write(
+        tmp.path().join("manual_events.yaml"),
+        "version: 1\ngenerated_at: 2026-01-01T00:00:00Z\nevents: []\n",
+    )?;
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[shiplog]
+config_version = 1
+
+[defaults]
+out = "./out"
+window = "last-6-months"
+profile = "internal"
+
+[sources.git]
+enabled = true
+repo = "."
+
+[sources.manual]
+enabled = true
+events = "./manual_events.yaml"
+"#,
+    )?;
+
+    let before = file_tree_manifest(tmp.path());
+    let assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args(["doctor", "--setup"])
+        .assert()
+        .failure()
+        .stdout(predicate::str::contains("Setup readiness: Needs setup"))
+        .stdout(predicate::str::contains("Blocked:"))
+        .stdout(predicate::str::contains("Manager share"))
+        .stdout(predicate::str::contains(
+            "manager share rendering is blocked",
+        ))
+        .stdout(predicate::str::contains("Public share"))
+        .stdout(predicate::str::contains(
+            "strict verification requires a rendered public packet",
+        ))
+        .stdout(predicate::str::contains(
+            "Next (read-only): set SHIPLOG_REDACT_KEY",
+        ));
+    let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
+    let after = file_tree_manifest(tmp.path());
+
+    assert!(
+        stdout.contains("SHIPLOG_REDACT_KEY not set"),
+        "doctor --setup should name the missing redaction key. stdout:\n{stdout}"
+    );
+    assert_eq!(
+        before, after,
+        "doctor --setup should not render profile artifacts while reporting share readiness"
+    );
+    assert!(
+        !tmp.path().join("out").exists(),
+        "doctor --setup should not write run artifacts"
+    );
+    assert!(
+        !tmp.path().join("profiles").exists(),
+        "doctor --setup should not write share profile artifacts"
+    );
+
     Ok(())
 }
 
@@ -3173,6 +3250,7 @@ events = "./manual_events.yaml"
     let assert = shiplog_cmd()
         .current_dir(tmp.path())
         .env("GITHUB_TOKEN", "shiplog-secret-token")
+        .env("SHIPLOG_REDACT_KEY", "stable-redact-key")
         .args(["doctor", "--setup"])
         .assert()
         .success()

@@ -1,11 +1,10 @@
 #![allow(dead_code)]
 
 use super::{
-    BundleProfile, ConfigGitSource, ConfigGithubSource, ConfigGitlabSource, ConfigJiraSource,
-    ConfigJsonSource, ConfigLinearSource, ConfigManualSource, InitSource, IssueStatus,
-    LinearIssueStatus, MrState, ShiplogConfig, config_base_dir, config_redaction_key_env,
-    config_version_state, doctor_config_profile, env_var_present, gitlab_api_base,
-    optional_config_string, required_config_path,
+    ConfigGitSource, ConfigGithubSource, ConfigGitlabSource, ConfigJiraSource, ConfigJsonSource,
+    ConfigLinearSource, ConfigManualSource, InitSource, IssueStatus, LinearIssueStatus, MrState,
+    ShiplogConfig, config_base_dir, config_redaction_key_env, config_version_state,
+    env_var_present, gitlab_api_base, optional_config_string, required_config_path,
 };
 use shiplog::ingest::manual::read_manual_events;
 use std::{
@@ -1210,13 +1209,11 @@ fn build_credential_items(builder: &mut SetupStatusBuilder, config: &ShiplogConf
         "LINEAR_API_KEY",
     );
     let redaction_env = config_redaction_key_env(config);
-    let share_enabled = doctor_config_profile(config.defaults.profile.as_deref())
-        .is_ok_and(|profile| !matches!(profile, BundleProfile::Internal));
     credential_item(
         builder,
         "redaction_key",
         "Redaction key",
-        share_enabled,
+        true,
         &redaction_env,
     );
 }
@@ -1265,23 +1262,22 @@ fn credential_item(
 }
 
 fn build_share_profile_items(builder: &mut SetupStatusBuilder, config: &ShiplogConfig) {
-    let default_profile = doctor_config_profile(config.defaults.profile.as_deref()).ok();
     let key_env = config_redaction_key_env(config);
     build_share_profile_item(
         builder,
         "manager",
         "Manager share",
-        matches!(default_profile, Some(BundleProfile::Manager)),
         &key_env,
         "manager share needs redaction before rendering",
+        "manager share rendering is blocked",
     );
     build_share_profile_item(
         builder,
         "public",
         "Public share",
-        matches!(default_profile, Some(BundleProfile::Public)),
         &key_env,
         "public share also needs strict verification before sharing",
+        "strict verification requires a rendered public packet",
     );
 }
 
@@ -1289,31 +1285,11 @@ fn build_share_profile_item(
     builder: &mut SetupStatusBuilder,
     key: &str,
     label: &str,
-    enabled: bool,
     key_env: &str,
     ready_reason: &str,
+    blocked_reason: &str,
 ) {
     let receipt_ref = receipt("share_profile", Some(key), None);
-    if !enabled {
-        builder.push_share_profile(item(
-            key,
-            label,
-            false,
-            SetupItemStatus::NotGenerated,
-            "profile is not selected by defaults.profile".to_string(),
-            Some(next_action(
-                &format!("share_explain_{key}"),
-                &format!("Explain {key} share posture"),
-                &format!("shiplog share explain {key} --latest"),
-                false,
-                "read profile posture before rendering",
-                8,
-                vec![receipt_ref.clone()],
-            )),
-            vec![receipt_ref],
-        ));
-        return;
-    }
     if env_var_present(key_env) {
         builder.push_share_profile(item(
             key,
@@ -1338,7 +1314,7 @@ fn build_share_profile_item(
             label,
             true,
             SetupItemStatus::Blocked,
-            format!("{key_env} not set"),
+            format!("{key_env} not set; {blocked_reason}"),
             Some(env_action(key_env, "redaction key")),
             vec![receipt_ref],
         ));

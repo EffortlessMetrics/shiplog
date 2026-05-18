@@ -151,6 +151,9 @@ release approval.
   handoffs before repair action, so malformed manual journals and provider
   token gaps no longer expose dead-end journal, token, or identity commands in
   `repair plan` (#406).
+- Added manager/public share readiness to `shiplog doctor --setup`, including
+  redaction-key blocking and public strict-verification caveats without writing
+  profile artifacts or rendering share packets (#407).
 
 ## [0.9.0] - Unreleased candidate
 
