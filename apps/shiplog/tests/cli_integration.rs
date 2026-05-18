@@ -12,6 +12,7 @@ use shiplog::schema::event::{
     SourceRef, SourceSystem,
 };
 use shiplog::schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::process::Command as StdCommand;
 use tempfile::TempDir;
@@ -3723,6 +3724,108 @@ user = "octo"
     Ok(())
 }
 
+#[test]
+fn doctor_sources_status_agree_on_source_projection_without_share_noise() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    git2::Repository::init(tmp.path())?;
+    std::fs::write(tmp.path().join("manual_events.yaml"), "events: []\n")?;
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[shiplog]
+config_version = 1
+
+[defaults]
+out = "./out"
+window = "last-6-months"
+profile = "manager"
+
+[sources.git]
+enabled = true
+repo = "."
+
+[sources.manual]
+enabled = true
+events = "./manual_events.yaml"
+
+[sources.github]
+enabled = true
+user = "octo"
+"#,
+    )?;
+
+    let before = file_tree_manifest(tmp.path());
+    let doctor_assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args(["doctor", "--setup", "--json"])
+        .assert()
+        .failure();
+    let doctor_stdout = String::from_utf8(doctor_assert.get_output().stdout.clone())?;
+    let doctor_json: serde_json::Value = serde_json::from_str(&doctor_stdout)?;
+
+    let sources_assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args(["sources", "status"])
+        .assert()
+        .failure();
+    let sources_stdout = String::from_utf8(sources_assert.get_output().stdout.clone())?;
+    let after = file_tree_manifest(tmp.path());
+    assert_eq!(
+        before, after,
+        "doctor --setup --json and sources status should be read-only setup projections"
+    );
+
+    let sources_rows = parse_sources_status_rows(&sources_stdout);
+    let doctor_sources = doctor_json["sources"]
+        .as_array()
+        .expect("doctor setup JSON should include sources array");
+    assert_eq!(
+        sources_rows.len(),
+        doctor_sources.len(),
+        "sources status should print one row for each doctor JSON source"
+    );
+    for source in doctor_sources {
+        let key = source["key"]
+            .as_str()
+            .expect("source item should include key");
+        let row = sources_rows
+            .get(key)
+            .unwrap_or_else(|| panic!("sources status should include row for {key}"));
+        assert_eq!(row.label, source["label"].as_str().unwrap_or_default());
+        assert_eq!(row.enabled, source["enabled"].as_bool().unwrap_or_default());
+        assert_eq!(row.status, source["status"].as_str().unwrap_or_default());
+        assert_eq!(row.reason, source["reason"].as_str().unwrap_or_default());
+    }
+
+    assert_eq!(sources_rows["git"].status, "ready");
+    assert_eq!(sources_rows["manual"].status, "blocked");
+    assert!(
+        sources_rows["manual"]
+            .reason
+            .contains("manual_events.yaml malformed")
+    );
+    assert_eq!(sources_rows["github"].status, "unavailable");
+    assert!(
+        sources_rows["github"]
+            .reason
+            .contains("GITHUB_TOKEN not set")
+    );
+
+    assert!(
+        !sources_stdout.contains("Manager share") && !sources_stdout.contains("Public share"),
+        "sources status should not include share-profile readiness"
+    );
+    assert!(
+        !sources_stdout.contains("Redaction key") && !sources_stdout.contains("SHIPLOG_REDACT_KEY"),
+        "sources status should not include redaction/share credential noise"
+    );
+
+    Ok(())
+}
+
 fn setup_json_item<'a>(
     json: &'a serde_json::Value,
     group: &str,
@@ -3734,6 +3837,53 @@ fn setup_json_item<'a>(
         .iter()
         .find(|item| item["key"].as_str() == Some(key))
         .unwrap_or_else(|| panic!("{group} should contain setup item {key}"))
+}
+
+#[derive(Debug)]
+struct SourcesStatusRow {
+    enabled: bool,
+    status: String,
+    label: String,
+    reason: String,
+}
+
+fn parse_sources_status_rows(stdout: &str) -> BTreeMap<String, SourcesStatusRow> {
+    let mut rows = BTreeMap::new();
+    for line in stdout.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty()
+            || trimmed == "Source setup status:"
+            || trimmed == "Next:"
+            || trimmed.starts_with("source_key")
+            || trimmed.starts_with("Reason:")
+            || trimmed.chars().next().is_some_and(|ch| ch.is_ascii_digit())
+        {
+            continue;
+        }
+
+        let Some(key) = line.get(0..11).map(str::trim).filter(|key| !key.is_empty()) else {
+            continue;
+        };
+        let Some(enabled) = line.get(12..19).map(str::trim) else {
+            continue;
+        };
+        if enabled != "yes" && enabled != "no" {
+            continue;
+        }
+        let status = line.get(20..38).unwrap_or_default().trim().to_string();
+        let label = line.get(39..54).unwrap_or_default().trim().to_string();
+        let reason = line.get(55..).unwrap_or_default().trim().to_string();
+        rows.insert(
+            key.to_string(),
+            SourcesStatusRow {
+                enabled: enabled == "yes",
+                status,
+                label,
+                reason,
+            },
+        );
+    }
+    rows
 }
 
 #[test]
