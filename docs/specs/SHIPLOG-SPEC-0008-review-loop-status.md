@@ -436,16 +436,19 @@ Existing proof surfaces:
   setup front-door dogfood proof.
 - [`docs/product/review-ready-loop-transcript.md`](../product/review-ready-loop-transcript.md):
   intake, repair, diff, and share explain dogfood proof.
-
-Required future proof surfaces:
-
-- model tests for missing setup, no run, setup-blocked run, repairable run, and
-  share-blocked run;
-- CLI no-write tests for human and JSON status;
-- consistency tests against doctor, sources status, intake report, repair plan,
-  repair diff, runs diff, and share explain;
-- dogfood transcript showing status before intake, after intake, after repair,
+- [`docs/product/review-loop-status-transcript.md`](../product/review-loop-status-transcript.md):
+  status cockpit dogfood proof before intake, after intake, after repair,
   after rerun/diff, and before share rendering.
+
+Implemented proof surfaces:
+
+- model tests cover missing setup, no run, setup-blocked run, repairable run,
+  repair-in-progress, share-blocked, and ready-to-share states (#427, #433);
+- CLI tests prove human and JSON status stay read-only (#429, #430, #433);
+- consistency tests prove status agrees with doctor, sources status, intake
+  report, repair plan, repair diff, runs diff, and share explain (#432);
+- the status dogfood transcript shows status before intake, after intake, after
+  repair, after rerun/diff, and before share rendering (#434).
 
 ## Release Posture
 
