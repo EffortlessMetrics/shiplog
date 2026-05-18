@@ -249,6 +249,10 @@ GitHub release approval.
   ready-to-share states; status now detects a local journal repair applied
   after the latest run and routes to intake rerun instead of repeating the
   stale repair write (#433).
+- Recorded a review-loop status dogfood transcript showing `status --latest`
+  before intake, after intake, after journal repair, after rerun/diff, and
+  before share rendering; the transcript confirms status stays read-only and
+  does not lift the 0.9 release hold (#434).
 
 ## [0.9.0] - Unreleased candidate
 

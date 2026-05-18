@@ -1983,6 +1983,47 @@ fn review_ready_loop_transcript_records_final_dogfood() {
 }
 
 #[test]
+fn review_loop_status_transcript_records_status_cockpit_dogfood() {
+    let root = repo_root();
+    let transcript_path = root.join("docs/product/review-loop-status-transcript.md");
+    let spec_path = root.join("docs/specs/SHIPLOG-SPEC-0008-review-loop-status.md");
+    let changelog_path = root.join("CHANGELOG.md");
+
+    let transcript = std::fs::read_to_string(&transcript_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", transcript_path.display()));
+    let spec = std::fs::read_to_string(&spec_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", spec_path.display()));
+    let changelog = std::fs::read_to_string(&changelog_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", changelog_path.display()));
+
+    for needle in [
+        "Review-loop status dogfood transcript",
+        "shiplog status --out",
+        "ready_to_collect",
+        "needs_repair",
+        "repair_in_progress",
+        "manual evidence count 0 -> 1",
+        "File manifest was unchanged by `status`",
+        "No manager profile packet was written",
+        "does not approve",
+        "`v0.9.0` release execution",
+        "temporary dogfood workspace",
+    ] {
+        assert!(
+            transcript.contains(needle),
+            "review-loop status transcript should mention {needle:?}"
+        );
+    }
+
+    assert!(
+        spec.contains("docs/product/review-loop-status-transcript.md")
+            && spec.contains("after rerun/diff")
+            && changelog.contains("#434"),
+        "spec and changelog should link the status transcript without lifting the hold"
+    );
+}
+
+#[test]
 fn review_ready_dogfood_matrix_documents_soak_flows() {
     let root = repo_root();
     let matrix_path = root.join("docs/product/review-ready-dogfood-matrix.md");
