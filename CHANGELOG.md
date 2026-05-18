@@ -154,6 +154,10 @@ release approval.
 - Added manager/public share readiness to `shiplog doctor --setup`, including
   redaction-key blocking and public strict-verification caveats without writing
   profile artifacts or rendering share packets (#407).
+- Added a product proof that `init --guided` plus `doctor --setup` prevents
+  malformed manual-journal setup from turning into dead-end repair commands
+  before the journal repair loop resumes and clears the manual evidence item
+  (#408).
 
 ## [0.9.0] - Unreleased candidate
 

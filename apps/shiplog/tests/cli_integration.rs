@@ -1167,8 +1167,45 @@ fn run_intake_without_provider_tokens(tmp: &Path, out: &Path) {
         .success();
 }
 
+fn run_guided_setup_intake_2025_with_sources(tmp: &Path, out: &Path, sources: &[&str]) {
+    let mut args = vec!["intake"];
+    for source in sources {
+        args.push("--source");
+        args.push(source);
+    }
+    args.extend([
+        "--out",
+        out.to_str().unwrap(),
+        "--year",
+        "2025",
+        "--no-open",
+        "--explain",
+    ]);
+
+    shiplog_cmd()
+        .current_dir(tmp)
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args(args)
+        .assert()
+        .success();
+}
+
 fn load_first_intake_report(out: &Path) -> (PathBuf, serde_json::Value) {
     let report_path = first_run_dir(out).join("intake.report.json");
+    let report: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&report_path).unwrap()).unwrap();
+    (report_path, report)
+}
+
+fn load_latest_intake_report(out: &Path) -> (PathBuf, serde_json::Value) {
+    let run_dir = all_run_dirs(out)
+        .into_iter()
+        .next_back()
+        .expect("expected a latest shiplog run directory");
+    let report_path = run_dir.join("intake.report.json");
     let report: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(&report_path).unwrap()).unwrap();
     (report_path, report)
@@ -1784,6 +1821,112 @@ fn init_guided_creates_local_first_setup_without_token_providers() -> CliTestRes
         .success()
         .stdout(predicate::str::contains("git"))
         .stdout(predicate::str::contains("manual"));
+
+    Ok(())
+}
+
+#[test]
+fn guided_setup_prevents_dead_end_manual_repair_loop() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let out = tmp.path().join("out");
+    let out_arg = out.to_str().expect("out path should be valid UTF-8");
+    let manual_events = tmp.path().join("manual_events.yaml");
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["init", "--guided"])
+        .assert()
+        .success();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args(["doctor", "--setup"])
+        .assert()
+        .failure()
+        .stdout(predicate::str::contains("Setup readiness: Needs setup"))
+        .stdout(predicate::str::contains("Manager share"))
+        .stdout(predicate::str::contains("Public share"))
+        .stdout(predicate::str::contains("SHIPLOG_REDACT_KEY not set"));
+
+    run_guided_setup_intake_2025_with_sources(tmp.path(), &out, &[]);
+    let (_, first_report) = load_latest_intake_report(&out);
+    let first_repair_id = first_repair_id_with_action(&first_report, "journal_add");
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["repair", "plan", "--out", out_arg, "--latest"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(format!(
+            "shiplog journal add --from-repair {first_repair_id}"
+        )));
+
+    std::fs::write(&manual_events, "events: []\n")?;
+    let before_doctor = file_tree_manifest(tmp.path());
+    let doctor = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args(["doctor", "--setup"])
+        .assert()
+        .failure()
+        .stdout(predicate::str::contains("Manual journal"))
+        .stdout(predicate::str::contains("manual_events.yaml malformed"))
+        .stdout(predicate::str::contains("shiplog doctor --setup"));
+    let doctor_stdout = String::from_utf8(doctor.get_output().stdout.clone())?;
+    let after_doctor = file_tree_manifest(tmp.path());
+    assert!(
+        !doctor_stdout.contains("journal add --from-repair"),
+        "doctor should not route malformed manual setup to from-repair journal commands. stdout:\n{doctor_stdout}"
+    );
+    assert_eq!(
+        before_doctor, after_doctor,
+        "doctor --setup should stay read-only while explaining the setup block"
+    );
+
+    std::fs::write(
+        &manual_events,
+        "version: 1\ngenerated_at: 2026-01-01T00:00:00Z\nevents: []\n",
+    )?;
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env("SHIPLOG_REDACT_KEY", "stable-redact-key")
+        .args(["doctor", "--setup"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "Setup readiness: Ready with caveats",
+        ))
+        .stdout(predicate::str::contains("Manual journal"))
+        .stdout(predicate::str::contains("Manager share"))
+        .stdout(predicate::str::contains("Public share"));
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args([
+            "journal",
+            "add",
+            "--from-repair",
+            first_repair_id.as_str(),
+            "--out",
+            out_arg,
+            "--latest",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Added manual event:"));
+
+    run_guided_setup_intake_2025_with_sources(tmp.path(), &out, &[]);
+    let repair_diff = shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["repair", "diff", "--out", out_arg, "--latest"])
+        .assert()
+        .success();
+    let repair_diff_stdout = String::from_utf8(repair_diff.get_output().stdout.clone())?;
+    assert!(
+        repair_diff_stdout.contains("Cleared:")
+            && repair_diff_stdout.contains("manual:manual_evidence_missing:no_events"),
+        "repair diff should show the repaired manual evidence item clearing. stdout:\n{repair_diff_stdout}"
+    );
 
     Ok(())
 }
