@@ -174,6 +174,9 @@ GitHub release approval.
 - Added a setup-readiness JSON contract under `contracts/schemas/`, with
   examples and schema docs for the `doctor --setup --json` control-plane output
   (#413).
+- Added a doctor/source-status consistency proof so the source-only CLI view
+  stays aligned with the setup-readiness JSON model without leaking
+  share/redaction setup noise (#414).
 
 ## [0.9.0] - Unreleased candidate
 
