@@ -512,6 +512,9 @@ struct StatusArgs {
     /// Inspect the most recent run explicitly.
     #[arg(long)]
     latest: bool,
+    /// Print review-loop status as JSON for agent/control-plane consumers.
+    #[arg(long)]
+    json: bool,
 }
 
 #[derive(Subcommand, Debug)]
@@ -7199,7 +7202,13 @@ fn run_status(args: StatusArgs) -> Result<()> {
     ));
     apply_status_output_context(&mut status, &args.out);
 
-    print_review_loop_status(&status, &resolution);
+    if args.json {
+        serde_json::to_writer_pretty(std::io::stdout(), &status)
+            .context("serialize review-loop status json")?;
+        println!();
+    } else {
+        print_review_loop_status(&status, &resolution);
+    }
     Ok(())
 }
 

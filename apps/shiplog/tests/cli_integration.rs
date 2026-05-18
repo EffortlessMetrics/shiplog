@@ -1903,6 +1903,127 @@ fn status_latest_ready_setup_without_run_routes_to_intake() -> CliTestResult {
 }
 
 #[test]
+fn status_latest_json_missing_setup_serializes_model_without_writing() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let before = file_tree_manifest(tmp.path());
+
+    let assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args(["status", "--latest", "--json"])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
+    let json: serde_json::Value = serde_json::from_str(&stdout)?;
+
+    assert_eq!(json["overall_status"], "needs_setup");
+    assert_eq!(json["setup_summary"]["status"], "needs_setup");
+    assert!(json.get("latest_run").is_some());
+    assert_eq!(json["latest_run"], serde_json::Value::Null);
+    assert!(
+        !stdout.contains("Review loop status:"),
+        "json output should not include human status prose"
+    );
+    let actions = json["next_actions"]
+        .as_array()
+        .expect("next_actions should be an array");
+    assert!(actions.iter().any(|action| {
+        action["key"] == "doctor_setup"
+            && action["command"] == "shiplog doctor --setup"
+            && action["writes"] == false
+    }));
+    assert!(actions.iter().any(|action| {
+        action["key"] == "init_guided"
+            && action["command"] == "shiplog init --guided"
+            && action["writes"] == true
+    }));
+    assert!(
+        json["receipt_refs"]
+            .as_array()
+            .is_some_and(|refs| !refs.is_empty()),
+        "status json should name receipt refs"
+    );
+    assert_eq!(
+        before,
+        file_tree_manifest(tmp.path()),
+        "status --json should not write setup or run artifacts"
+    );
+    Ok(())
+}
+
+#[test]
+fn status_latest_json_repairable_run_exposes_safe_agent_actions() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let out = tmp.path().join("out");
+    let out_arg = out.to_str().expect("out path should be valid UTF-8");
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["init", "--guided"])
+        .assert()
+        .success();
+    run_guided_setup_intake_2025_with_sources(tmp.path(), &out, &[]);
+
+    let before = file_tree_manifest(tmp.path());
+    let assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args(["status", "--out", out_arg, "--latest", "--json"])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
+    let json: serde_json::Value = serde_json::from_str(&stdout)?;
+
+    assert_eq!(json["overall_status"], "needs_repair");
+    assert!(
+        json["repair_summary"]["open_items"]
+            .as_u64()
+            .unwrap_or_default()
+            > 0
+    );
+    assert_eq!(json["share_summary"]["profiles"][0]["status"], "blocked");
+    assert!(
+        !stdout.contains("shiplog share manager --"),
+        "json next actions should not include share render while share is blocked"
+    );
+    let actions = json["next_actions"]
+        .as_array()
+        .expect("next_actions should be an array");
+    let repair_plan_index = actions
+        .iter()
+        .position(|action| action["key"] == "repair_plan")
+        .expect("repair_plan action should exist");
+    let journal_index = actions
+        .iter()
+        .position(|action| action["key"] == "journal_add_from_repair")
+        .expect("journal repair action should exist");
+    assert!(
+        repair_plan_index < journal_index,
+        "repair plan should precede write-producing journal repair"
+    );
+    assert_eq!(actions[repair_plan_index]["writes"], false);
+    assert_eq!(actions[journal_index]["writes"], true);
+    assert!(
+        actions[journal_index]["preconditions"]
+            .as_array()
+            .is_some_and(|preconditions| !preconditions.is_empty()),
+        "write-producing repair should carry preconditions"
+    );
+    assert!(
+        json["receipt_refs"].as_array().is_some_and(|refs| refs
+            .iter()
+            .any(|receipt| receipt["kind"] == "intake_report")),
+        "status json should include intake_report receipt refs"
+    );
+    assert_eq!(
+        before,
+        file_tree_manifest(tmp.path()),
+        "status --json should be read-only after intake"
+    );
+    Ok(())
+}
+
+#[test]
 fn status_latest_repairable_run_is_read_first_and_share_safe() -> CliTestResult {
     let tmp = TempDir::new()?;
     let out = tmp.path().join("out");

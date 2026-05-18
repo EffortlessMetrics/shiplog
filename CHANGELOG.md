@@ -232,6 +232,9 @@ GitHub release approval.
   latest-run, packet readiness, source, repair, diff, share, blocker,
   next-action, and receipt summaries while preserving read-only behavior and
   release-hold posture (#429).
+- Added `shiplog status --latest --json` as the agent-readable rendering of the
+  same review-loop status model, including blockers, receipt refs, and
+  write-labelled next actions without human prose or writes (#430).
 
 ## [0.9.0] - Unreleased candidate
 
