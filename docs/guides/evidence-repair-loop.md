@@ -5,6 +5,19 @@ is missing. The loop is intentionally local and receipt-derived: repair commands
 read `intake.report.json`, journal repair writes `manual_events.yaml`, and no
 provider tickets or source records are edited.
 
+If setup is new or uncertain, run the setup front door before intake:
+
+```bash
+shiplog init --guided
+shiplog doctor --setup
+shiplog sources status
+shiplog doctor --setup --json
+```
+
+`doctor --setup` and `sources status` are read-only. They explain whether local
+files, sources, credentials, and share prerequisites are ready before the repair
+loop consumes an intake report.
+
 ## Start from a report
 
 Run intake and open the report first.

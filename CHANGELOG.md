@@ -199,6 +199,10 @@ GitHub release approval.
   disabled manual journals are not validated as malformed, unsupported config
   versions are the reserved `stale_config` case, and old reports/packets do not
   drive doctor setup state (#420).
+- Aligned the README, crate README, rapid first-intake guide, review-ready
+  guide, config reference, and guided setup guide so `init --guided`,
+  `doctor --setup`, `sources status`, and `doctor --setup --json` are taught as
+  the setup front door before deeper intake, repair, and share flows (#421).
 
 ## [0.9.0] - Unreleased candidate
 

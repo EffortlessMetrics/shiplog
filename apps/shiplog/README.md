@@ -23,7 +23,11 @@ cargo install shiplog --features llm
 ## Quick start
 
 ```bash
-# Fast review-deadline path
+# Setup-aware review path
+shiplog init --guided
+shiplog doctor --setup
+shiplog sources status
+shiplog doctor --setup --json
 shiplog intake --last-6-months --explain
 shiplog repair plan --latest
 shiplog journal add --from-repair <repair_id>
@@ -35,11 +39,17 @@ shiplog open packet --latest
 shiplog share explain manager --latest
 ```
 
+`doctor --setup` and `sources status` are read-only preflight commands. They
+show local-file, source, credential, and share setup state before intake writes
+run artifacts. `doctor --setup --json` exposes the same setup model for agents
+and scripts without scraping terminal prose.
+
 For repeatable setup:
 
 ```bash
-shiplog init
-shiplog doctor
+shiplog init --guided
+shiplog doctor --setup
+shiplog sources status
 shiplog collect multi --last-6-months
 shiplog review --latest
 shiplog render --latest
@@ -88,7 +98,7 @@ Output goes to `out/<run_id>/` containing `packet.md`, `ledger.events.jsonl`, `c
 | Command | Description |
 |---------|-------------|
 | `init` | Create `shiplog.toml` and `manual_events.yaml` scaffold files |
-| `doctor` | Check local config, enabled sources, token env vars, and output safety |
+| `doctor` | Check setup readiness, enabled sources, token env vars, share blockers, and output safety without writes |
 | `intake` | Best-effort review rescue path that collects usable sources, renders a packet, writes an intake report, and prints next actions |
 | `config validate/explain/migrate` | Validate `shiplog.toml`, print resolved settings, or add version metadata |
 | `periods list/explain` | Inspect named review windows and latest matching runs |

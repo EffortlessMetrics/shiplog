@@ -9,8 +9,22 @@ share posture.
 The loop is:
 
 ```text
-collect -> repair -> rerun -> compare -> interpret -> share
+setup -> collect -> repair -> rerun -> compare -> interpret -> share
 ```
+
+If setup is new or uncertain, run the read-only front door before the first
+packet:
+
+```bash
+shiplog init --guided
+shiplog doctor --setup
+shiplog sources status
+shiplog doctor --setup --json
+```
+
+`doctor --setup` explains local setup state. `sources status` is the
+source-only projection. `doctor --setup --json` is the same model for agents and
+scripts. These commands do not collect evidence or render share artifacts.
 
 For dogfood or review-cycle soak runs, use an explicit output directory and keep
 using it for every follow-up command. This keeps artifacts out of unrelated
@@ -26,9 +40,12 @@ The examples below use the default `./out` for brevity. If you set `OUT`, add
 
 ## Run the first packet
 
-Start with intake and read the report before editing anything.
+Start with setup readiness when needed, then intake, and read the report before
+editing anything.
 
 ```bash
+shiplog doctor --setup
+shiplog sources status
 shiplog intake --last-6-months --explain
 shiplog open intake-report --latest
 shiplog open packet --latest

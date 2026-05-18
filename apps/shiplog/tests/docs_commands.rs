@@ -30,6 +30,7 @@ fn config_reference_documents_current_surface() {
         "shiplog config explain --config shiplog.toml",
         "shiplog doctor --config shiplog.toml",
         "shiplog doctor --config shiplog.toml --setup",
+        "shiplog doctor --config shiplog.toml --setup --json",
         "shiplog sources status --config shiplog.toml",
         "shiplog doctor --config shiplog.toml --repair-plan",
         "[shiplog]",
@@ -81,6 +82,7 @@ fn config_reference_documents_current_surface() {
         "config validate",
         "doctor",
         "doctor --setup",
+        "doctor --setup --json",
         "sources status",
         "doctor --repair-plan",
     ] {
@@ -551,6 +553,10 @@ fn crate_readme_documents_review_ready_loop() {
 
     for needle in [
         "shiplog intake --last-6-months --explain",
+        "shiplog init --guided",
+        "shiplog doctor --setup",
+        "shiplog sources status",
+        "shiplog doctor --setup --json",
         "shiplog repair plan --latest",
         "shiplog journal add --from-repair <repair_id>",
         "shiplog repair diff --latest",
@@ -565,6 +571,7 @@ fn crate_readme_documents_review_ready_loop() {
         "without writing profile artifacts",
         "Evidence repair loop guide",
         "Review-ready packet guide",
+        "setup model for agents",
     ] {
         assert!(
             doc.contains(needle),
@@ -581,6 +588,11 @@ fn root_readme_documents_read_first_repair_and_share_flow() {
 
     for needle in [
         "shiplog repair plan --latest",
+        "shiplog init --guided",
+        "shiplog doctor --setup",
+        "shiplog sources status",
+        "shiplog doctor --setup --json",
+        "setup front door",
         "shiplog journal add --from-repair <repair_id>",
         "read-first repair loop",
         "Direct `journal add`, workstream split, or receipt-trimming commands",
@@ -640,6 +652,10 @@ fn rapid_first_intake_guide_routes_manual_evidence_through_repair_plan() {
         "Repair Items",
         "read-first handoff",
         "shiplog repair plan --latest",
+        "shiplog init --guided",
+        "shiplog doctor --setup",
+        "shiplog sources status",
+        "shiplog doctor --setup --json",
         "shiplog journal add --from-repair <repair_id>",
         "write-producing curation command",
         "not tied to a repair item",
@@ -659,6 +675,10 @@ fn evidence_repair_loop_guide_documents_report_derived_flow() {
 
     for needle in [
         "shiplog intake --last-6-months --explain",
+        "shiplog init --guided",
+        "shiplog doctor --setup",
+        "shiplog sources status",
+        "shiplog doctor --setup --json",
         "shiplog repair plan --latest",
         "shiplog journal add --from-repair <repair_id>",
         "shiplog repair diff --latest",
@@ -691,6 +711,10 @@ fn review_ready_packet_guide_documents_quality_flow() {
 
     for needle in [
         "shiplog intake --last-6-months --explain",
+        "shiplog init --guided",
+        "shiplog doctor --setup",
+        "shiplog sources status",
+        "shiplog doctor --setup --json",
         "shiplog repair plan --latest",
         "shiplog journal add --from-repair <repair_id>",
         "shiplog repair diff --latest",

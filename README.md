@@ -83,20 +83,30 @@ cargo run -p shiplog -- <subcommand>
 
 ## Quick start
 
-If the review form is already open, start here:
+If you have a few minutes before the first intake, start with the setup front door:
 
 ```bash
 shiplog --version
+shiplog init --guided
+shiplog doctor --setup
+shiplog sources status
+shiplog doctor --setup --json
 shiplog intake --last-6-months --explain
 shiplog open intake-report --latest
 shiplog open packet --latest
 ```
 
-`shiplog intake` is the best-effort rescue path: it creates starter local files
-when needed, collects usable configured sources, records skipped sources,
-renders a packet, runs review inspection, and prints next commands. The
-underlying workflow is still **collect → curate → render** when you want more
-control.
+`shiplog doctor --setup` is the human setup preflight. `shiplog sources status`
+is the source-only view. `shiplog doctor --setup --json` is the same setup state
+for agents and scripts, without scraping terminal prose. These commands are
+read-only and do not query providers. `shiplog intake` then collects usable
+configured sources, records skipped sources, renders a packet, runs review
+inspection, and prints next commands.
+
+If the review form is already open, `shiplog intake --last-6-months --explain`
+remains the best-effort rescue path: it creates starter local files when needed
+and tells you what setup still needs attention. The underlying workflow is still
+**collect -> curate -> render** when you want more control.
 
 For a first-time, empty-directory walkthrough — commands, expected output
 files, how to read the rendered pack, and what `## Source Freshness` means —
@@ -126,15 +136,21 @@ scripts/demo-review-rescue.sh --out ./out/demo-review-rescue
 ### 0. Fast review intake
 
 ```bash
+shiplog init --guided
+shiplog doctor --setup
+shiplog sources status
 shiplog intake --last-6-months --explain
 shiplog open intake-report --latest
 shiplog open packet --latest
 ```
 
-Use this when you need a packet now. It uses `shiplog.toml` if present, creates
-a minimal starter config if missing, skips unusable sources without hiding them,
-and writes the packet, ledger, coverage manifest, workstream file, and bundle
-manifest as soon as at least one source succeeds. It also writes
+Use this when you need a packet soon but still want setup state to be explicit
+before collection. `init --guided` is the only setup command here that writes
+files; `doctor --setup` and `sources status` are read-only. Intake uses
+`shiplog.toml` if present, creates a minimal starter config if missing, skips
+unusable sources without hiding them, and writes the packet, ledger, coverage
+manifest, workstream file, and bundle manifest as soon as at least one source
+succeeds. It also writes
 `intake.report.md` and `intake.report.json` as a durable checklist you can
 reopen after the terminal scrolls away. It ends with a readiness summary: what
 worked, what needs attention, and the next commands to run.
@@ -160,10 +176,12 @@ Setup readiness JSON from `shiplog doctor --setup --json` is documented in
 ### 1. Initialize local files
 
 ```bash
-shiplog init
+shiplog init --guided
 shiplog config validate
 shiplog config explain
-shiplog doctor
+shiplog doctor --setup
+shiplog sources status
+shiplog doctor --setup --json
 ```
 
 This writes `shiplog.toml` and `manual_events.yaml` in the current directory.
@@ -171,7 +189,9 @@ Use `shiplog init --source github --source jira` to scaffold a narrower source
 set, `--dry-run` to preview, and `--force` to overwrite existing scaffold files.
 Use `shiplog config validate` for a token-free config and local path check,
 and `shiplog config explain` to see resolved defaults and enabled source
-settings. New configs include `[shiplog] config_version = 1`; run
+settings. Use the doctor/source commands after init to confirm which sources are
+ready, disabled, unavailable, or blocked before running intake. New configs
+include `[shiplog] config_version = 1`; run
 `shiplog config migrate` on older configs to add that metadata without changing
 source settings. The full config reference is in
 [docs/config-reference.md](docs/config-reference.md). Copy-adaptable configs
@@ -385,7 +405,7 @@ out/<run_id>/
 | Command | Description |
 |---------|-------------|
 | `init` | Create `shiplog.toml` and `manual_events.yaml` scaffold files |
-| `doctor` | Check local config, enabled sources, token env vars, output safety, and repair plans |
+| `doctor` | Check setup readiness, enabled sources, token env vars, share blockers, output safety, and repair plans |
 | `intake` | Run best-effort review intake, render a packet, inspect it, and print next steps |
 | `config validate/explain/migrate` | Validate `shiplog.toml`, print resolved settings, or add version metadata |
 | `cache stats/inspect/clean` | Inspect and safely clean source API cache databases |

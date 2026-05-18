@@ -63,6 +63,21 @@ scaffolds a starter `manual_events.yaml` and treats your own typed
 notes as the one working source — see
 [Add manual evidence](#add-manual-evidence) below.
 
+Recommended preflight:
+
+```bash
+shiplog init --guided
+shiplog doctor --setup
+shiplog sources status
+shiplog doctor --setup --json
+```
+
+`init --guided` writes the local setup files. `doctor --setup` and
+`sources status` are read-only checks that explain which sources are
+ready, disabled, unavailable, or blocked before intake spends a run.
+`doctor --setup --json` exposes the same setup state for agents and
+scripts.
+
 ## One-command cold-start
 
 From an empty directory:
@@ -78,6 +93,11 @@ launches the durable report and the rendered pack in your platform's
 default markdown viewer. `--explain` prints per-source decisions and
 repair hints to the terminal so you can see what happened without
 reading the report first.
+
+If you skipped the setup preflight, `intake` still creates starter setup
+files when needed. Prefer `doctor --setup` first when you want to avoid
+discovering malformed local files, disabled sources, or missing share
+redaction setup in the finished packet.
 
 The first run creates the following under `./out/<run_id>/`:
 
@@ -281,18 +301,24 @@ profile scans the rendered output for obvious raw URLs and original
 names. Redaction reduces accidental disclosure; it is not a substitute
 for thinking about whether a specific receipt should be shared.
 
+`shiplog doctor --setup` can catch missing redaction setup before you
+reach this step. `share explain` remains the report-aware share posture
+surface after a packet exists.
+
 ## Repair a skipped source
 
-When the report's `Repair sources` section lists a fix, run the
-commands it printed and then rerun intake. The hints do not include
-secret values.
+When the report's `Repair sources` section lists a fix, read setup state
+first, run the commands it printed, and then rerun intake. The hints do
+not include secret values.
 
 ```text
 GitHub:
+  shiplog sources status
   export GITHUB_TOKEN=...
   shiplog intake --last-6-months --explain
 
 Jira:
+  shiplog sources status
   export JIRA_TOKEN=...
   shiplog identify jira --auth-user you@example.com
   shiplog intake --last-6-months --explain
