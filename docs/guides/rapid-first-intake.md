@@ -326,6 +326,8 @@ same intake → report → review → share verify shape a real run uses.
 - [`docs/guides/review-deadline.md`](review-deadline.md) — deadline-pressure
   flow for users with an established setup.
 - [`docs/guides/review-cycle.md`](review-cycle.md) — repeat review cycles.
+- [`docs/guides/guided-setup-doctor.md`](guided-setup-doctor.md) — diagnose
+  config, source, manual-journal, credential, and share setup before intake.
 - [`docs/guides/evidence-repair-loop.md`](evidence-repair-loop.md) — turn a
   rough first packet into a better rerun packet.
 - [`docs/guides/review-ready-packet.md`](review-ready-packet.md) — interpret
