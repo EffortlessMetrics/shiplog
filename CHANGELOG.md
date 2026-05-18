@@ -8,9 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 Post-0.8 status: the review-ready packet work below is on `main` as an
-unreleased 0.9 candidate. Release execution is paused while 0.8 gets soak time;
-do not treat the 0.9 version metadata as tag, crates.io publish, or GitHub
-release approval.
+unreleased 0.9 candidate, and the Guided Setup / Doctor lane has also landed on
+`main` as unreleased candidate value. Release execution is paused while 0.8 gets
+soak time; do not treat the 0.9 version metadata as tag, crates.io publish, or
+GitHub release approval.
 
 ### Post-0.8 soak
 
@@ -161,14 +162,19 @@ release approval.
 - Added a guided setup and doctor guide covering local-only, manual-only,
   token-backed GitHub, manager-share-ready, and public-share-cautious modes
   before intake, repair, or share commands (#409).
+- Updated the 0.9 release decision after Guided Setup / Doctor: the setup front
+  door is part of the unreleased candidate scope, but the 0.9 release hold stays
+  active until owner approval and current release preflight exist (#410).
 
 ## [0.9.0] - Unreleased candidate
 
-shiplog 0.9.0 is the planned **review-ready packet release**. It builds on the 0.8
-Evidence Repair Loop by turning repaired evidence into conservative packet
-quality guidance: readiness, evidence strength, receipt-backed claim
-candidates, missing-context prompts, share posture explanation, and quality
-movement across reruns.
+shiplog 0.9.0 is the planned **review-ready packet and guided setup candidate**.
+It builds on the 0.8 Evidence Repair Loop by turning repaired evidence into
+conservative packet quality guidance: readiness, evidence strength,
+receipt-backed claim candidates, missing-context prompts, share posture
+explanation, and quality movement across reruns. The unreleased candidate now
+also includes the Guided Setup / Doctor front door so users can inspect setup
+readiness before intake, repair, or share commands.
 
 ### Added
 
