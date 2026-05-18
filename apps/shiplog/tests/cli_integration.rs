@@ -1195,6 +1195,21 @@ fn run_guided_setup_intake_2025_with_sources(tmp: &Path, out: &Path, sources: &[
         .success();
 }
 
+fn status_latest_json(
+    tmp: &Path,
+    out: &Path,
+) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+    let out_arg = out.to_string_lossy().to_string();
+    let assert = shiplog_cmd()
+        .current_dir(tmp)
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args(["status", "--out", out_arg.as_str(), "--latest", "--json"])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
+    Ok(serde_json::from_str(&stdout)?)
+}
+
 fn load_first_intake_report(out: &Path) -> (PathBuf, serde_json::Value) {
     let report_path = first_run_dir(out).join("intake.report.json");
     let report: serde_json::Value =
@@ -2075,6 +2090,317 @@ fn status_latest_repairable_run_is_read_first_and_share_safe() -> CliTestResult 
         before,
         file_tree_manifest(tmp.path()),
         "status should not write after intake"
+    );
+    Ok(())
+}
+
+#[test]
+fn status_latest_json_agrees_with_doctor_and_sources_for_setup_blockers() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let out = tmp.path().join("out");
+    let out_arg = out.to_string_lossy().to_string();
+    write_manual_events(&tmp.path().join("manual_events.yaml"));
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[shiplog]
+config_version = 1
+
+[defaults]
+out = "./out"
+window = "last-6-months"
+profile = "internal"
+
+[sources.manual]
+enabled = true
+events = "./manual_events.yaml"
+
+[sources.github]
+enabled = true
+user = "octo"
+"#,
+    )?;
+
+    let doctor = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args(["doctor", "--setup", "--json"])
+        .assert()
+        .failure();
+    let doctor_stdout = String::from_utf8(doctor.get_output().stdout.clone())?;
+    let doctor_json: serde_json::Value = serde_json::from_str(&doctor_stdout)?;
+
+    let sources = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .args(["sources", "status"])
+        .assert()
+        .failure();
+    let sources_stdout = String::from_utf8(sources.get_output().stdout.clone())?;
+    let source_rows = parse_sources_status_rows(&sources_stdout);
+    let github_row = source_rows
+        .get("github")
+        .ok_or_else(|| std::io::Error::other("sources status should include github"))?;
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args([
+            "intake",
+            "--out",
+            out_arg.as_str(),
+            "--no-open",
+            "--explain",
+        ])
+        .assert()
+        .success();
+
+    let before = file_tree_manifest(tmp.path());
+    let status_json = status_latest_json(tmp.path(), &out)?;
+
+    assert_eq!(
+        status_json["setup_summary"]["status"], doctor_json["overall_status"],
+        "status setup blocker should match doctor JSON"
+    );
+    assert!(
+        status_json["setup_summary"]["reason"]
+            .as_str()
+            .is_some_and(|reason| reason.contains("GitHub") && reason.contains("GITHUB_TOKEN")),
+        "setup blocker should be the missing source credential, not share redaction: {status_json}"
+    );
+    assert_eq!(github_row.status, "unavailable");
+    assert!(github_row.enabled);
+    assert!(
+        github_row.reason.contains("GITHUB_TOKEN not set"),
+        "sources status should name missing GitHub token: {sources_stdout}"
+    );
+    assert!(
+        status_json["source_summary"]["unavailable"]
+            .as_array()
+            .is_some_and(|sources| sources.iter().any(|source| {
+                source["source_key"] == "github"
+                    && source["reason"]
+                        .as_str()
+                        .is_some_and(|reason| reason.contains("GITHUB_TOKEN"))
+            })),
+        "status source summary should carry the GitHub blocker from receipts"
+    );
+    assert!(
+        status_json["next_actions"]
+            .as_array()
+            .is_some_and(|actions| actions.iter().all(|action| !action["command"]
+                .as_str()
+                .unwrap_or_default()
+                .contains("journal add --from-repair"))),
+        "setup-blocked status should not offer evidence-repair writes"
+    );
+    assert_eq!(
+        before,
+        file_tree_manifest(tmp.path()),
+        "status consistency read should not write files"
+    );
+    Ok(())
+}
+
+#[test]
+fn status_latest_json_agrees_with_report_repair_plan_and_share_explain() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let out = tmp.path().join("out");
+    let out_arg = out.to_string_lossy().to_string();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["init", "--guided"])
+        .assert()
+        .success();
+    run_guided_setup_intake_2025_with_sources(tmp.path(), &out, &[]);
+
+    let (_, report) = load_latest_intake_report(&out);
+    let status_json = status_latest_json(tmp.path(), &out)?;
+    let repair_plan = shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["repair", "plan", "--out", out_arg.as_str(), "--latest"])
+        .assert()
+        .success();
+    let repair_plan_stdout = String::from_utf8(repair_plan.get_output().stdout.clone())?;
+    let share_explain = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args([
+            "share",
+            "explain",
+            "manager",
+            "--out",
+            out_arg.as_str(),
+            "--latest",
+        ])
+        .assert()
+        .success();
+    let share_explain_stdout = String::from_utf8(share_explain.get_output().stdout.clone())?;
+
+    let packet_readiness = &report["packet_quality"]["packet_readiness"];
+    assert_eq!(
+        status_json["packet_readiness"]["status"], packet_readiness["status"],
+        "status packet readiness should match intake.report.json"
+    );
+    assert_eq!(
+        status_json["packet_readiness"]["reason"], packet_readiness["summary"],
+        "status packet readiness reason should match intake.report.json summary"
+    );
+
+    let repair_items = report["repair_items"]
+        .as_array()
+        .ok_or_else(|| std::io::Error::other("repair_items should be an array"))?;
+    let safe_journal_writes = repair_items
+        .iter()
+        .filter(|item| item["action"]["kind"] == "journal_add")
+        .count() as u64;
+    assert_eq!(
+        status_json["repair_summary"]["open_items"].as_u64(),
+        Some(repair_items.len() as u64),
+        "status repair count should match report repair_items"
+    );
+    assert_eq!(
+        status_json["repair_summary"]["safe_write_count"].as_u64(),
+        Some(safe_journal_writes),
+        "status safe write count should match repair-plan action posture"
+    );
+    assert!(
+        repair_plan_stdout.contains(&format!("Repair queue: {} item(s)", repair_items.len())),
+        "repair plan should print the same repair item count. stdout:\n{repair_plan_stdout}"
+    );
+    if safe_journal_writes > 0 {
+        assert!(
+            repair_plan_stdout.contains("shiplog journal add --from-repair"),
+            "repair plan should expose the same safe journal repair posture. stdout:\n{repair_plan_stdout}"
+        );
+    }
+
+    let manager = status_json["share_summary"]["profiles"]
+        .as_array()
+        .and_then(|profiles| {
+            profiles
+                .iter()
+                .find(|profile| profile["profile_key"] == "manager")
+        })
+        .ok_or_else(|| std::io::Error::other("status should include manager share profile"))?;
+    assert_eq!(manager["status"], "blocked");
+    assert!(
+        manager["reason"]
+            .as_str()
+            .is_some_and(|reason| reason.contains("SHIPLOG_REDACT_KEY")),
+        "status manager share blocker should name redaction key"
+    );
+    assert!(
+        share_explain_stdout.contains("SHIPLOG_REDACT_KEY"),
+        "share explain should report the same redaction-key blocker. stdout:\n{share_explain_stdout}"
+    );
+    assert!(
+        !status_json.to_string().contains("shiplog share manager --"),
+        "status should not offer share rendering while share explain reports a blocker"
+    );
+    Ok(())
+}
+
+#[test]
+fn status_latest_json_uses_same_comparable_runs_as_repair_and_runs_diff() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let out = tmp.path().join("out");
+    let out_arg = out.to_string_lossy().to_string();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["init", "--guided"])
+        .assert()
+        .success();
+    run_guided_setup_intake_2025_with_sources(tmp.path(), &out, &[]);
+    let (_, first_report) = load_first_intake_report(&out);
+    let repair_id = first_repair_id_with_action(&first_report, "journal_add");
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args([
+            "journal",
+            "add",
+            "--from-repair",
+            repair_id.as_str(),
+            "--out",
+            out_arg.as_str(),
+            "--latest",
+        ])
+        .assert()
+        .success();
+    run_guided_setup_intake_2025_with_sources(tmp.path(), &out, &[]);
+
+    let runs = all_run_dirs(&out);
+    let older = runs
+        .first()
+        .ok_or_else(|| std::io::Error::other("older run should exist"))?;
+    let newer = runs
+        .last()
+        .ok_or_else(|| std::io::Error::other("newer run should exist"))?;
+    let older_run_id = older
+        .file_name()
+        .and_then(|name| name.to_str())
+        .ok_or_else(|| std::io::Error::other("older run id"))?;
+    let newer_run_id = newer
+        .file_name()
+        .and_then(|name| name.to_str())
+        .ok_or_else(|| std::io::Error::other("newer run id"))?;
+
+    let status_json = status_latest_json(tmp.path(), &out)?;
+    let repair_diff = shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["repair", "diff", "--out", out_arg.as_str(), "--latest"])
+        .assert()
+        .success();
+    let repair_diff_stdout = String::from_utf8(repair_diff.get_output().stdout.clone())?;
+    let runs_diff = shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["runs", "diff", "--out", out_arg.as_str(), "--latest"])
+        .assert()
+        .success();
+    let runs_diff_stdout = String::from_utf8(runs_diff.get_output().stdout.clone())?;
+
+    assert_eq!(status_json["latest_run"]["run_id"], newer_run_id);
+    assert_eq!(status_json["diff_summary"]["status"], "not_generated");
+    assert!(
+        status_json["diff_summary"]["receipt_refs"]
+            .as_array()
+            .is_some_and(|refs| {
+                refs.iter().any(|receipt| {
+                    receipt["kind"] == "intake_report"
+                        && receipt["path"]
+                            .as_str()
+                            .is_some_and(|path| path.contains(older_run_id))
+                }) && refs.iter().any(|receipt| {
+                    receipt["kind"] == "intake_report"
+                        && receipt["path"]
+                            .as_str()
+                            .is_some_and(|path| path.contains(newer_run_id))
+                })
+            }),
+        "status diff summary should reference the same comparable run reports"
+    );
+    assert!(
+        repair_diff_stdout.contains(&format!("Repair diff: {older_run_id} -> {newer_run_id}")),
+        "repair diff should use the same comparable run pair. stdout:\n{repair_diff_stdout}"
+    );
+    assert!(
+        repair_diff_stdout.contains("Cleared:"),
+        "repair diff should show repair movement. stdout:\n{repair_diff_stdout}"
+    );
+    assert!(
+        runs_diff_stdout.contains(&format!(
+            "Packet quality diff: {older_run_id} -> {newer_run_id}"
+        )),
+        "runs diff should use the same comparable run pair. stdout:\n{runs_diff_stdout}"
+    );
+    assert!(
+        runs_diff_stdout.contains("manual evidence count 0 -> 1"),
+        "runs diff should show the manual repair movement. stdout:\n{runs_diff_stdout}"
     );
     Ok(())
 }
