@@ -1,0 +1,138 @@
+{
+  "overall_status": "ready_with_caveats",
+  "setup_summary": {
+    "status": "ready_with_caveats",
+    "reason": "local sources ready; optional GitHub unavailable",
+    "next_actions": [],
+    "receipt_refs": [
+      {
+        "field": "setup",
+        "kind": "setup_readiness",
+        "path": null,
+        "key": null
+      }
+    ]
+  },
+  "latest_run": {
+    "run_id": "run_2026_05_18_172000",
+    "report_path": "out/run_2026_05_18_172000/intake.report.json",
+    "receipt_refs": [
+      {
+        "field": "latest_run.report",
+        "kind": "intake_report",
+        "path": "out/run_2026_05_18_172000/intake.report.json",
+        "key": null
+      }
+    ]
+  },
+  "packet_readiness": {
+    "status": "ready_with_caveats",
+    "reason": "manual evidence is present but provider coverage is unavailable",
+    "receipt_refs": [
+      {
+        "field": "packet_quality.packet_readiness",
+        "kind": "intake_report",
+        "path": "out/run_2026_05_18_172000/intake.report.json",
+        "key": null
+      }
+    ]
+  },
+  "source_summary": {
+    "included": [
+      {
+        "source_key": "manual",
+        "source_label": "Manual journal",
+        "event_count": 1
+      },
+      {
+        "source_key": "git",
+        "source_label": "Local git",
+        "event_count": 4
+      }
+    ],
+    "unavailable": [
+      {
+        "source_key": "github",
+        "source_label": "GitHub",
+        "reason": "GITHUB_TOKEN not set"
+      }
+    ],
+    "disabled": [],
+    "receipt_refs": [
+      {
+        "field": "source_summary",
+        "kind": "intake_report",
+        "path": "out/run_2026_05_18_172000/intake.report.json",
+        "key": null
+      }
+    ]
+  },
+  "repair_summary": {
+    "open_items": 0,
+    "safe_write_count": 0,
+    "setup_blocked_write_count": 0,
+    "applied_not_rerun": false,
+    "receipt_refs": [
+      {
+        "field": "repair_items",
+        "kind": "intake_report",
+        "path": "out/run_2026_05_18_172000/intake.report.json",
+        "key": null
+      }
+    ]
+  },
+  "diff_summary": {
+    "status": "available",
+    "reason": "repair diff and runs diff receipts are comparable",
+    "receipt_refs": [
+      {
+        "field": "diff.to_report",
+        "kind": "intake_report",
+        "path": "out/run_2026_05_18_172000/intake.report.json",
+        "key": null
+      }
+    ]
+  },
+  "share_summary": {
+    "profiles": [
+      {
+        "profile_key": "manager",
+        "profile_label": "Manager",
+        "status": "not_generated",
+        "reason": "share explain has not been run",
+        "receipt_refs": []
+      }
+    ],
+    "receipt_refs": []
+  },
+  "blocking_reasons": [],
+  "next_actions": [
+    {
+      "key": "share_explain_manager",
+      "label": "Explain manager share posture",
+      "command": "shiplog share explain manager --latest",
+      "writes": false,
+      "reason": "review caveats before share verification",
+      "preconditions": [
+        "latest run available"
+      ],
+      "priority": 1,
+      "receipt_refs": [
+        {
+          "field": "packet_quality.packet_readiness",
+          "kind": "intake_report",
+          "path": "out/run_2026_05_18_172000/intake.report.json",
+          "key": null
+        }
+      ]
+    }
+  ],
+  "receipt_refs": [
+    {
+      "field": "latest_run.report",
+      "kind": "intake_report",
+      "path": "out/run_2026_05_18_172000/intake.report.json",
+      "key": null
+    }
+  ]
+}

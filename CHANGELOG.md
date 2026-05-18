@@ -235,6 +235,10 @@ GitHub release approval.
 - Added `shiplog status --latest --json` as the agent-readable rendering of the
   same review-loop status model, including blockers, receipt refs, and
   write-labelled next actions without human prose or writes (#430).
+- Pinned the review-loop status JSON contract with schema docs and examples so
+  the #430 agent-readable surface has stable fields, finite statuses,
+  write-labelled next actions, receipt refs, no-secret hygiene, and additive
+  compatibility rules (#431).
 
 ## [0.9.0] - Unreleased candidate
 
