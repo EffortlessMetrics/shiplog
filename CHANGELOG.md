@@ -203,6 +203,10 @@ GitHub release approval.
   guide, config reference, and guided setup guide so `init --guided`,
   `doctor --setup`, `sources status`, and `doctor --setup --json` are taught as
   the setup front door before deeper intake, repair, and share flows (#421).
+- Recorded the post-setup release decision: keep the 0.9 hold active after
+  setup-readiness operationalization, include the setup front door in unreleased
+  candidate scope, and require explicit owner approval plus current preflight
+  before any release execution (#422).
 
 ## [0.9.0] - Unreleased candidate
 
