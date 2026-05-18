@@ -42,6 +42,7 @@ use std::io::Read;
 use std::path::{Component, Path, PathBuf};
 mod doctor;
 mod intake_report_builder;
+mod status;
 use intake_report_builder::build_intake_report;
 
 #[derive(Parser, Debug)]
