@@ -101,6 +101,8 @@ control.
 For a first-time, empty-directory walkthrough — commands, expected output
 files, how to read the rendered pack, and what `## Source Freshness` means —
 see [docs/guides/rapid-first-intake.md](docs/guides/rapid-first-intake.md).
+To diagnose setup before intake, repair, or share commands, see
+[docs/guides/guided-setup-doctor.md](docs/guides/guided-setup-doctor.md).
 For deadline use with an established setup, see
 [docs/guides/review-deadline.md](docs/guides/review-deadline.md). For a
 practical review-cycle walkthrough, see

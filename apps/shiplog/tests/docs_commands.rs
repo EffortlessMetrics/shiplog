@@ -392,6 +392,37 @@ fn review_ready_packet_guide_documents_quality_flow() {
 }
 
 #[test]
+fn guided_setup_doctor_guide_documents_setup_flow() {
+    let doc_path = repo_root().join("docs/guides/guided-setup-doctor.md");
+    let doc = std::fs::read_to_string(&doc_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", doc_path.display()));
+
+    for needle in [
+        "shiplog init --guided",
+        "shiplog doctor --setup",
+        "shiplog sources status",
+        "shiplog intake --last-6-months --explain",
+        "shiplog repair plan --latest",
+        "shiplog share explain manager --latest",
+        "Local-only mode",
+        "Manual-only mode",
+        "Token-backed GitHub mode",
+        "Manager-share-ready mode",
+        "Public-share-cautious mode",
+        "SHIPLOG_REDACT_KEY",
+        "journal add --from-repair",
+        "does not call the GitHub API",
+        "Doctor is not a dry-run intake",
+        "read-only command first",
+    ] {
+        assert!(
+            doc.contains(needle),
+            "guided setup doctor guide should mention {needle:?}"
+        );
+    }
+}
+
+#[test]
 fn release_hold_guard_blocks_held_0_9_tag() {
     let root = repo_root();
     let workflow_path = root.join(".github/workflows/release.yml");

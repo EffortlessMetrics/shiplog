@@ -158,6 +158,9 @@ release approval.
   malformed manual-journal setup from turning into dead-end repair commands
   before the journal repair loop resumes and clears the manual evidence item
   (#408).
+- Added a guided setup and doctor guide covering local-only, manual-only,
+  token-backed GitHub, manager-share-ready, and public-share-cautious modes
+  before intake, repair, or share commands (#409).
 
 ## [0.9.0] - Unreleased candidate
 
