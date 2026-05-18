@@ -1,5 +1,6 @@
 //! Comprehensive CLI integration tests using `assert_cmd` and `predicates`.
 
+use anyhow::Context;
 use assert_cmd::Command;
 use chrono::{Duration, NaiveDate, TimeZone, Utc};
 use predicates::prelude::*;
@@ -4066,12 +4067,9 @@ coverage = "./missing.coverage.json"
             .contains("missing.events.jsonl")
     );
 
-    let sources = json["sources"].as_array().ok_or_else(|| {
-        std::io::Error::new(
-            std::io::ErrorKind::InvalidData,
-            "sources should be an array",
-        )
-    })?;
+    let sources = json["sources"]
+        .as_array()
+        .context("sources should be an array")?;
     assert!(
         sources
             .iter()
