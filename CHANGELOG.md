@@ -186,6 +186,10 @@ GitHub release approval.
 - Pinned share-readiness consistency so doctor, `share explain`, `share
   verify`, and manager/public rendering agree on the missing redaction-key
   blocker without writing profile artifacts (#417).
+- Recorded a guided setup dogfood transcript from an empty temp workspace
+  through `init --guided`, doctor human/JSON setup reads, `sources status`,
+  intake, repair, rerun, diff, and read-only share explanation while keeping
+  the 0.9 release hold active (#418).
 
 ## [0.9.0] - Unreleased candidate
 
