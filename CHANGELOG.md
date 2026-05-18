@@ -165,6 +165,9 @@ GitHub release approval.
 - Updated the 0.9 release decision after Guided Setup / Doctor: the setup front
   door is part of the unreleased candidate scope, but the 0.9 release hold stays
   active until owner approval and current release preflight exist (#410).
+- Added a setup-readiness dogfood matrix so the Guided Setup / Doctor flows have
+  a visible ledger of trusted proof, missing proof, and accepted caveats without
+  lifting the 0.9 release hold (#411).
 
 ## [0.9.0] - Unreleased candidate
 

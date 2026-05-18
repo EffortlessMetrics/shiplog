@@ -5,6 +5,9 @@ repair/share command looks blocked by setup. The goal is to make setup state
 explicit before you spend time on an intake run or try a repair command that
 cannot succeed.
 
+For the current operational proof ledger, see the
+[`Setup-readiness dogfood matrix`](../product/setup-readiness-dogfood-matrix.md).
+
 The front-door loop is:
 
 ```bash
