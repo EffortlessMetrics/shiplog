@@ -910,6 +910,91 @@ fn review_loop_status_proposal_defines_receipt_front_panel() {
 }
 
 #[test]
+fn review_loop_status_spec_defines_receipt_contract() {
+    let root = repo_root();
+    let spec_path = root.join("docs/specs/SHIPLOG-SPEC-0008-review-loop-status.md");
+    let proposal_path = root.join("docs/proposals/SHIPLOG-PROP-0006-review-loop-status.md");
+
+    let spec = std::fs::read_to_string(&spec_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", spec_path.display()));
+    let proposal = std::fs::read_to_string(&proposal_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", proposal_path.display()));
+
+    for needle in [
+        "SHIPLOG-SPEC-0008: Review Loop Status",
+        "SHIPLOG-PROP-0006-review-loop-status",
+        "shiplog status --latest",
+        "shiplog status --latest --json",
+        "read-only projection",
+        "setup_summary",
+        "latest_run",
+        "packet_readiness",
+        "source_summary",
+        "repair_summary",
+        "diff_summary",
+        "share_summary",
+        "next_actions[]",
+        "blocking_reasons[]",
+        "receipt_refs[]",
+        "Required fields for `next_actions[]`:",
+        "preconditions[]",
+        "priority",
+        "unknown",
+        "needs_setup",
+        "ready_to_collect",
+        "needs_evidence",
+        "needs_repair",
+        "repair_in_progress",
+        "ready_with_caveats",
+        "ready_to_explain_share",
+        "share_blocked",
+        "ready_to_share",
+        "blocked",
+        "Triggering receipt condition",
+        "setup readiness != evidence quality",
+        "repair readiness != share readiness",
+        "share explain != share render",
+        "status != packet prose",
+        "Status must not scrape `packet.md`",
+        "no status path reads `packet.md` as machine truth",
+        "No provider probing",
+        "No config mutation",
+        "No implicit intake rerun",
+        "No automatic repair",
+        "No share rendering",
+        "No packet Markdown scraping",
+        "No LLM calls",
+        "No generated performance-review prose",
+        "No release execution",
+        "does not approve a release",
+    ] {
+        assert!(
+            spec.contains(needle),
+            "review-loop status spec should mention {needle:?}"
+        );
+    }
+
+    for receipt in [
+        "setup model",
+        "intake.report.json",
+        "repair diff receipts",
+        "runs diff receipts",
+        "share manifests",
+        "share readiness receipts",
+    ] {
+        assert!(
+            spec.contains(receipt),
+            "review-loop status spec should name receipt source {receipt:?}"
+        );
+    }
+
+    assert!(
+        proposal.contains("SHIPLOG-SPEC-0008-review-loop-status.md"),
+        "proposal should link the follow-up status spec"
+    );
+}
+
+#[test]
 fn release_hold_guard_blocks_held_0_9_tag() {
     let root = repo_root();
     let workflow_path = root.join(".github/workflows/release.yml");
