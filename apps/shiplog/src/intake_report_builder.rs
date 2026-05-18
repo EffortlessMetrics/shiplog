@@ -14,6 +14,7 @@ pub(crate) fn build_intake_report(
     let skipped_sources = configured_source_skips(&coverage.warnings);
     let repair_sources =
         intake_repair_source_reports(explanations, &result.configured.failures, config_path);
+    let setup_blocked_sources = setup_blocked_source_failures(&result.configured.failures);
     let manual_journal_add_blocked = manual_journal_add_blocked(&repair_sources);
     let (workstreams, _, _) = load_effective_workstreams_for_run(&result.outputs.out_dir)?;
     let validation_errors = validate_workstreams_against_events(&workstreams, &events);
@@ -95,6 +96,9 @@ pub(crate) fn build_intake_report(
         prepend_repair_plan_next_command(&mut next_commands, out_dir);
         if prior_repair_report_exists {
             prepend_repair_diff_next_command(&mut next_commands, out_dir);
+        }
+        if setup_blocked_sources {
+            prepend_setup_handoff_next_commands(&mut next_commands, config_path);
         }
         next_commands.retain(|command| !action_writes(command));
         actions = intake_report_actions(
@@ -371,6 +375,38 @@ fn prepend_repair_diff_next_command(next_commands: &mut Vec<String>, out_dir: &P
     next_commands.insert(0, repair_diff_next_command(out_dir));
 }
 
+fn prepend_setup_handoff_next_commands(next_commands: &mut Vec<String>, config_path: &Path) {
+    next_commands.retain(|command| !is_setup_handoff_command(command));
+    next_commands.insert(0, sources_status_next_command(config_path));
+    next_commands.insert(0, doctor_setup_next_command(config_path));
+}
+
+fn is_setup_handoff_command(command: &str) -> bool {
+    let command = command.trim_start();
+    command.starts_with("shiplog doctor --setup")
+        || command.starts_with("shiplog sources status")
+        || command.starts_with("shiplog doctor --config ")
+}
+
+fn doctor_setup_next_command(config_path: &Path) -> String {
+    format!("shiplog doctor --setup{}", setup_config_arg(config_path))
+}
+
+fn sources_status_next_command(config_path: &Path) -> String {
+    format!("shiplog sources status{}", setup_config_arg(config_path))
+}
+
+fn setup_config_arg(config_path: &Path) -> String {
+    if intake_footer_should_include_config(config_path) {
+        format!(
+            " --config {}",
+            quote_cli_value(&config_path.display().to_string())
+        )
+    } else {
+        String::new()
+    }
+}
+
 fn repair_plan_next_command(out_dir: &Path) -> String {
     format!(
         "shiplog repair plan --out {} --latest",
@@ -553,6 +589,26 @@ fn manual_journal_add_blocked(repair_sources: &[IntakeReportRepairSource]) -> bo
     repair_sources.iter().any(|repair| {
         repair.source_key == "manual" && repair.kind == IntakeRepairKind::SetupRequired.as_str()
     })
+}
+
+fn setup_blocked_source_failures(failures: &[ConfiguredSourceFailure]) -> bool {
+    failures.iter().any(|failure| {
+        setup_blocked_repair_kind(classify_intake_repair_kind(&failure.name, &failure.error))
+    })
+}
+
+fn setup_blocked_repair_kind(kind: IntakeRepairKind) -> bool {
+    matches!(
+        kind,
+        IntakeRepairKind::MissingToken
+            | IntakeRepairKind::MissingIdentity
+            | IntakeRepairKind::InvalidFilter
+            | IntakeRepairKind::BadInstanceUrl
+            | IntakeRepairKind::AuthRejected
+            | IntakeRepairKind::LocalSourceUnavailable
+            | IntakeRepairKind::MissingFile
+            | IntakeRepairKind::SetupRequired
+    )
 }
 
 fn is_journal_add_command(command: &str) -> bool {
