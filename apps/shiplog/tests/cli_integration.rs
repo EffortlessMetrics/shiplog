@@ -4201,7 +4201,7 @@ events = "./manual_events.yaml"
     assert!(
         !stdout.contains("run_legacy")
             && !stdout.contains("packet_quality")
-            && !stdout.contains("Setup readiness\\n\\nReady"),
+            && !stdout.contains("This stale packet text must not drive doctor"),
         "doctor setup JSON should come from setup files, not old report or packet artifacts"
     );
 
