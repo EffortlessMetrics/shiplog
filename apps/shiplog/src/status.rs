@@ -118,6 +118,15 @@ impl ReviewLoopStatus {
                 ));
             }
             ReviewLoopOverallStatus::NeedsRepair
+        } else if inputs.packet_readiness.status == PacketReadinessStatus::NeedsRepair {
+            blocking_reasons.push(StatusBlockingReason::packet_readiness(
+                inputs.packet_readiness.reason.clone(),
+                inputs.packet_readiness.receipt_refs.clone(),
+            ));
+            next_actions.push(StatusNextAction::repair_plan(
+                "inspect repair receipts before running write-producing repair",
+            ));
+            ReviewLoopOverallStatus::NeedsRepair
         } else if inputs.packet_readiness.status == PacketReadinessStatus::NeedsEvidence {
             blocking_reasons.push(StatusBlockingReason::packet_readiness(
                 "packet still needs evidence",
@@ -698,6 +707,17 @@ impl PacketReadinessSummary {
         }
     }
 
+    pub(crate) fn needs_repair(reason: impl Into<String>) -> Self {
+        Self {
+            status: PacketReadinessStatus::NeedsRepair,
+            reason: reason.into(),
+            receipt_refs: vec![StatusReceiptRef::field(
+                "packet_readiness.status",
+                "intake_report",
+            )],
+        }
+    }
+
     pub(crate) fn unknown() -> Self {
         Self {
             status: PacketReadinessStatus::Unknown,
@@ -776,6 +796,36 @@ pub(crate) struct DiffStatusSummary {
 }
 
 impl DiffStatusSummary {
+    pub(crate) fn available(
+        reason: impl Into<String>,
+        receipt_refs: Vec<StatusReceiptRef>,
+    ) -> Self {
+        Self {
+            status: DiffSummaryStatus::Available,
+            reason: reason.into(),
+            receipt_refs,
+        }
+    }
+
+    pub(crate) fn no_prior_comparable_run(reason: impl Into<String>) -> Self {
+        Self {
+            status: DiffSummaryStatus::NoPriorComparableRun,
+            reason: reason.into(),
+            receipt_refs: Vec::new(),
+        }
+    }
+
+    pub(crate) fn not_generated(
+        reason: impl Into<String>,
+        receipt_refs: Vec<StatusReceiptRef>,
+    ) -> Self {
+        Self {
+            status: DiffSummaryStatus::NotGenerated,
+            reason: reason.into(),
+            receipt_refs,
+        }
+    }
+
     pub(crate) fn unknown() -> Self {
         Self {
             status: DiffSummaryStatus::Unknown,
@@ -1116,6 +1166,8 @@ mod tests {
     use super::*;
     use tempfile::TempDir;
 
+    type StatusTestResult = Result<(), Box<dyn std::error::Error>>;
+
     #[test]
     fn no_config_status_can_represent_setup_writer() {
         let status = ReviewLoopStatus::from_inputs(ReviewLoopStatusInputs {
@@ -1227,6 +1279,24 @@ mod tests {
     }
 
     #[test]
+    fn packet_readiness_needs_repair_routes_to_repair_plan() {
+        let status = ReviewLoopStatus::from_inputs(ReviewLoopStatusInputs {
+            setup_summary: SetupStatusSummary::ready("local setup ready"),
+            latest_run: Some(LatestRunSummary::new(
+                "run-1",
+                "out/run-1/intake.report.json",
+            )),
+            packet_readiness: PacketReadinessSummary::needs_repair("blocked until repair"),
+            ..ReviewLoopStatusInputs::default()
+        });
+
+        assert_eq!(status.overall_status, ReviewLoopOverallStatus::NeedsRepair);
+        assert_eq!(status.next_actions.len(), 1);
+        assert_eq!(status.next_actions[0].key, "repair_plan");
+        assert!(!status.next_actions[0].writes);
+    }
+
+    #[test]
     fn repair_applied_but_not_rerun_prefers_intake() {
         let status = ReviewLoopStatus::from_inputs(ReviewLoopStatusInputs {
             setup_summary: SetupStatusSummary::ready("local setup ready"),
@@ -1313,35 +1383,37 @@ mod tests {
     }
 
     #[test]
-    fn resolver_handles_missing_output_dir_without_panicking() {
-        let tmp = TempDir::new().expect("tempdir");
+    fn resolver_handles_missing_output_dir_without_panicking() -> StatusTestResult {
+        let tmp = TempDir::new()?;
         let out = tmp.path().join("missing-out");
 
         let resolution = resolve_latest_review_loop_receipts(&out);
 
         assert!(resolution.latest_run.is_none());
         assert_eq!(resolution.problems[0].key, "out_dir_missing");
+        Ok(())
     }
 
     #[test]
-    fn resolver_handles_empty_output_dir() {
-        let tmp = TempDir::new().expect("tempdir");
+    fn resolver_handles_empty_output_dir() -> StatusTestResult {
+        let tmp = TempDir::new()?;
         let out = tmp.path().join("out");
-        fs::create_dir_all(&out).expect("create out");
+        fs::create_dir_all(&out)?;
 
         let resolution = resolve_latest_review_loop_receipts(&out);
 
         assert!(resolution.latest_run.is_none());
         assert!(resolution.problems.is_empty());
         assert!(resolution.derived_diff_receipts.is_empty());
+        Ok(())
     }
 
     #[test]
-    fn resolver_reads_latest_run_report_and_optional_receipts() {
-        let tmp = TempDir::new().expect("tempdir");
+    fn resolver_reads_latest_run_report_and_optional_receipts() -> StatusTestResult {
+        let tmp = TempDir::new()?;
         let out = tmp.path().join("out");
         let run = out.join("run_001");
-        fs::create_dir_all(&run).expect("create run");
+        fs::create_dir_all(&run)?;
         write_report(
             &run,
             serde_json::json!({
@@ -1352,110 +1424,121 @@ mod tests {
                 },
                 "repair_items": []
             }),
-        );
+        )?;
         fs::write(
             run.join(SOURCE_FAILURES_FILENAME),
             "{\"schema_version\":1}\n",
-        )
-        .expect("write source failures");
+        )?;
         let manager_manifest = run
             .join(SHARE_PROFILES_DIR)
             .join(SHARE_PROFILE_MANAGER)
             .join(SHARE_MANIFEST_FILENAME);
-        fs::create_dir_all(manager_manifest.parent().expect("manifest parent"))
-            .expect("create manifest parent");
-        fs::write(&manager_manifest, "{\"schema_version\":1}\n").expect("write manifest");
+        let manifest_parent = manager_manifest
+            .parent()
+            .ok_or_else(|| std::io::Error::other("manifest parent"))?;
+        fs::create_dir_all(manifest_parent)?;
+        fs::write(&manager_manifest, "{\"schema_version\":1}\n")?;
 
         let resolution = resolve_latest_review_loop_receipts(&out);
-        let latest = resolution.latest_run.expect("latest run");
+        let latest = resolution
+            .latest_run
+            .ok_or_else(|| std::io::Error::other("latest run"))?;
 
         assert_eq!(latest.run_id, "run_001");
         assert_eq!(latest.report_state, ResolvedJsonState::Parsed);
         assert!(latest.report_shape.has_packet_quality);
         assert!(latest.report_shape.has_repair_items);
         assert!(latest.report_shape.has_share_posture);
-        assert_eq!(
-            resolution.source_failures.expect("source failures").state,
-            ResolvedJsonState::Parsed
-        );
+        let source_failures = resolution
+            .source_failures
+            .ok_or_else(|| std::io::Error::other("source failures"))?;
+        assert_eq!(source_failures.state, ResolvedJsonState::Parsed);
         assert_eq!(resolution.share_manifests.len(), 1);
         assert_eq!(resolution.share_manifests[0].key, "share_manifest:manager");
+        Ok(())
     }
 
     #[test]
-    fn resolver_picks_newest_run_deterministically_and_derives_diff_receipts() {
-        let tmp = TempDir::new().expect("tempdir");
+    fn resolver_picks_newest_run_deterministically_and_derives_diff_receipts() -> StatusTestResult {
+        let tmp = TempDir::new()?;
         let out = tmp.path().join("out");
         let older = out.join("run_001");
         let newer = out.join("run_002");
-        fs::create_dir_all(&older).expect("create older");
-        fs::create_dir_all(&newer).expect("create newer");
+        fs::create_dir_all(&older)?;
+        fs::create_dir_all(&newer)?;
         write_report(
             &older,
             serde_json::json!({"run_id": "run_001", "repair_items": []}),
-        );
+        )?;
         write_report(
             &newer,
             serde_json::json!({"run_id": "run_002", "repair_items": []}),
-        );
+        )?;
 
         let resolution = resolve_latest_review_loop_receipts(&out);
+        let latest = resolution
+            .latest_run
+            .ok_or_else(|| std::io::Error::other("latest"))?;
+        let prior = resolution
+            .comparable_prior_run
+            .ok_or_else(|| std::io::Error::other("prior"))?;
 
-        assert_eq!(resolution.latest_run.expect("latest").run_id, "run_002");
-        assert_eq!(
-            resolution.comparable_prior_run.expect("prior").run_id,
-            "run_001"
-        );
+        assert_eq!(latest.run_id, "run_002");
+        assert_eq!(prior.run_id, "run_001");
         let diff_keys: Vec<&str> = resolution
             .derived_diff_receipts
             .iter()
             .map(|receipt| receipt.key.as_str())
             .collect();
         assert_eq!(diff_keys, ["repair_diff_latest", "runs_diff_latest"]);
+        Ok(())
     }
 
     #[test]
-    fn resolver_accepts_old_report_shape_without_inventing_new_fields() {
-        let tmp = TempDir::new().expect("tempdir");
+    fn resolver_accepts_old_report_shape_without_inventing_new_fields() -> StatusTestResult {
+        let tmp = TempDir::new()?;
         let out = tmp.path().join("out");
         let run = out.join("run_001");
-        fs::create_dir_all(&run).expect("create run");
-        write_report(&run, serde_json::json!({"run_id": "run_001"}));
+        fs::create_dir_all(&run)?;
+        write_report(&run, serde_json::json!({"run_id": "run_001"}))?;
 
         let resolution = resolve_latest_review_loop_receipts(&out);
-        let latest = resolution.latest_run.expect("latest run");
+        let latest = resolution
+            .latest_run
+            .ok_or_else(|| std::io::Error::other("latest run"))?;
 
         assert_eq!(latest.report_state, ResolvedJsonState::Parsed);
         assert!(!latest.report_shape.has_packet_quality);
         assert!(!latest.report_shape.has_repair_items);
         assert!(!latest.report_shape.has_share_posture);
         assert!(resolution.problems.is_empty());
+        Ok(())
     }
 
     #[test]
-    fn resolver_marks_malformed_report_as_blocked_problem() {
-        let tmp = TempDir::new().expect("tempdir");
+    fn resolver_marks_malformed_report_as_blocked_problem() -> StatusTestResult {
+        let tmp = TempDir::new()?;
         let out = tmp.path().join("out");
         let run = out.join("run_bad");
-        fs::create_dir_all(&run).expect("create run");
-        fs::write(run.join(INTAKE_REPORT_FILENAME), "not json\n").expect("write bad report");
+        fs::create_dir_all(&run)?;
+        fs::write(run.join(INTAKE_REPORT_FILENAME), "not json\n")?;
 
         let resolution = resolve_latest_review_loop_receipts(&out);
-        let latest = resolution.latest_run.expect("latest run");
+        let latest = resolution
+            .latest_run
+            .ok_or_else(|| std::io::Error::other("latest run"))?;
 
         assert_eq!(latest.report_state, ResolvedJsonState::Malformed);
         assert_eq!(resolution.problems[0].key, "intake_report_malformed");
         assert_eq!(resolution.problems[0].status, "blocked");
+        Ok(())
     }
 
-    fn write_report(run_dir: &Path, report: serde_json::Value) {
+    fn write_report(run_dir: &Path, report: serde_json::Value) -> StatusTestResult {
         fs::write(
             run_dir.join(INTAKE_REPORT_FILENAME),
-            format!(
-                "{}\n",
-                serde_json::to_string_pretty(&report).expect("serialize report")
-            ),
-        )
-        .expect("write report");
+            format!("{}\n", serde_json::to_string_pretty(&report)?),
+        )?;
+        Ok(())
     }
 }

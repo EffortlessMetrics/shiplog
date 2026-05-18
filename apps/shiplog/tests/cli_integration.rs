@@ -1828,6 +1828,137 @@ fn init_guided_creates_local_first_setup_without_token_providers() -> CliTestRes
 }
 
 #[test]
+fn status_latest_missing_setup_prints_init_guidance_without_writing() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let before = file_tree_manifest(tmp.path());
+
+    let assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args(["status", "--latest"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Review loop status: Needs setup"))
+        .stdout(predicate::str::contains("Setup:"))
+        .stdout(predicate::str::contains(
+            "shiplog doctor --setup [read-only]",
+        ))
+        .stdout(predicate::str::contains("shiplog init --guided [writes]"));
+    let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
+
+    assert!(
+        stdout.contains("Receipts:"),
+        "status should name read receipt surfaces"
+    );
+    assert_eq!(
+        before,
+        file_tree_manifest(tmp.path()),
+        "status should not write setup or run artifacts"
+    );
+    Ok(())
+}
+
+#[test]
+fn status_latest_ready_setup_without_run_routes_to_intake() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let out = tmp.path().join("custom-out");
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["init", "--guided"])
+        .assert()
+        .success();
+
+    let before = file_tree_manifest(tmp.path());
+    let assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args([
+            "status",
+            "--out",
+            out.to_str().expect("out path should be valid UTF-8"),
+            "--latest",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "Review loop status: Ready to collect",
+        ))
+        .stdout(predicate::str::contains("Latest run:"))
+        .stdout(predicate::str::contains("none found"))
+        .stdout(predicate::str::contains("shiplog intake --out"))
+        .stdout(predicate::str::contains("[writes]"));
+    let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
+
+    assert!(
+        !stdout.contains("shiplog share manager"),
+        "status should not offer share rendering before a run"
+    );
+    assert_eq!(
+        before,
+        file_tree_manifest(tmp.path()),
+        "status should be read-only after guided init"
+    );
+    Ok(())
+}
+
+#[test]
+fn status_latest_repairable_run_is_read_first_and_share_safe() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let out = tmp.path().join("out");
+    let out_arg = out.to_str().expect("out path should be valid UTF-8");
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["init", "--guided"])
+        .assert()
+        .success();
+    run_guided_setup_intake_2025_with_sources(tmp.path(), &out, &[]);
+
+    let before = file_tree_manifest(tmp.path());
+    let assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args(["status", "--out", out_arg, "--latest"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Review loop status: Needs repair"))
+        .stdout(predicate::str::contains("Repair:"))
+        .stdout(predicate::str::contains("open items:"))
+        .stdout(predicate::str::contains("safe writes:"))
+        .stdout(predicate::str::contains("shiplog repair plan --out"))
+        .stdout(predicate::str::contains("[read-only]"))
+        .stdout(predicate::str::contains(
+            "shiplog journal add --from-repair <repair_id> --out",
+        ))
+        .stdout(predicate::str::contains("[writes]"))
+        .stdout(predicate::str::contains("Receipts:"))
+        .stdout(predicate::str::contains("intake_report"));
+    let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
+
+    let repair_plan_index = stdout
+        .find("shiplog repair plan")
+        .expect("status should offer repair plan");
+    let journal_index = stdout
+        .find("shiplog journal add --from-repair")
+        .expect("status should offer journal repair when safe");
+    assert!(
+        repair_plan_index < journal_index,
+        "repair plan should appear before write-producing repair"
+    );
+    assert!(
+        !stdout.contains("shiplog share manager --"),
+        "status should not offer share render while share is blocked"
+    );
+    assert_eq!(
+        before,
+        file_tree_manifest(tmp.path()),
+        "status should not write after intake"
+    );
+    Ok(())
+}
+
+#[test]
 fn guided_setup_prevents_dead_end_manual_repair_loop() -> CliTestResult {
     let tmp = TempDir::new()?;
     let out = tmp.path().join("out");
