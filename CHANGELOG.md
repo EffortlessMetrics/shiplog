@@ -253,6 +253,10 @@ GitHub release approval.
   before intake, after intake, after journal repair, after rerun/diff, and
   before share rendering; the transcript confirms status stays read-only and
   does not lift the 0.9 release hold (#434).
+- Added a recurring review-loop guide that teaches status-first weekly,
+  monthly, promotion, local-only, token-backed, public-share, and
+  agent-assisted workflows without widening status into a dashboard or release
+  lane (#435).
 
 ## [0.9.0] - Unreleased candidate
 

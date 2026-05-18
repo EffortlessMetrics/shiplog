@@ -1318,6 +1318,45 @@ fn review_ready_packet_guide_documents_quality_flow() {
 }
 
 #[test]
+fn recurring_review_loop_guide_documents_status_first_practice() {
+    let doc_path = repo_root().join("docs/guides/recurring-review-loop.md");
+    let doc = std::fs::read_to_string(&doc_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", doc_path.display()));
+
+    for needle in [
+        "shiplog status --latest",
+        "shiplog status --latest --json",
+        "shiplog intake --last-6-months --explain",
+        "shiplog repair plan --latest",
+        "shiplog journal add --from-repair <repair_id>",
+        "shiplog repair diff --latest",
+        "shiplog runs diff --latest",
+        "shiplog share explain manager --latest",
+        "status first, then the next receipt-producing command",
+        "Weekly self-review",
+        "Monthly manager prep",
+        "Promotion packet prep",
+        "Local-only mode",
+        "Token-backed GitHub mode",
+        "Public-share cautious mode",
+        "Agent-assisted mode",
+        "ready_to_collect",
+        "needs_repair",
+        "repair_in_progress",
+        "share_blocked",
+        "`writes = true`",
+        "Status should not:",
+        "scrape `packet.md`",
+        "performance-review prose",
+    ] {
+        assert!(
+            doc.contains(needle),
+            "recurring review-loop guide should mention {needle:?}"
+        );
+    }
+}
+
+#[test]
 fn guided_setup_doctor_guide_documents_setup_flow() {
     let doc_path = repo_root().join("docs/guides/guided-setup-doctor.md");
     let doc = std::fs::read_to_string(&doc_path)
