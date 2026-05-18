@@ -1,0 +1,112 @@
+{
+  "overall_status": "needs_setup",
+  "setup_summary": {
+    "status": "needs_setup",
+    "reason": "shiplog.toml is missing",
+    "next_actions": [
+      {
+        "key": "doctor_setup",
+        "label": "Inspect setup",
+        "command": "shiplog doctor --setup",
+        "writes": false,
+        "reason": "setup must be inspected before evidence collection",
+        "preconditions": [],
+        "priority": 1,
+        "receipt_refs": []
+      },
+      {
+        "key": "init_guided",
+        "label": "Create guided setup",
+        "command": "shiplog init --guided",
+        "writes": true,
+        "reason": "create local setup files",
+        "preconditions": [],
+        "priority": 1,
+        "receipt_refs": []
+      }
+    ],
+    "receipt_refs": [
+      {
+        "field": "setup.config",
+        "kind": "setup_readiness",
+        "path": "shiplog.toml",
+        "key": "shiplog.toml"
+      }
+    ]
+  },
+  "latest_run": null,
+  "packet_readiness": {
+    "status": "unknown",
+    "reason": "packet readiness receipt is missing",
+    "receipt_refs": []
+  },
+  "source_summary": {
+    "included": [],
+    "unavailable": [],
+    "disabled": [],
+    "receipt_refs": []
+  },
+  "repair_summary": {
+    "open_items": 0,
+    "safe_write_count": 0,
+    "setup_blocked_write_count": 0,
+    "applied_not_rerun": false,
+    "receipt_refs": []
+  },
+  "diff_summary": {
+    "status": "unknown",
+    "reason": "diff receipt is missing",
+    "receipt_refs": []
+  },
+  "share_summary": {
+    "profiles": [],
+    "receipt_refs": []
+  },
+  "blocking_reasons": [
+    {
+      "key": "setup",
+      "label": "Setup",
+      "status": "needs_setup",
+      "reason": "shiplog.toml is missing",
+      "scope": "setup",
+      "receipt_refs": [
+        {
+          "field": "setup.config",
+          "kind": "setup_readiness",
+          "path": "shiplog.toml",
+          "key": "shiplog.toml"
+        }
+      ]
+    }
+  ],
+  "next_actions": [
+    {
+      "key": "doctor_setup",
+      "label": "Inspect setup",
+      "command": "shiplog doctor --setup",
+      "writes": false,
+      "reason": "setup must be inspected before evidence collection",
+      "preconditions": [],
+      "priority": 1,
+      "receipt_refs": []
+    },
+    {
+      "key": "init_guided",
+      "label": "Create guided setup",
+      "command": "shiplog init --guided",
+      "writes": true,
+      "reason": "create local setup files",
+      "preconditions": [],
+      "priority": 1,
+      "receipt_refs": []
+    }
+  ],
+  "receipt_refs": [
+    {
+      "field": "setup.config",
+      "kind": "setup_readiness",
+      "path": "shiplog.toml",
+      "key": "shiplog.toml"
+    }
+  ]
+}

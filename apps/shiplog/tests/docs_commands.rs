@@ -339,6 +339,203 @@ fn setup_readiness_schema_docs_and_examples_describe_v1_contract() {
     }
 }
 
+#[test]
+fn review_loop_status_schema_docs_and_examples_describe_v1_contract()
+-> Result<(), Box<dyn std::error::Error>> {
+    let root = repo_root();
+    let doc_path = root.join("docs/schemas/review-loop-status-v1.md");
+    let schema_path = root.join("contracts/schemas/review-loop-status.v1.schema.json");
+    let spec_path = root.join("docs/specs/SHIPLOG-SPEC-0008-review-loop-status.md");
+
+    let doc = std::fs::read_to_string(&doc_path)?;
+    let schema_text = std::fs::read_to_string(&schema_path)?;
+    let spec = std::fs::read_to_string(&spec_path)?;
+    let schema: serde_json::Value = serde_json::from_str(&schema_text)?;
+
+    assert_eq!(schema["additionalProperties"], false);
+    assert_eq!(
+        schema["properties"]["overall_status"]["$ref"],
+        "#/$defs/overall_status"
+    );
+    assert!(
+        schema["propertyNames"].is_object(),
+        "review-loop status schema should include property-name hygiene"
+    );
+
+    for field in [
+        "overall_status",
+        "setup_summary",
+        "latest_run",
+        "packet_readiness",
+        "source_summary",
+        "repair_summary",
+        "diff_summary",
+        "share_summary",
+        "blocking_reasons",
+        "next_actions",
+        "receipt_refs",
+    ] {
+        let required = schema["required"].as_array();
+        assert!(
+            required.is_some_and(|values| values.iter().any(|value| value == field)),
+            "review-loop status schema should require {field}"
+        );
+        assert!(
+            doc.contains(field),
+            "review-loop status schema docs should mention {field}"
+        );
+    }
+
+    for needle in [
+        "contracts/schemas/review-loop-status.v1.schema.json",
+        "shiplog status --latest --json",
+        "examples/review-loop-status/missing-setup.json",
+        "examples/review-loop-status/ready-to-collect.json",
+        "examples/review-loop-status/needs-evidence.json",
+        "examples/review-loop-status/needs-repair.json",
+        "examples/review-loop-status/repair-in-progress.json",
+        "examples/review-loop-status/ready-with-caveats.json",
+        "examples/review-loop-status/share-blocked.json",
+        "examples/review-loop-status/ready-to-share.json",
+        "examples/review-loop-status/unknown-old-report.json",
+        "examples/review-loop-status/malformed-report.json",
+        "setup/evidence/repair/diff",
+        "not packet prose",
+        "ready_to_collect",
+        "needs_evidence",
+        "needs_repair",
+        "repair_in_progress",
+        "ready_with_caveats",
+        "share_blocked",
+        "ready_to_share",
+        "next_actions",
+        "preconditions",
+        "receipt_refs",
+        "must not include token values",
+        "does not query providers",
+        "does not mutate config",
+        "does not run intake implicitly",
+        "does not run repair commands",
+        "does not render share artifacts",
+        "does not scrape `packet.md`",
+        "does not call an LLM",
+        "does not execute release work",
+        "Future compatible changes should be additive",
+    ] {
+        assert!(
+            doc.contains(needle),
+            "review-loop status schema docs should mention {needle:?}"
+        );
+    }
+    assert!(
+        spec.contains("review-loop-status.v1"),
+        "review-loop status spec should link or name the v1 schema contract"
+    );
+
+    let overall_statuses = schema_string_set(&schema, "/$defs/overall_status/enum");
+    for status in [
+        "unknown",
+        "needs_setup",
+        "ready_to_collect",
+        "needs_evidence",
+        "needs_repair",
+        "repair_in_progress",
+        "ready_with_caveats",
+        "ready_to_explain_share",
+        "share_blocked",
+        "ready_to_share",
+        "blocked",
+    ] {
+        assert!(
+            overall_statuses.contains(status),
+            "schema should allow review-loop status {status}"
+        );
+    }
+
+    let setup_statuses = schema_string_set(&schema, "/$defs/setup_status/enum");
+    for status in [
+        "ready",
+        "ready_with_caveats",
+        "needs_setup",
+        "blocked",
+        "unknown",
+    ] {
+        assert!(
+            setup_statuses.contains(status),
+            "schema should allow setup summary status {status}"
+        );
+    }
+
+    let packet_statuses = schema_string_set(&schema, "/$defs/packet_readiness_status/enum");
+    for status in [
+        "ready",
+        "ready_with_caveats",
+        "needs_evidence",
+        "needs_repair",
+        "unknown",
+    ] {
+        assert!(
+            packet_statuses.contains(status),
+            "schema should allow packet readiness status {status}"
+        );
+    }
+
+    let diff_statuses = schema_string_set(&schema, "/$defs/diff_status/enum");
+    for status in [
+        "available",
+        "no_prior_comparable_run",
+        "not_generated",
+        "unknown",
+    ] {
+        assert!(
+            diff_statuses.contains(status),
+            "schema should allow diff status {status}"
+        );
+    }
+
+    let share_statuses = schema_string_set(&schema, "/$defs/share_profile_status/enum");
+    for status in [
+        "ready",
+        "ready_with_caveats",
+        "blocked",
+        "not_generated",
+        "unknown",
+    ] {
+        assert!(
+            share_statuses.contains(status),
+            "schema should allow share profile status {status}"
+        );
+    }
+
+    for example in [
+        "missing-setup.json",
+        "ready-to-collect.json",
+        "needs-evidence.json",
+        "needs-repair.json",
+        "repair-in-progress.json",
+        "ready-with-caveats.json",
+        "share-blocked.json",
+        "ready-to-share.json",
+        "unknown-old-report.json",
+        "malformed-report.json",
+    ] {
+        let example_path = root.join("examples/review-loop-status").join(example);
+        let text = std::fs::read_to_string(&example_path)?;
+        let json: serde_json::Value = serde_json::from_str(&text)?;
+        assert_review_loop_status_example_matches_schema_shape(
+            &json,
+            &overall_statuses,
+            &setup_statuses,
+            &packet_statuses,
+            &diff_statuses,
+            &share_statuses,
+            &example_path,
+        );
+    }
+
+    Ok(())
+}
+
 fn schema_string_set(
     schema: &serde_json::Value,
     pointer: &str,
@@ -493,6 +690,347 @@ fn assert_receipt_refs_match_schema_shape(receipt_refs: &serde_json::Value, path
         assert!(
             receipt["path"].is_null() || receipt["path"].as_str().is_some(),
             "{} receipt path should be string or null",
+            path.display()
+        );
+    }
+}
+
+fn assert_review_loop_status_example_matches_schema_shape(
+    json: &serde_json::Value,
+    overall_statuses: &std::collections::BTreeSet<String>,
+    setup_statuses: &std::collections::BTreeSet<String>,
+    packet_statuses: &std::collections::BTreeSet<String>,
+    diff_statuses: &std::collections::BTreeSet<String>,
+    share_statuses: &std::collections::BTreeSet<String>,
+    path: &Path,
+) {
+    assert_allowed_object_keys(
+        json,
+        &[
+            "overall_status",
+            "setup_summary",
+            "latest_run",
+            "packet_readiness",
+            "source_summary",
+            "repair_summary",
+            "diff_summary",
+            "share_summary",
+            "blocking_reasons",
+            "next_actions",
+            "receipt_refs",
+        ],
+        path,
+    );
+    assert_status_field_allowed(json, "overall_status", overall_statuses, path);
+    assert_setup_status_summary_matches_schema_shape(&json["setup_summary"], setup_statuses, path);
+    assert_latest_run_matches_status_schema_shape(&json["latest_run"], path);
+    assert_packet_readiness_matches_status_schema_shape(
+        &json["packet_readiness"],
+        packet_statuses,
+        path,
+    );
+    assert_source_summary_matches_status_schema_shape(&json["source_summary"], path);
+    assert_repair_summary_matches_status_schema_shape(&json["repair_summary"], path);
+    assert_diff_summary_matches_status_schema_shape(&json["diff_summary"], diff_statuses, path);
+    assert_share_summary_matches_status_schema_shape(&json["share_summary"], share_statuses, path);
+    assert_blocking_reasons_match_status_schema_shape(&json["blocking_reasons"], path);
+
+    let actions = json["next_actions"].as_array();
+    assert!(
+        actions.is_some(),
+        "{} next_actions should be an array",
+        path.display()
+    );
+    if let Some(actions) = actions {
+        for action in actions {
+            assert_status_next_action_matches_schema_shape(action, path);
+        }
+    }
+    assert_status_receipt_refs_match_schema_shape(&json["receipt_refs"], path);
+    assert_no_secret_sentinel_values(json, path);
+}
+
+fn assert_setup_status_summary_matches_schema_shape(
+    summary: &serde_json::Value,
+    setup_statuses: &std::collections::BTreeSet<String>,
+    path: &Path,
+) {
+    assert_allowed_object_keys(
+        summary,
+        &["status", "reason", "next_actions", "receipt_refs"],
+        path,
+    );
+    assert_status_field_allowed(summary, "status", setup_statuses, path);
+    assert_non_empty_string(summary, "reason", path);
+    let actions = summary["next_actions"].as_array();
+    assert!(
+        actions.is_some(),
+        "{} setup_summary.next_actions should be an array",
+        path.display()
+    );
+    if let Some(actions) = actions {
+        for action in actions {
+            assert_status_next_action_matches_schema_shape(action, path);
+        }
+    }
+    assert_status_receipt_refs_match_schema_shape(&summary["receipt_refs"], path);
+}
+
+fn assert_latest_run_matches_status_schema_shape(latest_run: &serde_json::Value, path: &Path) {
+    if latest_run.is_null() {
+        return;
+    }
+    assert_allowed_object_keys(latest_run, &["run_id", "report_path", "receipt_refs"], path);
+    assert_non_empty_string(latest_run, "run_id", path);
+    assert_non_empty_string(latest_run, "report_path", path);
+    assert_status_receipt_refs_match_schema_shape(&latest_run["receipt_refs"], path);
+}
+
+fn assert_packet_readiness_matches_status_schema_shape(
+    readiness: &serde_json::Value,
+    packet_statuses: &std::collections::BTreeSet<String>,
+    path: &Path,
+) {
+    assert_allowed_object_keys(readiness, &["status", "reason", "receipt_refs"], path);
+    assert_status_field_allowed(readiness, "status", packet_statuses, path);
+    assert_non_empty_string(readiness, "reason", path);
+    assert_status_receipt_refs_match_schema_shape(&readiness["receipt_refs"], path);
+}
+
+fn assert_source_summary_matches_status_schema_shape(summary: &serde_json::Value, path: &Path) {
+    assert_allowed_object_keys(
+        summary,
+        &["included", "unavailable", "disabled", "receipt_refs"],
+        path,
+    );
+    let included = summary["included"].as_array();
+    assert!(
+        included.is_some(),
+        "{} source_summary.included should be an array",
+        path.display()
+    );
+    if let Some(included) = included {
+        for source in included {
+            assert_allowed_object_keys(
+                source,
+                &["source_key", "source_label", "event_count"],
+                path,
+            );
+            assert_non_empty_string(source, "source_key", path);
+            assert_non_empty_string(source, "source_label", path);
+            assert!(
+                source["event_count"].as_u64().is_some(),
+                "{} included source event_count should be non-negative integer",
+                path.display()
+            );
+        }
+    }
+    for group in ["unavailable", "disabled"] {
+        let sources = summary[group].as_array();
+        assert!(
+            sources.is_some(),
+            "{} source_summary.{group} should be an array",
+            path.display()
+        );
+        if let Some(sources) = sources {
+            for source in sources {
+                assert_allowed_object_keys(source, &["source_key", "source_label", "reason"], path);
+                assert_non_empty_string(source, "source_key", path);
+                assert_non_empty_string(source, "source_label", path);
+                assert_non_empty_string(source, "reason", path);
+            }
+        }
+    }
+    assert_status_receipt_refs_match_schema_shape(&summary["receipt_refs"], path);
+}
+
+fn assert_repair_summary_matches_status_schema_shape(summary: &serde_json::Value, path: &Path) {
+    assert_allowed_object_keys(
+        summary,
+        &[
+            "open_items",
+            "safe_write_count",
+            "setup_blocked_write_count",
+            "applied_not_rerun",
+            "receipt_refs",
+        ],
+        path,
+    );
+    for field in [
+        "open_items",
+        "safe_write_count",
+        "setup_blocked_write_count",
+    ] {
+        assert!(
+            summary[field].as_u64().is_some(),
+            "{} repair_summary.{field} should be non-negative integer",
+            path.display()
+        );
+    }
+    assert!(
+        summary["applied_not_rerun"].is_boolean(),
+        "{} repair_summary.applied_not_rerun should be boolean",
+        path.display()
+    );
+    assert_status_receipt_refs_match_schema_shape(&summary["receipt_refs"], path);
+}
+
+fn assert_diff_summary_matches_status_schema_shape(
+    summary: &serde_json::Value,
+    diff_statuses: &std::collections::BTreeSet<String>,
+    path: &Path,
+) {
+    assert_allowed_object_keys(summary, &["status", "reason", "receipt_refs"], path);
+    assert_status_field_allowed(summary, "status", diff_statuses, path);
+    assert_non_empty_string(summary, "reason", path);
+    assert_status_receipt_refs_match_schema_shape(&summary["receipt_refs"], path);
+}
+
+fn assert_share_summary_matches_status_schema_shape(
+    summary: &serde_json::Value,
+    share_statuses: &std::collections::BTreeSet<String>,
+    path: &Path,
+) {
+    assert_allowed_object_keys(summary, &["profiles", "receipt_refs"], path);
+    let profiles = summary["profiles"].as_array();
+    assert!(
+        profiles.is_some(),
+        "{} share_summary.profiles should be an array",
+        path.display()
+    );
+    if let Some(profiles) = profiles {
+        for profile in profiles {
+            assert_allowed_object_keys(
+                profile,
+                &[
+                    "profile_key",
+                    "profile_label",
+                    "status",
+                    "reason",
+                    "receipt_refs",
+                ],
+                path,
+            );
+            assert_non_empty_string(profile, "profile_key", path);
+            assert_non_empty_string(profile, "profile_label", path);
+            assert_status_field_allowed(profile, "status", share_statuses, path);
+            assert_non_empty_string(profile, "reason", path);
+            assert_status_receipt_refs_match_schema_shape(&profile["receipt_refs"], path);
+        }
+    }
+    assert_status_receipt_refs_match_schema_shape(&summary["receipt_refs"], path);
+}
+
+fn assert_blocking_reasons_match_status_schema_shape(reasons: &serde_json::Value, path: &Path) {
+    let reasons = reasons.as_array();
+    assert!(
+        reasons.is_some(),
+        "{} blocking_reasons should be an array",
+        path.display()
+    );
+    if let Some(reasons) = reasons {
+        for reason in reasons {
+            assert_allowed_object_keys(
+                reason,
+                &["key", "label", "status", "reason", "scope", "receipt_refs"],
+                path,
+            );
+            for field in ["key", "label", "status", "reason", "scope"] {
+                assert_non_empty_string(reason, field, path);
+            }
+            assert_status_receipt_refs_match_schema_shape(&reason["receipt_refs"], path);
+        }
+    }
+}
+
+fn assert_status_next_action_matches_schema_shape(action: &serde_json::Value, path: &Path) {
+    assert_allowed_object_keys(
+        action,
+        &[
+            "key",
+            "label",
+            "command",
+            "writes",
+            "reason",
+            "preconditions",
+            "priority",
+            "receipt_refs",
+        ],
+        path,
+    );
+    for field in ["key", "label", "command", "reason"] {
+        assert_non_empty_string(action, field, path);
+    }
+    assert!(
+        action["writes"].is_boolean(),
+        "{} status next action writes should be boolean",
+        path.display()
+    );
+    let preconditions = action["preconditions"].as_array();
+    assert!(
+        preconditions.is_some(),
+        "{} status next action preconditions should be an array",
+        path.display()
+    );
+    if let Some(preconditions) = preconditions {
+        for precondition in preconditions {
+            assert!(
+                precondition.as_str().is_some_and(|value| !value.is_empty()),
+                "{} status next action precondition should be non-empty string",
+                path.display()
+            );
+        }
+    }
+    assert!(
+        action["priority"].as_u64().is_some(),
+        "{} status next action priority should be a non-negative integer",
+        path.display()
+    );
+    assert_status_receipt_refs_match_schema_shape(&action["receipt_refs"], path);
+}
+
+fn assert_status_receipt_refs_match_schema_shape(receipt_refs: &serde_json::Value, path: &Path) {
+    let refs = receipt_refs.as_array();
+    assert!(
+        refs.is_some(),
+        "{} status receipt_refs should be an array",
+        path.display()
+    );
+    if let Some(refs) = refs {
+        for receipt in refs {
+            assert_allowed_object_keys(receipt, &["field", "kind", "path", "key"], path);
+            assert_non_empty_string(receipt, "field", path);
+            assert_non_empty_string(receipt, "kind", path);
+            assert!(
+                receipt["key"].is_null() || receipt["key"].as_str().is_some(),
+                "{} status receipt key should be string or null",
+                path.display()
+            );
+            assert!(
+                receipt["path"].is_null() || receipt["path"].as_str().is_some(),
+                "{} status receipt path should be string or null",
+                path.display()
+            );
+        }
+    }
+}
+
+fn assert_status_field_allowed(
+    json: &serde_json::Value,
+    field: &str,
+    allowed: &std::collections::BTreeSet<String>,
+    path: &Path,
+) {
+    let value = json[field].as_str();
+    assert!(
+        value.is_some(),
+        "{} field {field} should be a string",
+        path.display()
+    );
+    if let Some(value) = value {
+        assert!(
+            allowed.contains(value),
+            "{} field {field} value {value:?} should be allowed by schema",
             path.display()
         );
     }

@@ -429,6 +429,9 @@ Existing proof surfaces:
 - [`SHIPLOG-SPEC-0006-packet-quality-and-claim-candidates`](SHIPLOG-SPEC-0006-packet-quality-and-claim-candidates.md):
   packet readiness, evidence strength, claim candidate, and share posture
   contract.
+- [`docs/schemas/review-loop-status-v1.md`](../schemas/review-loop-status-v1.md):
+  `review-loop-status.v1` schema, examples, status enums, next-action write
+  posture, and receipt-reference contract for `shiplog status --latest --json`.
 - [`docs/product/guided-setup-transcript.md`](../product/guided-setup-transcript.md):
   setup front-door dogfood proof.
 - [`docs/product/review-ready-loop-transcript.md`](../product/review-ready-loop-transcript.md):
@@ -439,7 +442,6 @@ Required future proof surfaces:
 - model tests for missing setup, no run, setup-blocked run, repairable run, and
   share-blocked run;
 - CLI no-write tests for human and JSON status;
-- schema and examples for `review-loop-status.v1`;
 - consistency tests against doctor, sources status, intake report, repair plan,
   repair diff, runs diff, and share explain;
 - dogfood transcript showing status before intake, after intake, after repair,

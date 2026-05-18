@@ -1,0 +1,577 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/EffortlessMetrics/shiplog/contracts/schemas/review-loop-status.v1.schema.json",
+  "title": "Shiplog review-loop status v1",
+  "type": "object",
+  "additionalProperties": false,
+  "propertyNames": {
+    "$ref": "#/$defs/non_secret_field_name"
+  },
+  "required": [
+    "overall_status",
+    "setup_summary",
+    "latest_run",
+    "packet_readiness",
+    "source_summary",
+    "repair_summary",
+    "diff_summary",
+    "share_summary",
+    "blocking_reasons",
+    "next_actions",
+    "receipt_refs"
+  ],
+  "properties": {
+    "overall_status": {
+      "$ref": "#/$defs/overall_status"
+    },
+    "setup_summary": {
+      "$ref": "#/$defs/setup_summary"
+    },
+    "latest_run": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/latest_run"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "packet_readiness": {
+      "$ref": "#/$defs/packet_readiness"
+    },
+    "source_summary": {
+      "$ref": "#/$defs/source_summary"
+    },
+    "repair_summary": {
+      "$ref": "#/$defs/repair_summary"
+    },
+    "diff_summary": {
+      "$ref": "#/$defs/diff_summary"
+    },
+    "share_summary": {
+      "$ref": "#/$defs/share_summary"
+    },
+    "blocking_reasons": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/blocking_reason"
+      }
+    },
+    "next_actions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/next_action"
+      }
+    },
+    "receipt_refs": {
+      "$ref": "#/$defs/receipt_refs"
+    }
+  },
+  "$defs": {
+    "non_secret_field_name": {
+      "type": "string",
+      "not": {
+        "pattern": "[Tt][Oo][Kk][Ee][Nn]_[Vv][Aa][Ll][Uu][Ee]|[Ss][Ee][Cc][Rr][Ee][Tt]_[Vv][Aa][Ll][Uu][Ee]|[Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd]|[Aa][Pp][Ii]_?[Kk][Ee][Yy]_[Vv][Aa][Ll][Uu][Ee]|[Kk][Ee][Yy]_[Vv][Aa][Ll][Uu][Ee]"
+      }
+    },
+    "object_base": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "#/$defs/non_secret_field_name"
+      }
+    },
+    "overall_status": {
+      "type": "string",
+      "enum": [
+        "unknown",
+        "needs_setup",
+        "ready_to_collect",
+        "needs_evidence",
+        "needs_repair",
+        "repair_in_progress",
+        "ready_with_caveats",
+        "ready_to_explain_share",
+        "share_blocked",
+        "ready_to_share",
+        "blocked"
+      ]
+    },
+    "setup_status": {
+      "type": "string",
+      "enum": [
+        "ready",
+        "ready_with_caveats",
+        "needs_setup",
+        "blocked",
+        "unknown"
+      ]
+    },
+    "packet_readiness_status": {
+      "type": "string",
+      "enum": [
+        "ready",
+        "ready_with_caveats",
+        "needs_evidence",
+        "needs_repair",
+        "unknown"
+      ]
+    },
+    "diff_status": {
+      "type": "string",
+      "enum": [
+        "available",
+        "no_prior_comparable_run",
+        "not_generated",
+        "unknown"
+      ]
+    },
+    "share_profile_status": {
+      "type": "string",
+      "enum": [
+        "ready",
+        "ready_with_caveats",
+        "blocked",
+        "not_generated",
+        "unknown"
+      ]
+    },
+    "setup_summary": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "reason",
+            "next_actions",
+            "receipt_refs"
+          ],
+          "properties": {
+            "status": {
+              "$ref": "#/$defs/setup_status"
+            },
+            "reason": {
+              "$ref": "#/$defs/display_string"
+            },
+            "next_actions": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/next_action"
+              }
+            },
+            "receipt_refs": {
+              "$ref": "#/$defs/receipt_refs"
+            }
+          }
+        }
+      ]
+    },
+    "latest_run": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "additionalProperties": false,
+          "required": [
+            "run_id",
+            "report_path",
+            "receipt_refs"
+          ],
+          "properties": {
+            "run_id": {
+              "$ref": "#/$defs/display_string"
+            },
+            "report_path": {
+              "$ref": "#/$defs/display_string"
+            },
+            "receipt_refs": {
+              "$ref": "#/$defs/receipt_refs"
+            }
+          }
+        }
+      ]
+    },
+    "packet_readiness": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "reason",
+            "receipt_refs"
+          ],
+          "properties": {
+            "status": {
+              "$ref": "#/$defs/packet_readiness_status"
+            },
+            "reason": {
+              "$ref": "#/$defs/display_string"
+            },
+            "receipt_refs": {
+              "$ref": "#/$defs/receipt_refs"
+            }
+          }
+        }
+      ]
+    },
+    "source_summary": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "additionalProperties": false,
+          "required": [
+            "included",
+            "unavailable",
+            "disabled",
+            "receipt_refs"
+          ],
+          "properties": {
+            "included": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/source_count"
+              }
+            },
+            "unavailable": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/source_issue"
+              }
+            },
+            "disabled": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/source_issue"
+              }
+            },
+            "receipt_refs": {
+              "$ref": "#/$defs/receipt_refs"
+            }
+          }
+        }
+      ]
+    },
+    "source_count": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "additionalProperties": false,
+          "required": [
+            "source_key",
+            "source_label",
+            "event_count"
+          ],
+          "properties": {
+            "source_key": {
+              "$ref": "#/$defs/stable_key"
+            },
+            "source_label": {
+              "$ref": "#/$defs/display_string"
+            },
+            "event_count": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      ]
+    },
+    "source_issue": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "additionalProperties": false,
+          "required": [
+            "source_key",
+            "source_label",
+            "reason"
+          ],
+          "properties": {
+            "source_key": {
+              "$ref": "#/$defs/stable_key"
+            },
+            "source_label": {
+              "$ref": "#/$defs/display_string"
+            },
+            "reason": {
+              "$ref": "#/$defs/display_string"
+            }
+          }
+        }
+      ]
+    },
+    "repair_summary": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "additionalProperties": false,
+          "required": [
+            "open_items",
+            "safe_write_count",
+            "setup_blocked_write_count",
+            "applied_not_rerun",
+            "receipt_refs"
+          ],
+          "properties": {
+            "open_items": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "safe_write_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "setup_blocked_write_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "applied_not_rerun": {
+              "type": "boolean"
+            },
+            "receipt_refs": {
+              "$ref": "#/$defs/receipt_refs"
+            }
+          }
+        }
+      ]
+    },
+    "diff_summary": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "reason",
+            "receipt_refs"
+          ],
+          "properties": {
+            "status": {
+              "$ref": "#/$defs/diff_status"
+            },
+            "reason": {
+              "$ref": "#/$defs/display_string"
+            },
+            "receipt_refs": {
+              "$ref": "#/$defs/receipt_refs"
+            }
+          }
+        }
+      ]
+    },
+    "share_summary": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "additionalProperties": false,
+          "required": [
+            "profiles",
+            "receipt_refs"
+          ],
+          "properties": {
+            "profiles": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/share_profile"
+              }
+            },
+            "receipt_refs": {
+              "$ref": "#/$defs/receipt_refs"
+            }
+          }
+        }
+      ]
+    },
+    "share_profile": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "additionalProperties": false,
+          "required": [
+            "profile_key",
+            "profile_label",
+            "status",
+            "reason",
+            "receipt_refs"
+          ],
+          "properties": {
+            "profile_key": {
+              "$ref": "#/$defs/stable_key"
+            },
+            "profile_label": {
+              "$ref": "#/$defs/display_string"
+            },
+            "status": {
+              "$ref": "#/$defs/share_profile_status"
+            },
+            "reason": {
+              "$ref": "#/$defs/display_string"
+            },
+            "receipt_refs": {
+              "$ref": "#/$defs/receipt_refs"
+            }
+          }
+        }
+      ]
+    },
+    "blocking_reason": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "additionalProperties": false,
+          "required": [
+            "key",
+            "label",
+            "status",
+            "reason",
+            "scope",
+            "receipt_refs"
+          ],
+          "properties": {
+            "key": {
+              "$ref": "#/$defs/stable_key"
+            },
+            "label": {
+              "$ref": "#/$defs/display_string"
+            },
+            "status": {
+              "$ref": "#/$defs/stable_key"
+            },
+            "reason": {
+              "$ref": "#/$defs/display_string"
+            },
+            "scope": {
+              "$ref": "#/$defs/stable_key"
+            },
+            "receipt_refs": {
+              "$ref": "#/$defs/receipt_refs"
+            }
+          }
+        }
+      ]
+    },
+    "next_action": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "additionalProperties": false,
+          "required": [
+            "key",
+            "label",
+            "command",
+            "writes",
+            "reason",
+            "preconditions",
+            "priority",
+            "receipt_refs"
+          ],
+          "properties": {
+            "key": {
+              "$ref": "#/$defs/stable_key"
+            },
+            "label": {
+              "$ref": "#/$defs/display_string"
+            },
+            "command": {
+              "$ref": "#/$defs/display_string"
+            },
+            "writes": {
+              "type": "boolean"
+            },
+            "reason": {
+              "$ref": "#/$defs/display_string"
+            },
+            "preconditions": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/display_string"
+              }
+            },
+            "priority": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "receipt_refs": {
+              "$ref": "#/$defs/receipt_refs"
+            }
+          }
+        }
+      ]
+    },
+    "receipt_refs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/receipt_ref"
+      }
+    },
+    "receipt_ref": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "additionalProperties": false,
+          "required": [
+            "field",
+            "kind",
+            "path",
+            "key"
+          ],
+          "properties": {
+            "field": {
+              "$ref": "#/$defs/stable_key"
+            },
+            "kind": {
+              "$ref": "#/$defs/stable_key"
+            },
+            "path": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "key": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "stable_key": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_.:-]*$"
+    },
+    "display_string": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}
