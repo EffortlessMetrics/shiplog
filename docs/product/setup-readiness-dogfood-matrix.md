@@ -91,14 +91,15 @@ setup state as evidence state:
 
 The next implementation PRs should keep this ledger narrow:
 
-- release posture decision after setup-readiness docs alignment.
+- release-resume proof only after owner approval, if the hold is later lifted.
 
 ## Release decision use
 
 Use this matrix to decide what setup readiness still needs proof before any
 future 0.9 release-resume discussion. It is not itself the release decision.
 
-Current decision: keep the `v0.9.0` hold active (#398, updated by #410).
+Current decision: keep the `v0.9.0` hold active (#398, updated by #410 and
+#422).
 
 The setup lane is ready for a release posture decision only when:
 

@@ -840,7 +840,7 @@ fn guided_setup_dogfood_matrix_documents_setup_control_plane() {
         "doctor --setup --json",
         "without scraping text",
         "not itself the release decision",
-        "Current decision: keep the `v0.9.0` hold active (#398, updated by #410)",
+        "Current decision: keep the `v0.9.0` hold active (#398, updated by #410 and",
         "owner explicitly approves any release execution",
     ] {
         assert!(
@@ -1123,15 +1123,16 @@ fn release_decision_keeps_0_9_hold_without_execution() {
         "**Decision:** keep hold",
         "Guided Setup / Doctor",
         "Do not tag, publish to crates.io, create a GitHub release",
-        "A. Keep hold and continue Guided Setup",
-        "B. Cut 0.9 as review-ready packet only",
-        "C. Expand 0.9 scope to include Guided Setup / Doctor and release later",
+        "A. Keep hold after setup-readiness operationalization",
+        "B. Resume 0.9 release after final preflight",
+        "C. Split Guided Setup / Doctor to 0.10",
         "#390",
         "#397",
         "#409",
-        "#410",
-        "selected for candidate scope only",
-        "landed quickly and cleanly",
+        "#421",
+        "#422",
+        "owner approval and final release preflight are still missing",
+        "post-setup release decision",
         "Owner explicitly approves release execution",
         "not met",
         "crates.io latest remains `shiplog = \"0.8.0\"`",
@@ -1152,7 +1153,7 @@ fn release_decision_keeps_0_9_hold_without_execution() {
             && readiness.contains("0.9.0-release-decision.md")
             && matrix.contains("0.9.0-release-decision.md")
             && matrix.contains(
-                "Current decision: keep the `v0.9.0` hold active (#398, updated by #410)"
+                "Current decision: keep the `v0.9.0` hold active (#398, updated by #410 and"
             ),
         "hold, readiness, and matrix docs should link the release decision without lifting the hold"
     );

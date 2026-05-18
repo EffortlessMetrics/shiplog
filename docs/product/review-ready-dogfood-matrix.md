@@ -79,7 +79,8 @@ The next test PR should prefer small assertions around these gaps:
 Use this matrix to decide whether the review-ready loop has been dogfooded
 enough to ask for a release decision. It is not itself the release decision.
 
-Current decision: keep the `v0.9.0` hold active (#398, updated by #410).
+Current decision: keep the `v0.9.0` hold active (#398, updated by #410 and
+#422).
 
 The matrix is green enough to consider resuming 0.9 only when:
 
