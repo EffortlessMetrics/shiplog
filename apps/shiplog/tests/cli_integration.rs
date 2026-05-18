@@ -7200,7 +7200,7 @@ status = "done"
         .stdout(predicate::str::contains("shiplog sources status"))
         .stdout(predicate::str::contains("--source jira"))
         .stdout(predicate::str::contains("--source linear"))
-        .stdout(predicate::str::contains("shiplog doctor --config"));
+        .stdout(predicate::str::contains("shiplog doctor --setup --config"));
 
     let run_dir = first_run_dir(&out);
     let coverage = std::fs::read_to_string(run_dir.join("coverage.manifest.json")).unwrap();
@@ -10093,6 +10093,172 @@ fn runs_diff_latest_reports_quality_without_writing() -> CliTestResult {
     let after = file_tree_manifest(tmp.path());
 
     assert_eq!(before, after, "runs diff should not write or rewrite files");
+
+    Ok(())
+}
+
+#[test]
+fn intake_setup_blocked_manual_handoff_starts_with_doctor() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let out = tmp.path().join("out");
+    let out_arg = out.to_string_lossy().to_string();
+    let fixtures = fixture_dir();
+    let events = fixtures
+        .join("ledger.events.jsonl")
+        .display()
+        .to_string()
+        .replace('\\', "/");
+    let coverage = fixtures
+        .join("coverage.manifest.json")
+        .display()
+        .to_string()
+        .replace('\\', "/");
+    std::fs::write(tmp.path().join("manual_events.yaml"), "events: []\n")?;
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        format!(
+            r#"[shiplog]
+config_version = 1
+
+[defaults]
+out = "./out"
+window = "last-6-months"
+profile = "internal"
+
+[sources.json]
+enabled = true
+events = "{events}"
+coverage = "{coverage}"
+
+[sources.manual]
+enabled = true
+events = "./manual_events.yaml"
+"#
+        ),
+    )?;
+
+    let assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args([
+            "intake",
+            "--out",
+            out_arg.as_str(),
+            "--no-open",
+            "--explain",
+        ])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
+    assert!(
+        stdout.contains(&format!(
+            "Next:\n1. shiplog doctor --setup\n2. shiplog sources status\n3. shiplog repair plan --out \"{}\" --latest",
+            out.display()
+        )),
+        "setup-blocked intake should start with doctor/source status before repair plan. stdout:\n{stdout}"
+    );
+    assert!(
+        !stdout.contains("journal add --from-repair"),
+        "malformed manual setup should not offer journal repair writes before setup is fixed. stdout:\n{stdout}"
+    );
+
+    let (_, report) = load_first_intake_report(&out);
+    let next_commands = report["next_commands"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|command| command.as_str())
+        .collect::<Vec<_>>();
+    assert_eq!(next_commands.first(), Some(&"shiplog doctor --setup"));
+    assert_eq!(next_commands.get(1), Some(&"shiplog sources status"));
+    assert!(
+        next_commands
+            .get(2)
+            .is_some_and(|command| command.starts_with("shiplog repair plan ")),
+        "repair plan should remain available after setup preflight: {next_commands:?}"
+    );
+    assert!(
+        next_commands
+            .iter()
+            .all(|command| !command.contains("journal add --from-repair")),
+        "persisted next commands should not include dead-end journal repair writes: {next_commands:?}"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn intake_setup_blocked_provider_handoff_starts_with_doctor() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let out = tmp.path().join("out");
+    let out_arg = out.to_string_lossy().to_string();
+    write_manual_events(&tmp.path().join("manual_events.yaml"));
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[shiplog]
+config_version = 1
+
+[defaults]
+out = "./out"
+window = "last-6-months"
+profile = "internal"
+
+[sources.manual]
+enabled = true
+events = "./manual_events.yaml"
+
+[sources.github]
+enabled = true
+user = "octo"
+"#,
+    )?;
+
+    let assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args([
+            "intake",
+            "--out",
+            out_arg.as_str(),
+            "--no-open",
+            "--explain",
+        ])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
+    assert!(
+        stdout.contains(&format!(
+            "Next:\n1. shiplog doctor --setup\n2. shiplog sources status\n3. shiplog repair plan --out \"{}\" --latest",
+            out.display()
+        )),
+        "missing provider token should route through setup status before repair plan. stdout:\n{stdout}"
+    );
+    assert!(
+        stdout.contains("GitHub: missing GITHUB_TOKEN"),
+        "intake should still explain the concrete provider setup gap. stdout:\n{stdout}"
+    );
+
+    let (_, report) = load_first_intake_report(&out);
+    let next_commands = report["next_commands"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|command| command.as_str())
+        .collect::<Vec<_>>();
+    assert_eq!(next_commands.first(), Some(&"shiplog doctor --setup"));
+    assert_eq!(next_commands.get(1), Some(&"shiplog sources status"));
+    assert!(
+        next_commands
+            .get(2)
+            .is_some_and(|command| command.starts_with("shiplog repair plan ")),
+        "repair plan should remain available after setup preflight: {next_commands:?}"
+    );
 
     Ok(())
 }

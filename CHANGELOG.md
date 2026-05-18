@@ -180,6 +180,9 @@ GitHub release approval.
 - Added an agent-safe doctor JSON proof so blocked setup state exposes
   read-only setup actions and withholds dead-end evidence-repair/share-render
   write commands (#415).
+- Made intake prefer `doctor --setup` and `sources status` before repair plan
+  when configured setup is blocked, without changing normal repair flow for
+  optional autodetected provider skips (#416).
 
 ## [0.9.0] - Unreleased candidate
 
