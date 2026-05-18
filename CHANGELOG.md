@@ -244,6 +244,11 @@ GitHub release approval.
   `sources status`, packet readiness matches `intake.report.json`, repair
   counts/posture match `repair plan`, comparable-run refs match `repair diff`
   and `runs diff`, and share blockers match `share explain` (#432).
+- Proved review-loop status safe next actions across setup, collection,
+  repair, rerun, caveated, old-report, malformed-report, share-blocked, and
+  ready-to-share states; status now detects a local journal repair applied
+  after the latest run and routes to intake rerun instead of repeating the
+  stale repair write (#433).
 
 ## [0.9.0] - Unreleased candidate
 

@@ -7234,7 +7234,7 @@ fn review_loop_status_inputs(
     if let Some(report_json) = report_json {
         inputs.packet_readiness = status_packet_readiness(report_json);
         inputs.source_summary = status_source_summary(report_json, resolution);
-        inputs.repair_summary = status_repair_summary(report_json);
+        inputs.repair_summary = status_repair_summary(report_json, resolution);
         inputs.share_summary = status_share_summary(setup_status, resolution);
         receipt_refs.extend(inputs.packet_readiness.receipt_refs.clone());
         receipt_refs.extend(inputs.source_summary.receipt_refs.clone());
@@ -7547,7 +7547,10 @@ fn status_source_summary(
     summary
 }
 
-fn status_repair_summary(report_json: &serde_json::Value) -> status::RepairStatusSummary {
+fn status_repair_summary(
+    report_json: &serde_json::Value,
+    resolution: &status::ReviewLoopReceiptResolution,
+) -> status::RepairStatusSummary {
     let mut summary = status::RepairStatusSummary::default();
     let Some(repair_items) = report_json
         .get("repair_items")
@@ -7557,7 +7560,12 @@ fn status_repair_summary(report_json: &serde_json::Value) -> status::RepairStatu
     };
 
     summary.open_items = repair_items.len();
+    let mut journal_repair_ids = BTreeSet::new();
     for item in repair_items {
+        let repair_id = item
+            .get("repair_id")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or_default();
         let action = item.get("action").and_then(serde_json::Value::as_object);
         let action_kind = action
             .and_then(|action| action.get("kind"))
@@ -7569,15 +7577,60 @@ fn status_repair_summary(report_json: &serde_json::Value) -> status::RepairStatu
             .unwrap_or_default();
         if action_kind == "journal_add" && action_writes(command) {
             summary.safe_write_count += 1;
+            if !repair_id.is_empty() {
+                journal_repair_ids.insert(repair_id.to_string());
+            }
         } else if action_kind == "configure_source" && action_writes(command) {
             summary.setup_blocked_write_count += 1;
         }
+    }
+    if let Some(receipt_ref) =
+        status_applied_journal_repair_receipt(report_json, resolution, &journal_repair_ids)
+    {
+        summary.applied_not_rerun = true;
+        summary.receipt_refs.push(receipt_ref);
     }
     summary.receipt_refs.push(status::StatusReceiptRef::field(
         "repair_items",
         "intake_report",
     ));
     summary
+}
+
+fn status_applied_journal_repair_receipt(
+    report_json: &serde_json::Value,
+    resolution: &status::ReviewLoopReceiptResolution,
+    repair_ids: &BTreeSet<String>,
+) -> Option<status::StatusReceiptRef> {
+    if repair_ids.is_empty() {
+        return None;
+    }
+    let report_path = resolution.latest_run.as_ref()?.report_path.clone();
+    let manual_events_path = report_configured_manual_events_path_for_repair(report_json)?;
+    let manual_events = read_manual_events(&manual_events_path).ok()?;
+    if !manual_events.events.iter().any(|entry| {
+        entry
+            .tags
+            .iter()
+            .any(|tag| repair_ids.contains(tag.as_str()))
+    }) {
+        return None;
+    }
+    let report_modified = std::fs::metadata(Path::new(&report_path))
+        .and_then(|metadata| metadata.modified())
+        .ok()?;
+    let journal_modified = std::fs::metadata(&manual_events_path)
+        .and_then(|metadata| metadata.modified())
+        .ok()?;
+    if journal_modified <= report_modified {
+        return None;
+    }
+
+    Some(status::StatusReceiptRef::path(
+        "journal_repair",
+        "manual_journal",
+        display_path_for_cli(&manual_events_path),
+    ))
 }
 
 fn status_diff_summary(

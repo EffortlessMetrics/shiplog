@@ -1359,6 +1359,48 @@ mod tests {
     }
 
     #[test]
+    fn ready_to_share_still_routes_through_share_explain() {
+        let status = ReviewLoopStatus::from_inputs(ReviewLoopStatusInputs {
+            setup_summary: SetupStatusSummary::ready("local setup ready"),
+            latest_run: Some(LatestRunSummary::new(
+                "run-1",
+                "out/run-1/intake.report.json",
+            )),
+            packet_readiness: PacketReadinessSummary::ready("packet ready"),
+            share_summary: ShareStatusSummary {
+                profiles: vec![ShareProfileSummary {
+                    profile_key: "manager".to_string(),
+                    profile_label: "Manager".to_string(),
+                    status: ShareProfileStatus::Ready,
+                    reason: "manager packet already verified".to_string(),
+                    receipt_refs: vec![StatusReceiptRef::keyed(
+                        "share_profiles",
+                        "share_manifest",
+                        "manager",
+                    )],
+                }],
+                receipt_refs: vec![StatusReceiptRef::path(
+                    "share_manifest",
+                    "share_manifest",
+                    "out/run-1/profiles/manager/share.manifest.json",
+                )],
+            },
+            ..ReviewLoopStatusInputs::default()
+        });
+
+        assert_eq!(status.overall_status, ReviewLoopOverallStatus::ReadyToShare);
+        assert_eq!(status.next_actions.len(), 1);
+        assert_eq!(status.next_actions[0].key, "share_explain_manager");
+        assert!(!status.next_actions[0].writes);
+        assert!(
+            status
+                .next_actions
+                .iter()
+                .all(|action| !action.command.starts_with("shiplog share manager"))
+        );
+    }
+
+    #[test]
     fn next_actions_are_deterministic() {
         let status = ReviewLoopStatus::from_inputs(ReviewLoopStatusInputs {
             setup_summary: SetupStatusSummary::needs_setup(

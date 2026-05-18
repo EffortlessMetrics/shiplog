@@ -1210,6 +1210,62 @@ fn status_latest_json(
     Ok(serde_json::from_str(&stdout)?)
 }
 
+fn status_latest_json_with_redaction_key(
+    tmp: &Path,
+    out: &Path,
+) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+    let out_arg = out.to_string_lossy().to_string();
+    let assert = shiplog_cmd()
+        .current_dir(tmp)
+        .env("SHIPLOG_REDACT_KEY", "stable-redact-key")
+        .args(["status", "--out", out_arg.as_str(), "--latest", "--json"])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
+    Ok(serde_json::from_str(&stdout)?)
+}
+
+fn status_next_actions(json: &serde_json::Value) -> &[serde_json::Value] {
+    json["next_actions"]
+        .as_array()
+        .expect("next_actions should be an array")
+}
+
+fn assert_status_first_action(json: &serde_json::Value, key: &str, writes: bool) {
+    let actions = status_next_actions(json);
+    let first = actions
+        .first()
+        .expect("status should include a next action");
+    assert_eq!(first["key"], key);
+    assert_eq!(first["writes"], writes);
+}
+
+fn assert_status_has_action(json: &serde_json::Value, key: &str, writes: bool) {
+    assert!(
+        status_next_actions(json)
+            .iter()
+            .any(|action| action["key"] == key && action["writes"] == writes),
+        "status should include action {key} with writes={writes}: {json}"
+    );
+}
+
+fn assert_status_lacks_command(json: &serde_json::Value, needle: &str) {
+    assert!(
+        status_next_actions(json)
+            .iter()
+            .all(|action| !action["command"]
+                .as_str()
+                .unwrap_or_default()
+                .contains(needle)),
+        "status should not offer command containing {needle:?}: {json}"
+    );
+}
+
+fn assert_status_lacks_share_render(json: &serde_json::Value) {
+    assert_status_lacks_command(json, "shiplog share manager --");
+    assert_status_lacks_command(json, "shiplog share public --");
+}
+
 fn load_first_intake_report(out: &Path) -> (PathBuf, serde_json::Value) {
     let report_path = first_run_dir(out).join("intake.report.json");
     let report: serde_json::Value =
@@ -2091,6 +2147,222 @@ fn status_latest_repairable_run_is_read_first_and_share_safe() -> CliTestResult 
         file_tree_manifest(tmp.path()),
         "status should not write after intake"
     );
+    Ok(())
+}
+
+#[test]
+fn status_latest_json_safe_next_actions_cover_review_loop_states() -> CliTestResult {
+    let missing_setup = TempDir::new()?;
+    let missing_out = missing_setup.path().join("out");
+    let before_missing = file_tree_manifest(missing_setup.path());
+    let missing = status_latest_json(missing_setup.path(), &missing_out)?;
+    assert_eq!(missing["overall_status"], "needs_setup");
+    assert_status_first_action(&missing, "doctor_setup", false);
+    assert_status_has_action(&missing, "init_guided", true);
+    assert_status_lacks_command(&missing, "journal add --from-repair");
+    assert_status_lacks_share_render(&missing);
+    assert_eq!(
+        before_missing,
+        file_tree_manifest(missing_setup.path()),
+        "missing-setup status should stay read-only"
+    );
+
+    let setup_blocked = TempDir::new()?;
+    let blocked_out = setup_blocked.path().join("out");
+    shiplog_cmd()
+        .current_dir(setup_blocked.path())
+        .args(["init", "--guided"])
+        .assert()
+        .success();
+    std::fs::write(
+        setup_blocked.path().join("manual_events.yaml"),
+        "events: []\n",
+    )?;
+    let before_blocked = file_tree_manifest(setup_blocked.path());
+    let blocked = status_latest_json(setup_blocked.path(), &blocked_out)?;
+    assert_eq!(blocked["overall_status"], "blocked");
+    assert_status_first_action(&blocked, "doctor_setup", false);
+    assert_status_lacks_command(&blocked, "journal add --from-repair");
+    assert_status_lacks_share_render(&blocked);
+    assert_eq!(
+        before_blocked,
+        file_tree_manifest(setup_blocked.path()),
+        "setup-blocked status should stay read-only"
+    );
+
+    let no_run = TempDir::new()?;
+    let no_run_out = no_run.path().join("out");
+    shiplog_cmd()
+        .current_dir(no_run.path())
+        .args(["init", "--guided"])
+        .assert()
+        .success();
+    let before_no_run = file_tree_manifest(no_run.path());
+    let ready_to_collect = status_latest_json(no_run.path(), &no_run_out)?;
+    assert_eq!(ready_to_collect["overall_status"], "ready_to_collect");
+    assert_status_first_action(&ready_to_collect, "intake", true);
+    assert_status_lacks_command(&ready_to_collect, "journal add --from-repair");
+    assert_status_lacks_share_render(&ready_to_collect);
+    assert_eq!(
+        before_no_run,
+        file_tree_manifest(no_run.path()),
+        "ready-to-collect status should stay read-only"
+    );
+
+    let repairable = TempDir::new()?;
+    let repairable_out = repairable.path().join("out");
+    let repairable_out_arg = repairable_out.to_string_lossy().to_string();
+    shiplog_cmd()
+        .current_dir(repairable.path())
+        .args(["init", "--guided"])
+        .assert()
+        .success();
+    run_guided_setup_intake_2025_with_sources(repairable.path(), &repairable_out, &[]);
+    let (_, report) = load_latest_intake_report(&repairable_out);
+    let repair_id = first_repair_id_with_action(&report, "journal_add");
+    let before_repairable = file_tree_manifest(repairable.path());
+    let needs_repair = status_latest_json(repairable.path(), &repairable_out)?;
+    assert_eq!(needs_repair["overall_status"], "needs_repair");
+    assert_status_first_action(&needs_repair, "repair_plan", false);
+    assert_status_has_action(&needs_repair, "journal_add_from_repair", true);
+    assert_status_lacks_share_render(&needs_repair);
+    assert_eq!(
+        before_repairable,
+        file_tree_manifest(repairable.path()),
+        "repairable status should stay read-only"
+    );
+
+    std::thread::sleep(std::time::Duration::from_millis(20));
+    shiplog_cmd()
+        .current_dir(repairable.path())
+        .args([
+            "journal",
+            "add",
+            "--from-repair",
+            repair_id.as_str(),
+            "--out",
+            repairable_out_arg.as_str(),
+            "--latest",
+        ])
+        .assert()
+        .success();
+    let before_rerun = file_tree_manifest(repairable.path());
+    let repair_in_progress = status_latest_json(repairable.path(), &repairable_out)?;
+    assert_eq!(repair_in_progress["overall_status"], "repair_in_progress");
+    assert_status_first_action(&repair_in_progress, "intake", true);
+    assert_status_lacks_command(&repair_in_progress, "journal add --from-repair");
+    assert_status_lacks_share_render(&repair_in_progress);
+    assert_eq!(
+        before_rerun,
+        file_tree_manifest(repairable.path()),
+        "repair-in-progress status should not write while routing to rerun"
+    );
+
+    let caveated = TempDir::new()?;
+    let caveated_out = caveated.path().join("out");
+    let caveated_run = caveated_out.join("run_ready_caveats");
+    shiplog_cmd()
+        .current_dir(caveated.path())
+        .args(["init", "--guided"])
+        .assert()
+        .success();
+    std::fs::create_dir_all(&caveated_run)?;
+    std::fs::write(
+        caveated_run.join("intake.report.json"),
+        serde_json::to_string_pretty(&serde_json::json!({
+            "run_id": "run_ready_caveats",
+            "included_sources": [
+                {
+                    "source_key": "manual",
+                    "source_label": "Manual journal",
+                    "event_count": 1
+                }
+            ],
+            "skipped_sources": [],
+            "repair_items": [],
+            "packet_quality": {
+                "packet_readiness": {
+                    "status": "ready_with_caveats",
+                    "summary": "manual-only packet is ready with caveats"
+                }
+            }
+        }))?,
+    )?;
+    let before_caveated = file_tree_manifest(caveated.path());
+    let ready_with_caveats = status_latest_json_with_redaction_key(caveated.path(), &caveated_out)?;
+    assert_eq!(ready_with_caveats["overall_status"], "ready_with_caveats");
+    assert_status_first_action(&ready_with_caveats, "share_explain_manager", false);
+    assert_status_lacks_command(&ready_with_caveats, "journal add --from-repair");
+    assert_status_lacks_share_render(&ready_with_caveats);
+    assert_eq!(
+        before_caveated,
+        file_tree_manifest(caveated.path()),
+        "ready-with-caveats status should stay read-only"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn status_latest_json_safe_next_actions_for_old_and_malformed_reports() -> CliTestResult {
+    let old = TempDir::new()?;
+    let old_out = old.path().join("out");
+    let old_run = old_out.join("run_old");
+    shiplog_cmd()
+        .current_dir(old.path())
+        .args(["init", "--guided"])
+        .assert()
+        .success();
+    std::fs::create_dir_all(&old_run)?;
+    std::fs::write(
+        old_run.join("intake.report.json"),
+        serde_json::to_string_pretty(&serde_json::json!({"run_id": "run_old"}))?,
+    )?;
+    let before_old = file_tree_manifest(old.path());
+    let old_status = status_latest_json(old.path(), &old_out)?;
+    assert_ne!(old_status["overall_status"], "ready_to_share");
+    assert_status_first_action(&old_status, "share_explain_manager", false);
+    assert_status_lacks_command(&old_status, "journal add --from-repair");
+    assert_status_lacks_share_render(&old_status);
+    assert_eq!(
+        before_old,
+        file_tree_manifest(old.path()),
+        "old-report status should stay read-only"
+    );
+
+    let malformed = TempDir::new()?;
+    let malformed_out = malformed.path().join("out");
+    let malformed_run = malformed_out.join("run_bad");
+    shiplog_cmd()
+        .current_dir(malformed.path())
+        .args(["init", "--guided"])
+        .assert()
+        .success();
+    std::fs::create_dir_all(&malformed_run)?;
+    std::fs::write(malformed_run.join("intake.report.json"), "not json\n")?;
+    let before_malformed = file_tree_manifest(malformed.path());
+    let malformed_status = status_latest_json(malformed.path(), &malformed_out)?;
+    assert_ne!(malformed_status["overall_status"], "ready_to_share");
+    assert_status_first_action(&malformed_status, "share_explain_manager", false);
+    assert_status_lacks_command(&malformed_status, "journal add --from-repair");
+    assert_status_lacks_share_render(&malformed_status);
+    assert!(
+        malformed_status["receipt_refs"]
+            .as_array()
+            .is_some_and(|refs| refs.iter().any(|receipt| {
+                receipt["kind"] == "receipt_problem"
+                    && receipt["field"]
+                        .as_str()
+                        .is_some_and(|field| field.contains("intake_report_malformed"))
+            })),
+        "malformed report status should name the blocked receipt problem: {malformed_status}"
+    );
+    assert_eq!(
+        before_malformed,
+        file_tree_manifest(malformed.path()),
+        "malformed-report status should stay read-only"
+    );
+
     Ok(())
 }
 
