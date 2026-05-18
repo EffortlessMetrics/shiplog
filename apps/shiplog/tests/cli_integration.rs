@@ -2201,6 +2201,19 @@ events = "./manual_events.yaml"
         report["repair_sources"]
     );
     assert!(
+        report["repair_sources"]
+            .as_array()
+            .expect("repair_sources should be an array")
+            .iter()
+            .filter(|repair| repair["source_key"].as_str() == Some("manual"))
+            .flat_map(|repair| repair["commands"].as_array().into_iter().flatten())
+            .filter_map(|command| command.as_str())
+            .any(|command| command.contains("shiplog doctor --setup")
+                && command.contains("--source manual")),
+        "manual setup repair should route through read-only doctor setup first: {:?}",
+        report["repair_sources"]
+    );
+    assert!(
         report["repair_items"]
             .as_array()
             .expect("repair_items should be an array")
@@ -2229,6 +2242,11 @@ events = "./manual_events.yaml"
     assert!(
         !repair_plan_stdout.contains("journal add --from-repair"),
         "repair plan should not print from-repair journal commands while manual journal setup is blocked. stdout:\n{repair_plan_stdout}"
+    );
+    assert!(
+        repair_plan_stdout.contains("shiplog doctor --setup")
+            && repair_plan_stdout.contains("--source manual"),
+        "repair plan should route malformed manual setup through doctor before journal repair. stdout:\n{repair_plan_stdout}"
     );
 
     Ok(())
@@ -3470,7 +3488,9 @@ fn doctor_repair_plan_reports_missing_token_without_writing_outputs() {
         .failure()
         .stdout(predicate::str::contains("Repair plan:"))
         .stdout(predicate::str::contains("GitHub [missing_token]"))
-        .stdout(predicate::str::contains("export GITHUB_TOKEN=..."))
+        .stdout(predicate::str::contains(
+            "shiplog sources status --config \"shiplog.toml\" --source github",
+        ))
         .stdout(predicate::str::contains(
             "shiplog doctor --config \"shiplog.toml\" --repair-plan",
         ));
@@ -6464,12 +6484,9 @@ status = "done"
         ))
         .stdout(predicate::str::contains("Repair sources:"))
         .stdout(predicate::str::contains("kind: missing_token"))
-        .stdout(predicate::str::contains("export JIRA_TOKEN=..."))
-        .stdout(predicate::str::contains(
-            "shiplog identify jira --auth-user <email>",
-        ))
-        .stdout(predicate::str::contains("export LINEAR_API_KEY=..."))
-        .stdout(predicate::str::contains("shiplog identify linear"))
+        .stdout(predicate::str::contains("shiplog sources status"))
+        .stdout(predicate::str::contains("--source jira"))
+        .stdout(predicate::str::contains("--source linear"))
         .stdout(predicate::str::contains("shiplog doctor --config"));
 
     let run_dir = first_run_dir(&out);
@@ -6520,6 +6537,9 @@ status = "done"
     assert!(report_md.contains("shiplog identify jira --auth-user <email>"));
     assert!(report_md.contains("export LINEAR_API_KEY=..."));
     assert!(report_md.contains("shiplog identify linear"));
+    assert!(report_md.contains("shiplog sources status"));
+    assert!(report_md.contains("--source jira"));
+    assert!(report_md.contains("--source linear"));
 
     assert_eq!(report_json["skipped_sources"].as_array().unwrap().len(), 2);
     assert_eq!(report_json["repair_sources"].as_array().unwrap().len(), 2);
@@ -6564,11 +6584,24 @@ status = "done"
                 && repair["source_key"] == "jira"
                 && repair["source_label"] == "Jira"
                 && repair["kind"] == "missing_token"
-                && repair["commands"]
-                    .as_array()
-                    .unwrap()
-                    .iter()
-                    .any(|line| line.as_str().unwrap().contains("shiplog identify jira")))
+                && repair["commands"].as_array().unwrap().iter().any(|line| {
+                    let Some(line) = line.as_str() else {
+                        return false;
+                    };
+                    line.contains("shiplog sources status") && line.contains("--source jira")
+                }))
+    );
+    assert!(
+        report_json["repair_sources"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|repair| repair["source_key"] == "jira" || repair["source_key"] == "linear")
+            .flat_map(|repair| repair["commands"].as_array().into_iter().flatten())
+            .filter_map(|command| command.as_str())
+            .all(|command| !command.contains("export ") && !command.contains("shiplog identify")),
+        "setup-blocked repair sources should hand off to read-only setup status instead of token or identity commands: {:?}",
+        report_json["repair_sources"]
     );
     let repair_items = report_json["repair_items"].as_array().unwrap();
     assert!(
@@ -6577,6 +6610,10 @@ status = "done"
             .any(|item| item["kind"] == "source_skipped_configuration"
                 && item["source_key"] == "jira"
                 && item["action"]["kind"] == "configure_source"
+                && item["action"]["command"]
+                    .as_str()
+                    .is_some_and(|command| command.contains("shiplog sources status")
+                        && command.contains("--source jira"))
                 && item["receipt_refs"]
                     .as_array()
                     .unwrap()
@@ -6618,6 +6655,25 @@ status = "done"
             "source_freshness should join to source_decisions on source_key for {source_key}"
         );
     }
+
+    let repair_plan = shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["repair", "plan", "--out", out.to_str().unwrap(), "--latest"])
+        .assert()
+        .success();
+    let repair_plan_stdout = String::from_utf8(repair_plan.get_output().stdout.clone()).unwrap();
+    assert!(
+        repair_plan_stdout.contains("shiplog sources status")
+            && repair_plan_stdout.contains("--source jira")
+            && repair_plan_stdout.contains("--source linear"),
+        "repair plan should route provider setup gaps through read-only source status. stdout:\n{repair_plan_stdout}"
+    );
+    assert!(
+        !repair_plan_stdout.contains("shiplog identify")
+            && !repair_plan_stdout.contains("export JIRA_TOKEN")
+            && !repair_plan_stdout.contains("export LINEAR_API_KEY"),
+        "repair plan should not print setup-blocked provider token/identity commands. stdout:\n{repair_plan_stdout}"
+    );
 
     assert!(
         coverage.contains("Configured source jira was skipped: missing JIRA_TOKEN"),
@@ -6800,7 +6856,12 @@ cache_dir = "./.cache"
                 .as_array()
                 .unwrap()
                 .iter()
-                .any(|command| command.as_str().unwrap().contains("sources.gitlab.state"))
+                .any(|command| {
+                    command.as_str().is_some_and(|command| {
+                        command.contains("shiplog sources status")
+                            && command.contains("--source gitlab")
+                    })
+                })
     }));
     assert!(repairs.iter().any(|repair| {
         repair["source"] == "jira"
@@ -6811,7 +6872,12 @@ cache_dir = "./.cache"
                 .as_array()
                 .unwrap()
                 .iter()
-                .any(|command| command.as_str().unwrap().contains("sources.jira.status"))
+                .any(|command| {
+                    command.as_str().is_some_and(|command| {
+                        command.contains("shiplog sources status")
+                            && command.contains("--source jira")
+                    })
+                })
     }));
     assert!(repairs.iter().any(|repair| {
         repair["source"] == "linear"
@@ -6822,7 +6888,12 @@ cache_dir = "./.cache"
                 .as_array()
                 .unwrap()
                 .iter()
-                .any(|command| command.as_str().unwrap().contains("sources.linear.status"))
+                .any(|command| {
+                    command.as_str().is_some_and(|command| {
+                        command.contains("shiplog sources status")
+                            && command.contains("--source linear")
+                    })
+                })
     }));
     assert!(
         report_json["next_commands"]
