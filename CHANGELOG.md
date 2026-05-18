@@ -220,6 +220,10 @@ GitHub release approval.
   and durable receipts instead of packet/report Markdown, provider probes,
   implicit intake reruns, share rendering, LLM summaries, or release execution
   (#426).
+- Added the internal review-loop status model for setup, latest-run, packet,
+  source, repair, diff, share, blocking-reason, next-action, and receipt
+  summaries, with unit coverage for missing setup, no-run, repairable,
+  repair-in-progress, and share-blocked states (#427).
 
 ## [0.9.0] - Unreleased candidate
 
