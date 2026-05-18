@@ -400,6 +400,7 @@ fn guided_setup_doctor_guide_documents_setup_flow() {
     for needle in [
         "shiplog init --guided",
         "shiplog doctor --setup",
+        "shiplog doctor --setup --json",
         "shiplog sources status",
         "shiplog intake --last-6-months --explain",
         "shiplog repair plan --latest",

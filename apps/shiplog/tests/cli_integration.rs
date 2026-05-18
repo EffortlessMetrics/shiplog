@@ -3544,6 +3544,199 @@ user = "octo"
 }
 
 #[test]
+fn doctor_setup_json_outputs_setup_model_without_writes_or_text() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    git2::Repository::init(tmp.path())?;
+    std::fs::write(
+        tmp.path().join("manual_events.yaml"),
+        "version: 1\ngenerated_at: 2026-01-01T00:00:00Z\nevents: []\n",
+    )?;
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[shiplog]
+config_version = 1
+
+[defaults]
+out = "./out"
+window = "last-6-months"
+profile = "manager"
+
+[sources.git]
+enabled = true
+repo = "."
+
+[sources.manual]
+enabled = true
+events = "./manual_events.yaml"
+
+[sources.github]
+enabled = true
+user = "octo"
+"#,
+    )?;
+
+    let before = file_tree_manifest(tmp.path());
+    let assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args(["doctor", "--setup", "--json"])
+        .assert()
+        .failure();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
+    let after = file_tree_manifest(tmp.path());
+    assert_eq!(
+        before, after,
+        "doctor --setup --json should not write setup or run artifacts"
+    );
+    assert!(
+        !stdout.contains("Setup readiness:"),
+        "--json should emit machine-readable setup state without human prose"
+    );
+
+    let json: serde_json::Value = serde_json::from_str(&stdout)?;
+    assert_eq!(json["overall_status"], "needs_setup");
+
+    let git = setup_json_item(&json, "sources", "git");
+    assert_eq!(git["label"], "Local git");
+    assert_eq!(git["enabled"], true);
+    assert_eq!(git["status"], "ready");
+
+    let manual = setup_json_item(&json, "sources", "manual");
+    assert_eq!(manual["label"], "Manual journal");
+    assert_eq!(manual["status"], "ready");
+
+    let github = setup_json_item(&json, "sources", "github");
+    assert_eq!(github["label"], "GitHub");
+    assert_eq!(github["enabled"], true);
+    assert_eq!(github["status"], "unavailable");
+    assert!(
+        github["reason"]
+            .as_str()
+            .unwrap()
+            .contains("GITHUB_TOKEN not set")
+    );
+    assert_eq!(github["next_action"]["command"], "set GITHUB_TOKEN");
+    assert_eq!(github["next_action"]["writes"], false);
+
+    let redaction = setup_json_item(&json, "credentials", "redaction_key");
+    assert_eq!(redaction["status"], "unavailable");
+    assert!(
+        redaction["reason"]
+            .as_str()
+            .unwrap()
+            .contains("SHIPLOG_REDACT_KEY not set")
+    );
+
+    let manager = setup_json_item(&json, "share_profiles", "manager");
+    assert_eq!(manager["status"], "blocked");
+    assert!(
+        manager["reason"]
+            .as_str()
+            .unwrap()
+            .contains("SHIPLOG_REDACT_KEY not set")
+    );
+
+    let next_actions = json["next_actions"]
+        .as_array()
+        .expect("next_actions should be an array");
+    assert!(
+        next_actions
+            .iter()
+            .any(|action| { action["command"] == "set GITHUB_TOKEN" && action["writes"] == false }),
+        "agent JSON should expose read-only credential setup next action"
+    );
+    assert!(
+        next_actions.iter().any(|action| {
+            action["command"] == "set SHIPLOG_REDACT_KEY" && action["writes"] == false
+        }),
+        "agent JSON should expose read-only redaction setup next action"
+    );
+
+    let assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args(["doctor", "--setup", "--json"])
+        .assert()
+        .failure();
+    let stdout_again = String::from_utf8(assert.get_output().stdout.clone())?;
+    assert_eq!(
+        stdout, stdout_again,
+        "doctor --setup --json should be deterministic across repeated reads"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn doctor_setup_json_reports_presence_without_printing_secret_values() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[shiplog]
+config_version = 1
+
+[defaults]
+out = "./out"
+window = "last-6-months"
+profile = "internal"
+
+[sources.github]
+enabled = true
+user = "octo"
+"#,
+    )?;
+
+    let secret_token = "shiplog-json-source-secret";
+    let secret_redaction = "shiplog-json-redaction-secret";
+    let assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env("GITHUB_TOKEN", secret_token)
+        .env("SHIPLOG_REDACT_KEY", secret_redaction)
+        .args(["doctor", "--setup", "--source", "github", "--json"])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
+    assert!(
+        !stdout.contains(secret_token) && !stdout.contains(secret_redaction),
+        "doctor setup JSON should report env-var presence without printing values"
+    );
+
+    let json: serde_json::Value = serde_json::from_str(&stdout)?;
+    assert_eq!(json["overall_status"], "ready_with_caveats");
+    assert_eq!(
+        setup_json_item(&json, "sources", "github")["status"],
+        "ready"
+    );
+    assert_eq!(
+        setup_json_item(&json, "credentials", "github_token")["reason"],
+        "GITHUB_TOKEN present"
+    );
+    assert!(
+        setup_json_item(&json, "share_profiles", "manager")["reason"]
+            .as_str()
+            .unwrap()
+            .contains("SHIPLOG_REDACT_KEY present")
+    );
+
+    Ok(())
+}
+
+fn setup_json_item<'a>(
+    json: &'a serde_json::Value,
+    group: &str,
+    key: &str,
+) -> &'a serde_json::Value {
+    json[group]
+        .as_array()
+        .unwrap_or_else(|| panic!("{group} should be an array"))
+        .iter()
+        .find(|item| item["key"].as_str() == Some(key))
+        .unwrap_or_else(|| panic!("{group} should contain setup item {key}"))
+}
+
+#[test]
 fn intake_default_out_paths_do_not_duplicate_current_dir() {
     let tmp = TempDir::new().unwrap();
     let fixtures = fixture_dir();

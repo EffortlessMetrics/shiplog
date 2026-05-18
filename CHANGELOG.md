@@ -168,6 +168,9 @@ GitHub release approval.
 - Added a setup-readiness dogfood matrix so the Guided Setup / Doctor flows have
   a visible ledger of trusted proof, missing proof, and accepted caveats without
   lifting the 0.9 release hold (#411).
+- Added `shiplog doctor --setup --json` as a read-only, no-network setup
+  readiness control-plane output for agents and scripts, reusing the typed
+  doctor model without printing secret values (#412).
 
 ## [0.9.0] - Unreleased candidate
 
