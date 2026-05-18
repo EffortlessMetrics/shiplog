@@ -1,0 +1,142 @@
+{
+  "overall_status": "needs_evidence",
+  "setup_summary": {
+    "status": "ready_with_caveats",
+    "reason": "local sources ready; GitHub unavailable",
+    "next_actions": [],
+    "receipt_refs": [
+      {
+        "field": "setup",
+        "kind": "setup_readiness",
+        "path": null,
+        "key": null
+      }
+    ]
+  },
+  "latest_run": {
+    "run_id": "run_2026_05_18_170000",
+    "report_path": "out/run_2026_05_18_170000/intake.report.json",
+    "receipt_refs": [
+      {
+        "field": "latest_run.report",
+        "kind": "intake_report",
+        "path": "out/run_2026_05_18_170000/intake.report.json",
+        "key": null
+      }
+    ]
+  },
+  "packet_readiness": {
+    "status": "needs_evidence",
+    "reason": "manual evidence is missing",
+    "receipt_refs": [
+      {
+        "field": "packet_quality.packet_readiness",
+        "kind": "intake_report",
+        "path": "out/run_2026_05_18_170000/intake.report.json",
+        "key": null
+      }
+    ]
+  },
+  "source_summary": {
+    "included": [
+      {
+        "source_key": "git",
+        "source_label": "Local git",
+        "event_count": 4
+      }
+    ],
+    "unavailable": [
+      {
+        "source_key": "github",
+        "source_label": "GitHub",
+        "reason": "GITHUB_TOKEN not set"
+      }
+    ],
+    "disabled": [],
+    "receipt_refs": [
+      {
+        "field": "source_summary",
+        "kind": "intake_report",
+        "path": "out/run_2026_05_18_170000/intake.report.json",
+        "key": null
+      }
+    ]
+  },
+  "repair_summary": {
+    "open_items": 0,
+    "safe_write_count": 0,
+    "setup_blocked_write_count": 0,
+    "applied_not_rerun": false,
+    "receipt_refs": [
+      {
+        "field": "repair_items",
+        "kind": "intake_report",
+        "path": "out/run_2026_05_18_170000/intake.report.json",
+        "key": null
+      }
+    ]
+  },
+  "diff_summary": {
+    "status": "no_prior_comparable_run",
+    "reason": "no prior comparable run",
+    "receipt_refs": []
+  },
+  "share_summary": {
+    "profiles": [
+      {
+        "profile_key": "manager",
+        "profile_label": "Manager",
+        "status": "not_generated",
+        "reason": "share explain has not been run",
+        "receipt_refs": []
+      }
+    ],
+    "receipt_refs": []
+  },
+  "blocking_reasons": [
+    {
+      "key": "packet_readiness",
+      "label": "Packet readiness",
+      "status": "needs_evidence",
+      "reason": "packet still needs evidence",
+      "scope": "packet",
+      "receipt_refs": [
+        {
+          "field": "packet_quality.packet_readiness",
+          "kind": "intake_report",
+          "path": "out/run_2026_05_18_170000/intake.report.json",
+          "key": null
+        }
+      ]
+    }
+  ],
+  "next_actions": [
+    {
+      "key": "repair_plan",
+      "label": "Inspect repair plan",
+      "command": "shiplog repair plan --latest",
+      "writes": false,
+      "reason": "inspect evidence gaps before sharing",
+      "preconditions": [
+        "latest run available"
+      ],
+      "priority": 1,
+      "receipt_refs": [
+        {
+          "field": "repair_items",
+          "kind": "intake_report",
+          "path": "out/run_2026_05_18_170000/intake.report.json",
+          "key": null
+        }
+      ]
+    }
+  ],
+  "receipt_refs": [
+    {
+      "field": "latest_run.report",
+      "kind": "intake_report",
+      "path": "out/run_2026_05_18_170000/intake.report.json",
+      "key": null
+    }
+  ]
+}

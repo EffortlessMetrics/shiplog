@@ -1,0 +1,176 @@
+{
+  "overall_status": "share_blocked",
+  "setup_summary": {
+    "status": "ready",
+    "reason": "local setup ready",
+    "next_actions": [],
+    "receipt_refs": [
+      {
+        "field": "setup",
+        "kind": "setup_readiness",
+        "path": null,
+        "key": null
+      }
+    ]
+  },
+  "latest_run": {
+    "run_id": "run_2026_05_18_173000",
+    "report_path": "out/run_2026_05_18_173000/intake.report.json",
+    "receipt_refs": [
+      {
+        "field": "latest_run.report",
+        "kind": "intake_report",
+        "path": "out/run_2026_05_18_173000/intake.report.json",
+        "key": null
+      }
+    ]
+  },
+  "packet_readiness": {
+    "status": "ready",
+    "reason": "packet ready",
+    "receipt_refs": [
+      {
+        "field": "packet_quality.packet_readiness",
+        "kind": "intake_report",
+        "path": "out/run_2026_05_18_173000/intake.report.json",
+        "key": null
+      }
+    ]
+  },
+  "source_summary": {
+    "included": [
+      {
+        "source_key": "manual",
+        "source_label": "Manual journal",
+        "event_count": 1
+      },
+      {
+        "source_key": "git",
+        "source_label": "Local git",
+        "event_count": 4
+      }
+    ],
+    "unavailable": [],
+    "disabled": [],
+    "receipt_refs": [
+      {
+        "field": "source_summary",
+        "kind": "intake_report",
+        "path": "out/run_2026_05_18_173000/intake.report.json",
+        "key": null
+      }
+    ]
+  },
+  "repair_summary": {
+    "open_items": 0,
+    "safe_write_count": 0,
+    "setup_blocked_write_count": 0,
+    "applied_not_rerun": false,
+    "receipt_refs": [
+      {
+        "field": "repair_items",
+        "kind": "intake_report",
+        "path": "out/run_2026_05_18_173000/intake.report.json",
+        "key": null
+      }
+    ]
+  },
+  "diff_summary": {
+    "status": "available",
+    "reason": "repair diff and runs diff receipts are comparable",
+    "receipt_refs": [
+      {
+        "field": "diff.to_report",
+        "kind": "intake_report",
+        "path": "out/run_2026_05_18_173000/intake.report.json",
+        "key": null
+      }
+    ]
+  },
+  "share_summary": {
+    "profiles": [
+      {
+        "profile_key": "manager",
+        "profile_label": "Manager",
+        "status": "blocked",
+        "reason": "SHIPLOG_REDACT_KEY missing",
+        "receipt_refs": [
+          {
+            "field": "share_profiles",
+            "kind": "share_readiness",
+            "path": null,
+            "key": "manager"
+          }
+        ]
+      },
+      {
+        "profile_key": "public",
+        "profile_label": "Public",
+        "status": "blocked",
+        "reason": "strict public review has not passed",
+        "receipt_refs": [
+          {
+            "field": "share_profiles",
+            "kind": "share_readiness",
+            "path": null,
+            "key": "public"
+          }
+        ]
+      }
+    ],
+    "receipt_refs": [
+      {
+        "field": "share_profiles",
+        "kind": "share_readiness",
+        "path": null,
+        "key": null
+      }
+    ]
+  },
+  "blocking_reasons": [
+    {
+      "key": "share_manager",
+      "label": "Manager share",
+      "status": "blocked",
+      "reason": "SHIPLOG_REDACT_KEY missing",
+      "scope": "share",
+      "receipt_refs": [
+        {
+          "field": "share_profiles",
+          "kind": "share_readiness",
+          "path": null,
+          "key": "manager"
+        }
+      ]
+    }
+  ],
+  "next_actions": [
+    {
+      "key": "share_explain_manager",
+      "label": "Explain manager share posture",
+      "command": "shiplog share explain manager --latest",
+      "writes": false,
+      "reason": "inspect share posture before rendering",
+      "preconditions": [
+        "latest run available"
+      ],
+      "priority": 1,
+      "receipt_refs": [
+        {
+          "field": "share_profiles",
+          "kind": "share_readiness",
+          "path": null,
+          "key": "manager"
+        }
+      ]
+    }
+  ],
+  "receipt_refs": [
+    {
+      "field": "latest_run.report",
+      "kind": "intake_report",
+      "path": "out/run_2026_05_18_173000/intake.report.json",
+      "key": null
+    }
+  ]
+}

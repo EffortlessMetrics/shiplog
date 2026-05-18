@@ -1,0 +1,80 @@
+{
+  "overall_status": "ready_to_collect",
+  "setup_summary": {
+    "status": "ready",
+    "reason": "local setup ready",
+    "next_actions": [],
+    "receipt_refs": [
+      {
+        "field": "setup",
+        "kind": "setup_readiness",
+        "path": null,
+        "key": null
+      }
+    ]
+  },
+  "latest_run": null,
+  "packet_readiness": {
+    "status": "unknown",
+    "reason": "packet readiness receipt is missing",
+    "receipt_refs": []
+  },
+  "source_summary": {
+    "included": [],
+    "unavailable": [],
+    "disabled": [
+      {
+        "source_key": "github",
+        "source_label": "GitHub",
+        "reason": "disabled in config"
+      }
+    ],
+    "receipt_refs": [
+      {
+        "field": "sources",
+        "kind": "setup_readiness",
+        "path": null,
+        "key": "github"
+      }
+    ]
+  },
+  "repair_summary": {
+    "open_items": 0,
+    "safe_write_count": 0,
+    "setup_blocked_write_count": 0,
+    "applied_not_rerun": false,
+    "receipt_refs": []
+  },
+  "diff_summary": {
+    "status": "not_generated",
+    "reason": "no intake run exists yet",
+    "receipt_refs": []
+  },
+  "share_summary": {
+    "profiles": [],
+    "receipt_refs": []
+  },
+  "blocking_reasons": [],
+  "next_actions": [
+    {
+      "key": "intake",
+      "label": "Collect evidence",
+      "command": "shiplog intake --last-6-months --explain",
+      "writes": true,
+      "reason": "setup is usable and no latest run is available",
+      "preconditions": [
+        "setup ready"
+      ],
+      "priority": 1,
+      "receipt_refs": []
+    }
+  ],
+  "receipt_refs": [
+    {
+      "field": "setup",
+      "kind": "setup_readiness",
+      "path": null,
+      "key": null
+    }
+  ]
+}

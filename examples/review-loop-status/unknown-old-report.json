@@ -1,0 +1,151 @@
+{
+  "overall_status": "unknown",
+  "setup_summary": {
+    "status": "ready",
+    "reason": "local setup ready",
+    "next_actions": [],
+    "receipt_refs": [
+      {
+        "field": "setup",
+        "kind": "setup_readiness",
+        "path": null,
+        "key": null
+      }
+    ]
+  },
+  "latest_run": {
+    "run_id": "run_2026_05_18_old",
+    "report_path": "out/run_2026_05_18_old/intake.report.json",
+    "receipt_refs": [
+      {
+        "field": "latest_run.report",
+        "kind": "intake_report",
+        "path": "out/run_2026_05_18_old/intake.report.json",
+        "key": null
+      }
+    ]
+  },
+  "packet_readiness": {
+    "status": "unknown",
+    "reason": "old report does not include packet_quality",
+    "receipt_refs": [
+      {
+        "field": "packet_quality",
+        "kind": "intake_report",
+        "path": "out/run_2026_05_18_old/intake.report.json",
+        "key": null
+      }
+    ]
+  },
+  "source_summary": {
+    "included": [],
+    "unavailable": [],
+    "disabled": [],
+    "receipt_refs": [
+      {
+        "field": "included_sources",
+        "kind": "intake_report",
+        "path": "out/run_2026_05_18_old/intake.report.json",
+        "key": null
+      }
+    ]
+  },
+  "repair_summary": {
+    "open_items": 0,
+    "safe_write_count": 0,
+    "setup_blocked_write_count": 0,
+    "applied_not_rerun": false,
+    "receipt_refs": [
+      {
+        "field": "repair_items",
+        "kind": "intake_report",
+        "path": "out/run_2026_05_18_old/intake.report.json",
+        "key": null
+      }
+    ]
+  },
+  "diff_summary": {
+    "status": "unknown",
+    "reason": "old report does not include comparable packet-quality receipts",
+    "receipt_refs": [
+      {
+        "field": "diff.to_report",
+        "kind": "intake_report",
+        "path": "out/run_2026_05_18_old/intake.report.json",
+        "key": null
+      }
+    ]
+  },
+  "share_summary": {
+    "profiles": [
+      {
+        "profile_key": "manager",
+        "profile_label": "Manager",
+        "status": "unknown",
+        "reason": "old report does not include share posture",
+        "receipt_refs": [
+          {
+            "field": "share_profiles",
+            "kind": "intake_report",
+            "path": "out/run_2026_05_18_old/intake.report.json",
+            "key": "manager"
+          }
+        ]
+      }
+    ],
+    "receipt_refs": [
+      {
+        "field": "share_profiles",
+        "kind": "intake_report",
+        "path": "out/run_2026_05_18_old/intake.report.json",
+        "key": null
+      }
+    ]
+  },
+  "blocking_reasons": [
+    {
+      "key": "old_report",
+      "label": "Old report",
+      "status": "unknown",
+      "reason": "rerun intake for review-loop status receipts",
+      "scope": "receipt",
+      "receipt_refs": [
+        {
+          "field": "latest_run.report",
+          "kind": "intake_report",
+          "path": "out/run_2026_05_18_old/intake.report.json",
+          "key": null
+        }
+      ]
+    }
+  ],
+  "next_actions": [
+    {
+      "key": "intake",
+      "label": "Collect evidence",
+      "command": "shiplog intake --last-6-months --explain",
+      "writes": true,
+      "reason": "rerun intake for richer review-loop status receipts",
+      "preconditions": [
+        "setup ready"
+      ],
+      "priority": 1,
+      "receipt_refs": [
+        {
+          "field": "latest_run.report",
+          "kind": "intake_report",
+          "path": "out/run_2026_05_18_old/intake.report.json",
+          "key": null
+        }
+      ]
+    }
+  ],
+  "receipt_refs": [
+    {
+      "field": "latest_run.report",
+      "kind": "intake_report",
+      "path": "out/run_2026_05_18_old/intake.report.json",
+      "key": null
+    }
+  ]
+}

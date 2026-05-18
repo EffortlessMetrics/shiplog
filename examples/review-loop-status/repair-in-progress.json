@@ -1,0 +1,134 @@
+{
+  "overall_status": "repair_in_progress",
+  "setup_summary": {
+    "status": "ready",
+    "reason": "local setup ready",
+    "next_actions": [],
+    "receipt_refs": [
+      {
+        "field": "setup",
+        "kind": "setup_readiness",
+        "path": null,
+        "key": null
+      }
+    ]
+  },
+  "latest_run": {
+    "run_id": "run_2026_05_18_171000",
+    "report_path": "out/run_2026_05_18_171000/intake.report.json",
+    "receipt_refs": [
+      {
+        "field": "latest_run.report",
+        "kind": "intake_report",
+        "path": "out/run_2026_05_18_171000/intake.report.json",
+        "key": null
+      }
+    ]
+  },
+  "packet_readiness": {
+    "status": "needs_repair",
+    "reason": "repair was applied after this run",
+    "receipt_refs": [
+      {
+        "field": "packet_quality.packet_readiness",
+        "kind": "intake_report",
+        "path": "out/run_2026_05_18_171000/intake.report.json",
+        "key": null
+      }
+    ]
+  },
+  "source_summary": {
+    "included": [
+      {
+        "source_key": "git",
+        "source_label": "Local git",
+        "event_count": 4
+      }
+    ],
+    "unavailable": [],
+    "disabled": [],
+    "receipt_refs": [
+      {
+        "field": "included_sources",
+        "kind": "intake_report",
+        "path": "out/run_2026_05_18_171000/intake.report.json",
+        "key": null
+      }
+    ]
+  },
+  "repair_summary": {
+    "open_items": 1,
+    "safe_write_count": 0,
+    "setup_blocked_write_count": 0,
+    "applied_not_rerun": true,
+    "receipt_refs": [
+      {
+        "field": "journal_repair",
+        "kind": "manual_journal",
+        "path": "manual_events.yaml",
+        "key": "manual:no_events"
+      }
+    ]
+  },
+  "diff_summary": {
+    "status": "not_generated",
+    "reason": "repair diff has not been generated after repair",
+    "receipt_refs": []
+  },
+  "share_summary": {
+    "profiles": [],
+    "receipt_refs": []
+  },
+  "blocking_reasons": [
+    {
+      "key": "repair_in_progress",
+      "label": "Repair in progress",
+      "status": "repair_in_progress",
+      "reason": "repair was applied, but intake has not been rerun",
+      "scope": "repair",
+      "receipt_refs": [
+        {
+          "field": "journal_repair",
+          "kind": "manual_journal",
+          "path": "manual_events.yaml",
+          "key": "manual:no_events"
+        }
+      ]
+    }
+  ],
+  "next_actions": [
+    {
+      "key": "intake",
+      "label": "Collect evidence",
+      "command": "shiplog intake --last-6-months --explain",
+      "writes": true,
+      "reason": "rerun intake after applying evidence repair",
+      "preconditions": [
+        "setup ready"
+      ],
+      "priority": 1,
+      "receipt_refs": [
+        {
+          "field": "journal_repair",
+          "kind": "manual_journal",
+          "path": "manual_events.yaml",
+          "key": "manual:no_events"
+        }
+      ]
+    }
+  ],
+  "receipt_refs": [
+    {
+      "field": "latest_run.report",
+      "kind": "intake_report",
+      "path": "out/run_2026_05_18_171000/intake.report.json",
+      "key": null
+    },
+    {
+      "field": "journal_repair",
+      "kind": "manual_journal",
+      "path": "manual_events.yaml",
+      "key": "manual:no_events"
+    }
+  ]
+}

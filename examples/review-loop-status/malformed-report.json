@@ -1,0 +1,113 @@
+{
+  "overall_status": "unknown",
+  "setup_summary": {
+    "status": "ready",
+    "reason": "local setup ready",
+    "next_actions": [],
+    "receipt_refs": [
+      {
+        "field": "setup",
+        "kind": "setup_readiness",
+        "path": null,
+        "key": null
+      }
+    ]
+  },
+  "latest_run": {
+    "run_id": "run_bad",
+    "report_path": "out/run_bad/intake.report.json",
+    "receipt_refs": [
+      {
+        "field": "latest_run.report",
+        "kind": "intake_report",
+        "path": "out/run_bad/intake.report.json",
+        "key": null
+      }
+    ]
+  },
+  "packet_readiness": {
+    "status": "unknown",
+    "reason": "intake.report.json is malformed",
+    "receipt_refs": [
+      {
+        "field": "packet_quality",
+        "kind": "intake_report",
+        "path": "out/run_bad/intake.report.json",
+        "key": null
+      }
+    ]
+  },
+  "source_summary": {
+    "included": [],
+    "unavailable": [],
+    "disabled": [],
+    "receipt_refs": []
+  },
+  "repair_summary": {
+    "open_items": 0,
+    "safe_write_count": 0,
+    "setup_blocked_write_count": 0,
+    "applied_not_rerun": false,
+    "receipt_refs": []
+  },
+  "diff_summary": {
+    "status": "unknown",
+    "reason": "intake.report.json is malformed",
+    "receipt_refs": [
+      {
+        "field": "diff.to_report",
+        "kind": "intake_report",
+        "path": "out/run_bad/intake.report.json",
+        "key": null
+      }
+    ]
+  },
+  "share_summary": {
+    "profiles": [],
+    "receipt_refs": []
+  },
+  "blocking_reasons": [
+    {
+      "key": "intake_report_malformed",
+      "label": "Malformed report",
+      "status": "blocked",
+      "reason": "parse out/run_bad/intake.report.json failed",
+      "scope": "receipt",
+      "receipt_refs": [
+        {
+          "field": "latest_run.report",
+          "kind": "intake_report",
+          "path": "out/run_bad/intake.report.json",
+          "key": null
+        }
+      ]
+    }
+  ],
+  "next_actions": [
+    {
+      "key": "doctor_setup",
+      "label": "Inspect setup",
+      "command": "shiplog doctor --setup",
+      "writes": false,
+      "reason": "status is missing enough receipts to choose a later step",
+      "preconditions": [],
+      "priority": 1,
+      "receipt_refs": [
+        {
+          "field": "latest_run.report",
+          "kind": "intake_report",
+          "path": "out/run_bad/intake.report.json",
+          "key": null
+        }
+      ]
+    }
+  ],
+  "receipt_refs": [
+    {
+      "field": "latest_run.report",
+      "kind": "intake_report",
+      "path": "out/run_bad/intake.report.json",
+      "key": null
+    }
+  ]
+}
