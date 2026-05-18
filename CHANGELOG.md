@@ -224,6 +224,10 @@ GitHub release approval.
   source, repair, diff, share, blocking-reason, next-action, and receipt
   summaries, with unit coverage for missing setup, no-run, repairable,
   repair-in-progress, and share-blocked states (#427).
+- Added a read-only review-loop receipt resolver for the status lane, covering
+  latest run discovery, old/malformed `intake.report.json` handling,
+  `source.failures.json`, share manifests, and derived repair/runs diff receipt
+  pairs without scraping packet Markdown (#428).
 
 ## [0.9.0] - Unreleased candidate
 

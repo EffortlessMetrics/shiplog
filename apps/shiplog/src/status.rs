@@ -1,6 +1,18 @@
 #![allow(dead_code)]
 
 use serde::Serialize;
+use std::{
+    cmp::Reverse,
+    fs,
+    path::{Path, PathBuf},
+};
+
+const INTAKE_REPORT_FILENAME: &str = "intake.report.json";
+const SOURCE_FAILURES_FILENAME: &str = "source.failures.json";
+const SHARE_MANIFEST_FILENAME: &str = "share.manifest.json";
+const SHARE_PROFILES_DIR: &str = "profiles";
+const SHARE_PROFILE_MANAGER: &str = "manager";
+const SHARE_PROFILE_PUBLIC: &str = "public";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub(crate) struct ReviewLoopStatus {
@@ -163,6 +175,373 @@ impl ReviewLoopStatus {
             receipt_refs: inputs.receipt_refs,
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub(crate) struct ReviewLoopReceiptResolution {
+    pub(crate) out_dir: String,
+    pub(crate) latest_run: Option<ResolvedRunReceipt>,
+    pub(crate) comparable_prior_run: Option<ResolvedRunReceipt>,
+    pub(crate) source_failures: Option<ResolvedFileReceipt>,
+    pub(crate) share_manifests: Vec<ResolvedFileReceipt>,
+    pub(crate) derived_diff_receipts: Vec<ResolvedDerivedDiffReceipt>,
+    pub(crate) problems: Vec<ReviewLoopReceiptProblem>,
+}
+
+impl ReviewLoopReceiptResolution {
+    fn empty(out_dir: &Path) -> Self {
+        Self {
+            out_dir: path_string(out_dir),
+            latest_run: None,
+            comparable_prior_run: None,
+            source_failures: None,
+            share_manifests: Vec::new(),
+            derived_diff_receipts: Vec::new(),
+            problems: Vec::new(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub(crate) struct ResolvedRunReceipt {
+    pub(crate) run_id: String,
+    pub(crate) run_dir: String,
+    pub(crate) report_path: String,
+    pub(crate) report_state: ResolvedJsonState,
+    pub(crate) report_shape: IntakeReportShape,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub(crate) struct IntakeReportShape {
+    pub(crate) has_packet_quality: bool,
+    pub(crate) has_repair_items: bool,
+    pub(crate) has_share_posture: bool,
+}
+
+impl IntakeReportShape {
+    fn unknown() -> Self {
+        Self {
+            has_packet_quality: false,
+            has_repair_items: false,
+            has_share_posture: false,
+        }
+    }
+
+    fn from_report_json(report: &serde_json::Value) -> Self {
+        let has_packet_quality = report.get("packet_quality").is_some();
+        let has_repair_items = report.get("repair_items").is_some();
+        let has_share_posture = report
+            .get("packet_quality")
+            .and_then(|packet_quality| packet_quality.get("share_posture"))
+            .is_some()
+            || report.get("share_posture").is_some();
+
+        Self {
+            has_packet_quality,
+            has_repair_items,
+            has_share_posture,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum ResolvedJsonState {
+    Parsed,
+    Missing,
+    Malformed,
+    Unreadable,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+pub(crate) struct ResolvedFileReceipt {
+    pub(crate) key: String,
+    pub(crate) kind: String,
+    pub(crate) path: String,
+    pub(crate) state: ResolvedJsonState,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+pub(crate) struct ResolvedDerivedDiffReceipt {
+    pub(crate) key: String,
+    pub(crate) kind: String,
+    pub(crate) from_run_id: String,
+    pub(crate) to_run_id: String,
+    pub(crate) receipt_refs: Vec<StatusReceiptRef>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+pub(crate) struct ReviewLoopReceiptProblem {
+    pub(crate) key: String,
+    pub(crate) status: String,
+    pub(crate) reason: String,
+    pub(crate) path: Option<String>,
+}
+
+pub(crate) fn resolve_latest_review_loop_receipts(out_dir: &Path) -> ReviewLoopReceiptResolution {
+    let mut resolution = ReviewLoopReceiptResolution::empty(out_dir);
+
+    if !out_dir.exists() {
+        resolution.problems.push(problem(
+            "out_dir_missing",
+            "missing",
+            format!("{} does not exist", out_dir.display()),
+            Some(out_dir),
+        ));
+        return resolution;
+    }
+
+    if !out_dir.is_dir() {
+        resolution.problems.push(problem(
+            "out_dir_not_directory",
+            "blocked",
+            format!("{} is not a directory", out_dir.display()),
+            Some(out_dir),
+        ));
+        return resolution;
+    }
+
+    let mut run_dirs = match report_run_dirs(out_dir, &mut resolution.problems) {
+        Some(run_dirs) => run_dirs,
+        None => return resolution,
+    };
+    run_dirs.sort_by_key(|run_dir| Reverse(run_sort_key(run_dir)));
+
+    let latest_run_dir = run_dirs.first().cloned();
+    let comparable_prior_run_dir = run_dirs.get(1).cloned();
+    resolution.latest_run = latest_run_dir
+        .as_deref()
+        .map(|run_dir| resolve_run_receipt(run_dir, &mut resolution.problems));
+    resolution.comparable_prior_run = comparable_prior_run_dir
+        .as_deref()
+        .map(|run_dir| resolve_run_receipt(run_dir, &mut resolution.problems));
+
+    if let Some(latest_run_dir) = latest_run_dir.as_deref() {
+        resolution.source_failures =
+            resolve_optional_json_file("source_failures", "source_failures", latest_run_dir);
+        resolution.share_manifests = resolve_share_manifests(latest_run_dir);
+    }
+
+    if let (Some(prior), Some(latest)) = (
+        resolution.comparable_prior_run.as_ref(),
+        resolution.latest_run.as_ref(),
+    ) && prior.report_state == ResolvedJsonState::Parsed
+        && latest.report_state == ResolvedJsonState::Parsed
+    {
+        resolution.derived_diff_receipts =
+            derived_diff_receipts(prior, latest, &resolution.out_dir);
+    }
+
+    resolution.share_manifests.sort();
+    resolution.share_manifests.dedup();
+    resolution.problems.sort();
+    resolution.problems.dedup();
+    resolution
+}
+
+fn report_run_dirs(
+    out_dir: &Path,
+    problems: &mut Vec<ReviewLoopReceiptProblem>,
+) -> Option<Vec<PathBuf>> {
+    let entries = match fs::read_dir(out_dir) {
+        Ok(entries) => entries,
+        Err(err) => {
+            problems.push(problem(
+                "out_dir_unreadable",
+                "blocked",
+                format!("read {}: {err}", out_dir.display()),
+                Some(out_dir),
+            ));
+            return None;
+        }
+    };
+
+    let mut run_dirs = Vec::new();
+    for entry in entries {
+        let entry = match entry {
+            Ok(entry) => entry,
+            Err(err) => {
+                problems.push(problem(
+                    "out_dir_entry_unreadable",
+                    "unknown",
+                    format!("read entry in {}: {err}", out_dir.display()),
+                    Some(out_dir),
+                ));
+                continue;
+            }
+        };
+        let path = entry.path();
+        if path.is_dir() && path.join(INTAKE_REPORT_FILENAME).exists() {
+            run_dirs.push(path);
+        }
+    }
+
+    Some(run_dirs)
+}
+
+fn resolve_run_receipt(
+    run_dir: &Path,
+    problems: &mut Vec<ReviewLoopReceiptProblem>,
+) -> ResolvedRunReceipt {
+    let report_path = run_dir.join(INTAKE_REPORT_FILENAME);
+    let run_id = run_sort_key(run_dir);
+
+    let (report_state, report_shape) = match fs::read_to_string(&report_path) {
+        Ok(text) => match serde_json::from_str::<serde_json::Value>(&text) {
+            Ok(value) if value.is_object() => (
+                ResolvedJsonState::Parsed,
+                IntakeReportShape::from_report_json(&value),
+            ),
+            Ok(_) => {
+                problems.push(problem(
+                    "intake_report_not_object",
+                    "blocked",
+                    "intake.report.json must be a JSON object",
+                    Some(&report_path),
+                ));
+                (ResolvedJsonState::Malformed, IntakeReportShape::unknown())
+            }
+            Err(err) => {
+                problems.push(problem(
+                    "intake_report_malformed",
+                    "blocked",
+                    format!("parse {}: {err}", report_path.display()),
+                    Some(&report_path),
+                ));
+                (ResolvedJsonState::Malformed, IntakeReportShape::unknown())
+            }
+        },
+        Err(err) => {
+            problems.push(problem(
+                "intake_report_unreadable",
+                "blocked",
+                format!("read {}: {err}", report_path.display()),
+                Some(&report_path),
+            ));
+            (ResolvedJsonState::Unreadable, IntakeReportShape::unknown())
+        }
+    };
+
+    ResolvedRunReceipt {
+        run_id,
+        run_dir: path_string(run_dir),
+        report_path: path_string(&report_path),
+        report_state,
+        report_shape,
+    }
+}
+
+fn resolve_optional_json_file(
+    key: &str,
+    kind: &str,
+    run_dir: &Path,
+) -> Option<ResolvedFileReceipt> {
+    let filename = match key {
+        "source_failures" => SOURCE_FAILURES_FILENAME,
+        _ => return None,
+    };
+    let path = run_dir.join(filename);
+    if !path.exists() {
+        return None;
+    }
+
+    Some(ResolvedFileReceipt {
+        key: key.to_string(),
+        kind: kind.to_string(),
+        path: path_string(&path),
+        state: json_file_state(&path),
+    })
+}
+
+fn resolve_share_manifests(run_dir: &Path) -> Vec<ResolvedFileReceipt> {
+    [SHARE_PROFILE_MANAGER, SHARE_PROFILE_PUBLIC]
+        .into_iter()
+        .filter_map(|profile| {
+            let path = run_dir
+                .join(SHARE_PROFILES_DIR)
+                .join(profile)
+                .join(SHARE_MANIFEST_FILENAME);
+            path.exists().then(|| ResolvedFileReceipt {
+                key: format!("share_manifest:{profile}"),
+                kind: "share_manifest".to_string(),
+                path: path_string(&path),
+                state: json_file_state(&path),
+            })
+        })
+        .collect()
+}
+
+fn json_file_state(path: &Path) -> ResolvedJsonState {
+    match fs::read_to_string(path) {
+        Ok(text) => match serde_json::from_str::<serde_json::Value>(&text) {
+            Ok(_) => ResolvedJsonState::Parsed,
+            Err(_) => ResolvedJsonState::Malformed,
+        },
+        Err(_) => ResolvedJsonState::Unreadable,
+    }
+}
+
+fn derived_diff_receipts(
+    prior: &ResolvedRunReceipt,
+    latest: &ResolvedRunReceipt,
+    out_dir: &str,
+) -> Vec<ResolvedDerivedDiffReceipt> {
+    let receipt_refs = vec![
+        StatusReceiptRef::path(
+            "diff.from_report",
+            "intake_report",
+            prior.report_path.clone(),
+        ),
+        StatusReceiptRef::path(
+            "diff.to_report",
+            "intake_report",
+            latest.report_path.clone(),
+        ),
+        StatusReceiptRef::path("diff.out_dir", "out_dir", out_dir.to_string()),
+    ];
+
+    vec![
+        ResolvedDerivedDiffReceipt {
+            key: "repair_diff_latest".to_string(),
+            kind: "repair_diff".to_string(),
+            from_run_id: prior.run_id.clone(),
+            to_run_id: latest.run_id.clone(),
+            receipt_refs: receipt_refs.clone(),
+        },
+        ResolvedDerivedDiffReceipt {
+            key: "runs_diff_latest".to_string(),
+            kind: "runs_diff".to_string(),
+            from_run_id: prior.run_id.clone(),
+            to_run_id: latest.run_id.clone(),
+            receipt_refs,
+        },
+    ]
+}
+
+fn problem(
+    key: impl Into<String>,
+    status: impl Into<String>,
+    reason: impl Into<String>,
+    path: Option<&Path>,
+) -> ReviewLoopReceiptProblem {
+    ReviewLoopReceiptProblem {
+        key: key.into(),
+        status: status.into(),
+        reason: reason.into(),
+        path: path.map(path_string),
+    }
+}
+
+fn run_sort_key(run_dir: &Path) -> String {
+    run_dir
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or_default()
+        .to_string()
+}
+
+fn path_string(path: &Path) -> String {
+    path.display().to_string()
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
@@ -735,6 +1114,7 @@ fn setup_status_key(status: SetupSummaryStatus) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tempfile::TempDir;
 
     #[test]
     fn no_config_status_can_represent_setup_writer() {
@@ -930,5 +1310,152 @@ mod tests {
             .collect();
 
         assert_eq!(keys, ["doctor_setup", "init_guided", "sources_status"]);
+    }
+
+    #[test]
+    fn resolver_handles_missing_output_dir_without_panicking() {
+        let tmp = TempDir::new().expect("tempdir");
+        let out = tmp.path().join("missing-out");
+
+        let resolution = resolve_latest_review_loop_receipts(&out);
+
+        assert!(resolution.latest_run.is_none());
+        assert_eq!(resolution.problems[0].key, "out_dir_missing");
+    }
+
+    #[test]
+    fn resolver_handles_empty_output_dir() {
+        let tmp = TempDir::new().expect("tempdir");
+        let out = tmp.path().join("out");
+        fs::create_dir_all(&out).expect("create out");
+
+        let resolution = resolve_latest_review_loop_receipts(&out);
+
+        assert!(resolution.latest_run.is_none());
+        assert!(resolution.problems.is_empty());
+        assert!(resolution.derived_diff_receipts.is_empty());
+    }
+
+    #[test]
+    fn resolver_reads_latest_run_report_and_optional_receipts() {
+        let tmp = TempDir::new().expect("tempdir");
+        let out = tmp.path().join("out");
+        let run = out.join("run_001");
+        fs::create_dir_all(&run).expect("create run");
+        write_report(
+            &run,
+            serde_json::json!({
+                "run_id": "run_001",
+                "packet_quality": {
+                    "packet_readiness": {"status": "needs_evidence"},
+                    "share_posture": []
+                },
+                "repair_items": []
+            }),
+        );
+        fs::write(
+            run.join(SOURCE_FAILURES_FILENAME),
+            "{\"schema_version\":1}\n",
+        )
+        .expect("write source failures");
+        let manager_manifest = run
+            .join(SHARE_PROFILES_DIR)
+            .join(SHARE_PROFILE_MANAGER)
+            .join(SHARE_MANIFEST_FILENAME);
+        fs::create_dir_all(manager_manifest.parent().expect("manifest parent"))
+            .expect("create manifest parent");
+        fs::write(&manager_manifest, "{\"schema_version\":1}\n").expect("write manifest");
+
+        let resolution = resolve_latest_review_loop_receipts(&out);
+        let latest = resolution.latest_run.expect("latest run");
+
+        assert_eq!(latest.run_id, "run_001");
+        assert_eq!(latest.report_state, ResolvedJsonState::Parsed);
+        assert!(latest.report_shape.has_packet_quality);
+        assert!(latest.report_shape.has_repair_items);
+        assert!(latest.report_shape.has_share_posture);
+        assert_eq!(
+            resolution.source_failures.expect("source failures").state,
+            ResolvedJsonState::Parsed
+        );
+        assert_eq!(resolution.share_manifests.len(), 1);
+        assert_eq!(resolution.share_manifests[0].key, "share_manifest:manager");
+    }
+
+    #[test]
+    fn resolver_picks_newest_run_deterministically_and_derives_diff_receipts() {
+        let tmp = TempDir::new().expect("tempdir");
+        let out = tmp.path().join("out");
+        let older = out.join("run_001");
+        let newer = out.join("run_002");
+        fs::create_dir_all(&older).expect("create older");
+        fs::create_dir_all(&newer).expect("create newer");
+        write_report(
+            &older,
+            serde_json::json!({"run_id": "run_001", "repair_items": []}),
+        );
+        write_report(
+            &newer,
+            serde_json::json!({"run_id": "run_002", "repair_items": []}),
+        );
+
+        let resolution = resolve_latest_review_loop_receipts(&out);
+
+        assert_eq!(resolution.latest_run.expect("latest").run_id, "run_002");
+        assert_eq!(
+            resolution.comparable_prior_run.expect("prior").run_id,
+            "run_001"
+        );
+        let diff_keys: Vec<&str> = resolution
+            .derived_diff_receipts
+            .iter()
+            .map(|receipt| receipt.key.as_str())
+            .collect();
+        assert_eq!(diff_keys, ["repair_diff_latest", "runs_diff_latest"]);
+    }
+
+    #[test]
+    fn resolver_accepts_old_report_shape_without_inventing_new_fields() {
+        let tmp = TempDir::new().expect("tempdir");
+        let out = tmp.path().join("out");
+        let run = out.join("run_001");
+        fs::create_dir_all(&run).expect("create run");
+        write_report(&run, serde_json::json!({"run_id": "run_001"}));
+
+        let resolution = resolve_latest_review_loop_receipts(&out);
+        let latest = resolution.latest_run.expect("latest run");
+
+        assert_eq!(latest.report_state, ResolvedJsonState::Parsed);
+        assert!(!latest.report_shape.has_packet_quality);
+        assert!(!latest.report_shape.has_repair_items);
+        assert!(!latest.report_shape.has_share_posture);
+        assert!(resolution.problems.is_empty());
+    }
+
+    #[test]
+    fn resolver_marks_malformed_report_as_blocked_problem() {
+        let tmp = TempDir::new().expect("tempdir");
+        let out = tmp.path().join("out");
+        let run = out.join("run_bad");
+        fs::create_dir_all(&run).expect("create run");
+        fs::write(run.join(INTAKE_REPORT_FILENAME), "not json\n").expect("write bad report");
+
+        let resolution = resolve_latest_review_loop_receipts(&out);
+        let latest = resolution.latest_run.expect("latest run");
+
+        assert_eq!(latest.report_state, ResolvedJsonState::Malformed);
+        assert_eq!(resolution.problems[0].key, "intake_report_malformed");
+        assert_eq!(resolution.problems[0].status, "blocked");
+    }
+
+    fn write_report(run_dir: &Path, report: serde_json::Value) {
+        fs::write(
+            run_dir.join(INTAKE_REPORT_FILENAME),
+            format!(
+                "{}\n",
+                serde_json::to_string_pretty(&report).expect("serialize report")
+            ),
+        )
+        .expect("write report");
     }
 }
