@@ -190,6 +190,10 @@ GitHub release approval.
   through `init --guided`, doctor human/JSON setup reads, `sources status`,
   intake, repair, rerun, diff, and read-only share explanation while keeping
   the 0.9 release hold active (#418).
+- Fixed the transcript-discovered local Git caveat where guided configs using
+  `repo = "."` could pass doctor path readiness but fail intake without an
+  `origin` remote; local Git now derives repository identity from the workdir
+  before falling back to the configured path name (#419).
 
 ## [0.9.0] - Unreleased candidate
 
