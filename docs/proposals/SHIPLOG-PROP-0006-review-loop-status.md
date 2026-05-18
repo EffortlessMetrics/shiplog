@@ -337,6 +337,9 @@ spec deliberately scopes otherwise.
 
 Existing proof surfaces to link from future specs and plans:
 
+- [`docs/specs/SHIPLOG-SPEC-0008-review-loop-status.md`](../specs/SHIPLOG-SPEC-0008-review-loop-status.md):
+  the review-loop status contract that turns this proposal into a finite
+  receipt-driven status model.
 - [`docs/proposals/SHIPLOG-PROP-0005-guided-setup-doctor.md`](SHIPLOG-PROP-0005-guided-setup-doctor.md):
   setup readiness made the front door explicit before intake.
 - [`docs/specs/SHIPLOG-SPEC-0007-setup-readiness.md`](../specs/SHIPLOG-SPEC-0007-setup-readiness.md):

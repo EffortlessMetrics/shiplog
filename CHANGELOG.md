@@ -212,6 +212,10 @@ GitHub release approval.
 - Proposed the next non-release review-loop status lane so setup, evidence,
   repair, diff, and share receipts can become one read-only status surface for
   humans and agents (#424).
+- Defined the review-loop status contract for the next lane, including finite
+  status vocabulary, receipt-triggered conditions, setup/evidence/repair/share
+  boundaries, JSON shape, safety rules, and proof expectations without lifting
+  the 0.9 release hold (#425).
 
 ## [0.9.0] - Unreleased candidate
 
