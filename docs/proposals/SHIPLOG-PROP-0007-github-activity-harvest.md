@@ -425,6 +425,9 @@ Existing proof surfaces to link from future specs and plans:
   probe/page cache behavior, and detail/review cache behavior.
 - [`docs/guides/recurring-review-loop.md`](../guides/recurring-review-loop.md):
   the status-first recurring loop this expensive-source workflow should feed.
+- [`docs/guides/github-activity-harvest.md`](../guides/github-activity-harvest.md):
+  the implemented operator guide for plan, scout, authored, full, resume, and
+  receipt inspection.
 - [`docs/proposals/SHIPLOG-PROP-0006-review-loop-status.md`](SHIPLOG-PROP-0006-review-loop-status.md):
   the status cockpit lane that should eventually summarize activity harvest
   progress and next actions.

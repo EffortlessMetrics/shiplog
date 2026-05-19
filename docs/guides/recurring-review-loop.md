@@ -199,6 +199,10 @@ shiplog status --latest
 Status should summarize collected GitHub evidence only after intake has receipts.
 Token presence alone is setup readiness, not evidence quality.
 
+For a multi-year actor harvest with owner filters, budget receipts, and resume,
+use the [GitHub activity harvest guide](github-activity-harvest.md) instead of
+hand-running year slices.
+
 ## Public-share cautious mode
 
 Public packets are strict. Use status and share explanation before rendering.
