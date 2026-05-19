@@ -5,13 +5,18 @@
 **Hold receipt:** [`docs/release/0.9.0-release-hold.md`](docs/release/0.9.0-release-hold.md)
 **Readiness ledger:** [`docs/release/0.9.0-readiness.md`](docs/release/0.9.0-readiness.md)
 
-> Review-ready packet and Guided Setup / Doctor work are on `main` as an
-> unreleased 0.9 candidate. Do not tag or publish 0.9.0 from this handoff.
+> Review-ready packet, Guided Setup / Doctor, and Review-loop Status work are
+> on `main` as an unreleased 0.9 candidate. Do not tag or publish 0.9.0 from
+> this handoff.
 
 ## Current State
 
 - `v0.8.0` is the latest shipped release.
 - PR #319 prepared 0.9.0 version metadata and release docs.
+- PRs #424-#436 added the review-loop status cockpit, JSON contract, proof
+  coverage, dogfood transcript, recurring guide, and README/status alignment.
+- PRs #437-#440 curated the release-facing changelog, READMEs, and release
+  docs around the 0.9 review-loop story.
 - No `v0.9.0` tag exists from this handoff.
 - No 0.9.0 GitHub release exists from this handoff.
 - No 0.9.0 crates.io publish was performed from this handoff.
@@ -28,6 +33,18 @@
 - `shiplog runs diff --latest` shows packet quality movement across reruns.
 - `shiplog init --guided`, `shiplog doctor --setup`, and
   `shiplog sources status` provide the guided setup front door before intake.
+- `shiplog doctor --setup --json` exposes setup readiness for agents and
+  scripts without scraping terminal prose.
+- `shiplog status --latest` prints the read-only review-loop cockpit over
+  setup, latest run, packet readiness, source state, repair, diff, share
+  posture, blockers, next actions, and receipt refs.
+- `shiplog status --latest --json` exposes the same status model for agents and
+  scripts.
+- `review-loop-status.v1` schema docs and examples pin the status JSON
+  contract.
+- Status consistency and safe-next-action proofs cover doctor JSON, sources
+  status, intake reports, repair plan, repair diff, runs diff, and share
+  explain.
 - Setup-blocked repairs route to doctor/source-status before repair action, and
   doctor reports manager/public share setup readiness without rendering
   profiles.
@@ -35,6 +52,7 @@
   interpret, share loop.
 - The Guided Setup / Doctor guide explains local-only, manual-only,
   token-backed GitHub, manager-share-ready, and public-share-cautious modes.
+- The recurring review-loop guide teaches status-first weekly/monthly operation.
 - The front-door product proof covers cold intake through share posture
   explanation without provider mutation.
 
