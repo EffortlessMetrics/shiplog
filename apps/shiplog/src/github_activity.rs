@@ -160,10 +160,9 @@ fn github_activity_default_out(config: &ShiplogConfig, base_dir: &Path) -> PathB
             .file_name()
             .and_then(|name| name.to_str())
             .is_some_and(|name| name == ".cache")
+            && let Some(parent) = cache_dir.parent()
         {
-            if let Some(parent) = cache_dir.parent() {
-                return parent.to_path_buf();
-            }
+            return parent.to_path_buf();
         }
     }
     config_default_out(config, base_dir)
