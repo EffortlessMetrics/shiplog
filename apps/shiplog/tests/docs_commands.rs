@@ -1274,39 +1274,64 @@ fn assert_no_secret_sentinel_values(json: &serde_json::Value, path: &Path) {
 }
 
 #[test]
-fn crate_readme_documents_review_ready_loop() {
+fn crate_readme_documents_first_loop_for_crates_io() {
     let doc_path = repo_root().join("apps/shiplog/README.md");
     let doc = std::fs::read_to_string(&doc_path)
         .unwrap_or_else(|err| panic!("read {}: {err}", doc_path.display()));
 
     for needle in [
-        "shiplog intake --last-6-months --explain",
+        "Review evidence loop for people who need receipts, not review prose.",
+        "cargo install shiplog --locked",
+        "What you get",
+        "First useful loop",
+        "Read vs write",
+        "Agent-readable surfaces",
+        "Read next",
+        "What shiplog does not do",
         "shiplog init --guided",
         "shiplog doctor --setup",
         "shiplog sources status",
         "shiplog doctor --setup --json",
         "shiplog status --latest",
+        "shiplog status --latest --json",
+        "shiplog intake --last-6-months --explain",
         "shiplog repair plan --latest",
         "shiplog journal add --from-repair <repair_id>",
         "shiplog repair diff --latest",
         "shiplog runs diff --latest",
         "shiplog share explain manager --latest",
-        "Use `share explain` before rendering",
-        "`share explain manager/public`",
-        "`runs diff`",
-        "`repair plan/diff`",
-        "`status`",
-        "review-loop cockpit",
-        "packet readiness",
-        "claim candidates",
-        "without writing profile artifacts",
+        "doctor`, `status`, and `share explain` do not render profile artifacts",
+        "report export-agent-pack",
+        "rapid-first-intake.md",
+        "guided-setup-doctor.md",
+        "recurring-review-loop.md",
+        "evidence-repair-loop.md",
+        "review-ready-packet.md",
+        "config-reference.md",
+        "review-loop-status-v1.md",
         "Evidence repair loop guide",
         "Review-ready packet guide",
-        "setup model for agents",
+        "Does not write performance-review prose",
+        "Does not score employees",
+        "Does not mutate provider records",
+        "Does not query providers from `doctor` or `status`",
+        "Does not render manager/public packets from `status` or `share explain`",
     ] {
         assert!(
             doc.contains(needle),
             "crate README should mention {needle:?}"
+        );
+    }
+
+    for stale_detail in [
+        "Curate workstreams without hand-editing YAML",
+        "| Command | Description |",
+        "Deterministic redaction. Three profiles",
+        "keyed SHA-256 aliasing",
+    ] {
+        assert!(
+            !doc.contains(stale_detail),
+            "crate README should stay concise and omit {stale_detail:?}"
         );
     }
 }

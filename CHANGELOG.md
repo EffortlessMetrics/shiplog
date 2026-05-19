@@ -62,6 +62,9 @@ rerun, compare, and share safely.
 - Reworked the root README as the 0.9 product front door: problem, candidate
   surfaces, install paths, setup, first packet, repair/share, status at a
   glance, docs map, safety boundaries, and public-surface summary (#438).
+- Tightened the crates.io README into an install-and-first-loop page with
+  command highlights, read/write posture, agent surfaces, docs links, and
+  safety boundaries (#439).
 - Kept detailed post-0.8 soak and release-hold receipts in
   [`docs/release/0.9.0-readiness.md`](docs/release/0.9.0-readiness.md) and
   [`docs/release/0.9.0-release-hold.md`](docs/release/0.9.0-release-hold.md).
