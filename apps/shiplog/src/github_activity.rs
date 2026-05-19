@@ -3,9 +3,12 @@ use chrono::{Duration, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use shiplog::coverage::month_windows;
-use shiplog::ingest::github::GithubApiBudget;
-use shiplog::schema::coverage::TimeWindow;
-use std::collections::BTreeSet;
+use shiplog::ingest::github::{
+    GithubApiBudget, GithubApiCacheCounts, GithubApiRequestCounts, GithubRateLimitSnapshot,
+    GithubSecondaryLimitEvent,
+};
+use shiplog::schema::coverage::{CoverageManifest, TimeWindow};
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
 use crate::*;
@@ -102,13 +105,21 @@ fn run_activity_profile(
     write_json_receipt(&plan_path, GITHUB_ACTIVITY_PLAN_FILENAME, &plan)?;
 
     let progress_path = out_dir.join(GITHUB_ACTIVITY_PROGRESS_FILENAME);
+    let api_ledger_path = out_dir.join(GITHUB_ACTIVITY_API_LEDGER_FILENAME);
     if args.resume
         && let Some(progress) = load_progress_if_completed(&progress_path, &plan)?
     {
-        println!("GitHub activity {} already completed.", progress.profile);
-        println!("- {}", display_path_for_cli(&progress_path));
-        println!("Provider calls: none (--resume)");
-        return Ok(());
+        if api_ledger_path.exists() {
+            println!("GitHub activity {} already completed.", progress.profile);
+            println!("- {}", display_path_for_cli(&progress_path));
+            println!("- {}", display_path_for_cli(&api_ledger_path));
+            println!("Provider calls: none (--resume)");
+            return Ok(());
+        }
+        println!(
+            "GitHub activity {} progress is completed but API ledger is missing; rerunning to refresh receipts.",
+            progress.profile
+        );
     }
 
     let execution = activity_execution(&config, &base_dir, &out_dir, plan.profile_enum()?)?;
@@ -150,6 +161,9 @@ fn run_activity_profile(
         Ok(ingest) => ingest,
         Err(err) => {
             let counts = ing.api_request_counts();
+            let cache_counts = ing.api_cache_counts();
+            let rate_limit_snapshots = ing.rate_limit_snapshots();
+            let secondary_limit_events = ing.secondary_limit_events();
             let mut progress = progress_receipt(
                 &plan,
                 "checkpointed",
@@ -157,21 +171,59 @@ fn run_activity_profile(
                 plan.window_ids(),
                 None,
                 Some(activity_stop_reason(&err)),
-                vec![GITHUB_ACTIVITY_PLAN_FILENAME.to_string()],
+                vec![
+                    GITHUB_ACTIVITY_PLAN_FILENAME.to_string(),
+                    GITHUB_ACTIVITY_API_LEDGER_FILENAME.to_string(),
+                ],
             );
             progress.budget_checkpoint = Some(GithubActivityProgressBudget {
                 search_requests: counts.search,
                 core_requests: counts.core,
             });
             write_json_receipt(&progress_path, GITHUB_ACTIVITY_PROGRESS_FILENAME, &progress)?;
+            let api_ledger = api_ledger_receipt(
+                &plan,
+                counts,
+                cache_counts,
+                rate_limit_snapshots,
+                secondary_limit_events,
+                Some(activity_stop_reason(&err)),
+                OwnerFilterLedger::from_plan(&plan),
+            );
+            write_json_receipt(
+                &api_ledger_path,
+                GITHUB_ACTIVITY_API_LEDGER_FILENAME,
+                &api_ledger,
+            )?;
             println!(
                 "GitHub activity {} checkpointed after search {}, core {} request(s).",
                 plan.profile, counts.search, counts.core
             );
             println!("- {}", display_path_for_cli(&progress_path));
+            println!("- {}", display_path_for_cli(&api_ledger_path));
             return Err(err).context("GitHub activity ingest stopped before completion");
         }
     };
+
+    let api_counts = ing.api_request_counts();
+    let cache_counts = ing.api_cache_counts();
+    let rate_limit_snapshots = ing.rate_limit_snapshots();
+    let secondary_limit_events = ing.secondary_limit_events();
+    let owner_filter = OwnerFilterLedger::from_coverage(&plan, &ingest.coverage);
+    let api_ledger = api_ledger_receipt(
+        &plan,
+        api_counts,
+        cache_counts,
+        rate_limit_snapshots,
+        secondary_limit_events,
+        None,
+        owner_filter,
+    );
+    write_json_receipt(
+        &api_ledger_path,
+        GITHUB_ACTIVITY_API_LEDGER_FILENAME,
+        &api_ledger,
+    )?;
 
     let run_id = ingest.coverage.run_id.to_string();
     let run_dir = out_dir.join(&run_id);
@@ -211,6 +263,7 @@ fn run_activity_profile(
         None,
         vec![
             GITHUB_ACTIVITY_PLAN_FILENAME.to_string(),
+            GITHUB_ACTIVITY_API_LEDGER_FILENAME.to_string(),
             format!("{run_ref}/intake.report.json"),
             format!("{run_ref}/coverage.manifest.json"),
         ],
@@ -221,6 +274,7 @@ fn run_activity_profile(
     println!("Receipts:");
     println!("- {}", display_path_for_cli(&plan_path));
     println!("- {}", display_path_for_cli(&progress_path));
+    println!("- {}", display_path_for_cli(&api_ledger_path));
     println!("Run artifacts:");
     print_outputs(&outputs, ws_source);
     for action in activity_next_actions(&plan, &out_dir) {
@@ -470,6 +524,82 @@ fn activity_stop_reason(err: &anyhow::Error) -> String {
     } else {
         "provider_error".to_string()
     }
+}
+
+fn api_ledger_receipt(
+    plan: &GithubActivityPlanReceipt,
+    requests: GithubApiRequestCounts,
+    cache: GithubApiCacheCounts,
+    rate_limit_snapshots: Vec<GithubRateLimitSnapshot>,
+    secondary_limit_events: Vec<GithubSecondaryLimitEvent>,
+    stop_reason: Option<String>,
+    owner_filter: OwnerFilterLedger,
+) -> GithubActivityApiLedgerReceipt {
+    GithubActivityApiLedgerReceipt {
+        schema_version: GITHUB_ACTIVITY_API_LEDGER_SCHEMA_VERSION.to_string(),
+        generated_at: Utc::now().to_rfc3339(),
+        shiplog_version: env!("CARGO_PKG_VERSION").to_string(),
+        activity_id: plan.activity_id.clone(),
+        plan_ref: GITHUB_ACTIVITY_PLAN_FILENAME.to_string(),
+        progress_ref: GITHUB_ACTIVITY_PROGRESS_FILENAME.to_string(),
+        actor: plan.actor.clone(),
+        repo_owners: plan.repo_owners.clone(),
+        profile: plan.profile.clone(),
+        stop_reason,
+        github_api: GithubActivityApiLedgerGithub {
+            requests,
+            cache,
+            rate_limit_snapshots,
+            secondary_limit_events,
+        },
+        owner_filter,
+        receipt_refs: vec![
+            GITHUB_ACTIVITY_PLAN_FILENAME.to_string(),
+            GITHUB_ACTIVITY_PROGRESS_FILENAME.to_string(),
+        ],
+    }
+}
+
+fn owner_filter_from_notes(
+    plan: &GithubActivityPlanReceipt,
+    notes: &[String],
+) -> OwnerFilterLedger {
+    let mut owner_filter = OwnerFilterLedger::from_plan(plan);
+    for note in notes {
+        if let Some(value) = note.strip_prefix("owner_filter:kept=") {
+            owner_filter.kept = parse_owner_counts(value);
+        } else if let Some(value) = note.strip_prefix("owner_filter:dropped=") {
+            owner_filter.dropped = parse_owner_drops(value);
+        }
+    }
+    owner_filter
+}
+
+fn parse_owner_counts(value: &str) -> BTreeMap<String, u64> {
+    let mut counts = BTreeMap::new();
+    if value == "none" || value.trim().is_empty() {
+        return counts;
+    }
+    for pair in value.split(',') {
+        let Some((owner, count)) = pair.rsplit_once('=') else {
+            continue;
+        };
+        if let Ok(count) = count.parse::<u64>() {
+            counts.insert(owner.to_string(), count);
+        }
+    }
+    counts
+}
+
+fn parse_owner_drops(value: &str) -> Vec<OwnerFilterDrop> {
+    parse_owner_counts(value)
+        .into_iter()
+        .map(|(owner, count)| OwnerFilterDrop {
+            owner,
+            count,
+            reason: "owner_not_requested".to_string(),
+        })
+        .collect()
 }
 
 fn write_json_receipt<T: Serialize>(path: &Path, label: &str, value: &T) -> Result<()> {
@@ -777,6 +907,66 @@ struct GithubActivityNextAction {
 }
 
 #[derive(Deserialize, Serialize)]
+struct GithubActivityApiLedgerReceipt {
+    schema_version: String,
+    generated_at: String,
+    shiplog_version: String,
+    activity_id: String,
+    plan_ref: String,
+    progress_ref: String,
+    actor: String,
+    repo_owners: Vec<String>,
+    profile: String,
+    stop_reason: Option<String>,
+    github_api: GithubActivityApiLedgerGithub,
+    owner_filter: OwnerFilterLedger,
+    receipt_refs: Vec<String>,
+}
+
+#[derive(Deserialize, Serialize)]
+struct GithubActivityApiLedgerGithub {
+    requests: GithubApiRequestCounts,
+    cache: GithubApiCacheCounts,
+    rate_limit_snapshots: Vec<GithubRateLimitSnapshot>,
+    secondary_limit_events: Vec<GithubSecondaryLimitEvent>,
+}
+
+#[derive(Deserialize, Serialize)]
+struct OwnerFilterLedger {
+    requested_owners: Vec<String>,
+    query_strategy: String,
+    kept: BTreeMap<String, u64>,
+    dropped: Vec<OwnerFilterDrop>,
+}
+
+impl OwnerFilterLedger {
+    fn from_plan(plan: &GithubActivityPlanReceipt) -> Self {
+        Self {
+            requested_owners: plan.repo_owners.clone(),
+            query_strategy: plan.query_strategy.clone(),
+            kept: BTreeMap::new(),
+            dropped: Vec::new(),
+        }
+    }
+
+    fn from_coverage(plan: &GithubActivityPlanReceipt, coverage: &CoverageManifest) -> Self {
+        let notes = coverage
+            .slices
+            .iter()
+            .flat_map(|slice| slice.notes.iter().cloned())
+            .collect::<Vec<_>>();
+        owner_filter_from_notes(plan, &notes)
+    }
+}
+
+#[derive(Deserialize, Serialize)]
+struct OwnerFilterDrop {
+    owner: String,
+    count: u64,
+    reason: String,
+}
+
+#[derive(Deserialize, Serialize)]
 struct GithubActivityProgressReceipt {
     schema_version: String,
     generated_at: String,
@@ -920,6 +1110,85 @@ api_base = "https://api.github.test"
 
         let authored = build_plan(&config, Some(GithubActivityProfile::Authored))?;
         assert!(load_progress_if_completed(&progress_path, &authored)?.is_none());
+
+        Ok(())
+    }
+
+    #[test]
+    fn api_ledger_records_requests_cache_and_owner_filter() -> Result<()> {
+        let config = activity_config()?;
+        let full = build_plan(&config, Some(GithubActivityProfile::Full))?;
+        let ledger = api_ledger_receipt(
+            &full,
+            GithubApiRequestCounts { search: 4, core: 7 },
+            GithubApiCacheCounts {
+                search_probe: shiplog::ingest::github::GithubApiCachePhaseCounts {
+                    fresh_hits: 1,
+                    stale_hits: 0,
+                    misses: 2,
+                },
+                search_page: shiplog::ingest::github::GithubApiCachePhaseCounts {
+                    fresh_hits: 3,
+                    stale_hits: 0,
+                    misses: 4,
+                },
+                pull_detail: shiplog::ingest::github::GithubApiCachePhaseCounts {
+                    fresh_hits: 5,
+                    stale_hits: 1,
+                    misses: 6,
+                },
+                review_page: shiplog::ingest::github::GithubApiCachePhaseCounts {
+                    fresh_hits: 7,
+                    stale_hits: 0,
+                    misses: 8,
+                },
+            },
+            vec![GithubRateLimitSnapshot {
+                resource: "search".to_string(),
+                limit: 30,
+                remaining: 24,
+                used: Some(6),
+                reset_at: Some("2026-05-19T00:01:00+00:00".to_string()),
+                observed_at: "2026-05-19T00:00:00+00:00".to_string(),
+            }],
+            vec![GithubSecondaryLimitEvent {
+                resource: "search".to_string(),
+                status: 429,
+                category: "secondary_rate_limit".to_string(),
+                retry_after_seconds: Some(30),
+                observed_at: "2026-05-19T00:00:00+00:00".to_string(),
+            }],
+            None,
+            owner_filter_from_notes(
+                &full,
+                &[
+                    "owner_filter:kept=EffortlessMetrics=2,EffortlessSteven=1".to_string(),
+                    "owner_filter:dropped=OtherOrg=3".to_string(),
+                ],
+            ),
+        );
+
+        assert_eq!(ledger.schema_version, "github.activity.api-ledger.v1");
+        assert_eq!(ledger.profile, "full");
+        assert_eq!(ledger.github_api.requests.search, 4);
+        assert_eq!(ledger.github_api.requests.core, 7);
+        assert_eq!(ledger.github_api.cache.pull_detail.stale_hits, 1);
+        assert_eq!(ledger.github_api.rate_limit_snapshots[0].remaining, 24);
+        assert_eq!(
+            ledger.github_api.secondary_limit_events[0].category,
+            "secondary_rate_limit"
+        );
+        assert_eq!(ledger.owner_filter.kept.get("EffortlessMetrics"), Some(&2));
+        assert_eq!(ledger.owner_filter.dropped.len(), 1);
+        assert_eq!(ledger.owner_filter.dropped[0].owner, "OtherOrg");
+        assert_eq!(ledger.owner_filter.dropped[0].reason, "owner_not_requested");
+        assert_eq!(
+            ledger.receipt_refs,
+            vec![
+                "github.activity.plan.json".to_string(),
+                "github.activity.progress.json".to_string()
+            ]
+        );
 
         Ok(())
     }

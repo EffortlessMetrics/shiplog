@@ -8,6 +8,7 @@ use crate::coverage::{day_windows, month_windows, week_windows, window_len_days}
 use anyhow::{Context, Result, anyhow};
 use chrono::{DateTime, NaiveDate, Utc};
 use reqwest::blocking::Client;
+use reqwest::header::HeaderMap;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use shiplog::ids::{EventId, RunId};
@@ -20,6 +21,7 @@ use shiplog::schema::event::{
 use shiplog::schema::freshness::{FreshnessStatus, SourceFreshness};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
+use std::sync::Mutex;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::thread::sleep;
 use std::time::Duration;
@@ -62,6 +64,12 @@ pub struct GithubIngestor {
     search_requests: AtomicU64,
     /// Live GitHub core API requests performed by this ingestor.
     core_requests: AtomicU64,
+    search_probe_cache: GithubApiCachePhaseCounters,
+    search_page_cache: GithubApiCachePhaseCounters,
+    pull_detail_cache: GithubApiCachePhaseCounters,
+    review_page_cache: GithubApiCachePhaseCounters,
+    rate_limit_snapshots: Mutex<Vec<GithubRateLimitSnapshot>>,
+    secondary_limit_events: Mutex<Vec<GithubSecondaryLimitEvent>>,
 }
 
 /// Live GitHub API request budget for a harvest or intake run.
@@ -72,10 +80,91 @@ pub struct GithubApiBudget {
 }
 
 /// Live GitHub API request counts split by GitHub rate-limit bucket.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
 pub struct GithubApiRequestCounts {
     pub search: u64,
     pub core: u64,
+}
+
+/// Cache hit/miss counters split by GitHub activity phase.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
+pub struct GithubApiCacheCounts {
+    pub search_probe: GithubApiCachePhaseCounts,
+    pub search_page: GithubApiCachePhaseCounts,
+    pub pull_detail: GithubApiCachePhaseCounts,
+    pub review_page: GithubApiCachePhaseCounts,
+}
+
+/// Cache hit/miss counters for one GitHub activity phase.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
+pub struct GithubApiCachePhaseCounts {
+    pub fresh_hits: u64,
+    pub stale_hits: u64,
+    pub misses: u64,
+}
+
+/// Header-derived GitHub rate-limit snapshot for a live API response.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
+pub struct GithubRateLimitSnapshot {
+    pub resource: String,
+    pub limit: u64,
+    pub remaining: u64,
+    pub used: Option<u64>,
+    pub reset_at: Option<String>,
+    pub observed_at: String,
+}
+
+/// Sanitized GitHub 403/429 rate-limit event.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
+pub struct GithubSecondaryLimitEvent {
+    pub resource: String,
+    pub status: u16,
+    pub category: String,
+    pub retry_after_seconds: Option<u64>,
+    pub observed_at: String,
+}
+
+#[derive(Debug, Default)]
+struct GithubApiCachePhaseCounters {
+    fresh_hits: AtomicU64,
+    stale_hits: AtomicU64,
+    misses: AtomicU64,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum GithubApiCachePhase {
+    SearchProbe,
+    SearchPage,
+    PullDetail,
+    ReviewPage,
+}
+
+impl GithubApiCachePhaseCounters {
+    fn record_fresh_hit(&self) {
+        self.fresh_hits.fetch_add(1, Ordering::Relaxed);
+    }
+
+    fn record_stale_hit(&self) {
+        self.stale_hits.fetch_add(1, Ordering::Relaxed);
+    }
+
+    fn record_miss(&self) {
+        self.misses.fetch_add(1, Ordering::Relaxed);
+    }
+
+    fn snapshot(&self) -> GithubApiCachePhaseCounts {
+        GithubApiCachePhaseCounts {
+            fresh_hits: self.fresh_hits.load(Ordering::Relaxed),
+            stale_hits: self.stale_hits.load(Ordering::Relaxed),
+            misses: self.misses.load(Ordering::Relaxed),
+        }
+    }
+
+    fn reset(&self) {
+        self.fresh_hits.store(0, Ordering::Relaxed);
+        self.stale_hits.store(0, Ordering::Relaxed);
+        self.misses.store(0, Ordering::Relaxed);
+    }
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -230,6 +319,12 @@ impl GithubIngestor {
             cache_stale_hits: AtomicU64::new(0),
             search_requests: AtomicU64::new(0),
             core_requests: AtomicU64::new(0),
+            search_probe_cache: GithubApiCachePhaseCounters::default(),
+            search_page_cache: GithubApiCachePhaseCounters::default(),
+            pull_detail_cache: GithubApiCachePhaseCounters::default(),
+            review_page_cache: GithubApiCachePhaseCounters::default(),
+            rate_limit_snapshots: Mutex::new(Vec::new()),
+            secondary_limit_events: Mutex::new(Vec::new()),
         }
     }
 
@@ -289,6 +384,35 @@ impl GithubIngestor {
         }
     }
 
+    /// Return cache hit/miss counts split by GitHub activity phase.
+    #[must_use]
+    pub fn api_cache_counts(&self) -> GithubApiCacheCounts {
+        GithubApiCacheCounts {
+            search_probe: self.search_probe_cache.snapshot(),
+            search_page: self.search_page_cache.snapshot(),
+            pull_detail: self.pull_detail_cache.snapshot(),
+            review_page: self.review_page_cache.snapshot(),
+        }
+    }
+
+    /// Return sanitized rate-limit snapshots observed during the current run.
+    #[must_use]
+    pub fn rate_limit_snapshots(&self) -> Vec<GithubRateLimitSnapshot> {
+        self.rate_limit_snapshots
+            .lock()
+            .map(|snapshots| snapshots.clone())
+            .unwrap_or_default()
+    }
+
+    /// Return sanitized 403/429 rate-limit events observed during the current run.
+    #[must_use]
+    pub fn secondary_limit_events(&self) -> Vec<GithubSecondaryLimitEvent> {
+        self.secondary_limit_events
+            .lock()
+            .map(|events| events.clone())
+            .unwrap_or_default()
+    }
+
     /// Enable in-memory caching (useful for testing).
     ///
     /// # Examples
@@ -344,6 +468,15 @@ impl GithubIngestor {
         }
     }
 
+    fn cache_phase_counters(&self, phase: GithubApiCachePhase) -> &GithubApiCachePhaseCounters {
+        match phase {
+            GithubApiCachePhase::SearchProbe => &self.search_probe_cache,
+            GithubApiCachePhase::SearchPage => &self.search_page_cache,
+            GithubApiCachePhase::PullDetail => &self.pull_detail_cache,
+            GithubApiCachePhase::ReviewPage => &self.review_page_cache,
+        }
+    }
+
     #[mutants::skip]
     fn client(&self) -> Result<Client> {
         Client::builder()
@@ -388,8 +521,10 @@ impl GithubIngestor {
             .with_context(|| format!("GET {request_url_for_err}"))?;
         self.throttle();
 
-        if !resp.status().is_success() {
-            let status = resp.status();
+        let status = resp.status();
+        self.record_rate_limit_headers(bucket, resp.headers(), status.as_u16());
+
+        if !status.is_success() {
             let body = resp.text().unwrap_or_default();
             return Err(anyhow!("GitHub API error {status}: {body}"));
         }
@@ -422,6 +557,50 @@ impl GithubIngestor {
         Ok(())
     }
 
+    fn record_rate_limit_headers(&self, bucket: GithubApiBucket, headers: &HeaderMap, status: u16) {
+        let observed_at = Utc::now().to_rfc3339();
+        let resource = header_str(headers, "x-ratelimit-resource")
+            .unwrap_or_else(|| bucket.label().to_string());
+        if let (Some(limit), Some(remaining)) = (
+            header_u64(headers, "x-ratelimit-limit"),
+            header_u64(headers, "x-ratelimit-remaining"),
+        ) {
+            let snapshot = GithubRateLimitSnapshot {
+                resource: resource.clone(),
+                limit,
+                remaining,
+                used: header_u64(headers, "x-ratelimit-used"),
+                reset_at: header_u64(headers, "x-ratelimit-reset").and_then(|seconds| {
+                    DateTime::<Utc>::from_timestamp(seconds as i64, 0)
+                        .map(|timestamp| timestamp.to_rfc3339())
+                }),
+                observed_at: observed_at.clone(),
+            };
+            if let Ok(mut snapshots) = self.rate_limit_snapshots.lock() {
+                snapshots.push(snapshot);
+            }
+        }
+
+        if status == 403 || status == 429 {
+            let retry_after_seconds = header_u64(headers, "retry-after");
+            let category = if retry_after_seconds.is_some() {
+                "secondary_rate_limit"
+            } else {
+                "rate_limit_or_forbidden"
+            };
+            let event = GithubSecondaryLimitEvent {
+                resource,
+                status,
+                category: category.to_string(),
+                retry_after_seconds,
+                observed_at,
+            };
+            if let Ok(mut events) = self.secondary_limit_events.lock() {
+                events.push(event);
+            }
+        }
+    }
+
     #[mutants::skip]
     fn get_json_cached<T: DeserializeOwned + Serialize>(
         &self,
@@ -430,20 +609,24 @@ impl GithubIngestor {
         params: &[(&str, String)],
         cache_key: &str,
         bucket: GithubApiBucket,
+        phase: GithubApiCachePhase,
     ) -> Result<T> {
         if let Some(ref cache) = self.cache {
             match cache.lookup::<T>(cache_key)? {
                 CacheLookup::Fresh(cached) => {
                     self.cache_hits.fetch_add(1, Ordering::Relaxed);
+                    self.cache_phase_counters(phase).record_fresh_hit();
                     return Ok(cached);
                 }
                 CacheLookup::Stale(cached) => {
                     self.cache_hits.fetch_add(1, Ordering::Relaxed);
                     self.cache_stale_hits.fetch_add(1, Ordering::Relaxed);
+                    self.cache_phase_counters(phase).record_stale_hit();
                     return Ok(cached);
                 }
                 CacheLookup::Miss => {
                     self.cache_misses.fetch_add(1, Ordering::Relaxed);
+                    self.cache_phase_counters(phase).record_miss();
                     let fetched = self.get_json(client, url, params, bucket)?;
                     cache.set(cache_key, &fetched)?;
                     return Ok(fetched);
@@ -574,6 +757,16 @@ impl GithubIngestor {
         self.cache_stale_hits.store(0, Ordering::Relaxed);
         self.search_requests.store(0, Ordering::Relaxed);
         self.core_requests.store(0, Ordering::Relaxed);
+        self.search_probe_cache.reset();
+        self.search_page_cache.reset();
+        self.pull_detail_cache.reset();
+        self.review_page_cache.reset();
+        if let Ok(mut snapshots) = self.rate_limit_snapshots.lock() {
+            snapshots.clear();
+        }
+        if let Ok(mut events) = self.secondary_limit_events.lock() {
+            events.clear();
+        }
     }
 
     fn build_pr_query(&self, w: &TimeWindow) -> String {
@@ -729,6 +922,7 @@ impl GithubIngestor {
             ],
             &cache_key,
             GithubApiBucket::Search,
+            GithubApiCachePhase::SearchProbe,
         )?;
         Ok((resp.total_count, resp.incomplete_results))
     }
@@ -751,6 +945,7 @@ impl GithubIngestor {
                 ],
                 &cache_key,
                 GithubApiBucket::Search,
+                GithubApiCachePhase::SearchPage,
             )?;
             let items_len = resp.items.len();
             out.extend(resp.items);
@@ -981,15 +1176,21 @@ impl GithubIngestor {
             match cache.lookup::<PullRequestDetails>(&cache_key)? {
                 CacheLookup::Fresh(cached) => {
                     self.cache_hits.fetch_add(1, Ordering::Relaxed);
+                    self.cache_phase_counters(GithubApiCachePhase::PullDetail)
+                        .record_fresh_hit();
                     return Ok(cached);
                 }
                 CacheLookup::Stale(cached) => {
                     self.cache_hits.fetch_add(1, Ordering::Relaxed);
                     self.cache_stale_hits.fetch_add(1, Ordering::Relaxed);
+                    self.cache_phase_counters(GithubApiCachePhase::PullDetail)
+                        .record_stale_hit();
                     return Ok(cached);
                 }
                 CacheLookup::Miss => {
                     self.cache_misses.fetch_add(1, Ordering::Relaxed);
+                    self.cache_phase_counters(GithubApiCachePhase::PullDetail)
+                        .record_miss();
                 }
             }
         }
@@ -1023,15 +1224,21 @@ impl GithubIngestor {
                 match cache.lookup::<Vec<PullRequestReview>>(&cache_key)? {
                     CacheLookup::Fresh(cached) => {
                         self.cache_hits.fetch_add(1, Ordering::Relaxed);
+                        self.cache_phase_counters(GithubApiCachePhase::ReviewPage)
+                            .record_fresh_hit();
                         cached
                     }
                     CacheLookup::Stale(cached) => {
                         self.cache_hits.fetch_add(1, Ordering::Relaxed);
                         self.cache_stale_hits.fetch_add(1, Ordering::Relaxed);
+                        self.cache_phase_counters(GithubApiCachePhase::ReviewPage)
+                            .record_stale_hit();
                         cached
                     }
                     CacheLookup::Miss => {
                         self.cache_misses.fetch_add(1, Ordering::Relaxed);
+                        self.cache_phase_counters(GithubApiCachePhase::ReviewPage)
+                            .record_miss();
                         // Not in cache, fetch from API
                         let reviews: Vec<PullRequestReview> = self.get_json(
                             client,
@@ -1103,6 +1310,18 @@ fn build_url_with_params(base: &str, params: &[(&str, String)]) -> Result<Url> {
         }
     }
     Ok(url)
+}
+
+fn header_str(headers: &HeaderMap, name: &str) -> Option<String> {
+    headers
+        .get(name)
+        .and_then(|value| value.to_str().ok())
+        .filter(|value| !value.trim().is_empty())
+        .map(ToOwned::to_owned)
+}
+
+fn header_u64(headers: &HeaderMap, name: &str) -> Option<u64> {
+    header_str(headers, name).and_then(|value| value.parse::<u64>().ok())
 }
 
 fn normalized_repo_owners<I, S>(owners: I) -> Vec<String>
@@ -1715,6 +1934,52 @@ mod tests {
         Ok(())
     }
 
+    #[test]
+    fn rate_limit_headers_record_sanitized_snapshot_and_event() {
+        let ing = make_ingestor("octocat");
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            "x-ratelimit-limit",
+            reqwest::header::HeaderValue::from_static("30"),
+        );
+        headers.insert(
+            "x-ratelimit-remaining",
+            reqwest::header::HeaderValue::from_static("0"),
+        );
+        headers.insert(
+            "x-ratelimit-used",
+            reqwest::header::HeaderValue::from_static("30"),
+        );
+        headers.insert(
+            "x-ratelimit-reset",
+            reqwest::header::HeaderValue::from_static("1767225600"),
+        );
+        headers.insert(
+            "x-ratelimit-resource",
+            reqwest::header::HeaderValue::from_static("search"),
+        );
+        headers.insert(
+            "retry-after",
+            reqwest::header::HeaderValue::from_static("45"),
+        );
+
+        ing.record_rate_limit_headers(GithubApiBucket::Search, &headers, 429);
+
+        let snapshots = ing.rate_limit_snapshots();
+        assert_eq!(snapshots.len(), 1);
+        assert_eq!(snapshots[0].resource, "search");
+        assert_eq!(snapshots[0].limit, 30);
+        assert_eq!(snapshots[0].remaining, 0);
+        assert_eq!(snapshots[0].used, Some(30));
+        assert!(snapshots[0].reset_at.is_some());
+
+        let events = ing.secondary_limit_events();
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].status, 429);
+        assert_eq!(events[0].category, "secondary_rate_limit");
+        assert_eq!(events[0].retry_after_seconds, Some(45));
+    }
+
     struct RecordedGithubServer {
         base_url: String,
         requests: Arc<Mutex<Vec<String>>>,
@@ -1934,8 +2199,13 @@ mod tests {
             return Ok(None);
         }
         let (status, body) = recorded_github_fixture_response(target, base_url);
+        let rate_resource = if target.starts_with("/search/issues?") {
+            "search"
+        } else {
+            "core"
+        };
         let response = format!(
-            "HTTP/1.1 {status}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+            "HTTP/1.1 {status}\r\nContent-Type: application/json\r\nX-RateLimit-Limit: 30\r\nX-RateLimit-Remaining: 29\r\nX-RateLimit-Used: 1\r\nX-RateLimit-Reset: 1767225600\r\nX-RateLimit-Resource: {rate_resource}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
             body.len()
         );
         stream
@@ -2006,6 +2276,17 @@ mod tests {
             cold.api_request_counts(),
             GithubApiRequestCounts { search: 2, core: 1 }
         );
+        let cold_cache = cold.api_cache_counts();
+        assert_eq!(cold_cache.search_probe.misses, 1);
+        assert_eq!(cold_cache.search_page.misses, 1);
+        assert_eq!(cold_cache.pull_detail.misses, 1);
+        assert_eq!(cold_cache.review_page.misses, 0);
+        let cold_rate_limits = cold.rate_limit_snapshots();
+        assert_eq!(cold_rate_limits.len(), 3);
+        assert_eq!(cold_rate_limits[0].resource, "search");
+        assert_eq!(cold_rate_limits[0].remaining, 29);
+        assert_eq!(cold_rate_limits[0].used, Some(1));
+        assert!(cold.secondary_limit_events().is_empty());
 
         let mut warm = make_ingestor("octocat")
             .with_cache(cache_dir.path())?
@@ -2028,6 +2309,15 @@ mod tests {
         assert_eq!(warm_freshness.cache_hits, 3);
         assert_eq!(warm_freshness.cache_misses, 0);
         assert_eq!(warm.api_request_counts(), GithubApiRequestCounts::default());
+        let warm_cache = warm.api_cache_counts();
+        assert_eq!(warm_cache.search_probe.fresh_hits, 1);
+        assert_eq!(warm_cache.search_page.fresh_hits, 1);
+        assert_eq!(warm_cache.pull_detail.fresh_hits, 1);
+        assert_eq!(warm_cache.review_page.fresh_hits, 0);
+        assert!(
+            warm.rate_limit_snapshots().is_empty(),
+            "warm cache-only run should not record live response headers"
+        );
 
         let requests = server.finish()?;
         let search_requests = requests

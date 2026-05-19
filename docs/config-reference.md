@@ -253,9 +253,11 @@ on_exhausted = "checkpoint_and_stop"
 
 The generated plan is a static receipt. It estimates worst-case search/detail
 cost from monthly actor-query windows and now includes the next executable
-profile command. Scout/run commands write `github.activity.progress.json`;
-`--resume` skips a matching completed profile and budget exhaustion checkpoints
-progress instead of silently continuing.
+profile command. Scout/run commands write `github.activity.progress.json` and
+`github.activity.api-ledger.json`; the ledger separates search/core request
+counts, cache counts by phase, owner-filter receipts, and rate-limit event
+arrays without token values. `--resume` skips a matching completed profile and
+budget exhaustion checkpoints progress instead of silently continuing.
 
 ### GitLab
 

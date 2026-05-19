@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   review harvest passes. The commands write plan/progress receipts, checkpoint
   cleanly on API-budget exhaustion, and route scout -> authored -> full ->
   status without release execution.
+- Added `github.activity.api-ledger.json` for GitHub activity scout/run commands,
+  with separated search/core request counts, phase-specific cache counts,
+  owner-filter receipts, header-derived rate-limit snapshots, and sanitized
+  limit-event arrays.
 
 ### Changed
 
