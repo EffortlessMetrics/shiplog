@@ -421,8 +421,8 @@ Land the lane in small semantic PRs:
 Existing proof surfaces to link from future specs and plans:
 
 - [`apps/shiplog/src/ingest/github.rs`](../../apps/shiplog/src/ingest/github.rs):
-  current actor search, review search, adaptive date slicing, and detail/review
-  cache behavior.
+  current actor search, review search, adaptive date slicing, search
+  probe/page cache behavior, and detail/review cache behavior.
 - [`docs/guides/recurring-review-loop.md`](../guides/recurring-review-loop.md):
   the status-first recurring loop this expensive-source workflow should feed.
 - [`docs/proposals/SHIPLOG-PROP-0006-review-loop-status.md`](SHIPLOG-PROP-0006-review-loop-status.md):

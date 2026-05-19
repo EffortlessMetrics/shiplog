@@ -204,7 +204,7 @@ Required when enabled: either `user` or `me = true`, but not both.
 | `no_details` | Skip detail fetches when true. |
 | `throttle_ms` | Delay between provider requests. |
 | `api_base` | API base URL; defaults to `https://api.github.com`. |
-| `cache_dir` | Source cache directory. |
+| `cache_dir` | Source cache directory. For GitHub this stores search probes, search pages, PR details, and PR review pages. |
 | `no_cache` | Disable this source cache when true. |
 
 ### GitHub Activity Harvest

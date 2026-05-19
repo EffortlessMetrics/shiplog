@@ -204,6 +204,37 @@ impl GithubIngestor {
         resp.json::<T>()
             .with_context(|| format!("parse json from {request_url_for_err}"))
     }
+
+    #[mutants::skip]
+    fn get_json_cached<T: DeserializeOwned + Serialize>(
+        &self,
+        client: &Client,
+        url: &str,
+        params: &[(&str, String)],
+        cache_key: &str,
+    ) -> Result<T> {
+        if let Some(ref cache) = self.cache {
+            match cache.lookup::<T>(cache_key)? {
+                CacheLookup::Fresh(cached) => {
+                    self.cache_hits.fetch_add(1, Ordering::Relaxed);
+                    return Ok(cached);
+                }
+                CacheLookup::Stale(cached) => {
+                    self.cache_hits.fetch_add(1, Ordering::Relaxed);
+                    self.cache_stale_hits.fetch_add(1, Ordering::Relaxed);
+                    return Ok(cached);
+                }
+                CacheLookup::Miss => {
+                    self.cache_misses.fetch_add(1, Ordering::Relaxed);
+                    let fetched = self.get_json(client, url, params)?;
+                    cache.set(cache_key, &fetched)?;
+                    return Ok(fetched);
+                }
+            }
+        }
+
+        self.get_json(client, url, params)
+    }
 }
 
 impl Ingestor for GithubIngestor {
@@ -273,9 +304,9 @@ impl Ingestor for GithubIngestor {
         // Status rules:
         //   - cache configured and >0 hits and 0 misses => Cached.
         //   - cache configured and >=1 miss (regardless of hits) => Fresh.
-        //   - cache configured and 0 hits + 0 misses => Fresh (the search
-        //     phase always runs uncached, so the adapter performed live
-        //     work even if `fetch_details=false` skipped the detail leg).
+        //   - cache configured and 0 hits + 0 misses => Fresh (the adapter
+        //     performed live work outside cache-aware paths, or the run
+        //     produced no cacheable API requests).
         //   - cache not configured => Fresh.
         let hits = self.cache_hits.load(Ordering::Relaxed);
         let misses = self.cache_misses.load(Ordering::Relaxed);
@@ -440,14 +471,18 @@ impl GithubIngestor {
     #[mutants::skip]
     fn search_meta(&self, client: &Client, q: &str) -> Result<(u64, bool)> {
         let url = self.api_url("/search/issues");
-        let resp: SearchResponse<SearchIssueItem> = self.get_json(
+        let page = 1;
+        let per_page = 1;
+        let cache_key = CacheKey::search(q, page, per_page);
+        let resp: SearchResponse<SearchIssueItem> = self.get_json_cached(
             client,
             &url,
             &[
                 ("q", q.to_string()),
-                ("per_page", "1".to_string()),
-                ("page", "1".to_string()),
+                ("per_page", per_page.to_string()),
+                ("page", page.to_string()),
             ],
+            &cache_key,
         )?;
         Ok((resp.total_count, resp.incomplete_results))
     }
@@ -459,7 +494,8 @@ impl GithubIngestor {
         let per_page = 100;
         let max_pages = 10; // 1000 cap
         for page in 1..=max_pages {
-            let resp: SearchResponse<SearchIssueItem> = self.get_json(
+            let cache_key = CacheKey::search(q, page, per_page as u32);
+            let resp: SearchResponse<SearchIssueItem> = self.get_json_cached(
                 client,
                 &url,
                 &[
@@ -467,6 +503,7 @@ impl GithubIngestor {
                     ("per_page", per_page.to_string()),
                     ("page", page.to_string()),
                 ],
+                &cache_key,
             )?;
             let items_len = resp.items.len();
             out.extend(resp.items);
@@ -840,14 +877,14 @@ fn repo_from_repo_url(repo_api_url: &str, html_base: &str) -> (String, String) {
 }
 
 /// GitHub search response envelope.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 struct SearchResponse<T> {
     total_count: u64,
     incomplete_results: bool,
     items: Vec<T>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 struct SearchIssueItem {
     id: u64,
     number: u64,
@@ -860,7 +897,7 @@ struct SearchIssueItem {
     created_at: Option<DateTime<Utc>>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 struct SearchPullRequestRef {
     url: String,
 }
@@ -1622,7 +1659,7 @@ mod tests {
 
     #[test]
     fn recorded_http_fixtures_prove_full_fresh_then_cached_ingest() -> anyhow::Result<()> {
-        let server = RecordedGithubServer::start(5)?;
+        let server = RecordedGithubServer::start(3)?;
         let cache_dir = tempfile::tempdir().context("create fixture cache dir")?;
 
         let mut cold = make_ingestor("octocat").with_cache(cache_dir.path())?;
@@ -1639,7 +1676,7 @@ mod tests {
             cold_freshness.status.as_label()
         );
         assert_eq!(cold_freshness.cache_hits, 0);
-        assert_eq!(cold_freshness.cache_misses, 1);
+        assert_eq!(cold_freshness.cache_misses, 3);
 
         let mut warm = make_ingestor("octocat").with_cache(cache_dir.path())?;
         warm.api_base = server.base_url();
@@ -1654,7 +1691,7 @@ mod tests {
             "second recorded fixture run should be cached, got {}",
             warm_freshness.status.as_label()
         );
-        assert_eq!(warm_freshness.cache_hits, 1);
+        assert_eq!(warm_freshness.cache_hits, 3);
         assert_eq!(warm_freshness.cache_misses, 0);
 
         let requests = server.finish()?;
@@ -1666,7 +1703,10 @@ mod tests {
             .iter()
             .filter(|line| line.contains("/repos/acme/widgets/pulls/1"))
             .count();
-        assert_eq!(search_requests, 4);
+        assert_eq!(
+            search_requests, 2,
+            "warm run must serve search meta and search page responses from cache"
+        );
         assert_eq!(
             detail_requests, 1,
             "warm run must serve PR details from cache instead of replaying HTTP"
