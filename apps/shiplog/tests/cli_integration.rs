@@ -2030,7 +2030,7 @@ mode = "created"
             "Provider calls: none (static plan)",
         ))
         .stdout(predicate::str::contains(
-            "Next: scout/run are not implemented yet",
+            "Next: shiplog github activity scout --resume [writes]",
         ));
 
     let plan_path = out.join("github.activity.plan.json");
@@ -2054,10 +2054,11 @@ mode = "created"
         "is:pr author:EffortlessSteven created:2026-01-01..2026-01-31"
     );
     assert_eq!(plan["windows"][0]["queries"][0]["cache_reuse"], "unknown");
-    assert!(
-        plan["next_actions"].as_array().is_some_and(Vec::is_empty),
-        "plan-only mode should not offer scout/run commands before they are implemented"
+    assert_eq!(
+        plan["next_actions"][0]["command"],
+        "shiplog github activity scout --resume"
     );
+    assert_eq!(plan["next_actions"][0]["writes"], true);
     assert!(
         !out.join(".cache").exists(),
         "static planning should not create the GitHub API cache"
@@ -2065,6 +2066,86 @@ mode = "created"
     assert!(
         !out.join("packet.md").exists(),
         "static planning should not render a packet"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn github_activity_scout_writes_checkpoint_progress_on_budget_stop() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let config = tmp.path().join("shiplog-github-full.toml");
+    let out = tmp.path().join("out/github-full");
+    std::fs::write(
+        &config,
+        r#"[shiplog]
+config_version = 1
+
+[defaults]
+out = "./out/github-full"
+
+[github_activity]
+actor = "EffortlessSteven"
+repo_owners = ["EffortlessMetrics"]
+since = "2026-01-01"
+until = "2026-02-01"
+include_authored_prs = true
+profile = "scout"
+cache_dir = "./out/github-full/.cache"
+
+[github_activity.budget]
+max_search_requests = 0
+max_core_requests = 0
+max_search_per_minute = 24
+on_exhausted = "checkpoint_and_stop"
+
+[sources.github]
+enabled = true
+user = "EffortlessSteven"
+mode = "created"
+"#,
+    )?;
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env("GITHUB_TOKEN", "dummy-token-never-used")
+        .args([
+            "github",
+            "activity",
+            "scout",
+            "--config",
+            config.to_str().expect("config path should be valid UTF-8"),
+            "--out",
+            out.to_str().expect("out path should be valid UTF-8"),
+        ])
+        .assert()
+        .failure()
+        .stdout(predicate::str::contains(
+            "GitHub activity scout checkpointed",
+        ))
+        .stderr(predicate::str::contains("budget exhausted"));
+
+    let progress_path = out.join("github.activity.progress.json");
+    let progress: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&progress_path)?)?;
+    assert_eq!(progress["schema_version"], "github.activity.progress.v1");
+    assert_eq!(progress["profile"], "scout");
+    assert_eq!(progress["state"], "checkpointed");
+    assert_eq!(progress["stop_reason"], "budget_exhausted");
+    assert_eq!(progress["budget_checkpoint"]["search_requests"], 0);
+    assert_eq!(progress["budget_checkpoint"]["core_requests"], 0);
+    assert_eq!(progress["receipt_refs"][0], "github.activity.plan.json");
+    assert_eq!(
+        progress["pending_windows"][0],
+        serde_json::Value::String("2026-01".to_string())
+    );
+    assert!(
+        out.join("github.activity.plan.json").exists(),
+        "scout should keep the plan receipt beside progress"
+    );
+    assert!(
+        !out.join("packet.md").exists(),
+        "checkpointed scout should not render a packet"
     );
 
     Ok(())

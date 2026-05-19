@@ -511,6 +511,10 @@ enum GithubCommand {
 enum GithubActivityCommand {
     /// Write github.activity.plan.json from [github_activity] config.
     Plan(GithubActivityPlanArgs),
+    /// Run a search-only GitHub activity scout profile.
+    Scout(GithubActivityRunArgs),
+    /// Run a GitHub activity harvest profile.
+    Run(GithubActivityRunArgs),
 }
 
 #[derive(Args, Debug)]
@@ -524,6 +528,22 @@ struct GithubActivityPlanArgs {
     /// Override the configured harvest profile.
     #[arg(long, value_enum)]
     profile: Option<GithubActivityProfile>,
+}
+
+#[derive(Args, Debug)]
+struct GithubActivityRunArgs {
+    /// Path to shiplog.toml.
+    #[arg(long, default_value = CONFIG_FILENAME)]
+    config: PathBuf,
+    /// Output directory for activity receipts and run artifacts.
+    #[arg(long)]
+    out: Option<PathBuf>,
+    /// Override the configured harvest profile.
+    #[arg(long, value_enum)]
+    profile: Option<GithubActivityProfile>,
+    /// Skip work when a matching completed progress receipt already exists.
+    #[arg(long)]
+    resume: bool,
 }
 
 #[derive(Args, Debug)]
@@ -1718,6 +1738,8 @@ const SHARE_MANIFEST_FILENAME: &str = "share.manifest.json";
 const SHARE_MANIFEST_SCHEMA_VERSION: u8 = 1;
 const GITHUB_ACTIVITY_PLAN_FILENAME: &str = "github.activity.plan.json";
 const GITHUB_ACTIVITY_PLAN_SCHEMA_VERSION: &str = "github.activity.plan.v1";
+const GITHUB_ACTIVITY_PROGRESS_FILENAME: &str = "github.activity.progress.json";
+const GITHUB_ACTIVITY_PROGRESS_SCHEMA_VERSION: &str = "github.activity.progress.v1";
 
 #[derive(Deserialize, Debug, Default)]
 #[serde(default)]
