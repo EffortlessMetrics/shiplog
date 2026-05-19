@@ -1777,6 +1777,64 @@ fn review_loop_status_proposal_defines_receipt_front_panel() {
 }
 
 #[test]
+fn github_activity_harvest_proposal_defines_actor_first_budgeted_workflow() {
+    let doc_path = repo_root().join("docs/proposals/SHIPLOG-PROP-0007-github-activity-harvest.md");
+    let doc = std::fs::read_to_string(&doc_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", doc_path.display()));
+
+    for needle in [
+        "GitHub Activity Harvest",
+        "Status: proposed",
+        "plan -> scout -> run -> resume -> merge -> report API cost",
+        "actor: EffortlessSteven",
+        "repo owners: EffortlessMetrics, EffortlessSteven",
+        "actor-first search with optional owner filtering and receipts",
+        "author:<user>",
+        "reviewed-by:<user>",
+        "actor = \"EffortlessSteven\"",
+        "repo_owners = [\"EffortlessMetrics\", \"EffortlessSteven\"]",
+        "user = \"EffortlessSteven\"",
+        "compatibility alias",
+        "actor search with owner filtering",
+        "plan before spending budget",
+        "scout before full fidelity",
+        "checkpoint before stopping",
+        "resume without refetching completed work",
+        "report API cost and cache reuse",
+        "scout:",
+        "authored:",
+        "full:",
+        "search metadata probes",
+        "search result pages",
+        "github.activity.plan.json",
+        "github.activity.progress.json",
+        "github.activity.api-ledger.json",
+        "API Budget",
+        "search_requests",
+        "core_requests",
+        "cache_hits",
+        "secondary_limit_events",
+        "Authenticated REST API requests generally count against a 5,000 requests/hour",
+        "authenticated search",
+        "30 requests/minute",
+        "up to 1,000 results",
+        "incomplete_results",
+        "x-ratelimit-remaining",
+        "x-ratelimit-reset",
+        "retry-after",
+        "repository crawling",
+        "No token values should ever appear",
+        "does not approve",
+        "`v0.9.0` release",
+    ] {
+        assert!(
+            doc.contains(needle),
+            "GitHub activity harvest proposal should mention {needle:?}"
+        );
+    }
+}
+
+#[test]
 fn review_loop_status_spec_defines_receipt_contract() {
     let root = repo_root();
     let spec_path = root.join("docs/specs/SHIPLOG-SPEC-0008-review-loop-status.md");
