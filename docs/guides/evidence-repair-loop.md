@@ -12,11 +12,15 @@ shiplog init --guided
 shiplog doctor --setup
 shiplog sources status
 shiplog doctor --setup --json
+shiplog status --latest
 ```
 
 `doctor --setup` and `sources status` are read-only. They explain whether local
 files, sources, credentials, and share prerequisites are ready before the repair
-loop consumes an intake report.
+loop consumes an intake report. `status --latest` is the review-loop cockpit:
+before intake it should route you toward collection only when setup is safe
+enough, and after intake it should point at repair, rerun, diff, or share
+explanation from receipts.
 
 ## Start from a report
 
@@ -24,6 +28,7 @@ Run intake and open the report first.
 
 ```bash
 shiplog intake --last-6-months --explain
+shiplog status --latest
 shiplog open intake-report --latest
 ```
 
@@ -67,6 +72,7 @@ After adding evidence, rerun intake.
 
 ```bash
 shiplog intake --last-6-months --explain
+shiplog status --latest
 shiplog repair diff --latest
 shiplog runs diff --latest
 ```

@@ -70,13 +70,15 @@ shiplog init --guided
 shiplog doctor --setup
 shiplog sources status
 shiplog doctor --setup --json
+shiplog status --latest
 ```
 
 `init --guided` writes the local setup files. `doctor --setup` and
 `sources status` are read-only checks that explain which sources are
 ready, disabled, unavailable, or blocked before intake spends a run.
 `doctor --setup --json` exposes the same setup state for agents and
-scripts.
+scripts. `status --latest` is the review-loop cockpit. Before the first intake,
+it should route you to collection only when setup is safe enough to proceed.
 
 ## One-command cold-start
 
@@ -84,6 +86,7 @@ From an empty directory:
 
 ```bash
 shiplog intake --last-6-months --explain
+shiplog status --latest
 shiplog open intake-report --latest
 shiplog open packet --latest
 ```
@@ -93,6 +96,8 @@ launches the durable report and the rendered pack in your platform's
 default markdown viewer. `--explain` prints per-source decisions and
 repair hints to the terminal so you can see what happened without
 reading the report first.
+`status --latest` then joins the run receipts into one read-only handoff:
+repair plan, rerun, diff, or share explanation depending on the packet state.
 
 If you skipped the setup preflight, `intake` still creates starter setup
 files when needed. Prefer `doctor --setup` first when you want to avoid

@@ -28,7 +28,9 @@ shiplog init --guided
 shiplog doctor --setup
 shiplog sources status
 shiplog doctor --setup --json
+shiplog status --latest
 shiplog intake --last-6-months --explain
+shiplog status --latest
 shiplog repair plan --latest
 shiplog journal add --from-repair <repair_id>
 shiplog intake --last-6-months --explain
@@ -42,7 +44,9 @@ shiplog share explain manager --latest
 `doctor --setup` and `sources status` are read-only preflight commands. They
 show local-file, source, credential, and share setup state before intake writes
 run artifacts. `doctor --setup --json` exposes the same setup model for agents
-and scripts without scraping terminal prose.
+and scripts without scraping terminal prose. `status --latest` is the
+review-loop cockpit: it stays read-only while joining setup, evidence, repair,
+diff, and share receipts into the next safe action.
 
 For repeatable setup:
 
@@ -50,6 +54,7 @@ For repeatable setup:
 shiplog init --guided
 shiplog doctor --setup
 shiplog sources status
+shiplog status --latest
 shiplog collect multi --last-6-months
 shiplog review --latest
 shiplog render --latest
@@ -99,6 +104,7 @@ Output goes to `out/<run_id>/` containing `packet.md`, `ledger.events.jsonl`, `c
 |---------|-------------|
 | `init` | Create `shiplog.toml` and `manual_events.yaml` scaffold files |
 | `doctor` | Check setup readiness, enabled sources, token env vars, share blockers, and output safety without writes |
+| `status` | Print the read-only review-loop cockpit for setup, latest run, repair, diff, share blockers, and next actions |
 | `intake` | Best-effort review rescue path that collects usable sources, renders a packet, writes an intake report, and prints next actions |
 | `config validate/explain/migrate` | Validate `shiplog.toml`, print resolved settings, or add version metadata |
 | `periods list/explain` | Inspect named review windows and latest matching runs |

@@ -91,7 +91,10 @@ shiplog init --guided
 shiplog doctor --setup
 shiplog sources status
 shiplog doctor --setup --json
+shiplog status --latest
 shiplog intake --last-6-months --explain
+shiplog status --latest
+shiplog repair plan --latest
 shiplog open intake-report --latest
 shiplog open packet --latest
 ```
@@ -99,7 +102,10 @@ shiplog open packet --latest
 `shiplog doctor --setup` is the human setup preflight. `shiplog sources status`
 is the source-only view. `shiplog doctor --setup --json` is the same setup state
 for agents and scripts, without scraping terminal prose. These commands are
-read-only and do not query providers. `shiplog intake` then collects usable
+read-only and do not query providers. `shiplog status --latest` is the
+review-loop cockpit: before the first run it tells you whether collection is
+safe; after intake it joins setup, packet readiness, repair, diff, and share
+receipts into the next safe command. `shiplog intake` then collects usable
 configured sources, records skipped sources, renders a packet, runs review
 inspection, and prints next commands.
 
@@ -124,7 +130,9 @@ When the first packet is rough, use
 turn report receipts into local journal repair and a better rerun packet. Then
 use [docs/guides/review-ready-packet.md](docs/guides/review-ready-packet.md)
 to interpret readiness, claim candidates, missing-context prompts, and share
-posture.
+posture. For weekly or monthly use, start with the cockpit in
+[docs/guides/recurring-review-loop.md](docs/guides/recurring-review-loop.md):
+status first, then the next receipt-producing command.
 
 From a repository checkout, you can rehearse the rescue path without provider
 tokens:
@@ -139,14 +147,19 @@ scripts/demo-review-rescue.sh --out ./out/demo-review-rescue
 shiplog init --guided
 shiplog doctor --setup
 shiplog sources status
+shiplog status --latest
 shiplog intake --last-6-months --explain
+shiplog status --latest
 shiplog open intake-report --latest
 shiplog open packet --latest
 ```
 
 Use this when you need a packet soon but still want setup state to be explicit
 before collection. `init --guided` is the only setup command here that writes
-files; `doctor --setup` and `sources status` are read-only. Intake uses
+files; `doctor --setup`, `sources status`, and `status --latest` are read-only.
+Status is the review-loop preflight after setup: run it before intake to confirm
+the first safe action, then run it after intake to see packet, repair, diff, and
+share posture without opening every receipt by hand. Intake uses
 `shiplog.toml` if present, creates a minimal starter config if missing, skips
 unusable sources without hiding them, and writes the packet, ledger, coverage
 manifest, workstream file, and bundle manifest as soon as at least one source
@@ -172,6 +185,8 @@ the derived schema is documented in
 [docs/schemas/agent-pack-v1.md](docs/schemas/agent-pack-v1.md).
 Setup readiness JSON from `shiplog doctor --setup --json` is documented in
 [docs/schemas/setup-readiness-v1.md](docs/schemas/setup-readiness-v1.md).
+Review-loop status JSON from `shiplog status --latest --json` is documented in
+[docs/schemas/review-loop-status-v1.md](docs/schemas/review-loop-status-v1.md).
 
 ### 1. Initialize local files
 

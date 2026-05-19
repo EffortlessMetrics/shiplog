@@ -18,15 +18,18 @@ shiplog init --guided
 shiplog doctor --setup
 shiplog sources status
 shiplog doctor --setup --json
+shiplog status --latest
 shiplog intake --last-6-months --explain
+shiplog status --latest
 shiplog repair plan --latest
 shiplog share explain manager --latest
 ```
 
-`doctor --setup`, `sources status`, and `share explain` are read-only surfaces.
-They do not query providers, render share packets, mutate provider records, or
-write profile artifacts. `init --guided`, `intake`, `journal add`, and
-`share manager|public` write local files.
+`doctor --setup`, `sources status`, `status --latest`, and `share explain` are
+read-only surfaces. They do not query providers, render share packets, mutate
+provider records, or write profile artifacts. `init --guided`, `intake`,
+`journal add`, and `share manager|public` write local files. Doctor remains the
+setup preflight; status is the review-loop preflight once setup exists.
 
 ## Start from an empty directory
 
@@ -63,6 +66,13 @@ next safe command without scraping terminal text:
 
 ```bash
 shiplog doctor --setup --json
+```
+
+Read the whole review-loop state when you want to know whether the next safe
+command is intake, repair, rerun, diff, or share explanation:
+
+```bash
+shiplog status --latest
 ```
 
 If doctor reports `Needs setup`, read the blocked/unavailable groups first.
@@ -116,6 +126,7 @@ Use this when you want a packet from local Git plus local manual evidence.
 shiplog init --guided
 shiplog doctor --setup
 shiplog sources status
+shiplog status --latest
 shiplog intake --last-6-months --explain
 ```
 
@@ -137,6 +148,7 @@ first.
 ```bash
 shiplog init --guided
 shiplog doctor --setup
+shiplog status --latest
 shiplog intake --last-6-months --explain
 shiplog repair plan --latest
 ```
@@ -267,5 +279,6 @@ When in doubt, run the read-only command first:
 ```bash
 shiplog doctor --setup
 shiplog sources status
+shiplog status --latest
 shiplog share explain manager --latest
 ```

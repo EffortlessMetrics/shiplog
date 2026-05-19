@@ -18,6 +18,16 @@ fn example_config(name: &str) -> PathBuf {
     repo_root().join("examples/configs").join(name)
 }
 
+fn assert_contains_in_order(doc: &str, doc_label: &str, needles: &[&str]) {
+    let mut cursor = 0;
+    for needle in needles {
+        let Some(offset) = doc[cursor..].find(needle) else {
+            panic!("{doc_label} should mention {needle:?} after the prior ordered command");
+        };
+        cursor += offset + needle.len();
+    }
+}
+
 #[test]
 fn config_reference_documents_current_surface() {
     let doc_path = repo_root().join("docs/config-reference.md");
@@ -32,6 +42,8 @@ fn config_reference_documents_current_surface() {
         "shiplog doctor --config shiplog.toml --setup",
         "shiplog doctor --config shiplog.toml --setup --json",
         "shiplog sources status --config shiplog.toml",
+        "shiplog status --latest",
+        "shiplog status --latest --json",
         "shiplog doctor --config shiplog.toml --repair-plan",
         "[shiplog]",
         "config_version = 1",
@@ -84,11 +96,93 @@ fn config_reference_documents_current_surface() {
         "doctor --setup",
         "doctor --setup --json",
         "sources status",
+        "review-loop preflight",
+        "not `packet.md`",
         "doctor --repair-plan",
     ] {
         assert!(
             doc.contains(needle),
             "config reference should mention {needle:?}"
+        );
+    }
+}
+
+#[test]
+fn docs_teach_status_as_review_loop_cockpit_after_setup() {
+    let root = repo_root();
+
+    for (relative_path, ordered_commands) in [
+        (
+            "README.md",
+            vec![
+                "shiplog init --guided",
+                "shiplog doctor --setup",
+                "shiplog sources status",
+                "shiplog doctor --setup --json",
+                "shiplog status --latest",
+                "shiplog intake --last-6-months --explain",
+                "shiplog status --latest",
+                "shiplog repair plan --latest",
+            ],
+        ),
+        (
+            "apps/shiplog/README.md",
+            vec![
+                "shiplog init --guided",
+                "shiplog doctor --setup",
+                "shiplog sources status",
+                "shiplog doctor --setup --json",
+                "shiplog status --latest",
+                "shiplog intake --last-6-months --explain",
+                "shiplog status --latest",
+                "shiplog repair plan --latest",
+            ],
+        ),
+        (
+            "docs/guides/rapid-first-intake.md",
+            vec![
+                "shiplog init --guided",
+                "shiplog doctor --setup",
+                "shiplog sources status",
+                "shiplog doctor --setup --json",
+                "shiplog status --latest",
+                "shiplog intake --last-6-months --explain",
+                "shiplog status --latest",
+            ],
+        ),
+        (
+            "docs/guides/guided-setup-doctor.md",
+            vec![
+                "shiplog init --guided",
+                "shiplog doctor --setup",
+                "shiplog sources status",
+                "shiplog doctor --setup --json",
+                "shiplog status --latest",
+                "shiplog intake --last-6-months --explain",
+                "shiplog status --latest",
+                "shiplog repair plan --latest",
+            ],
+        ),
+        (
+            "docs/guides/review-ready-packet.md",
+            vec![
+                "shiplog init --guided",
+                "shiplog doctor --setup",
+                "shiplog sources status",
+                "shiplog doctor --setup --json",
+                "shiplog status --latest",
+                "shiplog intake --last-6-months --explain",
+                "shiplog status --latest",
+            ],
+        ),
+    ] {
+        let path = root.join(relative_path);
+        let doc = std::fs::read_to_string(&path)
+            .unwrap_or_else(|err| panic!("read {}: {err}", path.display()));
+        assert_contains_in_order(&doc, relative_path, &ordered_commands);
+        assert!(
+            doc.contains("status --latest"),
+            "{relative_path} should teach status as the review-loop cockpit"
         );
     }
 }
@@ -1123,6 +1217,7 @@ fn crate_readme_documents_review_ready_loop() {
         "shiplog doctor --setup",
         "shiplog sources status",
         "shiplog doctor --setup --json",
+        "shiplog status --latest",
         "shiplog repair plan --latest",
         "shiplog journal add --from-repair <repair_id>",
         "shiplog repair diff --latest",
@@ -1132,6 +1227,8 @@ fn crate_readme_documents_review_ready_loop() {
         "`share explain manager/public`",
         "`runs diff`",
         "`repair plan/diff`",
+        "`status`",
+        "review-loop cockpit",
         "packet readiness",
         "claim candidates",
         "without writing profile artifacts",
@@ -1158,6 +1255,9 @@ fn root_readme_documents_read_first_repair_and_share_flow() {
         "shiplog doctor --setup",
         "shiplog sources status",
         "shiplog doctor --setup --json",
+        "shiplog status --latest",
+        "review-loop cockpit",
+        "recurring-review-loop.md",
         "setup front door",
         "shiplog journal add --from-repair <repair_id>",
         "read-first repair loop",
@@ -1222,6 +1322,8 @@ fn rapid_first_intake_guide_routes_manual_evidence_through_repair_plan() {
         "shiplog doctor --setup",
         "shiplog sources status",
         "shiplog doctor --setup --json",
+        "shiplog status --latest",
+        "review-loop cockpit",
         "shiplog journal add --from-repair <repair_id>",
         "write-producing curation command",
         "not tied to a repair item",
@@ -1245,6 +1347,8 @@ fn evidence_repair_loop_guide_documents_report_derived_flow() {
         "shiplog doctor --setup",
         "shiplog sources status",
         "shiplog doctor --setup --json",
+        "shiplog status --latest",
+        "review-loop cockpit",
         "shiplog repair plan --latest",
         "shiplog journal add --from-repair <repair_id>",
         "shiplog repair diff --latest",
@@ -1367,6 +1471,8 @@ fn guided_setup_doctor_guide_documents_setup_flow() {
         "shiplog doctor --setup",
         "shiplog doctor --setup --json",
         "shiplog sources status",
+        "shiplog status --latest",
+        "review-loop preflight",
         "shiplog intake --last-6-months --explain",
         "shiplog repair plan --latest",
         "shiplog share explain manager --latest",
