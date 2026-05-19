@@ -1974,6 +1974,147 @@ fn status_latest_ready_setup_without_run_routes_to_intake() -> CliTestResult {
 }
 
 #[test]
+fn github_activity_plan_writes_static_receipt_without_provider_calls() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let config = tmp.path().join("shiplog-github-full.toml");
+    let out = tmp.path().join("out/github-full");
+    std::fs::write(
+        &config,
+        r#"[shiplog]
+config_version = 1
+
+[defaults]
+out = "./out/github-full"
+
+[github_activity]
+actor = "EffortlessSteven"
+repo_owners = ["EffortlessMetrics", "EffortlessSteven"]
+since = "2026-01-01"
+until = "2026-03-01"
+include_authored_prs = true
+include_reviews = true
+profile = "scout"
+cache_dir = "./out/github-full/.cache"
+
+[github_activity.budget]
+max_search_per_minute = 24
+on_exhausted = "checkpoint_and_stop"
+
+[sources.github]
+enabled = true
+user = "EffortlessSteven"
+mode = "created"
+"#,
+    )?;
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .args([
+            "github",
+            "activity",
+            "plan",
+            "--config",
+            config.to_str().expect("config path should be valid UTF-8"),
+            "--out",
+            out.to_str().expect("out path should be valid UTF-8"),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("GitHub activity plan written:"))
+        .stdout(predicate::str::contains("Actor: EffortlessSteven"))
+        .stdout(predicate::str::contains(
+            "Repository owners: EffortlessMetrics, EffortlessSteven",
+        ))
+        .stdout(predicate::str::contains(
+            "Provider calls: none (static plan)",
+        ))
+        .stdout(predicate::str::contains(
+            "Next: scout/run are not implemented yet",
+        ));
+
+    let plan_path = out.join("github.activity.plan.json");
+    let plan: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&plan_path)?)?;
+
+    assert_eq!(plan["schema_version"], "github.activity.plan.v1");
+    assert_eq!(plan["actor"], "EffortlessSteven");
+    assert_eq!(plan["repo_owners"][0], "EffortlessMetrics");
+    assert_eq!(plan["repo_owners"][1], "EffortlessSteven");
+    assert_eq!(plan["owner_filter_requested"], true);
+    assert_eq!(plan["query_strategy"], "actor_search_owner_filter");
+    assert_eq!(plan["profile"], "scout");
+    assert_eq!(plan["planning_mode"], "static");
+    assert_eq!(plan["estimated_totals"]["search_requests"], 22);
+    assert_eq!(plan["estimated_totals"]["core_requests"], 0);
+    assert_eq!(plan["estimated_totals"]["review_requests"], 0);
+    assert_eq!(plan["budget_policy"]["max_search_per_minute"], 24);
+    assert_eq!(plan["budget_policy"]["on_exhausted"], "checkpoint_and_stop");
+    assert_eq!(
+        plan["windows"][0]["queries"][0]["search_query"],
+        "is:pr author:EffortlessSteven created:2026-01-01..2026-01-31"
+    );
+    assert_eq!(plan["windows"][0]["queries"][0]["cache_reuse"], "unknown");
+    assert!(
+        plan["next_actions"].as_array().is_some_and(Vec::is_empty),
+        "plan-only mode should not offer scout/run commands before they are implemented"
+    );
+    assert!(
+        !out.join(".cache").exists(),
+        "static planning should not create the GitHub API cache"
+    );
+    assert!(
+        !out.join("packet.md").exists(),
+        "static planning should not render a packet"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn github_activity_plan_accepts_sources_github_user_alias() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let config = tmp.path().join("shiplog.toml");
+    std::fs::write(
+        &config,
+        r#"[shiplog]
+config_version = 1
+
+[sources.github]
+enabled = true
+user = "EffortlessSteven"
+mode = "created"
+
+[github_activity]
+repo_owners = ["EffortlessMetrics"]
+since = "2026-01-01"
+until = "2026-02-01"
+profile = "authored"
+"#,
+    )?;
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .args(["github", "activity", "plan"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Actor: EffortlessSteven"))
+        .stdout(predicate::str::contains("Profile: authored"));
+
+    let plan_path = tmp.path().join("out/github.activity.plan.json");
+    let plan: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&plan_path)?)?;
+
+    assert_eq!(plan["actor"], "EffortlessSteven");
+    assert_eq!(plan["profile"], "authored");
+    assert_eq!(plan["windows"][0]["query_kinds"][0], "authored_prs");
+    assert_eq!(plan["estimated_totals"]["search_requests"], 11);
+    assert_eq!(plan["estimated_totals"]["core_requests"], 1000);
+    assert_eq!(plan["estimated_totals"]["review_requests"], 0);
+
+    Ok(())
+}
+
+#[test]
 fn status_latest_json_missing_setup_serializes_model_without_writing() -> CliTestResult {
     let tmp = TempDir::new()?;
     let before = file_tree_manifest(tmp.path());

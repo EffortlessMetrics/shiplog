@@ -66,6 +66,12 @@ pub(super) fn dispatch() -> Result<()> {
             run_status(args)?;
         }
 
+        Command::Github { cmd } => match cmd {
+            GithubCommand::Activity { cmd } => match cmd {
+                GithubActivityCommand::Plan(args) => github_activity::run_plan(args)?,
+            },
+        },
+
         Command::Periods { cmd } => match cmd {
             PeriodsCommand::List(args) => run_periods_list(args)?,
             PeriodsCommand::Explain(args) => run_periods_explain(args)?,

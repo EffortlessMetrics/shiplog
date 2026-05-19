@@ -207,6 +207,49 @@ Required when enabled: either `user` or `me = true`, but not both.
 | `cache_dir` | Source cache directory. |
 | `no_cache` | Disable this source cache when true. |
 
+### GitHub Activity Harvest
+
+`shiplog github activity plan` reads the optional `[github_activity]` section
+and writes `github.activity.plan.json` without calling GitHub, fetching PR
+details, fetching review pages, rendering packets, or creating a cache. This is
+the first receipt in the planned full-history harvest workflow.
+
+```toml
+[github_activity]
+actor = "EffortlessSteven"
+repo_owners = ["EffortlessMetrics", "EffortlessSteven"]
+since = "2020-01-01"
+until = "2026-05-20"
+include_authored_prs = true
+include_reviews = true
+profile = "scout"
+cache_dir = "./out/github-full/.cache"
+
+[github_activity.budget]
+max_search_requests = 300
+max_core_requests = 1000
+max_search_per_minute = 24
+on_exhausted = "checkpoint_and_stop"
+```
+
+| Field | Notes |
+|-------|-------|
+| `actor` | GitHub login to plan activity for. If omitted, `sources.github.user` is accepted as a compatibility alias. Static planning does not resolve `sources.github.me`. |
+| `repo_owners` | Optional owner inclusion scope. The plan remains actor-first and records owner filtering as receipts; it does not crawl repositories. |
+| `since` / `until` | Required harvest window. `until` is exclusive in shiplog's date model; generated search ranges record their exact inclusive GitHub query text. |
+| `include_authored_prs` | Whether authored PR queries are planned. Defaults to `true`. |
+| `include_reviews` | Used by the `full` profile to include review-candidate queries. |
+| `profile` | `scout`, `authored`, or `full`; defaults to `scout`. Plan-only mode estimates the requested profile but does not spend API. |
+| `cache_dir` | Used to infer the output root when `--out` is omitted and the value ends with `.cache`. Planning does not create the cache. |
+| `budget.max_search_requests` | Planned search request ceiling. Defaults to `300`. |
+| `budget.max_core_requests` | Planned core/detail request ceiling. Defaults to `1000`. |
+| `budget.max_search_per_minute` | Planned search pacing ceiling. Defaults to `24`. |
+| `budget.on_exhausted` | Currently must be `checkpoint_and_stop`. |
+
+The generated plan is a static receipt. It estimates worst-case search/detail
+cost from monthly actor-query windows and keeps `next_actions` empty until
+scout/run commands exist, so agents do not execute a command that cannot run.
+
 ### GitLab
 
 ```toml

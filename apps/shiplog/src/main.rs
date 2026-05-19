@@ -41,6 +41,7 @@ use std::fs::File;
 use std::io::Read;
 use std::path::{Component, Path, PathBuf};
 mod doctor;
+mod github_activity;
 mod intake_report_builder;
 mod status;
 use intake_report_builder::build_intake_report;
@@ -107,6 +108,12 @@ enum Command {
 
     /// Inspect review-loop state across setup, evidence, repair, diff, and share receipts.
     Status(StatusArgs),
+
+    /// Plan and inspect GitHub activity harvests without provider mutation.
+    Github {
+        #[command(subcommand)]
+        cmd: GithubCommand,
+    },
 
     /// List and explain named review periods from shiplog.toml.
     Periods {
@@ -489,6 +496,34 @@ enum ConfigCommand {
 enum SourcesCommand {
     /// Print source setup readiness without provider network calls or writes.
     Status(SourcesStatusArgs),
+}
+
+#[derive(Subcommand, Debug)]
+enum GithubCommand {
+    /// Plan a GitHub activity harvest without making provider API calls.
+    Activity {
+        #[command(subcommand)]
+        cmd: GithubActivityCommand,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum GithubActivityCommand {
+    /// Write github.activity.plan.json from [github_activity] config.
+    Plan(GithubActivityPlanArgs),
+}
+
+#[derive(Args, Debug)]
+struct GithubActivityPlanArgs {
+    /// Path to shiplog.toml.
+    #[arg(long, default_value = CONFIG_FILENAME)]
+    config: PathBuf,
+    /// Output directory for github.activity.plan.json.
+    #[arg(long)]
+    out: Option<PathBuf>,
+    /// Override the configured harvest profile.
+    #[arg(long, value_enum)]
+    profile: Option<GithubActivityProfile>,
 }
 
 #[derive(Args, Debug)]
@@ -1678,6 +1713,8 @@ const SOURCE_FAILURES_FILENAME: &str = "source.failures.json";
 const SOURCE_FAILURES_SCHEMA_VERSION: u8 = 1;
 const SHARE_MANIFEST_FILENAME: &str = "share.manifest.json";
 const SHARE_MANIFEST_SCHEMA_VERSION: u8 = 1;
+const GITHUB_ACTIVITY_PLAN_FILENAME: &str = "github.activity.plan.json";
+const GITHUB_ACTIVITY_PLAN_SCHEMA_VERSION: &str = "github.activity.plan.v1";
 
 #[derive(Deserialize, Debug, Default)]
 #[serde(default)]
@@ -1687,6 +1724,7 @@ struct ShiplogConfig {
     periods: BTreeMap<String, ConfigPeriod>,
     user: ConfigUser,
     sources: ConfigSources,
+    github_activity: ConfigGithubActivity,
     redaction: ConfigRedaction,
 }
 
@@ -1744,6 +1782,48 @@ struct ConfigGithubSource {
     api_base: Option<String>,
     cache_dir: Option<PathBuf>,
     no_cache: bool,
+}
+
+#[derive(Deserialize, Debug, Default)]
+#[serde(default)]
+struct ConfigGithubActivity {
+    actor: Option<String>,
+    repo_owners: Vec<String>,
+    since: Option<NaiveDate>,
+    until: Option<NaiveDate>,
+    include_authored_prs: Option<bool>,
+    include_reviews: Option<bool>,
+    include_comments: bool,
+    include_commits: bool,
+    profile: Option<String>,
+    cache_dir: Option<PathBuf>,
+    budget: ConfigGithubActivityBudget,
+}
+
+#[derive(Deserialize, Debug, Default)]
+#[serde(default)]
+struct ConfigGithubActivityBudget {
+    max_search_requests: Option<u64>,
+    max_core_requests: Option<u64>,
+    max_search_per_minute: Option<u64>,
+    on_exhausted: Option<String>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
+enum GithubActivityProfile {
+    Scout,
+    Authored,
+    Full,
+}
+
+impl GithubActivityProfile {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Scout => "scout",
+            Self::Authored => "authored",
+            Self::Full => "full",
+        }
+    }
 }
 
 #[derive(Deserialize, Debug, Default)]
