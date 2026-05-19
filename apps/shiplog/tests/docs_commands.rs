@@ -1824,6 +1824,7 @@ fn github_activity_harvest_proposal_defines_actor_first_budgeted_workflow() {
         "retry-after",
         "repository crawling",
         "No token values should ever appear",
+        "SHIPLOG-ADR-0010-github-harvest-is-actor-first-owner-filtered",
         "does not approve",
         "`v0.9.0` release",
     ] {
@@ -1839,11 +1840,15 @@ fn github_activity_harvest_spec_defines_plan_progress_and_api_ledger_contracts()
     let root = repo_root();
     let proposal_path = root.join("docs/proposals/SHIPLOG-PROP-0007-github-activity-harvest.md");
     let spec_path = root.join("docs/specs/SHIPLOG-SPEC-0009-github-activity-harvest.md");
+    let adr_path =
+        root.join("docs/adr/SHIPLOG-ADR-0010-github-harvest-is-actor-first-owner-filtered.md");
 
     let proposal = std::fs::read_to_string(&proposal_path)
         .unwrap_or_else(|err| panic!("read {}: {err}", proposal_path.display()));
     let spec = std::fs::read_to_string(&spec_path)
         .unwrap_or_else(|err| panic!("read {}: {err}", spec_path.display()));
+    let adr = std::fs::read_to_string(&adr_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", adr_path.display()));
 
     for needle in [
         "SHIPLOG-SPEC-0009: GitHub Activity Harvest",
@@ -1920,6 +1925,64 @@ fn github_activity_harvest_spec_defines_plan_progress_and_api_ledger_contracts()
         spec.contains("SHIPLOG-PROP-0007-github-activity-harvest"),
         "spec should link the GitHub activity harvest proposal"
     );
+    assert!(
+        proposal.contains("SHIPLOG-ADR-0010-github-harvest-is-actor-first-owner-filtered.md"),
+        "proposal should link the GitHub activity harvest ADR"
+    );
+    assert!(
+        spec.contains("SHIPLOG-ADR-0010-github-harvest-is-actor-first-owner-filtered.md"),
+        "spec should link the GitHub activity harvest ADR"
+    );
+    assert!(
+        adr.contains("SHIPLOG-SPEC-0009-github-activity-harvest"),
+        "ADR should link the GitHub activity harvest spec"
+    );
+}
+
+#[test]
+fn github_activity_harvest_adr_records_actor_first_owner_filtered_decision() {
+    let adr_path = repo_root()
+        .join("docs/adr/SHIPLOG-ADR-0010-github-harvest-is-actor-first-owner-filtered.md");
+    let adr = std::fs::read_to_string(&adr_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", adr_path.display()));
+
+    for needle in [
+        "SHIPLOG-ADR-0010: GitHub Harvest Is Actor-First, Owner-Filtered",
+        "Status: accepted",
+        "SHIPLOG-PROP-0007-github-activity-harvest",
+        "SHIPLOG-SPEC-0009-github-activity-harvest",
+        "GitHub activity harvest is actor-first and owner-filtered",
+        "author:<actor>",
+        "reviewed-by:<actor>",
+        "sources.github.user",
+        "compatibility alias",
+        "`repo_owners` is an optional inclusion scope",
+        "owner filtering is a receipt-backed inclusion",
+        "actor_search_owner_filter",
+        "which repository owners were kept",
+        "which repository owners were dropped",
+        "owner_not_requested",
+        "must not crawl every repository",
+        "plan -> scout -> run -> resume -> merge -> report API cost",
+        "github.activity.plan.json",
+        "github.activity.progress.json",
+        "github.activity.api-ledger.json",
+        "One GitHub Source Per Repository Owner",
+        "Crawl Every Repository Under Each Owner",
+        "Encode Owner Scope Only In GitHub Search Syntax",
+        "Infer Owner Coverage From Token Permissions",
+        "github.activity.plan.v1",
+        "github.activity.progress.v1",
+        "github.activity.api-ledger.v1",
+        "without token values",
+        "does not add runtime behavior by itself",
+        "does not lift the `v0.9.0` release hold",
+    ] {
+        assert!(
+            adr.contains(needle),
+            "GitHub activity harvest ADR should mention {needle:?}"
+        );
+    }
 }
 
 #[test]
