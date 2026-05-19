@@ -75,7 +75,7 @@ rerun, compare, and share safely.
   pointers in dogfood transcripts and matrices (#441).
 - Replaced the flat README badge row with proof, distribution, and contract
   badge groups, added GitHub release and crates.io download badges, and added a
-  checked-in `ripr+` Shields endpoint so the badge link is not broken (#442).
+  checked-in `ripr+` Shields endpoint so the badge link is not broken (#443).
 - Kept detailed post-0.8 soak and release-hold receipts in
   [`docs/release/0.9.0-readiness.md`](docs/release/0.9.0-readiness.md) and
   [`docs/release/0.9.0-release-hold.md`](docs/release/0.9.0-release-hold.md).
