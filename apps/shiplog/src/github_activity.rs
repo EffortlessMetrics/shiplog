@@ -69,7 +69,7 @@ fn build_plan(
     }
 
     let actor = github_activity_actor(config)?;
-    let repo_owners = normalized_owner_list(&activity.repo_owners);
+    let repo_owners = github_activity_repo_owners(config);
     let since = activity
         .since
         .ok_or_else(|| anyhow::anyhow!("github_activity.since is required"))?;
@@ -138,8 +138,8 @@ fn build_plan(
         shiplog_version: env!("CARGO_PKG_VERSION").to_string(),
         activity_id: activity_id(&actor, since, until, profile, &repo_owners),
         actor,
+        owner_filter_requested: !repo_owners.is_empty(),
         repo_owners,
-        owner_filter_requested: !activity.repo_owners.is_empty(),
         query_strategy: "actor_search_owner_filter".to_string(),
         profile: profile.as_str().to_string(),
         since: since.to_string(),
@@ -206,6 +206,18 @@ fn github_activity_mode(config: &ShiplogConfig) -> Result<String> {
         "created" | "merged" => Ok(mode),
         _ => anyhow::bail!("sources.github.mode must be merged or created, got {mode:?}"),
     }
+}
+
+fn github_activity_repo_owners(config: &ShiplogConfig) -> Vec<String> {
+    if !config.github_activity.repo_owners.is_empty() {
+        return normalized_owner_list(&config.github_activity.repo_owners);
+    }
+    config
+        .sources
+        .github
+        .as_ref()
+        .map(|source| normalized_owner_list(&source.repo_owners))
+        .unwrap_or_default()
 }
 
 fn parse_activity_profile(value: Option<&str>) -> Result<Option<GithubActivityProfile>> {

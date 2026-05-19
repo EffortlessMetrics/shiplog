@@ -1161,6 +1161,30 @@ mod tests {
     }
 
     #[test]
+    fn coverage_details_render_github_owner_filter_receipt() {
+        let mut coverage = make_coverage(vec![], vec![]);
+        coverage.slices = vec![CoverageSlice {
+            window: coverage.window.clone(),
+            query: "is:pr author:alice".into(),
+            total_count: 3,
+            fetched: 3,
+            incomplete_results: Some(false),
+            notes: vec![
+                "owner_filter:requested=EffortlessMetrics,EffortlessSteven".into(),
+                "owner_filter:kept=EffortlessMetrics=2".into(),
+                "owner_filter:dropped=OtherOwner=1".into(),
+            ],
+        }];
+
+        let mut out = String::new();
+        render_coverage(&mut out, &coverage, &[]);
+        assert!(out.contains(
+            "- **GitHub owner filter:** requested EffortlessMetrics, EffortlessSteven; kept EffortlessMetrics=2; dropped OtherOwner=1"
+        ));
+        assert!(out.contains("Known gaps:\n- None recorded\n"));
+    }
+
+    #[test]
     fn coverage_summary_complete_lists_no_known_gaps() {
         let coverage = make_coverage(vec![], vec![]);
         let mut out = String::new();

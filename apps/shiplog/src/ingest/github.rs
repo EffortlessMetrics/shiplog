@@ -18,6 +18,7 @@ use shiplog::schema::event::{
     RepoRef, RepoVisibility, ReviewEvent, SourceRef, SourceSystem,
 };
 use shiplog::schema::freshness::{FreshnessStatus, SourceFreshness};
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::thread::sleep;
@@ -31,6 +32,8 @@ pub struct GithubIngestor {
     pub until: NaiveDate,
     /// "merged" or "created"
     pub mode: String,
+    /// Optional repository owner inclusion scope. Empty means actor-wide.
+    pub repo_owners: Vec<String>,
     pub include_reviews: bool,
     pub fetch_details: bool,
     pub throttle_ms: u64,
@@ -73,6 +76,85 @@ pub struct GithubApiBudget {
 pub struct GithubApiRequestCounts {
     pub search: u64,
     pub core: u64,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+struct GithubOwnerFilterStats {
+    requested: Vec<String>,
+    kept: BTreeMap<String, u64>,
+    dropped: BTreeMap<String, u64>,
+}
+
+#[derive(Debug)]
+struct GithubOwnerFilter {
+    stats: GithubOwnerFilterStats,
+    requested_labels: BTreeMap<String, String>,
+    requested_keys: BTreeSet<String>,
+}
+
+impl GithubOwnerFilter {
+    fn new(requested: &[String]) -> Self {
+        let requested_labels = requested
+            .iter()
+            .map(|owner| (owner_key(owner), owner.clone()))
+            .collect::<BTreeMap<_, _>>();
+        let requested_keys = requested_labels.keys().cloned().collect();
+        Self {
+            stats: GithubOwnerFilterStats {
+                requested: requested.to_vec(),
+                kept: BTreeMap::new(),
+                dropped: BTreeMap::new(),
+            },
+            requested_labels,
+            requested_keys,
+        }
+    }
+
+    fn keep_repo(&mut self, repo_full_name: &str) -> bool {
+        let owner = repo_owner(repo_full_name);
+        let key = owner_key(&owner);
+        if self.requested_keys.is_empty() {
+            increment_owner_count(&mut self.stats.kept, owner);
+            true
+        } else if let Some(label) = self.requested_labels.get(&key) {
+            increment_owner_count(&mut self.stats.kept, label.clone());
+            true
+        } else {
+            increment_owner_count(&mut self.stats.dropped, owner);
+            false
+        }
+    }
+
+    fn into_stats(self) -> GithubOwnerFilterStats {
+        self.stats
+    }
+}
+
+impl GithubOwnerFilterStats {
+    fn merge(&mut self, other: Self) {
+        if self.requested.is_empty() {
+            self.requested = other.requested;
+        }
+        merge_owner_counts(&mut self.kept, other.kept);
+        merge_owner_counts(&mut self.dropped, other.dropped);
+    }
+
+    fn result_notes(&self) -> Vec<String> {
+        if self.requested.is_empty() {
+            return Vec::new();
+        }
+
+        vec![
+            format!("owner_filter:kept={}", owner_counts_label(&self.kept)),
+            format!("owner_filter:dropped={}", owner_counts_label(&self.dropped)),
+        ]
+    }
+}
+
+#[derive(Debug)]
+struct GithubFilteredEvents {
+    events: Vec<EventEnvelope>,
+    owner_filter: GithubOwnerFilterStats,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -135,6 +217,7 @@ impl GithubIngestor {
             since,
             until,
             mode: "merged".to_string(),
+            repo_owners: Vec::new(),
             include_reviews: false,
             fetch_details: true,
             throttle_ms: 0,
@@ -184,6 +267,19 @@ impl GithubIngestor {
         self
     }
 
+    /// Configure repository owner inclusion scope.
+    ///
+    /// Empty owner scope keeps the default actor-wide behavior.
+    #[must_use]
+    pub fn with_repo_owners<I, S>(mut self, owners: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        self.repo_owners = normalized_repo_owners(owners);
+        self
+    }
+
     /// Return live API request counts for the current run.
     #[must_use]
     pub fn api_request_counts(&self) -> GithubApiRequestCounts {
@@ -226,6 +322,26 @@ impl GithubIngestor {
             }
         }
         "https://github.com".to_string()
+    }
+
+    fn owner_filter(&self) -> GithubOwnerFilter {
+        GithubOwnerFilter::new(&self.repo_owners)
+    }
+
+    fn owner_filter_stats(&self) -> GithubOwnerFilterStats {
+        GithubOwnerFilterStats {
+            requested: self.repo_owners.clone(),
+            kept: BTreeMap::new(),
+            dropped: BTreeMap::new(),
+        }
+    }
+
+    fn owner_filter_note(&self) -> String {
+        if self.repo_owners.is_empty() {
+            "owner_filter:actor_wide".to_string()
+        } else {
+            format!("owner_filter:requested={}", self.repo_owners.join(","))
+        }
     }
 
     #[mutants::skip]
@@ -354,6 +470,7 @@ impl Ingestor for GithubIngestor {
         let mut completeness = Completeness::Complete;
 
         let mut events: Vec<EventEnvelope> = Vec::new();
+        let mut owner_filter_stats = self.owner_filter_stats();
 
         // PRs authored
         let pr_query_builder = |w: &TimeWindow| self.build_pr_query(w);
@@ -364,7 +481,9 @@ impl Ingestor for GithubIngestor {
             completeness = Completeness::Partial;
         }
 
-        events.extend(self.items_to_pr_events(&client, pr_items)?);
+        let pr_events = self.items_to_pr_events(&client, pr_items)?;
+        owner_filter_stats.merge(pr_events.owner_filter);
+        events.extend(pr_events.events);
 
         // Reviews authored (best-effort)
         if self.include_reviews {
@@ -381,13 +500,28 @@ impl Ingestor for GithubIngestor {
             if review_partial {
                 completeness = Completeness::Partial;
             }
-            events.extend(self.items_to_review_events(&client, review_items)?);
+            let review_events = self.items_to_review_events(&client, review_items)?;
+            owner_filter_stats.merge(review_events.owner_filter);
+            events.extend(review_events.events);
         }
 
         // Sort for stable output
         events.sort_by_key(|e| e.occurred_at);
 
         let fetched_at = Utc::now();
+        let owner_filter_note = self.owner_filter_note();
+        for slice in &mut slices {
+            if !slice.notes.contains(&owner_filter_note) {
+                slice.notes.push(owner_filter_note.clone());
+            }
+        }
+        if let Some(first_slice) = slices.first_mut() {
+            for note in owner_filter_stats.result_notes() {
+                if !first_slice.notes.contains(&note) {
+                    first_slice.notes.push(note);
+                }
+            }
+        }
         let cov = CoverageManifest {
             run_id,
             generated_at: fetched_at,
@@ -635,13 +769,17 @@ impl GithubIngestor {
         &self,
         client: &Client,
         items: Vec<SearchIssueItem>,
-    ) -> Result<Vec<EventEnvelope>> {
+    ) -> Result<GithubFilteredEvents> {
         let mut out = Vec::new();
+        let mut owner_filter = self.owner_filter();
         for item in items {
             if let Some(pr_ref) = &item.pull_request {
                 let html_base = self.html_base_url();
                 let (repo_full_name, repo_html_url) =
                     repo_from_repo_url(&item.repository_url, &html_base);
+                if !owner_filter.keep_repo(&repo_full_name) {
+                    continue;
+                }
 
                 let (title, created_at, merged_at, additions, deletions, changed_files, visibility) =
                     if self.fetch_details {
@@ -746,7 +884,10 @@ impl GithubIngestor {
                 out.push(ev);
             }
         }
-        Ok(out)
+        Ok(GithubFilteredEvents {
+            events: out,
+            owner_filter: owner_filter.into_stats(),
+        })
     }
 
     #[mutants::skip]
@@ -754,8 +895,9 @@ impl GithubIngestor {
         &self,
         client: &Client,
         items: Vec<SearchIssueItem>,
-    ) -> Result<Vec<EventEnvelope>> {
+    ) -> Result<GithubFilteredEvents> {
         let mut out = Vec::new();
+        let mut owner_filter = self.owner_filter();
         for item in items {
             let Some(pr_ref) = &item.pull_request else {
                 continue;
@@ -763,6 +905,9 @@ impl GithubIngestor {
             let html_base = self.html_base_url();
             let (repo_full_name, repo_html_url) =
                 repo_from_repo_url(&item.repository_url, &html_base);
+            if !owner_filter.keep_repo(&repo_full_name) {
+                continue;
+            }
 
             // Fetch reviews for this PR and filter by author + date window.
             let reviews = self.fetch_pr_reviews(client, &pr_ref.url)?;
@@ -822,7 +967,10 @@ impl GithubIngestor {
                 out.push(ev);
             }
         }
-        Ok(out)
+        Ok(GithubFilteredEvents {
+            events: out,
+            owner_filter: owner_filter.into_stats(),
+        })
     }
 
     #[mutants::skip]
@@ -955,6 +1103,59 @@ fn build_url_with_params(base: &str, params: &[(&str, String)]) -> Result<Url> {
         }
     }
     Ok(url)
+}
+
+fn normalized_repo_owners<I, S>(owners: I) -> Vec<String>
+where
+    I: IntoIterator<Item = S>,
+    S: Into<String>,
+{
+    let mut normalized = BTreeMap::new();
+    for owner in owners {
+        let owner = owner.into();
+        let owner = owner.trim();
+        if owner.is_empty() {
+            continue;
+        }
+        normalized
+            .entry(owner_key(owner))
+            .or_insert_with(|| owner.to_string());
+    }
+    normalized.into_values().collect()
+}
+
+fn repo_owner(repo_full_name: &str) -> String {
+    repo_full_name
+        .split_once('/')
+        .map(|(owner, _)| owner)
+        .filter(|owner| !owner.trim().is_empty())
+        .unwrap_or("unknown")
+        .to_string()
+}
+
+fn owner_key(owner: &str) -> String {
+    owner.trim().to_ascii_lowercase()
+}
+
+fn increment_owner_count(counts: &mut BTreeMap<String, u64>, owner: String) {
+    *counts.entry(owner).or_insert(0) += 1;
+}
+
+fn merge_owner_counts(target: &mut BTreeMap<String, u64>, source: BTreeMap<String, u64>) {
+    for (owner, count) in source {
+        *target.entry(owner).or_insert(0) += count;
+    }
+}
+
+fn owner_counts_label(counts: &BTreeMap<String, u64>) -> String {
+    if counts.is_empty() {
+        return "none".to_string();
+    }
+    counts
+        .iter()
+        .map(|(owner, count)| format!("{owner}={count}"))
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 fn github_freshness_status(
@@ -2254,6 +2455,96 @@ mod tests {
         assert!(q.contains("reviewed-by:reviewer"));
     }
 
+    #[test]
+    fn repo_owner_scope_trims_dedupes_and_sorts_case_insensitively() {
+        let ing = make_ingestor("alice").with_repo_owners([
+            " EffortlessSteven ",
+            "",
+            "effortlessmetrics",
+            "EffortlessSteven",
+        ]);
+
+        assert_eq!(
+            ing.repo_owners,
+            vec![
+                "effortlessmetrics".to_string(),
+                "EffortlessSteven".to_string()
+            ]
+        );
+    }
+
+    #[test]
+    fn owner_filter_keeps_requested_repos_and_receipts_dropped_owners() -> Result<()> {
+        let mut ing = make_ingestor("alice").with_repo_owners(["EffortlessMetrics"]);
+        ing.fetch_details = false;
+        let client = Client::new();
+        let converted = ing.items_to_pr_events(
+            &client,
+            vec![
+                make_search_item(1, "EffortlessMetrics/shiplog", true),
+                make_search_item(2, "EffortlessSteven/private-notes", true),
+                make_search_item(3, "effortlessmetrics/lower-case-match", true),
+            ],
+        )?;
+
+        let repos: Vec<_> = converted
+            .events
+            .iter()
+            .map(|event| event.repo.full_name.as_str())
+            .collect();
+        assert_eq!(
+            repos,
+            vec![
+                "EffortlessMetrics/shiplog",
+                "effortlessmetrics/lower-case-match"
+            ]
+        );
+        assert_eq!(
+            converted.owner_filter.requested,
+            vec!["EffortlessMetrics".to_string()]
+        );
+        assert_eq!(
+            converted.owner_filter.kept.get("EffortlessMetrics"),
+            Some(&2)
+        );
+        assert_eq!(converted.owner_filter.kept.get("effortlessmetrics"), None);
+        assert_eq!(
+            converted.owner_filter.dropped.get("EffortlessSteven"),
+            Some(&1)
+        );
+        assert_eq!(
+            converted.owner_filter.result_notes(),
+            vec![
+                "owner_filter:kept=EffortlessMetrics=2".to_string(),
+                "owner_filter:dropped=EffortlessSteven=1".to_string()
+            ]
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn owner_filter_skips_review_fetches_for_dropped_owners() -> Result<()> {
+        let ing = make_ingestor("alice")
+            .with_repo_owners(["EffortlessMetrics"])
+            .with_api_budget(GithubApiBudget {
+                max_search_requests: None,
+                max_core_requests: Some(0),
+            });
+        let client = Client::new();
+        let converted = ing.items_to_review_events(
+            &client,
+            vec![make_search_item(1, "EffortlessSteven/private-notes", true)],
+        )?;
+
+        assert!(converted.events.is_empty());
+        assert_eq!(ing.api_request_counts().core, 0);
+        assert_eq!(
+            converted.owner_filter.dropped.get("EffortlessSteven"),
+            Some(&1)
+        );
+        Ok(())
+    }
+
     // -- SearchResponse deserialization --
 
     #[test]
@@ -2582,6 +2873,7 @@ mod tests {
 
         let client = Client::new();
         let pr_events = ing.items_to_pr_events(&client, search.items).unwrap();
+        let pr_events = pr_events.events;
         assert_eq!(pr_events.len(), 1);
         let pr_event = &pr_events[0];
         assert_eq!(pr_event.kind, EventKind::PullRequest);
@@ -2619,6 +2911,7 @@ mod tests {
         let review_events = ing
             .items_to_review_events(&client, review_search.items)
             .unwrap();
+        let review_events = review_events.events;
         assert_eq!(review_events.len(), 1);
         let review_event = &review_events[0];
         assert_eq!(review_event.kind, EventKind::Review);
@@ -2654,6 +2947,7 @@ mod tests {
         ];
 
         let events = ing.items_to_pr_events(&client, items).unwrap();
+        let events = events.events;
         assert_eq!(events.len(), 2);
 
         assert_eq!(events[0].kind, EventKind::PullRequest);
@@ -2678,6 +2972,7 @@ mod tests {
         ];
 
         let events = ing.items_to_pr_events(&client, items).unwrap();
+        let events = events.events;
         assert_eq!(
             events.len(),
             2,
@@ -2691,6 +2986,7 @@ mod tests {
         ing.fetch_details = false;
         let client = Client::new();
         let events = ing.items_to_pr_events(&client, vec![]).unwrap();
+        let events = events.events;
         assert!(events.is_empty());
     }
 
@@ -2702,6 +2998,7 @@ mod tests {
         let client = Client::new();
         let items = vec![make_search_item(42, "org/repo", true)];
         let events = ing.items_to_pr_events(&client, items).unwrap();
+        let events = events.events;
 
         assert_eq!(events[0].source.system, SourceSystem::Github);
         assert!(events[0].source.url.is_some());
@@ -2722,6 +3019,7 @@ mod tests {
         item.created_at = Some(created);
 
         let events = ing.items_to_pr_events(&client, vec![item]).unwrap();
+        let events = events.events;
         // Without details, merged_at is None, so occurred_at falls back to created_at
         assert_eq!(events[0].occurred_at, created);
     }
@@ -2740,6 +3038,7 @@ mod tests {
         item.created_at = Some(created);
 
         let events = ing.items_to_pr_events(&client, vec![item]).unwrap();
+        let events = events.events;
         assert_eq!(events[0].occurred_at, created);
     }
 
@@ -2751,6 +3050,7 @@ mod tests {
         let client = Client::new();
         let items = vec![make_search_item(1, "org/repo", true)];
         let events = ing.items_to_pr_events(&client, items).unwrap();
+        let events = events.events;
 
         assert_eq!(events[0].repo.visibility, RepoVisibility::Unknown);
     }
@@ -2763,6 +3063,7 @@ mod tests {
         let client = Client::new();
         let items = vec![make_search_item(1, "org/repo", true)];
         let events = ing.items_to_pr_events(&client, items).unwrap();
+        let events = events.events;
 
         if let EventPayload::PullRequest(ref pr) = events[0].payload {
             assert_eq!(pr.state, PullRequestState::Unknown);
@@ -2786,6 +3087,8 @@ mod tests {
 
         let events1 = ing.items_to_pr_events(&client, items1).unwrap();
         let events2 = ing.items_to_pr_events(&client, items2).unwrap();
+        let events1 = events1.events;
+        let events2 = events2.events;
         assert_eq!(
             events1[0].id, events2[0].id,
             "same inputs should produce same event ID"
@@ -2804,6 +3107,7 @@ mod tests {
         ];
 
         let events = ing.items_to_pr_events(&client, items).unwrap();
+        let events = events.events;
         assert_ne!(events[0].id, events[1].id);
     }
 
@@ -2819,6 +3123,7 @@ mod tests {
         let items = vec![make_search_item(1, "org/repo", false)];
 
         let events = ing.items_to_review_events(&client, items).unwrap();
+        let events = events.events;
         assert!(events.is_empty());
     }
 

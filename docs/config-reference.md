@@ -185,6 +185,7 @@ enabled = true
 user = "your-github-login"
 me = false
 mode = "merged"
+repo_owners = []
 include_reviews = true
 no_details = false
 throttle_ms = 0
@@ -200,6 +201,7 @@ Required when enabled: either `user` or `me = true`, but not both.
 | `user` | GitHub login to query. |
 | `me` | Infer the authenticated user via `GITHUB_TOKEN`. |
 | `mode` | `merged` or `created`; defaults to `merged`. |
+| `repo_owners` | Optional owner inclusion scope for actor-first GitHub harvests. Empty means actor-wide. Matching events are kept after actor search; shiplog does not crawl repositories. |
 | `include_reviews` | Overrides `defaults.include_reviews`. |
 | `no_details` | Skip detail fetches when true. |
 | `throttle_ms` | Delay between provider requests. |

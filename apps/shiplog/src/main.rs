@@ -1476,6 +1476,9 @@ enum Source {
         /// "merged" (default) or "created"
         #[arg(long, default_value = "merged")]
         mode: String,
+        /// Limit kept GitHub events to these repository owners.
+        #[arg(long = "repo-owner")]
+        repo_owners: Vec<String>,
         /// Include review activity (best-effort).
         #[arg(long)]
         include_reviews: bool,
@@ -1776,6 +1779,7 @@ struct ConfigGithubSource {
     user: Option<String>,
     me: bool,
     mode: Option<String>,
+    repo_owners: Vec<String>,
     include_reviews: Option<bool>,
     no_details: bool,
     throttle_ms: u64,
@@ -6376,6 +6380,8 @@ enabled = {github}
 user = ""
 me = {github}
 mode = "merged"
+# Optional actor-first owner filter. Empty means actor-wide.
+repo_owners = []
 include_reviews = true
 
 [sources.gitlab]
@@ -9057,8 +9063,13 @@ fn config_enabled_source_explanations(
             resolve_config_cache_dir(base_dir, out, source.cache_dir.as_ref(), source.no_cache)
                 .as_deref(),
         );
+        let owners = if source.repo_owners.is_empty() {
+            "actor-wide".to_string()
+        } else {
+            source.repo_owners.join(", ")
+        };
         lines.push(format!(
-            "github: {identity}, mode {mode}, include_reviews {include_reviews}, cache {cache}"
+            "github: {identity}, mode {mode}, repo_owners {owners}, include_reviews {include_reviews}, cache {cache}"
         ));
     }
     if let Some(source) = config
@@ -10215,6 +10226,7 @@ fn collect_configured_sources(
             window.since,
             window.until,
             source.mode.as_deref().unwrap_or("merged"),
+            source.repo_owners.clone(),
             source.include_reviews.unwrap_or(default_include_reviews),
             source.no_details,
             source.throttle_ms,
@@ -11467,6 +11479,7 @@ fn make_github_ingestor(
     since: NaiveDate,
     until: NaiveDate,
     mode: &str,
+    repo_owners: Vec<String>,
     include_reviews: bool,
     no_details: bool,
     throttle_ms: u64,
@@ -11478,6 +11491,7 @@ fn make_github_ingestor(
 
     let mut ing = GithubIngestor::new(user.to_string(), since, until);
     ing.mode = mode.to_string();
+    ing = ing.with_repo_owners(repo_owners);
     ing.include_reviews = include_reviews;
     ing.fetch_details = !no_details;
     ing.throttle_ms = throttle_ms;
@@ -16351,6 +16365,10 @@ mod tests {
             since,
             until,
             "merged",
+            vec![
+                "EffortlessMetrics".to_string(),
+                "EffortlessSteven".to_string(),
+            ],
             true,
             false,
             10,
@@ -16364,6 +16382,13 @@ mod tests {
         assert_eq!(ing.since, since);
         assert_eq!(ing.until, until);
         assert_eq!(ing.mode, "merged");
+        assert_eq!(
+            ing.repo_owners,
+            vec![
+                "EffortlessMetrics".to_string(),
+                "EffortlessSteven".to_string()
+            ]
+        );
         assert!(ing.include_reviews);
         assert!(ing.fetch_details);
         assert_eq!(ing.throttle_ms, 10);

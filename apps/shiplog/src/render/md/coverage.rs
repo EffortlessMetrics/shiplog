@@ -182,12 +182,55 @@ fn render_coverage_details(out: &mut String, coverage: &CoverageManifest) {
         "- **Sources:** {}\n",
         display_source_list(&coverage.sources)
     ));
+    render_owner_filter_detail(out, &coverage.slices);
     out.push_str(&format!(
         "- **Completeness:** {:?}\n",
         coverage.completeness
     ));
     render_query_slice_details(out, &coverage.slices);
     out.push('\n');
+}
+
+fn render_owner_filter_detail(out: &mut String, slices: &[CoverageSlice]) {
+    let Some(summary) = owner_filter_summary(slices) else {
+        return;
+    };
+    out.push_str(&format!("- **GitHub owner filter:** {summary}\n"));
+}
+
+fn owner_filter_summary(slices: &[CoverageSlice]) -> Option<String> {
+    let mut requested = None;
+    let mut kept = None;
+    let mut dropped = None;
+
+    for note in slices.iter().flat_map(|slice| &slice.notes) {
+        if note == "owner_filter:actor_wide" {
+            requested.get_or_insert_with(|| "actor-wide".to_string());
+        } else if let Some(value) = note.strip_prefix("owner_filter:requested=") {
+            requested = Some(format!("requested {}", value.replace(',', ", ")));
+        } else if let Some(value) = note.strip_prefix("owner_filter:kept=") {
+            kept = Some(format!("kept {}", value));
+        } else if let Some(value) = note.strip_prefix("owner_filter:dropped=") {
+            dropped = Some(format!("dropped {}", value));
+        }
+    }
+
+    let mut parts = Vec::new();
+    if let Some(requested) = requested {
+        parts.push(requested);
+    }
+    if let Some(kept) = kept {
+        parts.push(kept);
+    }
+    if let Some(dropped) = dropped {
+        parts.push(dropped);
+    }
+
+    if parts.is_empty() {
+        None
+    } else {
+        Some(parts.join("; "))
+    }
 }
 
 fn render_query_slice_details(out: &mut String, slices: &[CoverageSlice]) {
