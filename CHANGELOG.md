@@ -11,67 +11,55 @@ No user-facing changes yet after the held 0.9.0 candidate.
 
 ## [0.9.0] - 2026-XX-XX (unreleased candidate)
 
-shiplog 0.9.0 is the **review-loop cockpit release**.
+shiplog 0.9.0 is the review-loop cockpit release.
 
-It turns shiplog from a packet generator into a setup-aware, receipt-backed
-review loop: diagnose setup, collect evidence, inspect status, repair gaps,
-rerun, compare, and share safely.
+It turns shiplog from a packet generator into a setup-aware review loop:
+diagnose setup, inspect status, collect evidence, repair gaps, rerun, compare,
+and share safely.
 
 ### Added
 
-- Added `shiplog status --latest`, a read-only cockpit over setup, latest run,
-  packet readiness, source state, repair, diff, share posture, blockers, next
-  actions, and receipt refs (#429).
-- Added `shiplog status --latest --json`, the same status model for agents and
-  scripts, with stable keys, write-labelled next actions, blockers, and receipt
-  references (#430).
-- Added `shiplog init --guided`, `doctor --setup`, `sources status`, and
-  `doctor --setup --json` as the setup-readiness front door before intake,
-  repair, and share commands (#403-#405, #412).
-- Added review-ready packet quality: Packet Readiness, evidence strength,
-  receipt-backed claim candidates, missing-context prompts, share posture, and
-  quality movement across reruns (#311-#316).
-- Added `share explain manager|public` and `runs diff --latest` as read-only
-  posture and comparison surfaces (#315, #316).
+#### Review-loop cockpit
+
+- Added `shiplog status --latest`.
+- Added `shiplog status --latest --json`.
+- Added `review-loop-status.v1` schema and examples.
+
+#### Guided setup
+
+- Added `shiplog init --guided`.
+- Added `shiplog doctor --setup`.
+- Added `shiplog doctor --setup --json`.
+- Added `shiplog sources status`.
+
+#### Review-ready packet quality
+
+- Added packet readiness.
+- Added evidence strength.
+- Added receipt-backed claim candidates.
+- Added missing-context prompts.
+- Added share posture explanation.
 
 ### Changed
 
-- Intake and repair handoffs are read-first: repairable runs route through
-  `repair plan`, setup-blocked repairs route through doctor/source status, and
-  repaired reruns route toward diff before more planning.
-- Share flows fail closed and explain posture before rendering manager or public
-  packets.
-- Workspace package versions moved from `0.8.0` to `0.9.0` as candidate
-  metadata only; release execution remains held until explicit owner approval
-  and current preflight exist.
+- Repairable handoffs are now read-first.
+- Setup-blocked repairs route through doctor/source status.
+- Share flows explain posture before rendering.
+- Status and doctor remain read-only control-plane surfaces.
 
 ### Fixed
 
-- Fixed guided local Git configs using `repo = "."` without an `origin` remote.
-- Fixed misleading zero-event source "Good" output.
-- Fixed old/partial report and setup compatibility paths.
-- Fixed Windows path and environment-variable display rough edges found in
-  dogfood.
+- Local Git `repo = "."` works without an origin remote.
+- Old reports/configs degrade without false readiness.
+- Zero-event sources no longer look like positive evidence.
+- Windows path/env-var display was tightened from dogfood.
 
-### Documentation and proof
+### Proof
 
-- Added setup-readiness, review-ready, and review-loop status proposals, specs,
-  ADRs, schemas, examples, dogfood matrices, and transcripts.
-- Added the review-loop status transcript (#434), recurring review-loop guide,
-  and README/front-door alignment so status is taught as the recurring cockpit.
-- Reworked the root README as the 0.9 product front door: problem, candidate
-  surfaces, install paths, setup, first packet, repair/share, status at a
-  glance, docs map, safety boundaries, and public-surface summary (#438).
-- Tightened the crates.io README into an install-and-first-loop page with
-  command highlights, read/write posture, agent surfaces, docs links, and
-  safety boundaries (#439).
-- Updated 0.9 release readiness, release hold, release decision, and handoff
-  docs so the held candidate is framed as the review-loop cockpit release with
-  status human/JSON, schema, consistency proof, safe-next-action proof,
-  dogfood transcript, recurring guide, and README alignment (#440).
-- Kept detailed post-0.8 soak and release-hold receipts in
-  [`docs/release/0.9.0-readiness.md`](docs/release/0.9.0-readiness.md) and
-  [`docs/release/0.9.0-release-hold.md`](docs/release/0.9.0-release-hold.md).
+- Added setup-readiness dogfood matrix.
+- Added guided setup transcript.
+- Added review-loop status transcript.
+- Added consistency tests across doctor, sources, report, repair, diff, and share.
 
 Key receipts: #307-#319, #337-#398, #399-#422, #424-#436.
 
