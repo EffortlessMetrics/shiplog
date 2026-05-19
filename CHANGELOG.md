@@ -65,6 +65,10 @@ rerun, compare, and share safely.
 - Tightened the crates.io README into an install-and-first-loop page with
   command highlights, read/write posture, agent surfaces, docs links, and
   safety boundaries (#439).
+- Updated 0.9 release readiness, release hold, release decision, and handoff
+  docs so the held candidate is framed as the review-loop cockpit release with
+  status human/JSON, schema, consistency proof, safe-next-action proof,
+  dogfood transcript, recurring guide, and README alignment (#440).
 - Kept detailed post-0.8 soak and release-hold receipts in
   [`docs/release/0.9.0-readiness.md`](docs/release/0.9.0-readiness.md) and
   [`docs/release/0.9.0-release-hold.md`](docs/release/0.9.0-release-hold.md).
