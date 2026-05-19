@@ -214,7 +214,10 @@ Required when enabled: either `user` or `me = true`, but not both.
 `shiplog github activity plan` reads the optional `[github_activity]` section
 and writes `github.activity.plan.json` without calling GitHub, fetching PR
 details, fetching review pages, rendering packets, or creating a cache. This is
-the first receipt in the planned full-history harvest workflow.
+the first receipt in the planned full-history harvest workflow. Use
+`shiplog github activity scout` for the search-only scout profile, then
+`shiplog github activity run --profile authored --resume` and
+`shiplog github activity run --profile full --resume` as the cache warms.
 
 ```toml
 [github_activity]
@@ -249,8 +252,10 @@ on_exhausted = "checkpoint_and_stop"
 | `budget.on_exhausted` | Currently must be `checkpoint_and_stop`. |
 
 The generated plan is a static receipt. It estimates worst-case search/detail
-cost from monthly actor-query windows and keeps `next_actions` empty until
-scout/run commands exist, so agents do not execute a command that cannot run.
+cost from monthly actor-query windows and now includes the next executable
+profile command. Scout/run commands write `github.activity.progress.json`;
+`--resume` skips a matching completed profile and budget exhaustion checkpoints
+progress instead of silently continuing.
 
 ### GitLab
 

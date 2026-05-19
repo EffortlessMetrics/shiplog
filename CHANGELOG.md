@@ -7,7 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No user-facing changes yet after the held 0.9.0 candidate.
+### Added
+
+- Added executable GitHub activity harvest profiles:
+  `shiplog github activity scout` for the search-only scout pass and
+  `shiplog github activity run --profile authored|full --resume` for detail and
+  review harvest passes. The commands write plan/progress receipts, checkpoint
+  cleanly on API-budget exhaustion, and route scout -> authored -> full ->
+  status without release execution.
+
+### Changed
+
+- `shiplog github activity plan` now emits executable `next_actions` instead of
+  a placeholder, so agents can follow the planned harvest lifecycle without
+  scraping prose.
 
 ## [0.9.0] - 2026-XX-XX (unreleased candidate)
 

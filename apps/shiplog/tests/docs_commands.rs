@@ -131,8 +131,17 @@ fn changelog_curates_0_9_as_review_loop_cockpit_release_notes() {
 
     let unreleased = section_between(&doc, "## [Unreleased]", "## [0.9.0]");
     assert!(
-        unreleased.contains("No user-facing changes yet after the held 0.9.0 candidate."),
-        "Unreleased should be empty after the held 0.9 candidate"
+        unreleased.contains("GitHub activity harvest profiles"),
+        "Unreleased should describe post-0.9-candidate GitHub activity harvest work"
+    );
+    assert!(
+        unreleased.contains("shiplog github activity scout")
+            && unreleased.contains("shiplog github activity run --profile authored|full --resume"),
+        "Unreleased should name the executable GitHub activity harvest commands"
+    );
+    assert!(
+        unreleased.contains("without release execution"),
+        "Unreleased should preserve release-hold boundaries for post-candidate work"
     );
     assert!(
         !unreleased.contains("#424") && !unreleased.contains("#436"),
