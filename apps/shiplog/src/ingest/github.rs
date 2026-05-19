@@ -345,6 +345,7 @@ impl Ingestor for GithubIngestor {
         if self.since >= self.until {
             return Err(anyhow!("since must be < until"));
         }
+        self.reset_run_counters();
 
         let client = self.client().context("create GitHub API client")?;
         let run_id = RunId::now("shiplog");
@@ -433,6 +434,14 @@ impl Ingestor for GithubIngestor {
 }
 
 impl GithubIngestor {
+    fn reset_run_counters(&self) {
+        self.cache_hits.store(0, Ordering::Relaxed);
+        self.cache_misses.store(0, Ordering::Relaxed);
+        self.cache_stale_hits.store(0, Ordering::Relaxed);
+        self.search_requests.store(0, Ordering::Relaxed);
+        self.core_requests.store(0, Ordering::Relaxed);
+    }
+
     fn build_pr_query(&self, w: &TimeWindow) -> String {
         let (start, end) = github_inclusive_range(w);
         match self.mode.as_str() {
@@ -1924,6 +1933,59 @@ mod tests {
                 .filter(|line| line.contains("/repos/acme/widgets/pulls/1"))
                 .count(),
             0
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn api_request_counts_reset_between_ingest_runs_for_same_ingestor() -> anyhow::Result<()> {
+        let server = RecordedGithubServer::start(3)?;
+        let cache_dir = tempfile::tempdir().context("create fixture cache dir")?;
+
+        let mut ing = make_ingestor("octocat")
+            .with_cache(cache_dir.path())?
+            .with_api_budget(GithubApiBudget {
+                max_search_requests: Some(2),
+                max_core_requests: Some(1),
+            });
+        ing.api_base = server.base_url();
+
+        let first = ing.ingest()?;
+        assert_eq!(first.events.len(), 1);
+        assert_eq!(
+            ing.api_request_counts(),
+            GithubApiRequestCounts { search: 2, core: 1 }
+        );
+
+        let second = ing.ingest()?;
+        assert_eq!(second.events.len(), 1);
+        let second_freshness = second
+            .freshness
+            .first()
+            .ok_or_else(|| anyhow!("second fixture ingest did not emit source freshness"))?;
+        assert!(
+            matches!(second_freshness.status, FreshnessStatus::Cached),
+            "second recorded fixture run should be cached, got {}",
+            second_freshness.status.as_label()
+        );
+        assert_eq!(second_freshness.cache_hits, 3);
+        assert_eq!(second_freshness.cache_misses, 0);
+        assert_eq!(ing.api_request_counts(), GithubApiRequestCounts::default());
+
+        let requests = server.finish()?;
+        assert_eq!(
+            requests
+                .iter()
+                .filter(|line| line.contains("/search/issues?"))
+                .count(),
+            2
+        );
+        assert_eq!(
+            requests
+                .iter()
+                .filter(|line| line.contains("/repos/acme/widgets/pulls/1"))
+                .count(),
+            1
         );
         Ok(())
     }
