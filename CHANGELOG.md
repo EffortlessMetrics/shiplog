@@ -257,6 +257,10 @@ GitHub release approval.
   monthly, promotion, local-only, token-backed, public-share, and
   agent-assisted workflows without widening status into a dashboard or release
   lane (#435).
+- Aligned the README, crate README, rapid first-intake guide, guided setup
+  guide, review-ready guide, and config reference so `status --latest` is taught
+  as the read-only review-loop cockpit after setup preflight and before deeper
+  repair, diff, and share flows (#436).
 
 ## [0.9.0] - Unreleased candidate
 

@@ -15,6 +15,8 @@ shiplog doctor --config shiplog.toml
 shiplog doctor --config shiplog.toml --setup
 shiplog doctor --config shiplog.toml --setup --json
 shiplog sources status --config shiplog.toml
+shiplog status --latest
+shiplog status --latest --json
 shiplog doctor --config shiplog.toml --repair-plan
 ```
 
@@ -36,6 +38,11 @@ reasons, and source next actions without share-profile noise.
 `doctor --repair-plan` is also read-only: it classifies setup issues and prints
 source-by-source repair commands without collecting data or writing run
 artifacts.
+After setup is known, `status --latest` is the review-loop preflight. It reads
+durable setup and run receipts, not `packet.md`, to summarize latest-run,
+packet-readiness, repair, diff, share, and next-action state without writing.
+Use `status --latest --json` when an agent or script needs the same cockpit
+state without terminal-prose scraping.
 
 For Jira and Linear identity values, run:
 

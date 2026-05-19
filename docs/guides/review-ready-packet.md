@@ -20,11 +20,14 @@ shiplog init --guided
 shiplog doctor --setup
 shiplog sources status
 shiplog doctor --setup --json
+shiplog status --latest
 ```
 
 `doctor --setup` explains local setup state. `sources status` is the
 source-only projection. `doctor --setup --json` is the same model for agents and
-scripts. These commands do not collect evidence or render share artifacts.
+scripts. `status --latest` is the review-loop cockpit that tells you whether
+the next safe receipt-producing command is intake, repair, rerun, diff, or share
+explanation. These commands do not collect evidence or render share artifacts.
 
 For dogfood or review-cycle soak runs, use an explicit output directory and keep
 using it for every follow-up command. This keeps artifacts out of unrelated
@@ -46,7 +49,9 @@ editing anything.
 ```bash
 shiplog doctor --setup
 shiplog sources status
+shiplog status --latest
 shiplog intake --last-6-months --explain
+shiplog status --latest
 shiplog open intake-report --latest
 shiplog open packet --latest
 ```
@@ -64,6 +69,9 @@ read-first: it should point at `repair plan` before write-producing commands.
 Direct `journal add`, workstream split, or receipt-trimming commands may still
 appear inside `Evidence debt` or `Top Fixups` as context, but use `repair plan`
 to decide which actions are safe and receipt-backed.
+Use `status --latest` when you want that handoff without opening every receipt:
+it should agree with the report, repair plan, diff, and share explanation rather
+than becoming another truth source.
 
 If the packet has no evidence, do not treat that as failure. Treat it as the
 first diagnostic run.
@@ -115,6 +123,7 @@ After the repair, rerun intake and compare both repair state and packet quality.
 
 ```bash
 shiplog intake --last-6-months --explain
+shiplog status --latest
 shiplog repair diff --latest
 shiplog runs diff --latest
 shiplog open packet --latest
@@ -124,6 +133,7 @@ With a non-default output directory:
 
 ```bash
 shiplog intake --last-6-months --explain --out "$OUT"
+shiplog status --out "$OUT" --latest
 shiplog repair diff --out "$OUT" --latest
 shiplog runs diff --out "$OUT" --latest
 shiplog open packet --out "$OUT" --latest
