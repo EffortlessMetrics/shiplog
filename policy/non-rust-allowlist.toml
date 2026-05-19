@@ -80,6 +80,17 @@ broad_glob_reason = "One handoff per release; the prefix glob keeps adding new r
 created = "2026-05-09"
 expires = "permanent"
 
+[[allow]]
+id = "non-rust-badge-endpoints"
+glob = "badges/*.json"
+category = "metadata"
+language = "json"
+owner = "docs/release"
+reason = "Checked-in Shields endpoint JSON files for public README proof badges."
+broad_glob_reason = "Badge endpoints are small JSON metadata files under one directory; each new endpoint still appears in review."
+created = "2026-05-19"
+expires = "permanent"
+
 # ── CI surface ─────────────────────────────────────────────────────────
 
 [[allow]]
