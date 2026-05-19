@@ -1,13 +1,26 @@
-# shiplog
+<h1 align="center">shiplog</h1>
 
-[![CI](https://github.com/EffortlessMetrics/shiplog/actions/workflows/ci.yml/badge.svg)](https://github.com/EffortlessMetrics/shiplog/actions/workflows/ci.yml)
-[![Codecov](https://codecov.io/gh/EffortlessMetrics/shiplog/branch/main/graph/badge.svg)](https://codecov.io/gh/EffortlessMetrics/shiplog)
-[![crates.io](https://img.shields.io/crates/v/shiplog.svg)](https://crates.io/crates/shiplog)
-[![docs.rs](https://docs.rs/shiplog/badge.svg)](https://docs.rs/shiplog)
-[![MSRV](https://img.shields.io/badge/MSRV-1.95-blue.svg)](https://blog.rust-lang.org/)
-[![License](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
+<p align="center">
+  <a href="https://github.com/EffortlessMetrics/shiplog/actions/workflows/ci.yml"><img src="https://github.com/EffortlessMetrics/shiplog/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI" /></a>
+  <a href="https://codecov.io/gh/EffortlessMetrics/shiplog"><img src="https://codecov.io/gh/EffortlessMetrics/shiplog/branch/main/graph/badge.svg" alt="Codecov" /></a>
+  <a href="https://github.com/EffortlessMetrics/ripr/blob/main/docs/BADGE_POLICY.md"><img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/EffortlessMetrics/shiplog/main/badges/ripr-plus.json" alt="ripr+" /></a>
+</p>
 
-> Review evidence loop for people who need receipts, not review prose.
+<p align="center">
+  <a href="https://github.com/EffortlessMetrics/shiplog/releases"><img src="https://img.shields.io/github/v/release/EffortlessMetrics/shiplog?sort=semver&label=release" alt="GitHub release" /></a>
+  <a href="https://crates.io/crates/shiplog"><img src="https://img.shields.io/crates/v/shiplog.svg" alt="crates.io" /></a>
+  <a href="https://crates.io/crates/shiplog"><img src="https://img.shields.io/crates/d/shiplog.svg?label=crates.io%20downloads" alt="crates.io downloads" /></a>
+  <a href="https://docs.rs/shiplog"><img src="https://docs.rs/shiplog/badge.svg" alt="docs.rs" /></a>
+</p>
+
+<p align="center">
+  <a href="https://doc.rust-lang.org/cargo/reference/manifest.html#the-rust-version-field"><img src="https://img.shields.io/badge/MSRV-1.95-blue.svg" alt="MSRV 1.95" /></a>
+  <a href="LICENSE-MIT"><img src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg" alt="License: MIT OR Apache-2.0" /></a>
+</p>
+
+<p align="center">
+  <em>Review readiness with receipts: setup, status, intake, repair, rerun, diff, and share safely.</em>
+</p>
 
 shiplog turns work evidence into a review-readiness loop: diagnose setup,
 collect receipts, inspect status, repair gaps, rerun, compare, and share
