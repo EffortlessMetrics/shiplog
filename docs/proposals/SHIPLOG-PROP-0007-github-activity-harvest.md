@@ -4,7 +4,8 @@ Status: proposed
 Owner: product/docs
 Created: 2026-05-19
 Target release: after the held 0.9.0 review-loop cockpit candidate
-Follow-up spec: not yet assigned
+Follow-up spec:
+[`SHIPLOG-SPEC-0009-github-activity-harvest`](../specs/SHIPLOG-SPEC-0009-github-activity-harvest.md)
 Architecture decision: not yet assigned
 
 ## Summary

@@ -1835,6 +1835,94 @@ fn github_activity_harvest_proposal_defines_actor_first_budgeted_workflow() {
 }
 
 #[test]
+fn github_activity_harvest_spec_defines_plan_progress_and_api_ledger_contracts() {
+    let root = repo_root();
+    let proposal_path = root.join("docs/proposals/SHIPLOG-PROP-0007-github-activity-harvest.md");
+    let spec_path = root.join("docs/specs/SHIPLOG-SPEC-0009-github-activity-harvest.md");
+
+    let proposal = std::fs::read_to_string(&proposal_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", proposal_path.display()));
+    let spec = std::fs::read_to_string(&spec_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", spec_path.display()));
+
+    for needle in [
+        "SHIPLOG-SPEC-0009: GitHub Activity Harvest",
+        "Status: proposed",
+        "SHIPLOG-PROP-0007-github-activity-harvest",
+        "github.activity.plan.json",
+        "github.activity.progress.json",
+        "github.activity.api-ledger.json",
+        "plan -> scout -> run -> resume -> merge -> report API cost",
+        "actor-first and owner-filtered",
+        "author:<actor>",
+        "reviewed-by:<actor>",
+        "Activity plan",
+        "Activity progress",
+        "API cost",
+        "shiplog github activity plan",
+        "shiplog github activity scout",
+        "shiplog github activity run",
+        "shiplog github activity status",
+        "shiplog github activity report",
+        "shiplog github activity merge",
+        "sources.github.user",
+        "compatibility alias",
+        "Profile | Authored PR search | PR details | Review search | Review pages",
+        "`scout`",
+        "`authored`",
+        "`full`",
+        "github.activity.plan.v1",
+        "github.activity.progress.v1",
+        "github.activity.api-ledger.v1",
+        "planning_mode = \"static\"",
+        "planning_mode = \"probe\"",
+        "search_probe",
+        "search_page",
+        "pull_detail",
+        "review_page",
+        "checkpoint_and_stop",
+        "owner_not_requested",
+        "x-ratelimit-remaining",
+        "retry-after",
+        "secondary_limit_events",
+        "token values",
+        "does not authorize tag",
+    ] {
+        assert!(
+            spec.contains(needle),
+            "GitHub activity harvest spec should mention {needle:?}"
+        );
+    }
+
+    for boundary in [
+        "No provider mutation",
+        "No packet Markdown scraping",
+        "No release execution",
+        "does not add behavior by itself",
+        "must not crawl every repository",
+        "must not scrape `packet.md`",
+        "must not fetch PR details",
+        "must not fetch review pages",
+        "must not render packets",
+        "must not retry forever",
+    ] {
+        assert!(
+            spec.contains(boundary),
+            "GitHub activity harvest spec should preserve boundary {boundary:?}"
+        );
+    }
+
+    assert!(
+        proposal.contains("SHIPLOG-SPEC-0009-github-activity-harvest.md"),
+        "proposal should link the follow-up GitHub activity harvest spec"
+    );
+    assert!(
+        spec.contains("SHIPLOG-PROP-0007-github-activity-harvest"),
+        "spec should link the GitHub activity harvest proposal"
+    );
+}
+
+#[test]
 fn review_loop_status_spec_defines_receipt_contract() {
     let root = repo_root();
     let spec_path = root.join("docs/specs/SHIPLOG-SPEC-0008-review-loop-status.md");
