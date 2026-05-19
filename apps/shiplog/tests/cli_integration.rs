@@ -2143,6 +2143,28 @@ mode = "created"
         out.join("github.activity.plan.json").exists(),
         "scout should keep the plan receipt beside progress"
     );
+    let api_ledger_path = out.join("github.activity.api-ledger.json");
+    let api_ledger: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&api_ledger_path)?)?;
+    assert_eq!(
+        api_ledger["schema_version"],
+        "github.activity.api-ledger.v1"
+    );
+    assert_eq!(api_ledger["profile"], "scout");
+    assert_eq!(api_ledger["stop_reason"], "budget_exhausted");
+    assert_eq!(api_ledger["github_api"]["requests"]["search"], 0);
+    assert_eq!(api_ledger["github_api"]["requests"]["core"], 0);
+    assert_eq!(
+        api_ledger["github_api"]["secondary_limit_events"]
+            .as_array()
+            .map(Vec::len),
+        Some(0)
+    );
+    assert_eq!(
+        api_ledger["owner_filter"]["requested_owners"][0],
+        "EffortlessMetrics"
+    );
+    assert_eq!(api_ledger["receipt_refs"][0], "github.activity.plan.json");
     assert!(
         !out.join("packet.md").exists(),
         "checkpointed scout should not render a packet"

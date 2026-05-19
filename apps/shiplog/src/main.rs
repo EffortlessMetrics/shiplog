@@ -1740,6 +1740,8 @@ const GITHUB_ACTIVITY_PLAN_FILENAME: &str = "github.activity.plan.json";
 const GITHUB_ACTIVITY_PLAN_SCHEMA_VERSION: &str = "github.activity.plan.v1";
 const GITHUB_ACTIVITY_PROGRESS_FILENAME: &str = "github.activity.progress.json";
 const GITHUB_ACTIVITY_PROGRESS_SCHEMA_VERSION: &str = "github.activity.progress.v1";
+const GITHUB_ACTIVITY_API_LEDGER_FILENAME: &str = "github.activity.api-ledger.json";
+const GITHUB_ACTIVITY_API_LEDGER_SCHEMA_VERSION: &str = "github.activity.api-ledger.v1";
 
 #[derive(Deserialize, Debug, Default)]
 #[serde(default)]
