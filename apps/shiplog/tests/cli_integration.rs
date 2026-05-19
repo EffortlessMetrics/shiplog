@@ -14,8 +14,13 @@ use shiplog::schema::event::{
 };
 use shiplog::schema::workstream::{Workstream, WorkstreamStats, WorkstreamsFile};
 use std::collections::BTreeMap;
+use std::io::{ErrorKind, Read, Write};
+use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
 use std::process::Command as StdCommand;
+use std::sync::{Arc, Mutex};
+use std::thread::{self, JoinHandle};
+use std::time::{Duration as StdDuration, Instant};
 use tempfile::TempDir;
 
 type CliTestResult = Result<(), Box<dyn std::error::Error>>;
@@ -2071,6 +2076,279 @@ mode = "created"
     Ok(())
 }
 
+struct RecordedGithubCliServer {
+    base_url: String,
+    requests: Arc<Mutex<Vec<String>>>,
+    handle: Option<JoinHandle<anyhow::Result<()>>>,
+}
+
+const CLI_GITHUB_FIXTURE_READY_TARGET: &str = "/__shiplog_cli_fixture_ready";
+
+impl RecordedGithubCliServer {
+    fn start(expected_requests: usize) -> anyhow::Result<Self> {
+        let listener =
+            TcpListener::bind("127.0.0.1:0").context("bind CLI GitHub fixture server")?;
+        listener
+            .set_nonblocking(true)
+            .context("set CLI GitHub fixture server nonblocking")?;
+        let addr = listener.local_addr()?;
+        let base_url = format!("http://{addr}");
+        let requests = Arc::new(Mutex::new(Vec::new()));
+        let thread_requests = Arc::clone(&requests);
+        let thread_base_url = base_url.clone();
+        let handle = thread::spawn(move || {
+            replay_cli_github_fixtures(
+                listener,
+                &thread_base_url,
+                thread_requests,
+                expected_requests,
+            )
+        });
+        wait_for_cli_github_fixture_server(addr)?;
+
+        Ok(Self {
+            base_url,
+            requests,
+            handle: Some(handle),
+        })
+    }
+
+    fn base_url(&self) -> String {
+        self.base_url.clone()
+    }
+
+    fn finish(mut self) -> anyhow::Result<Vec<String>> {
+        if let Some(handle) = self.handle.take() {
+            handle
+                .join()
+                .map_err(|_| anyhow::anyhow!("CLI GitHub fixture server thread panicked"))??;
+        }
+        self.requests
+            .lock()
+            .map_err(|_| anyhow::anyhow!("CLI GitHub fixture request log was poisoned"))
+            .map(|requests| requests.clone())
+    }
+}
+
+fn replay_cli_github_fixtures(
+    listener: TcpListener,
+    base_url: &str,
+    requests: Arc<Mutex<Vec<String>>>,
+    expected_requests: usize,
+) -> anyhow::Result<()> {
+    let deadline = Instant::now() + StdDuration::from_secs(10);
+
+    while cli_fixture_request_count(&requests)? < expected_requests {
+        match listener.accept() {
+            Ok((mut stream, _peer)) => {
+                stream
+                    .set_nonblocking(false)
+                    .context("set CLI GitHub fixture stream blocking")?;
+                stream
+                    .set_read_timeout(Some(StdDuration::from_secs(5)))
+                    .context("set CLI GitHub fixture read timeout")?;
+                stream
+                    .set_write_timeout(Some(StdDuration::from_secs(5)))
+                    .context("set CLI GitHub fixture write timeout")?;
+                if let Some(request_line) =
+                    handle_cli_github_fixture_request(&mut stream, base_url)?
+                {
+                    requests
+                        .lock()
+                        .map_err(|_| {
+                            anyhow::anyhow!("CLI GitHub fixture request log was poisoned")
+                        })?
+                        .push(request_line);
+                }
+            }
+            Err(err) if err.kind() == ErrorKind::WouldBlock => {
+                if Instant::now() > deadline {
+                    return Err(anyhow::anyhow!(
+                        "CLI GitHub fixture server expected {expected_requests} requests, saw {}",
+                        cli_fixture_request_count(&requests)?
+                    ));
+                }
+                thread::sleep(StdDuration::from_millis(10));
+            }
+            Err(err) => return Err(err).context("accept CLI GitHub fixture request"),
+        }
+    }
+
+    Ok(())
+}
+
+fn wait_for_cli_github_fixture_server(addr: SocketAddr) -> anyhow::Result<()> {
+    let deadline = Instant::now() + StdDuration::from_secs(5);
+    loop {
+        match TcpStream::connect(addr) {
+            Ok(mut stream) => {
+                let request = format!(
+                    "GET {CLI_GITHUB_FIXTURE_READY_TARGET} HTTP/1.1\r\nHost: {addr}\r\nConnection: close\r\n\r\n"
+                );
+                let probe_result = stream
+                    .write_all(request.as_bytes())
+                    .and_then(|()| stream.flush())
+                    .and_then(|()| {
+                        let mut response = Vec::new();
+                        stream.read_to_end(&mut response).map(|_| ())
+                    });
+                match probe_result {
+                    Ok(()) => return Ok(()),
+                    Err(err)
+                        if matches!(
+                            err.kind(),
+                            ErrorKind::BrokenPipe
+                                | ErrorKind::ConnectionAborted
+                                | ErrorKind::ConnectionReset
+                                | ErrorKind::Interrupted
+                                | ErrorKind::TimedOut
+                                | ErrorKind::WouldBlock
+                        ) =>
+                    {
+                        if Instant::now() > deadline {
+                            return Err(err).context("probe CLI GitHub fixture server");
+                        }
+                        thread::sleep(StdDuration::from_millis(10));
+                    }
+                    Err(err) => return Err(err).context("probe CLI GitHub fixture server"),
+                }
+            }
+            Err(err)
+                if matches!(
+                    err.kind(),
+                    ErrorKind::ConnectionRefused
+                        | ErrorKind::Interrupted
+                        | ErrorKind::TimedOut
+                        | ErrorKind::WouldBlock
+                ) =>
+            {
+                if Instant::now() > deadline {
+                    return Err(err).context("connect CLI GitHub fixture server");
+                }
+                thread::sleep(StdDuration::from_millis(10));
+            }
+            Err(err) => return Err(err).context("connect CLI GitHub fixture server"),
+        }
+    }
+}
+
+fn cli_fixture_request_count(requests: &Arc<Mutex<Vec<String>>>) -> anyhow::Result<usize> {
+    requests
+        .lock()
+        .map_err(|_| anyhow::anyhow!("CLI GitHub fixture request log was poisoned"))
+        .map(|requests| requests.len())
+}
+
+fn handle_cli_github_fixture_request(
+    stream: &mut TcpStream,
+    base_url: &str,
+) -> anyhow::Result<Option<String>> {
+    let mut buf = [0_u8; 4096];
+    let mut received = Vec::new();
+    loop {
+        let n = match stream.read(&mut buf) {
+            Ok(n) => n,
+            Err(err)
+                if received.is_empty()
+                    && matches!(
+                        err.kind(),
+                        ErrorKind::ConnectionAborted | ErrorKind::ConnectionReset
+                    ) =>
+            {
+                return Ok(None);
+            }
+            Err(err) => return Err(err).context("read CLI GitHub fixture request"),
+        };
+        if n == 0 {
+            if received.is_empty() {
+                return Ok(None);
+            }
+            break;
+        }
+        received.extend_from_slice(&buf[..n]);
+        if received.windows(4).any(|window| window == b"\r\n\r\n") {
+            break;
+        }
+        if received.len() > 64 * 1024 {
+            return Err(anyhow::anyhow!("CLI GitHub fixture request was too large"));
+        }
+    }
+
+    let request = String::from_utf8_lossy(&received);
+    let request_line = request
+        .lines()
+        .next()
+        .ok_or_else(|| anyhow::anyhow!("CLI GitHub fixture request had no request line"))?
+        .to_string();
+    let target = request_line
+        .split_whitespace()
+        .nth(1)
+        .ok_or_else(|| anyhow::anyhow!("CLI GitHub fixture request had no target"))?;
+    if target == CLI_GITHUB_FIXTURE_READY_TARGET {
+        let response = "HTTP/1.1 204 No Content\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+        stream
+            .write_all(response.as_bytes())
+            .context("write CLI GitHub fixture readiness response")?;
+        stream
+            .flush()
+            .context("flush CLI GitHub fixture readiness response")?;
+        return Ok(None);
+    }
+
+    let (status, body) = cli_github_fixture_response(target, base_url);
+    let rate_resource = if target.starts_with("/search/issues?") {
+        "search"
+    } else {
+        "core"
+    };
+    let response = format!(
+        "HTTP/1.1 {status}\r\nContent-Type: application/json\r\nX-RateLimit-Limit: 30\r\nX-RateLimit-Remaining: 29\r\nX-RateLimit-Used: 1\r\nX-RateLimit-Reset: 1767225600\r\nX-RateLimit-Resource: {rate_resource}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+        body.len()
+    );
+    stream
+        .write_all(response.as_bytes())
+        .context("write CLI GitHub fixture response")?;
+    stream
+        .flush()
+        .context("flush CLI GitHub fixture response")?;
+    Ok(Some(request_line))
+}
+
+fn cli_github_fixture_response(target: &str, base_url: &str) -> (&'static str, String) {
+    let body = if target.starts_with("/search/issues?")
+        && cli_target_has_query_param(target, "per_page", "1")
+    {
+        include_str!("fixtures/github-warm-rerun/search_meta.json")
+    } else if target.starts_with("/search/issues?")
+        && cli_target_has_query_param(target, "per_page", "100")
+    {
+        include_str!("fixtures/github-warm-rerun/search_items.json")
+    } else if target == "/repos/acme/widgets/pulls/1" {
+        include_str!("fixtures/github-warm-rerun/pr_details.json")
+    } else {
+        r#"{"message":"unexpected CLI GitHub fixture request"}"#
+    };
+    let status = if body.contains("unexpected CLI GitHub fixture request") {
+        "404 Not Found"
+    } else {
+        "200 OK"
+    };
+    (status, body.replace("__API_BASE__", base_url))
+}
+
+fn cli_target_has_query_param(target: &str, key: &str, value: &str) -> bool {
+    target
+        .split_once('?')
+        .map(|(_path, query)| {
+            query.split('&').any(|pair| {
+                pair.split_once('=')
+                    .map(|(k, v)| k == key && v == value)
+                    .unwrap_or(false)
+            })
+        })
+        .unwrap_or(false)
+}
+
 #[test]
 fn github_activity_scout_writes_checkpoint_progress_on_budget_stop() -> CliTestResult {
     let tmp = TempDir::new()?;
@@ -2170,6 +2448,155 @@ mode = "created"
         "checkpointed scout should not render a packet"
     );
 
+    Ok(())
+}
+
+#[test]
+fn github_activity_run_resume_skips_completed_profile_without_refetching_details() -> CliTestResult
+{
+    let tmp = TempDir::new()?;
+    let server = RecordedGithubCliServer::start(3)?;
+    let config = tmp.path().join("shiplog-github-full.toml");
+    let out = tmp.path().join("out/github-full");
+    std::fs::write(
+        &config,
+        format!(
+            r#"[shiplog]
+config_version = 1
+
+[defaults]
+out = "./out/github-full"
+
+[github_activity]
+actor = "octocat"
+repo_owners = ["acme"]
+since = "2025-01-01"
+until = "2025-02-01"
+include_authored_prs = true
+include_reviews = false
+profile = "authored"
+cache_dir = "./out/github-full/.cache"
+
+[github_activity.budget]
+max_search_requests = 10
+max_core_requests = 10
+max_search_per_minute = 24
+on_exhausted = "checkpoint_and_stop"
+
+[sources.github]
+enabled = true
+user = "octocat"
+mode = "created"
+repo_owners = ["acme"]
+include_reviews = false
+no_details = false
+api_base = "{}"
+cache_dir = "./out/github-full/.cache"
+"#,
+            server.base_url()
+        ),
+    )?;
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env("GITHUB_TOKEN", "dummy-token")
+        .args([
+            "github",
+            "activity",
+            "run",
+            "--config",
+            config.to_str().expect("config path should be valid UTF-8"),
+            "--out",
+            out.to_str().expect("out path should be valid UTF-8"),
+            "--profile",
+            "authored",
+            "--resume",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "GitHub activity authored completed.",
+        ))
+        .stdout(predicate::str::contains(
+            "Next: shiplog github activity run --out",
+        ))
+        .stdout(predicate::str::contains("--profile full --resume [writes]"));
+
+    let requests = server.finish()?;
+    assert_eq!(
+        requests
+            .iter()
+            .filter(|line| line.contains("/search/issues?"))
+            .count(),
+        2,
+        "first authored run should make search meta and search page requests"
+    );
+    assert_eq!(
+        requests
+            .iter()
+            .filter(|line| line.contains("/repos/acme/widgets/pulls/1"))
+            .count(),
+        1,
+        "first authored run should fetch PR details once"
+    );
+
+    let progress_path = out.join("github.activity.progress.json");
+    let api_ledger_path = out.join("github.activity.api-ledger.json");
+    let progress_before = std::fs::read_to_string(&progress_path)?;
+    let api_ledger_before = std::fs::read_to_string(&api_ledger_path)?;
+    let progress: serde_json::Value = serde_json::from_str(&progress_before)?;
+    let api_ledger: serde_json::Value = serde_json::from_str(&api_ledger_before)?;
+    assert_eq!(progress["schema_version"], "github.activity.progress.v1");
+    assert_eq!(progress["profile"], "authored");
+    assert_eq!(progress["state"], "completed");
+    assert!(progress["run_ref"].as_str().is_some());
+    assert_eq!(
+        api_ledger["schema_version"],
+        "github.activity.api-ledger.v1"
+    );
+    assert_eq!(api_ledger["profile"], "authored");
+    assert_eq!(api_ledger["github_api"]["requests"]["search"], 2);
+    assert_eq!(api_ledger["github_api"]["requests"]["core"], 1);
+    assert_eq!(
+        api_ledger["github_api"]["cache"]["pull_detail"]["misses"],
+        1
+    );
+
+    // The fixture server has been shut down. If `--resume` refetches search
+    // pages or PR details instead of trusting completed progress plus the API
+    // ledger, this command will try the dead API base and fail.
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env("GITHUB_TOKEN", "dummy-token")
+        .args([
+            "github",
+            "activity",
+            "run",
+            "--config",
+            config.to_str().expect("config path should be valid UTF-8"),
+            "--out",
+            out.to_str().expect("out path should be valid UTF-8"),
+            "--profile",
+            "authored",
+            "--resume",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "GitHub activity authored already completed.",
+        ))
+        .stdout(predicate::str::contains("Provider calls: none (--resume)"));
+
+    assert_eq!(
+        std::fs::read_to_string(&progress_path)?,
+        progress_before,
+        "completed resume should not rewrite progress"
+    );
+    assert_eq!(
+        std::fs::read_to_string(&api_ledger_path)?,
+        api_ledger_before,
+        "completed resume should not rewrite the API ledger"
+    );
     Ok(())
 }
 
