@@ -1,9 +1,9 @@
 # SHIPLOG-PROP-0006: Review Loop Status
 
-Status: proposed
+Status: implemented in the held 0.9 candidate
 Owner: product/docs
 Created: 2026-05-18
-Target release: after the paused 0.9.0 review-ready and guided setup decision
+Target release: held 0.9.0 candidate
 Follow-up spec:
 [`SHIPLOG-SPEC-0008-review-loop-status`](../specs/SHIPLOG-SPEC-0008-review-loop-status.md)
 Architecture decision:
@@ -337,6 +337,24 @@ user-facing status contract. The ADR records the receipt boundary. Implementatio
 PRs should preserve read-only, no-network, no-render behavior unless a later
 spec deliberately scopes otherwise.
 
+## Implementation Receipts
+
+The core lane landed through #424-#436:
+
+- proposal (#424);
+- spec (#425);
+- ADR (#426);
+- internal model (#427);
+- receipt resolver (#428);
+- human `shiplog status --latest` (#429);
+- JSON `shiplog status --latest --json` (#430);
+- schema/examples (#431);
+- consistency proof (#432);
+- safe-next-action proof (#433);
+- dogfood transcript (#434);
+- recurring review-loop guide (#435);
+- README/status alignment (#436).
+
 ## Proof Map
 
 Existing proof surfaces to link from future specs and plans:
@@ -360,5 +378,5 @@ Existing proof surfaces to link from future specs and plans:
 - [`docs/product/review-ready-dogfood-matrix.md`](../product/review-ready-dogfood-matrix.md):
   the dogfood matrix for review-ready evidence and share posture.
 - [`docs/release/0.9.0-release-decision.md`](../release/0.9.0-release-decision.md):
-  the current decision to keep the 0.9 hold active after setup-readiness
-  operationalization.
+  the current decision to keep the 0.9 hold active after Review-loop Status and
+  release-facing docs landed.

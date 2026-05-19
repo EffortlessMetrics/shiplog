@@ -9,6 +9,23 @@ This records one real temporary-workspace run showing `shiplog status --latest`
 as the read-only cockpit over setup, intake, repair, rerun, diff, and share
 explain. It is proof, not a release decision.
 
+## Release Proof Map
+
+For 0.9 release review, this transcript proves the status cockpit is useful
+across the recurring loop:
+
+- before intake: `ready_to_collect` points to intake and writes nothing itself;
+- after intake: `needs_repair` points to read-only `repair plan`;
+- after journal repair: `repair_in_progress` points to rerun intake instead of
+  repeating stale repair writes;
+- after rerun/diff: status stays receipt-derived and does not overstate packet
+  readiness;
+- before share: missing `SHIPLOG_REDACT_KEY` blocks manager rendering while
+  `share explain` remains read-only.
+
+Use this as release proof alongside the readiness ledger, not as release
+approval.
+
 ## Setup
 
 The run used a temporary empty workspace under:

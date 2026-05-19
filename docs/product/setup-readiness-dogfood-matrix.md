@@ -17,6 +17,23 @@ It is not a test harness and it is not release approval. It records which setup
 flows are already covered, which still need proof, and which caveats are
 accepted for the paused 0.9 candidate.
 
+## Release Proof Map
+
+For 0.9 release review, the rows that matter most are:
+
+- empty directory and guided config (#405, #418);
+- malformed manual journal routing to doctor before repair writes (#408, #415,
+  #416);
+- enabled provider without token staying unavailable, not weak evidence (#414,
+  #415, #416);
+- manager/public share blocked consistently by missing redaction setup (#407,
+  #417);
+- old setup/config compatibility staying calm for existing users (#420).
+
+These are proof inputs for the release readiness ledger. They still do not
+approve tag, publish, GitHub release creation, workflow dispatch, or
+release-install smoke.
+
 ## Release posture
 
 `v0.8.0` is the latest shipped release. The review-ready packet and Guided
@@ -98,8 +115,7 @@ The next implementation PRs should keep this ledger narrow:
 Use this matrix to decide what setup readiness still needs proof before any
 future 0.9 release-resume discussion. It is not itself the release decision.
 
-Current decision: keep the `v0.9.0` hold active (#398, updated by #410 and
-#422).
+Current decision: keep the `v0.9.0` hold active (#398, #410, #422, and #440).
 
 The setup lane is ready for a release posture decision only when:
 

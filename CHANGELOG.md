@@ -69,6 +69,10 @@ rerun, compare, and share safely.
   docs so the held candidate is framed as the review-loop cockpit release with
   status human/JSON, schema, consistency proof, safe-next-action proof,
   dogfood transcript, recurring guide, and README alignment (#440).
+- Aligned the guide map around the status-first workflow: recurring review loop
+  as the flagship guide, rapid/setup/repair/review-ready guide cross-links,
+  setup/status schema links, roadmap/install freshness, and release-proof map
+  pointers in dogfood transcripts and matrices (#441).
 - Kept detailed post-0.8 soak and release-hold receipts in
   [`docs/release/0.9.0-readiness.md`](docs/release/0.9.0-readiness.md) and
   [`docs/release/0.9.0-release-hold.md`](docs/release/0.9.0-release-hold.md).

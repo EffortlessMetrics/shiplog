@@ -6,6 +6,9 @@ performance-review prose. The goal is to turn repaired evidence into a
 defensible scaffold: readiness, claim candidates, missing-context prompts, and
 share posture.
 
+Use `shiplog status --latest` as the front panel for the loop. Use `packet.md`
+as the detailed artifact when status points you to review the repaired packet.
+
 The loop is:
 
 ```text

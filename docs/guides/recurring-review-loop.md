@@ -1,8 +1,10 @@
 # Recurring review-loop guide
 
-Use this guide when Shiplog is already part of your weekly, monthly, or
-promotion-prep routine. The goal is not to generate a report once. The goal is
-to keep review readiness visible:
+Start here if you want to use Shiplog weekly, monthly, or for manager/promotion
+packet prep. This is the flagship 0.9 guide for the status-first loop.
+
+The goal is not to generate a report once. The goal is to keep review readiness
+visible:
 
 ```text
 status -> collect -> status -> repair -> rerun -> compare -> explain share

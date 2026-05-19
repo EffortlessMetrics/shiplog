@@ -5,8 +5,9 @@
 > (how-to companion to this product doc — the worked first-run path),
 > [`docs/guides/review-deadline.md`](../guides/review-deadline.md)
 > (how-to for users with an established setup),
-> [`docs/guides/review-cycle.md`](../guides/review-cycle.md)
-> (how-to for repeat cycles), [`README.md`](../../README.md) (quick start).
+> [`docs/guides/recurring-review-loop.md`](../guides/recurring-review-loop.md)
+> (status-first how-to for repeat cycles), [`README.md`](../../README.md)
+> (quick start).
 
 This document defines what the **rapid first-intake review pack** should be —
 the experience a first-time shiplog user has when they need a defensible review
@@ -361,8 +362,8 @@ lane:
   read the rendered pack.
 - [`docs/guides/review-deadline.md`](../guides/review-deadline.md) — how-to
   for deadline-driven use today.
-- [`docs/guides/review-cycle.md`](../guides/review-cycle.md) — how-to for
-  repeat review cycles today.
+- [`docs/guides/recurring-review-loop.md`](../guides/recurring-review-loop.md)
+  — status-first how-to for repeat review cycles today.
 - [`docs/config-reference.md`](../config-reference.md) — full
   `shiplog.toml` field reference.
 - [`docs/schemas/intake-report-v1.md`](../schemas/intake-report-v1.md) —

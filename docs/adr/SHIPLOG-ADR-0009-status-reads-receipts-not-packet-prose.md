@@ -154,12 +154,18 @@ JSON contract, not a new interface layer.
 - [`SHIPLOG-SPEC-0008-review-loop-status`](../specs/SHIPLOG-SPEC-0008-review-loop-status.md)
   defines the status vocabulary, model sections, next actions, receipt refs,
   and safety rules.
-- Future status model and CLI tests must prove no writes, no provider calls, no
-  Markdown scraping, deterministic ordering, old-receipt compatibility, and
-  safe next-action behavior.
-- Future schema docs must define the JSON contract from the typed status model,
-  including stable keys, secret hygiene, receipt references, and additive
-  compatibility.
-- Future consistency tests must prove status agrees with doctor setup JSON,
-  sources status, intake report JSON, repair plan, repair diff, runs diff, and
-  share explain/verify receipts.
+- Status model and CLI tests prove no writes, no provider calls, no Markdown
+  scraping, deterministic ordering, old-receipt compatibility, and safe
+  next-action behavior.
+- Schema docs define the JSON contract from the typed status model, including
+  stable keys, secret hygiene, receipt references, and additive compatibility.
+- Consistency tests prove status agrees with doctor setup JSON, sources status,
+  intake report JSON, repair plan, repair diff, runs diff, and share
+  explain/verify receipts.
+
+## Implementation Note
+
+The lane implementation landed in the held 0.9 candidate: human and JSON status
+surfaces, schema/examples, consistency proof, safe-next-action proof, dogfood
+transcript, recurring guide, and README alignment are represented by #429-#436.
+Those receipts do not lift the `v0.9.0` release hold.

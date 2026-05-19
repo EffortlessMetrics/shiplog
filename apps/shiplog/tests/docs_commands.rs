@@ -110,6 +110,10 @@ fn config_reference_documents_current_surface() {
         "sources status",
         "review-loop preflight",
         "not `packet.md`",
+        "Setup Readiness v1",
+        "Review Loop Status v1",
+        "schemas/setup-readiness-v1.md",
+        "schemas/review-loop-status-v1.md",
         "doctor --repair-plan",
     ] {
         assert!(
@@ -160,7 +164,8 @@ fn changelog_curates_0_9_as_review_loop_cockpit_release_notes() {
         "Windows path and environment-variable display",
         "setup-readiness, review-ready, and review-loop status",
         "review-loop status transcript (#434)",
-        "recurring review-loop guide",
+        "recurring",
+        "review-loop guide",
         "Key receipts: #307-#319, #337-#398, #399-#422, #424-#436.",
         "Release execution is still paused",
     ] {
@@ -583,6 +588,12 @@ fn review_loop_status_schema_docs_and_examples_describe_v1_contract()
         "does not call an LLM",
         "does not execute release work",
         "Future compatible changes should be additive",
+        "README",
+        "crates.io README",
+        "recurring",
+        "review-loop guide",
+        "config reference",
+        "agent control-plane contract",
     ] {
         assert!(
             doc.contains(needle),
@@ -1404,11 +1415,16 @@ fn install_guide_documents_current_install_paths() {
         "Homebrew",
         "Scoop and winget",
         "shiplog intake --last-6-months --explain",
-        "scripts/release-install-smoke.sh v0.4.0",
-        "scripts\\release-install-smoke.ps1 v0.4.0",
+        "shiplog doctor --setup --help",
+        "shiplog status --help",
+        "shiplog init --guided",
+        "shiplog status --latest",
+        "scripts/release-install-smoke.sh v0.8.0",
+        "scripts\\release-install-smoke.ps1 v0.8.0",
         "scripts/demo-review-rescue.sh --out ./out/demo-review-rescue",
         "scripts\\demo-review-rescue.ps1",
         "shiplog share verify public --help",
+        "Do not run a 0.9 release-install",
         "examples/configs/local-git-json-manual.toml",
     ] {
         assert!(
@@ -1434,6 +1450,7 @@ fn rapid_first_intake_guide_routes_manual_evidence_through_repair_plan() {
         "shiplog doctor --setup --json",
         "shiplog status --latest",
         "review-loop cockpit",
+        "recurring-review-loop.md",
         "shiplog journal add --from-repair <repair_id>",
         "write-producing curation command",
         "not tied to a repair item",
@@ -1475,6 +1492,7 @@ fn evidence_repair_loop_guide_documents_report_derived_flow() {
         "read-first handoff",
         "receipt trimming",
         "workstream splitting",
+        "recurring-review-loop.md",
     ] {
         assert!(
             doc.contains(needle),
@@ -1500,6 +1518,8 @@ fn review_ready_packet_guide_documents_quality_flow() {
         "shiplog repair diff --latest",
         "shiplog runs diff --latest",
         "shiplog open packet --latest",
+        "front panel for the loop",
+        "as the detailed artifact",
         "OUT=./out/review-ready-soak",
         "shiplog repair plan --out \"$OUT\" --latest",
         "shiplog runs diff --out \"$OUT\" --latest",
@@ -1547,6 +1567,7 @@ fn recurring_review_loop_guide_documents_status_first_practice() {
         "shiplog runs diff --latest",
         "shiplog share explain manager --latest",
         "status first, then the next receipt-producing command",
+        "flagship 0.9 guide",
         "Weekly self-review",
         "Monthly manager prep",
         "Promotion packet prep",
@@ -1658,10 +1679,13 @@ fn guided_setup_dogfood_matrix_documents_setup_control_plane() {
         "Trusted proof",
         "Missing proof",
         "Accepted caveat",
+        "Release Proof Map",
+        "malformed manual journal routing to doctor before repair writes",
+        "manager/public share blocked consistently",
         "doctor --setup --json",
         "without scraping text",
         "not itself the release decision",
-        "Current decision: keep the `v0.9.0` hold active (#398, updated by #410 and",
+        "Current decision: keep the `v0.9.0` hold active (#398, #410, #422, and #440).",
         "owner explicitly approves any release execution",
     ] {
         assert!(
@@ -1679,6 +1703,9 @@ fn review_loop_status_proposal_defines_receipt_front_panel() {
 
     for needle in [
         "Review Loop Status",
+        "Status: implemented in the held 0.9 candidate",
+        "Implementation Receipts",
+        "human `shiplog status --latest`",
         "shiplog status --latest",
         "shiplog status --latest --json",
         "setup, evidence, repair",
@@ -1746,6 +1773,9 @@ fn review_loop_status_spec_defines_receipt_contract() {
 
     for needle in [
         "SHIPLOG-SPEC-0008: Review Loop Status",
+        "Status: implemented in the held 0.9 candidate",
+        "Implementation note",
+        "landed through #429-#436",
         "SHIPLOG-PROP-0006-review-loop-status",
         "shiplog status --latest",
         "shiplog status --latest --json",
@@ -1839,6 +1869,8 @@ fn review_loop_status_adr_keeps_status_receipt_derived() {
 
     for needle in [
         "Status Reads Receipts, Not Packet Prose",
+        "Implementation Note",
+        "#429-#436",
         "shiplog status",
         "shiplog status --latest",
         "shiplog status --latest --json",
@@ -2127,7 +2159,8 @@ fn release_hold_docs_record_post_0_8_soak_receipts() {
         "review-loop-status.v1",
         "safe next actions",
         "review-loop status dogfood transcript",
-        "recurring review-loop guide",
+        "recurring",
+        "review-loop guide",
         "status as the review-loop",
         "crates.io README into an install-and-first-loop page",
         "Review-loop cockpit",
@@ -2214,7 +2247,7 @@ fn release_decision_keeps_0_9_hold_without_execution() {
             && readiness.contains("0.9.0-release-decision.md")
             && matrix.contains("0.9.0-release-decision.md")
             && matrix.contains(
-                "Current decision: keep the `v0.9.0` hold active (#398, updated by #410 and"
+                "Current decision: keep the `v0.9.0` hold active (#398, #410, #422, and #440)."
             ),
         "hold, readiness, and matrix docs should link the release decision without lifting the hold"
     );
@@ -2290,6 +2323,7 @@ fn review_loop_status_transcript_records_status_cockpit_dogfood() {
 
     for needle in [
         "Review-loop status dogfood transcript",
+        "Release Proof Map",
         "shiplog status --out",
         "ready_to_collect",
         "needs_repair",
@@ -2356,6 +2390,10 @@ fn review_ready_dogfood_matrix_documents_soak_flows() {
         "Manager `share explain` without key",
         "Public share explain/verify path",
         "Public `share explain` now has targeted proof",
+        "Release Proof Map",
+        "repaired manual-only packet",
+        "skipped provider sources staying visible",
+        "old reports degrading without invented readiness",
         "packet debt, strict-review caveats",
         "`share explain` and `runs diff` now avoid inventing",
         "reports without `packet_quality`",

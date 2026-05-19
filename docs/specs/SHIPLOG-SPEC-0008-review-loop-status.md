@@ -1,6 +1,6 @@
 # SHIPLOG-SPEC-0008: Review Loop Status
 
-Status: proposed
+Status: implemented in the held 0.9 candidate
 Owner: product/schema
 Created: 2026-05-18
 Related proposal:
@@ -42,6 +42,10 @@ shiplog status --latest
 
 Status should act like a front panel, not a dashboard. It must not replace the
 underlying command-specific receipts.
+
+Implementation note: the human CLI, JSON CLI, schema/examples, consistency
+proof, safe-next-action proof, dogfood transcript, recurring guide, and README
+alignment landed through #429-#436. The 0.9 release hold remains active.
 
 ## Scope
 
@@ -453,7 +457,7 @@ Implemented proof surfaces:
 ## Release Posture
 
 This spec does not approve a release. `v0.9.0` remains prepared but held until
-owner approval and current release preflight exist. Status work may become part
-of an unreleased candidate only after implementation and proof PRs land; this
-spec alone does not authorize tag, crates.io publish, GitHub release creation,
-release workflow dispatch, or release-install smoke.
+owner approval and current release preflight exist. Status work is part of the
+held unreleased 0.9 candidate because implementation and proof PRs landed
+through #436. This spec still does not authorize tag, crates.io publish, GitHub
+release creation, release workflow dispatch, or release-install smoke.

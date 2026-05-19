@@ -16,6 +16,20 @@ resume 0.9 release work.
 It is a control-plane artifact, not a harness. The follow-up test PR should add
 small targeted tests for gaps, not one giant end-to-end scenario.
 
+## Release Proof Map
+
+For 0.9 release review, the rows that matter most are:
+
+- repaired manual-only packet (#343, #344, #388, #394, #397);
+- skipped provider sources staying visible (#386, #387, #393);
+- old reports degrading without invented readiness (#365, #392, #395);
+- manager/public share explanation staying read-only and fail-closed (#347,
+  #378, #389, #392, #397).
+
+These are proof inputs for the release readiness ledger. They still do not
+approve tag, publish, GitHub release creation, workflow dispatch, or
+release-install smoke.
+
 ## Release posture
 
 `v0.8.0` is the latest shipped release. The review-ready packet work on `main`
@@ -79,8 +93,7 @@ The next test PR should prefer small assertions around these gaps:
 Use this matrix to decide whether the review-ready loop has been dogfooded
 enough to ask for a release decision. It is not itself the release decision.
 
-Current decision: keep the `v0.9.0` hold active (#398, updated by #410 and
-#422).
+Current decision: keep the `v0.9.0` hold active (#398, #410, #422, and #440).
 
 The matrix is green enough to consider resuming 0.9 only when:
 

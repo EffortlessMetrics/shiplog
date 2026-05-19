@@ -28,9 +28,9 @@ You are:
 - willing to run one command, read one report, and curate later if the
   first pack is good enough.
 
-If you are running a weekly review cycle on an established setup, use
-[`docs/guides/review-cycle.md`](review-cycle.md). If you already have a
-setup but the form is due tonight, use
+If you are running a weekly or monthly review cycle on an established setup,
+start with [`docs/guides/recurring-review-loop.md`](recurring-review-loop.md).
+If you already have a setup but the form is due tonight, use
 [`docs/guides/review-deadline.md`](review-deadline.md).
 
 ## Setup
@@ -356,7 +356,8 @@ same intake → report → review → share verify shape a real run uses.
   product contract this guide is the how-to companion for.
 - [`docs/guides/review-deadline.md`](review-deadline.md) — deadline-pressure
   flow for users with an established setup.
-- [`docs/guides/review-cycle.md`](review-cycle.md) — repeat review cycles.
+- [`docs/guides/recurring-review-loop.md`](recurring-review-loop.md) — status-first
+  weekly/monthly review readiness.
 - [`docs/guides/guided-setup-doctor.md`](guided-setup-doctor.md) — diagnose
   config, source, manual-journal, credential, and share setup before intake.
 - [`docs/guides/evidence-repair-loop.md`](evidence-repair-loop.md) — turn a

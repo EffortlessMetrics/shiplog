@@ -4,7 +4,7 @@ Use the GitHub release binary when you need shiplog quickly and do not already
 have Rust installed. Use `cargo install` when you already have a Rust toolchain
 or want optional Cargo features.
 
-Release assets for `v0.4.0`:
+Latest shipped release assets for `v0.8.0`:
 
 ```text
 shiplog-x86_64-unknown-linux-gnu
@@ -19,7 +19,7 @@ SHA256SUMS.txt
 ### Windows PowerShell
 
 ```powershell
-$version = "v0.4.0"
+$version = "v0.8.0"
 $asset = "shiplog-x86_64-pc-windows-msvc.exe"
 $base = "https://github.com/EffortlessMetrics/shiplog/releases/download/$version"
 $bin = "$HOME\bin"
@@ -57,7 +57,7 @@ asset=shiplog-x86_64-apple-darwin
 Then download, verify, and install:
 
 ```bash
-version=v0.4.0
+version=v0.8.0
 base="https://github.com/EffortlessMetrics/shiplog/releases/download/$version"
 
 curl -fsSLo shiplog "$base/$asset"
@@ -77,7 +77,7 @@ mv shiplog "$HOME/bin/shiplog"
 ### Linux x86_64
 
 ```bash
-version=v0.4.0
+version=v0.8.0
 asset=shiplog-x86_64-unknown-linux-gnu
 base="https://github.com/EffortlessMetrics/shiplog/releases/download/$version"
 
@@ -146,17 +146,27 @@ After any install method:
 ```bash
 shiplog --version
 shiplog init --dry-run
+shiplog doctor --setup --help
+shiplog status --help
 shiplog intake --help
 shiplog share verify manager --help
 ```
 
-Then start the review-deadline path:
+Then start the review loop:
 
 ```bash
+shiplog init --guided
+shiplog doctor --setup
+shiplog status --latest
 shiplog intake --last-6-months --explain
+shiplog status --latest
 shiplog open intake-report --latest
 shiplog open packet --latest
 ```
+
+When a future 0.9 release is explicitly approved, the release smoke should
+include this setup/status path before intake. Do not run a 0.9 release-install
+smoke while the 0.9 hold is active.
 
 ## Release binary smoke
 
@@ -168,13 +178,13 @@ fixture-backed review rescue demo without provider tokens or Rust installed.
 Linux and macOS:
 
 ```bash
-scripts/release-install-smoke.sh v0.4.0
+scripts/release-install-smoke.sh v0.8.0
 ```
 
 Windows PowerShell:
 
 ```powershell
-pwsh -File .\scripts\release-install-smoke.ps1 v0.4.0
+pwsh -File .\scripts\release-install-smoke.ps1 v0.8.0
 ```
 
 The smoke path runs:
@@ -182,6 +192,8 @@ The smoke path runs:
 ```bash
 shiplog --version
 shiplog init --dry-run
+shiplog doctor --setup --help
+shiplog status --help
 shiplog intake --help
 shiplog share verify public --help
 scripts/demo-review-rescue.sh --out ./out/demo-review-rescue

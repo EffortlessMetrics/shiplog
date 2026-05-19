@@ -1,48 +1,72 @@
 # Roadmap
 
-This roadmap is organized by horizon rather than dates. Items move between horizons as priorities shift.
+This roadmap is organized by product posture, not calendar date.
 
-## Now (v0.2.x)
+## Shipped
 
-Active development. These items are in progress or planned for the next minor release.
+- **v0.8.0 Evidence Repair Loop** — shipped to GitHub and crates.io. Users can
+  run intake, inspect repair items, add local manual evidence from a repair ID,
+  rerun, and compare repair movement.
+- **Single supported public crate** — `shiplog` is the forward public package.
+  Historical implementation crates remain historical artifacts; internal seams
+  now live as modules.
 
-- ✅ **Local git ingest adapter** (`shiplog-ingest-git`) -- Ingest commit history directly from a local git repository without going through the GitHub API.
-- ✅ **GitLab ingest adapter** (`shiplog-ingest-gitlab`) -- Merge request and review ingestion from GitLab, including self-hosted instances.
-- ✅ **Jira ingest adapter** (`shiplog-ingest-jira`) -- Pull issue and ticket data as evidence alongside code activity.
-- ✅ **Linear ingest adapter** (`shiplog-ingest-linear`) -- Pull issue data from Linear via GraphQL API.
-- ✅ **Team packet template support** (`shiplog-team::template`) -- Template rendering lives inside the team owner crate until packet templates become a standalone contract.
-- **Binary releases via GitHub Actions** -- Pre-built binaries for Linux, macOS, and Windows so users do not need a Rust toolchain to install shiplog.
-- **Improved packet formatting** -- Better Markdown structure, configurable section ordering, and cleaner receipt presentation.
-- **Cache improvements** -- TTL configuration, cache size limits, and cache inspection commands.
+## Held Candidate
 
-## Next (v0.3.x)
+`v0.9.0` is prepared but held. Do not tag, publish, create a GitHub release,
+dispatch release workflow, or run release-install smoke without explicit owner
+approval and current preflight.
 
-Planned after current work stabilizes. Design may still evolve.
+Candidate scope on `main`:
 
-- **Multi-source merging** -- Combine events from multiple sources (e.g., GitHub + manual + Jira) into a single coherent packet with unified coverage tracking.
-- **LLM clustering as default feature** -- Move LLM-assisted clustering out of feature-gate once the interface stabilizes.
+- **Review-ready packet quality** — Packet Readiness, evidence strength,
+  receipt-backed claim candidates, missing-context prompts, share posture, and
+  packet-quality movement.
+- **Guided Setup / Doctor** — `init --guided`, `doctor --setup`,
+  `sources status`, and `doctor --setup --json` make setup readiness explicit
+  before intake, repair, or share commands.
+- **Review-loop Status** — `status --latest` and `status --latest --json` join
+  setup, latest run, packet readiness, source state, repair, diff, share
+  blockers, next actions, and receipt refs into a read-only cockpit.
+- **Release-facing docs** — changelog, README, crate README, readiness, handoff,
+  guides, schemas, matrices, and transcripts now tell one loop story:
+  setup, status, intake, repair, rerun, diff, share explain.
 
-## Later (exploratory)
+## Next Candidates
 
-Ideas under consideration. No commitment to timeline or implementation.
+These are future lanes, not 0.9 release promises.
 
-- **Team aggregation mode** -- Generate packets across multiple users for team-level shipping summaries.
-- **Continuous/cron mode** -- Run shiplog on a schedule, appending to an existing ledger incrementally.
-- **TUI workstream editor** -- Interactive terminal UI for curating workstreams instead of hand-editing YAML.
-- **Web viewer** -- Browser-based viewer for rendered packets, with navigation and search.
-- **Plugin system** -- Loadable adapter plugins so third-party sources do not require forking the repository.
+- **Guided provider readiness** — improve token/setup guidance without OAuth or
+  live provider probing by default.
+- **Public-share happy path proof** — dogfood public share with redaction setup
+  and strict verification once release priorities justify it.
+- **Source enable/disable ergonomics** — make optional provider setup easier
+  without mutating provider records.
+- **Recurring workflow support** — use `status --latest --json` as the safe
+  primitive for future reminders or scheduled checks.
+
+## Later
+
+- OAuth readiness as another credential backend.
+- Team or manager rollups after single-user status remains stable.
+- TUI/GUI/dashboard exploration only after the CLI/JSON control plane is
+  boring and proven.
+- Plugin APIs or new adapters after the core review loop is released and
+  observed.
 
 ## Non-goals
 
-These are intentionally out of scope for shiplog:
+- Generated performance-review prose.
+- Employee scoring.
+- Provider record mutation.
+- Live provider probing from `doctor` or `status`.
+- Automatic repair or automatic share rendering.
+- Telemetry, tracking, or account requirements.
 
-- **Analytics dashboard.** shiplog produces static packets, not live dashboards or metrics visualizations.
-- **AI-generated narrative.** Packets provide evidence scaffolds and optional LLM clustering. The narrative is written by the human, not generated.
-- **Telemetry or tracking.** shiplog does not phone home, collect usage data, or require an account.
-- **Manager-facing tooling.** shiplog is for the IC preparing their own review. Manager workflows are out of scope.
+## Release Posture
 
-## How to influence the roadmap
+See:
 
-- Open a [GitHub issue](https://github.com/EffortlessMetrics/shiplog/issues) with the `enhancement` label to propose new features.
-- Pull requests are welcome for items in the Now and Next horizons. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-- For Later items, start with an issue to discuss the approach before writing code.
+- [`docs/release/0.9.0-release-hold.md`](docs/release/0.9.0-release-hold.md)
+- [`docs/release/0.9.0-readiness.md`](docs/release/0.9.0-readiness.md)
+- [`docs/release/0.9.0-release-decision.md`](docs/release/0.9.0-release-decision.md)

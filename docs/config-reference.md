@@ -44,6 +44,13 @@ packet-readiness, repair, diff, share, and next-action state without writing.
 Use `status --latest --json` when an agent or script needs the same cockpit
 state without terminal-prose scraping.
 
+Machine-readable control-plane contracts:
+
+- [`Setup Readiness v1`](schemas/setup-readiness-v1.md) for
+  `shiplog doctor --setup --json`.
+- [`Review Loop Status v1`](schemas/review-loop-status-v1.md) for
+  `shiplog status --latest --json`.
+
 For Jira and Linear identity values, run:
 
 ```bash

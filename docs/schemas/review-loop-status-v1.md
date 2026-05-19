@@ -31,6 +31,10 @@ The JSON is the agent-readable form of the same review-loop status model used
 by the human `shiplog status --latest` output. It is setup/evidence/repair/diff
 and share state, not packet prose.
 
+This schema is linked from the README, the crates.io README, the recurring
+review-loop guide, the config reference, and the 0.9 readiness ledger because it
+is the agent control-plane contract for the review loop.
+
 ## Compatibility
 
 The v1 contract is identified by the schema path and command surface rather than

@@ -1,9 +1,9 @@
 # Evidence repair loop guide
 
-Use this after `shiplog intake` produces a rough packet and the report says what
-is missing. The loop is intentionally local and receipt-derived: repair commands
-read `intake.report.json`, journal repair writes `manual_events.yaml`, and no
-provider tickets or source records are edited.
+Use this after `shiplog status --latest` or `shiplog intake` says the packet
+needs repair. The loop is intentionally local and receipt-derived: repair
+commands read `intake.report.json`, journal repair writes `manual_events.yaml`,
+and no provider tickets or source records are edited.
 
 If setup is new or uncertain, run the setup front door before intake:
 
@@ -119,6 +119,8 @@ point back to report receipts.
   empty directory.
 - [`review-ready-packet.md`](review-ready-packet.md) for interpreting readiness,
   claim candidates, missing context, and share posture after repair.
-- [`review-cycle.md`](review-cycle.md) for repeat review workflows.
+- [`recurring-review-loop.md`](recurring-review-loop.md) for the status-first
+  weekly/monthly loop that tells you when to repair, rerun, diff, or share
+  explain.
 - [`../schemas/intake-report-v1.md`](../schemas/intake-report-v1.md) for the
   report fields that repair commands consume.
