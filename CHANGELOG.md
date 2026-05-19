@@ -59,6 +59,9 @@ rerun, compare, and share safely.
   ADRs, schemas, examples, dogfood matrices, and transcripts.
 - Added the review-loop status transcript (#434), recurring review-loop guide,
   and README/front-door alignment so status is taught as the recurring cockpit.
+- Reworked the root README as the 0.9 product front door: problem, candidate
+  surfaces, install paths, setup, first packet, repair/share, status at a
+  glance, docs map, safety boundaries, and public-surface summary (#438).
 - Kept detailed post-0.8 soak and release-hold receipts in
   [`docs/release/0.9.0-readiness.md`](docs/release/0.9.0-readiness.md) and
   [`docs/release/0.9.0-release-hold.md`](docs/release/0.9.0-release-hold.md).

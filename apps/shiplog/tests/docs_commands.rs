@@ -1312,34 +1312,51 @@ fn crate_readme_documents_review_ready_loop() {
 }
 
 #[test]
-fn root_readme_documents_read_first_repair_and_share_flow() {
+fn root_readme_documents_0_9_review_loop_front_door() {
     let doc_path = repo_root().join("README.md");
     let doc = std::fs::read_to_string(&doc_path)
         .unwrap_or_else(|err| panic!("read {}: {err}", doc_path.display()));
 
     for needle in [
-        "shiplog repair plan --latest",
+        "Review evidence loop for people who need receipts, not review prose.",
+        "What works in the 0.9 candidate",
+        "shiplog turns work evidence into a review-readiness loop",
         "shiplog init --guided",
         "shiplog doctor --setup",
         "shiplog sources status",
         "shiplog doctor --setup --json",
         "shiplog status --latest",
-        "review-loop cockpit",
-        "recurring-review-loop.md",
-        "setup front door",
+        "shiplog status --latest --json",
+        "shiplog intake --last-6-months --explain",
+        "shiplog repair plan --latest",
         "shiplog journal add --from-repair <repair_id>",
-        "read-first repair loop",
-        "Direct `journal add`, workstream split, or receipt-trimming commands",
-        "copyable local repairs from advisory items",
+        "shiplog repair diff --latest",
+        "shiplog runs diff --latest",
         "shiplog share explain manager --latest",
-        "shiplog share verify manager --latest",
-        "shiplog share manager --latest --zip",
+        "Status at a glance",
+        "Docs map",
+        "Machine-readable contracts",
+        "Proof receipts",
+        "What shiplog does not do",
+        "Does not write performance-review prose",
+        "Does not score employees",
+        "Does not mutate provider records",
+        "Does not query providers from `doctor` or `status`",
+        "Does not render manager/public packets from `status` or `share explain`",
+        "Single supported public crate: `shiplog`",
+        "contracts/schemas/",
+        "review-loop-status-v1.md",
+        "review-loop-status-transcript.md",
     ] {
         assert!(
             doc.contains(needle),
             "root README should mention {needle:?}"
         );
     }
+    assert!(
+        !doc.contains("contracted for 0.7"),
+        "root README should not carry stale 0.7 crate-surface wording"
+    );
 }
 
 #[test]
