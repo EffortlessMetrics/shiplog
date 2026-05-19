@@ -39,6 +39,8 @@ pub struct GithubIngestor {
     pub api_base: String,
     /// Optional cache for API responses
     pub cache: Option<ApiCache>,
+    /// Optional live API request budget for bounded harvest runs.
+    pub api_budget: Option<GithubApiBudget>,
     /// Adapter-local cache hit counter for the most recent (or
     /// in-progress) `ingest()` call. Incremented every time
     /// `self.cache.get(...)` returns `Some(_)`. Reported in the
@@ -53,7 +55,61 @@ pub struct GithubIngestor {
     /// Adapter-local stale-hit counter. Incremented when `ApiCache::lookup`
     /// returns an expired row that this adapter uses.
     cache_stale_hits: AtomicU64,
+    /// Live GitHub Search API requests performed by this ingestor.
+    search_requests: AtomicU64,
+    /// Live GitHub core API requests performed by this ingestor.
+    core_requests: AtomicU64,
 }
+
+/// Live GitHub API request budget for a harvest or intake run.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct GithubApiBudget {
+    pub max_search_requests: Option<u64>,
+    pub max_core_requests: Option<u64>,
+}
+
+/// Live GitHub API request counts split by GitHub rate-limit bucket.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct GithubApiRequestCounts {
+    pub search: u64,
+    pub core: u64,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum GithubApiBucket {
+    Search,
+    Core,
+}
+
+impl GithubApiBucket {
+    fn label(self) -> &'static str {
+        match self {
+            Self::Search => "search",
+            Self::Core => "core",
+        }
+    }
+}
+
+#[derive(Debug)]
+struct GithubApiBudgetExhausted {
+    bucket: GithubApiBucket,
+    used: u64,
+    max: u64,
+}
+
+impl std::fmt::Display for GithubApiBudgetExhausted {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "GitHub API {} budget exhausted before request ({}/{}); checkpoint and stop before resuming",
+            self.bucket.label(),
+            self.used,
+            self.max
+        )
+    }
+}
+
+impl std::error::Error for GithubApiBudgetExhausted {}
 
 impl GithubIngestor {
     /// Create a new GitHub ingestor for the given user and date range.
@@ -85,9 +141,12 @@ impl GithubIngestor {
             token: None,
             api_base: "https://api.github.com".to_string(),
             cache: None,
+            api_budget: None,
             cache_hits: AtomicU64::new(0),
             cache_misses: AtomicU64::new(0),
             cache_stale_hits: AtomicU64::new(0),
+            search_requests: AtomicU64::new(0),
+            core_requests: AtomicU64::new(0),
         }
     }
 
@@ -116,6 +175,22 @@ impl GithubIngestor {
             .with_context(|| format!("open GitHub API cache at {cache_path:?}"))?;
         self.cache = Some(cache);
         Ok(self)
+    }
+
+    /// Configure live GitHub API request budget guardrails.
+    #[must_use]
+    pub fn with_api_budget(mut self, budget: GithubApiBudget) -> Self {
+        self.api_budget = Some(budget);
+        self
+    }
+
+    /// Return live API request counts for the current run.
+    #[must_use]
+    pub fn api_request_counts(&self) -> GithubApiRequestCounts {
+        GithubApiRequestCounts {
+            search: self.search_requests.load(Ordering::Relaxed),
+            core: self.core_requests.load(Ordering::Relaxed),
+        }
     }
 
     /// Enable in-memory caching (useful for testing).
@@ -179,9 +254,11 @@ impl GithubIngestor {
         client: &Client,
         url: &str,
         params: &[(&str, String)],
+        bucket: GithubApiBucket,
     ) -> Result<T> {
         let request_url = build_url_with_params(url, params)?;
         let request_url_for_err = request_url.as_str().to_string();
+        self.record_live_api_request(bucket)?;
 
         let mut req = client
             .get(request_url)
@@ -205,6 +282,30 @@ impl GithubIngestor {
             .with_context(|| format!("parse json from {request_url_for_err}"))
     }
 
+    fn record_live_api_request(&self, bucket: GithubApiBucket) -> Result<()> {
+        let (counter, max) = match bucket {
+            GithubApiBucket::Search => (
+                &self.search_requests,
+                self.api_budget
+                    .and_then(|budget| budget.max_search_requests),
+            ),
+            GithubApiBucket::Core => (
+                &self.core_requests,
+                self.api_budget.and_then(|budget| budget.max_core_requests),
+            ),
+        };
+
+        let used = counter.load(Ordering::Relaxed);
+        if let Some(max) = max
+            && used >= max
+        {
+            return Err(GithubApiBudgetExhausted { bucket, used, max }.into());
+        }
+
+        counter.fetch_add(1, Ordering::Relaxed);
+        Ok(())
+    }
+
     #[mutants::skip]
     fn get_json_cached<T: DeserializeOwned + Serialize>(
         &self,
@@ -212,6 +313,7 @@ impl GithubIngestor {
         url: &str,
         params: &[(&str, String)],
         cache_key: &str,
+        bucket: GithubApiBucket,
     ) -> Result<T> {
         if let Some(ref cache) = self.cache {
             match cache.lookup::<T>(cache_key)? {
@@ -226,14 +328,14 @@ impl GithubIngestor {
                 }
                 CacheLookup::Miss => {
                     self.cache_misses.fetch_add(1, Ordering::Relaxed);
-                    let fetched = self.get_json(client, url, params)?;
+                    let fetched = self.get_json(client, url, params, bucket)?;
                     cache.set(cache_key, &fetched)?;
                     return Ok(fetched);
                 }
             }
         }
 
-        self.get_json(client, url, params)
+        self.get_json(client, url, params, bucket)
     }
 }
 
@@ -483,6 +585,7 @@ impl GithubIngestor {
                 ("page", page.to_string()),
             ],
             &cache_key,
+            GithubApiBucket::Search,
         )?;
         Ok((resp.total_count, resp.incomplete_results))
     }
@@ -504,6 +607,7 @@ impl GithubIngestor {
                     ("page", page.to_string()),
                 ],
                 &cache_key,
+                GithubApiBucket::Search,
             )?;
             let items_len = resp.items.len();
             out.extend(resp.items);
@@ -549,6 +653,7 @@ impl GithubIngestor {
                                     vis,
                                 )
                             }
+                            Err(err) if is_github_budget_exhausted(&err) => return Err(err),
                             Err(_) => {
                                 // If details fail, fall back to search fields.
                                 (
@@ -733,7 +838,8 @@ impl GithubIngestor {
         }
 
         // Fetch from API
-        let details: PullRequestDetails = self.get_json(client, pr_api_url, &[])?;
+        let details: PullRequestDetails =
+            self.get_json(client, pr_api_url, &[], GithubApiBucket::Core)?;
 
         // Store in cache
         if let Some(ref cache) = self.cache {
@@ -777,6 +883,7 @@ impl GithubIngestor {
                                 ("per_page", per_page.to_string()),
                                 ("page", page.to_string()),
                             ],
+                            GithubApiBucket::Core,
                         )?;
                         // Store in cache
                         cache.set(&cache_key, &reviews)?;
@@ -792,6 +899,7 @@ impl GithubIngestor {
                         ("per_page", per_page.to_string()),
                         ("page", page.to_string()),
                     ],
+                    GithubApiBucket::Core,
                 )?
             };
 
@@ -874,6 +982,11 @@ fn repo_from_repo_url(repo_api_url: &str, html_base: &str) -> (String, String) {
         }
     }
     ("unknown/unknown".to_string(), html_base.to_string())
+}
+
+fn is_github_budget_exhausted(err: &anyhow::Error) -> bool {
+    err.chain()
+        .any(|cause| cause.is::<GithubApiBudgetExhausted>())
 }
 
 /// GitHub search response envelope.
@@ -1155,6 +1268,8 @@ mod tests {
         assert!(ing.token.is_none());
         assert_eq!(ing.api_base, "https://api.github.com");
         assert!(ing.cache.is_none());
+        assert!(ing.api_budget.is_none());
+        assert_eq!(ing.api_request_counts(), GithubApiRequestCounts::default());
     }
 
     // -- with_in_memory_cache --
@@ -1677,8 +1792,17 @@ mod tests {
         );
         assert_eq!(cold_freshness.cache_hits, 0);
         assert_eq!(cold_freshness.cache_misses, 3);
+        assert_eq!(
+            cold.api_request_counts(),
+            GithubApiRequestCounts { search: 2, core: 1 }
+        );
 
-        let mut warm = make_ingestor("octocat").with_cache(cache_dir.path())?;
+        let mut warm = make_ingestor("octocat")
+            .with_cache(cache_dir.path())?
+            .with_api_budget(GithubApiBudget {
+                max_search_requests: Some(0),
+                max_core_requests: Some(0),
+            });
         warm.api_base = server.base_url();
         let warm_output = warm.ingest()?;
         assert_eq!(warm_output.events.len(), 1);
@@ -1693,6 +1817,7 @@ mod tests {
         );
         assert_eq!(warm_freshness.cache_hits, 3);
         assert_eq!(warm_freshness.cache_misses, 0);
+        assert_eq!(warm.api_request_counts(), GithubApiRequestCounts::default());
 
         let requests = server.finish()?;
         let search_requests = requests
@@ -1710,6 +1835,95 @@ mod tests {
         assert_eq!(
             detail_requests, 1,
             "warm run must serve PR details from cache instead of replaying HTTP"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn search_budget_exhaustion_stops_before_next_live_search_request() -> anyhow::Result<()> {
+        let server = RecordedGithubServer::start(1)?;
+        let cache_dir = tempfile::tempdir().context("create fixture cache dir")?;
+
+        let mut ing = make_ingestor("octocat")
+            .with_cache(cache_dir.path())?
+            .with_api_budget(GithubApiBudget {
+                max_search_requests: Some(1),
+                max_core_requests: Some(10),
+            });
+        ing.api_base = server.base_url();
+
+        let err = ing
+            .ingest()
+            .err()
+            .ok_or_else(|| anyhow!("search budget should stop ingest"))?;
+        assert!(
+            err.to_string()
+                .contains("GitHub API search budget exhausted"),
+            "unexpected error: {err:#}"
+        );
+        assert_eq!(
+            ing.api_request_counts(),
+            GithubApiRequestCounts { search: 1, core: 0 }
+        );
+
+        let requests = server.finish()?;
+        assert_eq!(
+            requests
+                .iter()
+                .filter(|line| line.contains("/search/issues?"))
+                .count(),
+            1
+        );
+        assert_eq!(
+            requests
+                .iter()
+                .filter(|line| line.contains("/repos/acme/widgets/pulls/1"))
+                .count(),
+            0
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn core_budget_exhaustion_stops_before_detail_request() -> anyhow::Result<()> {
+        let server = RecordedGithubServer::start(2)?;
+        let cache_dir = tempfile::tempdir().context("create fixture cache dir")?;
+
+        let mut ing = make_ingestor("octocat")
+            .with_cache(cache_dir.path())?
+            .with_api_budget(GithubApiBudget {
+                max_search_requests: Some(10),
+                max_core_requests: Some(0),
+            });
+        ing.api_base = server.base_url();
+
+        let err = ing
+            .ingest()
+            .err()
+            .ok_or_else(|| anyhow!("core budget should stop ingest"))?;
+        assert!(
+            err.to_string().contains("GitHub API core budget exhausted"),
+            "unexpected error: {err:#}"
+        );
+        assert_eq!(
+            ing.api_request_counts(),
+            GithubApiRequestCounts { search: 2, core: 0 }
+        );
+
+        let requests = server.finish()?;
+        assert_eq!(
+            requests
+                .iter()
+                .filter(|line| line.contains("/search/issues?"))
+                .count(),
+            2
+        );
+        assert_eq!(
+            requests
+                .iter()
+                .filter(|line| line.contains("/repos/acme/widgets/pulls/1"))
+                .count(),
+            0
         );
         Ok(())
     }
