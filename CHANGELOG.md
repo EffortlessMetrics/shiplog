@@ -7,305 +7,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Post-0.8 status: the review-ready packet work below is on `main` as an
-unreleased 0.9 candidate, and the Guided Setup / Doctor lane has also landed on
-`main` as unreleased candidate value. Release execution is paused while 0.8 gets
-soak time; do not treat the 0.9 version metadata as tag, crates.io publish, or
-GitHub release approval.
+No user-facing changes yet after the held 0.9.0 candidate.
 
-### Post-0.8 soak
+## [0.9.0] - 2026-XX-XX (unreleased candidate)
 
-- Recorded and guarded the paused 0.9 release posture; release-hold receipts
-  stay active and do not authorize tag, crates.io publish, or GitHub release
-  execution (#337, #342, #349).
-- Tightened review-ready dogfood rough edges: repairable intakes route through
-  `repair plan`, journal repairs keep manual evidence enabled on rerun, intake
-  prints one main `Next:` block, the final share handoff uses read-only
-  `share explain manager`, duplicate journal repair items are collapsed,
-  Windows redaction-key setup is shell-native, and `repair diff` hands off to
-  the next review-ready commands (#338, #344, #345, #347, #348, #350, #351,
-  #352).
-- Strengthened post-0.8 proof with golden/no-write coverage for review-ready
-  packets, `open packet`, `repair diff`, and the repeated journal guidance
-  discovered during local-history dogfood (#340, #341, #343, #346).
-- Kept advisory proof surfaces out of the release path by refreshing RIPR lane
-  docs to describe the landed advisory stub as non-release-blocking (#357).
-- Clarified review-ready readiness wording from dogfood: intake/report/repair
-  surfaces now distinguish legacy `Intake status` from packet-quality
-  `Packet readiness`, including compatible behavior for old reports without
-  `packet_quality`; `report summarize` also now keeps its window label singular
-  and routes visible share handoffs through read-only `share explain` commands
-  without reprinting direct manager/public render actions in the machine-action
-  summary; `intake.report.md` now follows the same non-duplicating window
-  display contract and shows read-only share explanation before render commands
-  while repeated copyable `Top Fixups` commands are collapsed (#364, #365,
-  #367, #369, #370, #371, #372, #373).
-- Aligned the crates.io README with the review-ready packet loop so install
-  readers see `repair plan`, journal repair, `repair diff`, `runs diff`, and
-  read-only `share explain` before manager/public rendering (#374).
-- Fixed default `./out` display in intake handoffs so Windows dogfood no longer
-  shows noisy `././out` paths when the config lives in the current directory
-  (#375).
-- Normalized intake and review-ready path display so Windows dogfood shows
-  stable slash-separated artifact paths next to copyable `--out "./out"`
-  handoffs (#376).
-- Blocked journal repair handoffs when the configured manual journal is
-  malformed, so intake, evidence debt, and `repair plan` point at manual journal
-  setup repair instead of copyable `journal add` commands that cannot run
-  (#377).
-- Made `share explain manager|public` surface packet readiness and report
-  evidence debt in `Needs review`, so a caveated packet no longer appears
-  share-clean just because coverage gaps and skipped sources are absent (#378).
-- Reduced repeated outcome-context evidence debt so broad code-only/ticket-only
-  workstreams covered by the manual-context repair no longer print duplicate
-  `journal add` guidance under a second label (#379).
-- Reduced first-run output noise so zero-event sources no longer appear as
-  positive evidence in the `Good` list while still remaining visible in source
-  status and evidence caveats (#380).
-- Kept repairable intake `Next` handoffs on the repair loop by routing journal
-  fixes through `repair plan` / `journal add --from-repair` instead of repeating
-  direct `journal add --date` commands in the top-level handoff (#381).
-- Kept repairable intake `Next` handoffs read-first by suppressing other
-  write-producing commands, such as direct workstream splits, once `repair plan`
-  is available (#382).
-- Documented the read-first repair handoff in the review-ready and evidence
-  repair guides so direct write commands in evidence debt are treated as context,
-  not the first action (#383).
-- Aligned the rapid first-intake guide with the repair loop so missing manual
-  evidence routes through `repair plan` / `journal add --from-repair` before
-  direct journal commands (#384).
-- Aligned the top-level README with the read-first repair and share flow so
-  users see `repair plan`, `journal add --from-repair`, `share explain`, and
-  `share verify` before write-producing commands (#385).
-- Made skipped autodetected sources part of coverage metadata before packet
-  rendering, so `packet.md`, `coverage.manifest.json`, review output, and
-  `share explain` no longer disagree about GitHub/GitLab/Jira/Linear/JSON
-  skips during first-run dogfood (#386).
-- Kept repair and quality diffs honest after journal-only repair: source repair
-  items now clear only when the newer report includes evidence from that source,
-  so disappearing optional-source scope is not reported as packet improvement
-  (#387).
-- Routed repaired rerun intake handoffs to `repair diff --latest` before
-  `repair plan`, so the post-repair path moves into comparison instead of
-  sending users back to the planning step first (#388).
-- Labeled `share explain` follow-up render commands as "Render when ready" so
-  the read-only posture explanation does not look like an immediate write step
-  during post-0.8 dogfood (#389).
-- Consolidated the late post-0.8 release-hold ledger so #375-#389 can be
-  audited by product risk without implying 0.9 release approval (#390).
-- Added a review-ready dogfood matrix for the paused 0.9 candidate so the
-  clean-directory, repaired-packet, skipped-source, old-report, and share
-  posture flows are explicit before any release-resume decision (#391).
-- Pinned targeted dogfood-matrix checks for the paused 0.9 candidate: public
-  `share explain` now keeps packet debt and strict-review caveats visible
-  without writing, legacy share explanations prompt rerun for review-ready
-  signals, and `runs diff` no longer reports packet-readiness improvement from
-  reports that lack `packet_quality` (#392).
-- Tightened `share explain` wording so source repairs that remain open after a
-  journal-only repair rerun are still named in `Needs review` from report
-  receipts, instead of making provider setup gaps look gone at share time
-  (#393).
-- Pinned packet/report consistency so `packet.md` readiness, claim candidates,
-  and missing-context prompts stay aligned with `packet_quality`, while
-  `share explain` continues to read report receipts instead of rendered
-  Markdown (#394).
-- Hardened old-report compatibility for partial `packet_quality` reports that
-  predate claim candidates or share posture: `report validate`, `runs diff`,
-  and `share explain` keep working and prompt rerun for richer review-ready
-  signals (#395).
-- Guarded paused release execution so manual `release.yml` dispatches require a
-  semver tag and owner approval before release proof starts, while
-  `scripts/check-release-hold.sh` rejects branch refs and held `v0.9.0` release
-  attempts (#396).
-- Recorded a final review-ready loop dogfood transcript from local git plus
-  manual repair, showing repair diff, runs diff, packet readiness, claim
-  candidates, read-only share explanation, and fail-closed manager verification
-  without lifting the 0.9 release hold (#397).
-- Recorded the 0.9 release decision gate: keep the hold active because soak
-  evidence is useful but owner approval and final release preflight are not
-  present (#398).
-- Proposed the next non-release Guided Setup / Doctor lane so setup readiness,
-  source status, local-file validity, credential presence, share prerequisites,
-  and read/write next actions can be made explicit before intake, repair, or
-  share commands (#399).
-- Defined the setup readiness contract for Guided Setup / Doctor, separating
-  setup status from source freshness, repair readiness, packet readiness, and
-  share posture while preserving no-network and no-write doctor boundaries
-  (#400).
-- Recorded the Guided Setup / Doctor ADR: doctor and `sources status` are setup
-  readiness surfaces, not dry-run intake engines, and must stay no-network and
-  no-write by default (#401).
-- Added the internal setup readiness model for Guided Setup / Doctor, covering
-  source, local-file, credential, share-profile, next-action, and overall setup
-  state without adding a CLI surface yet (#402).
-- Added `shiplog doctor --setup` as a read-only, no-network setup readiness
-  view over the typed doctor model, including grouped readiness output,
-  read/write next-action labels, and no secret-value disclosure (#403).
-- Added `shiplog sources status` as the source-only projection of setup
-  readiness, with canonical source keys, enabled/status/reason rows,
-  source-specific next actions, and no share-profile or credential noise (#404).
-- Added non-interactive `shiplog init --guided` defaults for local-first setup:
-  local git when available, valid manual journal scaffolding, JSON import only
-  when files exist, and token-backed provider sections left disabled until
-  configured (#405).
-- Routed setup-blocked repair items through read-only doctor/source-status
-  handoffs before repair action, so malformed manual journals and provider
-  token gaps no longer expose dead-end journal, token, or identity commands in
-  `repair plan` (#406).
-- Added manager/public share readiness to `shiplog doctor --setup`, including
-  redaction-key blocking and public strict-verification caveats without writing
-  profile artifacts or rendering share packets (#407).
-- Added a product proof that `init --guided` plus `doctor --setup` prevents
-  malformed manual-journal setup from turning into dead-end repair commands
-  before the journal repair loop resumes and clears the manual evidence item
-  (#408).
-- Added a guided setup and doctor guide covering local-only, manual-only,
-  token-backed GitHub, manager-share-ready, and public-share-cautious modes
-  before intake, repair, or share commands (#409).
-- Updated the 0.9 release decision after Guided Setup / Doctor: the setup front
-  door is part of the unreleased candidate scope, but the 0.9 release hold stays
-  active until owner approval and current release preflight exist (#410).
-- Added a setup-readiness dogfood matrix so the Guided Setup / Doctor flows have
-  a visible ledger of trusted proof, missing proof, and accepted caveats without
-  lifting the 0.9 release hold (#411).
-- Added `shiplog doctor --setup --json` as a read-only, no-network setup
-  readiness control-plane output for agents and scripts, reusing the typed
-  doctor model without printing secret values (#412).
-- Added a setup-readiness JSON contract under `contracts/schemas/`, with
-  examples and schema docs for the `doctor --setup --json` control-plane output
-  (#413).
-- Added a doctor/source-status consistency proof so the source-only CLI view
-  stays aligned with the setup-readiness JSON model without leaking
-  share/redaction setup noise (#414).
-- Added an agent-safe doctor JSON proof so blocked setup state exposes
-  read-only setup actions and withholds dead-end evidence-repair/share-render
-  write commands (#415).
-- Made intake prefer `doctor --setup` and `sources status` before repair plan
-  when configured setup is blocked, without changing normal repair flow for
-  optional autodetected provider skips (#416).
-- Pinned share-readiness consistency so doctor, `share explain`, `share
-  verify`, and manager/public rendering agree on the missing redaction-key
-  blocker without writing profile artifacts (#417).
-- Recorded a guided setup dogfood transcript from an empty temp workspace
-  through `init --guided`, doctor human/JSON setup reads, `sources status`,
-  intake, repair, rerun, diff, and read-only share explanation while keeping
-  the 0.9 release hold active (#418).
-- Fixed the transcript-discovered local Git caveat where guided configs using
-  `repo = "."` could pass doctor path readiness but fail intake without an
-  `origin` remote; local Git now derives repository identity from the workdir
-  before falling back to the configured path name (#419).
-- Hardened setup-readiness compatibility for older and partial setup states:
-  missing optional provider tokens and missing local paths stay `unavailable`,
-  disabled manual journals are not validated as malformed, unsupported config
-  versions are the reserved `stale_config` case, and old reports/packets do not
-  drive doctor setup state (#420).
-- Aligned the README, crate README, rapid first-intake guide, review-ready
-  guide, config reference, and guided setup guide so `init --guided`,
-  `doctor --setup`, `sources status`, and `doctor --setup --json` are taught as
-  the setup front door before deeper intake, repair, and share flows (#421).
-- Recorded the post-setup release decision: keep the 0.9 hold active after
-  setup-readiness operationalization, include the setup front door in unreleased
-  candidate scope, and require explicit owner approval plus current preflight
-  before any release execution (#422).
-- Accepted the scheduled 2026-05-18 Factory Droid security scan report with
-  zero findings as hygiene, without changing product or release posture (#423).
-- Proposed the next non-release review-loop status lane so setup, evidence,
-  repair, diff, and share receipts can become one read-only status surface for
-  humans and agents (#424).
-- Defined the review-loop status contract for the next lane, including finite
-  status vocabulary, receipt-triggered conditions, setup/evidence/repair/share
-  boundaries, JSON shape, safety rules, and proof expectations without lifting
-  the 0.9 release hold (#425).
-- Recorded the review-loop status ADR: `shiplog status` must read typed models
-  and durable receipts instead of packet/report Markdown, provider probes,
-  implicit intake reruns, share rendering, LLM summaries, or release execution
-  (#426).
-- Added the internal review-loop status model for setup, latest-run, packet,
-  source, repair, diff, share, blocking-reason, next-action, and receipt
-  summaries, with unit coverage for missing setup, no-run, repairable,
-  repair-in-progress, and share-blocked states (#427).
-- Added a read-only review-loop receipt resolver for the status lane, covering
-  latest run discovery, old/malformed `intake.report.json` handling,
-  `source.failures.json`, share manifests, and derived repair/runs diff receipt
-  pairs without scraping packet Markdown (#428).
-- Added the human `shiplog status --latest` review-loop cockpit, joining setup,
-  latest-run, packet readiness, source, repair, diff, share, blocker,
-  next-action, and receipt summaries while preserving read-only behavior and
-  release-hold posture (#429).
-- Added `shiplog status --latest --json` as the agent-readable rendering of the
-  same review-loop status model, including blockers, receipt refs, and
-  write-labelled next actions without human prose or writes (#430).
-- Pinned the review-loop status JSON contract with schema docs and examples so
-  the #430 agent-readable surface has stable fields, finite statuses,
-  write-labelled next actions, receipt refs, no-secret hygiene, and additive
-  compatibility rules (#431).
-- Proved `shiplog status --latest --json` stays aligned with existing receipt
-  surfaces: setup blockers match doctor JSON, source blockers match
-  `sources status`, packet readiness matches `intake.report.json`, repair
-  counts/posture match `repair plan`, comparable-run refs match `repair diff`
-  and `runs diff`, and share blockers match `share explain` (#432).
-- Proved review-loop status safe next actions across setup, collection,
-  repair, rerun, caveated, old-report, malformed-report, share-blocked, and
-  ready-to-share states; status now detects a local journal repair applied
-  after the latest run and routes to intake rerun instead of repeating the
-  stale repair write (#433).
-- Recorded a review-loop status dogfood transcript showing `status --latest`
-  before intake, after intake, after journal repair, after rerun/diff, and
-  before share rendering; the transcript confirms status stays read-only and
-  does not lift the 0.9 release hold (#434).
-- Added a recurring review-loop guide that teaches status-first weekly,
-  monthly, promotion, local-only, token-backed, public-share, and
-  agent-assisted workflows without widening status into a dashboard or release
-  lane (#435).
-- Aligned the README, crate README, rapid first-intake guide, guided setup
-  guide, review-ready guide, and config reference so `status --latest` is taught
-  as the read-only review-loop cockpit after setup preflight and before deeper
-  repair, diff, and share flows (#436).
+shiplog 0.9.0 is the **review-loop cockpit release**.
 
-## [0.9.0] - Unreleased candidate
-
-shiplog 0.9.0 is the planned **review-ready packet and guided setup candidate**.
-It builds on the 0.8 Evidence Repair Loop by turning repaired evidence into
-conservative packet quality guidance: readiness, evidence strength,
-receipt-backed claim candidates, missing-context prompts, share posture
-explanation, and quality movement across reruns. The unreleased candidate now
-also includes the Guided Setup / Doctor front door so users can inspect setup
-readiness before intake, repair, or share commands.
+It turns shiplog from a packet generator into a setup-aware, receipt-backed
+review loop: diagnose setup, collect evidence, inspect status, repair gaps,
+rerun, compare, and share safely.
 
 ### Added
 
-- Added the review-ready packet quality source-of-truth stack: proposal, spec,
-  ADR, and user guide. The contract keeps claim candidates as evidence
-  scaffolds, not generated performance-review prose (#307-#309, #318).
-- Added machine-readable `packet_quality` to `intake.report.json`, including
-  packet readiness, evidence strength, claim candidates, and share posture
-  compatibility fields while preserving old compatible v1 reports (#311,
-  #313).
-- Added `Packet Readiness` and `Claim Candidates` sections to `packet.md` so a
-  repaired packet leads with what is strong, what remains weak, which claims are
-  receipt-backed, and what context the user still needs to supply (#312, #314).
-- Added `shiplog share explain manager|public` as a read-only share posture
-  command. It reports included, removed, blocked, and needs-review items without
-  requiring a redaction key or writing profile artifacts (#315).
-- Added `shiplog runs diff --latest` to show packet quality movement across
-  reruns, including readiness changes, evidence counts, manual repair effects,
-  claim candidate movement, repair state, skipped sources, and remaining
-  weaknesses (#316).
+- Added `shiplog status --latest`, a read-only cockpit over setup, latest run,
+  packet readiness, source state, repair, diff, share posture, blockers, next
+  actions, and receipt refs (#429).
+- Added `shiplog status --latest --json`, the same status model for agents and
+  scripts, with stable keys, write-labelled next actions, blockers, and receipt
+  references (#430).
+- Added `shiplog init --guided`, `doctor --setup`, `sources status`, and
+  `doctor --setup --json` as the setup-readiness front door before intake,
+  repair, and share commands (#403-#405, #412).
+- Added review-ready packet quality: Packet Readiness, evidence strength,
+  receipt-backed claim candidates, missing-context prompts, share posture, and
+  quality movement across reruns (#311-#316).
+- Added `share explain manager|public` and `runs diff --latest` as read-only
+  posture and comparison surfaces (#315, #316).
 
-### Tests
+### Changed
 
-- Extended the front-door product proof through the review-ready loop: cold
-  intake, repair plan, journal repair, rerun, repair diff, readiness
-  improvement, claim candidate appearance, quality diff, and share posture
-  explanation without provider mutation or share artifact writes (#317).
+- Intake and repair handoffs are read-first: repairable runs route through
+  `repair plan`, setup-blocked repairs route through doctor/source status, and
+  repaired reruns route toward diff before more planning.
+- Share flows fail closed and explain posture before rendering manager or public
+  packets.
+- Workspace package versions moved from `0.8.0` to `0.9.0` as candidate
+  metadata only; release execution remains held until explicit owner approval
+  and current preflight exist.
 
-### Release
+### Fixed
 
-- Bumped workspace packages and normal workspace dependency requirements from
-  `0.8.0` to `0.9.0` as candidate metadata.
-- Paused 0.9 release execution after the shipped 0.8 cut; no 0.9 tag,
-  crates.io publish, or GitHub release should be created while the release hold
-  remains active.
+- Fixed guided local Git configs using `repo = "."` without an `origin` remote.
+- Fixed misleading zero-event source "Good" output.
+- Fixed old/partial report and setup compatibility paths.
+- Fixed Windows path and environment-variable display rough edges found in
+  dogfood.
+
+### Documentation and proof
+
+- Added setup-readiness, review-ready, and review-loop status proposals, specs,
+  ADRs, schemas, examples, dogfood matrices, and transcripts.
+- Added the review-loop status transcript (#434), recurring review-loop guide,
+  and README/front-door alignment so status is taught as the recurring cockpit.
+- Kept detailed post-0.8 soak and release-hold receipts in
+  [`docs/release/0.9.0-readiness.md`](docs/release/0.9.0-readiness.md) and
+  [`docs/release/0.9.0-release-hold.md`](docs/release/0.9.0-release-hold.md).
+
+Key receipts: #307-#319, #337-#398, #399-#422, #424-#436.
+
+Release execution is still paused: do not tag, publish to crates.io, create a
+GitHub release, dispatch release workflows, or run release-install smoke for
+`v0.9.0` while the release hold remains active.
 
 ## [0.8.0] - 2026-05-15
 

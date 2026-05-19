@@ -28,6 +28,18 @@ fn assert_contains_in_order(doc: &str, doc_label: &str, needles: &[&str]) {
     }
 }
 
+fn section_between<'a>(doc: &'a str, start: &str, end: &str) -> &'a str {
+    let start_index = doc
+        .find(start)
+        .unwrap_or_else(|| panic!("document should contain section start {start:?}"));
+    let section_start = start_index + start.len();
+    let end_index = doc[section_start..]
+        .find(end)
+        .map(|offset| section_start + offset)
+        .unwrap_or_else(|| panic!("document should contain section end {end:?} after {start:?}"));
+    &doc[section_start..end_index]
+}
+
 #[test]
 fn config_reference_documents_current_surface() {
     let doc_path = repo_root().join("docs/config-reference.md");
@@ -105,6 +117,62 @@ fn config_reference_documents_current_surface() {
             "config reference should mention {needle:?}"
         );
     }
+}
+
+#[test]
+fn changelog_curates_0_9_as_review_loop_cockpit_release_notes() {
+    let doc_path = repo_root().join("CHANGELOG.md");
+    let doc = std::fs::read_to_string(&doc_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", doc_path.display()));
+
+    let unreleased = section_between(&doc, "## [Unreleased]", "## [0.9.0]");
+    assert!(
+        unreleased.contains("No user-facing changes yet after the held 0.9.0 candidate."),
+        "Unreleased should be empty after the held 0.9 candidate"
+    );
+    assert!(
+        !unreleased.contains("#424") && !unreleased.contains("#436"),
+        "review-loop status receipts belong in the 0.9 candidate section, not Unreleased"
+    );
+
+    let candidate = section_between(&doc, "## [0.9.0]", "## [0.8.0]");
+    for needle in [
+        "review-loop cockpit release",
+        "diagnose setup, collect evidence, inspect status, repair gaps,",
+        "shiplog status --latest",
+        "shiplog status --latest --json",
+        "shiplog init --guided",
+        "doctor --setup",
+        "sources status",
+        "doctor --setup --json",
+        "Packet Readiness",
+        "evidence strength",
+        "receipt-backed claim candidates",
+        "missing-context prompts",
+        "share explain manager|public",
+        "runs diff --latest",
+        "read-first",
+        "setup-blocked repairs route through doctor/source status",
+        "fail closed",
+        "repo = \".\"",
+        "zero-event source \"Good\"",
+        "old/partial report and setup compatibility",
+        "Windows path and environment-variable display",
+        "setup-readiness, review-ready, and review-loop status",
+        "review-loop status transcript (#434)",
+        "recurring review-loop guide",
+        "Key receipts: #307-#319, #337-#398, #399-#422, #424-#436.",
+        "Release execution is still paused",
+    ] {
+        assert!(
+            candidate.contains(needle),
+            "0.9 changelog candidate should mention {needle:?}"
+        );
+    }
+    assert!(
+        !candidate.contains("### Post-0.8 soak"),
+        "0.9 changelog should be release-note shaped, not a PR-by-PR soak ledger"
+    );
 }
 
 #[test]
