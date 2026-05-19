@@ -1325,6 +1325,7 @@ fn crate_readme_documents_first_loop_for_crates_io() {
         "rapid-first-intake.md",
         "guided-setup-doctor.md",
         "recurring-review-loop.md",
+        "github-activity-harvest.md",
         "evidence-repair-loop.md",
         "review-ready-packet.md",
         "config-reference.md",
@@ -1399,6 +1400,7 @@ fn root_readme_documents_0_9_review_loop_front_door() {
         "Single supported public crate: `shiplog`",
         "contracts/schemas/",
         "review-loop-status-v1.md",
+        "github-activity-harvest.md",
         "review-loop-status-transcript.md",
     ] {
         assert!(
@@ -1946,6 +1948,44 @@ fn github_activity_harvest_spec_defines_plan_progress_and_api_ledger_contracts()
         adr.contains("SHIPLOG-SPEC-0009-github-activity-harvest"),
         "ADR should link the GitHub activity harvest spec"
     );
+}
+
+#[test]
+fn github_activity_harvest_guide_documents_current_receipt_workflow() {
+    let doc_path = repo_root().join("docs/guides/github-activity-harvest.md");
+    let doc = std::fs::read_to_string(&doc_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", doc_path.display()));
+
+    for needle in [
+        "GitHub activity harvest guide",
+        "plan -> scout -> authored -> full -> inspect receipts",
+        "actor-first and owner-filtered",
+        "shiplog config validate --config shiplog-github-full.toml",
+        "shiplog doctor --config shiplog-github-full.toml --setup",
+        "shiplog sources status --config shiplog-github-full.toml",
+        "shiplog github activity plan --config shiplog-github-full.toml",
+        "shiplog github activity scout --config shiplog-github-full.toml --resume",
+        "shiplog github activity run --config shiplog-github-full.toml --profile authored --resume",
+        "shiplog github activity run --config shiplog-github-full.toml --profile full --resume",
+        "github.activity.plan.json",
+        "github.activity.progress.json",
+        "github.activity.api-ledger.json",
+        "shiplog status --out ./out/github-full --latest",
+        "shiplog runs list --out ./out/github-full",
+        "shiplog open intake-report --out ./out/github-full --latest",
+        "shiplog open packet --out ./out/github-full --latest",
+        "What is not landed yet",
+        "shiplog github activity status",
+        "shiplog github activity report",
+        "shiplog github activity merge",
+        "store token values",
+        "execute release work",
+    ] {
+        assert!(
+            doc.contains(needle),
+            "GitHub activity harvest guide should mention {needle:?}"
+        );
+    }
 }
 
 #[test]

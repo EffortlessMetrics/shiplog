@@ -169,6 +169,7 @@ deterministic ordering, no secret values, and no Markdown scraping.
 | First run or deadline rescue | [docs/guides/rapid-first-intake.md](docs/guides/rapid-first-intake.md) |
 | Setup preflight | [docs/guides/guided-setup-doctor.md](docs/guides/guided-setup-doctor.md) |
 | Recurring weekly/monthly use | [docs/guides/recurring-review-loop.md](docs/guides/recurring-review-loop.md) |
+| Full GitHub history harvest | [docs/guides/github-activity-harvest.md](docs/guides/github-activity-harvest.md) |
 | Evidence repair | [docs/guides/evidence-repair-loop.md](docs/guides/evidence-repair-loop.md) |
 | Packet interpretation and share posture | [docs/guides/review-ready-packet.md](docs/guides/review-ready-packet.md) |
 | Full configuration reference | [docs/config-reference.md](docs/config-reference.md) |

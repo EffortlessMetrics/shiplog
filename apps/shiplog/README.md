@@ -115,6 +115,7 @@ Agents should consume JSON receipts, not `packet.md` or terminal prose.
 | First run | [Rapid first-intake guide](https://github.com/EffortlessMetrics/shiplog/blob/main/docs/guides/rapid-first-intake.md) |
 | Setup | [Guided setup and doctor guide](https://github.com/EffortlessMetrics/shiplog/blob/main/docs/guides/guided-setup-doctor.md) |
 | Recurring use | [Recurring review-loop guide](https://github.com/EffortlessMetrics/shiplog/blob/main/docs/guides/recurring-review-loop.md) |
+| Full GitHub history | [GitHub activity harvest guide](https://github.com/EffortlessMetrics/shiplog/blob/main/docs/guides/github-activity-harvest.md) |
 | Repair | [Evidence repair loop guide](https://github.com/EffortlessMetrics/shiplog/blob/main/docs/guides/evidence-repair-loop.md) |
 | Review-ready packet and share posture | [Review-ready packet guide](https://github.com/EffortlessMetrics/shiplog/blob/main/docs/guides/review-ready-packet.md) |
 | Configuration | [Config reference](https://github.com/EffortlessMetrics/shiplog/blob/main/docs/config-reference.md) |

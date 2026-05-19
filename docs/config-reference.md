@@ -218,6 +218,8 @@ the first receipt in the planned full-history harvest workflow. Use
 `shiplog github activity scout` for the search-only scout profile, then
 `shiplog github activity run --profile authored --resume` and
 `shiplog github activity run --profile full --resume` as the cache warms.
+For a full operator path, see the
+[`GitHub activity harvest guide`](guides/github-activity-harvest.md).
 
 ```toml
 [github_activity]
