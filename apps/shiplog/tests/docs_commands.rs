@@ -1352,9 +1352,17 @@ fn root_readme_documents_0_9_review_loop_front_door() {
     let doc_path = repo_root().join("README.md");
     let doc = std::fs::read_to_string(&doc_path)
         .unwrap_or_else(|err| panic!("read {}: {err}", doc_path.display()));
+    let ripr_badge_path = repo_root().join("badges/ripr-plus.json");
+    let ripr_badge = std::fs::read_to_string(&ripr_badge_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", ripr_badge_path.display()));
 
     for needle in [
-        "Review evidence loop for people who need receipts, not review prose.",
+        "<h1 align=\"center\">shiplog</h1>",
+        "badges/ripr-plus.json",
+        "GitHub release",
+        "crates.io downloads",
+        "MSRV 1.95",
+        "Review readiness with receipts: setup, status, intake, repair, rerun, diff, and share safely.",
         "What works in the 0.9 candidate",
         "shiplog turns work evidence into a review-readiness loop",
         "shiplog init --guided",
@@ -1393,6 +1401,17 @@ fn root_readme_documents_0_9_review_loop_front_door() {
         !doc.contains("contracted for 0.7"),
         "root README should not carry stale 0.7 crate-surface wording"
     );
+    for needle in [
+        "\"schemaVersion\": 1",
+        "\"label\": \"ripr+\"",
+        "\"message\": \"unavailable\"",
+        "\"color\": \"lightgrey\"",
+    ] {
+        assert!(
+            ripr_badge.contains(needle),
+            "ripr+ badge endpoint should mention {needle:?}"
+        );
+    }
 }
 
 #[test]
