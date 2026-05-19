@@ -13,7 +13,8 @@ Related setup spec:
 [`SHIPLOG-SPEC-0007-setup-readiness`](SHIPLOG-SPEC-0007-setup-readiness.md)
 Related status spec:
 [`SHIPLOG-SPEC-0008-review-loop-status`](SHIPLOG-SPEC-0008-review-loop-status.md)
-Related ADR: not yet assigned
+Related ADR:
+[`SHIPLOG-ADR-0010-github-harvest-is-actor-first-owner-filtered`](../adr/SHIPLOG-ADR-0010-github-harvest-is-actor-first-owner-filtered.md)
 
 ## Purpose
 
