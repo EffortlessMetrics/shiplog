@@ -1,5 +1,6 @@
 //! Fixture-safe command tests for documented review-cycle workflows.
 
+use anyhow::Context;
 use assert_cmd::Command;
 use predicates::prelude::*;
 use std::path::{Path, PathBuf};
@@ -2955,7 +2956,7 @@ fn github_activity_harvest_adr_records_actor_first_owner_filtered_decision() {
 }
 
 #[test]
-fn github_activity_harvest_completion_audit_records_landed_scope() {
+fn github_activity_harvest_completion_audit_records_landed_scope() -> anyhow::Result<()> {
     let root = repo_root();
     let audit_path = root.join("docs/product/github-activity-harvest-completion-audit.md");
     let readiness_path = root.join("docs/release/0.9.0-readiness.md");
@@ -2963,13 +2964,13 @@ fn github_activity_harvest_completion_audit_records_landed_scope() {
     let readme_path = root.join("README.md");
 
     let audit = std::fs::read_to_string(&audit_path)
-        .unwrap_or_else(|err| panic!("read {}: {err}", audit_path.display()));
+        .with_context(|| format!("failed to read {}", audit_path.display()))?;
     let readiness = std::fs::read_to_string(&readiness_path)
-        .unwrap_or_else(|err| panic!("read {}: {err}", readiness_path.display()));
+        .with_context(|| format!("failed to read {}", readiness_path.display()))?;
     let guide = std::fs::read_to_string(&guide_path)
-        .unwrap_or_else(|err| panic!("read {}: {err}", guide_path.display()));
+        .with_context(|| format!("failed to read {}", guide_path.display()))?;
     let readme = std::fs::read_to_string(&readme_path)
-        .unwrap_or_else(|err| panic!("read {}: {err}", readme_path.display()));
+        .with_context(|| format!("failed to read {}", readme_path.display()))?;
 
     for needle in [
         "GitHub activity harvest completion audit",
@@ -3008,11 +3009,19 @@ fn github_activity_harvest_completion_audit_records_landed_scope() {
     }
 
     assert!(
-        guide.contains("github-activity-harvest-completion-audit.md")
-            && readme.contains("github-activity-harvest-completion-audit.md")
-            && readiness.contains("GitHub activity completion audit"),
-        "guide, README, and readiness docs should link the GitHub activity completion audit"
+        guide.contains("github-activity-harvest-completion-audit.md"),
+        "guide should link the GitHub activity completion audit"
     );
+    assert!(
+        readme.contains("github-activity-harvest-completion-audit.md"),
+        "README should link the GitHub activity completion audit"
+    );
+    assert!(
+        readiness.contains("GitHub activity completion audit"),
+        "readiness doc should link the GitHub activity completion audit"
+    );
+
+    Ok(())
 }
 
 #[test]
