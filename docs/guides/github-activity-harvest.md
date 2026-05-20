@@ -49,6 +49,7 @@ include_authored_prs = true
 include_reviews = true
 profile = "scout"
 cache_dir = "./out/github-full/.cache"
+cache_ttl_days = 3650
 
 [github_activity.budget]
 max_search_requests = 300
@@ -214,9 +215,11 @@ Important receipts:
 
 | Receipt | What it proves |
 | --- | --- |
-| `github.activity.plan.json` | Planned actor, owners, windows, profile, request estimates, and next action. |
-| `github.activity.progress.json` | Completed state, checkpoint state, pending windows, run reference, and stop reason. |
-| `github.activity.api-ledger.json` | Search/core requests, cache counts by phase, owner filtering, rate-limit snapshots, and limit events. |
+| `github.activity.plan.json` | Planned actor, owners, windows, profile, request estimates, and next action. Pinned by [`github.activity.plan.v1`](../schemas/github-activity-harvest-v1.md). |
+| `github.activity.progress.json` | Completed state, checkpoint state, pending windows, run reference, and stop reason. Pinned by [`github.activity.progress.v1`](../schemas/github-activity-harvest-v1.md). |
+| `github.activity.api-ledger.json` | Search/core requests, cache counts by phase, owner filtering, rate-limit snapshots, and limit events. Pinned by [`github.activity.api-ledger.v1`](../schemas/github-activity-harvest-v1.md). |
+| `github.activity.report.json` | Durable harvest report written by `shiplog github activity report` and final merge receipt pinned by [`github.activity.report.v1`](../schemas/github-activity-report-v1.md). |
+| `github.activity.report.md` | Human-readable harvest report written beside the JSON report. |
 | `<run_id>/intake.report.json` | Evidence/source report for the generated run. |
 | `<run_id>/coverage.manifest.json` | Source coverage, warnings, and partial-coverage receipts. |
 
@@ -239,8 +242,23 @@ stopping. Resume with the same command:
 shiplog github activity run --config shiplog-github-full.toml --profile full --resume
 ```
 
+Completed windows are persisted under:
+
+```text
+out/github-full/github.activity.windows/<profile>/<window_id>/
+```
+
+Each completed window carries `ledger.events.jsonl`, `coverage.manifest.json`,
+and `freshness.json`. On resume, shiplog reuses valid completed window receipts,
+continues from pending windows, and carries cumulative API cost forward in
+`github.activity.api-ledger.json`.
+
 Do not delete the cache between runs. The cache is what turns scout/authored/full
 from repeated API work into a staged harvest.
+
+For historical harvests, set `cache_ttl_days` to a large positive value so old
+search pages, PR details, and review pages remain reusable while you scout,
+resume, and rerun. Omit it for normal review-cycle intake behavior.
 
 ## Owner filtering receipts
 
@@ -280,7 +298,7 @@ cache_dir = "./out/github-full/.cache"
 The goal is not to hide gaps. The goal is to receipt them clearly enough that
 you can split, resume, or accept the caveat.
 
-## What is not landed yet
+## Current activity commands
 
 The current implemented activity commands are:
 
@@ -288,19 +306,28 @@ The current implemented activity commands are:
 shiplog github activity plan
 shiplog github activity scout
 shiplog github activity run
-```
-
-These are planned follow-up surfaces, not current commands:
-
-```bash
 shiplog github activity status
 shiplog github activity report
 shiplog github activity merge
 ```
 
-Until those land, use the existing receipt readers:
+`report` writes `github.activity.report.json` and `github.activity.report.md`
+from the existing plan/progress/API-ledger receipts; it does not call GitHub or
+render share artifacts.
+
+`merge` currently writes final outputs for a completed activity run into
+`out/github-full/final/`: `packet.md`, `github.activity.report.json`,
+`github.activity.api-ledger.json`, any available coverage/ledger receipts, and
+`intake.report.json` when the completed run produced one. Multi-period
+deduplication remains bounded by the completed run referenced by
+`github.activity.progress.json`.
+
+Use these receipt readers after each activity pass:
 
 ```bash
+shiplog github activity status --out ./out/github-full
+shiplog github activity report --out ./out/github-full
+shiplog github activity merge --out ./out/github-full
 shiplog status --out ./out/github-full --latest
 shiplog runs list --out ./out/github-full
 shiplog open intake-report --out ./out/github-full --latest

@@ -112,8 +112,10 @@ fn config_reference_documents_current_surface() {
         "not `packet.md`",
         "Setup Readiness v1",
         "Review Loop Status v1",
+        "GitHub Activity Report v1",
         "schemas/setup-readiness-v1.md",
         "schemas/review-loop-status-v1.md",
+        "schemas/github-activity-report-v1.md",
         "doctor --repair-plan",
     ] {
         assert!(
@@ -138,6 +140,10 @@ fn changelog_curates_0_9_as_review_loop_cockpit_release_notes() {
         unreleased.contains("shiplog github activity scout")
             && unreleased.contains("shiplog github activity run --profile authored|full --resume"),
         "Unreleased should name the executable GitHub activity harvest commands"
+    );
+    assert!(
+        unreleased.contains("github.activity.report.v1"),
+        "Unreleased should mention the GitHub activity report schema contract"
     );
     assert!(
         unreleased.contains("without release execution"),
@@ -718,6 +724,393 @@ fn review_loop_status_schema_docs_and_examples_describe_v1_contract()
     Ok(())
 }
 
+#[test]
+fn github_activity_harvest_schema_docs_and_examples_describe_v1_contract()
+-> Result<(), Box<dyn std::error::Error>> {
+    let root = repo_root();
+    let doc_path = root.join("docs/schemas/github-activity-harvest-v1.md");
+    let plan_schema_path = root.join("contracts/schemas/github-activity-plan.v1.schema.json");
+    let progress_schema_path =
+        root.join("contracts/schemas/github-activity-progress.v1.schema.json");
+    let api_ledger_schema_path =
+        root.join("contracts/schemas/github-activity-api-ledger.v1.schema.json");
+    let plan_example_path = root.join("examples/github-activity-plan/full.json");
+    let progress_completed_path = root.join("examples/github-activity-progress/completed.json");
+    let progress_checkpointed_path =
+        root.join("examples/github-activity-progress/checkpointed.json");
+    let api_ledger_example_path = root.join("examples/github-activity-api-ledger/completed.json");
+    let guide_path = root.join("docs/guides/github-activity-harvest.md");
+    let config_path = root.join("docs/config-reference.md");
+    let spec_path = root.join("docs/specs/SHIPLOG-SPEC-0009-github-activity-harvest.md");
+
+    let doc = std::fs::read_to_string(&doc_path)?;
+    let plan_schema: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&plan_schema_path)?)?;
+    let progress_schema: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&progress_schema_path)?)?;
+    let api_ledger_schema: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&api_ledger_schema_path)?)?;
+    let plan_example: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&plan_example_path)?)?;
+    let progress_completed: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&progress_completed_path)?)?;
+    let progress_checkpointed: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&progress_checkpointed_path)?)?;
+    let api_ledger_example: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&api_ledger_example_path)?)?;
+    let guide = std::fs::read_to_string(&guide_path)?;
+    let config = std::fs::read_to_string(&config_path)?;
+    let spec = std::fs::read_to_string(&spec_path)?;
+
+    for (schema, schema_version) in [
+        (&plan_schema, "github.activity.plan.v1"),
+        (&progress_schema, "github.activity.progress.v1"),
+        (&api_ledger_schema, "github.activity.api-ledger.v1"),
+    ] {
+        assert_eq!(schema["additionalProperties"], false);
+        assert_eq!(
+            schema["properties"]["schema_version"]["const"],
+            schema_version
+        );
+        assert!(
+            schema["propertyNames"].is_object(),
+            "{schema_version} schema should include property-name hygiene"
+        );
+    }
+
+    for (schema, fields) in [
+        (
+            &plan_schema,
+            vec![
+                "schema_version",
+                "generated_at",
+                "shiplog_version",
+                "activity_id",
+                "actor",
+                "repo_owners",
+                "owner_filter_requested",
+                "query_strategy",
+                "profile",
+                "since",
+                "until",
+                "planning_mode",
+                "windows",
+                "estimated_totals",
+                "budget_policy",
+                "next_actions",
+                "receipt_refs",
+            ],
+        ),
+        (
+            &progress_schema,
+            vec![
+                "schema_version",
+                "generated_at",
+                "shiplog_version",
+                "activity_id",
+                "plan_ref",
+                "actor",
+                "repo_owners",
+                "profile",
+                "state",
+                "completed_windows",
+                "pending_windows",
+                "active_window",
+                "stop_reason",
+                "budget_checkpoint",
+                "run_ref",
+                "receipt_refs",
+            ],
+        ),
+        (
+            &api_ledger_schema,
+            vec![
+                "schema_version",
+                "generated_at",
+                "shiplog_version",
+                "activity_id",
+                "plan_ref",
+                "progress_ref",
+                "actor",
+                "repo_owners",
+                "profile",
+                "stop_reason",
+                "github_api",
+                "owner_filter",
+                "receipt_refs",
+            ],
+        ),
+    ] {
+        for field in fields {
+            let required = schema["required"].as_array();
+            assert!(
+                required.is_some_and(|values| values.iter().any(|value| value == field)),
+                "GitHub activity harvest schema should require {field}"
+            );
+            assert!(
+                doc.contains(field),
+                "GitHub activity harvest docs should mention {field}"
+            );
+        }
+    }
+
+    for needle in [
+        "contracts/schemas/github-activity-plan.v1.schema.json",
+        "contracts/schemas/github-activity-progress.v1.schema.json",
+        "contracts/schemas/github-activity-api-ledger.v1.schema.json",
+        "examples/github-activity-plan/full.json",
+        "examples/github-activity-progress/completed.json",
+        "examples/github-activity-progress/checkpointed.json",
+        "examples/github-activity-api-ledger/completed.json",
+        "shiplog github activity plan",
+        "shiplog github activity scout",
+        "shiplog github activity run --profile authored --resume",
+        "shiplog github activity run --profile full --resume",
+        "shiplog github activity status",
+        "shiplog github activity report",
+        "github.activity.plan.v1",
+        "github.activity.progress.v1",
+        "github.activity.api-ledger.v1",
+        "actor_search_owner_filter",
+        "owner_not_requested",
+        "search_probe",
+        "search_page",
+        "pull_detail",
+        "review_page",
+        "rate_limit_snapshots",
+        "secondary_limit_events",
+        "budget_exhausted",
+        "checkpoint_and_stop",
+        "must not include token values",
+        "must not query GitHub from `status` or `report`",
+        "must not mutate provider records",
+        "must not delete cache during normal reruns",
+        "must not scrape `packet.md`",
+        "must not execute release work",
+        "Future compatible changes should be additive",
+    ] {
+        assert!(
+            doc.contains(needle),
+            "GitHub activity harvest schema docs should mention {needle:?}"
+        );
+    }
+
+    for text in [&guide, &config, &spec] {
+        assert!(
+            text.contains("github-activity-harvest-v1.md")
+                || text.contains("github.activity.plan.v1"),
+            "GitHub activity docs should link or name harvest receipt schemas"
+        );
+    }
+
+    let profiles = schema_string_set(&plan_schema, "/$defs/profile/enum");
+    for profile in ["scout", "authored", "full"] {
+        assert!(
+            profiles.contains(profile),
+            "plan schema should allow GitHub activity profile {profile}"
+        );
+    }
+    let states = schema_string_set(&progress_schema, "/$defs/activity_state/enum");
+    for state in [
+        "planned",
+        "scouting",
+        "running",
+        "checkpointed",
+        "completed",
+        "blocked",
+        "failed",
+    ] {
+        assert!(
+            states.contains(state),
+            "progress schema should allow GitHub activity state {state}"
+        );
+    }
+
+    assert_github_activity_plan_example_matches_schema_shape(
+        &plan_example,
+        &profiles,
+        &plan_example_path,
+    );
+    assert_github_activity_progress_example_matches_schema_shape(
+        &progress_completed,
+        &profiles,
+        &states,
+        &progress_completed_path,
+    );
+    assert_github_activity_progress_example_matches_schema_shape(
+        &progress_checkpointed,
+        &profiles,
+        &states,
+        &progress_checkpointed_path,
+    );
+    assert_github_activity_api_ledger_example_matches_schema_shape(
+        &api_ledger_example,
+        &profiles,
+        &api_ledger_example_path,
+    );
+
+    Ok(())
+}
+
+#[test]
+fn github_activity_report_schema_docs_and_example_describe_v1_contract()
+-> Result<(), Box<dyn std::error::Error>> {
+    let root = repo_root();
+    let doc_path = root.join("docs/schemas/github-activity-report-v1.md");
+    let schema_path = root.join("contracts/schemas/github-activity-report.v1.schema.json");
+    let example_path = root.join("examples/github-activity-report/completed.json");
+    let guide_path = root.join("docs/guides/github-activity-harvest.md");
+    let config_path = root.join("docs/config-reference.md");
+    let spec_path = root.join("docs/specs/SHIPLOG-SPEC-0009-github-activity-harvest.md");
+    let adr_path =
+        root.join("docs/adr/SHIPLOG-ADR-0010-github-harvest-is-actor-first-owner-filtered.md");
+
+    let doc = std::fs::read_to_string(&doc_path)?;
+    let schema_text = std::fs::read_to_string(&schema_path)?;
+    let example_text = std::fs::read_to_string(&example_path)?;
+    let guide = std::fs::read_to_string(&guide_path)?;
+    let config = std::fs::read_to_string(&config_path)?;
+    let spec = std::fs::read_to_string(&spec_path)?;
+    let adr = std::fs::read_to_string(&adr_path)?;
+    let schema: serde_json::Value = serde_json::from_str(&schema_text)?;
+    let example: serde_json::Value = serde_json::from_str(&example_text)?;
+
+    assert_eq!(schema["additionalProperties"], false);
+    assert_eq!(
+        schema["properties"]["schema_version"]["const"],
+        "github.activity.report.v1"
+    );
+    assert!(
+        schema["propertyNames"].is_object(),
+        "GitHub activity report schema should include property-name hygiene"
+    );
+
+    for field in [
+        "schema_version",
+        "generated_at",
+        "shiplog_version",
+        "activity_id",
+        "actor",
+        "repo_owners",
+        "query_strategy",
+        "profile",
+        "state",
+        "run_ref",
+        "source_run_dir",
+        "final_dir",
+        "final_outputs",
+        "github_api",
+        "owner_filter",
+        "receipt_refs",
+    ] {
+        let required = schema["required"].as_array();
+        assert!(
+            required.is_some_and(|values| values.iter().any(|value| value == field)),
+            "GitHub activity report schema should require {field}"
+        );
+        assert!(
+            doc.contains(field),
+            "GitHub activity report schema docs should mention {field}"
+        );
+    }
+
+    for needle in [
+        "contracts/schemas/github-activity-report.v1.schema.json",
+        "shiplog github activity merge --out ./out/github-full",
+        "examples/github-activity-report/completed.json",
+        "github.activity.report.v1",
+        "activity_id",
+        "actor",
+        "repo_owners",
+        "query_strategy",
+        "profile",
+        "state",
+        "final_outputs",
+        "github_api",
+        "owner_filter",
+        "receipt_refs",
+        "search_probe",
+        "search_page",
+        "pull_detail",
+        "review_page",
+        "rate_limit_snapshots",
+        "secondary_limit_events",
+        "actor_search_owner_filter",
+        "owner_not_requested",
+        "must not include token values",
+        "does not call GitHub",
+        "does not mutate provider records",
+        "does not render manager or public share artifacts",
+        "does not scrape `packet.md`",
+        "does not call an LLM",
+        "does not execute release work",
+        "Future compatible changes should be additive",
+    ] {
+        assert!(
+            doc.contains(needle),
+            "GitHub activity report schema docs should mention {needle:?}"
+        );
+    }
+
+    for text in [&guide, &config, &spec, &adr] {
+        assert!(
+            text.contains("github.activity.report.v1")
+                || text.contains("github-activity-report-v1.md"),
+            "GitHub activity docs should link or name the report schema contract"
+        );
+    }
+
+    let profiles = schema_string_set(&schema, "/$defs/profile/enum");
+    for profile in ["scout", "authored", "full"] {
+        assert!(
+            profiles.contains(profile),
+            "schema should allow GitHub activity profile {profile}"
+        );
+    }
+
+    let states = schema_string_set(&schema, "/$defs/activity_state/enum");
+    for state in [
+        "planned",
+        "scouting",
+        "running",
+        "checkpointed",
+        "completed",
+        "blocked",
+        "failed",
+    ] {
+        assert!(
+            states.contains(state),
+            "schema should allow GitHub activity state {state}"
+        );
+    }
+
+    let output_labels = schema_string_set(&schema, "/$defs/final_output_label/enum");
+    for label in [
+        "packet",
+        "intake_report",
+        "coverage",
+        "ledger",
+        "api_ledger",
+        "activity_report",
+        "artifact",
+    ] {
+        assert!(
+            output_labels.contains(label),
+            "schema should allow GitHub activity final output label {label}"
+        );
+    }
+
+    assert_github_activity_report_example_matches_schema_shape(
+        &example,
+        &profiles,
+        &states,
+        &output_labels,
+        &example_path,
+    );
+
+    Ok(())
+}
+
 fn schema_string_set(
     schema: &serde_json::Value,
     pointer: &str,
@@ -930,6 +1323,526 @@ fn assert_review_loop_status_example_matches_schema_shape(
     }
     assert_status_receipt_refs_match_schema_shape(&json["receipt_refs"], path);
     assert_no_secret_sentinel_values(json, path);
+}
+
+fn assert_github_activity_plan_example_matches_schema_shape(
+    json: &serde_json::Value,
+    profiles: &std::collections::BTreeSet<String>,
+    path: &Path,
+) {
+    assert_allowed_object_keys(
+        json,
+        &[
+            "schema_version",
+            "generated_at",
+            "shiplog_version",
+            "activity_id",
+            "actor",
+            "repo_owners",
+            "owner_filter_requested",
+            "query_strategy",
+            "profile",
+            "since",
+            "until",
+            "planning_mode",
+            "windows",
+            "estimated_totals",
+            "budget_policy",
+            "next_actions",
+            "receipt_refs",
+        ],
+        path,
+    );
+    assert_eq!(
+        json["schema_version"],
+        "github.activity.plan.v1",
+        "{} schema_version should be locked to github.activity.plan.v1",
+        path.display()
+    );
+    for field in [
+        "generated_at",
+        "shiplog_version",
+        "activity_id",
+        "actor",
+        "query_strategy",
+        "since",
+        "until",
+        "planning_mode",
+    ] {
+        assert_non_empty_string(json, field, path);
+    }
+    assert!(
+        json["owner_filter_requested"].is_boolean(),
+        "{} owner_filter_requested should be boolean",
+        path.display()
+    );
+    assert_status_field_allowed(json, "profile", profiles, path);
+    assert_string_array(&json["repo_owners"], "repo_owners", path);
+
+    let windows = json["windows"]
+        .as_array()
+        .unwrap_or_else(|| panic!("{} windows should be an array", path.display()));
+    for window in windows {
+        assert_allowed_object_keys(
+            window,
+            &[
+                "window_id",
+                "since",
+                "until",
+                "granularity",
+                "query_kinds",
+                "queries",
+            ],
+            path,
+        );
+        for field in ["window_id", "since", "until", "granularity"] {
+            assert_non_empty_string(window, field, path);
+        }
+        assert_string_array(&window["query_kinds"], "query_kinds", path);
+        let queries = window["queries"]
+            .as_array()
+            .unwrap_or_else(|| panic!("{} window.queries should be an array", path.display()));
+        for query in queries {
+            assert_allowed_object_keys(
+                query,
+                &[
+                    "query_kind",
+                    "search_query",
+                    "estimated_search_requests",
+                    "estimated_core_requests",
+                    "estimated_review_requests",
+                    "dense_window_risk",
+                    "cache_reuse",
+                ],
+                path,
+            );
+            for field in [
+                "query_kind",
+                "search_query",
+                "dense_window_risk",
+                "cache_reuse",
+            ] {
+                assert_non_empty_string(query, field, path);
+            }
+            for field in [
+                "estimated_search_requests",
+                "estimated_core_requests",
+                "estimated_review_requests",
+            ] {
+                assert_non_negative_integer(&query[field], field, path);
+            }
+        }
+    }
+
+    assert_allowed_object_keys(
+        &json["estimated_totals"],
+        &["search_requests", "core_requests", "review_requests"],
+        path,
+    );
+    for field in ["search_requests", "core_requests", "review_requests"] {
+        assert_non_negative_integer(&json["estimated_totals"][field], field, path);
+    }
+
+    assert_allowed_object_keys(
+        &json["budget_policy"],
+        &[
+            "max_search_requests",
+            "max_core_requests",
+            "max_search_per_minute",
+            "on_exhausted",
+        ],
+        path,
+    );
+    for field in [
+        "max_search_requests",
+        "max_core_requests",
+        "max_search_per_minute",
+    ] {
+        assert_non_negative_integer(&json["budget_policy"][field], field, path);
+    }
+    assert_non_empty_string(&json["budget_policy"], "on_exhausted", path);
+
+    let actions = json["next_actions"]
+        .as_array()
+        .unwrap_or_else(|| panic!("{} next_actions should be an array", path.display()));
+    for action in actions {
+        assert_allowed_object_keys(action, &["command", "writes", "reason"], path);
+        assert_non_empty_string(action, "command", path);
+        assert!(
+            action["writes"].is_boolean(),
+            "{} next action writes should be boolean",
+            path.display()
+        );
+        assert_non_empty_string(action, "reason", path);
+    }
+    assert_string_array(&json["receipt_refs"], "receipt_refs", path);
+    assert_no_secret_sentinel_values(json, path);
+}
+
+fn assert_github_activity_progress_example_matches_schema_shape(
+    json: &serde_json::Value,
+    profiles: &std::collections::BTreeSet<String>,
+    states: &std::collections::BTreeSet<String>,
+    path: &Path,
+) {
+    assert_allowed_object_keys(
+        json,
+        &[
+            "schema_version",
+            "generated_at",
+            "shiplog_version",
+            "activity_id",
+            "plan_ref",
+            "actor",
+            "repo_owners",
+            "profile",
+            "state",
+            "completed_windows",
+            "pending_windows",
+            "active_window",
+            "stop_reason",
+            "budget_checkpoint",
+            "run_ref",
+            "receipt_refs",
+        ],
+        path,
+    );
+    assert_eq!(
+        json["schema_version"],
+        "github.activity.progress.v1",
+        "{} schema_version should be locked to github.activity.progress.v1",
+        path.display()
+    );
+    for field in [
+        "generated_at",
+        "shiplog_version",
+        "activity_id",
+        "plan_ref",
+        "actor",
+    ] {
+        assert_non_empty_string(json, field, path);
+    }
+    assert_status_field_allowed(json, "profile", profiles, path);
+    assert_status_field_allowed(json, "state", states, path);
+    assert_string_array(&json["repo_owners"], "repo_owners", path);
+    assert_string_array(&json["completed_windows"], "completed_windows", path);
+    assert_string_array(&json["pending_windows"], "pending_windows", path);
+    if !json["active_window"].is_null() {
+        assert_allowed_object_keys(&json["active_window"], &["window_id", "query_kind"], path);
+        assert_non_empty_string(&json["active_window"], "window_id", path);
+        assert!(
+            json["active_window"]["query_kind"].is_null()
+                || json["active_window"]["query_kind"].as_str().is_some(),
+            "{} active_window.query_kind should be string or null",
+            path.display()
+        );
+    }
+    assert!(
+        json["stop_reason"].is_null() || json["stop_reason"].as_str().is_some(),
+        "{} stop_reason should be string or null",
+        path.display()
+    );
+    if !json["budget_checkpoint"].is_null() {
+        assert_allowed_object_keys(
+            &json["budget_checkpoint"],
+            &["search_requests", "core_requests"],
+            path,
+        );
+        for field in ["search_requests", "core_requests"] {
+            assert_non_negative_integer(&json["budget_checkpoint"][field], field, path);
+        }
+    }
+    assert!(
+        json["run_ref"].is_null() || json["run_ref"].as_str().is_some(),
+        "{} run_ref should be string or null",
+        path.display()
+    );
+    assert_string_array(&json["receipt_refs"], "receipt_refs", path);
+    assert_no_secret_sentinel_values(json, path);
+}
+
+fn assert_github_activity_api_ledger_example_matches_schema_shape(
+    json: &serde_json::Value,
+    profiles: &std::collections::BTreeSet<String>,
+    path: &Path,
+) {
+    assert_allowed_object_keys(
+        json,
+        &[
+            "schema_version",
+            "generated_at",
+            "shiplog_version",
+            "activity_id",
+            "plan_ref",
+            "progress_ref",
+            "actor",
+            "repo_owners",
+            "profile",
+            "stop_reason",
+            "github_api",
+            "owner_filter",
+            "receipt_refs",
+        ],
+        path,
+    );
+    assert_eq!(
+        json["schema_version"],
+        "github.activity.api-ledger.v1",
+        "{} schema_version should be locked to github.activity.api-ledger.v1",
+        path.display()
+    );
+    for field in [
+        "generated_at",
+        "shiplog_version",
+        "activity_id",
+        "plan_ref",
+        "progress_ref",
+        "actor",
+    ] {
+        assert_non_empty_string(json, field, path);
+    }
+    assert_string_array(&json["repo_owners"], "repo_owners", path);
+    assert_status_field_allowed(json, "profile", profiles, path);
+    assert!(
+        json["stop_reason"].is_null() || json["stop_reason"].as_str().is_some(),
+        "{} stop_reason should be string or null",
+        path.display()
+    );
+    assert_github_api_matches_activity_report_schema_shape(&json["github_api"], path);
+    assert_owner_filter_matches_activity_report_schema_shape(&json["owner_filter"], path);
+    assert_string_array(&json["receipt_refs"], "receipt_refs", path);
+    assert_no_secret_sentinel_values(json, path);
+}
+
+fn assert_github_activity_report_example_matches_schema_shape(
+    json: &serde_json::Value,
+    profiles: &std::collections::BTreeSet<String>,
+    states: &std::collections::BTreeSet<String>,
+    output_labels: &std::collections::BTreeSet<String>,
+    path: &Path,
+) {
+    assert_allowed_object_keys(
+        json,
+        &[
+            "schema_version",
+            "generated_at",
+            "shiplog_version",
+            "activity_id",
+            "actor",
+            "repo_owners",
+            "query_strategy",
+            "profile",
+            "state",
+            "run_ref",
+            "source_run_dir",
+            "final_dir",
+            "final_outputs",
+            "github_api",
+            "owner_filter",
+            "receipt_refs",
+        ],
+        path,
+    );
+    assert_eq!(
+        json["schema_version"],
+        "github.activity.report.v1",
+        "{} schema_version should be locked to github.activity.report.v1",
+        path.display()
+    );
+    for field in [
+        "generated_at",
+        "shiplog_version",
+        "activity_id",
+        "actor",
+        "query_strategy",
+        "run_ref",
+        "source_run_dir",
+        "final_dir",
+    ] {
+        assert_non_empty_string(json, field, path);
+    }
+    assert_status_field_allowed(json, "profile", profiles, path);
+    assert_status_field_allowed(json, "state", states, path);
+    assert_string_array(&json["repo_owners"], "repo_owners", path);
+
+    let outputs = json["final_outputs"]
+        .as_array()
+        .unwrap_or_else(|| panic!("{} final_outputs should be an array", path.display()));
+    for output in outputs {
+        assert_allowed_object_keys(output, &["label", "path"], path);
+        assert_status_field_allowed(output, "label", output_labels, path);
+        assert_non_empty_string(output, "path", path);
+    }
+
+    assert_github_api_matches_activity_report_schema_shape(&json["github_api"], path);
+    assert_owner_filter_matches_activity_report_schema_shape(&json["owner_filter"], path);
+    assert_string_array(&json["receipt_refs"], "receipt_refs", path);
+    assert_no_secret_sentinel_values(json, path);
+}
+
+fn assert_github_api_matches_activity_report_schema_shape(
+    github_api: &serde_json::Value,
+    path: &Path,
+) {
+    assert_allowed_object_keys(
+        github_api,
+        &[
+            "requests",
+            "cache",
+            "rate_limit_snapshots",
+            "secondary_limit_events",
+        ],
+        path,
+    );
+    assert_allowed_object_keys(&github_api["requests"], &["search", "core"], path);
+    for field in ["search", "core"] {
+        assert_non_negative_integer(&github_api["requests"][field], field, path);
+    }
+
+    assert_allowed_object_keys(
+        &github_api["cache"],
+        &["search_probe", "search_page", "pull_detail", "review_page"],
+        path,
+    );
+    for phase in ["search_probe", "search_page", "pull_detail", "review_page"] {
+        assert_cache_phase_matches_activity_report_schema_shape(&github_api["cache"][phase], path);
+    }
+
+    let snapshots = github_api["rate_limit_snapshots"]
+        .as_array()
+        .unwrap_or_else(|| {
+            panic!(
+                "{} github_api.rate_limit_snapshots should be an array",
+                path.display()
+            )
+        });
+    for snapshot in snapshots {
+        assert_allowed_object_keys(
+            snapshot,
+            &[
+                "resource",
+                "limit",
+                "remaining",
+                "used",
+                "reset_at",
+                "observed_at",
+            ],
+            path,
+        );
+        assert_non_empty_string(snapshot, "resource", path);
+        assert_non_negative_integer(&snapshot["limit"], "limit", path);
+        assert_non_negative_integer(&snapshot["remaining"], "remaining", path);
+        if !snapshot["used"].is_null() {
+            assert_non_negative_integer(&snapshot["used"], "used", path);
+        }
+        assert!(
+            snapshot["reset_at"].is_null() || snapshot["reset_at"].as_str().is_some(),
+            "{} rate limit reset_at should be string or null",
+            path.display()
+        );
+        assert_non_empty_string(snapshot, "observed_at", path);
+    }
+
+    let events = github_api["secondary_limit_events"]
+        .as_array()
+        .unwrap_or_else(|| {
+            panic!(
+                "{} github_api.secondary_limit_events should be an array",
+                path.display()
+            )
+        });
+    for event in events {
+        assert_allowed_object_keys(
+            event,
+            &[
+                "resource",
+                "status",
+                "category",
+                "retry_after_seconds",
+                "observed_at",
+            ],
+            path,
+        );
+        assert_non_empty_string(event, "resource", path);
+        let status = event["status"].as_u64().unwrap_or_else(|| {
+            panic!(
+                "{} secondary limit status should be an integer",
+                path.display()
+            )
+        });
+        assert!(
+            (100..=599).contains(&status),
+            "{} secondary limit status should be an HTTP status code",
+            path.display()
+        );
+        assert_non_empty_string(event, "category", path);
+        if !event["retry_after_seconds"].is_null() {
+            assert_non_negative_integer(&event["retry_after_seconds"], "retry_after_seconds", path);
+        }
+        assert_non_empty_string(event, "observed_at", path);
+    }
+}
+
+fn assert_cache_phase_matches_activity_report_schema_shape(phase: &serde_json::Value, path: &Path) {
+    assert_allowed_object_keys(phase, &["fresh_hits", "stale_hits", "misses"], path);
+    for field in ["fresh_hits", "stale_hits", "misses"] {
+        assert_non_negative_integer(&phase[field], field, path);
+    }
+}
+
+fn assert_owner_filter_matches_activity_report_schema_shape(
+    owner_filter: &serde_json::Value,
+    path: &Path,
+) {
+    assert_allowed_object_keys(
+        owner_filter,
+        &["requested_owners", "query_strategy", "kept", "dropped"],
+        path,
+    );
+    assert_string_array(&owner_filter["requested_owners"], "requested_owners", path);
+    assert_non_empty_string(owner_filter, "query_strategy", path);
+    owner_filter["kept"]
+        .as_object()
+        .unwrap_or_else(|| panic!("{} owner_filter.kept should be an object", path.display()))
+        .iter()
+        .for_each(|(owner, count)| {
+            assert!(
+                !owner.is_empty(),
+                "{} owner_filter.kept owner should be non-empty",
+                path.display()
+            );
+            assert_non_negative_integer(count, "owner_filter.kept count", path);
+        });
+    let dropped = owner_filter["dropped"]
+        .as_array()
+        .unwrap_or_else(|| panic!("{} owner_filter.dropped should be an array", path.display()));
+    for drop in dropped {
+        assert_allowed_object_keys(drop, &["owner", "count", "reason"], path);
+        assert_non_empty_string(drop, "owner", path);
+        assert_non_negative_integer(&drop["count"], "count", path);
+        assert_non_empty_string(drop, "reason", path);
+    }
+}
+
+fn assert_string_array(json: &serde_json::Value, field: &str, path: &Path) {
+    let values = json
+        .as_array()
+        .unwrap_or_else(|| panic!("{} {field} should be an array", path.display()));
+    for value in values {
+        assert!(
+            value.as_str().is_some_and(|text| !text.is_empty()),
+            "{} {field} values should be non-empty strings",
+            path.display()
+        );
+    }
+}
+
+fn assert_non_negative_integer(value: &serde_json::Value, field: &str, path: &Path) {
+    assert!(
+        value.as_u64().is_some(),
+        "{} {field} should be a non-negative integer",
+        path.display()
+    );
 }
 
 fn assert_setup_status_summary_matches_schema_shape(
@@ -1868,6 +2781,7 @@ fn github_activity_harvest_spec_defines_plan_progress_and_api_ledger_contracts()
         "github.activity.plan.json",
         "github.activity.progress.json",
         "github.activity.api-ledger.json",
+        "github.activity.report.json",
         "plan -> scout -> run -> resume -> merge -> report API cost",
         "actor-first and owner-filtered",
         "author:<actor>",
@@ -1890,6 +2804,10 @@ fn github_activity_harvest_spec_defines_plan_progress_and_api_ledger_contracts()
         "github.activity.plan.v1",
         "github.activity.progress.v1",
         "github.activity.api-ledger.v1",
+        "github.activity.report.v1",
+        "contracts/schemas/github-activity-report.v1.schema.json",
+        "docs/schemas/github-activity-report-v1.md",
+        "examples/github-activity-report/completed.json",
         "planning_mode = \"static\"",
         "planning_mode = \"probe\"",
         "search_probe",
@@ -1970,14 +2888,14 @@ fn github_activity_harvest_guide_documents_current_receipt_workflow() {
         "github.activity.plan.json",
         "github.activity.progress.json",
         "github.activity.api-ledger.json",
+        "github.activity.report.json",
+        "shiplog github activity status --out ./out/github-full",
+        "shiplog github activity report --out ./out/github-full",
+        "shiplog github activity merge --out ./out/github-full",
         "shiplog status --out ./out/github-full --latest",
         "shiplog runs list --out ./out/github-full",
         "shiplog open intake-report --out ./out/github-full --latest",
         "shiplog open packet --out ./out/github-full --latest",
-        "What is not landed yet",
-        "shiplog github activity status",
-        "shiplog github activity report",
-        "shiplog github activity merge",
         "store token values",
         "execute release work",
     ] {
@@ -2016,6 +2934,7 @@ fn github_activity_harvest_adr_records_actor_first_owner_filtered_decision() {
         "github.activity.plan.json",
         "github.activity.progress.json",
         "github.activity.api-ledger.json",
+        "github.activity.report.json",
         "One GitHub Source Per Repository Owner",
         "Crawl Every Repository Under Each Owner",
         "Encode Owner Scope Only In GitHub Search Syntax",
@@ -2023,6 +2942,7 @@ fn github_activity_harvest_adr_records_actor_first_owner_filtered_decision() {
         "github.activity.plan.v1",
         "github.activity.progress.v1",
         "github.activity.api-ledger.v1",
+        "github.activity.report.v1",
         "without token values",
         "does not add runtime behavior by itself",
         "does not lift the `v0.9.0` release hold",

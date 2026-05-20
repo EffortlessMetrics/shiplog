@@ -1,0 +1,234 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/EffortlessMetrics/shiplog/contracts/schemas/github-activity-progress.v1.schema.json",
+  "title": "Shiplog GitHub activity progress v1",
+  "type": "object",
+  "additionalProperties": false,
+  "propertyNames": {
+    "$ref": "#/$defs/non_secret_field_name"
+  },
+  "required": [
+    "schema_version",
+    "generated_at",
+    "shiplog_version",
+    "activity_id",
+    "plan_ref",
+    "actor",
+    "repo_owners",
+    "profile",
+    "state",
+    "completed_windows",
+    "pending_windows",
+    "active_window",
+    "stop_reason",
+    "budget_checkpoint",
+    "run_ref",
+    "receipt_refs"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "github.activity.progress.v1"
+    },
+    "generated_at": {
+      "$ref": "#/$defs/timestamp"
+    },
+    "shiplog_version": {
+      "$ref": "#/$defs/display_string"
+    },
+    "activity_id": {
+      "$ref": "#/$defs/stable_key"
+    },
+    "plan_ref": {
+      "$ref": "#/$defs/display_string"
+    },
+    "actor": {
+      "$ref": "#/$defs/display_string"
+    },
+    "repo_owners": {
+      "$ref": "#/$defs/string_array"
+    },
+    "profile": {
+      "$ref": "#/$defs/profile"
+    },
+    "state": {
+      "$ref": "#/$defs/activity_state"
+    },
+    "completed_windows": {
+      "$ref": "#/$defs/string_array"
+    },
+    "pending_windows": {
+      "$ref": "#/$defs/string_array"
+    },
+    "active_window": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/active_window"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "stop_reason": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/stop_reason"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "budget_checkpoint": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/budget_checkpoint"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "run_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/display_string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "receipt_refs": {
+      "$ref": "#/$defs/string_array"
+    }
+  },
+  "$defs": {
+    "non_secret_field_name": {
+      "type": "string",
+      "not": {
+        "pattern": "[Tt][Oo][Kk][Ee][Nn]_[Vv][Aa][Ll][Uu][Ee]|[Ss][Ee][Cc][Rr][Ee][Tt]_[Vv][Aa][Ll][Uu][Ee]|[Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd]|[Aa][Pp][Ii]_?[Kk][Ee][Yy]_[Vv][Aa][Ll][Uu][Ee]|[Kk][Ee][Yy]_[Vv][Aa][Ll][Uu][Ee]"
+      }
+    },
+    "object_base": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "#/$defs/non_secret_field_name"
+      }
+    },
+    "display_string": {
+      "type": "string",
+      "minLength": 1
+    },
+    "stable_key": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.:-]+$",
+      "minLength": 1
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "profile": {
+      "type": "string",
+      "enum": [
+        "scout",
+        "authored",
+        "full"
+      ]
+    },
+    "activity_state": {
+      "type": "string",
+      "enum": [
+        "planned",
+        "scouting",
+        "running",
+        "checkpointed",
+        "completed",
+        "blocked",
+        "failed"
+      ]
+    },
+    "query_kind": {
+      "type": "string",
+      "enum": [
+        "authored_prs",
+        "reviewed_prs"
+      ]
+    },
+    "stop_reason": {
+      "type": "string",
+      "enum": [
+        "budget_exhausted",
+        "rate_limited",
+        "secondary_rate_limited",
+        "manual_stop",
+        "config_error",
+        "provider_error",
+        "malformed_receipt",
+        "unknown"
+      ]
+    },
+    "active_window": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "additionalProperties": false,
+          "required": [
+            "window_id",
+            "query_kind"
+          ],
+          "properties": {
+            "window_id": {
+              "$ref": "#/$defs/stable_key"
+            },
+            "query_kind": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/query_kind"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "budget_checkpoint": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "additionalProperties": false,
+          "required": [
+            "search_requests",
+            "core_requests"
+          ],
+          "properties": {
+            "search_requests": {
+              "$ref": "#/$defs/non_negative_integer"
+            },
+            "core_requests": {
+              "$ref": "#/$defs/non_negative_integer"
+            }
+          }
+        }
+      ]
+    },
+    "string_array": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/display_string"
+      }
+    },
+    "non_negative_integer": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

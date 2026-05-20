@@ -50,6 +50,11 @@ Machine-readable control-plane contracts:
   `shiplog doctor --setup --json`.
 - [`Review Loop Status v1`](schemas/review-loop-status-v1.md) for
   `shiplog status --latest --json`.
+- [`GitHub Activity Harvest Receipts v1`](schemas/github-activity-harvest-v1.md)
+  for `github.activity.plan.json`, `github.activity.progress.json`, and
+  `github.activity.api-ledger.json`.
+- [`GitHub Activity Report v1`](schemas/github-activity-report-v1.md) for
+  `shiplog github activity merge`.
 
 For Jira and Linear identity values, run:
 
@@ -218,6 +223,12 @@ the first receipt in the planned full-history harvest workflow. Use
 `shiplog github activity scout` for the search-only scout profile, then
 `shiplog github activity run --profile authored --resume` and
 `shiplog github activity run --profile full --resume` as the cache warms.
+After a run, `shiplog github activity status` reads the
+plan/progress/API-ledger receipts without provider calls or writes.
+`shiplog github activity report` writes `github.activity.report.json` and
+`github.activity.report.md` from those receipts without provider calls.
+`shiplog github activity merge` writes final activity outputs for the completed
+run into `out/github-full/final/`.
 For a full operator path, see the
 [`GitHub activity harvest guide`](guides/github-activity-harvest.md).
 
@@ -231,6 +242,7 @@ include_authored_prs = true
 include_reviews = true
 profile = "scout"
 cache_dir = "./out/github-full/.cache"
+cache_ttl_days = 3650
 
 [github_activity.budget]
 max_search_requests = 300
@@ -248,6 +260,7 @@ on_exhausted = "checkpoint_and_stop"
 | `include_reviews` | Used by the `full` profile to include review-candidate queries. |
 | `profile` | `scout`, `authored`, or `full`; defaults to `scout`. Plan-only mode estimates the requested profile but does not spend API. |
 | `cache_dir` | Used to infer the output root when `--out` is omitted and the value ends with `.cache`. Planning does not create the cache. |
+| `cache_ttl_days` | Optional positive TTL override for the GitHub activity cache. Omit it to keep the normal source-cache TTL; set a large value for historical harvests whose old windows should stay reusable across resumes. |
 | `budget.max_search_requests` | Planned search request ceiling. Defaults to `300`. |
 | `budget.max_core_requests` | Planned core/detail request ceiling. Defaults to `1000`. |
 | `budget.max_search_per_minute` | Planned search pacing ceiling. Defaults to `24`. |
@@ -258,8 +271,15 @@ cost from monthly actor-query windows and now includes the next executable
 profile command. Scout/run commands write `github.activity.progress.json` and
 `github.activity.api-ledger.json`; the ledger separates search/core request
 counts, cache counts by phase, owner-filter receipts, and rate-limit event
-arrays without token values. `--resume` skips a matching completed profile and
-budget exhaustion checkpoints progress instead of silently continuing.
+arrays without token values. `--resume` skips valid completed windows from
+`github.activity.windows/<profile>/<window_id>/`, carries cumulative API cost
+forward, and checkpoints progress instead of silently continuing when budget is
+exhausted. Activity merge also writes `github.activity.report.json` beside the
+final packet, copied API ledger, and any intake report produced by the completed
+activity run. The plan/progress/API-ledger receipts are pinned by
+[`github.activity.*.v1`](schemas/github-activity-harvest-v1.md), and the merge
+report is pinned by
+[`github.activity.report.v1`](schemas/github-activity-report-v1.md).
 
 ### GitLab
 

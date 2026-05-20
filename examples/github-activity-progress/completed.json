@@ -1,0 +1,28 @@
+{
+  "schema_version": "github.activity.progress.v1",
+  "generated_at": "2026-05-19T00:00:00+00:00",
+  "shiplog_version": "0.9.0",
+  "activity_id": "github_activity_example",
+  "plan_ref": "github.activity.plan.json",
+  "actor": "EffortlessSteven",
+  "repo_owners": [
+    "EffortlessMetrics",
+    "EffortlessSteven"
+  ],
+  "profile": "full",
+  "state": "completed",
+  "completed_windows": [
+    "2026-01"
+  ],
+  "pending_windows": [],
+  "active_window": null,
+  "stop_reason": null,
+  "budget_checkpoint": null,
+  "run_ref": "run_fixture",
+  "receipt_refs": [
+    "github.activity.plan.json",
+    "github.activity.api-ledger.json",
+    "run_fixture/intake.report.json",
+    "run_fixture/coverage.manifest.json"
+  ]
+}

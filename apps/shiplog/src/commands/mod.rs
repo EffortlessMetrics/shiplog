@@ -71,6 +71,9 @@ pub(super) fn dispatch() -> Result<()> {
                 GithubActivityCommand::Plan(args) => github_activity::run_plan(args)?,
                 GithubActivityCommand::Scout(args) => github_activity::run_scout(args)?,
                 GithubActivityCommand::Run(args) => github_activity::run_activity(args)?,
+                GithubActivityCommand::Status(args) => github_activity::run_status(args)?,
+                GithubActivityCommand::Report(args) => github_activity::run_report(args)?,
+                GithubActivityCommand::Merge(args) => github_activity::run_merge(args)?,
             },
         },
 

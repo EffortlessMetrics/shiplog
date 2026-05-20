@@ -1,14 +1,20 @@
 use anyhow::{Context, Result};
 use chrono::{Duration, NaiveDate, Utc};
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use shiplog::coverage::month_windows;
 use shiplog::ingest::github::{
-    GithubApiBudget, GithubApiCacheCounts, GithubApiRequestCounts, GithubRateLimitSnapshot,
-    GithubSecondaryLimitEvent,
+    GithubApiBudget, GithubApiCacheCounts, GithubApiCachePhaseCounts, GithubApiRequestCounts,
+    GithubRateLimitSnapshot, GithubSecondaryLimitEvent,
 };
+use shiplog::merge::{ConflictResolution, merge_ingest_outputs};
+use shiplog::ports::IngestOutput;
 use shiplog::schema::coverage::{CoverageManifest, TimeWindow};
+use shiplog::schema::event::EventEnvelope;
+use shiplog::schema::freshness::SourceFreshness;
 use std::collections::{BTreeMap, BTreeSet};
+use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 
 use crate::*;
@@ -85,6 +91,374 @@ pub(super) fn run_activity(args: GithubActivityRunArgs) -> Result<()> {
     run_activity_profile(args, profile)
 }
 
+pub(super) fn run_status(args: GithubActivityStatusArgs) -> Result<()> {
+    let receipts = load_activity_receipts(&args.config, args.out.as_deref())?;
+
+    println!(
+        "GitHub activity status: {}",
+        github_activity_status_label(
+            receipts.plan.as_ref(),
+            receipts.progress.as_ref(),
+            receipts.api_ledger.as_ref()
+        )
+    );
+    println!("Out: {}", display_path_for_cli(&receipts.out_dir));
+    println!("Provider calls: none (receipt status)");
+    println!("Writes: none");
+
+    if let Some(plan) = receipts.plan.as_ref() {
+        println!("Plan:");
+        println!("- {}", display_path_for_cli(&receipts.plan_path));
+        println!("- actor: {}", plan.actor);
+        if plan.repo_owners.is_empty() {
+            println!("- repository owners: actor-wide (no owner filter requested)");
+        } else {
+            println!("- repository owners: {}", plan.repo_owners.join(", "));
+        }
+        println!("- profile: {}", plan.profile);
+        println!("- windows: {}", plan.windows.len());
+        println!(
+            "- estimated requests: search {}, core {}, review {}",
+            plan.estimated_totals.search_requests,
+            plan.estimated_totals.core_requests,
+            plan.estimated_totals.review_requests
+        );
+    } else {
+        println!("Plan:");
+        println!("- missing {}", display_path_for_cli(&receipts.plan_path));
+    }
+
+    if let Some(progress) = receipts.progress.as_ref() {
+        println!("Progress:");
+        println!("- {}", display_path_for_cli(&receipts.progress_path));
+        println!("- state: {}", progress.state);
+        println!("- completed windows: {}", progress.completed_windows.len());
+        println!("- pending windows: {}", progress.pending_windows.len());
+        if let Some(stop_reason) = progress.stop_reason.as_deref() {
+            println!("- stop reason: {stop_reason}");
+        }
+        if let Some(run_ref) = progress.run_ref.as_deref() {
+            println!("- run: {run_ref}");
+        }
+        if let Some(checkpoint) = progress.budget_checkpoint.as_ref() {
+            println!(
+                "- budget checkpoint: search {}, core {}",
+                checkpoint.search_requests, checkpoint.core_requests
+            );
+        }
+    } else {
+        println!("Progress:");
+        println!(
+            "- missing {}",
+            display_path_for_cli(&receipts.progress_path)
+        );
+    }
+
+    if let Some(api_ledger) = receipts.api_ledger.as_ref() {
+        println!("API:");
+        println!("- {}", display_path_for_cli(&receipts.api_ledger_path));
+        print_api_request_summary(receipts.plan.as_ref(), api_ledger);
+        print_cache_summary(api_ledger);
+        print_owner_filter_summary(api_ledger);
+        if let Some(stop_reason) = api_ledger.stop_reason.as_deref() {
+            println!("- stop reason: {stop_reason}");
+        }
+    } else {
+        println!("API:");
+        println!(
+            "- missing {}",
+            display_path_for_cli(&receipts.api_ledger_path)
+        );
+    }
+
+    println!("Next:");
+    for action in activity_status_next_actions(
+        &args.config,
+        &receipts.out_dir,
+        receipts.plan.as_ref(),
+        receipts.progress.as_ref(),
+        receipts.api_ledger.as_ref(),
+    ) {
+        println!("- {action}");
+    }
+
+    println!("Receipts:");
+    for receipt in activity_status_receipts(
+        &receipts.plan_path,
+        &receipts.progress_path,
+        &receipts.api_ledger_path,
+    ) {
+        println!("- {}", display_path_for_cli(&receipt));
+    }
+
+    Ok(())
+}
+
+pub(super) fn run_report(args: GithubActivityStatusArgs) -> Result<()> {
+    let receipts = load_activity_receipts(&args.config, args.out.as_deref())?;
+
+    let report_label = github_activity_report_label(
+        receipts.plan.as_ref(),
+        receipts.progress.as_ref(),
+        receipts.api_ledger.as_ref(),
+    );
+    println!("GitHub activity report: {report_label}");
+    println!("Out: {}", display_path_for_cli(&receipts.out_dir));
+    println!("Provider calls: none (receipt report)");
+
+    match receipts.plan.as_ref() {
+        Some(plan) => {
+            println!("Scope:");
+            println!("- actor: {}", plan.actor);
+            if plan.repo_owners.is_empty() {
+                println!("- repository owners: actor-wide (no owner filter requested)");
+            } else {
+                println!("- repository owners: {}", plan.repo_owners.join(", "));
+            }
+            println!("- query strategy: {}", plan.query_strategy);
+            println!("- profile: {}", plan.profile);
+            println!("- period: {} to {}", plan.since, plan.until);
+            println!("- windows: {}", plan.windows.len());
+        }
+        None => {
+            println!("Scope:");
+            println!("- missing {}", display_path_for_cli(&receipts.plan_path));
+        }
+    }
+
+    println!("Execution:");
+    if let Some(progress) = receipts.progress.as_ref() {
+        println!("- state: {}", progress.state);
+        println!("- completed windows: {}", progress.completed_windows.len());
+        println!("- pending windows: {}", progress.pending_windows.len());
+        if let Some(run_ref) = progress.run_ref.as_deref() {
+            println!("- run: {run_ref}");
+        }
+        if let Some(stop_reason) = progress.stop_reason.as_deref() {
+            println!("- stop reason: {stop_reason}");
+        }
+    } else {
+        println!(
+            "- missing {}",
+            display_path_for_cli(&receipts.progress_path)
+        );
+    }
+
+    println!("API Budget:");
+    if let Some(api_ledger) = receipts.api_ledger.as_ref() {
+        print_api_request_summary(receipts.plan.as_ref(), api_ledger);
+        print_cache_summary(api_ledger);
+        println!(
+            "- rate-limit snapshots: {}",
+            api_ledger.github_api.rate_limit_snapshots.len()
+        );
+        println!(
+            "- secondary-limit events: {}",
+            api_ledger.github_api.secondary_limit_events.len()
+        );
+        if let Some(stop_reason) = api_ledger.stop_reason.as_deref() {
+            println!("- stop reason: {stop_reason}");
+        }
+    } else {
+        println!(
+            "- missing {}",
+            display_path_for_cli(&receipts.api_ledger_path)
+        );
+    }
+
+    println!("Owner Filter:");
+    if let Some(api_ledger) = receipts.api_ledger.as_ref() {
+        print_owner_filter_summary(api_ledger);
+    } else if let Some(plan) = receipts.plan.as_ref() {
+        if plan.repo_owners.is_empty() {
+            println!("- owner filter: actor-wide");
+        } else {
+            println!("- requested owners: {}", plan.repo_owners.join(", "));
+            println!("- kept owners: unknown (API ledger missing)");
+            println!("- dropped owners: unknown (API ledger missing)");
+        }
+    } else {
+        println!("- unknown (plan missing)");
+    }
+
+    println!("Receipts:");
+    for receipt in activity_status_receipts(
+        &receipts.plan_path,
+        &receipts.progress_path,
+        &receipts.api_ledger_path,
+    ) {
+        println!("- {}", display_path_for_cli(&receipt));
+    }
+
+    println!("Next:");
+    for action in activity_status_next_actions(
+        &args.config,
+        &receipts.out_dir,
+        receipts.plan.as_ref(),
+        receipts.progress.as_ref(),
+        receipts.api_ledger.as_ref(),
+    ) {
+        println!("- {action}");
+    }
+
+    if let (Some(plan), Some(progress), Some(api_ledger)) = (
+        receipts.plan.as_ref(),
+        receipts.progress.as_ref(),
+        receipts.api_ledger.as_ref(),
+    ) {
+        let report = build_activity_report_receipt(
+            plan,
+            progress,
+            api_ledger,
+            &receipts.out_dir,
+            None,
+            Vec::new(),
+        );
+        let report_json_path = receipts.out_dir.join(GITHUB_ACTIVITY_REPORT_FILENAME);
+        let report_md_path = receipts
+            .out_dir
+            .join(GITHUB_ACTIVITY_REPORT_MARKDOWN_FILENAME);
+        write_json_receipt(&report_json_path, GITHUB_ACTIVITY_REPORT_FILENAME, &report)?;
+        write_activity_report_markdown(&report_md_path, &report)?;
+        println!("Writes:");
+        println!("- {}", display_path_for_cli(&report_json_path));
+        println!("- {}", display_path_for_cli(&report_md_path));
+    } else {
+        println!("Writes: none (missing plan, progress, or API ledger)");
+    }
+
+    Ok(())
+}
+
+pub(super) fn run_merge(args: GithubActivityStatusArgs) -> Result<()> {
+    let receipts = load_activity_receipts(&args.config, args.out.as_deref())?;
+    let plan = receipts.plan.as_ref().ok_or_else(|| {
+        anyhow::anyhow!("cannot merge GitHub activity without github.activity.plan.json")
+    })?;
+    let progress = receipts.progress.as_ref().ok_or_else(|| {
+        anyhow::anyhow!("cannot merge GitHub activity without github.activity.progress.json")
+    })?;
+    if progress.state != "completed" {
+        anyhow::bail!(
+            "cannot merge GitHub activity while progress state is {}; rerun with --resume until it completes",
+            progress.state
+        );
+    }
+    let run_ref = progress
+        .run_ref
+        .as_deref()
+        .ok_or_else(|| anyhow::anyhow!("cannot merge GitHub activity without progress.run_ref"))?;
+    let api_ledger = receipts.api_ledger.as_ref().ok_or_else(|| {
+        anyhow::anyhow!("cannot merge GitHub activity without github.activity.api-ledger.json")
+    })?;
+
+    let source_run_dir = receipts.out_dir.join(run_ref);
+    let final_dir = receipts.out_dir.join("final");
+    std::fs::create_dir_all(&final_dir)
+        .with_context(|| format!("create {}", final_dir.display()))?;
+
+    let mut outputs = Vec::new();
+    copy_activity_final_output(&source_run_dir, &final_dir, "packet.md", true, &mut outputs)?;
+    copy_activity_final_output(
+        &source_run_dir,
+        &final_dir,
+        "intake.report.json",
+        false,
+        &mut outputs,
+    )?;
+    copy_activity_final_output(
+        &source_run_dir,
+        &final_dir,
+        "coverage.manifest.json",
+        false,
+        &mut outputs,
+    )?;
+    copy_activity_final_output(
+        &source_run_dir,
+        &final_dir,
+        "ledger.events.jsonl",
+        false,
+        &mut outputs,
+    )?;
+    copy_activity_final_output(
+        &receipts.out_dir,
+        &final_dir,
+        GITHUB_ACTIVITY_API_LEDGER_FILENAME,
+        true,
+        &mut outputs,
+    )?;
+
+    let report_path = final_dir.join(GITHUB_ACTIVITY_REPORT_FILENAME);
+    let report = build_activity_report_receipt(
+        plan,
+        progress,
+        api_ledger,
+        &receipts.out_dir,
+        Some(&final_dir),
+        outputs.clone(),
+    );
+    write_json_receipt(&report_path, GITHUB_ACTIVITY_REPORT_FILENAME, &report)?;
+    outputs.push(GithubActivityFinalOutput {
+        label: "activity_report".to_string(),
+        path: display_path_for_cli(&report_path),
+    });
+
+    println!("GitHub activity merge written:");
+    println!("- source run: {}", display_path_for_cli(&source_run_dir));
+    println!("- final: {}", display_path_for_cli(&final_dir));
+    println!("Provider calls: none (receipt merge)");
+    println!("Share rendering: none");
+    println!("Writes:");
+    for output in &outputs {
+        println!("- {}: {}", output.label, output.path);
+    }
+    println!("Next:");
+    println!(
+        "- shiplog status --out {} --latest [read-only]",
+        quote_cli_value(&display_path_for_cli(&receipts.out_dir))
+    );
+    println!(
+        "- shiplog open packet --out {} --run final [read-only]",
+        quote_cli_value(&display_path_for_cli(&receipts.out_dir))
+    );
+
+    Ok(())
+}
+
+fn load_activity_receipts(
+    config_path: &Path,
+    out: Option<&Path>,
+) -> Result<GithubActivityReceipts> {
+    let config = load_config_for_command(config_path)?;
+    ensure_supported_config_version(&config)?;
+
+    let base_dir = config_base_dir(config_path);
+    let out_dir = out
+        .map(|path| resolve_config_path(Path::new("."), path))
+        .unwrap_or_else(|| github_activity_default_out(&config, &base_dir));
+
+    let plan_path = out_dir.join(GITHUB_ACTIVITY_PLAN_FILENAME);
+    let progress_path = out_dir.join(GITHUB_ACTIVITY_PROGRESS_FILENAME);
+    let api_ledger_path = out_dir.join(GITHUB_ACTIVITY_API_LEDGER_FILENAME);
+
+    let plan: Option<GithubActivityPlanReceipt> =
+        read_json_receipt_if_present(&plan_path, GITHUB_ACTIVITY_PLAN_FILENAME)?;
+    let progress: Option<GithubActivityProgressReceipt> =
+        read_json_receipt_if_present(&progress_path, GITHUB_ACTIVITY_PROGRESS_FILENAME)?;
+    let api_ledger: Option<GithubActivityApiLedgerReceipt> =
+        read_json_receipt_if_present(&api_ledger_path, GITHUB_ACTIVITY_API_LEDGER_FILENAME)?;
+
+    Ok(GithubActivityReceipts {
+        out_dir,
+        plan_path,
+        progress_path,
+        api_ledger_path,
+        plan,
+        progress,
+        api_ledger,
+    })
+}
+
 fn run_activity_profile(
     args: GithubActivityRunArgs,
     profile_override: Option<GithubActivityProfile>,
@@ -127,98 +501,158 @@ fn run_activity_profile(
         GithubActivityProfile::Scout => "scouting",
         GithubActivityProfile::Authored | GithubActivityProfile::Full => "running",
     };
-    let progress = progress_receipt(
-        &plan,
-        start_state,
-        Vec::new(),
-        plan.window_ids(),
-        None,
-        None,
-        vec![GITHUB_ACTIVITY_PLAN_FILENAME.to_string()],
-    );
-    write_json_receipt(&progress_path, GITHUB_ACTIVITY_PROGRESS_FILENAME, &progress)?;
-
-    let ing = make_github_ingestor(
-        &plan.actor,
-        execution.since,
-        execution.until,
-        &execution.mode,
-        plan.repo_owners.clone(),
-        execution.include_reviews,
-        execution.no_details,
-        execution.throttle_ms,
-        None,
-        &execution.api_base,
-        execution.cache_dir,
-    )
-    .context("create GitHub activity ingestor")?
-    .with_api_budget(GithubApiBudget {
-        max_search_requests: Some(plan.budget_policy.max_search_requests),
-        max_core_requests: Some(plan.budget_policy.max_core_requests),
-    });
-
-    let ingest = match ing.ingest() {
-        Ok(ingest) => ingest,
-        Err(err) => {
-            let counts = ing.api_request_counts();
-            let cache_counts = ing.api_cache_counts();
-            let rate_limit_snapshots = ing.rate_limit_snapshots();
-            let secondary_limit_events = ing.secondary_limit_events();
-            let mut progress = progress_receipt(
-                &plan,
-                "checkpointed",
-                Vec::new(),
-                plan.window_ids(),
-                None,
-                Some(activity_stop_reason(&err)),
-                vec![
-                    GITHUB_ACTIVITY_PLAN_FILENAME.to_string(),
-                    GITHUB_ACTIVITY_API_LEDGER_FILENAME.to_string(),
-                ],
-            );
-            progress.budget_checkpoint = Some(GithubActivityProgressBudget {
-                search_requests: counts.search,
-                core_requests: counts.core,
-            });
-            write_json_receipt(&progress_path, GITHUB_ACTIVITY_PROGRESS_FILENAME, &progress)?;
-            let api_ledger = api_ledger_receipt(
-                &plan,
-                counts,
-                cache_counts,
-                rate_limit_snapshots,
-                secondary_limit_events,
-                Some(activity_stop_reason(&err)),
-                OwnerFilterLedger::from_plan(&plan),
-            );
-            write_json_receipt(
-                &api_ledger_path,
-                GITHUB_ACTIVITY_API_LEDGER_FILENAME,
-                &api_ledger,
-            )?;
-            println!(
-                "GitHub activity {} checkpointed after search {}, core {} request(s).",
-                plan.profile, counts.search, counts.core
-            );
-            println!("- {}", display_path_for_cli(&progress_path));
-            println!("- {}", display_path_for_cli(&api_ledger_path));
-            return Err(err).context("GitHub activity ingest stopped before completion");
-        }
+    let existing_progress = if args.resume {
+        load_progress_if_compatible(&progress_path, &plan)?
+    } else {
+        None
+    };
+    let mut api_accumulator = if args.resume {
+        read_json_receipt_if_present::<GithubActivityApiLedgerReceipt>(
+            &api_ledger_path,
+            GITHUB_ACTIVITY_API_LEDGER_FILENAME,
+        )?
+        .filter(|ledger| ledger.activity_id == plan.activity_id && ledger.profile == plan.profile)
+        .map(GithubActivityApiAccumulator::from_ledger)
+        .unwrap_or_default()
+    } else {
+        GithubActivityApiAccumulator::default()
     };
 
-    let api_counts = ing.api_request_counts();
-    let cache_counts = ing.api_cache_counts();
-    let rate_limit_snapshots = ing.rate_limit_snapshots();
-    let secondary_limit_events = ing.secondary_limit_events();
+    let (mut completed_windows, mut window_outputs) =
+        load_completed_window_outputs(&out_dir, &plan, existing_progress.as_ref())?;
+    write_json_receipt(
+        &progress_path,
+        GITHUB_ACTIVITY_PROGRESS_FILENAME,
+        &progress_receipt(
+            &plan,
+            start_state,
+            completed_windows.clone(),
+            pending_window_ids(&plan, &completed_windows),
+            None,
+            None,
+            vec![GITHUB_ACTIVITY_PLAN_FILENAME.to_string()],
+        ),
+    )?;
+
+    for window in pending_plan_windows(&plan, &completed_windows) {
+        let pending_windows = pending_window_ids(&plan, &completed_windows);
+        let mut progress = progress_receipt(
+            &plan,
+            start_state,
+            completed_windows.clone(),
+            pending_windows.clone(),
+            None,
+            None,
+            vec![GITHUB_ACTIVITY_PLAN_FILENAME.to_string()],
+        );
+        progress.active_window = Some(GithubActivityProgressWindow {
+            window_id: window.window_id.clone(),
+            query_kind: None,
+        });
+        write_json_receipt(&progress_path, GITHUB_ACTIVITY_PROGRESS_FILENAME, &progress)?;
+
+        let window_range = plan_window_time_window(window)?;
+        let mut ing = make_github_ingestor(
+            &plan.actor,
+            window_range.since,
+            window_range.until,
+            &execution.mode,
+            plan.repo_owners.clone(),
+            execution.include_reviews,
+            execution.no_details,
+            execution.throttle_ms,
+            None,
+            &execution.api_base,
+            execution.cache_dir.clone(),
+        )
+        .context("create GitHub activity ingestor")?;
+        if let Some(cache_ttl_days) = execution.cache_ttl_days {
+            ing = ing.with_cache_ttl(Duration::days(cache_ttl_days));
+        }
+        let ing = ing.with_api_budget(api_accumulator.remaining_budget(&plan.budget_policy));
+
+        let ingest = match ing.ingest() {
+            Ok(ingest) => ingest,
+            Err(err) => {
+                api_accumulator.add_run(
+                    ing.api_request_counts(),
+                    ing.api_cache_counts(),
+                    ing.rate_limit_snapshots(),
+                    ing.secondary_limit_events(),
+                );
+                let stop_reason = activity_stop_reason(&err);
+                let mut progress = progress_receipt(
+                    &plan,
+                    "checkpointed",
+                    completed_windows.clone(),
+                    pending_windows,
+                    None,
+                    Some(stop_reason.clone()),
+                    vec![
+                        GITHUB_ACTIVITY_PLAN_FILENAME.to_string(),
+                        GITHUB_ACTIVITY_API_LEDGER_FILENAME.to_string(),
+                    ],
+                );
+                progress.active_window = Some(GithubActivityProgressWindow {
+                    window_id: window.window_id.clone(),
+                    query_kind: None,
+                });
+                progress.budget_checkpoint = Some(GithubActivityProgressBudget {
+                    search_requests: api_accumulator.requests.search,
+                    core_requests: api_accumulator.requests.core,
+                });
+                write_json_receipt(&progress_path, GITHUB_ACTIVITY_PROGRESS_FILENAME, &progress)?;
+                let owner_filter = owner_filter_from_outputs(&plan, &window_outputs);
+                let api_ledger = api_accumulator.to_ledger(&plan, Some(stop_reason), owner_filter);
+                write_json_receipt(
+                    &api_ledger_path,
+                    GITHUB_ACTIVITY_API_LEDGER_FILENAME,
+                    &api_ledger,
+                )?;
+                println!(
+                    "GitHub activity {} checkpointed after search {}, core {} request(s).",
+                    plan.profile, api_accumulator.requests.search, api_accumulator.requests.core
+                );
+                println!("- {}", display_path_for_cli(&progress_path));
+                println!("- {}", display_path_for_cli(&api_ledger_path));
+                return Err(err).context("GitHub activity ingest stopped before completion");
+            }
+        };
+
+        api_accumulator.add_run(
+            ing.api_request_counts(),
+            ing.api_cache_counts(),
+            ing.rate_limit_snapshots(),
+            ing.secondary_limit_events(),
+        );
+        write_window_ingest_output(&out_dir, &plan.profile, &window.window_id, &ingest)
+            .with_context(|| format!("write GitHub activity window {}", window.window_id))?;
+        window_outputs.push(ingest);
+        completed_windows.push(window.window_id.clone());
+        write_json_receipt(
+            &progress_path,
+            GITHUB_ACTIVITY_PROGRESS_FILENAME,
+            &progress_receipt(
+                &plan,
+                start_state,
+                completed_windows.clone(),
+                pending_window_ids(&plan, &completed_windows),
+                None,
+                None,
+                vec![GITHUB_ACTIVITY_PLAN_FILENAME.to_string()],
+            ),
+        )?;
+    }
+
+    let mut ingest = merge_window_outputs(&window_outputs)?;
+    ingest.coverage.window = TimeWindow {
+        since: execution.since,
+        until: execution.until,
+    };
+    ingest.coverage.mode = execution.mode.clone();
+
     let owner_filter = OwnerFilterLedger::from_coverage(&plan, &ingest.coverage);
-    let api_ledger = api_ledger_receipt(
-        &plan,
-        api_counts,
-        cache_counts,
-        rate_limit_snapshots,
-        secondary_limit_events,
-        None,
-        owner_filter,
-    );
+    let api_ledger = api_accumulator.to_ledger(&plan, None, owner_filter);
     write_json_receipt(
         &api_ledger_path,
         GITHUB_ACTIVITY_API_LEDGER_FILENAME,
@@ -269,6 +703,13 @@ fn run_activity_profile(
         ],
     );
     write_json_receipt(&progress_path, GITHUB_ACTIVITY_PROGRESS_FILENAME, &progress)?;
+    copy_activity_run_receipt(&plan_path, &run_dir, GITHUB_ACTIVITY_PLAN_FILENAME)?;
+    copy_activity_run_receipt(&progress_path, &run_dir, GITHUB_ACTIVITY_PROGRESS_FILENAME)?;
+    copy_activity_run_receipt(
+        &api_ledger_path,
+        &run_dir,
+        GITHUB_ACTIVITY_API_LEDGER_FILENAME,
+    )?;
 
     println!("GitHub activity {} completed.", plan.profile);
     println!("Receipts:");
@@ -410,6 +851,10 @@ fn activity_execution(
     let budget = budget_policy(&config.github_activity.budget)?;
     let budget_throttle_ms = throttle_for_search_budget(budget.max_search_per_minute)?;
     let source_throttle_ms = source.map(|source| source.throttle_ms).unwrap_or_default();
+    let cache_ttl_days = config.github_activity.cache_ttl_days;
+    if cache_ttl_days.is_some_and(|days| days <= 0) {
+        anyhow::bail!("github_activity.cache_ttl_days must be greater than zero when set");
+    }
     let cache_dir = if no_cache {
         None
     } else if let Some(cache_dir) = config.github_activity.cache_dir.as_ref() {
@@ -438,6 +883,7 @@ fn activity_execution(
         throttle_ms: source_throttle_ms.max(budget_throttle_ms),
         api_base,
         cache_dir,
+        cache_ttl_days,
     })
 }
 
@@ -484,6 +930,607 @@ fn activity_next_actions(plan: &GithubActivityPlanReceipt, out_dir: &Path) -> Ve
         }
         Err(_) => Vec::new(),
     }
+}
+
+fn github_activity_status_label(
+    plan: Option<&GithubActivityPlanReceipt>,
+    progress: Option<&GithubActivityProgressReceipt>,
+    api_ledger: Option<&GithubActivityApiLedgerReceipt>,
+) -> &'static str {
+    match (plan, progress, api_ledger) {
+        (None, _, _) => "Not planned",
+        (Some(_), None, _) => "Planned",
+        (Some(_), Some(progress), None) if progress.state == "completed" => {
+            "Completed with missing API ledger"
+        }
+        (Some(_), Some(progress), _) if progress.state == "completed" => "Completed",
+        (Some(_), Some(progress), _) if progress.state == "checkpointed" => "Checkpointed",
+        (Some(_), Some(progress), _)
+            if progress.state == "running" || progress.state == "scouting" =>
+        {
+            "In progress"
+        }
+        (Some(_), Some(_), _) => "Needs inspection",
+    }
+}
+
+fn github_activity_report_label(
+    plan: Option<&GithubActivityPlanReceipt>,
+    progress: Option<&GithubActivityProgressReceipt>,
+    api_ledger: Option<&GithubActivityApiLedgerReceipt>,
+) -> &'static str {
+    match (plan, progress, api_ledger) {
+        (None, _, _) => "Missing plan",
+        (Some(_), None, _) => "Missing progress",
+        (Some(_), Some(_), None) => "Missing API ledger",
+        (Some(_), Some(progress), Some(_)) if progress.state == "completed" => "Available",
+        (Some(_), Some(progress), Some(_)) if progress.state == "checkpointed" => "Checkpointed",
+        (Some(_), Some(_), Some(_)) => "Partial",
+    }
+}
+
+fn print_api_request_summary(
+    plan: Option<&GithubActivityPlanReceipt>,
+    api_ledger: &GithubActivityApiLedgerReceipt,
+) {
+    if let Some(plan) = plan {
+        println!(
+            "- requests: search {}/{}, core {}/{}",
+            api_ledger.github_api.requests.search,
+            plan.budget_policy.max_search_requests,
+            api_ledger.github_api.requests.core,
+            plan.budget_policy.max_core_requests
+        );
+    } else {
+        println!(
+            "- requests: search {}, core {}",
+            api_ledger.github_api.requests.search, api_ledger.github_api.requests.core
+        );
+    }
+}
+
+fn print_cache_summary(api_ledger: &GithubActivityApiLedgerReceipt) {
+    println!(
+        "- cache: search_probe {}, search_page {}, pull_detail {}, review_page {}",
+        cache_phase_summary(api_ledger.github_api.cache.search_probe),
+        cache_phase_summary(api_ledger.github_api.cache.search_page),
+        cache_phase_summary(api_ledger.github_api.cache.pull_detail),
+        cache_phase_summary(api_ledger.github_api.cache.review_page)
+    );
+}
+
+fn print_owner_filter_summary(api_ledger: &GithubActivityApiLedgerReceipt) {
+    if api_ledger.owner_filter.requested_owners.is_empty() {
+        println!("- owner filter: actor-wide");
+    } else {
+        println!(
+            "- owner filter: requested {}",
+            api_ledger.owner_filter.requested_owners.join(", ")
+        );
+    }
+    println!(
+        "- kept owners: {}",
+        owner_counts_summary(&api_ledger.owner_filter.kept)
+    );
+    println!(
+        "- dropped owners: {}",
+        owner_drops_summary(&api_ledger.owner_filter.dropped)
+    );
+}
+
+fn activity_status_next_actions(
+    config_path: &Path,
+    out_dir: &Path,
+    plan: Option<&GithubActivityPlanReceipt>,
+    progress: Option<&GithubActivityProgressReceipt>,
+    api_ledger: Option<&GithubActivityApiLedgerReceipt>,
+) -> Vec<String> {
+    let config = quote_cli_value(&display_path_for_cli(config_path));
+    let out = quote_cli_value(&display_path_for_cli(out_dir));
+
+    let Some(plan) = plan else {
+        return vec![format!(
+            "shiplog github activity plan --config {config} --out {out} [writes]"
+        )];
+    };
+
+    let Ok(profile) = plan.profile_enum() else {
+        return vec![
+            "repair github.activity.plan.json profile before running activity [manual]".to_string(),
+        ];
+    };
+
+    let Some(progress) = progress else {
+        return vec![activity_status_run_command(config_path, out_dir, profile)];
+    };
+
+    if progress.state == "completed" && api_ledger.is_none() {
+        return vec![format!(
+            "{} [writes]",
+            activity_status_run_base_command(config_path, out_dir, profile)
+        )];
+    }
+
+    match progress.state.as_str() {
+        "completed" => match profile {
+            GithubActivityProfile::Scout => vec![format!(
+                "{} [writes]",
+                activity_status_run_base_command(
+                    config_path,
+                    out_dir,
+                    GithubActivityProfile::Authored
+                )
+            )],
+            GithubActivityProfile::Authored => vec![format!(
+                "{} [writes]",
+                activity_status_run_base_command(config_path, out_dir, GithubActivityProfile::Full)
+            )],
+            GithubActivityProfile::Full => vec![
+                format!("shiplog github activity status --out {out} [read-only]"),
+                format!("shiplog github activity report --out {out} [read-only]"),
+                format!("shiplog github activity merge --out {out} [writes]"),
+            ],
+        },
+        "checkpointed" | "running" | "scouting" => {
+            vec![activity_status_run_command(config_path, out_dir, profile)]
+        }
+        _ => vec![format!(
+            "inspect {} before continuing [read-only]",
+            display_path_for_cli(&out_dir.join(GITHUB_ACTIVITY_PROGRESS_FILENAME))
+        )],
+    }
+}
+
+fn activity_status_run_command(
+    config_path: &Path,
+    out_dir: &Path,
+    profile: GithubActivityProfile,
+) -> String {
+    format!(
+        "{} [writes]",
+        activity_status_run_base_command(config_path, out_dir, profile)
+    )
+}
+
+fn activity_status_run_base_command(
+    config_path: &Path,
+    out_dir: &Path,
+    profile: GithubActivityProfile,
+) -> String {
+    let config = quote_cli_value(&display_path_for_cli(config_path));
+    let out = quote_cli_value(&display_path_for_cli(out_dir));
+    match profile {
+        GithubActivityProfile::Scout => {
+            format!("shiplog github activity scout --config {config} --out {out} --resume")
+        }
+        GithubActivityProfile::Authored => format!(
+            "shiplog github activity run --config {config} --out {out} --profile authored --resume"
+        ),
+        GithubActivityProfile::Full => format!(
+            "shiplog github activity run --config {config} --out {out} --profile full --resume"
+        ),
+    }
+}
+
+fn activity_status_receipts(
+    plan_path: &Path,
+    progress_path: &Path,
+    api_ledger_path: &Path,
+) -> Vec<PathBuf> {
+    [plan_path, progress_path, api_ledger_path]
+        .into_iter()
+        .filter(|path| path.exists())
+        .map(Path::to_path_buf)
+        .collect()
+}
+
+fn build_activity_report_receipt<'a>(
+    plan: &'a GithubActivityPlanReceipt,
+    progress: &'a GithubActivityProgressReceipt,
+    api_ledger: &'a GithubActivityApiLedgerReceipt,
+    out_dir: &Path,
+    final_dir: Option<&Path>,
+    final_outputs: Vec<GithubActivityFinalOutput>,
+) -> GithubActivityReportReceipt<'a> {
+    let run_ref = progress
+        .run_ref
+        .clone()
+        .unwrap_or_else(|| "not_generated".to_string());
+    let source_run_dir = progress
+        .run_ref
+        .as_deref()
+        .map(|run_ref| display_path_for_cli(&out_dir.join(run_ref)))
+        .unwrap_or_else(|| "not_generated".to_string());
+    let final_dir = final_dir
+        .map(display_path_for_cli)
+        .unwrap_or_else(|| "not_generated".to_string());
+    GithubActivityReportReceipt {
+        schema_version: GITHUB_ACTIVITY_REPORT_SCHEMA_VERSION,
+        generated_at: Utc::now().to_rfc3339(),
+        shiplog_version: env!("CARGO_PKG_VERSION"),
+        activity_id: &plan.activity_id,
+        actor: &plan.actor,
+        repo_owners: &plan.repo_owners,
+        query_strategy: &plan.query_strategy,
+        profile: &plan.profile,
+        state: &progress.state,
+        run_ref,
+        source_run_dir,
+        final_dir,
+        final_outputs,
+        github_api: &api_ledger.github_api,
+        owner_filter: &api_ledger.owner_filter,
+        receipt_refs: activity_report_receipt_refs(progress),
+    }
+}
+
+fn activity_report_receipt_refs(progress: &GithubActivityProgressReceipt) -> Vec<String> {
+    let mut refs = vec![
+        GITHUB_ACTIVITY_PLAN_FILENAME.to_string(),
+        GITHUB_ACTIVITY_PROGRESS_FILENAME.to_string(),
+        GITHUB_ACTIVITY_API_LEDGER_FILENAME.to_string(),
+    ];
+    if let Some(run_ref) = progress.run_ref.as_deref() {
+        refs.push(format!("{run_ref}/intake.report.json"));
+        refs.push(format!("{run_ref}/coverage.manifest.json"));
+    }
+    refs
+}
+
+fn write_activity_report_markdown(
+    path: &Path,
+    report: &GithubActivityReportReceipt<'_>,
+) -> Result<()> {
+    let markdown = render_activity_report_markdown(report);
+    ensure_no_secret_sentinels(GITHUB_ACTIVITY_REPORT_MARKDOWN_FILENAME, &markdown)?;
+    std::fs::write(path, markdown).with_context(|| format!("write {}", path.display()))
+}
+
+fn render_activity_report_markdown(report: &GithubActivityReportReceipt<'_>) -> String {
+    let mut out = String::new();
+    out.push_str("# GitHub Activity Report\n\n");
+    out.push_str("## Scope\n\n");
+    out.push_str(&format!("- Actor: {}\n", report.actor));
+    if report.repo_owners.is_empty() {
+        out.push_str("- Repository owners: actor-wide (no owner filter requested)\n");
+    } else {
+        out.push_str(&format!(
+            "- Repository owners: {}\n",
+            report.repo_owners.join(", ")
+        ));
+    }
+    out.push_str(&format!("- Query strategy: {}\n", report.query_strategy));
+    out.push_str(&format!("- Profile: {}\n", report.profile));
+    out.push_str(&format!("- State: {}\n", report.state));
+    out.push_str(&format!("- Run: {}\n\n", report.run_ref));
+
+    out.push_str("## API Budget\n\n");
+    out.push_str(&format!(
+        "- Requests: search {}, core {}\n",
+        report.github_api.requests.search, report.github_api.requests.core
+    ));
+    out.push_str(&format!(
+        "- Search probe cache: {}\n",
+        cache_phase_summary(report.github_api.cache.search_probe)
+    ));
+    out.push_str(&format!(
+        "- Search page cache: {}\n",
+        cache_phase_summary(report.github_api.cache.search_page)
+    ));
+    out.push_str(&format!(
+        "- Pull detail cache: {}\n",
+        cache_phase_summary(report.github_api.cache.pull_detail)
+    ));
+    out.push_str(&format!(
+        "- Review page cache: {}\n",
+        cache_phase_summary(report.github_api.cache.review_page)
+    ));
+    out.push_str(&format!(
+        "- Rate-limit snapshots: {}\n",
+        report.github_api.rate_limit_snapshots.len()
+    ));
+    out.push_str(&format!(
+        "- Secondary-limit events: {}\n\n",
+        report.github_api.secondary_limit_events.len()
+    ));
+
+    out.push_str("## Owner Filter\n\n");
+    if report.owner_filter.requested_owners.is_empty() {
+        out.push_str("- Owner filter: actor-wide\n");
+    } else {
+        out.push_str(&format!(
+            "- Requested owners: {}\n",
+            report.owner_filter.requested_owners.join(", ")
+        ));
+    }
+    out.push_str(&format!(
+        "- Kept owners: {}\n",
+        owner_counts_summary(&report.owner_filter.kept)
+    ));
+    out.push_str(&format!(
+        "- Dropped owners: {}\n\n",
+        owner_drops_summary(&report.owner_filter.dropped)
+    ));
+
+    out.push_str("## Outputs\n\n");
+    out.push_str(&format!(
+        "- Source run directory: {}\n",
+        report.source_run_dir
+    ));
+    out.push_str(&format!("- Final directory: {}\n", report.final_dir));
+    if report.final_outputs.is_empty() {
+        out.push_str("- Final outputs: none\n\n");
+    } else {
+        out.push_str("- Final outputs:\n");
+        for output in &report.final_outputs {
+            out.push_str(&format!("  - {}: {}\n", output.label, output.path));
+        }
+        out.push('\n');
+    }
+
+    out.push_str("## Receipts\n\n");
+    for receipt in &report.receipt_refs {
+        out.push_str(&format!("- `{receipt}`\n"));
+    }
+    out
+}
+
+fn load_completed_window_outputs(
+    out_dir: &Path,
+    plan: &GithubActivityPlanReceipt,
+    progress: Option<&GithubActivityProgressReceipt>,
+) -> Result<(Vec<String>, Vec<IngestOutput>)> {
+    let Some(progress) = progress else {
+        return Ok((Vec::new(), Vec::new()));
+    };
+
+    let planned_ids = plan.window_ids().into_iter().collect::<BTreeSet<_>>();
+    let mut completed_windows = Vec::new();
+    let mut outputs = Vec::new();
+    for window_id in &progress.completed_windows {
+        if !planned_ids.contains(window_id) {
+            continue;
+        }
+        match read_window_ingest_output(out_dir, &plan.profile, window_id) {
+            Ok(output) => {
+                completed_windows.push(window_id.clone());
+                outputs.push(output);
+            }
+            Err(_) => {
+                // Missing or malformed window receipts are not trusted for
+                // resume; leave that window pending so it can be fetched again.
+            }
+        }
+    }
+    Ok((completed_windows, outputs))
+}
+
+fn pending_plan_windows<'a>(
+    plan: &'a GithubActivityPlanReceipt,
+    completed_windows: &[String],
+) -> Vec<&'a GithubActivityPlanWindow> {
+    let completed = completed_windows
+        .iter()
+        .map(String::as_str)
+        .collect::<BTreeSet<_>>();
+    plan.windows
+        .iter()
+        .filter(|window| !completed.contains(window.window_id.as_str()))
+        .collect()
+}
+
+fn pending_window_ids(
+    plan: &GithubActivityPlanReceipt,
+    completed_windows: &[String],
+) -> Vec<String> {
+    pending_plan_windows(plan, completed_windows)
+        .into_iter()
+        .map(|window| window.window_id.clone())
+        .collect()
+}
+
+fn plan_window_time_window(window: &GithubActivityPlanWindow) -> Result<TimeWindow> {
+    let since = NaiveDate::parse_from_str(&window.since, "%Y-%m-%d")
+        .with_context(|| format!("parse GitHub activity window since {:?}", window.since))?;
+    let until = NaiveDate::parse_from_str(&window.until, "%Y-%m-%d")
+        .with_context(|| format!("parse GitHub activity window until {:?}", window.until))?;
+    Ok(TimeWindow { since, until })
+}
+
+fn activity_window_dir(out_dir: &Path, profile: &str, window_id: &str) -> PathBuf {
+    out_dir
+        .join("github.activity.windows")
+        .join(profile)
+        .join(window_id)
+}
+
+fn write_window_ingest_output(
+    out_dir: &Path,
+    profile: &str,
+    window_id: &str,
+    ingest: &IngestOutput,
+) -> Result<()> {
+    let window_dir = activity_window_dir(out_dir, profile, window_id);
+    std::fs::create_dir_all(&window_dir)
+        .with_context(|| format!("create {}", window_dir.display()))?;
+    write_activity_events_jsonl(&window_dir.join("ledger.events.jsonl"), &ingest.events)?;
+    write_activity_coverage_manifest(&window_dir.join("coverage.manifest.json"), &ingest.coverage)?;
+    write_json_receipt(
+        &window_dir.join("freshness.json"),
+        "github activity window freshness",
+        &ingest.freshness,
+    )
+}
+
+fn write_activity_events_jsonl(path: &Path, events: &[EventEnvelope]) -> Result<()> {
+    let mut file =
+        std::fs::File::create(path).with_context(|| format!("create {}", path.display()))?;
+    for event in events {
+        let line = serde_json::to_string(event).context("serialize GitHub activity event")?;
+        file.write_all(line.as_bytes())
+            .with_context(|| format!("write {}", path.display()))?;
+        file.write_all(b"\n")
+            .with_context(|| format!("write {}", path.display()))?;
+    }
+    Ok(())
+}
+
+fn write_activity_coverage_manifest(path: &Path, coverage: &CoverageManifest) -> Result<()> {
+    let text =
+        serde_json::to_string_pretty(coverage).context("serialize GitHub activity coverage")?;
+    std::fs::write(path, text).with_context(|| format!("write {}", path.display()))
+}
+
+fn read_window_ingest_output(
+    out_dir: &Path,
+    profile: &str,
+    window_id: &str,
+) -> Result<IngestOutput> {
+    let window_dir = activity_window_dir(out_dir, profile, window_id);
+    let events_path = window_dir.join("ledger.events.jsonl");
+    let coverage_path = window_dir.join("coverage.manifest.json");
+    let freshness_path = window_dir.join("freshness.json");
+
+    let file = std::fs::File::open(&events_path)
+        .with_context(|| format!("read {}", events_path.display()))?;
+    let mut events = Vec::new();
+    for (idx, line) in BufReader::new(file).lines().enumerate() {
+        let line =
+            line.with_context(|| format!("read line {} from {}", idx + 1, events_path.display()))?;
+        if line.trim().is_empty() {
+            continue;
+        }
+        events.push(
+            serde_json::from_str::<EventEnvelope>(&line).with_context(|| {
+                format!("parse line {} from {}", idx + 1, events_path.display())
+            })?,
+        );
+    }
+
+    let coverage_text = std::fs::read_to_string(&coverage_path)
+        .with_context(|| format!("read {}", coverage_path.display()))?;
+    let coverage = serde_json::from_str::<CoverageManifest>(&coverage_text)
+        .with_context(|| format!("parse {}", coverage_path.display()))?;
+    let freshness = if freshness_path.exists() {
+        let freshness_text = std::fs::read_to_string(&freshness_path)
+            .with_context(|| format!("read {}", freshness_path.display()))?;
+        serde_json::from_str::<Vec<SourceFreshness>>(&freshness_text)
+            .with_context(|| format!("parse {}", freshness_path.display()))?
+    } else {
+        Vec::new()
+    };
+
+    Ok(IngestOutput {
+        events,
+        coverage,
+        freshness,
+    })
+}
+
+fn merge_window_outputs(outputs: &[IngestOutput]) -> Result<IngestOutput> {
+    match outputs {
+        [] => anyhow::bail!("GitHub activity produced no completed window receipts"),
+        [single] => Ok(single.clone()),
+        _ => merge_ingest_outputs(outputs, ConflictResolution::PreferMostRecent)
+            .map(|result| result.ingest_output),
+    }
+}
+
+fn owner_filter_from_outputs(
+    plan: &GithubActivityPlanReceipt,
+    outputs: &[IngestOutput],
+) -> OwnerFilterLedger {
+    let notes = outputs
+        .iter()
+        .flat_map(|output| output.coverage.slices.iter())
+        .flat_map(|slice| slice.notes.iter().cloned())
+        .collect::<Vec<_>>();
+    owner_filter_from_notes(plan, &notes)
+}
+
+fn copy_activity_run_receipt(source_path: &Path, run_dir: &Path, filename: &str) -> Result<()> {
+    let destination_path = run_dir.join(filename);
+    std::fs::copy(source_path, &destination_path).with_context(|| {
+        format!(
+            "copy {} to {}",
+            source_path.display(),
+            destination_path.display()
+        )
+    })?;
+    Ok(())
+}
+
+fn copy_activity_final_output(
+    source_dir: &Path,
+    final_dir: &Path,
+    filename: &str,
+    required: bool,
+    outputs: &mut Vec<GithubActivityFinalOutput>,
+) -> Result<()> {
+    let source_path = source_dir.join(filename);
+    if !source_path.exists() {
+        if required {
+            anyhow::bail!(
+                "cannot merge GitHub activity because required output is missing: {}",
+                display_path_for_cli(&source_path)
+            );
+        }
+        return Ok(());
+    }
+    let destination_path = final_dir.join(filename);
+    std::fs::copy(&source_path, &destination_path).with_context(|| {
+        format!(
+            "copy {} to {}",
+            source_path.display(),
+            destination_path.display()
+        )
+    })?;
+    outputs.push(GithubActivityFinalOutput {
+        label: final_output_label(filename).to_string(),
+        path: display_path_for_cli(&destination_path),
+    });
+    Ok(())
+}
+
+fn final_output_label(filename: &str) -> &'static str {
+    match filename {
+        "packet.md" => "packet",
+        "intake.report.json" => "intake_report",
+        "coverage.manifest.json" => "coverage",
+        "ledger.events.jsonl" => "ledger",
+        GITHUB_ACTIVITY_API_LEDGER_FILENAME => "api_ledger",
+        GITHUB_ACTIVITY_REPORT_FILENAME => "activity_report",
+        _ => "artifact",
+    }
+}
+
+fn cache_phase_summary(counts: GithubApiCachePhaseCounts) -> String {
+    format!(
+        "fresh {}, stale {}, misses {}",
+        counts.fresh_hits, counts.stale_hits, counts.misses
+    )
+}
+
+fn owner_counts_summary(counts: &BTreeMap<String, u64>) -> String {
+    if counts.is_empty() {
+        return "none".to_string();
+    }
+    counts
+        .iter()
+        .map(|(owner, count)| format!("{owner}={count}"))
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+fn owner_drops_summary(drops: &[OwnerFilterDrop]) -> String {
+    if drops.is_empty() {
+        return "none".to_string();
+    }
+    drops
+        .iter()
+        .map(|drop| format!("{}={} ({})", drop.owner, drop.count, drop.reason))
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 fn progress_receipt(
@@ -611,7 +1658,35 @@ fn write_json_receipt<T: Serialize>(path: &Path, label: &str, value: &T) -> Resu
     std::fs::write(path, format!("{json}\n")).with_context(|| format!("write {}", path.display()))
 }
 
+fn read_json_receipt_if_present<T: DeserializeOwned>(
+    path: &Path,
+    label: &str,
+) -> Result<Option<T>> {
+    if !path.exists() {
+        return Ok(None);
+    }
+    let text = std::fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
+    ensure_no_secret_sentinels(label, &text)?;
+    serde_json::from_str(&text)
+        .with_context(|| format!("parse {}", path.display()))
+        .map(Some)
+}
+
 fn load_progress_if_completed(
+    path: &Path,
+    plan: &GithubActivityPlanReceipt,
+) -> Result<Option<GithubActivityProgressReceipt>> {
+    let Some(progress) = load_progress_if_compatible(path, plan)? else {
+        return Ok(None);
+    };
+    if progress.state == "completed" {
+        Ok(Some(progress))
+    } else {
+        Ok(None)
+    }
+}
+
+fn load_progress_if_compatible(
     path: &Path,
     plan: &GithubActivityPlanReceipt,
 ) -> Result<Option<GithubActivityProgressReceipt>> {
@@ -625,7 +1700,6 @@ fn load_progress_if_completed(
     if progress.schema_version == GITHUB_ACTIVITY_PROGRESS_SCHEMA_VERSION
         && progress.activity_id == plan.activity_id
         && progress.profile == plan.profile
-        && progress.state == "completed"
     {
         Ok(Some(progress))
     } else {
@@ -814,6 +1888,7 @@ fn activity_id(
     format!("github_activity_{}", &hex[..12])
 }
 
+#[derive(Debug)]
 struct GithubActivityExecution {
     since: NaiveDate,
     until: NaiveDate,
@@ -823,6 +1898,117 @@ struct GithubActivityExecution {
     throttle_ms: u64,
     api_base: String,
     cache_dir: Option<PathBuf>,
+    cache_ttl_days: Option<i64>,
+}
+
+struct GithubActivityReceipts {
+    out_dir: PathBuf,
+    plan_path: PathBuf,
+    progress_path: PathBuf,
+    api_ledger_path: PathBuf,
+    plan: Option<GithubActivityPlanReceipt>,
+    progress: Option<GithubActivityProgressReceipt>,
+    api_ledger: Option<GithubActivityApiLedgerReceipt>,
+}
+
+#[derive(Default)]
+struct GithubActivityApiAccumulator {
+    requests: GithubApiRequestCounts,
+    cache: GithubApiCacheCounts,
+    rate_limit_snapshots: Vec<GithubRateLimitSnapshot>,
+    secondary_limit_events: Vec<GithubSecondaryLimitEvent>,
+}
+
+impl GithubActivityApiAccumulator {
+    fn from_ledger(ledger: GithubActivityApiLedgerReceipt) -> Self {
+        Self {
+            requests: ledger.github_api.requests,
+            cache: ledger.github_api.cache,
+            rate_limit_snapshots: ledger.github_api.rate_limit_snapshots,
+            secondary_limit_events: ledger.github_api.secondary_limit_events,
+        }
+    }
+
+    fn add_run(
+        &mut self,
+        requests: GithubApiRequestCounts,
+        cache: GithubApiCacheCounts,
+        rate_limit_snapshots: Vec<GithubRateLimitSnapshot>,
+        secondary_limit_events: Vec<GithubSecondaryLimitEvent>,
+    ) {
+        self.requests.search = self.requests.search.saturating_add(requests.search);
+        self.requests.core = self.requests.core.saturating_add(requests.core);
+        add_cache_counts(&mut self.cache, cache);
+        self.rate_limit_snapshots.extend(rate_limit_snapshots);
+        self.secondary_limit_events.extend(secondary_limit_events);
+    }
+
+    fn remaining_budget(&self, policy: &GithubActivityBudgetPolicy) -> GithubApiBudget {
+        GithubApiBudget {
+            max_search_requests: Some(
+                policy
+                    .max_search_requests
+                    .saturating_sub(self.requests.search),
+            ),
+            max_core_requests: Some(policy.max_core_requests.saturating_sub(self.requests.core)),
+        }
+    }
+
+    fn to_ledger(
+        &self,
+        plan: &GithubActivityPlanReceipt,
+        stop_reason: Option<String>,
+        owner_filter: OwnerFilterLedger,
+    ) -> GithubActivityApiLedgerReceipt {
+        api_ledger_receipt(
+            plan,
+            self.requests,
+            self.cache,
+            self.rate_limit_snapshots.clone(),
+            self.secondary_limit_events.clone(),
+            stop_reason,
+            owner_filter,
+        )
+    }
+}
+
+fn add_cache_counts(target: &mut GithubApiCacheCounts, source: GithubApiCacheCounts) {
+    add_cache_phase(&mut target.search_probe, source.search_probe);
+    add_cache_phase(&mut target.search_page, source.search_page);
+    add_cache_phase(&mut target.pull_detail, source.pull_detail);
+    add_cache_phase(&mut target.review_page, source.review_page);
+}
+
+fn add_cache_phase(target: &mut GithubApiCachePhaseCounts, source: GithubApiCachePhaseCounts) {
+    target.fresh_hits = target.fresh_hits.saturating_add(source.fresh_hits);
+    target.stale_hits = target.stale_hits.saturating_add(source.stale_hits);
+    target.misses = target.misses.saturating_add(source.misses);
+}
+
+#[derive(Clone, Serialize)]
+struct GithubActivityFinalOutput {
+    label: String,
+    path: String,
+}
+
+#[derive(Serialize)]
+struct GithubActivityReportReceipt<'a> {
+    schema_version: &'static str,
+    generated_at: String,
+    shiplog_version: &'static str,
+    activity_id: &'a str,
+    actor: &'a str,
+    repo_owners: &'a [String],
+    query_strategy: &'a str,
+    profile: &'a str,
+    state: &'a str,
+    run_ref: String,
+    source_run_dir: String,
+    final_dir: String,
+    final_outputs: Vec<GithubActivityFinalOutput>,
+    github_api: &'a GithubActivityApiLedgerGithub,
+    owner_filter: &'a OwnerFilterLedger,
+    receipt_refs: Vec<String>,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -1018,6 +2204,7 @@ since = "2026-01-01"
 until = "2026-03-01"
 include_reviews = true
 cache_dir = "./out/activity/.cache"
+cache_ttl_days = 3650
 
 [github_activity.budget]
 max_search_per_minute = 24
@@ -1046,6 +2233,7 @@ api_base = "https://api.github.test"
         assert_eq!(scout.throttle_ms, 2500);
         assert_eq!(scout.api_base, "https://api.github.test");
         assert_eq!(scout.mode, "created");
+        assert_eq!(scout.cache_ttl_days, Some(3650));
 
         let authored =
             activity_execution(&config, base_dir, out_dir, GithubActivityProfile::Authored)?;
@@ -1055,6 +2243,42 @@ api_base = "https://api.github.test"
         let full = activity_execution(&config, base_dir, out_dir, GithubActivityProfile::Full)?;
         assert!(full.include_reviews);
         assert!(!full.no_details);
+
+        Ok(())
+    }
+
+    #[test]
+    fn activity_execution_rejects_non_positive_cache_ttl() -> Result<()> {
+        let config: ShiplogConfig = toml::from_str(
+            r#"
+[shiplog]
+config_version = 1
+
+[github_activity]
+actor = "octocat"
+since = "2026-01-01"
+until = "2026-02-01"
+cache_ttl_days = 0
+
+[sources.github]
+enabled = true
+user = "octocat"
+"#,
+        )
+        .context("parse test config")?;
+
+        let err = activity_execution(
+            &config,
+            Path::new("."),
+            Path::new("./out"),
+            GithubActivityProfile::Scout,
+        )
+        .expect_err("non-positive GitHub activity cache TTL should fail");
+        assert!(
+            err.to_string()
+                .contains("github_activity.cache_ttl_days must be greater than zero"),
+            "unexpected error: {err:?}"
+        );
 
         Ok(())
     }

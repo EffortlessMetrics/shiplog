@@ -1,0 +1,345 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/EffortlessMetrics/shiplog/contracts/schemas/github-activity-plan.v1.schema.json",
+  "title": "Shiplog GitHub activity plan v1",
+  "type": "object",
+  "additionalProperties": false,
+  "propertyNames": {
+    "$ref": "#/$defs/non_secret_field_name"
+  },
+  "required": [
+    "schema_version",
+    "generated_at",
+    "shiplog_version",
+    "activity_id",
+    "actor",
+    "repo_owners",
+    "owner_filter_requested",
+    "query_strategy",
+    "profile",
+    "since",
+    "until",
+    "planning_mode",
+    "windows",
+    "estimated_totals",
+    "budget_policy",
+    "next_actions",
+    "receipt_refs"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "github.activity.plan.v1"
+    },
+    "generated_at": {
+      "$ref": "#/$defs/timestamp"
+    },
+    "shiplog_version": {
+      "$ref": "#/$defs/display_string"
+    },
+    "activity_id": {
+      "$ref": "#/$defs/stable_key"
+    },
+    "actor": {
+      "$ref": "#/$defs/display_string"
+    },
+    "repo_owners": {
+      "$ref": "#/$defs/string_array"
+    },
+    "owner_filter_requested": {
+      "type": "boolean"
+    },
+    "query_strategy": {
+      "$ref": "#/$defs/stable_key"
+    },
+    "profile": {
+      "$ref": "#/$defs/profile"
+    },
+    "since": {
+      "$ref": "#/$defs/date"
+    },
+    "until": {
+      "$ref": "#/$defs/date"
+    },
+    "planning_mode": {
+      "$ref": "#/$defs/planning_mode"
+    },
+    "windows": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/window"
+      }
+    },
+    "estimated_totals": {
+      "$ref": "#/$defs/estimated_totals"
+    },
+    "budget_policy": {
+      "$ref": "#/$defs/budget_policy"
+    },
+    "next_actions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/next_action"
+      }
+    },
+    "receipt_refs": {
+      "$ref": "#/$defs/string_array"
+    }
+  },
+  "$defs": {
+    "non_secret_field_name": {
+      "type": "string",
+      "not": {
+        "pattern": "[Tt][Oo][Kk][Ee][Nn]_[Vv][Aa][Ll][Uu][Ee]|[Ss][Ee][Cc][Rr][Ee][Tt]_[Vv][Aa][Ll][Uu][Ee]|[Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd]|[Aa][Pp][Ii]_?[Kk][Ee][Yy]_[Vv][Aa][Ll][Uu][Ee]|[Kk][Ee][Yy]_[Vv][Aa][Ll][Uu][Ee]"
+      }
+    },
+    "object_base": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "#/$defs/non_secret_field_name"
+      }
+    },
+    "display_string": {
+      "type": "string",
+      "minLength": 1
+    },
+    "stable_key": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.:-]+$",
+      "minLength": 1
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "profile": {
+      "type": "string",
+      "enum": [
+        "scout",
+        "authored",
+        "full"
+      ]
+    },
+    "planning_mode": {
+      "type": "string",
+      "enum": [
+        "static",
+        "probe"
+      ]
+    },
+    "query_kind": {
+      "type": "string",
+      "enum": [
+        "authored_prs",
+        "reviewed_prs"
+      ]
+    },
+    "dense_window_risk": {
+      "type": "string",
+      "enum": [
+        "ok",
+        "dense",
+        "incomplete",
+        "unknown",
+        "blocked"
+      ]
+    },
+    "cache_reuse": {
+      "type": "string",
+      "enum": [
+        "unknown",
+        "none",
+        "partial",
+        "warm",
+        "fresh"
+      ]
+    },
+    "budget_policy_action": {
+      "type": "string",
+      "enum": [
+        "checkpoint_and_stop"
+      ]
+    },
+    "window": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "additionalProperties": false,
+          "required": [
+            "window_id",
+            "since",
+            "until",
+            "granularity",
+            "query_kinds",
+            "queries"
+          ],
+          "properties": {
+            "window_id": {
+              "$ref": "#/$defs/stable_key"
+            },
+            "since": {
+              "$ref": "#/$defs/date"
+            },
+            "until": {
+              "$ref": "#/$defs/date"
+            },
+            "granularity": {
+              "$ref": "#/$defs/stable_key"
+            },
+            "query_kinds": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/query_kind"
+              }
+            },
+            "queries": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/query"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "query": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "additionalProperties": false,
+          "required": [
+            "query_kind",
+            "search_query",
+            "estimated_search_requests",
+            "estimated_core_requests",
+            "estimated_review_requests",
+            "dense_window_risk",
+            "cache_reuse"
+          ],
+          "properties": {
+            "query_kind": {
+              "$ref": "#/$defs/query_kind"
+            },
+            "search_query": {
+              "$ref": "#/$defs/display_string"
+            },
+            "estimated_search_requests": {
+              "$ref": "#/$defs/non_negative_integer"
+            },
+            "estimated_core_requests": {
+              "$ref": "#/$defs/non_negative_integer"
+            },
+            "estimated_review_requests": {
+              "$ref": "#/$defs/non_negative_integer"
+            },
+            "dense_window_risk": {
+              "$ref": "#/$defs/dense_window_risk"
+            },
+            "cache_reuse": {
+              "$ref": "#/$defs/cache_reuse"
+            }
+          }
+        }
+      ]
+    },
+    "estimated_totals": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "additionalProperties": false,
+          "required": [
+            "search_requests",
+            "core_requests",
+            "review_requests"
+          ],
+          "properties": {
+            "search_requests": {
+              "$ref": "#/$defs/non_negative_integer"
+            },
+            "core_requests": {
+              "$ref": "#/$defs/non_negative_integer"
+            },
+            "review_requests": {
+              "$ref": "#/$defs/non_negative_integer"
+            }
+          }
+        }
+      ]
+    },
+    "budget_policy": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "additionalProperties": false,
+          "required": [
+            "max_search_requests",
+            "max_core_requests",
+            "max_search_per_minute",
+            "on_exhausted"
+          ],
+          "properties": {
+            "max_search_requests": {
+              "$ref": "#/$defs/non_negative_integer"
+            },
+            "max_core_requests": {
+              "$ref": "#/$defs/non_negative_integer"
+            },
+            "max_search_per_minute": {
+              "$ref": "#/$defs/non_negative_integer"
+            },
+            "on_exhausted": {
+              "$ref": "#/$defs/budget_policy_action"
+            }
+          }
+        }
+      ]
+    },
+    "next_action": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "additionalProperties": false,
+          "required": [
+            "command",
+            "writes",
+            "reason"
+          ],
+          "properties": {
+            "command": {
+              "$ref": "#/$defs/display_string"
+            },
+            "writes": {
+              "type": "boolean"
+            },
+            "reason": {
+              "$ref": "#/$defs/display_string"
+            }
+          }
+        }
+      ]
+    },
+    "string_array": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/display_string"
+      }
+    },
+    "non_negative_integer": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

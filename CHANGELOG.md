@@ -19,12 +19,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with separated search/core request counts, phase-specific cache counts,
   owner-filter receipts, header-derived rate-limit snapshots, and sanitized
   limit-event arrays.
+- Added `github.activity.plan.v1`, `github.activity.progress.v1`, and
+  `github.activity.api-ledger.v1` schemas, docs, and examples for the durable
+  harvest receipts.
+- Added `shiplog github activity status`, a read-only status surface over
+  activity plan, progress, and API-ledger receipts that reports harvest state,
+  budget/cache use, owner filtering, next actions, and receipt refs without
+  provider calls or writes.
+- Added `shiplog github activity report`, a durable harvest report over the
+  same receipts that writes `github.activity.report.json` and
+  `github.activity.report.md` with scope, execution state, API budget/cache
+  cost, rate-limit evidence, owner filtering, and safe next actions.
+- Added `shiplog github activity merge`, which writes final activity outputs
+  from a completed harvest run into `out/github-full/final/`, including the
+  packet, API ledger, `github.activity.report.json`, and the intake report when
+  the completed activity run produced one.
+- Added the `github.activity.report.v1` schema, docs, and completed example for
+  the final activity merge receipt.
+- Added per-window GitHub activity receipts under
+  `github.activity.windows/<profile>/<window_id>/`, allowing `--resume` to skip
+  completed windows and carry cumulative API cost forward.
+- Added optional `github_activity.cache_ttl_days` for historical harvests that
+  need GitHub search/detail/review cache entries to stay reusable across long
+  scout/resume runs.
 
 ### Changed
 
 - `shiplog github activity plan` now emits executable `next_actions` instead of
   a placeholder, so agents can follow the planned harvest lifecycle without
   scraping prose.
+- Completed GitHub activity runs now copy the plan, progress, and API ledger
+  receipts into the run directory, so generated packets carry their harvest
+  cost receipts with the ordinary run artifacts.
 
 ## [0.9.0] - 2026-XX-XX (unreleased candidate)
 

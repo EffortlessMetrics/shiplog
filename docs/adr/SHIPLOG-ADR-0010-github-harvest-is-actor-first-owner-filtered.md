@@ -104,8 +104,9 @@ The actor/owner decision applies across:
 - `github.activity.plan.json`;
 - `github.activity.progress.json`;
 - `github.activity.api-ledger.json`;
+- `github.activity.report.json`;
 - final merged activity reports and packets;
-- future `shiplog github activity status` and `report` surfaces;
+- `shiplog github activity status`, `report`, and `merge` surfaces;
 - future `status --latest` summaries when harvest receipts exist.
 
 ## Consequences
@@ -180,26 +181,32 @@ only at the human packet layer.
   proposes the plan/scout/run/resume/merge/report lifecycle and the
   `EffortlessSteven` / `EffortlessMetrics` / `EffortlessSteven` use case.
 - [`SHIPLOG-SPEC-0009-github-activity-harvest`](../specs/SHIPLOG-SPEC-0009-github-activity-harvest.md)
-  defines `github.activity.plan.json`, `github.activity.progress.json`, and
-  `github.activity.api-ledger.json`.
-- Future schemas for `github.activity.plan.v1`,
-  `github.activity.progress.v1`, and `github.activity.api-ledger.v1` must
-  include actor and owner-filter fields consistent with this ADR.
+  defines `github.activity.plan.json`, `github.activity.progress.json`,
+  `github.activity.api-ledger.json`, and `github.activity.report.json`.
+- The `github.activity.plan.v1`, `github.activity.progress.v1`, and
+  `github.activity.api-ledger.v1` schemas include actor and owner-filter fields
+  consistent with this ADR.
+- [`github.activity.report.v1`](../schemas/github-activity-report-v1.md) pins
+  the final merge report receipt and carries the same owner-filter shape.
 - Future plan-only tests should prove the planned query strategy is
   `actor_search_owner_filter` when owners are configured.
 - Future owner-filter tests should prove kept/dropped owner receipts and no
   duplicate events when owner scopes overlap.
-- Future resume tests should prove progress checkpoints stay actor/window based
-  rather than repository-crawl based.
+- Resume tests prove progress checkpoints stay actor/window based rather than
+  repository-crawl based, and that valid completed window receipts are skipped
+  on `--resume`.
 - Future API-ledger tests should prove request counts and cache phases are
   reported without token values, authorization headers, or raw private response
   bodies.
 
 ## Implementation Note
 
-This ADR records architecture for an unreleased future lane. It does not add
-behavior or runtime commands by itself, and it does not lift the `v0.9.0`
-release hold.
+Runtime commands and receipt schemas have since landed for the unreleased
+GitHub activity harvest lane: plan, scout, run, status, report, and merge. The
+implementation persists completed window receipts under
+`github.activity.windows/<profile>/<window_id>/` so `--resume` can skip
+completed windows without repository crawling.
 
-In short: this ADR does not add runtime behavior by itself.
-It does not lift the `v0.9.0` release hold.
+The ADR document does not add runtime behavior by itself; the behavior is tied
+to the implementation and proof PRs that followed it.
+This implementation note does not lift the `v0.9.0` release hold.

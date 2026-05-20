@@ -24,6 +24,7 @@ This spec defines the contract for GitHub activity harvest receipts:
 github.activity.plan.json
 github.activity.progress.json
 github.activity.api-ledger.json
+github.activity.report.json
 ```
 
 The harvest workflow turns a full-history GitHub run into an audited batch job:
@@ -40,6 +41,19 @@ organization or user account by default.
 This spec does not add behavior by itself. It defines the durable contract that
 future implementation PRs must satisfy.
 
+Schema docs and examples:
+
+```text
+docs/schemas/github-activity-harvest-v1.md
+contracts/schemas/github-activity-plan.v1.schema.json
+contracts/schemas/github-activity-progress.v1.schema.json
+contracts/schemas/github-activity-api-ledger.v1.schema.json
+examples/github-activity-plan/full.json
+examples/github-activity-progress/completed.json
+examples/github-activity-progress/checkpointed.json
+examples/github-activity-api-ledger/completed.json
+```
+
 ## Scope
 
 This spec owns:
@@ -51,6 +65,8 @@ This spec owns:
 - progress receipts that checkpoint completed and pending work for safe resume;
 - API ledger receipts that separate search/core request cost and cache behavior
   by phase;
+- final activity report receipts that bind merge outputs to the plan,
+  progress, API ledger, owner filter, and completed run;
 - budget policy for search and core buckets;
 - rate-limit and secondary-limit recording;
 - compatibility with existing `sources.github.user` configuration;
@@ -97,6 +113,8 @@ github activity plan estimates harvest work.
 github activity scout/run executes explicit harvest phases.
 github activity progress checkpoints resumable state.
 github activity api-ledger reports API/cache cost.
+github activity report records harvest status, API cost, owner filtering, final
+merge outputs when present, and carried receipts.
 intake/report consumes activity outputs as evidence receipts.
 status summarizes receipts and chooses safe next actions.
 ```
@@ -155,6 +173,7 @@ include_commits = false
 
 profile = "scout"
 cache_dir = "./out/github-full/.cache"
+cache_ttl_days = 3650
 
 [github_activity.budget]
 max_search_requests = 300
@@ -354,19 +373,14 @@ Minimum shape:
   "pending_windows": ["2024-q2"],
   "active_window": {
     "window_id": "2024-q2",
-    "query_kind": "authored_prs",
-    "phase": "details",
-    "resume_cursor": {
-      "search_page": 3,
-      "detail_url": "https://api.github.com/repos/EffortlessMetrics/shiplog/pulls/123"
-    }
+    "query_kind": "authored_prs"
   },
   "stop_reason": "budget_exhausted",
   "budget_checkpoint": {
-    "search_remaining": 12,
-    "core_remaining": 0,
-    "reset_at": "2026-05-19T01:00:00Z"
+    "search_requests": 84,
+    "core_requests": 312
   },
+  "run_ref": null,
   "receipt_refs": ["github.activity.plan.json", "github.activity.api-ledger.json"]
 }
 ```
@@ -378,7 +392,13 @@ Progress rules:
 - Progress must be written before a budget guard stops a run.
 - Progress writes must be atomic enough that an interrupted write does not leave
   a valid-looking partial JSON file.
-- Resume must use progress plus cache receipts to skip completed windows.
+- Resume must use progress plus persisted window receipts to skip completed
+  windows.
+- Completed window receipts live under
+  `github.activity.windows/<profile>/<window_id>/` and include
+  `ledger.events.jsonl`, `coverage.manifest.json`, and `freshness.json`.
+- Missing or malformed completed-window receipts must leave that window pending
+  so it can be fetched again.
 - Resume must not refetch completed detail/review pages unless the user passes
   an explicit refresh option.
 - `stop_reason` is required when `state` is `checkpointed`, `blocked`, or
@@ -597,7 +617,8 @@ Rules:
 - Search probes and search pages are cacheable harvest receipts.
 - Pull details and review pages continue to use the existing API cache path or a
   compatible successor.
-- Historical windows may use a longer TTL or immutable cache policy.
+- Historical windows may use `github_activity.cache_ttl_days` as a positive
+  TTL override; omitting it preserves the normal source-cache TTL.
 - Recent windows use normal TTL unless the user opts into refresh.
 - Cache lookups must distinguish fresh hit, stale hit, and miss.
 - `--resume` must prefer valid cached data for completed work.
@@ -625,6 +646,131 @@ Rules:
 - Merge must deduplicate events across overlapping windows and owner filters.
 - Merge must report accepted partial windows.
 - Merge must not render manager/public share packets.
+
+## Activity Report Receipt Contract
+
+File:
+
+```text
+github.activity.report.json
+```
+
+Schema version:
+
+```text
+github.activity.report.v1
+```
+
+Schema:
+
+```text
+contracts/schemas/github-activity-report.v1.schema.json
+```
+
+Docs and example:
+
+```text
+docs/schemas/github-activity-report-v1.md
+examples/github-activity-report/completed.json
+```
+
+Purpose:
+
+```text
+Record the activity scope, copied final outputs when present, GitHub API/cache
+ledger, owner filtering, and durable receipt refs.
+```
+
+Minimum shape:
+
+```json
+{
+  "schema_version": "github.activity.report.v1",
+  "generated_at": "2026-05-19T00:00:00Z",
+  "shiplog_version": "0.9.0",
+  "activity_id": "github_activity_20260519_000000",
+  "actor": "EffortlessSteven",
+  "repo_owners": ["EffortlessMetrics", "EffortlessSteven"],
+  "query_strategy": "actor_search_owner_filter",
+  "profile": "full",
+  "state": "completed",
+  "run_ref": "run_fixture",
+  "source_run_dir": "out/github-full/run_fixture",
+  "final_dir": "out/github-full/final",
+  "final_outputs": [
+    {
+      "label": "packet",
+      "path": "out/github-full/final/packet.md"
+    },
+    {
+      "label": "api_ledger",
+      "path": "out/github-full/final/github.activity.api-ledger.json"
+    }
+  ],
+  "github_api": {
+    "requests": {
+      "search": 84,
+      "core": 312
+    },
+    "cache": {
+      "search_probe": {
+        "fresh_hits": 10,
+        "stale_hits": 0,
+        "misses": 14
+      },
+      "search_page": {
+        "fresh_hits": 80,
+        "stale_hits": 0,
+        "misses": 84
+      },
+      "pull_detail": {
+        "fresh_hits": 220,
+        "stale_hits": 0,
+        "misses": 88
+      },
+      "review_page": {
+        "fresh_hits": 140,
+        "stale_hits": 0,
+        "misses": 66
+      }
+    },
+    "rate_limit_snapshots": [],
+    "secondary_limit_events": []
+  },
+  "owner_filter": {
+    "requested_owners": ["EffortlessMetrics", "EffortlessSteven"],
+    "query_strategy": "actor_search_owner_filter",
+    "kept": {
+      "EffortlessMetrics": 120,
+      "EffortlessSteven": 44
+    },
+    "dropped": [
+      {
+        "owner": "other-owner",
+        "count": 17,
+        "reason": "owner_not_requested"
+      }
+    ]
+  },
+  "receipt_refs": [
+    "github.activity.plan.json",
+    "github.activity.progress.json",
+    "github.activity.api-ledger.json"
+  ]
+}
+```
+
+Activity report rules:
+
+- The report must be written only by explicit merge.
+- The report must use `schema_version = "github.activity.report.v1"`.
+- `final_outputs` names copied artifacts; optional intake reports must not be
+  invented when absent.
+- `github_api` must mirror the API ledger object without token values.
+- `owner_filter` must mirror the requested/kept/dropped owner filter receipt.
+- Receipt refs must point to durable local receipts, not terminal prose.
+- Merge must not call GitHub, scrape `packet.md`, render share artifacts, call
+  an LLM, or execute release work.
 
 ## External API Constraints
 
@@ -685,6 +831,7 @@ Required proof surfaces for the lane:
 - JSON schema and examples for `github.activity.plan.v1`;
 - JSON schema and examples for `github.activity.progress.v1`;
 - JSON schema and examples for `github.activity.api-ledger.v1`;
+- JSON schema and examples for `github.activity.report.v1`;
 - mock-GitHub or recorded-fixture tests for plan/scout/run/resume;
 - tests showing search probes/pages and detail/review pages reuse cache;
 - tests showing budget exhaustion writes progress before stopping;

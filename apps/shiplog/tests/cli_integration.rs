@@ -467,6 +467,210 @@ fn assert_intake_report_schema_contract(report_json: &serde_json::Value) {
     }
 }
 
+fn assert_json_receipt_schema_contract(
+    report_json: &serde_json::Value,
+    schema_filename: &str,
+    schema_version: &str,
+) -> serde_json::Value {
+    let schema_path = repo_root().join("contracts/schemas").join(schema_filename);
+    let schema_text = std::fs::read_to_string(&schema_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", schema_path.display()));
+    let schema: serde_json::Value = serde_json::from_str(&schema_text)
+        .unwrap_or_else(|err| panic!("parse {}: {err}", schema_path.display()));
+
+    assert_eq!(
+        schema["properties"]["schema_version"]["const"], schema_version,
+        "{schema_filename} should lock receipt schema_version"
+    );
+    assert_eq!(
+        schema["additionalProperties"], false,
+        "{schema_filename} should reject undeclared top-level fields"
+    );
+
+    let required = schema["required"]
+        .as_array()
+        .expect("schema should list required top-level fields");
+    for field in required {
+        let field = field.as_str().expect("required field should be a string");
+        assert!(
+            report_json.get(field).is_some(),
+            "generated receipt should contain required schema field {field}"
+        );
+    }
+
+    let properties = schema["properties"]
+        .as_object()
+        .expect("schema should declare top-level properties");
+    for field in report_json
+        .as_object()
+        .expect("GitHub activity report should be a JSON object")
+        .keys()
+    {
+        assert!(
+            properties.contains_key(field),
+            "generated receipt field {field} should be declared in {schema_filename}"
+        );
+    }
+
+    assert_schema_field_names_are_not_secret_bearing(&schema);
+    schema
+}
+
+fn assert_github_activity_plan_schema_contract(plan_json: &serde_json::Value) {
+    let schema = assert_json_receipt_schema_contract(
+        plan_json,
+        "github-activity-plan.v1.schema.json",
+        "github.activity.plan.v1",
+    );
+    let profiles = schema["$defs"]["profile"]["enum"]
+        .as_array()
+        .expect("profile schema should document values");
+    for profile in ["scout", "authored", "full"] {
+        assert!(
+            profiles.iter().any(|value| value.as_str() == Some(profile)),
+            "GitHub activity plan schema should allow profile {profile:?}"
+        );
+    }
+    for field in [
+        "windows",
+        "estimated_totals",
+        "budget_policy",
+        "next_actions",
+    ] {
+        assert!(
+            plan_json.get(field).is_some(),
+            "generated GitHub activity plan should contain {field}"
+        );
+    }
+}
+
+fn assert_github_activity_progress_schema_contract(progress_json: &serde_json::Value) {
+    let schema = assert_json_receipt_schema_contract(
+        progress_json,
+        "github-activity-progress.v1.schema.json",
+        "github.activity.progress.v1",
+    );
+    let states = schema["$defs"]["activity_state"]["enum"]
+        .as_array()
+        .expect("activity state schema should document values");
+    for state in [
+        "planned",
+        "scouting",
+        "running",
+        "checkpointed",
+        "completed",
+    ] {
+        assert!(
+            states.iter().any(|value| value.as_str() == Some(state)),
+            "GitHub activity progress schema should allow state {state:?}"
+        );
+    }
+    for field in [
+        "completed_windows",
+        "pending_windows",
+        "active_window",
+        "stop_reason",
+        "budget_checkpoint",
+        "run_ref",
+    ] {
+        assert!(
+            progress_json.get(field).is_some(),
+            "generated GitHub activity progress should contain {field}"
+        );
+    }
+}
+
+fn assert_github_activity_api_ledger_schema_contract(api_ledger_json: &serde_json::Value) {
+    let _schema = assert_json_receipt_schema_contract(
+        api_ledger_json,
+        "github-activity-api-ledger.v1.schema.json",
+        "github.activity.api-ledger.v1",
+    );
+    for field in [
+        "requests",
+        "cache",
+        "rate_limit_snapshots",
+        "secondary_limit_events",
+    ] {
+        assert!(
+            api_ledger_json["github_api"].get(field).is_some(),
+            "generated GitHub activity API ledger github_api should contain {field}"
+        );
+    }
+    for field in ["requested_owners", "query_strategy", "kept", "dropped"] {
+        assert!(
+            api_ledger_json["owner_filter"].get(field).is_some(),
+            "generated GitHub activity API ledger owner_filter should contain {field}"
+        );
+    }
+}
+
+fn assert_github_activity_report_schema_contract(report_json: &serde_json::Value) {
+    let schema = assert_json_receipt_schema_contract(
+        report_json,
+        "github-activity-report.v1.schema.json",
+        "github.activity.report.v1",
+    );
+
+    let profiles = schema["$defs"]["profile"]["enum"]
+        .as_array()
+        .expect("profile schema should document values");
+    for profile in ["scout", "authored", "full"] {
+        assert!(
+            profiles.iter().any(|value| value.as_str() == Some(profile)),
+            "GitHub activity report schema should allow profile {profile:?}"
+        );
+    }
+    let states = schema["$defs"]["activity_state"]["enum"]
+        .as_array()
+        .expect("activity state schema should document values");
+    for state in [
+        "planned",
+        "scouting",
+        "running",
+        "checkpointed",
+        "completed",
+    ] {
+        assert!(
+            states.iter().any(|value| value.as_str() == Some(state)),
+            "GitHub activity report schema should allow state {state:?}"
+        );
+    }
+    let labels = schema["$defs"]["final_output_label"]["enum"]
+        .as_array()
+        .expect("final output label schema should document values");
+    for label in [
+        "packet",
+        "intake_report",
+        "coverage",
+        "ledger",
+        "api_ledger",
+    ] {
+        assert!(
+            labels.iter().any(|value| value.as_str() == Some(label)),
+            "GitHub activity report schema should allow final output label {label:?}"
+        );
+    }
+
+    for field in [
+        "requests",
+        "cache",
+        "rate_limit_snapshots",
+        "secondary_limit_events",
+    ] {
+        assert!(
+            report_json["github_api"].get(field).is_some(),
+            "generated GitHub activity report github_api should contain {field}"
+        );
+    }
+    for field in ["requested_owners", "query_strategy", "kept", "dropped"] {
+        assert!(
+            report_json["owner_filter"].get(field).is_some(),
+            "generated GitHub activity report owner_filter should contain {field}"
+        );
+    }
+}
+
 fn assert_schema_field_names_are_not_secret_bearing(value: &serde_json::Value) {
     if let Some(properties) = value
         .get("properties")
@@ -2042,6 +2246,7 @@ mode = "created"
     let plan: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&plan_path)?)?;
 
     assert_eq!(plan["schema_version"], "github.activity.plan.v1");
+    assert_github_activity_plan_schema_contract(&plan);
     assert_eq!(plan["actor"], "EffortlessSteven");
     assert_eq!(plan["repo_owners"][0], "EffortlessMetrics");
     assert_eq!(plan["repo_owners"][1], "EffortlessSteven");
@@ -2071,6 +2276,543 @@ mode = "created"
     assert!(
         !out.join("packet.md").exists(),
         "static planning should not render a packet"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn github_activity_status_reports_missing_plan_without_writing() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let config = tmp.path().join("shiplog-github-full.toml");
+    let out = tmp.path().join("out/github-full");
+    std::fs::write(
+        &config,
+        r#"[shiplog]
+config_version = 1
+
+[defaults]
+out = "./out/github-full"
+
+[github_activity]
+actor = "EffortlessSteven"
+repo_owners = ["EffortlessMetrics"]
+since = "2026-01-01"
+until = "2026-02-01"
+profile = "scout"
+
+[sources.github]
+enabled = true
+user = "EffortlessSteven"
+mode = "created"
+"#,
+    )?;
+    let before = file_tree_manifest(tmp.path());
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .args([
+            "github",
+            "activity",
+            "status",
+            "--config",
+            config.to_str().expect("config path should be valid UTF-8"),
+            "--out",
+            out.to_str().expect("out path should be valid UTF-8"),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "GitHub activity status: Not planned",
+        ))
+        .stdout(predicate::str::contains(
+            "Provider calls: none (receipt status)",
+        ))
+        .stdout(predicate::str::contains("Writes: none"))
+        .stdout(predicate::str::contains("Plan:"))
+        .stdout(predicate::str::contains("missing"))
+        .stdout(predicate::str::contains(
+            "shiplog github activity plan --config",
+        ))
+        .stdout(predicate::str::contains("[writes]"));
+
+    assert_eq!(
+        before,
+        file_tree_manifest(tmp.path()),
+        "github activity status should be read-only when receipts are missing"
+    );
+    Ok(())
+}
+
+#[test]
+fn github_activity_status_summarizes_completed_receipts_without_writing() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let config = tmp.path().join("shiplog-github-full.toml");
+    let out = tmp.path().join("out/github-full");
+    std::fs::write(
+        &config,
+        r#"[shiplog]
+config_version = 1
+
+[defaults]
+out = "./out/github-full"
+
+[github_activity]
+actor = "octocat"
+repo_owners = ["acme"]
+since = "2025-01-01"
+until = "2025-02-01"
+include_authored_prs = true
+include_reviews = false
+profile = "authored"
+cache_dir = "./out/github-full/.cache"
+
+[github_activity.budget]
+max_search_requests = 10
+max_core_requests = 10
+max_search_per_minute = 24
+on_exhausted = "checkpoint_and_stop"
+
+[sources.github]
+enabled = true
+user = "octocat"
+mode = "created"
+repo_owners = ["acme"]
+"#,
+    )?;
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .args([
+            "github",
+            "activity",
+            "plan",
+            "--config",
+            config.to_str().expect("config path should be valid UTF-8"),
+            "--out",
+            out.to_str().expect("out path should be valid UTF-8"),
+            "--profile",
+            "authored",
+        ])
+        .assert()
+        .success();
+
+    let plan_path = out.join("github.activity.plan.json");
+    let plan: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&plan_path)?)?;
+    assert_github_activity_plan_schema_contract(&plan);
+    let activity_id = plan["activity_id"]
+        .as_str()
+        .expect("plan should include activity_id");
+    std::fs::write(
+        out.join("github.activity.progress.json"),
+        serde_json::to_string_pretty(&serde_json::json!({
+            "schema_version": "github.activity.progress.v1",
+            "generated_at": "2026-05-19T00:00:00Z",
+            "shiplog_version": env!("CARGO_PKG_VERSION"),
+            "activity_id": activity_id,
+            "plan_ref": "github.activity.plan.json",
+            "actor": "octocat",
+            "repo_owners": ["acme"],
+            "profile": "authored",
+            "state": "completed",
+            "completed_windows": ["2025-01"],
+            "pending_windows": [],
+            "active_window": null,
+            "stop_reason": null,
+            "budget_checkpoint": null,
+            "run_ref": "run_fixture",
+            "receipt_refs": [
+                "github.activity.plan.json",
+                "github.activity.api-ledger.json",
+                "run_fixture/intake.report.json",
+                "run_fixture/coverage.manifest.json"
+            ]
+        }))?,
+    )?;
+    let cache_phase = serde_json::json!({
+        "fresh_hits": 0,
+        "stale_hits": 0,
+        "misses": 0
+    });
+    std::fs::write(
+        out.join("github.activity.api-ledger.json"),
+        serde_json::to_string_pretty(&serde_json::json!({
+            "schema_version": "github.activity.api-ledger.v1",
+            "generated_at": "2026-05-19T00:00:00Z",
+            "shiplog_version": env!("CARGO_PKG_VERSION"),
+            "activity_id": activity_id,
+            "plan_ref": "github.activity.plan.json",
+            "progress_ref": "github.activity.progress.json",
+            "actor": "octocat",
+            "repo_owners": ["acme"],
+            "profile": "authored",
+            "stop_reason": null,
+            "github_api": {
+                "requests": {
+                    "search": 2,
+                    "core": 1
+                },
+                "cache": {
+                    "search_probe": cache_phase,
+                    "search_page": {
+                        "fresh_hits": 1,
+                        "stale_hits": 0,
+                        "misses": 1
+                    },
+                    "pull_detail": {
+                        "fresh_hits": 0,
+                        "stale_hits": 0,
+                        "misses": 1
+                    },
+                    "review_page": {
+                        "fresh_hits": 0,
+                        "stale_hits": 0,
+                        "misses": 0
+                    }
+                },
+                "rate_limit_snapshots": [],
+                "secondary_limit_events": []
+            },
+            "owner_filter": {
+                "requested_owners": ["acme"],
+                "query_strategy": "actor_search_owner_filter",
+                "kept": {
+                    "acme": 1
+                },
+                "dropped": []
+            },
+            "receipt_refs": [
+                "github.activity.plan.json",
+                "github.activity.progress.json"
+            ]
+        }))?,
+    )?;
+    let progress: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(
+        out.join("github.activity.progress.json"),
+    )?)?;
+    let api_ledger: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(
+        out.join("github.activity.api-ledger.json"),
+    )?)?;
+    assert_github_activity_progress_schema_contract(&progress);
+    assert_github_activity_api_ledger_schema_contract(&api_ledger);
+    let before = file_tree_manifest(tmp.path());
+
+    let assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .args([
+            "github",
+            "activity",
+            "status",
+            "--config",
+            config.to_str().expect("config path should be valid UTF-8"),
+            "--out",
+            out.to_str().expect("out path should be valid UTF-8"),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "GitHub activity status: Completed",
+        ))
+        .stdout(predicate::str::contains("Provider calls: none"))
+        .stdout(predicate::str::contains("Writes: none"))
+        .stdout(predicate::str::contains("- actor: octocat"))
+        .stdout(predicate::str::contains("- profile: authored"))
+        .stdout(predicate::str::contains("- state: completed"))
+        .stdout(predicate::str::contains("- run: run_fixture"))
+        .stdout(predicate::str::contains(
+            "- requests: search 2/10, core 1/10",
+        ))
+        .stdout(predicate::str::contains(
+            "pull_detail fresh 0, stale 0, misses 1",
+        ))
+        .stdout(predicate::str::contains("- kept owners: acme=1"))
+        .stdout(predicate::str::contains(
+            "shiplog github activity run --config",
+        ))
+        .stdout(predicate::str::contains("--profile full --resume [writes]"));
+    let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
+    assert!(
+        !stdout.contains("shiplog share manager"),
+        "github activity status must not offer share rendering"
+    );
+    assert_eq!(
+        before,
+        file_tree_manifest(tmp.path()),
+        "github activity status should only read existing receipts"
+    );
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .args([
+            "github",
+            "activity",
+            "report",
+            "--config",
+            config.to_str().expect("config path should be valid UTF-8"),
+            "--out",
+            out.to_str().expect("out path should be valid UTF-8"),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "GitHub activity report: Available",
+        ))
+        .stdout(predicate::str::contains(
+            "Provider calls: none (receipt report)",
+        ))
+        .stdout(predicate::str::contains("Writes:"))
+        .stdout(predicate::str::contains("github.activity.report.json"))
+        .stdout(predicate::str::contains("github.activity.report.md"))
+        .stdout(predicate::str::contains("API Budget:"))
+        .stdout(predicate::str::contains(
+            "- requests: search 2/10, core 1/10",
+        ))
+        .stdout(predicate::str::contains("- rate-limit snapshots: 0"))
+        .stdout(predicate::str::contains("- secondary-limit events: 0"))
+        .stdout(predicate::str::contains("Owner Filter:"))
+        .stdout(predicate::str::contains("- kept owners: acme=1"))
+        .stdout(predicate::str::contains("- dropped owners: none"));
+
+    let report_json_path = out.join("github.activity.report.json");
+    let report_md_path = out.join("github.activity.report.md");
+    let activity_report: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&report_json_path)?)?;
+    assert_github_activity_report_schema_contract(&activity_report);
+    assert_eq!(activity_report["state"], "completed");
+    assert_eq!(activity_report["run_ref"], "run_fixture");
+    assert_eq!(activity_report["github_api"]["requests"]["search"], 2);
+    assert_eq!(activity_report["owner_filter"]["kept"]["acme"], 1);
+    let report_md = std::fs::read_to_string(&report_md_path)?;
+    assert!(report_md.contains("# GitHub Activity Report"));
+    assert!(report_md.contains("- Actor: octocat"));
+    assert!(report_md.contains("- State: completed"));
+    assert!(report_md.contains("- Requests: search 2, core 1"));
+    assert!(report_md.contains("- Kept owners: acme=1"));
+    assert!(
+        !report_md.contains("dummy-token"),
+        "activity report markdown must not print token values"
+    );
+    Ok(())
+}
+
+#[test]
+fn github_activity_merge_writes_final_outputs_from_completed_receipts() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let config = tmp.path().join("shiplog-github-full.toml");
+    let out = tmp.path().join("out/github-full");
+    std::fs::write(
+        &config,
+        r#"[shiplog]
+config_version = 1
+
+[defaults]
+out = "./out/github-full"
+
+[github_activity]
+actor = "octocat"
+repo_owners = ["acme"]
+since = "2025-01-01"
+until = "2025-02-01"
+include_authored_prs = true
+include_reviews = false
+profile = "full"
+cache_dir = "./out/github-full/.cache"
+
+[github_activity.budget]
+max_search_requests = 10
+max_core_requests = 10
+max_search_per_minute = 24
+on_exhausted = "checkpoint_and_stop"
+
+[sources.github]
+enabled = true
+user = "octocat"
+mode = "created"
+repo_owners = ["acme"]
+"#,
+    )?;
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .args([
+            "github",
+            "activity",
+            "plan",
+            "--config",
+            config.to_str().expect("config path should be valid UTF-8"),
+            "--out",
+            out.to_str().expect("out path should be valid UTF-8"),
+            "--profile",
+            "full",
+        ])
+        .assert()
+        .success();
+
+    let plan_path = out.join("github.activity.plan.json");
+    let plan: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&plan_path)?)?;
+    assert_github_activity_plan_schema_contract(&plan);
+    let activity_id = plan["activity_id"]
+        .as_str()
+        .expect("plan should include activity_id");
+    let run_dir = out.join("run_fixture");
+    std::fs::create_dir_all(&run_dir)?;
+    std::fs::write(run_dir.join("packet.md"), "# GitHub Activity Packet\n")?;
+    std::fs::write(
+        run_dir.join("intake.report.json"),
+        serde_json::to_string_pretty(&serde_json::json!({
+            "schema_version": 1,
+            "run_id": "run_fixture"
+        }))?,
+    )?;
+    std::fs::write(
+        run_dir.join("coverage.manifest.json"),
+        serde_json::to_string_pretty(&serde_json::json!({
+            "run_id": "run_fixture",
+            "sources": ["github"]
+        }))?,
+    )?;
+    std::fs::write(run_dir.join("ledger.events.jsonl"), "{}\n")?;
+    std::fs::write(
+        out.join("github.activity.progress.json"),
+        serde_json::to_string_pretty(&serde_json::json!({
+            "schema_version": "github.activity.progress.v1",
+            "generated_at": "2026-05-19T00:00:00Z",
+            "shiplog_version": env!("CARGO_PKG_VERSION"),
+            "activity_id": activity_id,
+            "plan_ref": "github.activity.plan.json",
+            "actor": "octocat",
+            "repo_owners": ["acme"],
+            "profile": "full",
+            "state": "completed",
+            "completed_windows": ["2025-01"],
+            "pending_windows": [],
+            "active_window": null,
+            "stop_reason": null,
+            "budget_checkpoint": null,
+            "run_ref": "run_fixture",
+            "receipt_refs": [
+                "github.activity.plan.json",
+                "github.activity.api-ledger.json",
+                "run_fixture/intake.report.json",
+                "run_fixture/coverage.manifest.json"
+            ]
+        }))?,
+    )?;
+    let cache_phase = serde_json::json!({
+        "fresh_hits": 0,
+        "stale_hits": 0,
+        "misses": 0
+    });
+    std::fs::write(
+        out.join("github.activity.api-ledger.json"),
+        serde_json::to_string_pretty(&serde_json::json!({
+            "schema_version": "github.activity.api-ledger.v1",
+            "generated_at": "2026-05-19T00:00:00Z",
+            "shiplog_version": env!("CARGO_PKG_VERSION"),
+            "activity_id": activity_id,
+            "plan_ref": "github.activity.plan.json",
+            "progress_ref": "github.activity.progress.json",
+            "actor": "octocat",
+            "repo_owners": ["acme"],
+            "profile": "full",
+            "stop_reason": null,
+            "github_api": {
+                "requests": {
+                    "search": 2,
+                    "core": 1
+                },
+                "cache": {
+                    "search_probe": cache_phase,
+                    "search_page": cache_phase,
+                    "pull_detail": {
+                        "fresh_hits": 0,
+                        "stale_hits": 0,
+                        "misses": 1
+                    },
+                    "review_page": cache_phase
+                },
+                "rate_limit_snapshots": [],
+                "secondary_limit_events": []
+            },
+            "owner_filter": {
+                "requested_owners": ["acme"],
+                "query_strategy": "actor_search_owner_filter",
+                "kept": {
+                    "acme": 1
+                },
+                "dropped": []
+            },
+            "receipt_refs": [
+                "github.activity.plan.json",
+                "github.activity.progress.json"
+            ]
+        }))?,
+    )?;
+    let progress: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(
+        out.join("github.activity.progress.json"),
+    )?)?;
+    let api_ledger: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(
+        out.join("github.activity.api-ledger.json"),
+    )?)?;
+    assert_github_activity_progress_schema_contract(&progress);
+    assert_github_activity_api_ledger_schema_contract(&api_ledger);
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .args([
+            "github",
+            "activity",
+            "merge",
+            "--config",
+            config.to_str().expect("config path should be valid UTF-8"),
+            "--out",
+            out.to_str().expect("out path should be valid UTF-8"),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("GitHub activity merge written:"))
+        .stdout(predicate::str::contains(
+            "Provider calls: none (receipt merge)",
+        ))
+        .stdout(predicate::str::contains("Share rendering: none"))
+        .stdout(predicate::str::contains("activity_report:"))
+        .stdout(predicate::str::contains("shiplog open packet --out"));
+
+    let final_dir = out.join("final");
+    assert!(final_dir.join("packet.md").exists(), "missing final packet");
+    assert!(
+        final_dir.join("intake.report.json").exists(),
+        "missing final intake report"
+    );
+    assert!(
+        final_dir.join("github.activity.api-ledger.json").exists(),
+        "missing final API ledger"
+    );
+    let activity_report: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(
+        final_dir.join("github.activity.report.json"),
+    )?)?;
+    assert_eq!(
+        activity_report["schema_version"],
+        "github.activity.report.v1"
+    );
+    assert_eq!(activity_report["state"], "completed");
+    assert_eq!(activity_report["run_ref"], "run_fixture");
+    assert_eq!(activity_report["owner_filter"]["kept"]["acme"], 1);
+    assert_eq!(activity_report["github_api"]["requests"]["search"], 2);
+    assert_github_activity_report_schema_contract(&activity_report);
+    assert!(
+        !final_dir.join("profiles/manager/packet.md").exists(),
+        "activity merge should not render manager share artifacts"
+    );
+    assert!(
+        !final_dir.join("profiles/public/packet.md").exists(),
+        "activity merge should not render public share artifacts"
     );
 
     Ok(())
@@ -2407,6 +3149,7 @@ mode = "created"
     let progress: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(&progress_path)?)?;
     assert_eq!(progress["schema_version"], "github.activity.progress.v1");
+    assert_github_activity_progress_schema_contract(&progress);
     assert_eq!(progress["profile"], "scout");
     assert_eq!(progress["state"], "checkpointed");
     assert_eq!(progress["stop_reason"], "budget_exhausted");
@@ -2428,6 +3171,7 @@ mode = "created"
         api_ledger["schema_version"],
         "github.activity.api-ledger.v1"
     );
+    assert_github_activity_api_ledger_schema_contract(&api_ledger);
     assert_eq!(api_ledger["profile"], "scout");
     assert_eq!(api_ledger["stop_reason"], "budget_exhausted");
     assert_eq!(api_ledger["github_api"]["requests"]["search"], 0);
@@ -2547,6 +3291,8 @@ cache_dir = "./out/github-full/.cache"
     let progress: serde_json::Value = serde_json::from_str(&progress_before)?;
     let api_ledger: serde_json::Value = serde_json::from_str(&api_ledger_before)?;
     assert_eq!(progress["schema_version"], "github.activity.progress.v1");
+    assert_github_activity_progress_schema_contract(&progress);
+    assert_github_activity_api_ledger_schema_contract(&api_ledger);
     assert_eq!(progress["profile"], "authored");
     assert_eq!(progress["state"], "completed");
     assert!(progress["run_ref"].as_str().is_some());
@@ -2597,6 +3343,351 @@ cache_dir = "./out/github-full/.cache"
         api_ledger_before,
         "completed resume should not rewrite the API ledger"
     );
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .args([
+            "github",
+            "activity",
+            "report",
+            "--config",
+            config.to_str().expect("config path should be valid UTF-8"),
+            "--out",
+            out.to_str().expect("out path should be valid UTF-8"),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "GitHub activity report: Available",
+        ))
+        .stdout(predicate::str::contains(
+            "Provider calls: none (receipt report)",
+        ))
+        .stdout(predicate::str::contains("- kept owners: acme=1"));
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .args([
+            "github",
+            "activity",
+            "merge",
+            "--config",
+            config.to_str().expect("config path should be valid UTF-8"),
+            "--out",
+            out.to_str().expect("out path should be valid UTF-8"),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("GitHub activity merge written:"))
+        .stdout(predicate::str::contains(
+            "Provider calls: none (receipt merge)",
+        ))
+        .stdout(predicate::str::contains("Share rendering: none"));
+
+    let final_dir = out.join("final");
+    assert!(final_dir.join("packet.md").exists(), "missing final packet");
+    assert!(
+        !final_dir.join("intake.report.json").exists(),
+        "activity merge should not invent an intake report when the activity run did not produce one"
+    );
+    assert!(
+        final_dir.join("github.activity.api-ledger.json").exists(),
+        "missing final API ledger"
+    );
+    assert!(
+        final_dir.join("github.activity.report.json").exists(),
+        "missing final activity report"
+    );
+    let activity_report: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(
+        final_dir.join("github.activity.report.json"),
+    )?)?;
+    assert_github_activity_report_schema_contract(&activity_report);
+    assert!(
+        !final_dir.join("profiles/manager/packet.md").exists(),
+        "activity merge should not render manager share artifacts"
+    );
+    Ok(())
+}
+
+#[test]
+fn github_activity_run_resume_skips_completed_windows_without_refetching() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let config = tmp.path().join("shiplog-github-full.toml");
+    let out = tmp.path().join("out/github-full");
+    let write_config = |api_base: &str| -> CliTestResult {
+        std::fs::write(
+            &config,
+            format!(
+                r#"[shiplog]
+config_version = 1
+
+[defaults]
+out = "./out/github-full"
+
+[github_activity]
+actor = "octocat"
+repo_owners = ["acme"]
+since = "2025-01-01"
+until = "2025-03-01"
+include_authored_prs = true
+include_reviews = false
+profile = "authored"
+cache_dir = "./out/github-full/.cache"
+
+[github_activity.budget]
+max_search_requests = 20
+max_core_requests = 20
+max_search_per_minute = 24
+on_exhausted = "checkpoint_and_stop"
+
+[sources.github]
+enabled = true
+user = "octocat"
+mode = "created"
+repo_owners = ["acme"]
+include_reviews = false
+no_details = false
+api_base = "{}"
+cache_dir = "./out/github-full/.cache"
+"#,
+                api_base
+            ),
+        )?;
+        Ok(())
+    };
+    write_config("http://127.0.0.1:1")?;
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .args([
+            "github",
+            "activity",
+            "plan",
+            "--config",
+            config.to_str().expect("config path should be valid UTF-8"),
+            "--out",
+            out.to_str().expect("out path should be valid UTF-8"),
+            "--profile",
+            "authored",
+        ])
+        .assert()
+        .success();
+
+    let plan_path = out.join("github.activity.plan.json");
+    let plan: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&plan_path)?)?;
+    assert_github_activity_plan_schema_contract(&plan);
+    let activity_id = plan["activity_id"]
+        .as_str()
+        .expect("plan should include activity_id");
+
+    let jan_window = TimeWindow {
+        since: NaiveDate::from_ymd_opt(2025, 1, 1).unwrap(),
+        until: NaiveDate::from_ymd_opt(2025, 2, 1).unwrap(),
+    };
+    let jan_dir = out.join("github.activity.windows/authored/2025-01");
+    std::fs::create_dir_all(&jan_dir)?;
+    write_events_jsonl(
+        &jan_dir.join("ledger.events.jsonl"),
+        &[fixture_pr_event(
+            SourceSystem::Github,
+            "acme/widgets",
+            99,
+            "Already harvested January PR",
+            3,
+        )],
+    );
+    write_coverage_manifest(
+        &jan_dir.join("coverage.manifest.json"),
+        &CoverageManifest {
+            run_id: RunId("github_activity_window_jan".to_string()),
+            generated_at: Utc.with_ymd_and_hms(2026, 5, 19, 0, 0, 0).unwrap(),
+            user: "octocat".to_string(),
+            window: jan_window.clone(),
+            mode: "created".to_string(),
+            sources: vec!["github".to_string()],
+            slices: vec![CoverageSlice {
+                window: jan_window,
+                query: "is:pr author:octocat created:2025-01-01..2025-01-31".to_string(),
+                total_count: 1,
+                fetched: 1,
+                incomplete_results: Some(false),
+                notes: vec![
+                    "owner_filter:requested=acme".to_string(),
+                    "owner_filter:kept=acme=1".to_string(),
+                    "owner_filter:dropped=none".to_string(),
+                ],
+            }],
+            warnings: Vec::new(),
+            completeness: Completeness::Complete,
+        },
+    );
+    std::fs::write(jan_dir.join("freshness.json"), "[]\n")?;
+
+    let cache_phase = serde_json::json!({
+        "fresh_hits": 0,
+        "stale_hits": 0,
+        "misses": 0
+    });
+    std::fs::write(
+        out.join("github.activity.progress.json"),
+        serde_json::to_string_pretty(&serde_json::json!({
+            "schema_version": "github.activity.progress.v1",
+            "generated_at": "2026-05-19T00:00:00Z",
+            "shiplog_version": env!("CARGO_PKG_VERSION"),
+            "activity_id": activity_id,
+            "plan_ref": "github.activity.plan.json",
+            "actor": "octocat",
+            "repo_owners": ["acme"],
+            "profile": "authored",
+            "state": "checkpointed",
+            "completed_windows": ["2025-01"],
+            "pending_windows": ["2025-02"],
+            "active_window": {
+                "window_id": "2025-02",
+                "query_kind": null
+            },
+            "stop_reason": "budget_exhausted",
+            "budget_checkpoint": {
+                "search_requests": 2,
+                "core_requests": 1
+            },
+            "run_ref": null,
+            "receipt_refs": [
+                "github.activity.plan.json",
+                "github.activity.api-ledger.json"
+            ]
+        }))?,
+    )?;
+    std::fs::write(
+        out.join("github.activity.api-ledger.json"),
+        serde_json::to_string_pretty(&serde_json::json!({
+            "schema_version": "github.activity.api-ledger.v1",
+            "generated_at": "2026-05-19T00:00:00Z",
+            "shiplog_version": env!("CARGO_PKG_VERSION"),
+            "activity_id": activity_id,
+            "plan_ref": "github.activity.plan.json",
+            "progress_ref": "github.activity.progress.json",
+            "actor": "octocat",
+            "repo_owners": ["acme"],
+            "profile": "authored",
+            "stop_reason": "budget_exhausted",
+            "github_api": {
+                "requests": {
+                    "search": 2,
+                    "core": 1
+                },
+                "cache": {
+                    "search_probe": {
+                        "fresh_hits": 0,
+                        "stale_hits": 0,
+                        "misses": 1
+                    },
+                    "search_page": {
+                        "fresh_hits": 0,
+                        "stale_hits": 0,
+                        "misses": 1
+                    },
+                    "pull_detail": {
+                        "fresh_hits": 0,
+                        "stale_hits": 0,
+                        "misses": 1
+                    },
+                    "review_page": cache_phase
+                },
+                "rate_limit_snapshots": [],
+                "secondary_limit_events": []
+            },
+            "owner_filter": {
+                "requested_owners": ["acme"],
+                "query_strategy": "actor_search_owner_filter",
+                "kept": {
+                    "acme": 1
+                },
+                "dropped": []
+            },
+            "receipt_refs": [
+                "github.activity.plan.json",
+                "github.activity.progress.json"
+            ]
+        }))?,
+    )?;
+
+    let server = RecordedGithubCliServer::start(3)?;
+    write_config(&server.base_url())?;
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env("GITHUB_TOKEN", "dummy-token")
+        .args([
+            "github",
+            "activity",
+            "run",
+            "--config",
+            config.to_str().expect("config path should be valid UTF-8"),
+            "--out",
+            out.to_str().expect("out path should be valid UTF-8"),
+            "--profile",
+            "authored",
+            "--resume",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "GitHub activity authored completed.",
+        ));
+
+    let requests = server.finish()?;
+    assert_eq!(
+        requests
+            .iter()
+            .filter(|line| line.contains("/search/issues?"))
+            .count(),
+        2,
+        "resume should search only the pending February window"
+    );
+    assert!(
+        requests.iter().all(|line| !line.contains("2025-01-01")),
+        "resume should not refetch the completed January window: {requests:?}"
+    );
+    assert!(
+        requests.iter().any(|line| line.contains("2025-02-01")),
+        "resume should fetch the pending February window: {requests:?}"
+    );
+
+    let progress_path = out.join("github.activity.progress.json");
+    let progress: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&progress_path)?)?;
+    assert_github_activity_progress_schema_contract(&progress);
+    assert_eq!(progress["state"], "completed");
+    assert_eq!(
+        progress["completed_windows"].as_array().map(Vec::len),
+        Some(2)
+    );
+    assert_eq!(
+        progress["pending_windows"].as_array().map(Vec::len),
+        Some(0)
+    );
+    let run_ref = progress["run_ref"]
+        .as_str()
+        .expect("completed activity should write run_ref");
+    assert!(
+        out.join(run_ref)
+            .join("github.activity.api-ledger.json")
+            .exists(),
+        "completed activity run should carry the API ledger receipt"
+    );
+
+    let api_ledger: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(
+        out.join("github.activity.api-ledger.json"),
+    )?)?;
+    assert_github_activity_api_ledger_schema_contract(&api_ledger);
+    assert_eq!(api_ledger["stop_reason"], serde_json::Value::Null);
+    assert_eq!(api_ledger["github_api"]["requests"]["search"], 4);
+    assert_eq!(api_ledger["github_api"]["requests"]["core"], 2);
+
     Ok(())
 }
 
@@ -2634,6 +3725,7 @@ profile = "authored"
     let plan_path = tmp.path().join("out/github.activity.plan.json");
     let plan: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&plan_path)?)?;
 
+    assert_github_activity_plan_schema_contract(&plan);
     assert_eq!(plan["actor"], "EffortlessSteven");
     assert_eq!(plan["profile"], "authored");
     assert_eq!(plan["windows"][0]["query_kinds"][0], "authored_prs");
