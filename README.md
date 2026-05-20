@@ -181,10 +181,13 @@ Machine-readable contracts:
 - [Intake report v1](docs/schemas/intake-report-v1.md)
 - [Setup readiness v1](docs/schemas/setup-readiness-v1.md)
 - [Review-loop status v1](docs/schemas/review-loop-status-v1.md)
+- [GitHub activity harvest receipts v1](docs/schemas/github-activity-harvest-v1.md)
+- [GitHub activity report v1](docs/schemas/github-activity-report-v1.md)
 - [Agent pack v1](docs/schemas/agent-pack-v1.md)
 
 Proof receipts:
 
+- [GitHub activity harvest completion audit](docs/product/github-activity-harvest-completion-audit.md)
 - [Review-loop status transcript](docs/product/review-loop-status-transcript.md)
 - [Guided setup transcript](docs/product/guided-setup-transcript.md)
 - [Review-ready loop transcript](docs/product/review-ready-loop-transcript.md)

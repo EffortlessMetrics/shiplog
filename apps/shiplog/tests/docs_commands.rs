@@ -2955,6 +2955,67 @@ fn github_activity_harvest_adr_records_actor_first_owner_filtered_decision() {
 }
 
 #[test]
+fn github_activity_harvest_completion_audit_records_landed_scope() {
+    let root = repo_root();
+    let audit_path = root.join("docs/product/github-activity-harvest-completion-audit.md");
+    let readiness_path = root.join("docs/release/0.9.0-readiness.md");
+    let guide_path = root.join("docs/guides/github-activity-harvest.md");
+    let readme_path = root.join("README.md");
+
+    let audit = std::fs::read_to_string(&audit_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", audit_path.display()));
+    let readiness = std::fs::read_to_string(&readiness_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", readiness_path.display()));
+    let guide = std::fs::read_to_string(&guide_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", guide_path.display()));
+    let readme = std::fs::read_to_string(&readme_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", readme_path.display()));
+
+    for needle in [
+        "GitHub activity harvest completion audit",
+        "Release Proof Map",
+        "plan writes a static scope receipt before spending provider API budget",
+        "#444",
+        "#445",
+        "#446",
+        "#447",
+        "#448",
+        "#449",
+        "#450",
+        "#451",
+        "#452",
+        "#453",
+        "#454",
+        "#455",
+        "github.activity.plan.json",
+        "github.activity.progress.json",
+        "github.activity.api-ledger.json",
+        "github.activity.report.json",
+        "github.activity.windows/<profile>/<window_id>/ledger.events.jsonl",
+        "search/core request counts",
+        "owner filtering is actor-first",
+        "status reads plan/progress/API-ledger receipts without writing",
+        "activity report writes explicit JSON/Markdown report artifacts",
+        "merge writes final activity outputs from a completed run",
+        "do not call GitHub",
+        "does not approve tagging",
+        "does not lift",
+    ] {
+        assert!(
+            audit.contains(needle),
+            "GitHub activity completion audit should mention {needle:?}"
+        );
+    }
+
+    assert!(
+        guide.contains("github-activity-harvest-completion-audit.md")
+            && readme.contains("github-activity-harvest-completion-audit.md")
+            && readiness.contains("GitHub activity completion audit"),
+        "guide, README, and readiness docs should link the GitHub activity completion audit"
+    );
+}
+
+#[test]
 fn review_loop_status_spec_defines_receipt_contract() {
     let root = repo_root();
     let spec_path = root.join("docs/specs/SHIPLOG-SPEC-0008-review-loop-status.md");

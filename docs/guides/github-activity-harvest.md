@@ -9,6 +9,9 @@ The workflow is:
 plan -> scout -> authored -> full -> inspect receipts
 ```
 
+Release proof for the landed 0.9 candidate work is recorded in
+[`docs/product/github-activity-harvest-completion-audit.md`](../product/github-activity-harvest-completion-audit.md).
+
 This is an expensive-source workflow. It is actor-first and owner-filtered:
 shiplog queries the GitHub actor, then records which repository owners were kept
 or dropped. It does not crawl every repository in an organization by default.
