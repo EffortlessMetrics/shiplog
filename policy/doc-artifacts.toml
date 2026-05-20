@@ -1,0 +1,27 @@
+schema_version = 1
+
+[[artifact]]
+id = "SHIPLOG-PROP-0008"
+kind = "proposal"
+path = "docs/proposals/SHIPLOG-PROP-0008-source-of-truth-stack.md"
+status = "proposed"
+owner = "repo-infra"
+milestone = "0.10.0"
+
+[[artifact]]
+id = "SHIPLOG-SPEC-0010"
+kind = "spec"
+path = "docs/specs/SHIPLOG-SPEC-0010-source-of-truth-stack.md"
+status = "proposed"
+owner = "repo-infra"
+linked_proposal = "SHIPLOG-PROP-0008"
+policy_impact = ["policy/doc-artifacts.toml"]
+
+[[artifact]]
+id = "SHIPLOG-PLAN-0010"
+kind = "plan"
+path = "plans/0.10.0/implementation-plan.md"
+status = "active"
+owner = "codex"
+linked_proposal = "SHIPLOG-PROP-0008"
+linked_spec = "SHIPLOG-SPEC-0010"

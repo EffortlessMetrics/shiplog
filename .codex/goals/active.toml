@@ -1,0 +1,34 @@
+schema_version = 1
+
+id = "shiplog-source-of-truth-stack"
+title = "Shiplog source-of-truth stack rollout"
+status = "active"
+owner = "codex"
+created = "2026-05-20"
+
+objective = """
+Establish a linked, enforceable repository artifact stack where initiatives
+trace from roadmap intent through proposals/specs/plans/goals to proof and policy.
+"""
+
+end_state = [
+  "Proposal/spec/ADR/plan/goals/support-tier artifacts are linked.",
+  "Doc artifacts are recorded in policy/doc-artifacts.toml.",
+  "Support tiers map claims to proof commands.",
+]
+
+[[work_item]]
+id = "docs-source-of-truth-scaffold"
+status = "active"
+proposal = "SHIPLOG-PROP-0008"
+spec = "SHIPLOG-SPEC-0010"
+plan = "plans/0.10.0/implementation-plan.md"
+commands = ["git diff --check"]
+
+[[work_item]]
+id = "policy-doc-artifact-ledger"
+status = "ready"
+proposal = "SHIPLOG-PROP-0008"
+spec = "SHIPLOG-SPEC-0010"
+plan = "plans/0.10.0/implementation-plan.md"
+commands = ["cargo xtask policy-report", "git diff --check"]

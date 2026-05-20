@@ -1,0 +1,24 @@
+name: Implementation slice
+about: PR-sized implementation work item
+body:
+  - type: input
+    id: linked_proposal
+    attributes: {label: Linked proposal}
+  - type: input
+    id: linked_spec
+    attributes: {label: Linked spec}
+  - type: input
+    id: plan_item
+    attributes: {label: Plan item}
+  - type: textarea
+    id: expected_files
+    attributes: {label: Expected files}
+  - type: textarea
+    id: non_goals
+    attributes: {label: Non-goals}
+  - type: textarea
+    id: proof_commands
+    attributes: {label: Proof commands}
+  - type: textarea
+    id: claim_boundary
+    attributes: {label: Claim boundary}

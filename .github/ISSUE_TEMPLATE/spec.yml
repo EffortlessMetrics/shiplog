@@ -1,0 +1,12 @@
+name: Spec
+about: Define required behavior contract
+body:
+  - type: input
+    id: linked_proposal
+    attributes: {label: Linked proposal}
+  - type: textarea
+    id: behavior
+    attributes: {label: Required behavior}
+  - type: textarea
+    id: evidence
+    attributes: {label: Required evidence}

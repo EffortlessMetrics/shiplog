@@ -1,0 +1,12 @@
+name: Policy exception
+about: Request or document policy ledger exception
+body:
+  - type: input
+    id: ledger
+    attributes: {label: Ledger file}
+  - type: textarea
+    id: reason
+    attributes: {label: Reason}
+  - type: input
+    id: expiry
+    attributes: {label: Review or expiry date}
