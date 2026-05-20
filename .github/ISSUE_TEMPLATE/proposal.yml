@@ -1,0 +1,9 @@
+name: Proposal
+about: Propose why a new initiative should exist
+body:
+  - type: textarea
+    id: problem
+    attributes: {label: Problem, description: What pain/gap exists?}
+  - type: textarea
+    id: success
+    attributes: {label: Success criteria}
