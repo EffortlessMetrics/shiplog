@@ -7,50 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-
-- Added executable GitHub activity harvest profiles:
-  `shiplog github activity scout` for the search-only scout pass and
-  `shiplog github activity run --profile authored|full --resume` for detail and
-  review harvest passes. The commands write plan/progress receipts, checkpoint
-  cleanly on API-budget exhaustion, and route scout -> authored -> full ->
-  status without release execution.
-- Added `github.activity.api-ledger.json` for GitHub activity scout/run commands,
-  with separated search/core request counts, phase-specific cache counts,
-  owner-filter receipts, header-derived rate-limit snapshots, and sanitized
-  limit-event arrays.
-- Added `github.activity.plan.v1`, `github.activity.progress.v1`, and
-  `github.activity.api-ledger.v1` schemas, docs, and examples for the durable
-  harvest receipts.
-- Added `shiplog github activity status`, a read-only status surface over
-  activity plan, progress, and API-ledger receipts that reports harvest state,
-  budget/cache use, owner filtering, next actions, and receipt refs without
-  provider calls or writes.
-- Added `shiplog github activity report`, a durable harvest report over the
-  same receipts that writes `github.activity.report.json` and
-  `github.activity.report.md` with scope, execution state, API budget/cache
-  cost, rate-limit evidence, owner filtering, and safe next actions.
-- Added `shiplog github activity merge`, which writes final activity outputs
-  from a completed harvest run into `out/github-full/final/`, including the
-  packet, API ledger, `github.activity.report.json`, and the intake report when
-  the completed activity run produced one.
-- Added the `github.activity.report.v1` schema, docs, and completed example for
-  the final activity merge receipt.
-- Added per-window GitHub activity receipts under
-  `github.activity.windows/<profile>/<window_id>/`, allowing `--resume` to skip
-  completed windows and carry cumulative API cost forward.
-- Added optional `github_activity.cache_ttl_days` for historical harvests that
-  need GitHub search/detail/review cache entries to stay reusable across long
-  scout/resume runs.
-
-### Changed
-
-- `shiplog github activity plan` now emits executable `next_actions` instead of
-  a placeholder, so agents can follow the planned harvest lifecycle without
-  scraping prose.
-- Completed GitHub activity runs now copy the plan, progress, and API ledger
-  receipts into the run directory, so generated packets carry their harvest
-  cost receipts with the ordinary run artifacts.
+No user-facing changes yet after the held 0.9.0 candidate refresh.
 
 ## [0.9.0] - 2026-XX-XX (unreleased candidate)
 
@@ -58,7 +15,8 @@ shiplog 0.9.0 is the **review-loop cockpit release**.
 
 It turns shiplog from a packet generator into a setup-aware, receipt-backed
 review loop: diagnose setup, collect evidence, inspect status, repair gaps,
-rerun, compare, and share safely.
+rerun, compare, share safely, and harvest long GitHub history without hiding
+API cost.
 
 ### Added
 
@@ -76,6 +34,38 @@ rerun, compare, and share safely.
   quality movement across reruns (#311-#316).
 - Added `share explain manager|public` and `runs diff --latest` as read-only
   posture and comparison surfaces (#315, #316).
+- Added executable GitHub activity harvest profiles:
+  `shiplog github activity scout` for the search-only scout pass and
+  `shiplog github activity run --profile authored|full --resume` for detail and
+  review harvest passes. The commands write plan/progress receipts, checkpoint
+  cleanly on API-budget exhaustion, and route scout -> authored -> full ->
+  status without release execution (#451).
+- Added `shiplog github activity status`, a read-only status surface over
+  activity plan, progress, and API-ledger receipts that reports harvest state,
+  budget/cache use, owner filtering, next actions, and receipt refs without
+  provider calls or writes (#455).
+- Added `shiplog github activity report`, a durable harvest report over the
+  same receipts that writes `github.activity.report.json` and
+  `github.activity.report.md` with scope, execution state, API budget/cache
+  cost, rate-limit evidence, owner filtering, and safe next actions (#455).
+- Added `shiplog github activity merge`, which writes final activity outputs
+  from a completed harvest run into `out/github-full/final/`, including the
+  packet, API ledger, `github.activity.report.json`, and the intake report when
+  the completed activity run produced one (#455).
+- Added `github.activity.plan.v1`, `github.activity.progress.v1`,
+  `github.activity.api-ledger.v1`, and `github.activity.report.v1` schemas,
+  docs, and examples for durable GitHub activity harvest receipts (#445, #452,
+  #455).
+- Added `github.activity.api-ledger.json` for GitHub activity scout/run
+  commands, with separated search/core request counts, phase-specific cache
+  counts, owner-filter receipts, header-derived rate-limit snapshots, and
+  sanitized limit-event arrays (#452).
+- Added per-window GitHub activity receipts under
+  `github.activity.windows/<profile>/<window_id>/`, allowing `--resume` to skip
+  completed windows and carry cumulative API cost forward (#454).
+- Added optional `github_activity.cache_ttl_days` for historical harvests that
+  need GitHub search/detail/review cache entries to stay reusable across long
+  scout/resume runs.
 
 ### Changed
 
@@ -87,6 +77,12 @@ rerun, compare, and share safely.
 - Workspace package versions moved from `0.8.0` to `0.9.0` as candidate
   metadata only; release execution remains held until explicit owner approval
   and current preflight exist.
+- `shiplog github activity plan` now emits executable `next_actions` instead of
+  a placeholder, so agents can follow the planned harvest lifecycle without
+  scraping prose.
+- Completed GitHub activity runs now copy the plan, progress, and API ledger
+  receipts into the run directory, so generated packets carry their harvest
+  cost receipts with the ordinary run artifacts.
 
 ### Fixed
 
@@ -95,11 +91,17 @@ rerun, compare, and share safely.
 - Fixed old/partial report and setup compatibility paths.
 - Fixed Windows path and environment-variable display rough edges found in
   dogfood.
+- Fixed deterministic redaction aliases to use the documented HMAC-SHA256
+  primitive while preserving cached aliases; new uncached aliases may differ
+  from earlier candidate builds (#310).
 
 ### Documentation and proof
 
 - Added setup-readiness, review-ready, and review-loop status proposals, specs,
   ADRs, schemas, examples, dogfood matrices, and transcripts.
+- Added the GitHub activity harvest proposal, spec, actor-first owner-filtered
+  ADR, schemas, examples, guide, resume proof, status/report/merge proof, and
+  completion audit (#444-#455, #460).
 - Added the review-loop status transcript (#434), recurring review-loop guide,
   and README/front-door alignment so status is taught as the recurring cockpit.
 - Reworked the root README as the 0.9 product front door: problem, candidate
@@ -112,6 +114,9 @@ rerun, compare, and share safely.
   docs so the held candidate is framed as the review-loop cockpit release with
   status human/JSON, schema, consistency proof, safe-next-action proof,
   dogfood transcript, recurring guide, and README alignment (#440).
+- Refreshed release-facing docs after GitHub activity harvest and HMAC
+  redaction correctness so readiness, hold, decision, and handoff docs include
+  #310 and #444-#455/#460 without lifting the release hold.
 - Aligned the guide map around the status-first workflow: recurring review loop
   as the flagship guide, rapid/setup/repair/review-ready guide cross-links,
   setup/status schema links, roadmap/install freshness, and release-proof map
@@ -123,7 +128,8 @@ rerun, compare, and share safely.
   [`docs/release/0.9.0-readiness.md`](docs/release/0.9.0-readiness.md) and
   [`docs/release/0.9.0-release-hold.md`](docs/release/0.9.0-release-hold.md).
 
-Key receipts: #307-#319, #337-#398, #399-#422, #424-#436.
+Key receipts: #307-#319, #337-#398, #399-#422, #424-#436, #444-#455, #460.
+Redaction correctness receipt: #310.
 
 Release execution is still paused: do not tag, publish to crates.io, create a
 GitHub release, dispatch release workflows, or run release-install smoke for

@@ -40,6 +40,7 @@ JSON, and manual evidence can run without provider tokens.
 | Repair movement | `shiplog repair diff --latest` |
 | Packet movement | `shiplog runs diff --latest` |
 | Share posture | `shiplog share explain manager --latest` |
+| Full GitHub history | `shiplog github activity plan` |
 
 ## First useful loop
 
@@ -84,12 +85,15 @@ Read-only commands:
 - `shiplog repair diff --latest`
 - `shiplog runs diff --latest`
 - `shiplog share explain manager --latest`
+- `shiplog github activity status --out ./out/github-full`
 
 Write-producing commands:
 
 - `shiplog init --guided`
 - `shiplog intake --last-6-months --explain`
 - `shiplog journal add --from-repair <repair_id>`
+- `shiplog github activity report --out ./out/github-full`
+- `shiplog github activity merge --out ./out/github-full`
 - explicit `shiplog share manager|public` rendering commands
 
 `doctor`, `status`, and `share explain` do not render profile artifacts. Use

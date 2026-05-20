@@ -5,9 +5,9 @@
 **Hold receipt:** [`docs/release/0.9.0-release-hold.md`](docs/release/0.9.0-release-hold.md)
 **Readiness ledger:** [`docs/release/0.9.0-readiness.md`](docs/release/0.9.0-readiness.md)
 
-> Review-ready packet, Guided Setup / Doctor, and Review-loop Status work are
-> on `main` as an unreleased 0.9 candidate. Do not tag or publish 0.9.0 from
-> this handoff.
+> Review-ready packet, Guided Setup / Doctor, Review-loop Status, GitHub
+> activity harvest, and redaction-alias correctness work are on `main` as an
+> unreleased 0.9 candidate. Do not tag or publish 0.9.0 from this handoff.
 
 ## Current State
 
@@ -17,6 +17,12 @@
   coverage, dogfood transcript, recurring guide, and README/status alignment.
 - PRs #437-#440 curated the release-facing changelog, READMEs, and release
   docs around the 0.9 review-loop story.
+- PRs #444-#455 added budgeted GitHub activity harvest: plan, scout, authored
+  and full profile runs, resume, API ledger, status, report, merge, guide, and
+  product proof.
+- PR #460 recorded the GitHub activity harvest completion audit.
+- PR #310 aligned deterministic redaction aliases with the documented
+  HMAC-SHA256 primitive while preserving cached aliases.
 - No `v0.9.0` tag exists from this handoff.
 - No 0.9.0 GitHub release exists from this handoff.
 - No 0.9.0 crates.io publish was performed from this handoff.
@@ -53,6 +59,18 @@
 - The Guided Setup / Doctor guide explains local-only, manual-only,
   token-backed GitHub, manager-share-ready, and public-share-cautious modes.
 - The recurring review-loop guide teaches status-first weekly/monthly operation.
+- `shiplog github activity plan`, `scout`, `run --profile authored|full
+  --resume`, `status`, `report`, and `merge` provide the advanced
+  full-history GitHub harvest path with plan/progress/API-ledger/report
+  receipts.
+- `github.activity.plan.v1`, `github.activity.progress.v1`,
+  `github.activity.api-ledger.v1`, and `github.activity.report.v1` schema docs
+  and examples pin the GitHub activity machine contracts.
+- GitHub activity harvest status/report/merge are receipt-derived: no provider
+  calls, no provider mutation, no packet scraping, no share rendering, and no
+  release work.
+- Redaction aliases use HMAC-SHA256 for new uncached aliases; existing cached
+  aliases remain stable through `redaction.aliases.json`.
 - The front-door product proof covers cold intake through share posture
   explanation without provider mutation.
 
