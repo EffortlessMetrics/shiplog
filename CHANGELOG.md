@@ -14,7 +14,7 @@ No user-facing changes yet after the held 0.9.0 candidate refresh.
 shiplog 0.9.0 is the **review-loop cockpit release**.
 
 It turns shiplog from a packet generator into a setup-aware, receipt-backed
-review loop: diagnose setup, collect evidence, inspect status, repair gaps,
+review loop: diagnose setup, inspect status, collect evidence, repair gaps,
 rerun, compare, share safely, and harvest long GitHub history without hiding
 API cost.
 

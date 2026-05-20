@@ -15,7 +15,7 @@ Shiplog should turn full GitHub history collection into a first-class activity
 harvest workflow:
 
 ```text
-plan -> scout -> run -> resume -> merge -> report API cost
+plan -> scout -> authored -> full -> status -> report -> merge
 ```
 
 Today the GitHub source already has the right low-level pieces: it queries by
@@ -245,7 +245,7 @@ full:
 The printed next commands should route:
 
 ```text
-plan -> scout -> authored -> full -> merge -> report
+plan -> scout -> authored -> full -> status -> report -> merge
 ```
 
 ### Search Cache And Historical TTL

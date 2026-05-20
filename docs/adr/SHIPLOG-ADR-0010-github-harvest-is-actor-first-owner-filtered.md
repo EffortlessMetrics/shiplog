@@ -96,7 +96,7 @@ user account by default.
 Harvest commands must preserve the lifecycle from the proposal and spec:
 
 ```text
-plan -> scout -> run -> resume -> merge -> report API cost
+plan -> scout -> authored -> full -> status -> report -> merge
 ```
 
 The actor/owner decision applies across:
@@ -178,7 +178,7 @@ only at the human packet layer.
 ## Affected Specs, Plans, Tests, And Schemas
 
 - [`SHIPLOG-PROP-0007-github-activity-harvest`](../proposals/SHIPLOG-PROP-0007-github-activity-harvest.md)
-  proposes the plan/scout/run/resume/merge/report lifecycle and the
+  proposes the plan/scout/authored/full/status/report/merge lifecycle and the
   `EffortlessSteven` / `EffortlessMetrics` / `EffortlessSteven` use case.
 - [`SHIPLOG-SPEC-0009-github-activity-harvest`](../specs/SHIPLOG-SPEC-0009-github-activity-harvest.md)
   defines `github.activity.plan.json`, `github.activity.progress.json`,

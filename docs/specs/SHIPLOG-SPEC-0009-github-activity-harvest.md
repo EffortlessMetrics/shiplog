@@ -30,7 +30,7 @@ github.activity.report.json
 The harvest workflow turns a full-history GitHub run into an audited batch job:
 
 ```text
-plan -> scout -> run -> resume -> merge -> report API cost
+plan -> scout -> authored -> full -> status -> report -> merge
 ```
 
 The workflow is actor-first and owner-filtered. Shiplog should query GitHub for

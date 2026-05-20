@@ -152,7 +152,7 @@ fn changelog_curates_0_9_as_review_loop_cockpit_release_notes() {
     let candidate = section_between(&doc, "## [0.9.0]", "## [0.8.0]");
     for needle in [
         "review-loop cockpit release",
-        "diagnose setup, collect evidence, inspect status, repair gaps,",
+        "diagnose setup, inspect status, collect evidence, repair gaps,",
         "harvest long GitHub history without hiding",
         "shiplog status --latest",
         "shiplog status --latest --json",
@@ -2727,7 +2727,7 @@ fn github_activity_harvest_proposal_defines_actor_first_budgeted_workflow() {
     for needle in [
         "GitHub Activity Harvest",
         "Status: proposed",
-        "plan -> scout -> run -> resume -> merge -> report API cost",
+        "plan -> scout -> authored -> full -> status -> report -> merge",
         "actor: EffortlessSteven",
         "repo owners: EffortlessMetrics, EffortlessSteven",
         "actor-first search with optional owner filtering and receipts",
@@ -2800,7 +2800,7 @@ fn github_activity_harvest_spec_defines_plan_progress_and_api_ledger_contracts()
         "github.activity.progress.json",
         "github.activity.api-ledger.json",
         "github.activity.report.json",
-        "plan -> scout -> run -> resume -> merge -> report API cost",
+        "plan -> scout -> authored -> full -> status -> report -> merge",
         "actor-first and owner-filtered",
         "author:<actor>",
         "reviewed-by:<actor>",
@@ -2894,7 +2894,7 @@ fn github_activity_harvest_guide_documents_current_receipt_workflow() {
 
     for needle in [
         "GitHub activity harvest guide",
-        "plan -> scout -> authored -> full -> inspect receipts",
+        "plan -> scout -> authored -> full -> status -> report -> merge",
         "actor-first and owner-filtered",
         "shiplog config validate --config shiplog-github-full.toml",
         "shiplog doctor --config shiplog-github-full.toml --setup",
@@ -2948,7 +2948,7 @@ fn github_activity_harvest_adr_records_actor_first_owner_filtered_decision() {
         "which repository owners were dropped",
         "owner_not_requested",
         "must not crawl every repository",
-        "plan -> scout -> run -> resume -> merge -> report API cost",
+        "plan -> scout -> authored -> full -> status -> report -> merge",
         "github.activity.plan.json",
         "github.activity.progress.json",
         "github.activity.api-ledger.json",

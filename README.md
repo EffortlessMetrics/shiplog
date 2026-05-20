@@ -23,7 +23,7 @@
 </p>
 
 shiplog turns work evidence into a review-readiness loop: diagnose setup,
-collect receipts, inspect status, repair gaps, rerun, compare, and share
+inspect status, collect receipts, repair gaps, rerun, compare, and share
 safely.
 
 ## The problem

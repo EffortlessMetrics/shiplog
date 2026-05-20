@@ -34,6 +34,7 @@ shiplog github activity run --profile authored --resume
 shiplog github activity run --profile full --resume
 shiplog github activity status
 shiplog github activity report
+shiplog github activity merge
 ```
 
 They are activity-harvest receipts, not packet prose, not review-loop status,

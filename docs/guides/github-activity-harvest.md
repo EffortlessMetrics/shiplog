@@ -6,7 +6,7 @@ multiple repository owners without hand-managing API burn.
 The workflow is:
 
 ```text
-plan -> scout -> authored -> full -> inspect receipts
+plan -> scout -> authored -> full -> status -> report -> merge
 ```
 
 Release proof for the landed 0.9 candidate work is recorded in
