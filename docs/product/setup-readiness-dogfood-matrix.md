@@ -115,7 +115,8 @@ The next implementation PRs should keep this ledger narrow:
 Use this matrix to decide what setup readiness still needs proof before any
 future 0.9 release-resume discussion. It is not itself the release decision.
 
-Current decision: keep the `v0.9.0` hold active (#398, #410, #422, and #440).
+Current decision: keep the `v0.9.0` hold active (#398, #410, #422, #440, and
+#460).
 
 The setup lane is ready for a release posture decision only when:
 

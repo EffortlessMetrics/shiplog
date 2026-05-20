@@ -29,6 +29,10 @@ fn assert_contains_in_order(doc: &str, doc_label: &str, needles: &[&str]) {
     }
 }
 
+fn normalize_newlines(doc: &str) -> String {
+    doc.replace("\r\n", "\n")
+}
+
 fn section_between<'a>(doc: &'a str, start: &str, end: &str) -> &'a str {
     let start_index = doc
         .find(start)
@@ -134,31 +138,22 @@ fn changelog_curates_0_9_as_review_loop_cockpit_release_notes() {
 
     let unreleased = section_between(&doc, "## [Unreleased]", "## [0.9.0]");
     assert!(
-        unreleased.contains("GitHub activity harvest profiles"),
-        "Unreleased should describe post-0.9-candidate GitHub activity harvest work"
+        unreleased.contains("No user-facing changes yet after the held 0.9.0 candidate refresh."),
+        "Unreleased should stay empty after the 0.9 candidate refresh"
     );
     assert!(
-        unreleased.contains("shiplog github activity scout")
-            && unreleased.contains("shiplog github activity run --profile authored|full --resume"),
-        "Unreleased should name the executable GitHub activity harvest commands"
-    );
-    assert!(
-        unreleased.contains("github.activity.report.v1"),
-        "Unreleased should mention the GitHub activity report schema contract"
-    );
-    assert!(
-        unreleased.contains("without release execution"),
-        "Unreleased should preserve release-hold boundaries for post-candidate work"
-    );
-    assert!(
-        !unreleased.contains("#424") && !unreleased.contains("#436"),
-        "review-loop status receipts belong in the 0.9 candidate section, not Unreleased"
+        !unreleased.contains("#424")
+            && !unreleased.contains("#436")
+            && !unreleased.contains("#444")
+            && !unreleased.contains("#455"),
+        "candidate receipts belong in the 0.9 candidate section, not Unreleased"
     );
 
     let candidate = section_between(&doc, "## [0.9.0]", "## [0.8.0]");
     for needle in [
         "review-loop cockpit release",
         "diagnose setup, collect evidence, inspect status, repair gaps,",
+        "harvest long GitHub history without hiding",
         "shiplog status --latest",
         "shiplog status --latest --json",
         "shiplog init --guided",
@@ -171,6 +166,17 @@ fn changelog_curates_0_9_as_review_loop_cockpit_release_notes() {
         "missing-context prompts",
         "share explain manager|public",
         "runs diff --latest",
+        "shiplog github activity scout",
+        "shiplog github activity run --profile authored --resume",
+        "shiplog github activity run --profile full --resume",
+        "shiplog github activity status",
+        "shiplog github activity report",
+        "shiplog github activity merge",
+        "github.activity.api-ledger.json",
+        "github.activity.report.v1",
+        "github.activity.windows/<profile>/<window_id>",
+        "HMAC-SHA256",
+        "new uncached aliases may differ",
         "read-first",
         "setup-blocked repairs route through doctor/source status",
         "fail closed",
@@ -178,11 +184,14 @@ fn changelog_curates_0_9_as_review_loop_cockpit_release_notes() {
         "zero-event source \"Good\"",
         "old/partial report and setup compatibility",
         "Windows path and environment-variable display",
+        "deterministic redaction aliases",
         "setup-readiness, review-ready, and review-loop status",
+        "GitHub activity harvest proposal, spec, actor-first owner-filtered",
         "review-loop status transcript (#434)",
         "recurring",
         "review-loop guide",
-        "Key receipts: #307-#319, #337-#398, #399-#422, #424-#436.",
+        "Key receipts: #307-#319, #337-#398, #399-#422, #424-#436, #444-#455, #460.",
+        "Redaction correctness receipt: #310.",
         "Release execution is still paused",
     ] {
         assert!(
@@ -2234,6 +2243,10 @@ fn crate_readme_documents_first_loop_for_crates_io() {
         "shiplog repair diff --latest",
         "shiplog runs diff --latest",
         "shiplog share explain manager --latest",
+        "shiplog github activity plan",
+        "shiplog github activity status --out ./out/github-full",
+        "shiplog github activity report --out ./out/github-full",
+        "shiplog github activity merge --out ./out/github-full",
         "doctor`, `status`, and `share explain` do not render profile artifacts",
         "report export-agent-pack",
         "rapid-first-intake.md",
@@ -2301,6 +2314,7 @@ fn root_readme_documents_0_9_review_loop_front_door() {
         "shiplog repair diff --latest",
         "shiplog runs diff --latest",
         "shiplog share explain manager --latest",
+        "shiplog github activity plan",
         "Status at a glance",
         "Docs map",
         "Machine-readable contracts",
@@ -2313,6 +2327,7 @@ fn root_readme_documents_0_9_review_loop_front_door() {
         "Does not render manager/public packets from `status` or `share explain`",
         "Single supported public crate: `shiplog`",
         "contracts/schemas/",
+        "HMAC-SHA256 redaction aliases",
         "review-loop-status-v1.md",
         "github-activity-harvest.md",
         "review-loop-status-transcript.md",
@@ -2577,8 +2592,10 @@ fn guided_setup_dogfood_matrix_documents_setup_control_plane() {
     let hold_path = root.join("docs/release/0.9.0-release-hold.md");
     let readiness_path = root.join("docs/release/0.9.0-readiness.md");
 
-    let matrix = std::fs::read_to_string(&matrix_path)
-        .unwrap_or_else(|err| panic!("read {}: {err}", matrix_path.display()));
+    let matrix = normalize_newlines(
+        &std::fs::read_to_string(&matrix_path)
+            .unwrap_or_else(|err| panic!("read {}: {err}", matrix_path.display())),
+    );
     let hold = std::fs::read_to_string(&hold_path)
         .unwrap_or_else(|err| panic!("read {}: {err}", hold_path.display()));
     let readiness = std::fs::read_to_string(&readiness_path)
@@ -2629,7 +2646,7 @@ fn guided_setup_dogfood_matrix_documents_setup_control_plane() {
         "doctor --setup --json",
         "without scraping text",
         "not itself the release decision",
-        "Current decision: keep the `v0.9.0` hold active (#398, #410, #422, and #440).",
+        "Current decision: keep the `v0.9.0` hold active (#398, #410, #422, #440, and\n#460).",
         "owner explicitly approves any release execution",
     ] {
         assert!(
@@ -3343,7 +3360,8 @@ fn release_hold_docs_record_post_0_8_soak_receipts() {
         "#404", "#405", "#406", "#407", "#408", "#409", "#410", "#411", "#412", "#413", "#414",
         "#415", "#416", "#417", "#418", "#419", "#420", "#421", "#422", "#424", "#425", "#426",
         "#427", "#428", "#429", "#430", "#431", "#432", "#433", "#434", "#435", "#436", "#437",
-        "#438", "#439", "#440",
+        "#438", "#439", "#440", "#444", "#445", "#446", "#447", "#448", "#449", "#450", "#451",
+        "#452", "#453", "#454", "#455", "#460", "#310",
     ] {
         assert!(
             hold.contains(needle) && readiness.contains(needle),
@@ -3431,6 +3449,13 @@ fn release_hold_docs_record_post_0_8_soak_receipts() {
         "status as the review-loop",
         "crates.io README into an install-and-first-loop page",
         "Review-loop cockpit",
+        "GitHub activity harvest",
+        "API ledger",
+        "owner-filter",
+        "resume proof",
+        "GitHub activity harvest completion audit",
+        "Share redaction correctness",
+        "HMAC-SHA256",
         "Release-facing communication",
         "Candidate value; not release approval",
         "Review Loop Cockpit Readiness",
@@ -3456,18 +3481,22 @@ fn release_decision_keeps_0_9_hold_without_execution() {
         .unwrap_or_else(|err| panic!("read {}: {err}", hold_path.display()));
     let readiness = std::fs::read_to_string(&readiness_path)
         .unwrap_or_else(|err| panic!("read {}: {err}", readiness_path.display()));
-    let matrix = std::fs::read_to_string(&matrix_path)
-        .unwrap_or_else(|err| panic!("read {}: {err}", matrix_path.display()));
+    let matrix = normalize_newlines(
+        &std::fs::read_to_string(&matrix_path)
+            .unwrap_or_else(|err| panic!("read {}: {err}", matrix_path.display())),
+    );
 
     for needle in [
         "**Decision:** keep hold",
         "Guided Setup / Doctor",
         "Review-loop Status",
+        "GitHub activity harvest",
+        "redaction correctness",
         "Do not tag, publish to crates.io, create a GitHub release",
         "dispatch the release",
-        "A. Keep hold after review-loop status",
+        "A. Keep hold after GitHub activity harvest and redaction correctness",
         "B. Resume 0.9 release after final preflight",
-        "C. Split Guided Setup / Doctor or Review-loop Status to 0.10",
+        "C. Split Guided Setup / Doctor, Review-loop Status, or GitHub activity harvest to 0.10",
         "#390",
         "#397",
         "#409",
@@ -3489,8 +3518,22 @@ fn release_decision_keeps_0_9_hold_without_execution() {
         "#438",
         "#439",
         "#440",
+        "#444",
+        "#445",
+        "#446",
+        "#447",
+        "#448",
+        "#449",
+        "#450",
+        "#451",
+        "#452",
+        "#453",
+        "#454",
+        "#455",
+        "#460",
+        "#310",
         "owner approval and final release preflight are still missing",
-        "post-status release decision",
+        "post-harvest release decision",
         "feature-complete enough to consider a release-resume PR",
         "Owner explicitly approves release execution",
         "not met",
@@ -3498,10 +3541,11 @@ fn release_decision_keeps_0_9_hold_without_execution() {
         "scripts/check-release-hold.sh",
         "owner_approved_release_execution",
         "final release preflight has not been rerun",
-        "candidate is represented by review-ready packet quality,",
-        "Review-loop Status, and",
+        "candidate is represented by review-ready",
+        "Review-loop Status, GitHub activity",
+        "HMAC redaction correctness",
         "release-facing docs",
-        "Do not extend Guided Setup / Doctor or Review-loop Status just to make 0.9",
+        "Do not extend Guided Setup / Doctor, Review-loop Status, or GitHub activity",
     ] {
         assert!(
             decision.contains(needle),
@@ -3514,7 +3558,7 @@ fn release_decision_keeps_0_9_hold_without_execution() {
             && readiness.contains("0.9.0-release-decision.md")
             && matrix.contains("0.9.0-release-decision.md")
             && matrix.contains(
-                "Current decision: keep the `v0.9.0` hold active (#398, #410, #422, and #440)."
+                "Current decision: keep the `v0.9.0` hold active (#398, #410, #422, #440, and\n#460)."
             ),
         "hold, readiness, and matrix docs should link the release decision without lifting the hold"
     );

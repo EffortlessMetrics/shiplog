@@ -54,6 +54,7 @@ repeatable evidence trail for self-reviews, promo packets, or brag documents.
 | Repair movement | Ready | `shiplog repair diff --latest` |
 | Packet movement | Ready | `shiplog runs diff --latest` |
 | Share posture | Ready | `shiplog share explain manager --latest` |
+| Advanced GitHub harvest | Ready | `shiplog github activity plan` |
 
 The current published release on crates.io is still 0.8.0. The 0.9 work is on
 `main` as a prepared but held candidate; do not treat this README as release
@@ -213,8 +214,8 @@ that crate unless a future public API/plugin ADR promotes a boundary. JSON
 schemas under `contracts/schemas/` are the machine contracts for emitted
 artifacts.
 
-Deterministic redaction aliases are available for manager and public share
-profiles. Rendering those profiles is explicit and fail-closed: provide
+Deterministic HMAC-SHA256 redaction aliases are available for manager and public
+share profiles. Rendering those profiles is explicit and fail-closed: provide
 `SHIPLOG_REDACT_KEY` or `--redact-key` before writing share artifacts.
 
 ## For contributors
