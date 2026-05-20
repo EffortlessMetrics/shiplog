@@ -1,0 +1,34 @@
+{
+  "schema_version": "github.activity.progress.v1",
+  "generated_at": "2026-05-19T00:00:00+00:00",
+  "shiplog_version": "0.9.0",
+  "activity_id": "github_activity_example",
+  "plan_ref": "github.activity.plan.json",
+  "actor": "EffortlessSteven",
+  "repo_owners": [
+    "EffortlessMetrics",
+    "EffortlessSteven"
+  ],
+  "profile": "full",
+  "state": "checkpointed",
+  "completed_windows": [
+    "2026-01"
+  ],
+  "pending_windows": [
+    "2026-02"
+  ],
+  "active_window": {
+    "window_id": "2026-02",
+    "query_kind": "reviewed_prs"
+  },
+  "stop_reason": "budget_exhausted",
+  "budget_checkpoint": {
+    "search_requests": 300,
+    "core_requests": 1000
+  },
+  "run_ref": null,
+  "receipt_refs": [
+    "github.activity.plan.json",
+    "github.activity.api-ledger.json"
+  ]
+}

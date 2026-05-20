@@ -1,0 +1,84 @@
+{
+  "schema_version": "github.activity.api-ledger.v1",
+  "generated_at": "2026-05-19T00:00:00+00:00",
+  "shiplog_version": "0.9.0",
+  "activity_id": "github_activity_example",
+  "plan_ref": "github.activity.plan.json",
+  "progress_ref": "github.activity.progress.json",
+  "actor": "EffortlessSteven",
+  "repo_owners": [
+    "EffortlessMetrics",
+    "EffortlessSteven"
+  ],
+  "profile": "full",
+  "stop_reason": null,
+  "github_api": {
+    "requests": {
+      "search": 84,
+      "core": 312
+    },
+    "cache": {
+      "search_probe": {
+        "fresh_hits": 10,
+        "stale_hits": 0,
+        "misses": 14
+      },
+      "search_page": {
+        "fresh_hits": 80,
+        "stale_hits": 0,
+        "misses": 84
+      },
+      "pull_detail": {
+        "fresh_hits": 220,
+        "stale_hits": 0,
+        "misses": 88
+      },
+      "review_page": {
+        "fresh_hits": 140,
+        "stale_hits": 0,
+        "misses": 66
+      }
+    },
+    "rate_limit_snapshots": [
+      {
+        "resource": "search",
+        "limit": 30,
+        "remaining": 19,
+        "used": 11,
+        "reset_at": "2026-05-19T00:01:00+00:00",
+        "observed_at": "2026-05-19T00:00:30+00:00"
+      }
+    ],
+    "secondary_limit_events": [
+      {
+        "resource": "search",
+        "status": 403,
+        "category": "secondary_rate_limit",
+        "retry_after_seconds": 60,
+        "observed_at": "2026-05-19T00:00:40+00:00"
+      }
+    ]
+  },
+  "owner_filter": {
+    "requested_owners": [
+      "EffortlessMetrics",
+      "EffortlessSteven"
+    ],
+    "query_strategy": "actor_search_owner_filter",
+    "kept": {
+      "EffortlessMetrics": 120,
+      "EffortlessSteven": 44
+    },
+    "dropped": [
+      {
+        "owner": "other-owner",
+        "count": 17,
+        "reason": "owner_not_requested"
+      }
+    ]
+  },
+  "receipt_refs": [
+    "github.activity.plan.json",
+    "github.activity.progress.json"
+  ]
+}

@@ -515,6 +515,12 @@ enum GithubActivityCommand {
     Scout(GithubActivityRunArgs),
     /// Run a GitHub activity harvest profile.
     Run(GithubActivityRunArgs),
+    /// Read GitHub activity receipts and print harvest status.
+    Status(GithubActivityStatusArgs),
+    /// Read GitHub activity receipts and report API cost/cache/owner filtering.
+    Report(GithubActivityStatusArgs),
+    /// Write final activity outputs from a completed harvest run.
+    Merge(GithubActivityStatusArgs),
 }
 
 #[derive(Args, Debug)]
@@ -544,6 +550,16 @@ struct GithubActivityRunArgs {
     /// Skip work when a matching completed progress receipt already exists.
     #[arg(long)]
     resume: bool,
+}
+
+#[derive(Args, Debug)]
+struct GithubActivityStatusArgs {
+    /// Path to shiplog.toml.
+    #[arg(long, default_value = CONFIG_FILENAME)]
+    config: PathBuf,
+    /// Output directory containing activity receipts.
+    #[arg(long)]
+    out: Option<PathBuf>,
 }
 
 #[derive(Args, Debug)]
@@ -1742,6 +1758,9 @@ const GITHUB_ACTIVITY_PROGRESS_FILENAME: &str = "github.activity.progress.json";
 const GITHUB_ACTIVITY_PROGRESS_SCHEMA_VERSION: &str = "github.activity.progress.v1";
 const GITHUB_ACTIVITY_API_LEDGER_FILENAME: &str = "github.activity.api-ledger.json";
 const GITHUB_ACTIVITY_API_LEDGER_SCHEMA_VERSION: &str = "github.activity.api-ledger.v1";
+const GITHUB_ACTIVITY_REPORT_FILENAME: &str = "github.activity.report.json";
+const GITHUB_ACTIVITY_REPORT_MARKDOWN_FILENAME: &str = "github.activity.report.md";
+const GITHUB_ACTIVITY_REPORT_SCHEMA_VERSION: &str = "github.activity.report.v1";
 
 #[derive(Deserialize, Debug, Default)]
 #[serde(default)]
@@ -1825,6 +1844,7 @@ struct ConfigGithubActivity {
     include_commits: bool,
     profile: Option<String>,
     cache_dir: Option<PathBuf>,
+    cache_ttl_days: Option<i64>,
     budget: ConfigGithubActivityBudget,
 }
 

@@ -1,0 +1,452 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/EffortlessMetrics/shiplog/contracts/schemas/github-activity-report.v1.schema.json",
+  "title": "Shiplog GitHub activity report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "propertyNames": {
+    "$ref": "#/$defs/non_secret_field_name"
+  },
+  "required": [
+    "schema_version",
+    "generated_at",
+    "shiplog_version",
+    "activity_id",
+    "actor",
+    "repo_owners",
+    "query_strategy",
+    "profile",
+    "state",
+    "run_ref",
+    "source_run_dir",
+    "final_dir",
+    "final_outputs",
+    "github_api",
+    "owner_filter",
+    "receipt_refs"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "github.activity.report.v1"
+    },
+    "generated_at": {
+      "$ref": "#/$defs/timestamp"
+    },
+    "shiplog_version": {
+      "$ref": "#/$defs/display_string"
+    },
+    "activity_id": {
+      "$ref": "#/$defs/stable_key"
+    },
+    "actor": {
+      "$ref": "#/$defs/display_string"
+    },
+    "repo_owners": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/display_string"
+      }
+    },
+    "query_strategy": {
+      "$ref": "#/$defs/stable_key"
+    },
+    "profile": {
+      "$ref": "#/$defs/profile"
+    },
+    "state": {
+      "$ref": "#/$defs/activity_state"
+    },
+    "run_ref": {
+      "$ref": "#/$defs/display_string"
+    },
+    "source_run_dir": {
+      "$ref": "#/$defs/display_string"
+    },
+    "final_dir": {
+      "$ref": "#/$defs/display_string"
+    },
+    "final_outputs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/final_output"
+      }
+    },
+    "github_api": {
+      "$ref": "#/$defs/github_api"
+    },
+    "owner_filter": {
+      "$ref": "#/$defs/owner_filter"
+    },
+    "receipt_refs": {
+      "$ref": "#/$defs/string_refs"
+    }
+  },
+  "$defs": {
+    "non_secret_field_name": {
+      "type": "string",
+      "not": {
+        "pattern": "[Tt][Oo][Kk][Ee][Nn]_[Vv][Aa][Ll][Uu][Ee]|[Ss][Ee][Cc][Rr][Ee][Tt]_[Vv][Aa][Ll][Uu][Ee]|[Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd]|[Aa][Pp][Ii]_?[Kk][Ee][Yy]_[Vv][Aa][Ll][Uu][Ee]|[Kk][Ee][Yy]_[Vv][Aa][Ll][Uu][Ee]"
+      }
+    },
+    "object_base": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "#/$defs/non_secret_field_name"
+      }
+    },
+    "display_string": {
+      "type": "string",
+      "minLength": 1
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "stable_key": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.:-]+$",
+      "minLength": 1
+    },
+    "profile": {
+      "type": "string",
+      "enum": [
+        "scout",
+        "authored",
+        "full"
+      ]
+    },
+    "activity_state": {
+      "type": "string",
+      "enum": [
+        "planned",
+        "scouting",
+        "running",
+        "checkpointed",
+        "completed",
+        "blocked",
+        "failed"
+      ]
+    },
+    "final_output_label": {
+      "type": "string",
+      "enum": [
+        "packet",
+        "intake_report",
+        "coverage",
+        "ledger",
+        "api_ledger",
+        "activity_report",
+        "artifact"
+      ]
+    },
+    "final_output": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "additionalProperties": false,
+          "required": [
+            "label",
+            "path"
+          ],
+          "properties": {
+            "label": {
+              "$ref": "#/$defs/final_output_label"
+            },
+            "path": {
+              "$ref": "#/$defs/display_string"
+            }
+          }
+        }
+      ]
+    },
+    "github_api": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "additionalProperties": false,
+          "required": [
+            "requests",
+            "cache",
+            "rate_limit_snapshots",
+            "secondary_limit_events"
+          ],
+          "properties": {
+            "requests": {
+              "$ref": "#/$defs/api_requests"
+            },
+            "cache": {
+              "$ref": "#/$defs/api_cache"
+            },
+            "rate_limit_snapshots": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/rate_limit_snapshot"
+              }
+            },
+            "secondary_limit_events": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/secondary_limit_event"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "api_requests": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "additionalProperties": false,
+          "required": [
+            "search",
+            "core"
+          ],
+          "properties": {
+            "search": {
+              "$ref": "#/$defs/non_negative_integer"
+            },
+            "core": {
+              "$ref": "#/$defs/non_negative_integer"
+            }
+          }
+        }
+      ]
+    },
+    "api_cache": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "additionalProperties": false,
+          "required": [
+            "search_probe",
+            "search_page",
+            "pull_detail",
+            "review_page"
+          ],
+          "properties": {
+            "search_probe": {
+              "$ref": "#/$defs/cache_phase"
+            },
+            "search_page": {
+              "$ref": "#/$defs/cache_phase"
+            },
+            "pull_detail": {
+              "$ref": "#/$defs/cache_phase"
+            },
+            "review_page": {
+              "$ref": "#/$defs/cache_phase"
+            }
+          }
+        }
+      ]
+    },
+    "cache_phase": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "additionalProperties": false,
+          "required": [
+            "fresh_hits",
+            "stale_hits",
+            "misses"
+          ],
+          "properties": {
+            "fresh_hits": {
+              "$ref": "#/$defs/non_negative_integer"
+            },
+            "stale_hits": {
+              "$ref": "#/$defs/non_negative_integer"
+            },
+            "misses": {
+              "$ref": "#/$defs/non_negative_integer"
+            }
+          }
+        }
+      ]
+    },
+    "rate_limit_snapshot": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "additionalProperties": false,
+          "required": [
+            "resource",
+            "limit",
+            "remaining",
+            "used",
+            "reset_at",
+            "observed_at"
+          ],
+          "properties": {
+            "resource": {
+              "$ref": "#/$defs/display_string"
+            },
+            "limit": {
+              "$ref": "#/$defs/non_negative_integer"
+            },
+            "remaining": {
+              "$ref": "#/$defs/non_negative_integer"
+            },
+            "used": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/non_negative_integer"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "reset_at": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/timestamp"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "observed_at": {
+              "$ref": "#/$defs/timestamp"
+            }
+          }
+        }
+      ]
+    },
+    "secondary_limit_event": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "additionalProperties": false,
+          "required": [
+            "resource",
+            "status",
+            "category",
+            "retry_after_seconds",
+            "observed_at"
+          ],
+          "properties": {
+            "resource": {
+              "$ref": "#/$defs/display_string"
+            },
+            "status": {
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 599
+            },
+            "category": {
+              "$ref": "#/$defs/stable_key"
+            },
+            "retry_after_seconds": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/non_negative_integer"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "observed_at": {
+              "$ref": "#/$defs/timestamp"
+            }
+          }
+        }
+      ]
+    },
+    "owner_filter": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "additionalProperties": false,
+          "required": [
+            "requested_owners",
+            "query_strategy",
+            "kept",
+            "dropped"
+          ],
+          "properties": {
+            "requested_owners": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/display_string"
+              }
+            },
+            "query_strategy": {
+              "$ref": "#/$defs/stable_key"
+            },
+            "kept": {
+              "type": "object",
+              "propertyNames": {
+                "$ref": "#/$defs/non_secret_field_name"
+              },
+              "additionalProperties": {
+                "$ref": "#/$defs/non_negative_integer"
+              }
+            },
+            "dropped": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/owner_filter_drop"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "owner_filter_drop": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "additionalProperties": false,
+          "required": [
+            "owner",
+            "count",
+            "reason"
+          ],
+          "properties": {
+            "owner": {
+              "$ref": "#/$defs/display_string"
+            },
+            "count": {
+              "$ref": "#/$defs/non_negative_integer"
+            },
+            "reason": {
+              "$ref": "#/$defs/stable_key"
+            }
+          }
+        }
+      ]
+    },
+    "string_refs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/display_string"
+      }
+    },
+    "non_negative_integer": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

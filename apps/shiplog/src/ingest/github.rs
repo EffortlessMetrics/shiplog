@@ -6,7 +6,7 @@
 use crate::cache::{ApiCache, CacheKey, CacheLookup};
 use crate::coverage::{day_windows, month_windows, week_windows, window_len_days};
 use anyhow::{Context, Result, anyhow};
-use chrono::{DateTime, NaiveDate, Utc};
+use chrono::{DateTime, Duration as ChronoDuration, NaiveDate, Utc};
 use reqwest::blocking::Client;
 use reqwest::header::HeaderMap;
 use serde::de::DeserializeOwned;
@@ -353,6 +353,19 @@ impl GithubIngestor {
             .with_context(|| format!("open GitHub API cache at {cache_path:?}"))?;
         self.cache = Some(cache);
         Ok(self)
+    }
+
+    /// Override the default cache TTL for this ingestor.
+    ///
+    /// This is useful for historical activity harvests where old GitHub search
+    /// and detail pages should remain reusable longer than the normal
+    /// short-lived intake cache.
+    #[must_use]
+    pub fn with_cache_ttl(mut self, ttl: ChronoDuration) -> Self {
+        if let Some(cache) = self.cache.take() {
+            self.cache = Some(cache.with_ttl(ttl));
+        }
+        self
     }
 
     /// Configure live GitHub API request budget guardrails.

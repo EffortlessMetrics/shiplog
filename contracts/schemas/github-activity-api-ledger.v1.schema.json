@@ -1,0 +1,405 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/EffortlessMetrics/shiplog/contracts/schemas/github-activity-api-ledger.v1.schema.json",
+  "title": "Shiplog GitHub activity API ledger v1",
+  "type": "object",
+  "additionalProperties": false,
+  "propertyNames": {
+    "$ref": "#/$defs/non_secret_field_name"
+  },
+  "required": [
+    "schema_version",
+    "generated_at",
+    "shiplog_version",
+    "activity_id",
+    "plan_ref",
+    "progress_ref",
+    "actor",
+    "repo_owners",
+    "profile",
+    "stop_reason",
+    "github_api",
+    "owner_filter",
+    "receipt_refs"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "github.activity.api-ledger.v1"
+    },
+    "generated_at": {
+      "$ref": "#/$defs/timestamp"
+    },
+    "shiplog_version": {
+      "$ref": "#/$defs/display_string"
+    },
+    "activity_id": {
+      "$ref": "#/$defs/stable_key"
+    },
+    "plan_ref": {
+      "$ref": "#/$defs/display_string"
+    },
+    "progress_ref": {
+      "$ref": "#/$defs/display_string"
+    },
+    "actor": {
+      "$ref": "#/$defs/display_string"
+    },
+    "repo_owners": {
+      "$ref": "#/$defs/string_array"
+    },
+    "profile": {
+      "$ref": "#/$defs/profile"
+    },
+    "stop_reason": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/stop_reason"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "github_api": {
+      "$ref": "#/$defs/github_api"
+    },
+    "owner_filter": {
+      "$ref": "#/$defs/owner_filter"
+    },
+    "receipt_refs": {
+      "$ref": "#/$defs/string_array"
+    }
+  },
+  "$defs": {
+    "non_secret_field_name": {
+      "type": "string",
+      "not": {
+        "pattern": "[Tt][Oo][Kk][Ee][Nn]_[Vv][Aa][Ll][Uu][Ee]|[Ss][Ee][Cc][Rr][Ee][Tt]_[Vv][Aa][Ll][Uu][Ee]|[Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd]|[Aa][Pp][Ii]_?[Kk][Ee][Yy]_[Vv][Aa][Ll][Uu][Ee]|[Kk][Ee][Yy]_[Vv][Aa][Ll][Uu][Ee]"
+      }
+    },
+    "object_base": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "#/$defs/non_secret_field_name"
+      }
+    },
+    "display_string": {
+      "type": "string",
+      "minLength": 1
+    },
+    "stable_key": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.:-]+$",
+      "minLength": 1
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "profile": {
+      "type": "string",
+      "enum": [
+        "scout",
+        "authored",
+        "full"
+      ]
+    },
+    "stop_reason": {
+      "type": "string",
+      "enum": [
+        "budget_exhausted",
+        "rate_limited",
+        "secondary_rate_limited",
+        "manual_stop",
+        "config_error",
+        "provider_error",
+        "malformed_receipt",
+        "unknown"
+      ]
+    },
+    "github_api": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "additionalProperties": false,
+          "required": [
+            "requests",
+            "cache",
+            "rate_limit_snapshots",
+            "secondary_limit_events"
+          ],
+          "properties": {
+            "requests": {
+              "$ref": "#/$defs/api_requests"
+            },
+            "cache": {
+              "$ref": "#/$defs/api_cache"
+            },
+            "rate_limit_snapshots": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/rate_limit_snapshot"
+              }
+            },
+            "secondary_limit_events": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/secondary_limit_event"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "api_requests": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "additionalProperties": false,
+          "required": [
+            "search",
+            "core"
+          ],
+          "properties": {
+            "search": {
+              "$ref": "#/$defs/non_negative_integer"
+            },
+            "core": {
+              "$ref": "#/$defs/non_negative_integer"
+            }
+          }
+        }
+      ]
+    },
+    "api_cache": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "additionalProperties": false,
+          "required": [
+            "search_probe",
+            "search_page",
+            "pull_detail",
+            "review_page"
+          ],
+          "properties": {
+            "search_probe": {
+              "$ref": "#/$defs/cache_phase"
+            },
+            "search_page": {
+              "$ref": "#/$defs/cache_phase"
+            },
+            "pull_detail": {
+              "$ref": "#/$defs/cache_phase"
+            },
+            "review_page": {
+              "$ref": "#/$defs/cache_phase"
+            }
+          }
+        }
+      ]
+    },
+    "cache_phase": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "additionalProperties": false,
+          "required": [
+            "fresh_hits",
+            "stale_hits",
+            "misses"
+          ],
+          "properties": {
+            "fresh_hits": {
+              "$ref": "#/$defs/non_negative_integer"
+            },
+            "stale_hits": {
+              "$ref": "#/$defs/non_negative_integer"
+            },
+            "misses": {
+              "$ref": "#/$defs/non_negative_integer"
+            }
+          }
+        }
+      ]
+    },
+    "rate_limit_snapshot": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "additionalProperties": false,
+          "required": [
+            "resource",
+            "limit",
+            "remaining",
+            "used",
+            "reset_at",
+            "observed_at"
+          ],
+          "properties": {
+            "resource": {
+              "$ref": "#/$defs/display_string"
+            },
+            "limit": {
+              "$ref": "#/$defs/non_negative_integer"
+            },
+            "remaining": {
+              "$ref": "#/$defs/non_negative_integer"
+            },
+            "used": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/non_negative_integer"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "reset_at": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/timestamp"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "observed_at": {
+              "$ref": "#/$defs/timestamp"
+            }
+          }
+        }
+      ]
+    },
+    "secondary_limit_event": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "additionalProperties": false,
+          "required": [
+            "resource",
+            "status",
+            "category",
+            "retry_after_seconds",
+            "observed_at"
+          ],
+          "properties": {
+            "resource": {
+              "$ref": "#/$defs/display_string"
+            },
+            "status": {
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 599
+            },
+            "category": {
+              "$ref": "#/$defs/stable_key"
+            },
+            "retry_after_seconds": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/non_negative_integer"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "observed_at": {
+              "$ref": "#/$defs/timestamp"
+            }
+          }
+        }
+      ]
+    },
+    "owner_filter": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "additionalProperties": false,
+          "required": [
+            "requested_owners",
+            "query_strategy",
+            "kept",
+            "dropped"
+          ],
+          "properties": {
+            "requested_owners": {
+              "$ref": "#/$defs/string_array"
+            },
+            "query_strategy": {
+              "$ref": "#/$defs/stable_key"
+            },
+            "kept": {
+              "type": "object",
+              "propertyNames": {
+                "$ref": "#/$defs/non_secret_field_name"
+              },
+              "additionalProperties": {
+                "$ref": "#/$defs/non_negative_integer"
+              }
+            },
+            "dropped": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/owner_filter_drop"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "owner_filter_drop": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "additionalProperties": false,
+          "required": [
+            "owner",
+            "count",
+            "reason"
+          ],
+          "properties": {
+            "owner": {
+              "$ref": "#/$defs/display_string"
+            },
+            "count": {
+              "$ref": "#/$defs/non_negative_integer"
+            },
+            "reason": {
+              "$ref": "#/$defs/stable_key"
+            }
+          }
+        }
+      ]
+    },
+    "string_array": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/display_string"
+      }
+    },
+    "non_negative_integer": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}
