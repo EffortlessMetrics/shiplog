@@ -29,6 +29,10 @@ fn assert_contains_in_order(doc: &str, doc_label: &str, needles: &[&str]) {
     }
 }
 
+fn normalize_newlines(doc: &str) -> String {
+    doc.replace("\r\n", "\n")
+}
+
 fn section_between<'a>(doc: &'a str, start: &str, end: &str) -> &'a str {
     let start_index = doc
         .find(start)
@@ -2587,8 +2591,10 @@ fn guided_setup_dogfood_matrix_documents_setup_control_plane() {
     let hold_path = root.join("docs/release/0.9.0-release-hold.md");
     let readiness_path = root.join("docs/release/0.9.0-readiness.md");
 
-    let matrix = std::fs::read_to_string(&matrix_path)
-        .unwrap_or_else(|err| panic!("read {}: {err}", matrix_path.display()));
+    let matrix = normalize_newlines(
+        &std::fs::read_to_string(&matrix_path)
+            .unwrap_or_else(|err| panic!("read {}: {err}", matrix_path.display())),
+    );
     let hold = std::fs::read_to_string(&hold_path)
         .unwrap_or_else(|err| panic!("read {}: {err}", hold_path.display()));
     let readiness = std::fs::read_to_string(&readiness_path)
@@ -3474,8 +3480,10 @@ fn release_decision_keeps_0_9_hold_without_execution() {
         .unwrap_or_else(|err| panic!("read {}: {err}", hold_path.display()));
     let readiness = std::fs::read_to_string(&readiness_path)
         .unwrap_or_else(|err| panic!("read {}: {err}", readiness_path.display()));
-    let matrix = std::fs::read_to_string(&matrix_path)
-        .unwrap_or_else(|err| panic!("read {}: {err}", matrix_path.display()));
+    let matrix = normalize_newlines(
+        &std::fs::read_to_string(&matrix_path)
+            .unwrap_or_else(|err| panic!("read {}: {err}", matrix_path.display())),
+    );
 
     for needle in [
         "**Decision:** keep hold",
