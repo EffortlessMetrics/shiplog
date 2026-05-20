@@ -6,7 +6,7 @@ Created: 2026-05-20
 Target release: after the held 0.9.0 candidate is release-ready or explicitly
 checkpointed
 Follow-up spec:
-`SHIPLOG-SPEC-0010-shiplog-swarm-cutover-contract` (planned)
+[`SHIPLOG-SPEC-0010-shiplog-swarm-cutover-contract`](../specs/SHIPLOG-SPEC-0010-shiplog-swarm-cutover-contract.md)
 Architecture decision:
 `SHIPLOG-ADR-0011-swarm-is-dev-landing-zone-not-release-surface` (planned)
 Linked plan:
