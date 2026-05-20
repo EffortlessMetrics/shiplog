@@ -36,10 +36,11 @@ API cost.
   posture and comparison surfaces (#315, #316).
 - Added executable GitHub activity harvest profiles:
   `shiplog github activity scout` for the search-only scout pass and
-  `shiplog github activity run --profile authored|full --resume` for detail and
-  review harvest passes. The commands write plan/progress receipts, checkpoint
-  cleanly on API-budget exhaustion, and route scout -> authored -> full ->
-  status without release execution (#451).
+  `shiplog github activity run --profile authored --resume` /
+  `shiplog github activity run --profile full --resume` for detail and review
+  harvest passes. The commands write plan/progress receipts, checkpoint cleanly
+  on API-budget exhaustion, and route scout -> authored -> full -> status
+  without release execution (#451).
 - Added `shiplog github activity status`, a read-only status surface over
   activity plan, progress, and API-ledger receipts that reports harvest state,
   budget/cache use, owner filtering, next actions, and receipt refs without

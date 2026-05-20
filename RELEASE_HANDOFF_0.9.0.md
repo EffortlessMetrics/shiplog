@@ -59,10 +59,10 @@
 - The Guided Setup / Doctor guide explains local-only, manual-only,
   token-backed GitHub, manager-share-ready, and public-share-cautious modes.
 - The recurring review-loop guide teaches status-first weekly/monthly operation.
-- `shiplog github activity plan`, `scout`, `run --profile authored|full
-  --resume`, `status`, `report`, and `merge` provide the advanced
-  full-history GitHub harvest path with plan/progress/API-ledger/report
-  receipts.
+- `shiplog github activity plan`, `scout`,
+  `run --profile authored --resume`, `run --profile full --resume`, `status`,
+  `report`, and `merge` provide the advanced full-history GitHub harvest path
+  with plan/progress/API-ledger/report receipts.
 - `github.activity.plan.v1`, `github.activity.progress.v1`,
   `github.activity.api-ledger.v1`, and `github.activity.report.v1` schema docs
   and examples pin the GitHub activity machine contracts.
