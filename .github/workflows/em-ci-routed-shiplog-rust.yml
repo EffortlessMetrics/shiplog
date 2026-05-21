@@ -15,6 +15,7 @@ on:
         type: choice
         options:
           - auto
+          - cpx42
           - cx43
           - cx53
           - github
@@ -45,7 +46,8 @@ jobs:
         env:
           FORCE_ROUTE: ${{ github.event.inputs.force_route || 'auto' }}
           GITHUB_TOKEN: ${{ github.token }}
-          RUNNER_READ_TOKEN: ${{ secrets.EM_RUNNER_READ_TOKEN }}
+          GH_TOKEN: ${{ secrets.EM_RUNNER_READ_TOKEN }}
+          ORG: EffortlessMetrics
         run: |
           python3 <<'PY'
           import json
@@ -60,8 +62,9 @@ jobs:
           event_path = os.environ["GITHUB_EVENT_PATH"]
           force_route = os.environ.get("FORCE_ROUTE", "auto").strip().lower() or "auto"
           github_token = os.environ.get("GITHUB_TOKEN", "")
-          runner_read_token = os.environ.get("RUNNER_READ_TOKEN", "")
-          route_order = ["cx43", "cx53"]
+          runner_read_token = os.environ.get("GH_TOKEN", "")
+          org = os.environ.get("ORG", "EffortlessMetrics")
+          route_order = ["cpx42", "cx43", "cx53"]
 
           with open(event_path, "r", encoding="utf-8") as fh:
               event = json.load(fh)
@@ -116,7 +119,7 @@ jobs:
               print(f"trusted={str(trusted).lower()}")
 
           if not trusted:
-              set_output("github", "untrusted_pr")
+              set_output("github", "fork_pr")
               sys.exit(0)
 
           if force_route == "github":
@@ -132,23 +135,41 @@ jobs:
               sys.exit(0)
 
           if not runner_read_token:
-              set_output("github", "no_runner_read_token")
+              set_output("github", "runner_token_missing")
               sys.exit(0)
 
           try:
               payload = request_json(
-                  "https://api.github.com/orgs/EffortlessMetrics/actions/runners?per_page=100",
+                  f"https://api.github.com/orgs/{org}/actions/runners?per_page=100",
                   runner_read_token,
               )
+          except urllib.error.HTTPError as exc:
+              print(f"runner_api_http_error={exc.code}")
+              if exc.code == 401:
+                  set_output("github", "runner_token_unauthorized")
+              elif exc.code == 403:
+                  set_output("github", "runner_token_forbidden")
+              else:
+                  set_output("github", "runner_api_failed")
+              sys.exit(0)
           except (urllib.error.URLError, TimeoutError, OSError, json.JSONDecodeError) as exc:
               print(f"runner_api_error={exc}")
               set_output("github", "runner_api_failed")
               sys.exit(0)
 
           runners = payload.get("runners", [])
-          common_labels = {"self-hosted", "linux", "x64", "em-ci", "rust-small", "trusted-pr"}
+          required_labels = {
+              "cpx42": {"self-hosted", "linux", "x64", "em-ci", "cpx42", "rust-16gb", "rust-medium", "trusted-pr"},
+              "cx43": {"self-hosted", "linux", "x64", "em-ci", "cx43", "rust-small", "trusted-pr"},
+              "cx53": {"self-hosted", "linux", "x64", "em-ci", "cx53", "rust-small", "trusted-pr"},
+          }
+
+          if not isinstance(runners, list):
+              set_output("github", "parse_failed")
+              sys.exit(0)
+
           for target in route_order:
-              required = common_labels | {target}
+              required = required_labels[target]
               for runner in runners:
                   labels = {
                       str(label.get("name", "")).lower()
@@ -164,6 +185,66 @@ jobs:
 
           set_output("github", "no_idle_runner")
           PY
+
+  rust_small_cpx42:
+    name: Shiplog Rust Small on CPX42
+    needs: [route]
+    if: needs.route.outputs.target == 'cpx42'
+    runs-on:
+      group: em-ci-small
+      labels: [self-hosted, linux, x64, em-ci, cpx42, rust-16gb, rust-medium, trusted-pr]
+    timeout-minutes: 90
+    env:
+      CARGO_BUILD_JOBS: "7"
+      CARGO_INCREMENTAL: "0"
+      TMPDIR: /mnt/ci-scratch/tmp/${{ github.run_id }}-${{ github.run_attempt }}
+      CARGO_TARGET_DIR: /mnt/ci-scratch/shiplog-swarm/${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@v6.0.2
+        with:
+          fetch-depth: 1
+
+      - name: Prepare CPX42 scratch
+        run: |
+          set -euo pipefail
+          ci-disk-guard /mnt/ci-scratch 45
+          ci-disk-guard /mnt/ci-cache 10
+          mkdir -p "$TMPDIR" "$CARGO_TARGET_DIR"
+
+      - uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: 1.95.0
+          components: rustfmt, clippy
+
+      - name: Preflight disk and toolchain
+        run: |
+          set -euo pipefail
+          df -h /mnt/ci-scratch /mnt/ci-cache || true
+          rustc --version
+          cargo --version
+          if command -v python3 >/dev/null 2>&1; then python3 --version; fi
+          if command -v sccache >/dev/null 2>&1; then sccache --show-stats || true; fi
+
+      - name: Run Shiplog Rust Small checks
+        run: |
+          set -euo pipefail
+          export HOME="$TMPDIR/home"
+          export CARGO_HOME="${CARGO_HOME:-/home/gha/.cargo}"
+          export RUSTUP_HOME="${RUSTUP_HOME:-/home/gha/.rustup}"
+          mkdir -p "$HOME"
+          cargo fmt --all -- --check
+          cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+          cargo test --workspace --all-features --locked -- --test-threads=4
+          cargo xtask check-no-panic-family --mode blocking-allowlist
+          git diff --check
+
+      - name: Cleanup and final stats
+        if: always()
+        run: |
+          set +e
+          if command -v sccache >/dev/null 2>&1; then sccache --show-stats || true; fi
+          rm -rf "$TMPDIR" "$CARGO_TARGET_DIR"
+          df -h /mnt/ci-scratch /mnt/ci-cache || true
 
   rust_small_cx43:
     name: Shiplog Rust Small on CX43
@@ -186,7 +267,7 @@ jobs:
           mkdir -p "$CARGO_TARGET_DIR" "$TMPDIR"
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@master
+        uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: "1.95.0"
           components: rustfmt, clippy
@@ -229,7 +310,7 @@ jobs:
           mkdir -p "$CARGO_TARGET_DIR" "$TMPDIR"
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@master
+        uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: "1.95.0"
           components: rustfmt, clippy
@@ -261,7 +342,7 @@ jobs:
       - uses: actions/checkout@v6.0.2
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@master
+        uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: "1.95.0"
           components: rustfmt, clippy
@@ -283,6 +364,7 @@ jobs:
     name: Shiplog Rust Small Result
     needs:
       - route
+      - rust_small_cpx42
       - rust_small_cx43
       - rust_small_cx53
       - rust_small_github
@@ -296,6 +378,7 @@ jobs:
           REASON: ${{ needs.route.outputs.reason }}
           TRUSTED: ${{ needs.route.outputs.trusted }}
           ROUTE_RESULT: ${{ needs.route.result }}
+          CPX42_RESULT: ${{ needs.rust_small_cpx42.result }}
           CX43_RESULT: ${{ needs.rust_small_cx43.result }}
           CX53_RESULT: ${{ needs.rust_small_cx53.result }}
           GITHUB_RESULT: ${{ needs.rust_small_github.result }}
@@ -309,6 +392,7 @@ jobs:
           trusted = os.environ.get("TRUSTED", "")
           route_result = os.environ.get("ROUTE_RESULT", "")
           results = {
+              "cpx42": os.environ.get("CPX42_RESULT", ""),
               "cx43": os.environ.get("CX43_RESULT", ""),
               "cx53": os.environ.get("CX53_RESULT", ""),
               "github": os.environ.get("GITHUB_RESULT", ""),

@@ -155,7 +155,7 @@ permissions = ["contents:read"]
 secrets_used = ["EM_RUNNER_READ_TOKEN"]
 external_actions = [
   "actions/checkout@v6.0.2",
-  "dtolnay/rust-toolchain@master",
+  "dtolnay/rust-toolchain@v1",
   "Swatinem/rust-cache@v2",
 ]
 created = "2026-05-21"
