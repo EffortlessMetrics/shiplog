@@ -261,7 +261,7 @@ Blocks: branch-protection-enable
 Blocked by: routed-rust-small-workflow
 Branch: docs/swarm-routed-ci-proof
 Issue:
-PR: EffortlessMetrics/shiplog-swarm#18, EffortlessMetrics/shiplog-swarm#16
+PR: EffortlessMetrics/shiplog-swarm#18, EffortlessMetrics/shiplog-swarm#16, EffortlessMetrics/shiplog-swarm#20
 
 ### Goal
 
@@ -362,6 +362,22 @@ trusted: true
 result: Shiplog Rust Small Result passed
 ```
 
+Temporary fork PR #20 proved that untrusted pull requests stay off
+self-hosted runners and route to GitHub-hosted execution:
+
+```text
+workflow: EM CI Routed Shiplog Rust
+run: 26231870924
+fork: EffortlessSteven/shiplog-swarm
+route: github
+reason: untrusted_pr
+trusted: false
+cx43/cx53 jobs: skipped
+github-hosted job: passed
+normalized result: passed
+disposition: closed without merge after proof capture
+```
+
 The local GitHub CLI token cannot inspect org self-hosted runner state:
 
 ```text
@@ -370,10 +386,10 @@ HTTP 403: runners and runner groups permission required
 ```
 
 Same-repo PR and push fallback proof now have multiple green receipts.
-Self-hosted CX53 proof passed. CX43 proof still needs an eligible runner.
-Fork-admission proof still needs a fork PR or equivalent event-level test.
-Branch protection must remain disabled until CX43 and fork-admission proof are
-complete, or until the cutover contract is amended to make CX43 advisory.
+Self-hosted CX53 proof passed. Fork-admission proof passed. CX43 proof still
+needs an eligible runner. Branch protection must remain disabled until CX43
+proof is complete, or until the cutover contract is amended to make CX43
+advisory.
 
 ### Proof commands
 
