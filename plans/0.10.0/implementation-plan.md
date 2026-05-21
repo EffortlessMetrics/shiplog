@@ -4,7 +4,7 @@ Plan artifact: SHIPLOG-PLAN-0010
 
 ## Work item: docs-source-of-truth-scaffold
 
-Status: ready
+Status: done
 Linked proposal: SHIPLOG-PROP-0008
 Linked spec: SHIPLOG-SPEC-0010
 Linked ADR: none
@@ -12,7 +12,7 @@ Blocks: policy-doc-artifact-ledger
 Blocked by: none
 Branch: docs/source-of-truth-stack
 Issue:
-PR: EffortlessMetrics/shiplog-swarm#29
+PR: EffortlessMetrics/shiplog#457
 
 ### Goal
 
@@ -47,7 +47,7 @@ Does not prove runtime feature behavior; only repo governance and traceability s
 
 ## Work item: doc-artifact-checker
 
-Status: active
+Status: done
 Linked proposal: SHIPLOG-PROP-0008
 Linked spec: SHIPLOG-SPEC-0010
 Linked ADR: none
@@ -55,7 +55,7 @@ Blocks: active-goal-checker
 Blocked by: policy-doc-artifact-ledger
 Branch: infra/check-doc-artifacts
 Issue:
-PR:
+PR: EffortlessMetrics/shiplog-swarm#29, EffortlessMetrics/shiplog#472
 
 ### Goal
 
@@ -98,3 +98,60 @@ Revert the checker PR and keep the support-tier proof command on
 
 This proves the document artifact ledger only. It does not prove active-goal
 manifests or make the source-of-truth stack a required CI gate.
+
+## Work item: active-goal-checker
+
+Status: active
+Linked proposal: SHIPLOG-PROP-0008
+Linked spec: SHIPLOG-SPEC-0010
+Linked ADR: none
+Blocks: support-tier-map
+Blocked by: doc-artifact-checker
+Branch: infra/check-goals
+Issue:
+PR: EffortlessMetrics/shiplog-swarm#30
+
+### Goal
+
+Add `cargo xtask check-goals` so the active Codex goal manifest can be
+validated directly instead of relying on chat memory or manual inspection.
+
+### Production delta
+
+`xtask` command, tests, support-tier proof command, `.codex/goals/active.toml`,
+and source-of-truth docs.
+
+### Non-goals
+
+No CI requirement change, no runtime product behavior changes, and no validation
+of legacy `.shiplog/goals/archive/` manifests.
+
+### Acceptance
+
+- `.codex/goals/active.toml` parses.
+- Goal and work-item statuses are recognized.
+- Work item IDs are unique.
+- At most one work item is active.
+- Proposal/spec references resolve through `policy/doc-artifacts.toml`.
+- Plan references are safe repo-relative paths and ledgered plan artifacts.
+- Ready/active work items carry proof commands.
+- Blocked work items name blockers.
+- Done work items carry proof commands or receipt refs.
+
+### Proof commands
+
+```bash
+cargo test -p xtask check_goals --locked
+cargo test -p xtask --test cli check_goals --locked
+cargo xtask check-goals
+git diff --check
+```
+
+### Rollback
+
+Revert the checker PR and keep active goal manifest validation manual.
+
+### Claim boundary
+
+This proves the active Codex goal manifest only. It does not make the
+source-of-truth stack a required CI gate or validate archived legacy goals.

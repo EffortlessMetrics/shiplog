@@ -15,6 +15,7 @@ Linked PRs:
 Support-tier impact: stabilizing
 Policy impact:
 - policy/doc-artifacts.toml
+- .codex/goals/active.toml
 
 ## Problem
 
@@ -39,7 +40,7 @@ Proposal and spec IDs resolve in `policy/doc-artifacts.toml`; active goal links 
 
 ## Test mapping
 
-`cargo xtask check-doc-artifacts`, `cargo xtask policy-report`, `cargo xtask check-policy-schemas`.
+`cargo xtask check-doc-artifacts`, `cargo xtask check-goals`, `cargo xtask policy-report`, `cargo xtask check-policy-schemas`.
 
 ## Implementation mapping
 

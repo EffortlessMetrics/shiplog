@@ -19,16 +19,39 @@ end_state = [
 
 [[work_item]]
 id = "docs-source-of-truth-scaffold"
-status = "active"
+status = "done"
 proposal = "SHIPLOG-PROP-0008"
 spec = "SHIPLOG-SPEC-0010"
 plan = "plans/0.10.0/implementation-plan.md"
 commands = ["git diff --check"]
+receipts = ["EffortlessMetrics/shiplog#457"]
 
 [[work_item]]
-id = "policy-doc-artifact-ledger"
-status = "ready"
+id = "doc-artifact-checker"
+status = "done"
 proposal = "SHIPLOG-PROP-0008"
 spec = "SHIPLOG-SPEC-0010"
 plan = "plans/0.10.0/implementation-plan.md"
-commands = ["cargo xtask policy-report", "git diff --check"]
+commands = [
+  "cargo test -p xtask check_doc_artifacts --locked",
+  "cargo test -p xtask --test cli check_doc_artifacts --locked",
+  "cargo xtask check-doc-artifacts",
+  "git diff --check",
+]
+receipts = [
+  "EffortlessMetrics/shiplog-swarm#29",
+  "EffortlessMetrics/shiplog#472",
+]
+
+[[work_item]]
+id = "active-goal-checker"
+status = "active"
+proposal = "SHIPLOG-PROP-0008"
+spec = "SHIPLOG-SPEC-0010"
+plan = "plans/0.10.0/implementation-plan.md"
+commands = [
+  "cargo test -p xtask check_goals --locked",
+  "cargo test -p xtask --test cli check_goals --locked",
+  "cargo xtask check-goals",
+  "git diff --check",
+]

@@ -47,6 +47,27 @@ source-of-truth ledger for proposals, specs, ADRs, and plans:
 Exits with non-zero if any finding. This is the dedicated proof command for
 the document artifact link support-tier surface.
 
+### `cargo xtask check-goals`
+
+Validates [`.codex/goals/active.toml`](../.codex/goals/active.toml), the
+Codex-facing execution-state manifest:
+
+- the active goal manifest exists and parses;
+- goal and work-item status values are recognized;
+- work-item IDs are unique;
+- at most one work item is `active`;
+- proposal and spec references resolve to artifact IDs in
+  [`policy/doc-artifacts.toml`](../policy/doc-artifacts.toml);
+- the plan reference is a safe repo-relative path, exists, and is ledgered as a
+  plan artifact;
+- the work-item ID is listed in the referenced implementation plan;
+- ready and active work items carry proof commands;
+- blocked work items name a blocker; and
+- done work items carry proof commands or receipt refs.
+
+Exits with non-zero if any finding. This is the dedicated proof command for
+the active-goal support-tier surface.
+
 ### `cargo xtask package-boundary`
 
 Verifies published vs dev-only crate classification. Delegates to
