@@ -2,6 +2,38 @@
 
 This file provides guidance for AI agents and code review automation (Factory Droid) working in this repository.
 
+## Development Control Plane
+
+Normal development now targets `EffortlessMetrics/shiplog-swarm`.
+
+Use `EffortlessMetrics/shiplog-swarm` for focused product, docs, tests, CI,
+policy, and cleanup PRs. Squash-merge normal swarm PRs after
+`Shiplog Rust Small Result` passes. Do not push directly to
+`shiplog-swarm/main`.
+
+`EffortlessMetrics/shiplog` remains the release/public source surface until an
+explicit release-authority cutover. It owns tags, crates.io publish, GitHub
+Releases, signing, release branches, release workflows, and security-sensitive
+token operations.
+
+When working from a checkout that has both remotes:
+
+```bash
+rtk git fetch origin --prune
+rtk git fetch swarm --prune
+rtk git switch -c <branch> swarm/main
+```
+
+Push normal development branches to `swarm` and open PRs against
+`EffortlessMetrics/shiplog-swarm/main`. Do not retarget an existing
+`EffortlessMetrics/shiplog` clone in place for new normal work; clone
+`shiplog-swarm` side-by-side when setting up a fresh agent or machine.
+
+Promotion from swarm back to source uses a regular merge-commit PR into
+`EffortlessMetrics/shiplog/main`, not a squash merge. A promotion PR should
+include the swarm head SHA, included swarm PRs, and proof that
+`Shiplog Rust Small Result` passed.
+
 ## Code Review Standards
 
 ### Finding Format
