@@ -101,6 +101,15 @@ jobs:
       - name: check-policy-schemas
         run: cargo xtask check-policy-schemas
 
+      - name: check-doc-artifacts
+        run: cargo xtask check-doc-artifacts
+
+      - name: check-goals
+        run: cargo xtask check-goals
+
+      - name: check-support-tiers
+        run: cargo xtask check-support-tiers
+
       - name: check-lint-policy (blocking)
         run: cargo xtask check-lint-policy --mode blocking-allowlist
 

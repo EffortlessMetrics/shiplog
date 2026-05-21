@@ -42,7 +42,7 @@ lanes:
 | `CI / Check (ubuntu-latest)` | `ci.yml` | Primary correctness gate |
 | `CI / Check (windows-latest)` | `ci.yml` | Cross-platform parity |
 | `CI / cargo-deny` | `ci.yml` | Dependency policy |
-| `CI / Policy gates` | `ci.yml` (added in PR #165) | Policy ledger enforcement: schemas + 10 blocking-allowlist file/lint/panic checks |
+| `CI / Policy gates` | `ci.yml` (added in PR #165, expanded for SHIPLOG-SPEC-0010) | Policy and source-of-truth enforcement: schemas, doc artifacts, active goals, support tiers, and blocking-allowlist file/lint/panic checks |
 | `pr-plan / forecast` | `pr-plan.yml` (added in PR #146; never enforced as required during v0.5.0) | LEM forecast + risk-pack receipt |
 
 The `CI / MSRV (1.95)` check previously appeared here; it was dropped
@@ -107,9 +107,8 @@ settings update was required.
 
 ## At PR #165 (Policy gates job)
 
-Added a `Policy gates` job to `ci.yml` that runs all 11 `cargo xtask
-check-*` policy ledger gates (`check-policy-schemas` plus 10
-`--mode blocking-allowlist` checks).
+Added a `Policy gates` job to `ci.yml` that runs `cargo xtask` policy
+ledger gates (`check-policy-schemas` plus the blocking-allowlist checks).
 
 | Required check | Action | Why |
 |---|---|---|
@@ -118,6 +117,19 @@ check-*` policy ledger gates (`check-policy-schemas` plus 10
 `CI / Policy gates` has been live since PR #165 merged; it is
 required-eligible but has not been added to branch-protection settings
 (branch protection is not enabled on `main`).
+
+## At SHIPLOG-SPEC-0010 source-of-truth CI wiring
+
+Expanded `CI / Policy gates` to also run the source-of-truth validators:
+
+```bash
+cargo xtask check-doc-artifacts
+cargo xtask check-goals
+cargo xtask check-support-tiers
+```
+
+This is not a required-check rename. The required-check candidate remains
+`CI / Policy gates`; only the commands inside that existing job expand.
 
 ## At PR #154 (bounded stochastic PR-fast lane)
 
