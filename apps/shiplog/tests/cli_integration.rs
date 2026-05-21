@@ -4881,8 +4881,10 @@ fn malformed_manual_journal_blocks_journal_repair_actions() -> CliTestResult {
     let tmp = TempDir::new()?;
     let out = tmp.path().join("out");
     let config_path = tmp.path().join("shiplog.toml");
-    let manual_events = tmp.path().join("manual_events.yaml");
+    let manual_dir = tmp.path().join("manual-dns-path");
+    let manual_events = manual_dir.join("manual_events.yaml");
     let repo_path = repo.path().display().to_string().replace('\\', "/");
+    std::fs::create_dir_all(&manual_dir)?;
 
     std::fs::write(
         &config_path,
@@ -4897,7 +4899,7 @@ include_merges = false
 
 [sources.manual]
 enabled = true
-events = "./manual_events.yaml"
+events = "./manual-dns-path/manual_events.yaml"
 "#
         ),
     )?;
