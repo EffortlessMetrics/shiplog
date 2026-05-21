@@ -32,7 +32,9 @@ Push normal development branches to `swarm` and open PRs against
 Promotion from swarm back to source uses a regular merge-commit PR into
 `EffortlessMetrics/shiplog/main`, not a squash merge. A promotion PR should
 include the swarm head SHA, included swarm PRs, and proof that
-`Shiplog Rust Small Result` passed.
+`Shiplog Rust Small Result` passed. Use
+[`plans/shiplog-swarm/promotion-runbook.md`](plans/shiplog-swarm/promotion-runbook.md)
+for the exact promotion sequence.
 
 ## Code Review Standards
 

@@ -5450,6 +5450,9 @@ fn classify_intake_repair_kind(source: &str, reason: &str) -> IntakeRepairKind {
     let reason = reason.to_ascii_lowercase();
     let identity_source = matches!(source.as_str(), "github" | "gitlab" | "jira" | "linear");
 
+    if source == "manual" && reason.contains("parse manual events yaml") {
+        return IntakeRepairKind::SetupRequired;
+    }
     if contains_any(
         &reason,
         &[

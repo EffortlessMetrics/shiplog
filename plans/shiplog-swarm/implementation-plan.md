@@ -620,7 +620,7 @@ Blocks: none
 Blocked by: none
 Branch: promote/swarm-YYYYMMDD-SHA
 Issue:
-PR:
+PR: EffortlessMetrics/shiplog-swarm#28
 
 ### Goal
 
@@ -628,11 +628,29 @@ Promote `shiplog-swarm/main` into `shiplog/main` by merge-commit PRs.
 
 ### Acceptance
 
+- `plans/shiplog-swarm/promotion-runbook.md` defines the repeatable promotion
+  path.
 - Promotion PR title uses `merge(swarm): promote shiplog-swarm through <sha>`.
 - Promotion PR is merged with a regular merge commit, not squash.
 - PR body lists swarm head, included swarm PRs, and proof.
 - Source-only release changes are synced back into `shiplog-swarm` before more
   normal development lands.
+
+### Receipt
+
+The promotion model has been exercised twice:
+
+```text
+EffortlessMetrics/shiplog#469:
+  swarm head: 3c318dbf661f0aa5fa1c9d0de3ebc2385441e04b
+  source merge: b21636703b3cd89113f75532312308772a10e5d5
+  result: regular merge commit; source post-merge routed CI and CI passed
+
+EffortlessMetrics/shiplog#470:
+  swarm head: aa4393b2c6eb9812bead86671353c32eabaa78c2
+  source merge: 138b1237cce3468941b702fa433aacc70d6e0234
+  result: regular merge commit; source post-merge routed CI and CI passed
+```
 
 ### Proof commands
 
@@ -642,6 +660,7 @@ git fetch swarm main --prune
 git merge-base origin/main swarm/main
 git log --oneline origin/main..swarm/main
 gh pr create --base main --head promote/swarm-YYYYMMDD-SHA
+git diff --check
 ```
 
 ### Rollback
