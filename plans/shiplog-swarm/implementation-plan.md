@@ -261,7 +261,7 @@ Blocks: branch-protection-enable
 Blocked by: routed-rust-small-workflow
 Branch: docs/swarm-routed-ci-proof
 Issue:
-PR: EffortlessMetrics/shiplog-swarm#18
+PR: EffortlessMetrics/shiplog-swarm#18, EffortlessMetrics/shiplog-swarm#16
 
 ### Goal
 
@@ -337,6 +337,31 @@ result: Shiplog Rust Small on CX43 remained queued and was cancelled
 normalized result: cancelled/failure after cancellation
 ```
 
+Same-repo dependabot PR #16 gave a second normal `pull_request` proof after
+the workflow fix and dependency compatibility patch:
+
+```text
+workflow: EM CI Routed Shiplog Rust
+run: 26226906591
+route: github
+reason: no_idle_runner
+trusted: true
+result: Shiplog Rust Small Result passed
+legacy CI: ubuntu, windows, policy, Droid, and smoke checks passed
+```
+
+The #16 squash merge also proved the `push` path on `shiplog-swarm/main`:
+
+```text
+workflow: EM CI Routed Shiplog Rust
+run: 26227654459
+swarm/main: 0b0afd4d23426b252b982d7f512bf4fdbcdd02d1
+route: github
+reason: no_idle_runner
+trusted: true
+result: Shiplog Rust Small Result passed
+```
+
 The local GitHub CLI token cannot inspect org self-hosted runner state:
 
 ```text
@@ -344,6 +369,7 @@ gh api orgs/EffortlessMetrics/actions/runners?per_page=100
 HTTP 403: runners and runner groups permission required
 ```
 
+Same-repo PR and push fallback proof now have multiple green receipts.
 Self-hosted CX53 proof passed. CX43 proof still needs an eligible runner.
 Fork-admission proof still needs a fork PR or equivalent event-level test.
 Branch protection must remain disabled until CX43 and fork-admission proof are
