@@ -1,14 +1,14 @@
-# SHIPLOG-SPEC-0010: Shiplog Swarm Cutover Contract
+# SHIPLOG-SPEC-0011: Shiplog Swarm Cutover Contract
 
 Status: proposed
 Owner: repo-infra/release
 Created: 2026-05-20
 Related proposal:
-[`SHIPLOG-PROP-0008-shiplog-swarm-dev-landing-zone`](../proposals/SHIPLOG-PROP-0008-shiplog-swarm-dev-landing-zone.md)
-Planned ADR:
-`SHIPLOG-ADR-0011-swarm-is-dev-landing-zone-not-release-surface`
-Planned implementation plan:
-`plans/shiplog-swarm/implementation-plan.md`
+[`SHIPLOG-PROP-0010-shiplog-swarm-dev-landing-zone`](../proposals/SHIPLOG-PROP-0010-shiplog-swarm-dev-landing-zone.md)
+Linked ADR:
+[`SHIPLOG-ADR-0011-swarm-is-dev-landing-zone-not-release-surface`](../adr/SHIPLOG-ADR-0011-swarm-is-dev-landing-zone-not-release-surface.md)
+Linked implementation plan:
+[`plans/shiplog-swarm/implementation-plan.md`](../../plans/shiplog-swarm/implementation-plan.md)
 
 ## Purpose
 
@@ -27,9 +27,14 @@ After cutover, normal development targets `shiplog-swarm/main`. During and after
 the initial cutover, `shiplog` remains the release surface until a later
 explicit release cutover says otherwise.
 
-This spec does not create the swarm repo, configure runners, enable branch
-protection, move machines, or execute release work. It defines the behavior that
-the follow-up implementation plan must prove.
+This spec does not configure runners, enable branch protection, move machines,
+or execute release work. It defines the behavior that the implementation plan
+must prove.
+
+Current state observed while writing this spec: `EffortlessMetrics/shiplog-swarm`
+is public, but `git merge-base origin/main swarm/main` did not return a commit
+from the release checkout. Its `main` was an orphan `Initialize repository`
+commit. That is a cutover blocker, not a usable promotion base.
 
 ## Scope
 
@@ -82,6 +87,33 @@ post-cutover development main
 `shiplog-swarm` must be seeded from `shiplog/main`. It must not be
 hand-recreated.
 
+## History And Promotion Contract
+
+`shiplog` and `shiplog-swarm` must share Git history before cutover:
+
+```bash
+git merge-base origin/main swarm/main
+```
+
+The command must print a commit. If it does not, `shiplog-swarm/main` must be
+reseeded from `shiplog/main` before agents land normal work there.
+
+Before cutover, direction is:
+
+```text
+shiplog/main -> shiplog-swarm/main
+```
+
+After cutover, direction is:
+
+```text
+shiplog-swarm/main -> shiplog/main
+```
+
+Normal development PRs into `shiplog-swarm/main` use squash merge. Promotion PRs
+from `shiplog-swarm/main` into `shiplog/main` use regular merge commits. Do not
+squash source-promotion PRs; the merge commit is the release/source checkpoint.
+
 ## Source-Divergence Boundary
 
 The cutover must not happen while source work is still ambiguous.
@@ -93,6 +125,7 @@ source PRs are merged, closed, or explicitly checkpointed
 release-bound source work is identified
 new development work stops targeting shiplog
 shiplog-swarm is resynced from shiplog/main
+common history is proven
 routed CI passes on synced shiplog-swarm/main
 ```
 
@@ -103,6 +136,7 @@ new normal development targets shiplog-swarm
 agents clone shiplog-swarm side-by-side
 agents do not retarget existing shiplog clones in place
 shiplog remains release authority until explicit release cutover
+shiplog receives periodic promotion merge commits from shiplog-swarm
 ```
 
 ## Runner Access Contract
@@ -248,6 +282,7 @@ The implementation plan must prove the lane in this order:
 6. Final source sync:
    - source PRs are drained or checkpointed;
    - `shiplog-swarm/main` is synced from `shiplog/main`;
+   - `git merge-base origin/main swarm/main` prints a commit;
    - routed CI passes on synced `shiplog-swarm/main`.
 
 Branch protection is allowed only after this sequence is recorded.
@@ -276,6 +311,7 @@ Release/publish/signing remains on shiplog until explicit release cutover.
 The cutover must fail closed when:
 
 - `shiplog-swarm` is not a clean import of `shiplog/main`;
+- `shiplog-swarm/main` and `shiplog/main` do not share a merge base;
 - source PRs are neither drained nor checkpointed;
 - fork PRs can reach self-hosted runners;
 - branch protection requires conditional implementation jobs;
@@ -287,6 +323,9 @@ The cutover must fail closed when:
 ## Acceptance Criteria
 
 - The swarm repo is public and seeded from `shiplog/main`.
+- `git merge-base origin/main swarm/main` returns a commit before cutover.
+- Normal development PRs squash in `shiplog-swarm`.
+- Promotion PRs from `shiplog-swarm` into `shiplog` use merge commits.
 - Runner and router token access are scoped to `shiplog-swarm`.
 - Same-repo PRs and fork PRs have separate admission behavior.
 - `Shiplog Rust Small Result` is the only initial branch-protection check.
