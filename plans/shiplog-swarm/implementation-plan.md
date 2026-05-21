@@ -2,7 +2,7 @@
 
 ## Current Preflight
 
-Status: shared history repaired; routed CI workflow in progress
+Status: shared history repaired; routed CI workflow landed; proof in progress
 Linked proposal: SHIPLOG-PROP-0010
 Linked spec: SHIPLOG-SPEC-0011
 Linked ADR: SHIPLOG-ADR-0011
@@ -167,7 +167,7 @@ This proves merge policy only. It does not prove routed CI or branch protection.
 
 ## Work item: routed-rust-small-workflow
 
-Status: active
+Status: done
 Linked proposal: SHIPLOG-PROP-0010
 Linked spec: SHIPLOG-SPEC-0011
 Linked ADR: SHIPLOG-ADR-0011
@@ -175,7 +175,7 @@ Blocks: routed-ci-proof
 Blocked by: none
 Branch: ci/routed-shiplog-rust-small
 Issue:
-PR: pending
+PR: EffortlessMetrics/shiplog-swarm#17
 
 ### Goal
 
@@ -211,6 +211,20 @@ Shiplog Rust Small Result
 - GitHub-hosted fallback runs the same proof as the self-hosted route.
 - The result job succeeds only when the selected implementation job succeeds.
 
+### Receipt
+
+Landed in `shiplog-swarm` PR #17 on 2026-05-21.
+
+```text
+swarm/main: 8f01ae2e4b8a242f954136eecde319ed0c4fea81
+pull_request run: 26214995888
+post-merge push run: 26215587591
+manual dispatch run: 26215622183
+manual dispatch route: github
+manual dispatch reason: no_idle_runner
+manual dispatch result: Shiplog Rust Small Result passed
+```
+
 ### Proof commands
 
 ```bash
@@ -239,15 +253,15 @@ This proves workflow shape, not final cutover or branch protection.
 
 ## Work item: routed-ci-proof
 
-Status: ready
+Status: active
 Linked proposal: SHIPLOG-PROP-0010
 Linked spec: SHIPLOG-SPEC-0011
 Linked ADR: SHIPLOG-ADR-0011
 Blocks: branch-protection-enable
 Blocked by: routed-rust-small-workflow
-Branch:
+Branch: docs/swarm-routed-ci-proof
 Issue:
-PR:
+PR: EffortlessMetrics/shiplog-swarm#18
 
 ### Goal
 
@@ -262,6 +276,78 @@ Record manual, PR, fallback, and fork-admission proof for the routed lane.
 - All enabled self-hosted runners busy routes to GitHub-hosted.
 - Fork PRs stay off self-hosted runners.
 - Result output includes router target, reason, repo, workflow, and run ID.
+
+### Current receipts
+
+Manual dispatch on `shiplog-swarm/main` passed on 2026-05-21:
+
+```text
+workflow: EM CI Routed Shiplog Rust
+run: 26215622183
+route: github
+reason: no_idle_runner
+trusted: true
+result: Shiplog Rust Small Result passed
+```
+
+Same-repo PR #18 proved that trusted pull requests can select self-hosted
+runners:
+
+```text
+workflow: EM CI Routed Shiplog Rust
+run: 26221468335
+route: cx53
+reason: cx53_idle
+trusted: true
+result: blocked; CX53 failed before Rust install because TMPDIR was created
+        after the toolchain step
+```
+
+After moving scratch preparation before the Rust toolchain step, the same PR
+passed through GitHub-hosted fallback:
+
+```text
+workflow: EM CI Routed Shiplog Rust
+run: 26222097991
+route: github
+reason: no_idle_runner
+trusted: true
+result: Shiplog Rust Small Result passed
+```
+
+Forced CX53 proof passed on the same branch:
+
+```text
+workflow: EM CI Routed Shiplog Rust
+run: 26222651751
+route: cx53
+reason: forced_cx53
+result: Shiplog Rust Small on CX53 passed
+normalized result: passed
+```
+
+Forced CX43 proof did not complete:
+
+```text
+workflow: EM CI Routed Shiplog Rust
+run: 26222929499
+route: cx43
+reason: forced_cx43
+result: Shiplog Rust Small on CX43 remained queued and was cancelled
+normalized result: cancelled/failure after cancellation
+```
+
+The local GitHub CLI token cannot inspect org self-hosted runner state:
+
+```text
+gh api orgs/EffortlessMetrics/actions/runners?per_page=100
+HTTP 403: runners and runner groups permission required
+```
+
+Self-hosted CX53 proof passed. CX43 proof still needs an eligible runner.
+Fork-admission proof still needs a fork PR or equivalent event-level test.
+Branch protection must remain disabled until CX43 and fork-admission proof are
+complete, or until the cutover contract is amended to make CX43 advisory.
 
 ### Proof commands
 
