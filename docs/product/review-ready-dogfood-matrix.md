@@ -1,9 +1,11 @@
 # Review-ready dogfood matrix
 
-> **Audience:** post-0.8 release hold, product soak, and targeted test planning.
-> **Status:** 0.9 remains paused. This matrix does not approve tag, publish, or
-> GitHub release execution.
-> **Companion docs:** [`docs/release/0.9.0-release-hold.md`](../release/0.9.0-release-hold.md),
+> **Audience:** post-0.8 product soak, release-resume evidence, and targeted
+> test planning.
+> **Status:** 0.9 release resume is approved; final merged-main preflight, tag,
+> publish, GitHub release publication, and install smoke are still separate
+> release-execution steps.
+> **Companion docs:** [`docs/release/0.9.0-release-hold-lifted.md`](../release/0.9.0-release-hold-lifted.md),
 > [`docs/release/0.9.0-readiness.md`](../release/0.9.0-readiness.md),
 > [`docs/release/0.9.0-release-decision.md`](../release/0.9.0-release-decision.md),
 > [`docs/guides/review-ready-packet.md`](../guides/review-ready-packet.md),
@@ -32,9 +34,9 @@ release-install smoke.
 
 ## Release posture
 
-`v0.8.0` is the latest shipped release. The review-ready packet work on `main`
-is an unreleased 0.9 candidate, and release execution stays blocked while the
-hold receipt exists.
+`v0.8.0` remains the latest shipped release until 0.9 publish completes. The
+review-ready packet work on `main` is part of the approved 0.9 release scope,
+and final preflight still precedes tag, publish, and GitHub release execution.
 
 Do not use this matrix as permission to run:
 
@@ -90,17 +92,17 @@ The next test PR should prefer small assertions around these gaps:
 
 ## Release decision use
 
-Use this matrix to decide whether the review-ready loop has been dogfooded
-enough to ask for a release decision. It is not itself the release decision.
+Use this matrix to inspect how the review-ready loop was dogfooded. It is not
+itself release execution.
 
-Current decision: keep the `v0.9.0` hold active (#398, #410, #422, #440, and
-#460).
+Current decision: resume `v0.9.0` after owner approval and final merged-main
+preflight (#398, #410, #422, #440, #460, and the release-resume PR).
 
 The matrix is green enough to consider resuming 0.9 only when:
 
 - every row has either targeted test proof or an explicit accepted caveat;
 - no P0/P1 UX bug remains in the core review-ready loop;
-- release-hold receipts are current;
+- lifted release-hold receipts are current;
 - `v0.9.0` still has not been tagged, published to crates.io, or released on
   GitHub;
 - the owner explicitly approves release execution.

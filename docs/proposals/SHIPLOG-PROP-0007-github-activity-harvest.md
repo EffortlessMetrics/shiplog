@@ -434,9 +434,9 @@ Existing proof surfaces to link from future specs and plans:
 - [`docs/schemas/review-loop-status-v1.md`](../schemas/review-loop-status-v1.md):
   the current agent-facing status contract that future activity status should
   compose with rather than replace.
-- [`docs/release/0.9.0-release-hold.md`](../release/0.9.0-release-hold.md):
-  the active release hold. This proposal does not approve `v0.9.0` release
-  execution.
+- [`docs/release/0.9.0-release-hold-lifted.md`](../release/0.9.0-release-hold-lifted.md):
+  the lifted release hold receipt. This proposal did not approve `v0.9.0`
+  release execution by itself.
 
 Future proof should include:
 

@@ -40,7 +40,7 @@ setup -> status -> intake -> repair -> rerun -> diff -> share explain
 It is for individual contributors, tech leads, and anyone who wants a
 repeatable evidence trail for self-reviews, promo packets, or brag documents.
 
-## What works in the 0.9 candidate
+## What works in 0.9
 
 | Surface | Status | Command |
 |---------|--------|---------|
@@ -56,19 +56,15 @@ repeatable evidence trail for self-reviews, promo packets, or brag documents.
 | Share posture | Ready | `shiplog share explain manager --latest` |
 | Advanced GitHub harvest | Ready | `shiplog github activity plan` |
 
-The current published release on crates.io is still 0.8.0. The 0.9 work is on
-`main` as a prepared but held candidate; do not treat this README as release
-approval.
-
 ## Install
 
-Install the latest published release from crates.io:
+Install from crates.io:
 
 ```bash
 cargo install shiplog --locked
 ```
 
-Try the 0.9 candidate from a source checkout:
+Build from a source checkout:
 
 ```bash
 git clone https://github.com/EffortlessMetrics/shiplog.git
@@ -174,7 +170,7 @@ deterministic ordering, no secret values, and no Markdown scraping.
 | Evidence repair | [docs/guides/evidence-repair-loop.md](docs/guides/evidence-repair-loop.md) |
 | Packet interpretation and share posture | [docs/guides/review-ready-packet.md](docs/guides/review-ready-packet.md) |
 | Full configuration reference | [docs/config-reference.md](docs/config-reference.md) |
-| 0.9 release readiness and hold | [docs/release/0.9.0-readiness.md](docs/release/0.9.0-readiness.md) |
+| 0.9 release readiness | [docs/release/0.9.0-readiness.md](docs/release/0.9.0-readiness.md) |
 | Changelog | [CHANGELOG.md](CHANGELOG.md) |
 
 Machine-readable contracts:

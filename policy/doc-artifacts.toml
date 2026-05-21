@@ -1,4 +1,7 @@
 schema_version = 1
+policy = "doc-artifacts"
+owner = "repo-infra"
+status = "advisory"
 
 [[artifact]]
 id = "SHIPLOG-PROP-0008"

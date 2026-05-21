@@ -11,13 +11,13 @@ This roadmap is organized by product posture, not calendar date.
   Historical implementation crates remain historical artifacts; internal seams
   now live as modules.
 
-## Held Candidate
+## Release Candidate
 
-`v0.9.0` is prepared but held. Do not tag, publish, create a GitHub release,
-dispatch release workflow, or run release-install smoke without explicit owner
-approval and current preflight.
+`v0.9.0` is approved for release resume. Do not tag, publish, create a GitHub
+release, dispatch release workflow, or run release-install smoke until the
+release-resume PR is merged and current final preflight passes from `main`.
 
-Candidate scope on `main`:
+Release scope on `main`:
 
 - **Review-ready packet quality** — Packet Readiness, evidence strength,
   receipt-backed claim candidates, missing-context prompts, share posture, and
@@ -28,6 +28,9 @@ Candidate scope on `main`:
 - **Review-loop Status** — `status --latest` and `status --latest --json` join
   setup, latest run, packet readiness, source state, repair, diff, share
   blockers, next actions, and receipt refs into a read-only cockpit.
+- **GitHub activity harvest** — `github activity plan`, `scout`, profile
+  `run --resume`, `status`, `report`, and `merge` make long-history GitHub
+  evidence collection budgeted, resumable, and receipt-backed.
 - **Release-facing docs** — changelog, README, crate README, readiness, handoff,
   guides, schemas, matrices, and transcripts now tell one loop story:
   setup, status, intake, repair, rerun, diff, share explain.
@@ -67,6 +70,6 @@ These are future lanes, not 0.9 release promises.
 
 See:
 
-- [`docs/release/0.9.0-release-hold.md`](docs/release/0.9.0-release-hold.md)
+- [`docs/release/0.9.0-release-hold-lifted.md`](docs/release/0.9.0-release-hold-lifted.md)
 - [`docs/release/0.9.0-readiness.md`](docs/release/0.9.0-readiness.md)
 - [`docs/release/0.9.0-release-decision.md`](docs/release/0.9.0-release-decision.md)

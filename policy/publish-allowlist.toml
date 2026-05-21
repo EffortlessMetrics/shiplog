@@ -3,9 +3,9 @@ policy = "publish-allowlist"
 owner = "release"
 status = "blocking"
 
-# 0.9 is an unreleased candidate under the post-0.8 release hold.
-# This marker supports version and boundary audits only; it is not release
-# execution approval. See docs/release/0.9.0-release-hold.md.
+# 0.9 is approved for release resume after the post-0.8 hold.
+# This marker supports version and boundary audits only; final release execution
+# still requires merged-main preflight. See docs/release/0.9.0-release-hold-lifted.md.
 #
 # Workspace membership is not publish eligibility. Release scripts must publish
 # only the packages listed in publish.default_order. New public crates require

@@ -138,8 +138,8 @@ fn changelog_curates_0_9_as_review_loop_cockpit_release_notes() {
 
     let unreleased = section_between(&doc, "## [Unreleased]", "## [0.9.0]");
     assert!(
-        unreleased.contains("No user-facing changes yet after the held 0.9.0 candidate refresh."),
-        "Unreleased should stay empty after the 0.9 candidate refresh"
+        unreleased.contains("No user-facing changes yet after 0.9.0."),
+        "Unreleased should stay empty after 0.9.0"
     );
     assert!(
         !unreleased.contains("#424")
@@ -192,7 +192,8 @@ fn changelog_curates_0_9_as_review_loop_cockpit_release_notes() {
         "review-loop guide",
         "Key receipts: #307-#319, #337-#398, #399-#422, #424-#436, #444-#455, #460.",
         "Redaction correctness receipt: #310.",
-        "Release execution is still paused",
+        "Release resume receipt",
+        "owner approval was recorded on 2026-05-20",
     ] {
         assert!(
             candidate.contains(needle),
@@ -2300,7 +2301,7 @@ fn root_readme_documents_0_9_review_loop_front_door() {
         "crates.io downloads",
         "MSRV 1.95",
         "Review readiness with receipts: setup, status, intake, repair, rerun, diff, and share safely.",
-        "What works in the 0.9 candidate",
+        "What works in 0.9",
         "shiplog turns work evidence into a review-readiness loop",
         "shiplog init --guided",
         "shiplog doctor --setup",
@@ -2589,7 +2590,7 @@ fn guided_setup_doctor_guide_documents_setup_flow() {
 fn guided_setup_dogfood_matrix_documents_setup_control_plane() {
     let root = repo_root();
     let matrix_path = root.join("docs/product/setup-readiness-dogfood-matrix.md");
-    let hold_path = root.join("docs/release/0.9.0-release-hold.md");
+    let hold_path = root.join("docs/release/0.9.0-release-hold-lifted.md");
     let readiness_path = root.join("docs/release/0.9.0-readiness.md");
 
     let matrix = normalize_newlines(
@@ -2603,12 +2604,12 @@ fn guided_setup_dogfood_matrix_documents_setup_control_plane() {
 
     assert!(
         hold.contains("setup-readiness dogfood matrix") && readiness.contains("#411"),
-        "release hold/readiness docs should link the setup-readiness dogfood matrix without lifting the hold"
+        "lifted hold/readiness docs should link the setup-readiness dogfood matrix"
     );
 
     for needle in [
-        "0.9 remains paused",
-        "does not approve tag, publish",
+        "0.9 release resume is approved",
+        "release-install smoke remain separate",
         "manual `release.yml` dispatch",
         "Setup readiness is a prerequisite signal",
         "source freshness",
@@ -2645,8 +2646,8 @@ fn guided_setup_dogfood_matrix_documents_setup_control_plane() {
         "manager/public share blocked consistently",
         "doctor --setup --json",
         "without scraping text",
-        "not itself the release decision",
-        "Current decision: keep the `v0.9.0` hold active (#398, #410, #422, #440, and\n#460).",
+        "itself release execution",
+        "Current decision: resume `v0.9.0` after owner approval and final merged-main\npreflight (#398, #410, #422, #440, #460, and the release-resume PR).",
         "owner explicitly approves any release execution",
     ] {
         assert!(
@@ -2767,8 +2768,8 @@ fn github_activity_harvest_proposal_defines_actor_first_budgeted_workflow() {
         "repository crawling",
         "No token values should ever appear",
         "SHIPLOG-ADR-0010-github-harvest-is-actor-first-owner-filtered",
-        "does not approve",
-        "`v0.9.0` release",
+        "did not approve",
+        "release execution by itself",
     ] {
         assert!(
             doc.contains(needle),
@@ -3191,11 +3192,12 @@ fn review_loop_status_adr_keeps_status_receipt_derived() {
 }
 
 #[test]
-fn release_hold_guard_blocks_held_0_9_tag() {
+fn release_hold_guard_allows_resumed_0_9_tag() {
     let root = repo_root();
     let workflow_path = root.join(".github/workflows/release.yml");
     let guard_path = root.join("scripts/check-release-hold.sh");
-    let hold_path = root.join("docs/release/0.9.0-release-hold.md");
+    let active_hold_path = root.join("docs/release/0.9.0-release-hold.md");
+    let lifted_hold_path = root.join("docs/release/0.9.0-release-hold-lifted.md");
     let readiness_path = root.join("docs/release/0.9.0-readiness.md");
     let process_allowlist_path = root.join("policy/process-allowlist.toml");
 
@@ -3203,8 +3205,12 @@ fn release_hold_guard_blocks_held_0_9_tag() {
         .unwrap_or_else(|err| panic!("read {}: {err}", workflow_path.display()));
     let guard = std::fs::read_to_string(&guard_path)
         .unwrap_or_else(|err| panic!("read {}: {err}", guard_path.display()));
-    let hold = std::fs::read_to_string(&hold_path)
-        .unwrap_or_else(|err| panic!("read {}: {err}", hold_path.display()));
+    assert!(
+        !active_hold_path.exists(),
+        "release-resume PR should remove the active v0.9.0 hold path"
+    );
+    let hold = std::fs::read_to_string(&lifted_hold_path)
+        .unwrap_or_else(|err| panic!("read {}: {err}", lifted_hold_path.display()));
     let readiness = std::fs::read_to_string(&readiness_path)
         .unwrap_or_else(|err| panic!("read {}: {err}", readiness_path.display()));
     let process_allowlist = std::fs::read_to_string(&process_allowlist_path)
@@ -3268,20 +3274,20 @@ fn release_hold_guard_blocks_held_0_9_tag() {
         return;
     }
 
-    let blocked = StdCommand::new("bash")
+    let resumed = StdCommand::new("bash")
         .current_dir(&root)
         .arg("scripts/check-release-hold.sh")
         .arg("v0.9.0")
         .output()
         .expect("run release hold guard for v0.9.0");
     assert!(
-        !blocked.status.success(),
-        "release hold guard should block v0.9.0 while hold receipt exists"
+        resumed.status.success(),
+        "release hold guard should allow v0.9.0 after the hold receipt path is lifted"
     );
-    let blocked_stderr = String::from_utf8_lossy(&blocked.stderr);
+    let resumed_stdout = String::from_utf8_lossy(&resumed.stdout);
     assert!(
-        blocked_stderr.contains("release hold blocks v0.9.0"),
-        "blocked stderr should explain the held release tag. stderr:\n{blocked_stderr}"
+        resumed_stdout.contains("release hold check passed for v0.9.0"),
+        "allowed stdout should explain the resumed release tag. stdout:\n{resumed_stdout}"
     );
 
     let missing_tag = StdCommand::new("bash")
@@ -3334,7 +3340,7 @@ fn release_hold_guard_blocks_held_0_9_tag() {
 #[test]
 fn release_hold_docs_record_post_0_8_soak_receipts() {
     let root = repo_root();
-    let hold_path = root.join("docs/release/0.9.0-release-hold.md");
+    let hold_path = root.join("docs/release/0.9.0-release-hold-lifted.md");
     let readiness_path = root.join("docs/release/0.9.0-readiness.md");
 
     let hold = std::fs::read_to_string(&hold_path)
@@ -3370,8 +3376,8 @@ fn release_hold_docs_record_post_0_8_soak_receipts() {
     }
 
     for needle in [
-        "do not lift the release hold",
-        "not release approval",
+        "release-resume evidence",
+        "lifted release-hold audit aid",
         "shiplog open packet --latest --print-path",
         "shiplog repair diff --latest",
         "shiplog share explain manager",
@@ -3437,7 +3443,7 @@ fn release_hold_docs_record_post_0_8_soak_receipts() {
         "shiplog doctor --setup",
         "shiplog sources status",
         "shiplog init --guided",
-        "unreleased candidate scope",
+        "0.9 scope",
         "Review-loop Status",
         "shiplog status --latest",
         "shiplog status --latest --json",
@@ -3457,7 +3463,7 @@ fn release_hold_docs_record_post_0_8_soak_receipts() {
         "Share redaction correctness",
         "HMAC-SHA256",
         "Release-facing communication",
-        "Candidate value; not release approval",
+        "Core 0.9 release value",
         "Review Loop Cockpit Readiness",
     ] {
         assert!(
@@ -3468,15 +3474,17 @@ fn release_hold_docs_record_post_0_8_soak_receipts() {
 }
 
 #[test]
-fn release_decision_keeps_0_9_hold_without_execution() {
+fn release_decision_records_0_9_resume_without_claiming_execution() {
     let root = repo_root();
     let decision_path = root.join("docs/release/0.9.0-release-decision.md");
-    let hold_path = root.join("docs/release/0.9.0-release-hold.md");
+    let hold_path = root.join("docs/release/0.9.0-release-hold-lifted.md");
     let readiness_path = root.join("docs/release/0.9.0-readiness.md");
     let matrix_path = root.join("docs/product/review-ready-dogfood-matrix.md");
 
-    let decision = std::fs::read_to_string(&decision_path)
-        .unwrap_or_else(|err| panic!("read {}: {err}", decision_path.display()));
+    let decision = normalize_newlines(
+        &std::fs::read_to_string(&decision_path)
+            .unwrap_or_else(|err| panic!("read {}: {err}", decision_path.display())),
+    );
     let hold = std::fs::read_to_string(&hold_path)
         .unwrap_or_else(|err| panic!("read {}: {err}", hold_path.display()));
     let readiness = std::fs::read_to_string(&readiness_path)
@@ -3487,15 +3495,15 @@ fn release_decision_keeps_0_9_hold_without_execution() {
     );
 
     for needle in [
-        "**Decision:** keep hold",
+        "**Decision:** resume release",
         "Guided Setup / Doctor",
         "Review-loop Status",
         "GitHub activity harvest",
         "redaction correctness",
-        "Do not tag, publish to crates.io, create a GitHub release",
-        "dispatch the release",
-        "A. Keep hold after GitHub activity harvest and redaction correctness",
-        "B. Resume 0.9 release after final preflight",
+        "Owner approval to proceed with `v0.9.0` release execution was recorded on\n2026-05-20",
+        "does not claim release execution has already happened",
+        "A. Resume 0.9 release after final preflight",
+        "B. Keep the 0.9 hold active",
         "C. Split Guided Setup / Doctor, Review-loop Status, or GitHub activity harvest to 0.10",
         "#390",
         "#397",
@@ -3532,18 +3540,18 @@ fn release_decision_keeps_0_9_hold_without_execution() {
         "#455",
         "#460",
         "#310",
-        "owner approval and final release preflight are still missing",
-        "post-harvest release decision",
-        "feature-complete enough to consider a release-resume PR",
+        "owner approval is now recorded",
+        "release-resume PR",
+        "feature-complete enough to release",
         "Owner explicitly approves release execution",
-        "not met",
+        "met",
         "crates.io latest remains `shiplog = \"0.8.0\"`",
         "scripts/check-release-hold.sh",
         "owner_approved_release_execution",
-        "final release preflight has not been rerun",
-        "candidate is represented by review-ready",
+        "final release preflight must run after this PR merges",
+        "release is represented by review-ready",
         "Review-loop Status, GitHub activity",
-        "HMAC redaction correctness",
+        "HMAC-SHA256",
         "release-facing docs",
         "Do not extend Guided Setup / Doctor, Review-loop Status, or GitHub activity",
     ] {
@@ -3558,9 +3566,9 @@ fn release_decision_keeps_0_9_hold_without_execution() {
             && readiness.contains("0.9.0-release-decision.md")
             && matrix.contains("0.9.0-release-decision.md")
             && matrix.contains(
-                "Current decision: keep the `v0.9.0` hold active (#398, #410, #422, #440, and\n#460)."
+                "Current decision: resume `v0.9.0` after owner approval and final merged-main\npreflight (#398, #410, #422, #440, #460, and the release-resume PR)."
             ),
-        "hold, readiness, and matrix docs should link the release decision without lifting the hold"
+        "lifted hold, readiness, and matrix docs should link the release decision without claiming execution"
     );
 }
 
@@ -3569,7 +3577,7 @@ fn review_ready_loop_transcript_records_final_dogfood() {
     let root = repo_root();
     let transcript_path = root.join("docs/product/review-ready-loop-transcript.md");
     let matrix_path = root.join("docs/product/review-ready-dogfood-matrix.md");
-    let hold_path = root.join("docs/release/0.9.0-release-hold.md");
+    let hold_path = root.join("docs/release/0.9.0-release-hold-lifted.md");
     let readiness_path = root.join("docs/release/0.9.0-readiness.md");
 
     let transcript = std::fs::read_to_string(&transcript_path)
@@ -3664,7 +3672,7 @@ fn review_loop_status_transcript_records_status_cockpit_dogfood() {
 fn review_ready_dogfood_matrix_documents_soak_flows() {
     let root = repo_root();
     let matrix_path = root.join("docs/product/review-ready-dogfood-matrix.md");
-    let hold_path = root.join("docs/release/0.9.0-release-hold.md");
+    let hold_path = root.join("docs/release/0.9.0-release-hold-lifted.md");
     let readiness_path = root.join("docs/release/0.9.0-readiness.md");
 
     let matrix = std::fs::read_to_string(&matrix_path)
@@ -3676,12 +3684,12 @@ fn review_ready_dogfood_matrix_documents_soak_flows() {
 
     assert!(
         hold.contains("review-ready dogfood matrix") && readiness.contains("#391"),
-        "release hold/readiness docs should link the dogfood matrix without lifting the hold"
+        "lifted hold/readiness docs should link the dogfood matrix"
     );
 
     for needle in [
-        "0.9 remains paused",
-        "does not approve tag, publish",
+        "0.9 release resume is approved",
+        "tag, publish, and GitHub release execution",
         "GitHub release execution",
         "git tag v0.9.0",
         "cargo publish -p shiplog --locked",
@@ -3711,7 +3719,7 @@ fn review_ready_dogfood_matrix_documents_soak_flows() {
         "hand off to `repair diff` before planning again",
         "no-write surfaces remain no-write",
         "repair diff cannot clear provider repair items without provider evidence",
-        "not itself the release decision",
+        "itself release execution",
         "owner explicitly approves release execution",
     ] {
         assert!(

@@ -1,11 +1,12 @@
 # Setup-readiness dogfood matrix
 
 > **Audience:** Guided Setup / Doctor hardening, agent control-plane planning,
-> and release-hold review.
-> **Status:** 0.9 remains paused. This matrix does not approve tag, publish,
-> GitHub release creation, release workflow dispatch, or release-install smoke.
+> and release-resume review.
+> **Status:** 0.9 release resume is approved; final merged-main preflight, tag,
+> publish, GitHub release creation, release workflow dispatch, and
+> release-install smoke remain separate release-execution steps.
 > **Companion docs:**
-> [`docs/release/0.9.0-release-hold.md`](../release/0.9.0-release-hold.md),
+> [`docs/release/0.9.0-release-hold-lifted.md`](../release/0.9.0-release-hold-lifted.md),
 > [`docs/release/0.9.0-readiness.md`](../release/0.9.0-readiness.md),
 > [`docs/release/0.9.0-release-decision.md`](../release/0.9.0-release-decision.md),
 > [`docs/guides/guided-setup-doctor.md`](../guides/guided-setup-doctor.md),
@@ -15,7 +16,7 @@
 This matrix turns #399-#410 into a control-plane ledger for setup readiness.
 It is not a test harness and it is not release approval. It records which setup
 flows are already covered, which still need proof, and which caveats are
-accepted for the paused 0.9 candidate.
+accepted for 0.9.
 
 ## Release Proof Map
 
@@ -37,8 +38,8 @@ release-install smoke.
 ## Release posture
 
 `v0.8.0` is the latest shipped release. The review-ready packet and Guided
-Setup / Doctor work on `main` are an unreleased 0.9 candidate. Release
-execution stays blocked while the hold receipt exists.
+Setup / Doctor work on `main` is part of the approved 0.9 release scope. Final
+preflight still precedes tag, publish, and GitHub release execution.
 
 Do not use this matrix as permission to run:
 
@@ -108,15 +109,15 @@ setup state as evidence state:
 
 The next implementation PRs should keep this ledger narrow:
 
-- release-resume proof only after owner approval, if the hold is later lifted.
+- final release-resume proof after owner approval and before tagging.
 
 ## Release decision use
 
-Use this matrix to decide what setup readiness still needs proof before any
-future 0.9 release-resume discussion. It is not itself the release decision.
+Use this matrix to inspect setup-readiness proof before final 0.9 preflight. It
+is not itself release execution.
 
-Current decision: keep the `v0.9.0` hold active (#398, #410, #422, #440, and
-#460).
+Current decision: resume `v0.9.0` after owner approval and final merged-main
+preflight (#398, #410, #422, #440, #460, and the release-resume PR).
 
 The setup lane is ready for a release posture decision only when:
 

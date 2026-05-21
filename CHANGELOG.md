@@ -7,9 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No user-facing changes yet after the held 0.9.0 candidate refresh.
+No user-facing changes yet after 0.9.0.
 
-## [0.9.0] - 2026-XX-XX (unreleased candidate)
+## [0.9.0] - 2026-05-20
 
 shiplog 0.9.0 is the **review-loop cockpit release**.
 
@@ -75,9 +75,7 @@ API cost.
   repaired reruns route toward diff before more planning.
 - Share flows fail closed and explain posture before rendering manager or public
   packets.
-- Workspace package versions moved from `0.8.0` to `0.9.0` as candidate
-  metadata only; release execution remains held until explicit owner approval
-  and current preflight exist.
+- Workspace package versions moved from `0.8.0` to `0.9.0`.
 - `shiplog github activity plan` now emits executable `next_actions` instead of
   a placeholder, so agents can follow the planned harvest lifecycle without
   scraping prose.
@@ -105,19 +103,23 @@ API cost.
   completion audit (#444-#455, #460).
 - Added the review-loop status transcript (#434), recurring review-loop guide,
   and README/front-door alignment so status is taught as the recurring cockpit.
-- Reworked the root README as the 0.9 product front door: problem, candidate
+- Reworked the root README as the 0.9 product front door: problem,
   surfaces, install paths, setup, first packet, repair/share, status at a
   glance, docs map, safety boundaries, and public-surface summary (#438).
 - Tightened the crates.io README into an install-and-first-loop page with
   command highlights, read/write posture, agent surfaces, docs links, and
   safety boundaries (#439).
 - Updated 0.9 release readiness, release hold, release decision, and handoff
-  docs so the held candidate is framed as the review-loop cockpit release with
+  docs so the 0.9 scope is framed as the review-loop cockpit release with
   status human/JSON, schema, consistency proof, safe-next-action proof,
   dogfood transcript, recurring guide, and README alignment (#440).
 - Refreshed release-facing docs after GitHub activity harvest and HMAC
   redaction correctness so readiness, hold, decision, and handoff docs include
   #310 and #444-#455/#460 without lifting the release hold.
+- Recorded owner approval for `v0.9.0` release execution, moved the release
+  hold receipt out of the guard path, and refreshed the release decision and
+  handoff docs for final merged-main preflight before tag/publish/release
+  execution.
 - Aligned the guide map around the status-first workflow: recurring review loop
   as the flagship guide, rapid/setup/repair/review-ready guide cross-links,
   setup/status schema links, roadmap/install freshness, and release-proof map
@@ -127,14 +129,14 @@ API cost.
   checked-in `ripr+` Shields endpoint so the badge link is not broken (#443).
 - Kept detailed post-0.8 soak and release-hold receipts in
   [`docs/release/0.9.0-readiness.md`](docs/release/0.9.0-readiness.md) and
-  [`docs/release/0.9.0-release-hold.md`](docs/release/0.9.0-release-hold.md).
+  [`docs/release/0.9.0-release-hold-lifted.md`](docs/release/0.9.0-release-hold-lifted.md).
 
 Key receipts: #307-#319, #337-#398, #399-#422, #424-#436, #444-#455, #460.
 Redaction correctness receipt: #310.
 
-Release execution is still paused: do not tag, publish to crates.io, create a
-GitHub release, dispatch release workflows, or run release-install smoke for
-`v0.9.0` while the release hold remains active.
+Release resume receipt: owner approval was recorded on 2026-05-20. Final tag,
+crates.io publish, GitHub release publication, and install smoke remain
+post-merge release-execution steps.
 
 ## [0.8.0] - 2026-05-15
 
@@ -696,7 +698,8 @@ rollout map and the 18-PR ladder (#140–#157).
 - Basic workspace configuration with Cargo
 - MIT/Apache-2.0 dual licensing
 
-[Unreleased]: https://github.com/EffortlessMetrics/shiplog/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/EffortlessMetrics/shiplog/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/EffortlessMetrics/shiplog/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/EffortlessMetrics/shiplog/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/EffortlessMetrics/shiplog/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/EffortlessMetrics/shiplog/compare/v0.5.0...v0.6.0
