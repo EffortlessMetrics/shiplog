@@ -2,7 +2,7 @@
 
 ## Current Preflight
 
-Status: shared history repaired; routed CI not started
+Status: shared history repaired; routed CI workflow in progress
 Linked proposal: SHIPLOG-PROP-0010
 Linked spec: SHIPLOG-SPEC-0011
 Linked ADR: SHIPLOG-ADR-0011
@@ -167,7 +167,7 @@ This proves merge policy only. It does not prove routed CI or branch protection.
 
 ## Work item: routed-rust-small-workflow
 
-Status: ready
+Status: active
 Linked proposal: SHIPLOG-PROP-0010
 Linked spec: SHIPLOG-SPEC-0011
 Linked ADR: SHIPLOG-ADR-0011
@@ -175,7 +175,7 @@ Blocks: routed-ci-proof
 Blocked by: none
 Branch: ci/routed-shiplog-rust-small
 Issue:
-PR:
+PR: pending
 
 ### Goal
 
@@ -212,6 +212,14 @@ Shiplog Rust Small Result
 - The result job succeeds only when the selected implementation job succeeds.
 
 ### Proof commands
+
+```bash
+cargo xtask check-workflows --mode blocking-allowlist
+cargo xtask check-policy-schemas
+git diff --check
+```
+
+The routed lane itself runs:
 
 ```bash
 cargo fmt --all -- --check

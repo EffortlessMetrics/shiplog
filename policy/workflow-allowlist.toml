@@ -148,6 +148,20 @@ created = "2026-05-09"
 expires = "permanent"
 
 [[entry]]
+path = ".github/workflows/em-ci-routed-shiplog-rust.yml"
+owner = "repo-infra/ci"
+reason = "shiplog-swarm routed Linux gate. Routes trusted same-repo PRs through CX43, then CX53, then GitHub-hosted fallback, while fork PRs stay off self-hosted runners. Normalizes branch protection to Shiplog Rust Small Result; implementation jobs are conditional and should not be required checks."
+permissions = ["contents:read"]
+secrets_used = ["EM_RUNNER_READ_TOKEN"]
+external_actions = [
+  "actions/checkout@v6.0.2",
+  "dtolnay/rust-toolchain@master",
+  "Swatinem/rust-cache@v2",
+]
+created = "2026-05-21"
+expires = "permanent"
+
+[[entry]]
 path = ".github/workflows/property-testing.yml"
 owner = "policy"
 reason = "Property tests at 256 cases per crate. Currently runs full sweep on every PR; PR #154 carves out a bounded smoke; PR #155 routes broad form."

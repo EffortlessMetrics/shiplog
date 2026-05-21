@@ -1,0 +1,359 @@
+name: EM CI Routed Shiplog Rust
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened]
+  merge_group:
+  workflow_dispatch:
+    inputs:
+      force_route:
+        description: Force one route for proof runs.
+        required: false
+        default: auto
+        type: choice
+        options:
+          - auto
+          - cx43
+          - cx53
+          - github
+
+concurrency:
+  group: shiplog-rust-small-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  CARGO_INCREMENTAL: "0"
+  CARGO_TERM_COLOR: always
+
+jobs:
+  route:
+    name: Route Shiplog Rust Small
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      target: ${{ steps.pick.outputs.target }}
+      reason: ${{ steps.pick.outputs.reason }}
+      trusted: ${{ steps.pick.outputs.trusted }}
+    steps:
+      - name: Pick route
+        id: pick
+        env:
+          FORCE_ROUTE: ${{ github.event.inputs.force_route || 'auto' }}
+          GITHUB_TOKEN: ${{ github.token }}
+          RUNNER_READ_TOKEN: ${{ secrets.EM_RUNNER_READ_TOKEN }}
+        run: |
+          python3 <<'PY'
+          import json
+          import os
+          import sys
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+
+          repo = os.environ["GITHUB_REPOSITORY"]
+          event_name = os.environ["GITHUB_EVENT_NAME"]
+          event_path = os.environ["GITHUB_EVENT_PATH"]
+          force_route = os.environ.get("FORCE_ROUTE", "auto").strip().lower() or "auto"
+          github_token = os.environ.get("GITHUB_TOKEN", "")
+          runner_read_token = os.environ.get("RUNNER_READ_TOKEN", "")
+          route_order = ["cx43", "cx53"]
+
+          with open(event_path, "r", encoding="utf-8") as fh:
+              event = json.load(fh)
+
+          def request_json(url, bearer_token):
+              request = urllib.request.Request(
+                  url,
+                  headers={
+                      "Accept": "application/vnd.github+json",
+                      "Authorization": f"Bearer {bearer_token}",
+                      "X-GitHub-Api-Version": "2022-11-28",
+                  },
+              )
+              with urllib.request.urlopen(request, timeout=10) as response:
+                  return json.load(response)
+
+          def source_branch_matches(head_ref, head_sha):
+              if not github_token or not head_ref or not head_sha:
+                  return False
+              encoded_ref = urllib.parse.quote(head_ref, safe="")
+              try:
+                  branch = request_json(
+                      f"https://api.github.com/repos/{repo}/branches/{encoded_ref}",
+                      github_token,
+                  )
+              except (urllib.error.URLError, TimeoutError, OSError, json.JSONDecodeError) as exc:
+                  print(f"head_branch_probe_error={exc}")
+                  return False
+              return branch.get("commit", {}).get("sha") == head_sha
+
+          trusted = event_name in {"push", "workflow_dispatch", "merge_group"}
+          if event_name == "pull_request":
+              pull_request = event.get("pull_request", {})
+              head = pull_request.get("head", {})
+              head_repo_obj = head.get("repo")
+              head_repo = head_repo_obj.get("full_name") if isinstance(head_repo_obj, dict) else None
+              trusted = head_repo == repo
+              if not trusted and head_repo is None:
+                  trusted = source_branch_matches(head.get("ref"), head.get("sha"))
+
+          def set_output(target, reason):
+              output_path = os.environ["GITHUB_OUTPUT"]
+              with open(output_path, "a", encoding="utf-8") as out:
+                  out.write(f"target={target}\n")
+                  out.write(f"reason={reason}\n")
+                  out.write(f"trusted={str(trusted).lower()}\n")
+              print(f"repo={repo}")
+              print("workflow=EM CI Routed Shiplog Rust")
+              print(f"run_id={os.environ['GITHUB_RUN_ID']}")
+              print(f"router_target={target}")
+              print(f"router_reason={reason}")
+              print(f"trusted={str(trusted).lower()}")
+
+          if not trusted:
+              set_output("github", "untrusted_pr")
+              sys.exit(0)
+
+          if force_route == "github":
+              set_output("github", "forced_github")
+              sys.exit(0)
+
+          if force_route in route_order:
+              set_output(force_route, f"forced_{force_route}")
+              sys.exit(0)
+
+          if force_route != "auto":
+              set_output("github", f"unknown_forced_route_{force_route}")
+              sys.exit(0)
+
+          if not runner_read_token:
+              set_output("github", "no_runner_read_token")
+              sys.exit(0)
+
+          try:
+              payload = request_json(
+                  "https://api.github.com/orgs/EffortlessMetrics/actions/runners?per_page=100",
+                  runner_read_token,
+              )
+          except (urllib.error.URLError, TimeoutError, OSError, json.JSONDecodeError) as exc:
+              print(f"runner_api_error={exc}")
+              set_output("github", "runner_api_failed")
+              sys.exit(0)
+
+          runners = payload.get("runners", [])
+          common_labels = {"self-hosted", "linux", "x64", "em-ci", "rust-small", "trusted-pr"}
+          for target in route_order:
+              required = common_labels | {target}
+              for runner in runners:
+                  labels = {
+                      str(label.get("name", "")).lower()
+                      for label in runner.get("labels", [])
+                  }
+                  if (
+                      runner.get("status") == "online"
+                      and not runner.get("busy", False)
+                      and required.issubset(labels)
+                  ):
+                      set_output(target, f"{target}_idle")
+                      sys.exit(0)
+
+          set_output("github", "no_idle_runner")
+          PY
+
+  rust_small_cx43:
+    name: Shiplog Rust Small on CX43
+    needs: [route]
+    if: needs.route.outputs.target == 'cx43'
+    runs-on: [self-hosted, Linux, X64, em-ci, rust-small, trusted-pr, cx43]
+    timeout-minutes: 90
+    env:
+      CARGO_BUILD_JOBS: "8"
+      CARGO_TARGET_DIR: /mnt/ci-scratch/shiplog-swarm/${{ github.run_id }}-${{ github.run_attempt }}/target
+      TMPDIR: /mnt/ci-scratch/shiplog-swarm/${{ github.run_id }}-${{ github.run_attempt }}/tmp
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.95.0"
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "shiplog-rust-small-cx43"
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Prepare scratch
+        run: |
+          ci-disk-guard /mnt/ci-scratch 100
+          ci-disk-guard /mnt/docker 20
+          ci-disk-guard /mnt/ci-cache 20
+          mkdir -p "$CARGO_TARGET_DIR" "$TMPDIR"
+
+      - name: Run Shiplog Rust Small checks
+        run: |
+          cargo fmt --all -- --check
+          cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+          cargo test --workspace --all-features --locked -- --test-threads=4
+          cargo xtask check-no-panic-family --mode blocking-allowlist
+          git diff --check
+
+      - name: Cleanup scratch
+        if: always()
+        run: rm -rf "/mnt/ci-scratch/shiplog-swarm/${{ github.run_id }}-${{ github.run_attempt }}"
+
+  rust_small_cx53:
+    name: Shiplog Rust Small on CX53
+    needs: [route]
+    if: needs.route.outputs.target == 'cx53'
+    runs-on: [self-hosted, Linux, X64, em-ci, rust-small, trusted-pr, cx53]
+    timeout-minutes: 90
+    env:
+      CARGO_BUILD_JOBS: "12"
+      CARGO_TARGET_DIR: /mnt/ci-scratch/shiplog-swarm/${{ github.run_id }}-${{ github.run_attempt }}/target
+      TMPDIR: /mnt/ci-scratch/shiplog-swarm/${{ github.run_id }}-${{ github.run_attempt }}/tmp
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.95.0"
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "shiplog-rust-small-cx53"
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Prepare scratch
+        run: |
+          ci-disk-guard /mnt/ci-scratch 100
+          ci-disk-guard /mnt/docker 20
+          ci-disk-guard /mnt/ci-cache 20
+          mkdir -p "$CARGO_TARGET_DIR" "$TMPDIR"
+
+      - name: Run Shiplog Rust Small checks
+        run: |
+          cargo fmt --all -- --check
+          cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+          cargo test --workspace --all-features --locked -- --test-threads=4
+          cargo xtask check-no-panic-family --mode blocking-allowlist
+          git diff --check
+
+      - name: Cleanup scratch
+        if: always()
+        run: rm -rf "/mnt/ci-scratch/shiplog-swarm/${{ github.run_id }}-${{ github.run_attempt }}"
+
+  rust_small_github:
+    name: Shiplog Rust Small on GitHub Hosted
+    needs: [route]
+    if: needs.route.outputs.target == 'github'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.95.0"
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "shiplog-rust-small-github"
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Run Shiplog Rust Small checks
+        run: |
+          cargo fmt --all -- --check
+          cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+          cargo test --workspace --all-features --locked -- --test-threads=4
+          cargo xtask check-no-panic-family --mode blocking-allowlist
+          git diff --check
+
+  result:
+    name: Shiplog Rust Small Result
+    needs:
+      - route
+      - rust_small_cx43
+      - rust_small_cx53
+      - rust_small_github
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Normalize routed result
+        env:
+          TARGET: ${{ needs.route.outputs.target }}
+          REASON: ${{ needs.route.outputs.reason }}
+          TRUSTED: ${{ needs.route.outputs.trusted }}
+          ROUTE_RESULT: ${{ needs.route.result }}
+          CX43_RESULT: ${{ needs.rust_small_cx43.result }}
+          CX53_RESULT: ${{ needs.rust_small_cx53.result }}
+          GITHUB_RESULT: ${{ needs.rust_small_github.result }}
+        run: |
+          python3 <<'PY'
+          import os
+          import sys
+
+          target = os.environ.get("TARGET", "")
+          reason = os.environ.get("REASON", "")
+          trusted = os.environ.get("TRUSTED", "")
+          route_result = os.environ.get("ROUTE_RESULT", "")
+          results = {
+              "cx43": os.environ.get("CX43_RESULT", ""),
+              "cx53": os.environ.get("CX53_RESULT", ""),
+              "github": os.environ.get("GITHUB_RESULT", ""),
+          }
+
+          print(f"router_target={target}")
+          print(f"router_reason={reason}")
+          print(f"trusted={trusted}")
+          print(f"repo={os.environ.get('GITHUB_REPOSITORY', '')}")
+          print("workflow=EM CI Routed Shiplog Rust")
+          print(f"run_id={os.environ.get('GITHUB_RUN_ID', '')}")
+          print(f"route_result={route_result}")
+          for name, value in results.items():
+              print(f"{name}_result={value}")
+
+          if route_result != "success":
+              print("Route job did not succeed.")
+              sys.exit(1)
+
+          if target not in results:
+              print("Route job did not emit a known target.")
+              sys.exit(1)
+
+          failures = []
+          for name, value in results.items():
+              if name == target:
+                  if value != "success":
+                      failures.append(f"selected {name} job result was {value}")
+              elif value != "skipped":
+                  failures.append(f"unselected {name} job result was {value}")
+
+          if failures:
+              for failure in failures:
+                  print(failure)
+              sys.exit(1)
+
+          summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+          if summary_path:
+              with open(summary_path, "a", encoding="utf-8") as summary:
+                  summary.write("## Shiplog Rust Small Result\n\n")
+                  summary.write(f"- Router target: `{target}`\n")
+                  summary.write(f"- Router reason: `{reason}`\n")
+                  summary.write(f"- Trusted admission: `{trusted}`\n")
+                  for name, value in results.items():
+                      summary.write(f"- {name}: `{value}`\n")
+
+          print("Exactly one routed Shiplog Rust Small lane succeeded.")
+          PY
