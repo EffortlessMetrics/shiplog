@@ -285,6 +285,51 @@ commands = ["git diff --check"]
 }
 
 #[test]
+fn check_support_tiers_passes_for_valid_claim_map() {
+    let dir = fixture_workspace(&[(
+        "docs/status/SUPPORT_TIERS.md",
+        r#"# Support tiers
+
+## Claim map
+
+| Surface | Tier | Claim | Proof command | Notes |
+|---|---|---|---|---|
+| Document artifact links | Stabilizing | Proposal/spec/ADR/plan artifacts are linked. | `cargo xtask check-doc-artifacts` | Dedicated checker. |
+| Policy ledgers | Stable | Policy files parse. | `cargo xtask check-policy-schemas` | Required proof. |
+"#,
+    )]);
+
+    xtask()
+        .args(["--workspace-root", dir.path().to_str().expect("utf-8 path")])
+        .arg("check-support-tiers")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("linked and valid"));
+}
+
+#[test]
+fn check_support_tiers_fails_on_unknown_xtask_proof() {
+    let dir = fixture_workspace(&[(
+        "docs/status/SUPPORT_TIERS.md",
+        r#"# Support tiers
+
+## Claim map
+
+| Surface | Tier | Claim | Proof command | Notes |
+|---|---|---|---|---|
+| Policy ledgers | Stable | Policy files parse. | `cargo xtask made-up-check` | Required proof. |
+"#,
+    )]);
+
+    xtask()
+        .args(["--workspace-root", dir.path().to_str().expect("utf-8 path")])
+        .arg("check-support-tiers")
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("support-tier-proof-unknown-xtask"));
+}
+
+#[test]
 fn policy_report_lists_loaded_ledgers() {
     let dir = fixture_workspace(&[
         (

@@ -101,7 +101,7 @@ manifests or make the source-of-truth stack a required CI gate.
 
 ## Work item: active-goal-checker
 
-Status: active
+Status: done
 Linked proposal: SHIPLOG-PROP-0008
 Linked spec: SHIPLOG-SPEC-0010
 Linked ADR: none
@@ -109,7 +109,7 @@ Blocks: support-tier-map
 Blocked by: doc-artifact-checker
 Branch: infra/check-goals
 Issue:
-PR: EffortlessMetrics/shiplog-swarm#30
+PR: EffortlessMetrics/shiplog-swarm#30, EffortlessMetrics/shiplog#473
 
 ### Goal
 
@@ -155,3 +155,56 @@ Revert the checker PR and keep active goal manifest validation manual.
 
 This proves the active Codex goal manifest only. It does not make the
 source-of-truth stack a required CI gate or validate archived legacy goals.
+
+## Work item: support-tier-map
+
+Status: active
+Linked proposal: SHIPLOG-PROP-0008
+Linked spec: SHIPLOG-SPEC-0010
+Linked ADR: none
+Blocks: policy-ci-wiring
+Blocked by: active-goal-checker
+Branch: infra/check-support-tiers
+Issue:
+PR: EffortlessMetrics/shiplog-swarm#31
+
+### Goal
+
+Add `cargo xtask check-support-tiers` so product and governance support-tier
+claims must carry recognized proof commands.
+
+### Production delta
+
+`xtask` command, tests, support-tier proof command, `.codex/goals/active.toml`,
+and source-of-truth docs.
+
+### Non-goals
+
+No CI requirement change, no README claim scanner, and no runtime product
+behavior changes.
+
+### Acceptance
+
+- `docs/status/SUPPORT_TIERS.md` parses as the claim-map source.
+- Claim map rows have recognized support-tier values.
+- Stable and stabilizing claims carry backticked proof commands.
+- `cargo xtask ...` proof commands reference known xtask subcommands.
+- Existing stale proof-command names are corrected.
+
+### Proof commands
+
+```bash
+cargo test -p xtask check_support_tiers --locked
+cargo test -p xtask --test cli check_support_tiers --locked
+cargo xtask check-support-tiers
+git diff --check
+```
+
+### Rollback
+
+Revert the checker PR and keep support-tier validation manual.
+
+### Claim boundary
+
+This proves the support-tier claim map syntax and proof-command refs only. It
+does not scan README claims or make the source-of-truth stack a required CI gate.

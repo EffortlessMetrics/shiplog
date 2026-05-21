@@ -5,6 +5,7 @@ pub mod check_label_enforcement;
 pub mod check_lane_mappings;
 pub mod check_policy_schemas;
 pub mod check_risk_pack_integrity;
+pub mod check_support_tiers;
 pub mod ci_actuals;
 pub mod ci_plan;
 pub mod clippy_policy;

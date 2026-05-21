@@ -40,7 +40,9 @@ Proposal and spec IDs resolve in `policy/doc-artifacts.toml`; active goal links 
 
 ## Test mapping
 
-`cargo xtask check-doc-artifacts`, `cargo xtask check-goals`, `cargo xtask policy-report`, `cargo xtask check-policy-schemas`.
+`cargo xtask check-doc-artifacts`, `cargo xtask check-goals`,
+`cargo xtask check-support-tiers`, `cargo xtask policy-report`, and
+`cargo xtask check-policy-schemas`.
 
 ## Implementation mapping
 
@@ -53,7 +55,8 @@ required in CI.
 
 ## Metrics / promotion rule
 
-Promote from stabilizing to stable when `check-doc-artifacts` and `check-goals` are implemented and required.
+Promote from stabilizing to stable when `check-doc-artifacts`, `check-goals`,
+and `check-support-tiers` are implemented and required.
 
 ## Failure modes
 

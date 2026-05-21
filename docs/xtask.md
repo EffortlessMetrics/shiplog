@@ -68,6 +68,19 @@ Codex-facing execution-state manifest:
 Exits with non-zero if any finding. This is the dedicated proof command for
 the active-goal support-tier surface.
 
+### `cargo xtask check-support-tiers`
+
+Validates [`docs/status/SUPPORT_TIERS.md`](status/SUPPORT_TIERS.md), the
+source-of-truth map from product/governance claims to proof commands:
+
+- the claim map table exists and has the expected columns;
+- support-tier names are recognized;
+- stable and stabilizing claims have backticked proof commands; and
+- `cargo xtask ...` proof commands reference known xtask subcommands.
+
+Exits with non-zero if any finding. This is the dedicated proof command for
+the support-tier claim-map surface.
+
 ### `cargo xtask package-boundary`
 
 Verifies published vs dev-only crate classification. Delegates to
