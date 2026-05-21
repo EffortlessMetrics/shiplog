@@ -1,4 +1,4 @@
-# SHIPLOG-PROP-0008: Seamless GitHub Credential Resolution (Env + gh CLI)
+# SHIPLOG-PROP-0009: Seamless GitHub Credential Resolution (Env + gh CLI)
 
 Status: proposed
 Owner: product/docs

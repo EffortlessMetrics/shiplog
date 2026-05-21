@@ -1,16 +1,15 @@
-# SHIPLOG-PROP-0008: Shiplog Swarm Development Landing Zone
+# SHIPLOG-PROP-0010: Shiplog Swarm Development Landing Zone
 
 Status: proposed
 Owner: repo-infra/release
 Created: 2026-05-20
-Target release: after the held 0.9.0 candidate is release-ready or explicitly
-checkpointed
+Target release: post-0.9.0 development cutover
 Follow-up spec:
-[`SHIPLOG-SPEC-0010-shiplog-swarm-cutover-contract`](../specs/SHIPLOG-SPEC-0010-shiplog-swarm-cutover-contract.md)
+[`SHIPLOG-SPEC-0011-shiplog-swarm-cutover-contract`](../specs/SHIPLOG-SPEC-0011-shiplog-swarm-cutover-contract.md)
 Architecture decision:
-`SHIPLOG-ADR-0011-swarm-is-dev-landing-zone-not-release-surface` (planned)
+[`SHIPLOG-ADR-0011-swarm-is-dev-landing-zone-not-release-surface`](../adr/SHIPLOG-ADR-0011-swarm-is-dev-landing-zone-not-release-surface.md)
 Linked plan:
-`plans/shiplog-swarm/implementation-plan.md` (planned)
+[`plans/shiplog-swarm/implementation-plan.md`](../../plans/shiplog-swarm/implementation-plan.md)
 
 ## Summary
 
@@ -21,23 +20,23 @@ source repo: EffortlessMetrics/shiplog
 swarm repo:  EffortlessMetrics/shiplog-swarm
 ```
 
-The swarm repo should become the development landing zone only after the source
-repo is drained or checkpointed, synced, and proven through one normalized
-routed CI result. During the transition, `EffortlessMetrics/shiplog` remains the
-release surface, public source checkpoint, tag/publish authority, and final sync
-source.
+The swarm repo should become the development landing zone only after it shares
+history with the source repo, the source repo is drained or checkpointed,
+synced, and proven through one normalized routed CI result. During the
+transition, `EffortlessMetrics/shiplog` remains the release surface, public
+source checkpoint, tag/publish authority, and final sync source.
 
 This is not a release cutover proposal. It is a repo-infrastructure proposal for
 safe development routing.
 
 ## Problem
 
-Shiplog has reached a 0.9 release shape with active product and release
-movement: review-ready packet quality, Guided Setup / Doctor, review-loop
-status, GitHub activity harvest, redaction correctness, and release-hold
-discipline. Moving development work into `shiplog-swarm` before the source repo
-is drained would create source divergence risk at the exact point where release
-readiness depends on a clean story.
+Shiplog has reached a 0.9 release shape with review-ready packet quality,
+Guided Setup / Doctor, review-loop status, GitHub activity harvest, redaction
+correctness, and release discipline. Moving development work into
+`shiplog-swarm` before the repos share history and the source repo is drained
+would create source divergence risk at the exact point where future release
+readiness depends on a clean promotion path.
 
 The runner side is less risky than the source-of-truth side. Shiplog is a Rust
 repo that can start on a small routed lane with GitHub-hosted fallback. The
@@ -104,9 +103,25 @@ Use the existing swarm migration pattern:
 EffortlessMetrics/shiplog -> EffortlessMetrics/shiplog-swarm
 ```
 
-Create `shiplog-swarm` as a public repo, seed it from `shiplog/main`, add it
-narrowly to the `em-ci-small` runner group, scope `EM_RUNNER_READ_TOKEN` to that
-repository, and prove routed CI before branch protection.
+Create `shiplog-swarm` as a public repo, seed it from `shiplog/main` with shared
+Git history, add it narrowly to the `em-ci-small` runner group, scope
+`EM_RUNNER_READ_TOKEN` to that repository, and prove routed CI before branch
+protection.
+
+Before serious cutover, prove:
+
+```bash
+git merge-base origin/main swarm/main
+```
+
+If that command does not print a commit, `shiplog-swarm/main` is not ready for
+promotion-merge operation and must be reseeded from `shiplog/main` before
+swarm-only work starts.
+
+Normal development PRs in `shiplog-swarm` should squash-merge into
+`shiplog-swarm/main`. Promotion PRs from `shiplog-swarm/main` into
+`shiplog/main` should use regular merge commits so the release/source repo keeps
+a clear checkpoint of already-squashed swarm work. Do not squash promotion PRs.
 
 The first routed lane should be:
 
@@ -140,7 +155,12 @@ git diff --check
 
 ## Success Criteria
 
-- `shiplog-swarm` is public, seeded from `shiplog/main`, and not hand-recreated.
+- `shiplog-swarm` is public, seeded from `shiplog/main` with shared history,
+  and not hand-recreated.
+- `shiplog/main` and `shiplog-swarm/main` have a common merge base before
+  cutover.
+- Normal development PRs squash in `shiplog-swarm`; source promotion PRs merge
+  into `shiplog` with merge commits.
 - `shiplog-swarm` has routed Rust small CI with one normalized result check.
 - Same-repo swarm PRs can use self-hosted runners; fork PRs cannot.
 - GitHub-hosted fallback runs the same logical proof as self-hosted lanes.
@@ -155,6 +175,7 @@ git diff --check
 Do not:
 
 - cut over before the live source PR queue is drained or checkpointed;
+- cut over while `git merge-base origin/main swarm/main` is empty;
 - give `shiplog` self-hosted runner access just to bridge the transition;
 - run public fork PRs on self-hosted runners;
 - require conditional implementation jobs in branch protection;
@@ -190,7 +211,7 @@ and preserve CX53 for heavier repos unless measured timings justify promotion.
 
 ## Specs To Create Or Update
 
-- `SHIPLOG-SPEC-0010-shiplog-swarm-cutover-contract`: required repo setup,
+- `SHIPLOG-SPEC-0011-shiplog-swarm-cutover-contract`: required repo setup,
   runner admission, normalized result behavior, branch-protection rules, final
   sync, and cutover acceptance.
 - Runner policy docs should define `Shiplog Rust Small Result` as the only
@@ -208,15 +229,16 @@ The follow-up implementation plan should be PR-sized and ordered:
 
 ```text
 1. Create and seed shiplog-swarm from shiplog/main.
-2. Add the routed Shiplog Rust Small workflow.
-3. Prove workflow PR behavior.
-4. Run manual dispatch on shiplog-swarm/main.
-5. Prove a tiny same-repo PR.
-6. Prove CX43 -> CX53 -> GitHub fallback, or CX43 -> GitHub if simpler.
-7. Drain or checkpoint source repo PRs.
-8. Final-sync shiplog-swarm from shiplog/main.
-9. Enable branch protection requiring only Shiplog Rust Small Result.
-10. Move agent/machine instructions to fresh shiplog-swarm clones.
+2. Prove common history between shiplog/main and shiplog-swarm/main.
+3. Add the routed Shiplog Rust Small workflow.
+4. Prove workflow PR behavior.
+5. Run manual dispatch on shiplog-swarm/main.
+6. Prove a tiny same-repo PR.
+7. Prove CX43 -> CX53 -> GitHub fallback, or CX43 -> GitHub if simpler.
+8. Drain or checkpoint source repo PRs.
+9. Final-sync shiplog-swarm from shiplog/main.
+10. Enable branch protection requiring only Shiplog Rust Small Result.
+11. Move agent/machine instructions to fresh shiplog-swarm clones.
 ```
 
 ## Evidence Plan
