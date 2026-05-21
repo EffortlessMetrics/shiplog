@@ -450,6 +450,27 @@ broad_glob_reason = "One active manifest plus archived lane manifests live under
 created = "2026-05-13"
 expires = "permanent"
 
+[[allow]]
+id = "non-rust-codex-meta"
+path = ".codex/README.md"
+category = "agent_config"
+language = "markdown"
+owner = "repo-infra"
+reason = "Codex-facing repo execution instructions for the source-of-truth stack."
+created = "2026-05-20"
+expires = "permanent"
+
+[[allow]]
+id = "non-rust-codex-goals"
+glob = ".codex/goals/**"
+category = "agent_config"
+language = "mixed"
+owner = "repo-infra"
+reason = "Codex active and archived goal manifests for linked source-of-truth execution state."
+broad_glob_reason = "One active manifest plus archived inert TOML/Markdown goal receipts live under this tree."
+created = "2026-05-20"
+expires = "permanent"
+
 # ── Git metadata ───────────────────────────────────────────────────────
 
 [[allow]]
