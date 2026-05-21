@@ -26,6 +26,9 @@ enum Command {
     /// Validate `policy/doc-artifacts.toml` artifact links and file receipts.
     CheckDocArtifacts,
 
+    /// Validate `.codex/goals/active.toml` execution-state links and proof refs.
+    CheckGoals,
+
     /// Verify published vs dev-only crate classification.
     ///
     /// Currently delegates to `scripts/package-boundary-audit.sh` until
@@ -213,6 +216,7 @@ impl Cli {
         match self.command {
             Command::CheckPolicySchemas => tasks::check_policy_schemas::run(&workspace_root),
             Command::CheckDocArtifacts => tasks::check_doc_artifacts::run(&workspace_root),
+            Command::CheckGoals => tasks::check_goals::run(&workspace_root),
             Command::PackageBoundary => tasks::package_boundary::run(&workspace_root),
             Command::PackageVersion => tasks::package_version::run(&workspace_root),
             Command::PolicyReport => tasks::policy_report::run(&workspace_root),

@@ -17,5 +17,6 @@ This file maps product and governance claims to proof commands.
 | Surface | Tier | Claim | Proof command | Notes |
 |---|---|---|---|---|
 | Document artifact links | Stabilizing | Proposal/spec/ADR/plan artifacts are linked by policy ledger. | `cargo xtask check-doc-artifacts` | Dedicated checker validates files, IDs, kinds, statuses, and linked artifact refs. |
+| Active goal manifest | Stabilizing | Codex execution state links current work to proposal/spec/plan proof. | `cargo xtask check-goals` | Dedicated checker validates `.codex/goals/active.toml`, work-item status, refs, blockers, and proof commands. |
 | Package boundary | Stable | Published crate surface is policy-ledger controlled. | `cargo xtask check-package-boundary` | Guardrail against durable unpublished production crates. |
 | Policy ledgers | Stable | Policy files parse and are schema-audited. | `cargo xtask check-policy-schemas` | Requires ledger updates when claims change. |
