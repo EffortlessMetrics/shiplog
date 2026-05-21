@@ -13,3 +13,11 @@ Linked artifacts:
 
 The plan is not release execution. It does not move tags, crates.io publish,
 GitHub Releases, signing, release branches, or security-sensitive workflows.
+
+Current operating state:
+
+- Normal development targets `EffortlessMetrics/shiplog-swarm`.
+- Normal swarm PRs squash-merge after `Shiplog Rust Small Result` passes.
+- `EffortlessMetrics/shiplog` remains the release/public source surface.
+- Source promotion PRs merge with regular merge commits and must not be
+  squashed.

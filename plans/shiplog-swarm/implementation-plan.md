@@ -2,7 +2,7 @@
 
 ## Current Preflight
 
-Status: shared history repaired; branch protection enabled; machine cutover next
+Status: shared history repaired; branch protection enabled; normal development cutover documented; promotion cadence active
 Linked proposal: SHIPLOG-PROP-0010
 Linked spec: SHIPLOG-SPEC-0011
 Linked ADR: SHIPLOG-ADR-0011
@@ -444,6 +444,23 @@ Same-repo PR, push fallback, CX43, CX53, and fork-admission proof now have green
 receipts. Branch protection may proceed with only `Shiplog Rust Small Result`
 as the required status check.
 
+The routed lane was later extended through `shiplog-swarm` PR #25 so the
+current route order is:
+
+```text
+CPX42 -> CX43 -> CX53 -> GitHub Hosted
+```
+
+The #25 PR and post-merge push both selected CPX42 and passed the normalized
+result:
+
+```text
+PR run:         26241254974
+post-merge run: 26241904165
+route:          cpx42
+result:         Shiplog Rust Small Result passed
+```
+
 ### Proof commands
 
 ```bash
@@ -521,15 +538,15 @@ This proves branch protection only. It does not authorize release work from
 
 ## Work item: machine-cutover
 
-Status: active
+Status: done
 Linked proposal: SHIPLOG-PROP-0010
 Linked spec: SHIPLOG-SPEC-0011
 Linked ADR: SHIPLOG-ADR-0011
 Blocks: promotion-cadence
 Blocked by: branch-protection-enable
-Branch:
+Branch: docs/swarm-machine-cutover
 Issue:
-PR:
+PR: EffortlessMetrics/shiplog-swarm#27
 
 ### Goal
 
@@ -554,6 +571,30 @@ Wait for Shiplog Rust Small Result.
 Release/publish/signing remains on shiplog until explicit release cutover.
 ```
 
+### Receipt
+
+Machine and agent instructions are published in `AGENTS.md`.
+
+The instruction surface says:
+
+```text
+normal development target: EffortlessMetrics/shiplog-swarm
+source/release surface:    EffortlessMetrics/shiplog
+normal swarm PRs:          squash merge
+source promotion PRs:      regular merge commit
+required swarm check:      Shiplog Rust Small Result
+```
+
+The source promotion model has already been exercised:
+
+```text
+source PR:      EffortlessMetrics/shiplog#469
+swarm head:     3c318dbf661f0aa5fa1c9d0de3ebc2385441e04b
+source merge:   b21636703b3cd89113f75532312308772a10e5d5
+merge method:   regular merge commit
+post-merge CI:  EM CI Routed Shiplog Rust passed; CI passed
+```
+
 ### Proof commands
 
 ```bash
@@ -571,12 +612,12 @@ This is a development cutover only, not a release cutover.
 
 ## Work item: promotion-cadence
 
-Status: ready
+Status: active
 Linked proposal: SHIPLOG-PROP-0010
 Linked spec: SHIPLOG-SPEC-0011
 Linked ADR: SHIPLOG-ADR-0011
 Blocks: none
-Blocked by: machine-cutover
+Blocked by: none
 Branch: promote/swarm-YYYYMMDD-SHA
 Issue:
 PR:
