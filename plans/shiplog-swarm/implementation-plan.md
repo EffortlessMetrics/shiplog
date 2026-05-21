@@ -2,7 +2,7 @@
 
 ## Current Preflight
 
-Status: shared history repaired; routed CI proof complete; branch protection next
+Status: shared history repaired; branch protection enabled; machine cutover next
 Linked proposal: SHIPLOG-PROP-0010
 Linked spec: SHIPLOG-SPEC-0011
 Linked ADR: SHIPLOG-ADR-0011
@@ -44,7 +44,8 @@ diff:        empty
 merge policy: squash=true, merge=false, rebase=false, auto_merge=true, delete_branch_on_merge=true
 ```
 
-Cutover still must not proceed until branch protection is enabled and proven.
+Cutover still must not proceed until the protected PR path is proven and
+machine cutover instructions are published.
 
 ## Work item: repair-shared-history
 
@@ -462,7 +463,7 @@ This proves routed CI behavior only. It does not move release authority.
 
 ## Work item: branch-protection-enable
 
-Status: active
+Status: done
 Linked proposal: SHIPLOG-PROP-0010
 Linked spec: SHIPLOG-SPEC-0011
 Linked ADR: SHIPLOG-ADR-0011
@@ -470,7 +471,7 @@ Blocks: machine-cutover
 Blocked by: routed-ci-proof
 Branch:
 Issue:
-PR:
+PR: EffortlessMetrics/shiplog-swarm#24
 
 ### Goal
 
@@ -485,6 +486,22 @@ Shiplog Rust Small Result
 - Conditional implementation jobs are not required checks.
 - Auto-merge and squash merge are compatible with the required result.
 - A tiny post-protection same-repo PR passes and can squash-merge.
+
+### Receipt
+
+Branch protection was enabled on `shiplog-swarm/main` after routed proof
+completed:
+
+```text
+required_status_checks.contexts: ["Shiplog Rust Small Result"]
+required_status_checks.strict: true
+enforce_admins: false
+allow_deletions: false
+allow_force_pushes: false
+```
+
+This PR is the protected same-repo PR proof. It must pass
+`Shiplog Rust Small Result` before squash merge.
 
 ### Proof commands
 
@@ -504,7 +521,7 @@ This proves branch protection only. It does not authorize release work from
 
 ## Work item: machine-cutover
 
-Status: ready
+Status: active
 Linked proposal: SHIPLOG-PROP-0010
 Linked spec: SHIPLOG-SPEC-0011
 Linked ADR: SHIPLOG-ADR-0011
