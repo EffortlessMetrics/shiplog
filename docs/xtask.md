@@ -32,6 +32,21 @@ Validates every `policy/*.toml` file for a well-formed common header:
 Exits with non-zero if any finding. See
 [`docs/POLICY_ALLOWLISTS.md`](POLICY_ALLOWLISTS.md) for the schema.
 
+### `cargo xtask check-doc-artifacts`
+
+Validates [`policy/doc-artifacts.toml`](../policy/doc-artifacts.toml), the
+source-of-truth ledger for proposals, specs, ADRs, and plans:
+
+- artifact IDs are unique;
+- kind and status values are recognized;
+- artifact paths exist and match the declared kind;
+- the artifact ID is mentioned in the artifact file;
+- linked proposal/spec/ADR/plan IDs resolve to ledger entries; and
+- superseded artifacts point at a replacement.
+
+Exits with non-zero if any finding. This is the dedicated proof command for
+the document artifact link support-tier surface.
+
 ### `cargo xtask package-boundary`
 
 Verifies published vs dev-only crate classification. Delegates to

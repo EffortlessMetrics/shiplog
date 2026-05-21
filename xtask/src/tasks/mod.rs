@@ -1,4 +1,5 @@
 pub mod check_actuals_coverage;
+pub mod check_doc_artifacts;
 pub mod check_label_enforcement;
 pub mod check_lane_mappings;
 pub mod check_policy_schemas;

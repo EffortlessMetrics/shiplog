@@ -1,5 +1,7 @@
 # Shiplog Swarm Cutover Implementation Plan
 
+Plan artifact: SHIPLOG-PLAN-0011
+
 ## Current Preflight
 
 Status: shared history repaired; branch protection enabled; normal development cutover documented; promotion cadence active

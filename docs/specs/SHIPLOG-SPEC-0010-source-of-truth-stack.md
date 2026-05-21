@@ -39,7 +39,7 @@ Proposal and spec IDs resolve in `policy/doc-artifacts.toml`; active goal links 
 
 ## Test mapping
 
-`cargo xtask policy-report`, `cargo xtask check-policy-schemas`.
+`cargo xtask check-doc-artifacts`, `cargo xtask policy-report`, `cargo xtask check-policy-schemas`.
 
 ## Implementation mapping
 
@@ -47,7 +47,8 @@ Proposal and spec IDs resolve in `policy/doc-artifacts.toml`; active goal links 
 
 ## CI proof
 
-Start advisory, then promote to blocking when dedicated doc/goals validators land.
+Start advisory, then promote to blocking when dedicated doc/goals validators are
+required in CI.
 
 ## Metrics / promotion rule
 

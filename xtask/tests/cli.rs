@@ -17,7 +17,15 @@ fn fixture_workspace(files: &[(&str, &str)]) -> tempfile::TempDir {
     let policy = dir.path().join("policy");
     fs::create_dir_all(&policy).expect("create policy dir");
     for (name, content) in files {
-        fs::write(policy.join(name), content).expect("write fixture");
+        let path = if name.contains('/') || name.contains('\\') {
+            dir.path().join(name)
+        } else {
+            policy.join(name)
+        };
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).expect("create fixture parent");
+        }
+        fs::write(path, content).expect("write fixture");
     }
     dir
 }
@@ -48,6 +56,78 @@ fn check_policy_schemas_fails_on_status_typo() {
         .assert()
         .failure()
         .stderr(predicate::str::contains("status = \"advisroy\""));
+}
+
+#[test]
+fn check_doc_artifacts_passes_for_linked_fixture() {
+    let dir = fixture_workspace(&[
+        (
+            "policy/doc-artifacts.toml",
+            r#"
+schema_version = 1
+policy = "doc-artifacts"
+owner = "repo-infra"
+status = "advisory"
+
+[[artifact]]
+id = "SHIPLOG-PROP-0001"
+kind = "proposal"
+path = "docs/proposals/SHIPLOG-PROP-0001-example.md"
+status = "proposed"
+owner = "repo-infra"
+
+[[artifact]]
+id = "SHIPLOG-SPEC-0001"
+kind = "spec"
+path = "docs/specs/SHIPLOG-SPEC-0001-example.md"
+status = "accepted"
+owner = "repo-infra"
+linked_proposal = "SHIPLOG-PROP-0001"
+"#,
+        ),
+        (
+            "docs/proposals/SHIPLOG-PROP-0001-example.md",
+            "# SHIPLOG-PROP-0001\n",
+        ),
+        (
+            "docs/specs/SHIPLOG-SPEC-0001-example.md",
+            "# SHIPLOG-SPEC-0001\n",
+        ),
+    ]);
+
+    xtask()
+        .args(["--workspace-root", dir.path().to_str().expect("utf-8 path")])
+        .arg("check-doc-artifacts")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("linked and valid"));
+}
+
+#[test]
+fn check_doc_artifacts_fails_on_missing_file() {
+    let dir = fixture_workspace(&[(
+        "policy/doc-artifacts.toml",
+        r#"
+schema_version = 1
+policy = "doc-artifacts"
+owner = "repo-infra"
+status = "advisory"
+
+[[artifact]]
+id = "SHIPLOG-PROP-0001"
+kind = "proposal"
+path = "docs/proposals/SHIPLOG-PROP-0001-example.md"
+status = "proposed"
+owner = "repo-infra"
+"#,
+    )]);
+
+    xtask()
+        .args(["--workspace-root", dir.path().to_str().expect("utf-8 path")])
+        .arg("check-doc-artifacts")
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("doc-artifact-missing-file"));
 }
 
 #[test]
