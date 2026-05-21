@@ -2,12 +2,12 @@
 
 ## Current Preflight
 
-Status: blocked on shared-history reseed
+Status: shared history repaired; routed CI not started
 Linked proposal: SHIPLOG-PROP-0010
 Linked spec: SHIPLOG-SPEC-0011
 Linked ADR: SHIPLOG-ADR-0011
 
-Observed on 2026-05-21 from the release/source checkout:
+Initial observation on 2026-05-21 from the release/source checkout:
 
 ```bash
 git fetch origin main --prune --tags
@@ -23,18 +23,38 @@ merge-base: none
 swarm/main: 0873151 Initialize repository
 ```
 
-Cutover must not proceed until `shiplog-swarm/main` is reseeded from
-`shiplog/main` or otherwise repaired to share history.
+Repair receipt on 2026-05-21:
+
+```bash
+git push --force-with-lease=refs/heads/main:08731519049bb30e9326ed33cfcc5aee7e8de767 \
+  swarm origin/main:main
+git fetch swarm main --prune
+git merge-base origin/main swarm/main
+git diff --stat origin/main..swarm/main
+gh api repos/EffortlessMetrics/shiplog-swarm --jq '{allow_squash_merge,allow_merge_commit,allow_rebase_merge,allow_auto_merge,delete_branch_on_merge}'
+```
+
+Result:
+
+```text
+origin/main: 48c0da1b9a5aeefe58a79c472a8c35d9590e3657
+swarm/main:  48c0da1b9a5aeefe58a79c472a8c35d9590e3657
+merge-base:  48c0da1b9a5aeefe58a79c472a8c35d9590e3657
+diff:        empty
+merge policy: squash=true, merge=false, rebase=false, auto_merge=true, delete_branch_on_merge=true
+```
+
+Cutover still must not proceed until routed CI is added and proven.
 
 ## Work item: repair-shared-history
 
-Status: ready
+Status: done
 Linked proposal: SHIPLOG-PROP-0010
 Linked spec: SHIPLOG-SPEC-0011
 Linked ADR: SHIPLOG-ADR-0011
 Blocks: routed-rust-small-workflow
 Blocked by: none
-Branch: infra/reseed-shiplog-swarm
+Branch: none; remote-state operation
 Issue:
 PR:
 
@@ -84,6 +104,67 @@ the wrong source checkpoint.
 This proves only shared history. It does not prove routed CI, branch protection,
 runner safety, or cutover readiness.
 
+## Work item: configure-merge-policy
+
+Status: done
+Linked proposal: SHIPLOG-PROP-0010
+Linked spec: SHIPLOG-SPEC-0011
+Linked ADR: SHIPLOG-ADR-0011
+Blocks: routed-rust-small-workflow
+Blocked by: none
+Branch: none; remote-setting operation
+Issue:
+PR:
+
+### Goal
+
+Configure `shiplog-swarm` as a squash-merge development landing zone while
+leaving `shiplog` able to accept promotion merge commits.
+
+### Production delta
+
+Remote repository settings:
+
+```text
+EffortlessMetrics/shiplog-swarm
+EffortlessMetrics/shiplog
+```
+
+### Non-goals
+
+- No branch protection.
+- No release authority movement.
+- No runner access changes.
+
+### Acceptance
+
+- `shiplog-swarm` allows squash merge.
+- `shiplog-swarm` disables merge commits and rebase merge for normal PRs.
+- `shiplog-swarm` enables auto-merge and delete-branch-on-merge.
+- `shiplog` still allows merge commits for future promotion PRs.
+
+### Proof commands
+
+```bash
+gh api repos/EffortlessMetrics/shiplog-swarm --jq '{allow_squash_merge,allow_merge_commit,allow_rebase_merge,allow_auto_merge,delete_branch_on_merge}'
+gh api repos/EffortlessMetrics/shiplog --jq '{allow_merge_commit}'
+```
+
+### Rollback
+
+Restore the previous `shiplog-swarm` merge settings:
+
+```text
+allow_merge_commit=true
+allow_rebase_merge=true
+allow_auto_merge=false
+delete_branch_on_merge=false
+```
+
+### Claim boundary
+
+This proves merge policy only. It does not prove routed CI or branch protection.
+
 ## Work item: routed-rust-small-workflow
 
 Status: ready
@@ -91,7 +172,7 @@ Linked proposal: SHIPLOG-PROP-0010
 Linked spec: SHIPLOG-SPEC-0011
 Linked ADR: SHIPLOG-ADR-0011
 Blocks: routed-ci-proof
-Blocked by: repair-shared-history
+Blocked by: none
 Branch: ci/routed-shiplog-rust-small
 Issue:
 PR:
