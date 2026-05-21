@@ -36,9 +36,12 @@ same-repo trusted branches, routed Linux CI, GitHub-hosted fallback, and fork
 PRs kept off self-hosted runners. That should not imply release authority has
 moved.
 
-The current remote audit found `shiplog-swarm/main` as an orphan initialization
-commit, not a shared-history import from `shiplog/main`. Promotion merges are
-not safe until that is corrected.
+The initial remote audit found `shiplog-swarm/main` as an orphan initialization
+commit, not a shared-history import from `shiplog/main`. A follow-up
+remote-state operation on 2026-05-21 reseeded `shiplog-swarm/main` from
+`shiplog/main`, making both refs point at
+`48c0da1b9a5aeefe58a79c472a8c35d9590e3657`. Promotion merges are still not the
+normal operating model until routed CI and branch protection are proven.
 
 ## Consequences
 

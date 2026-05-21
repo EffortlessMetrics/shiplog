@@ -31,10 +31,17 @@ This spec does not configure runners, enable branch protection, move machines,
 or execute release work. It defines the behavior that the implementation plan
 must prove.
 
-Current state observed while writing this spec: `EffortlessMetrics/shiplog-swarm`
-is public, but `git merge-base origin/main swarm/main` did not return a commit
+Initial state observed while writing this spec: `EffortlessMetrics/shiplog-swarm`
+was public, but `git merge-base origin/main swarm/main` did not return a commit
 from the release checkout. Its `main` was an orphan `Initialize repository`
-commit. That is a cutover blocker, not a usable promotion base.
+commit.
+
+Follow-up receipt on 2026-05-21: `shiplog-swarm/main` was reseeded from
+`shiplog/main`; both refs now point at
+`48c0da1b9a5aeefe58a79c472a8c35d9590e3657`, and `git merge-base origin/main
+swarm/main` prints that commit. Merge policy was also configured so normal
+swarm PRs squash while source promotion can still use merge commits in
+`shiplog`.
 
 ## Scope
 
