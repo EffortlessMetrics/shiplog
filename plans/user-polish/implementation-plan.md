@@ -56,7 +56,8 @@ Related issues:
   `CacheLookup::{Fresh, Stale, Miss}`; implemented by
   [#244](https://github.com/EffortlessMetrics/shiplog/pull/244).
 - [#225](https://github.com/EffortlessMetrics/shiplog/issues/225):
-  recorded HTTP fixtures for warm-rerun freshness.
+  recorded HTTP fixtures for warm-rerun freshness; implemented by
+  [#245](https://github.com/EffortlessMetrics/shiplog/pull/245).
 - [#229](https://github.com/EffortlessMetrics/shiplog/issues/229):
   skipped sources in `source_freshness`.
 
@@ -345,14 +346,14 @@ Rollback:
 
 Follow-up:
 
-- Recorded HTTP fixtures should prove warm reruns and stale behavior without
-  live network.
+- Recorded HTTP fixtures prove warm reruns without live network in PR 6.
+  Stale behavior remains proved by the CacheLookup stale-hit test.
 
 ### PR 6: Recorded HTTP Fixtures
 
 Title: `test(harness): add recorded HTTP fixtures for full warm-rerun`
 
-Status: blocked on PR 5
+Status: done
 
 Depends on:
 
@@ -379,8 +380,8 @@ Behavior change:
 Validation:
 
 ```bash
-cargo test -p shiplog --test cli_integration -- intake
-cargo test -p shiplog-ingest-github
+cargo test -p shiplog recorded_http_fixtures_prove_full_fresh_then_cached_ingest
+cargo test -p shiplog warm_rerun_cache_primitive_round_trips_miss_then_hit
 cargo xtask check-policy-schemas
 cargo xtask check-file-policy --mode blocking-allowlist
 git diff --check
