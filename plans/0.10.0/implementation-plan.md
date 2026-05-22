@@ -158,7 +158,7 @@ source-of-truth stack a required CI gate or validate archived legacy goals.
 
 ## Work item: support-tier-map
 
-Status: active
+Status: done
 Linked proposal: SHIPLOG-PROP-0008
 Linked spec: SHIPLOG-SPEC-0010
 Linked ADR: none
@@ -166,7 +166,7 @@ Blocks: policy-ci-wiring
 Blocked by: active-goal-checker
 Branch: infra/check-support-tiers
 Issue:
-PR: EffortlessMetrics/shiplog-swarm#31
+PR: EffortlessMetrics/shiplog-swarm#31, EffortlessMetrics/shiplog#474
 
 ### Goal
 
@@ -208,3 +208,62 @@ Revert the checker PR and keep support-tier validation manual.
 
 This proves the support-tier claim map syntax and proof-command refs only. It
 does not scan README claims or make the source-of-truth stack a required CI gate.
+
+## Work item: policy-ci-wiring
+
+Status: active
+Linked proposal: SHIPLOG-PROP-0008
+Linked spec: SHIPLOG-SPEC-0010
+Linked ADR: none
+Blocks: repo-contract-report
+Blocked by: support-tier-map
+Branch: infra/policy-ci-source-truth
+Issue:
+PR: EffortlessMetrics/shiplog-swarm#32
+
+### Goal
+
+Run the source-of-truth validators in the existing `CI / Policy gates` job so
+doc artifacts, active goals, and support-tier claims are continuously checked.
+
+### Production delta
+
+`ci.yml` policy-gates steps, CI lane policy/docs, workflow allowlist receipt,
+support-tier notes, `.codex/goals/active.toml`, and source-of-truth plan/spec.
+
+### Non-goals
+
+No branch-protection settings change, no new workflow, no release authority
+change, and no runtime product behavior changes.
+
+### Acceptance
+
+- `CI / Policy gates` runs `cargo xtask check-doc-artifacts`.
+- `CI / Policy gates` runs `cargo xtask check-goals`.
+- `CI / Policy gates` runs `cargo xtask check-support-tiers`.
+- CI lane docs and policy receipts describe source-of-truth validation without
+  stale check counts.
+- Source-of-truth status remains stabilizing until branch-protection policy is
+  enabled separately.
+
+### Proof commands
+
+```bash
+cargo xtask check-doc-artifacts
+cargo xtask check-goals
+cargo xtask check-support-tiers
+cargo xtask check-workflows --mode blocking-allowlist
+cargo xtask check-lane-mappings --mode blocking-allowlist
+cargo xtask check-actuals-coverage --mode blocking-allowlist
+git diff --check
+```
+
+### Rollback
+
+Revert the CI wiring PR; the dedicated validators remain available for local
+and manual CI use.
+
+### Claim boundary
+
+This proves the source-of-truth validators are wired into the existing policy
+job. It does not enable GitHub branch protection or claim README coverage.

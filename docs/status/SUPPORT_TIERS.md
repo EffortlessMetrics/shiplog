@@ -16,8 +16,8 @@ This file maps product and governance claims to proof commands.
 
 | Surface | Tier | Claim | Proof command | Notes |
 |---|---|---|---|---|
-| Document artifact links | Stabilizing | Proposal/spec/ADR/plan artifacts are linked by policy ledger. | `cargo xtask check-doc-artifacts` | Dedicated checker validates files, IDs, kinds, statuses, and linked artifact refs. |
-| Active goal manifest | Stabilizing | Codex execution state links current work to proposal/spec/plan proof. | `cargo xtask check-goals` | Dedicated checker validates `.codex/goals/active.toml`, work-item status, refs, blockers, and proof commands. |
-| Support-tier claim map | Stabilizing | Product and governance claims map to recognized proof commands. | `cargo xtask check-support-tiers` | Dedicated checker validates tier names, required proof commands, and xtask proof refs. |
+| Document artifact links | Stabilizing | Proposal/spec/ADR/plan artifacts are linked by policy ledger. | `cargo xtask check-doc-artifacts` | Dedicated checker validates files, IDs, kinds, statuses, and linked artifact refs; `CI / Policy gates` runs it. |
+| Active goal manifest | Stabilizing | Codex execution state links current work to proposal/spec/plan proof. | `cargo xtask check-goals` | Dedicated checker validates `.codex/goals/active.toml`, work-item status, refs, blockers, and proof commands; `CI / Policy gates` runs it. |
+| Support-tier claim map | Stabilizing | Product and governance claims map to recognized proof commands. | `cargo xtask check-support-tiers` | Dedicated checker validates tier names, required proof commands, and xtask proof refs; `CI / Policy gates` runs it. |
 | Package boundary | Stable | Published crate surface is policy-ledger controlled. | `cargo xtask package-boundary` | Guardrail against durable unpublished production crates. |
 | Policy ledgers | Stable | Policy files parse and are schema-audited. | `cargo xtask check-policy-schemas` | Requires ledger updates when claims change. |

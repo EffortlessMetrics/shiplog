@@ -90,7 +90,7 @@ workflow_name = "CI"
 job_name = "cargo-deny"
 
 [lane.ci_policy]
-description = "Policy ledger enforcement: schemas + 10 blocking-allowlist checks."
+description = "Policy and source-of-truth enforcement: schemas, doc artifacts, goals, support tiers, and blocking-allowlist checks."
 intent = "policy enforcement"
 runner = "ubuntu_24_04"
 base_lem = 3

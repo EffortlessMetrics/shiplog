@@ -50,13 +50,15 @@ Proposal and spec IDs resolve in `policy/doc-artifacts.toml`; active goal links 
 
 ## CI proof
 
-Start advisory, then promote to blocking when dedicated doc/goals validators are
-required in CI.
+The `CI / Policy gates` job runs the dedicated source-of-truth validators:
+`cargo xtask check-doc-artifacts`, `cargo xtask check-goals`, and
+`cargo xtask check-support-tiers`.
 
 ## Metrics / promotion rule
 
 Promote from stabilizing to stable when `check-doc-artifacts`, `check-goals`,
-and `check-support-tiers` are implemented and required.
+and `check-support-tiers` are implemented, run in CI, and covered by the
+branch-protection target policy.
 
 ## Failure modes
 

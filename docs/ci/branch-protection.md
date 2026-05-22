@@ -55,7 +55,7 @@ not what is currently enforced.
 | `CI / Check (ubuntu-latest)` | `ci.yml` | Primary Rust correctness gate |
 | `CI / Check (windows-latest)` | `ci.yml` | Cross-platform parity (covered by `ci-exception-0001`) |
 | `CI / cargo-deny` | `ci.yml` | Dependency policy |
-| `CI / Policy gates` | `ci.yml` (added in PR #165) | Policy ledger enforcement: schemas + 10 blocking-allowlist file/lint/panic checks |
+| `CI / Policy gates` | `ci.yml` (added in PR #165, expanded for SHIPLOG-SPEC-0010) | Policy and source-of-truth enforcement: schemas, doc artifacts, active goals, support tiers, and blocking-allowlist file/lint/panic checks |
 | `pr-plan / forecast` | `pr-plan.yml` (added in PR #146) | LEM forecast + risk-pack receipt |
 
 The `MSRV (1.95)` job that previously appeared here was dropped in PR
