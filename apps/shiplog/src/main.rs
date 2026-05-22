@@ -5509,10 +5509,10 @@ fn classify_intake_repair_kind(source: &str, reason: &str) -> IntakeRepairKind {
             "auth rejected",
             "authentication",
             "authorization",
-            "401",
-            "403",
         ],
-    ) {
+    ) || contains_http_status_code(&reason, "401")
+        || contains_http_status_code(&reason, "403")
+    {
         return IntakeRepairKind::AuthRejected;
     }
     if contains_any(
@@ -5577,6 +5577,15 @@ fn manual_journal_add_blocked_for_skips(skipped_sources: &[ConfiguredSourceSkip]
 
 fn contains_any(haystack: &str, needles: &[&str]) -> bool {
     needles.iter().any(|needle| haystack.contains(needle))
+}
+
+fn contains_http_status_code(haystack: &str, code: &str) -> bool {
+    haystack.match_indices(code).any(|(start, _)| {
+        let before = haystack[..start].chars().next_back();
+        let after = haystack[start + code.len()..].chars().next();
+        !before.is_some_and(|ch| ch.is_ascii_digit())
+            && !after.is_some_and(|ch| ch.is_ascii_digit())
+    })
 }
 
 fn intake_curation_notes(result: &ConfiguredRunResult) -> Vec<String> {
@@ -16072,6 +16081,11 @@ mod tests {
                 IntakeRepairKind::AuthRejected,
             ),
             (
+                "github",
+                "GitHub API returned HTTP 401",
+                IntakeRepairKind::AuthRejected,
+            ),
+            (
                 "linear",
                 "429 too many requests",
                 IntakeRepairKind::RateLimited,
@@ -16102,8 +16116,18 @@ mod tests {
                 IntakeRepairKind::LocalSourceUnavailable,
             ),
             (
+                "git",
+                "repo /mnt/ci-scratch/tmp/26275640157-2/not-a-repo is not a git repo",
+                IntakeRepairKind::LocalSourceUnavailable,
+            ),
+            (
                 "json",
                 "events file does not exist",
+                IntakeRepairKind::MissingFile,
+            ),
+            (
+                "json",
+                "read /mnt/ci-scratch/tmp/26275640157-2/missing-ledger.events.jsonl: No such file or directory (os error 2)",
                 IntakeRepairKind::MissingFile,
             ),
             (
