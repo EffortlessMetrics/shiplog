@@ -662,6 +662,10 @@ Promote `shiplog-swarm/main` into `shiplog/main` by merge-commit PRs.
 - PR body lists swarm head, included swarm PRs, and proof.
 - Source-only release changes are synced back into `shiplog-swarm` before more
   normal development lands.
+- Receipt-refresh PRs record the latest completed source promotion available at
+  the time they are authored; subsequent receipt-refresh promotions are tracked
+  by their GitHub PR bodies until the next substantive swarm PR refreshes this
+  ledger. This avoids an infinite loop of receipt-only updates.
 
 ### Receipt
 
@@ -719,6 +723,13 @@ EffortlessMetrics/shiplog#485:
   source merge: 31bbbe9e50cd21c7caf9973b9978b811e2df0eae
   result: regular merge commit; source post-merge routed CI, CI, and
           CI Actuals passed
+
+EffortlessMetrics/shiplog#486:
+  swarm head: 1214b1c08db5ac6a974ec516aa20ed8a41813fbd
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#44
+  source merge: fabfaf1586998eeabb35f6f1402bd8477bd5037e
+  result: regular merge commit; source post-merge routed CI, CI, smoke,
+          security, testing, and CI Actuals passed
 ```
 
 ### Proof commands
