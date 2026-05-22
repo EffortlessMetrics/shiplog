@@ -227,6 +227,7 @@ fn known_xtask_subcommand(command: &str) -> bool {
             | "package-boundary"
             | "package-version"
             | "policy-report"
+            | "repo-contract-report"
             | "ci"
             | "check-file-policy"
             | "check-generated"

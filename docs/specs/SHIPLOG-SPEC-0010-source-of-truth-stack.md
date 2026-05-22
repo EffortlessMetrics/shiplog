@@ -41,8 +41,8 @@ Proposal and spec IDs resolve in `policy/doc-artifacts.toml`; active goal links 
 ## Test mapping
 
 `cargo xtask check-doc-artifacts`, `cargo xtask check-goals`,
-`cargo xtask check-support-tiers`, `cargo xtask policy-report`, and
-`cargo xtask check-policy-schemas`.
+`cargo xtask check-support-tiers`, `cargo xtask repo-contract-report`,
+`cargo xtask policy-report`, and `cargo xtask check-policy-schemas`.
 
 ## Implementation mapping
 

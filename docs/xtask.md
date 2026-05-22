@@ -100,6 +100,20 @@ Prints a human summary of every policy ledger: file name, status, and
 the count of top-level array-of-table entries. Useful for spot-checking
 ledger growth without opening each file.
 
+### `cargo xtask repo-contract-report`
+
+Writes source-of-truth graph reports for humans and agents:
+
+- `target/source-of-truth/graph.json`
+- `target/source-of-truth/graph.md`
+
+The report reads [`policy/doc-artifacts.toml`](../policy/doc-artifacts.toml),
+[`.codex/goals/active.toml`](../.codex/goals/active.toml), and
+[`docs/status/SUPPORT_TIERS.md`](status/SUPPORT_TIERS.md). It summarizes the
+active goal, work items, artifact links, support-tier proof commands, and graph
+edges. It does not mutate source artifacts and does not replace the dedicated
+validators.
+
 ## Override workspace root
 
 For tests / development outside the repo:

@@ -48,6 +48,9 @@ enum Command {
     /// Print a human summary of every policy ledger.
     PolicyReport,
 
+    /// Write a source-of-truth graph report for humans and agents.
+    RepoContractReport,
+
     /// CI economics commands (forecast, actuals).
     Ci(CiArgs),
 
@@ -224,6 +227,7 @@ impl Cli {
             Command::PackageBoundary => tasks::package_boundary::run(&workspace_root),
             Command::PackageVersion => tasks::package_version::run(&workspace_root),
             Command::PolicyReport => tasks::policy_report::run(&workspace_root),
+            Command::RepoContractReport => tasks::repo_contract_report::run(&workspace_root),
             Command::Ci(ci) => match ci.command {
                 CiCommand::Plan(args) => tasks::ci_plan::run(tasks::ci_plan::PlanInputs {
                     workspace_root,

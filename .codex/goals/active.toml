@@ -79,7 +79,7 @@ receipts = [
 
 [[work_item]]
 id = "policy-ci-wiring"
-status = "active"
+status = "done"
 proposal = "SHIPLOG-PROP-0008"
 spec = "SHIPLOG-SPEC-0010"
 plan = "plans/0.10.0/implementation-plan.md"
@@ -90,5 +90,24 @@ commands = [
   "cargo xtask check-workflows --mode blocking-allowlist",
   "cargo xtask check-lane-mappings --mode blocking-allowlist",
   "cargo xtask check-actuals-coverage --mode blocking-allowlist",
+  "git diff --check",
+]
+receipts = [
+  "EffortlessMetrics/shiplog-swarm#32",
+  "EffortlessMetrics/shiplog#475",
+]
+
+[[work_item]]
+id = "repo-contract-report"
+status = "active"
+proposal = "SHIPLOG-PROP-0008"
+spec = "SHIPLOG-SPEC-0010"
+plan = "plans/0.10.0/implementation-plan.md"
+commands = [
+  "cargo test -p xtask repo_contract_report --locked",
+  "cargo test -p xtask --test cli repo_contract_report --locked",
+  "cargo xtask repo-contract-report",
+  "cargo xtask check-goals",
+  "cargo xtask check-support-tiers",
   "git diff --check",
 ]

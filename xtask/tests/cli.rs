@@ -363,6 +363,98 @@ fn policy_report_empty_dir_is_ok() {
 }
 
 #[test]
+fn repo_contract_report_writes_graph_outputs() {
+    let dir = fixture_workspace(&[
+        (
+            "policy/doc-artifacts.toml",
+            r#"
+schema_version = 1
+policy = "doc-artifacts"
+owner = "repo-infra"
+status = "advisory"
+
+[[artifact]]
+id = "SHIPLOG-PROP-0008"
+kind = "proposal"
+path = "docs/proposals/SHIPLOG-PROP-0008-source-of-truth-stack.md"
+status = "proposed"
+owner = "repo-infra"
+
+[[artifact]]
+id = "SHIPLOG-SPEC-0010"
+kind = "spec"
+path = "docs/specs/SHIPLOG-SPEC-0010-source-of-truth-stack.md"
+status = "proposed"
+owner = "repo-infra"
+linked_proposal = "SHIPLOG-PROP-0008"
+
+[[artifact]]
+id = "SHIPLOG-PLAN-0010"
+kind = "plan"
+path = "plans/0.10.0/implementation-plan.md"
+status = "active"
+owner = "codex"
+linked_proposal = "SHIPLOG-PROP-0008"
+linked_spec = "SHIPLOG-SPEC-0010"
+"#,
+        ),
+        (
+            ".codex/goals/active.toml",
+            r#"
+id = "shiplog-source-of-truth-stack"
+title = "Shiplog source-of-truth stack rollout"
+status = "active"
+owner = "codex"
+created = "2026-05-20"
+objective = "Keep repo source-of-truth artifacts linked."
+end_state = ["Artifacts are linked."]
+
+[[work_item]]
+id = "repo-contract-report"
+status = "active"
+proposal = "SHIPLOG-PROP-0008"
+spec = "SHIPLOG-SPEC-0010"
+plan = "plans/0.10.0/implementation-plan.md"
+commands = ["cargo xtask repo-contract-report", "git diff --check"]
+"#,
+        ),
+        (
+            "docs/status/SUPPORT_TIERS.md",
+            r#"# Support tiers
+
+## Claim map
+
+| Surface | Tier | Claim | Proof command | Notes |
+|---|---|---|---|---|
+| Repo contract report | Stabilizing | Agents can inspect the graph. | `cargo xtask repo-contract-report` | Writes graph reports. |
+"#,
+        ),
+    ]);
+
+    xtask()
+        .args(["--workspace-root", dir.path().to_str().expect("utf-8 path")])
+        .arg("repo-contract-report")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("repo-contract-report: wrote"));
+
+    let graph_json = dir.path().join("target/source-of-truth/graph.json");
+    let graph_md = dir.path().join("target/source-of-truth/graph.md");
+    assert!(graph_json.is_file());
+    assert!(graph_md.is_file());
+    assert!(
+        fs::read_to_string(graph_json)
+            .expect("read graph json")
+            .contains("\"repo-contract-report\"")
+    );
+    assert!(
+        fs::read_to_string(graph_md)
+            .expect("read graph md")
+            .contains("# Source-of-truth graph")
+    );
+}
+
+#[test]
 fn workspace_root_can_come_from_env() {
     let dir = fixture_workspace(&[(
         "ci-budget.toml",

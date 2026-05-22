@@ -211,7 +211,7 @@ does not scan README claims or make the source-of-truth stack a required CI gate
 
 ## Work item: policy-ci-wiring
 
-Status: active
+Status: done
 Linked proposal: SHIPLOG-PROP-0008
 Linked spec: SHIPLOG-SPEC-0010
 Linked ADR: none
@@ -219,7 +219,7 @@ Blocks: repo-contract-report
 Blocked by: support-tier-map
 Branch: infra/policy-ci-source-truth
 Issue:
-PR: EffortlessMetrics/shiplog-swarm#32
+PR: EffortlessMetrics/shiplog-swarm#32, EffortlessMetrics/shiplog#475
 
 ### Goal
 
@@ -267,3 +267,65 @@ and manual CI use.
 
 This proves the source-of-truth validators are wired into the existing policy
 job. It does not enable GitHub branch protection or claim README coverage.
+
+## Work item: repo-contract-report
+
+Status: active
+Linked proposal: SHIPLOG-PROP-0008
+Linked spec: SHIPLOG-SPEC-0010
+Linked ADR: none
+Blocks: source-of-truth-closeout
+Blocked by: policy-ci-wiring
+Branch: infra/repo-contract-report
+Issue:
+PR: EffortlessMetrics/shiplog-swarm#33
+
+### Goal
+
+Add `cargo xtask repo-contract-report` so humans and agents can inspect the
+current source-of-truth graph without manually opening every proposal, spec,
+plan, goal manifest, support-tier row, and policy ledger.
+
+### Production delta
+
+`xtask` command and tests, `docs/xtask.md`, support-tier proof command, active
+goal manifest, and source-of-truth plan/spec references.
+
+### Non-goals
+
+No branch-protection settings change, no CI requirement change, no release
+authority move, and no runtime product behavior changes.
+
+### Acceptance
+
+- `cargo xtask repo-contract-report` reads `policy/doc-artifacts.toml`.
+- `cargo xtask repo-contract-report` reads `.codex/goals/active.toml`.
+- `cargo xtask repo-contract-report` reads `docs/status/SUPPORT_TIERS.md`.
+- The command writes `target/source-of-truth/graph.json`.
+- The command writes `target/source-of-truth/graph.md`.
+- The report includes active goal, work items, artifacts, support tiers, and
+  graph edges.
+- The report is derived only; dedicated validators remain the enforcement
+  commands.
+
+### Proof commands
+
+```bash
+cargo test -p xtask repo_contract_report --locked
+cargo test -p xtask --test cli repo_contract_report --locked
+cargo xtask repo-contract-report
+cargo xtask check-goals
+cargo xtask check-support-tiers
+git diff --check
+```
+
+### Rollback
+
+Revert the report command PR; the source-of-truth validators and policy-gate
+checks remain intact.
+
+### Claim boundary
+
+This proves a generated repo-contract inspection report. It does not validate
+every product claim, enable branch protection, or replace the dedicated
+source-of-truth validators.
