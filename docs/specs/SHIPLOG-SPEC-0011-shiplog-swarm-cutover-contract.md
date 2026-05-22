@@ -173,25 +173,27 @@ Implementation jobs are conditional and must not be branch-protection checks:
 
 ```text
 Route Shiplog Rust Small
+Shiplog Rust Small on CPX42
 Shiplog Rust Small on CX43
 Shiplog Rust Small on CX53
 Shiplog Rust Small on GitHub Hosted
 Shiplog Rust Small Result
 ```
 
-CX33 may be added later only after it is attached, stable, and proven to have
-enough disk for shiplog. Shiplog must not start as CX53-primary unless measured
-runtimes prove it needs that route.
+Additional self-hosted routes may be added only after they are attached, stable,
+and proven to have enough disk for shiplog. Shiplog must not start as
+CX53-primary unless measured runtimes prove it needs that route.
 
-Initial route order:
+Current route order after the CPX42 extension is:
+
+```text
+CPX42 -> CX43 -> CX53 -> GitHub Hosted
+```
+
+The initial burn-in allowed smaller route sets such as:
 
 ```text
 CX43 -> CX53 -> GitHub Hosted
-```
-
-An even simpler first burn-in route is acceptable:
-
-```text
 CX43 -> GitHub Hosted
 ```
 
@@ -239,6 +241,7 @@ The result job succeeds only when the selected implementation job succeeds:
 
 | Router target | Required implementation result |
 | --- | --- |
+| `cpx42` | `Shiplog Rust Small on CPX42` succeeds |
 | `cx43` | `Shiplog Rust Small on CX43` succeeds |
 | `cx53` | `Shiplog Rust Small on CX53` succeeds |
 | `github` | `Shiplog Rust Small on GitHub Hosted` succeeds |
@@ -280,7 +283,8 @@ The implementation plan must prove the lane in this order:
    - self-hosted route is allowed for trusted same-repo branches;
    - normalized result passes.
 4. Fallback proof:
-   - if CX53 is enabled, CX43 busy routes to CX53;
+   - the current self-hosted route order is exercised or explicitly forced;
+   - busy enabled self-hosted runners fall through to the next route;
    - if all enabled self-hosted runners are busy, route to GitHub-hosted;
    - normalized result passes in each route.
 5. Fork PR proof:

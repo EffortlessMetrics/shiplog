@@ -59,7 +59,7 @@ Primary users:
 Secondary users:
 
 - infrastructure maintainers adding repositories to `em-ci-small`;
-- maintainers proving CX43/CX53/GitHub-hosted fallback behavior;
+- maintainers proving CPX42/CX43/CX53/GitHub-hosted fallback behavior;
 - future repos copying the same public-swarm migration shape.
 
 ## Product And Repo End State
@@ -133,15 +133,16 @@ Implementation jobs are conditional and should not be branch-protection checks:
 
 ```text
 Route Shiplog Rust Small
+Shiplog Rust Small on CPX42
 Shiplog Rust Small on CX43
 Shiplog Rust Small on CX53
 Shiplog Rust Small on GitHub Hosted
 Shiplog Rust Small Result
 ```
 
-CX33 may be added later if it is attached, stable, and has enough disk for the
-shiplog workload. Shiplog should not start as CX53-primary unless measured
-runtimes prove that it needs the heavier route.
+Additional self-hosted routes may be added after they are attached, stable, and
+proven to have enough disk for the shiplog workload. Shiplog should not start
+as CX53-primary unless measured runtimes prove that it needs the heavier route.
 
 The base proof should mirror the current contributor checks:
 
@@ -234,7 +235,7 @@ The follow-up implementation plan should be PR-sized and ordered:
 4. Prove workflow PR behavior.
 5. Run manual dispatch on shiplog-swarm/main.
 6. Prove a tiny same-repo PR.
-7. Prove CX43 -> CX53 -> GitHub fallback, or CX43 -> GitHub if simpler.
+7. Prove the enabled self-hosted route order and GitHub-hosted fallback.
 8. Drain or checkpoint source repo PRs.
 9. Final-sync shiplog-swarm from shiplog/main.
 10. Enable branch protection requiring only Shiplog Rust Small Result.
