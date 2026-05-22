@@ -150,7 +150,7 @@ expires = "permanent"
 [[entry]]
 path = ".github/workflows/em-ci-routed-shiplog-rust.yml"
 owner = "repo-infra/ci"
-reason = "shiplog-swarm routed Linux gate. Routes trusted same-repo PRs through CX43, then CX53, then GitHub-hosted fallback, while fork PRs stay off self-hosted runners. Normalizes branch protection to Shiplog Rust Small Result; implementation jobs are conditional and should not be required checks."
+reason = "shiplog-swarm routed Linux gate. Routes trusted same-repo PRs through CPX42, then CX43, then CX53, then GitHub-hosted fallback, while fork PRs stay off self-hosted runners. Normalizes branch protection to Shiplog Rust Small Result; implementation jobs are conditional and should not be required checks."
 permissions = ["contents:read"]
 secrets_used = ["EM_RUNNER_READ_TOKEN"]
 external_actions = [

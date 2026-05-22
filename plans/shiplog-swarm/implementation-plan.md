@@ -190,10 +190,12 @@ Shiplog Rust Small Result
 
 ### Production delta
 
-Add a `shiplog-swarm` workflow with conditional implementation jobs:
+Add a `shiplog-swarm` workflow with conditional implementation jobs. The
+current workflow includes CPX42, added after the initial lane landed:
 
 ```text
 Route Shiplog Rust Small
+Shiplog Rust Small on CPX42
 Shiplog Rust Small on CX43
 Shiplog Rust Small on CX53
 Shiplog Rust Small on GitHub Hosted
@@ -387,7 +389,7 @@ fork: EffortlessSteven/shiplog-swarm
 route: github
 reason: untrusted_pr
 trusted: false
-cx43/cx53 jobs: skipped
+self-hosted jobs: skipped
 github-hosted job: passed
 normalized result: passed
 disposition: closed without merge after proof capture
