@@ -204,6 +204,104 @@ commands = ["cargo xtask check-goals", "git diff --check"]
 }
 
 #[test]
+fn check_goals_validates_archived_goal_manifests() {
+    let dir = fixture_workspace(&[
+        (
+            "policy/doc-artifacts.toml",
+            r#"
+schema_version = 1
+policy = "doc-artifacts"
+owner = "repo-infra"
+status = "advisory"
+
+[[artifact]]
+id = "SHIPLOG-PROP-0008"
+kind = "proposal"
+path = "docs/proposals/SHIPLOG-PROP-0008-source-of-truth-stack.md"
+status = "proposed"
+owner = "repo-infra"
+
+[[artifact]]
+id = "SHIPLOG-SPEC-0010"
+kind = "spec"
+path = "docs/specs/SHIPLOG-SPEC-0010-source-of-truth-stack.md"
+status = "proposed"
+owner = "repo-infra"
+linked_proposal = "SHIPLOG-PROP-0008"
+
+[[artifact]]
+id = "SHIPLOG-PLAN-0010"
+kind = "plan"
+path = "plans/0.10.0/implementation-plan.md"
+status = "active"
+owner = "codex"
+linked_proposal = "SHIPLOG-PROP-0008"
+linked_spec = "SHIPLOG-SPEC-0010"
+"#,
+        ),
+        (
+            "plans/0.10.0/implementation-plan.md",
+            "SHIPLOG-PLAN-0010\n\n## Work item: active-goal-checker\n",
+        ),
+        (
+            ".codex/goals/active.toml",
+            r#"
+schema_version = 1
+
+id = "shiplog-source-of-truth-stack"
+title = "Shiplog source-of-truth stack rollout"
+status = "active"
+owner = "codex"
+created = "2026-05-20"
+
+objective = "Keep repo source-of-truth artifacts linked."
+end_state = ["Artifacts are linked."]
+
+[[work_item]]
+id = "active-goal-checker"
+status = "active"
+proposal = "SHIPLOG-PROP-0008"
+spec = "SHIPLOG-SPEC-0010"
+plan = "plans/0.10.0/implementation-plan.md"
+commands = ["cargo xtask check-goals", "git diff --check"]
+"#,
+        ),
+        (
+            ".codex/goals/archive/2026-05-22-source-of-truth.toml",
+            r#"
+schema_version = 1
+
+id = "shiplog-source-of-truth-stack"
+title = "Shiplog source-of-truth stack rollout"
+status = "archived"
+owner = "codex"
+created = "2026-05-20"
+
+objective = "Keep repo source-of-truth artifacts linked."
+end_state = ["Artifacts are linked."]
+
+[[work_item]]
+id = "active-goal-checker"
+status = "done"
+proposal = "SHIPLOG-PROP-0008"
+spec = "SHIPLOG-SPEC-0010"
+plan = "plans/0.10.0/implementation-plan.md"
+commands = ["cargo xtask check-goals", "git diff --check"]
+"#,
+        ),
+    ]);
+
+    xtask()
+        .args(["--workspace-root", dir.path().to_str().expect("utf-8 path")])
+        .arg("check-goals")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "1 archived goal manifest(s) linked and valid",
+        ));
+}
+
+#[test]
 fn check_goals_fails_on_multiple_active_items() {
     let dir = fixture_workspace(&[
         (

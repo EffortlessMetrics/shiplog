@@ -1,13 +1,14 @@
 //! `cargo xtask check-goals`
 //!
-//! Validates `.codex/goals/active.toml`, the repo-local execution-state
-//! manifest that tells agents which source-of-truth work is current.
+//! Validates `.codex/goals/active.toml` plus archived goal manifests, the
+//! repo-local execution-state manifests that tell agents which
+//! source-of-truth work is current and what has already closed.
 
 use anyhow::{Context, Result};
 use serde::Deserialize;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
-use std::path::{Component, Path};
+use std::path::{Component, Path, PathBuf};
 
 #[derive(Debug, Deserialize)]
 struct ActiveGoal {
@@ -63,10 +64,7 @@ pub fn run(workspace_root: &Path) -> Result<()> {
         .join(".codex")
         .join("goals")
         .join("active.toml");
-    let text = fs::read_to_string(&active_path)
-        .with_context(|| format!("read {}", active_path.display()))?;
-    let goal: ActiveGoal =
-        toml::from_str(&text).with_context(|| format!("parse {}", active_path.display()))?;
+    let goal = load_goal(&active_path)?;
 
     let artifacts = load_doc_artifacts(workspace_root)?;
     let by_id = artifact_by_id(&artifacts);
@@ -75,10 +73,12 @@ pub fn run(workspace_root: &Path) -> Result<()> {
     let mut findings = Vec::new();
     validate_goal_shape(&goal, &mut findings);
     validate_work_items(&goal, workspace_root, &by_id, &by_plan_path, &mut findings);
+    let archive_count =
+        validate_archived_goals(workspace_root, &by_id, &by_plan_path, &mut findings)?;
 
     if findings.is_empty() {
         println!(
-            "check-goals: active goal {:?} has {} work item(s) linked and valid.",
+            "check-goals: active goal {:?} has {} work item(s) linked and valid; {archive_count} archived goal manifest(s) linked and valid.",
             goal.id,
             goal.work_item.len()
         );
@@ -92,6 +92,85 @@ pub fn run(workspace_root: &Path) -> Result<()> {
         "check-goals: {} finding(s)",
         findings.len()
     ))
+}
+
+fn load_goal(path: &Path) -> Result<ActiveGoal> {
+    let text = fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
+    toml::from_str(&text).with_context(|| format!("parse {}", path.display()))
+}
+
+fn validate_archived_goals(
+    workspace_root: &Path,
+    by_id: &BTreeMap<&str, &ArtifactRef>,
+    by_plan_path: &BTreeMap<&str, &ArtifactRef>,
+    findings: &mut Vec<String>,
+) -> Result<usize> {
+    let archive_dir = workspace_root.join(".codex").join("goals").join("archive");
+    if !archive_dir.exists() {
+        return Ok(0);
+    }
+    let mut paths = archive_goal_paths(&archive_dir)?;
+    paths.sort();
+
+    for path in &paths {
+        match load_goal(path) {
+            Ok(goal) => {
+                validate_goal_shape(&goal, findings);
+                validate_archive_goal_shape(path, &goal, findings);
+                validate_work_items(&goal, workspace_root, by_id, by_plan_path, findings);
+            }
+            Err(err) => findings.push(format!(
+                "[goal-archive-invalid] {}: {err:#}",
+                path.display()
+            )),
+        }
+    }
+
+    Ok(paths.len())
+}
+
+fn archive_goal_paths(archive_dir: &Path) -> Result<Vec<PathBuf>> {
+    let mut paths = Vec::new();
+    for entry in fs::read_dir(archive_dir).with_context(|| {
+        format!(
+            "read archived goal manifest directory {}",
+            archive_dir.display()
+        )
+    })? {
+        let entry = entry.with_context(|| {
+            format!(
+                "read archived goal manifest entry in {}",
+                archive_dir.display()
+            )
+        })?;
+        let path = entry.path();
+        if path.extension().and_then(|value| value.to_str()) == Some("toml") {
+            paths.push(path);
+        }
+    }
+    Ok(paths)
+}
+
+fn validate_archive_goal_shape(path: &Path, goal: &ActiveGoal, findings: &mut Vec<String>) {
+    if goal.status != "archived" {
+        findings.push(format!(
+            "[goal-archive-status] {} goal {} status {:?} is not archived",
+            path.display(),
+            goal.id,
+            goal.status
+        ));
+    }
+    for item in &goal.work_item {
+        if matches!(item.status.as_str(), "active" | "ready") {
+            findings.push(format!(
+                "[goal-archive-open-work-item] {} goal {} work item {} is still {}",
+                path.display(),
+                goal.id,
+                item.id,
+                item.status
+            ));
+        }
+    }
 }
 
 fn load_doc_artifacts(workspace_root: &Path) -> Result<Vec<ArtifactRef>> {
@@ -458,6 +537,50 @@ commands = ["cargo xtask check-goals", "git diff --check"]
     fn linked_active_goal_passes() {
         let dir = fixture(ACTIVE_GOAL, DOC_ARTIFACTS);
         run(dir.path()).expect("valid active goal should pass");
+    }
+
+    #[test]
+    fn linked_archived_goal_passes() {
+        let dir = fixture(ACTIVE_GOAL, DOC_ARTIFACTS);
+        write(
+            &dir.path()
+                .join(".codex/goals/archive/2026-05-22-source-of-truth.toml"),
+            &ACTIVE_GOAL
+                .replacen("status = \"active\"", "status = \"archived\"", 1)
+                .replace(
+                    "status = \"active\"\nproposal",
+                    "status = \"done\"\nproposal",
+                ),
+        );
+        run(dir.path()).expect("valid active and archived goals should pass");
+    }
+
+    #[test]
+    fn archived_goal_must_have_archived_status() {
+        let dir = fixture(ACTIVE_GOAL, DOC_ARTIFACTS);
+        write(
+            &dir.path()
+                .join(".codex/goals/archive/2026-05-22-source-of-truth.toml"),
+            &ACTIVE_GOAL.replacen(
+                "status = \"active\"\nproposal",
+                "status = \"done\"\nproposal",
+                1,
+            ),
+        );
+        let err = run(dir.path()).unwrap_err();
+        assert!(err.to_string().contains("1 finding"));
+    }
+
+    #[test]
+    fn archived_goal_cannot_have_open_work_item() {
+        let dir = fixture(ACTIVE_GOAL, DOC_ARTIFACTS);
+        write(
+            &dir.path()
+                .join(".codex/goals/archive/2026-05-22-source-of-truth.toml"),
+            &ACTIVE_GOAL.replacen("status = \"active\"", "status = \"archived\"", 1),
+        );
+        let err = run(dir.path()).unwrap_err();
+        assert!(err.to_string().contains("1 finding"));
     }
 
     #[test]

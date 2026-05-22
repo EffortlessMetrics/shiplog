@@ -49,10 +49,12 @@ the document artifact link support-tier surface.
 
 ### `cargo xtask check-goals`
 
-Validates [`.codex/goals/active.toml`](../.codex/goals/active.toml), the
-Codex-facing execution-state manifest:
+Validates [`.codex/goals/active.toml`](../.codex/goals/active.toml) and
+archived manifests under [`.codex/goals/archive/`](../.codex/goals/archive/),
+the Codex-facing execution-state manifests:
 
 - the active goal manifest exists and parses;
+- archived goal manifests parse and use `status = "archived"`;
 - goal and work-item status values are recognized;
 - work-item IDs are unique;
 - at most one work item is `active`;
@@ -62,6 +64,7 @@ Codex-facing execution-state manifest:
   plan artifact;
 - the work-item ID is listed in the referenced implementation plan;
 - ready and active work items carry proof commands;
+- archived manifests do not contain open `ready` or `active` work items;
 - blocked work items name a blocker; and
 - done work items carry proof commands or receipt refs.
 
