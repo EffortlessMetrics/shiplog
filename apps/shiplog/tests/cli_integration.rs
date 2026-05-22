@@ -13465,6 +13465,86 @@ fn report_validate_rejects_unknown_source_key() {
 }
 
 #[test]
+fn report_validate_rejects_source_identity_mismatch() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args(["intake", "--out", out.to_str().unwrap(), "--no-open"])
+        .assert()
+        .success();
+
+    let report_path = first_run_dir(&out).join("intake.report.json");
+    let mut report: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&report_path).unwrap()).unwrap();
+    report["source_decisions"][0]["source"] = serde_json::json!("gitlab");
+    std::fs::write(
+        &report_path,
+        format!("{}\n", serde_json::to_string_pretty(&report).unwrap()),
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .args([
+            "report",
+            "validate",
+            "--path",
+            report_path.to_str().unwrap(),
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "intake report source_decisions source",
+        ))
+        .stderr(predicate::str::contains("not source_key"));
+}
+
+#[test]
+fn report_validate_rejects_source_label_mismatch() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GITLAB_TOKEN")
+        .env_remove("JIRA_TOKEN")
+        .env_remove("LINEAR_API_KEY")
+        .args(["intake", "--out", out.to_str().unwrap(), "--no-open"])
+        .assert()
+        .success();
+
+    let report_path = first_run_dir(&out).join("intake.report.json");
+    let mut report: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&report_path).unwrap()).unwrap();
+    report["source_freshness"][0]["source_label"] = serde_json::json!("GitLab");
+    std::fs::write(
+        &report_path,
+        format!("{}\n", serde_json::to_string_pretty(&report).unwrap()),
+    )
+    .unwrap();
+
+    shiplog_cmd()
+        .args([
+            "report",
+            "validate",
+            "--path",
+            report_path.to_str().unwrap(),
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "intake report source_freshness source_label",
+        ))
+        .stderr(predicate::str::contains("does not match source_key"));
+}
+
+#[test]
 fn report_validate_rejects_unknown_fixup_kind() {
     let tmp = TempDir::new().unwrap();
     let out = tmp.path().join("out");

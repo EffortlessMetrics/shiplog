@@ -122,6 +122,12 @@ and may use display labels there. Readers should prefer `source_key` when it is
 present, fall back to normalizing `source` when it is absent, and display
 `source_label` when it is present.
 
+`shiplog report validate` enforces the current identity triplet when these
+fields are present: `source` must normalize to `source_key`, and `source_label`
+must match the display label for that key. This catches reports where one
+source-facing section says `github` while another copy of the same receipt has
+drifted to a different source identity.
+
 Current writers include a v1-compatible `repair_sources[].kind` classifier for
 source repair loops. Older v1 reports may not have this optional field, so
 readers should fall back to the human-readable `reason` when it is absent.

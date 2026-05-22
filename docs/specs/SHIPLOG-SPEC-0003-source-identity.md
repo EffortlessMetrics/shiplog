@@ -165,6 +165,8 @@ The source identity implementation is complete when:
 - every source-facing JSON report entry carries `source_label` or has a
   documented compatibility reason not to;
 - `source_key` validates against the canonical vocabulary;
+- `shiplog report validate` rejects current reports whose `source`,
+  `source_key`, and `source_label` disagree;
 - `source_decisions` and `source_freshness` join directly on `source_key`;
 - tests no longer need report-local normalization helpers to compare source
   sections;
@@ -182,7 +184,9 @@ Current evidence:
 - [`apps/shiplog/src/main.rs`](../../apps/shiplog/src/main.rs) contains the
   current private `normalized_source_key` and `display_source_label` helpers.
 - [`contracts/schemas/intake-report.v1.schema.json`](../../contracts/schemas/intake-report.v1.schema.json)
-  currently accepts non-empty `source` strings but does not enforce vocabulary.
+  defines the canonical `source_key` vocabulary, while
+  `shiplog report validate` enforces the current identity triplet when reports
+  include `source_key` / `source_label`.
 - [`apps/shiplog/tests/intake_cold_start.rs`](../../apps/shiplog/tests/intake_cold_start.rs)
   currently checks first-run source decisions and freshness.
 - [`apps/shiplog/tests/cli_integration.rs`](../../apps/shiplog/tests/cli_integration.rs)
@@ -209,6 +213,9 @@ may only have `source`, and some historical reports used display labels there.
 
 Readers should join on `source_key` when present, fall back to normalizing
 `source` when it is absent, and display `source_label` when present.
+`shiplog report validate` preserves that compatibility path by allowing older
+reports without `source_key`, while rejecting current reports whose source
+identity fields drift apart.
 
 ## Non-Goals
 

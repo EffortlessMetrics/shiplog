@@ -3383,6 +3383,13 @@ const INTAKE_REPORT_ARRAY_FIELDS: &[&str] = &[
     "artifacts",
 ];
 const INTAKE_REPORT_OPTIONAL_ARRAY_FIELDS: &[&str] = &["actions", "repair_items"];
+const INTAKE_REPORT_SOURCE_IDENTITY_FIELDS: &[&str] = &[
+    "included_sources",
+    "skipped_sources",
+    "source_decisions",
+    "source_freshness",
+    "repair_sources",
+];
 const INTAKE_REPORT_MARKDOWN_SECTIONS: &[&str] = &[
     "# Review Intake Report",
     "## Included Sources",
@@ -4412,14 +4419,7 @@ fn validate_report_items(report: &serde_json::Value) -> Result<()> {
             for key in object.keys() {
                 ensure_field_name_not_secret_bearing(key)?;
             }
-            if matches!(
-                field,
-                "included_sources"
-                    | "skipped_sources"
-                    | "source_decisions"
-                    | "source_freshness"
-                    | "repair_sources"
-            ) {
+            if INTAKE_REPORT_SOURCE_IDENTITY_FIELDS.contains(&field) {
                 validate_optional_report_source_identity(field, item)?;
             }
             if field == "repair_sources" {
@@ -4448,6 +4448,7 @@ fn validate_report_items(report: &serde_json::Value) -> Result<()> {
     if let Some(packet_quality) = report.get("packet_quality") {
         validate_report_packet_quality(packet_quality)?;
     }
+    validate_report_source_identity_consistency(report)?;
 
     Ok(())
 }
@@ -4467,6 +4468,40 @@ fn validate_optional_report_source_identity(field: &str, item: &serde_json::Valu
         };
         if source_label.is_empty() {
             anyhow::bail!("intake report {field} source_label must not be empty")
+        }
+    }
+
+    Ok(())
+}
+
+fn validate_report_source_identity_consistency(report: &serde_json::Value) -> Result<()> {
+    for field in INTAKE_REPORT_SOURCE_IDENTITY_FIELDS {
+        let Some(items) = report.get(*field).and_then(serde_json::Value::as_array) else {
+            continue;
+        };
+        for item in items {
+            let source = optional_report_string(item, "source")?;
+            let source_key = optional_report_string(item, "source_key")?;
+            let source_label = optional_report_string(item, "source_label")?;
+
+            if let Some(source_key) = &source_key {
+                if let Some(source) = &source {
+                    let normalized = normalized_source_key(source);
+                    if normalized != *source_key {
+                        anyhow::bail!(
+                            "intake report {field} source {source:?} normalizes to {normalized:?}, not source_key {source_key:?}"
+                        )
+                    }
+                }
+                if let Some(source_label) = &source_label {
+                    let expected = display_source_label(source_key);
+                    if *source_label != expected {
+                        anyhow::bail!(
+                            "intake report {field} source_label {source_label:?} does not match source_key {source_key:?}; expected {expected:?}"
+                        )
+                    }
+                }
+            }
         }
     }
 
