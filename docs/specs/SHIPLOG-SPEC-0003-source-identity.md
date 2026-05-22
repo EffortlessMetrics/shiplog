@@ -14,12 +14,14 @@ This spec defines source identity for intake reports. The goal is that
 machine-readable JSON uses stable source keys while human-facing Markdown uses
 friendly display labels.
 
-This unblocks skipped-source freshness, cross-section joins, and future agent
-flows without test-local normalization helpers.
+This is the source identity contract used by current intake-report writers:
+skipped-source freshness, cross-section joins, and future agent flows join on
+`source_key` instead of recreating display-label normalization.
 
-## Current Problem
+## Historical Problem
 
-Today the same conceptual source can appear under different strings:
+Before the source identity work landed, the same conceptual source could appear
+under different strings:
 
 ```text
 source_freshness[].source = github / git / json_import
@@ -29,9 +31,9 @@ included/skipped sources  = display labels
 
 Issue
 [#223](https://github.com/EffortlessMetrics/shiplog/issues/223) records the
-problem. Issue
+original schema-consistency gap. Issue
 [#229](https://github.com/EffortlessMetrics/shiplog/issues/229) records why
-skipped-source freshness was deferred until identity is settled.
+skipped-source freshness was deferred until identity was settled.
 
 The failure mode is not cosmetic. A report consumer cannot join freshness and
 decision entries reliably without reproducing shiplog's private
@@ -132,16 +134,28 @@ The long-term contract is:
 
 ## Freshness And Skipped Sources
 
-Skipped sources in `source_freshness` depend on this spec.
+Skipped sources now appear in `source_freshness` using the same
+`source_key` / `source_label` identity shape as `source_decisions`. A skipped
+source entry reports:
 
-The intended follow-up order is:
+```json
+{
+  "source": "github",
+  "source_key": "github",
+  "source_label": "GitHub",
+  "status": "skipped",
+  "cache_hits": 0,
+  "cache_misses": 0,
+  "reason": "missing GITHUB_TOKEN"
+}
+```
 
-1. Canonicalize source identity in report JSON.
-2. Add skipped configured sources to `source_freshness`.
-3. Prove `source_decisions` and `source_freshness` join on `source_key`.
+Current tests prove cold-start skipped sources are present in
+`source_freshness`, carry non-empty reasons, and do not duplicate
+`source_key` rows.
 
-Do not implement skipped-source freshness by adding new display-label
-normalization in tests. That preserves the bug this spec is meant to remove.
+Do not reintroduce display-label normalization in tests. That would preserve
+the original bug this spec removed.
 
 ## Acceptance Criteria
 
@@ -155,7 +169,7 @@ The source identity implementation is complete when:
 - tests no longer need report-local normalization helpers to compare source
   sections;
 - Markdown still renders friendly labels;
-- skipped-source freshness can be implemented without naming drift;
+- skipped sources appear in `source_freshness` without naming drift;
 - historical v1 reports either keep validating or have a documented migration
   path.
 

@@ -13,7 +13,7 @@ Related issues:
 
 ## Context
 
-`intake.report.json` currently exposes the same conceptual source under
+`intake.report.json` previously exposed the same conceptual source under
 different naming conventions across report sections:
 
 ```text
@@ -22,10 +22,10 @@ source_decisions[].source = GitHub / Local git / JSON
 included/skipped sources  = display labels
 ```
 
-That makes the report harder for tools and agents to join. Tests have had to
+That made the report harder for tools and agents to join. Tests had to
 recreate private source-name normalization rules to compare sections, and the
-deferred skipped-source freshness work would bake in the same drift if it were
-implemented before source identity is settled.
+deferred skipped-source freshness work would have baked in the same drift if it
+had shipped before source identity was settled.
 
 ## Decision
 
@@ -53,9 +53,10 @@ the machine contract.
   and `JSON`.
 - Legacy `source` fields may remain temporarily only when the schema and docs
   specify whether they contain a key, label, or compatibility alias.
-- Skipped-source freshness must wait until source identity is canonicalized.
-- Tests should stop using report-local source normalization helpers once the
-  behavior implementation lands.
+- Skipped-source freshness uses the canonical source identity fields and joins
+  to `source_decisions` on `source_key`.
+- Tests should not use report-local source normalization helpers for current
+  writer output; they should assert `source_key` directly.
 
 ## Alternatives Considered
 
