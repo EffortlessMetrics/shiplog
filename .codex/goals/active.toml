@@ -42,4 +42,8 @@ commands = [
 receipts = [
   "EffortlessMetrics/shiplog-swarm#37",
   "EffortlessMetrics/shiplog#480",
+  "EffortlessMetrics/shiplog-swarm#38",
+  "EffortlessMetrics/shiplog#481",
+  "EffortlessMetrics/shiplog-swarm#39",
+  "EffortlessMetrics/shiplog#482",
 ]
