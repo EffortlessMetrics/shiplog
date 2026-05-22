@@ -640,7 +640,7 @@ Promote `shiplog-swarm/main` into `shiplog/main` by merge-commit PRs.
 
 ### Receipt
 
-The promotion model has been exercised twice:
+The promotion model is active and has been exercised repeatedly:
 
 ```text
 EffortlessMetrics/shiplog#469:
@@ -652,6 +652,12 @@ EffortlessMetrics/shiplog#470:
   swarm head: aa4393b2c6eb9812bead86671353c32eabaa78c2
   source merge: 138b1237cce3468941b702fa433aacc70d6e0234
   result: regular merge commit; source post-merge routed CI and CI passed
+
+EffortlessMetrics/shiplog#480:
+  swarm head: c14276194965d33e0741c4ff6951105f08b33835
+  source merge: 95a9ff41cd8ad1f3bcf5269342bf2437d89c2d69
+  result: regular merge commit; source post-merge routed CI, CI, smoke,
+          security, testing, and CI Actuals passed
 ```
 
 ### Proof commands
