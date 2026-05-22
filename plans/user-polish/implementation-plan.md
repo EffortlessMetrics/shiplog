@@ -53,7 +53,8 @@ Related issues:
 - [#223](https://github.com/EffortlessMetrics/shiplog/issues/223):
   source naming across report JSON sections.
 - [#224](https://github.com/EffortlessMetrics/shiplog/issues/224):
-  `CacheLookup::{Fresh, Stale, Miss}`.
+  `CacheLookup::{Fresh, Stale, Miss}`; implemented by
+  [#244](https://github.com/EffortlessMetrics/shiplog/pull/244).
 - [#225](https://github.com/EffortlessMetrics/shiplog/issues/225):
   recorded HTTP fixtures for warm-rerun freshness.
 - [#229](https://github.com/EffortlessMetrics/shiplog/issues/229):
@@ -301,7 +302,7 @@ Follow-up:
 
 Title: `feat(cache): add CacheLookup for stale freshness`
 
-Status: blocked on PR 4
+Status: done
 
 Depends on:
 
@@ -330,9 +331,8 @@ Behavior change:
 Validation:
 
 ```bash
-cargo test -p shiplog-cache
-cargo test -p shiplog-ingest-github
-cargo test -p shiplog --test cli_integration -- intake
+cargo test -p shiplog lookup_distinguishes_fresh_stale_and_miss
+cargo test -p shiplog expired_cache_entry_records_stale_hit_without_network
 cargo xtask check-policy-schemas
 cargo xtask check-file-policy --mode blocking-allowlist
 git diff --check
