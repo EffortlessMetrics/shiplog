@@ -730,6 +730,51 @@ EffortlessMetrics/shiplog#486:
   source merge: fabfaf1586998eeabb35f6f1402bd8477bd5037e
   result: regular merge commit; source post-merge routed CI, CI, smoke,
           security, testing, and CI Actuals passed
+
+EffortlessMetrics/shiplog#487:
+  swarm head: e32cca5de8b2a281c3db53d5486cd9c885af6315
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#45
+  source merge: 7cdce7b0229c573cbc754ed1e9b7cb9097261781
+  result: regular merge commit
+
+EffortlessMetrics/shiplog#488:
+  swarm head: c6d837dca1d81bfab8d7a4667d0dd211a85a5e00
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#46
+  source merge: c8565f04641a1215b6e38d903dfe121386c0e584
+  result: regular merge commit
+
+EffortlessMetrics/shiplog#489:
+  swarm head: 7d3f11b7852c10dad0085293f39b0724c0b6d1e6
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#47
+  source merge: c73484018a30cfe669d72449304611d15ce3b779
+  result: regular merge commit
+
+EffortlessMetrics/shiplog#490:
+  swarm head: a01d2e4a8948b69e5a91a32b2dc44ce387ff9cdf
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#48
+  source merge: 2baa15015017e7b34e7445291294f7bff6447466
+  result: regular merge commit
+
+EffortlessMetrics/shiplog#491:
+  swarm head: 93a31d21b924cdac31cf5aaf67f92ab4838dc5d9
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#49
+  source merge: 9d6ccbb2996aa023af076f95e693d0c62347d095
+  result: regular merge commit; source identity validator landed
+
+EffortlessMetrics/shiplog#492:
+  swarm head: 62b769cd5dd98d830fc87d0e852284f20984fd26
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#50
+  source merge: 5886ae2c3c2bc31e84fa1f8dda2f26fbf37e8581
+  result: regular merge commit; CacheLookup stale-reporting receipt refreshed
+
+EffortlessMetrics/shiplog#493:
+  swarm head: f22e9c0fd64d1841a1e5018caa55264541ede364
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#51
+  source merge: c80b05aa2d7b107cc6feb8f80a920d85902d4ded
+  result: regular merge commit; source post-merge routed CI, CI, smoke,
+          security, testing, coverage, and CI Actuals passed
+  queue cleanup: source issues #205, #203, #201, #199, #197, #195, #193,
+                 #191, and #189 closed as completed by existing merged PRs
 ```
 
 ### Proof commands
