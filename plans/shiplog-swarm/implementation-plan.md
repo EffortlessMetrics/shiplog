@@ -672,6 +672,14 @@ EffortlessMetrics/shiplog#482:
   source merge: 1d27157bc7d76ce88f60e8b09c6a98bfc88d1196
   result: regular merge commit; source post-merge routed CI, CI, and
           CI Actuals passed
+
+EffortlessMetrics/shiplog#483:
+  swarm head: f5364f35e087299411bba0d572de85045069a746
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#40,
+                       EffortlessMetrics/shiplog-swarm#41
+  source merge: b6bd900c719cf7007fa53e04310517c8a6b953ad
+  result: regular merge commit; source post-merge routed CI, CI, smoke,
+          security, testing, coverage, and CI Actuals passed
 ```
 
 ### Proof commands
