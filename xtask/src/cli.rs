@@ -51,6 +51,9 @@ enum Command {
     /// Write a source-of-truth graph report for humans and agents.
     RepoContractReport,
 
+    /// Generate a pull request body from the active source-of-truth work item.
+    PrBody(PrBodyArgs),
+
     /// CI economics commands (forecast, actuals).
     Ci(CiArgs),
 
@@ -137,6 +140,17 @@ pub struct FilePolicyModeArgs {
     /// failing; `blocking-allowlist` exits non-zero on any finding.
     #[arg(long, default_value = "advisory")]
     pub mode: String,
+}
+
+#[derive(Debug, Args)]
+pub struct PrBodyArgs {
+    /// Work item ID from `.codex/goals/active.toml`.
+    #[arg(long)]
+    pub work_item: String,
+
+    /// Output path for the generated PR body.
+    #[arg(long, default_value = "target/source-of-truth/pr-body.md")]
+    pub output: PathBuf,
 }
 
 #[derive(Debug, Args)]
@@ -228,6 +242,11 @@ impl Cli {
             Command::PackageVersion => tasks::package_version::run(&workspace_root),
             Command::PolicyReport => tasks::policy_report::run(&workspace_root),
             Command::RepoContractReport => tasks::repo_contract_report::run(&workspace_root),
+            Command::PrBody(args) => tasks::pr_body::run(tasks::pr_body::PrBodyInputs {
+                workspace_root,
+                work_item: args.work_item,
+                output: args.output,
+            }),
             Command::Ci(ci) => match ci.command {
                 CiCommand::Plan(args) => tasks::ci_plan::run(tasks::ci_plan::PlanInputs {
                     workspace_root,

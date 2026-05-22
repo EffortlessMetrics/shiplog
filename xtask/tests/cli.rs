@@ -455,6 +455,174 @@ commands = ["cargo xtask repo-contract-report", "git diff --check"]
 }
 
 #[test]
+fn pr_body_writes_body_from_active_work_item() {
+    let dir = fixture_workspace(&[
+        (
+            "policy/doc-artifacts.toml",
+            r#"
+schema_version = 1
+policy = "doc-artifacts"
+owner = "repo-infra"
+status = "advisory"
+
+[[artifact]]
+id = "SHIPLOG-PROP-0008"
+kind = "proposal"
+path = "docs/proposals/SHIPLOG-PROP-0008-source-of-truth-stack.md"
+status = "proposed"
+owner = "repo-infra"
+
+[[artifact]]
+id = "SHIPLOG-SPEC-0010"
+kind = "spec"
+path = "docs/specs/SHIPLOG-SPEC-0010-source-of-truth-stack.md"
+status = "proposed"
+owner = "repo-infra"
+linked_proposal = "SHIPLOG-PROP-0008"
+policy_impact = ["policy/doc-artifacts.toml"]
+
+[[artifact]]
+id = "SHIPLOG-PLAN-0010"
+kind = "plan"
+path = "plans/0.10.0/implementation-plan.md"
+status = "active"
+owner = "codex"
+linked_proposal = "SHIPLOG-PROP-0008"
+linked_spec = "SHIPLOG-SPEC-0010"
+"#,
+        ),
+        (
+            ".codex/goals/active.toml",
+            r#"
+schema_version = 1
+id = "shiplog-source-of-truth-stack"
+title = "Shiplog source-of-truth stack rollout"
+status = "active"
+owner = "codex"
+created = "2026-05-20"
+objective = "Keep repo source-of-truth artifacts linked."
+end_state = ["Artifacts are linked."]
+
+[[work_item]]
+id = "pr-body-generator"
+status = "active"
+proposal = "SHIPLOG-PROP-0008"
+spec = "SHIPLOG-SPEC-0010"
+plan = "plans/0.10.0/implementation-plan.md"
+commands = ["cargo xtask pr-body --work-item pr-body-generator", "git diff --check"]
+"#,
+        ),
+        (
+            "plans/0.10.0/implementation-plan.md",
+            r#"# 0.10.0 Source-of-Truth Rollout Plan
+
+Plan artifact: SHIPLOG-PLAN-0010
+
+## Work item: pr-body-generator
+
+Status: active
+Linked proposal: SHIPLOG-PROP-0008
+Linked spec: SHIPLOG-SPEC-0010
+Linked ADR: none
+Branch: infra/pr-body-generator
+
+### Goal
+
+Add a repo-native PR body generator.
+
+### Production delta
+
+`xtask` command, tests, and docs.
+
+### Non-goals
+
+No GitHub API calls and no PR creation.
+
+### Proof commands
+
+```bash
+cargo xtask pr-body --work-item pr-body-generator
+git diff --check
+```
+
+### Rollback
+
+Revert the generator PR.
+
+### Claim boundary
+
+This generates drafts only.
+"#,
+        ),
+        (
+            "docs/specs/SHIPLOG-SPEC-0010-source-of-truth-stack.md",
+            r#"# SHIPLOG-SPEC-0010: Source-of-truth stack contract
+
+Support-tier impact: stabilizing
+Policy impact:
+- policy/doc-artifacts.toml
+- .codex/goals/active.toml
+"#,
+        ),
+        (
+            "docs/proposals/SHIPLOG-PROP-0008-source-of-truth-stack.md",
+            "# SHIPLOG-PROP-0008\n",
+        ),
+    ]);
+
+    xtask()
+        .args(["--workspace-root", dir.path().to_str().expect("utf-8 path")])
+        .args(["pr-body", "--work-item", "pr-body-generator"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("pr-body: wrote"));
+
+    let body = fs::read_to_string(dir.path().join("target/source-of-truth/pr-body.md"))
+        .expect("read generated body");
+    assert!(body.contains("## Summary"));
+    assert!(body.contains("Proposal: `SHIPLOG-PROP-0008`"));
+    assert!(body.contains("Spec: `SHIPLOG-SPEC-0010`"));
+    assert!(body.contains("No GitHub API calls"));
+    assert!(body.contains("## Proof"));
+    assert!(body.contains("This generates drafts only."));
+}
+
+#[test]
+fn pr_body_fails_on_missing_work_item() {
+    let dir = fixture_workspace(&[
+        (
+            "policy/doc-artifacts.toml",
+            r#"
+schema_version = 1
+policy = "doc-artifacts"
+owner = "repo-infra"
+status = "advisory"
+"#,
+        ),
+        (
+            ".codex/goals/active.toml",
+            r#"
+schema_version = 1
+id = "shiplog-source-of-truth-stack"
+title = "Shiplog source-of-truth stack rollout"
+status = "active"
+owner = "codex"
+created = "2026-05-20"
+objective = "Keep repo source-of-truth artifacts linked."
+end_state = ["Artifacts are linked."]
+"#,
+        ),
+    ]);
+
+    xtask()
+        .args(["--workspace-root", dir.path().to_str().expect("utf-8 path")])
+        .args(["pr-body", "--work-item", "missing"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("missing work item"));
+}
+
+#[test]
 fn workspace_root_can_come_from_env() {
     let dir = fixture_workspace(&[(
         "ci-budget.toml",
