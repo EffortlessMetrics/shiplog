@@ -46,8 +46,9 @@ diff:        empty
 merge policy: squash=true, merge=false, rebase=false, auto_merge=true, delete_branch_on_merge=true
 ```
 
-Cutover still must not proceed until the protected PR path is proven and
-machine cutover instructions are published.
+Normal development has cut over to `shiplog-swarm`. Keep release authority on
+`EffortlessMetrics/shiplog`, and keep normal work flowing through focused swarm
+PRs plus merge-commit source promotions.
 
 ## Work item: repair-shared-history
 
@@ -490,6 +491,16 @@ route:          cpx42
 result:         Shiplog Rust Small Result passed
 ```
 
+The route contract was later refreshed to match the live CPX42 workflow:
+
+```text
+swarm PR:      EffortlessMetrics/shiplog-swarm#53
+source PR:     EffortlessMetrics/shiplog#495
+swarm head:    b531e007fac6c4a54bc4801d5bb3d15d5b06e72d
+source merge:  ba61fbd95b24f36dca44c1e52c00b24b681b585d
+result:        regular merge commit; source and swarm checks passed
+```
+
 ### Proof commands
 
 ```bash
@@ -777,6 +788,28 @@ EffortlessMetrics/shiplog#493:
           security, testing, coverage, and CI Actuals passed
   queue cleanup: source issues #205, #203, #201, #199, #197, #195, #193,
                  #191, and #189 closed as completed by existing merged PRs
+
+EffortlessMetrics/shiplog#494:
+  swarm head: f27c0f3a0b0e494b531d7efc2775f5a49619fa4a
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#52
+  source merge: 57a76691e91a2e6625cab26665e59ba7da9601d6
+  result: regular merge commit; clean-queue promotion receipts refreshed
+
+EffortlessMetrics/shiplog#495:
+  swarm head: b531e007fac6c4a54bc4801d5bb3d15d5b06e72d
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#53
+  source merge: ba61fbd95b24f36dca44c1e52c00b24b681b585d
+  result: regular merge commit; CPX42 route contract aligned with live
+          workflow; source post-merge routed CI, CI, smoke, security, testing,
+          and CI Actuals passed
+
+EffortlessMetrics/shiplog#496:
+  swarm head: 6c3eea01154c07ac431a3f1ce12b1cec4e29107c
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#54
+  source merge: 6528b9d95599f3e0e8cdd05ea09a0863b6d9adf5
+  result: regular merge commit; user-polish plan archived as completed;
+          source post-merge routed CI, CI, smoke, security, testing, and
+          CI Actuals passed
 ```
 
 ### Proof commands
