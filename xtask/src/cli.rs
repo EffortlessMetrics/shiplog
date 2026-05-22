@@ -54,6 +54,9 @@ enum Command {
     /// Generate a pull request body from the active source-of-truth work item.
     PrBody(PrBodyArgs),
 
+    /// Generate source-of-truth closeout and archived-goal artifacts.
+    Closeout(CloseoutArgs),
+
     /// CI economics commands (forecast, actuals).
     Ci(CiArgs),
 
@@ -154,6 +157,25 @@ pub struct PrBodyArgs {
 }
 
 #[derive(Debug, Args)]
+pub struct CloseoutArgs {
+    /// Goal ID expected in `.codex/goals/active.toml`.
+    #[arg(long)]
+    pub goal: String,
+
+    /// Date stamp for generated artifact names (YYYY-MM-DD). Defaults to UTC today.
+    #[arg(long)]
+    pub date: Option<String>,
+
+    /// Override the generated Markdown handoff path.
+    #[arg(long)]
+    pub handoff_output: Option<PathBuf>,
+
+    /// Override the generated archived-goal TOML path.
+    #[arg(long)]
+    pub archive_output: Option<PathBuf>,
+}
+
+#[derive(Debug, Args)]
 pub struct CiArgs {
     #[command(subcommand)]
     command: CiCommand,
@@ -246,6 +268,13 @@ impl Cli {
                 workspace_root,
                 work_item: args.work_item,
                 output: args.output,
+            }),
+            Command::Closeout(args) => tasks::closeout::run(tasks::closeout::CloseoutInputs {
+                workspace_root,
+                goal: args.goal,
+                date: args.date,
+                handoff_output: args.handoff_output,
+                archive_output: args.archive_output,
             }),
             Command::Ci(ci) => match ci.command {
                 CiCommand::Plan(args) => tasks::ci_plan::run(tasks::ci_plan::PlanInputs {

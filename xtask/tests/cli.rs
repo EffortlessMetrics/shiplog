@@ -623,6 +623,98 @@ end_state = ["Artifacts are linked."]
 }
 
 #[test]
+fn closeout_writes_handoff_and_archive() {
+    let dir = fixture_workspace(&[
+        (
+            ".codex/goals/active.toml",
+            r#"
+schema_version = 1
+id = "shiplog-source-of-truth-stack"
+title = "Shiplog source-of-truth stack rollout"
+status = "active"
+owner = "codex"
+created = "2026-05-20"
+objective = "Keep repo source-of-truth artifacts linked."
+end_state = ["Artifacts are linked."]
+
+[[work_item]]
+id = "pr-body-generator"
+status = "done"
+proposal = "SHIPLOG-PROP-0008"
+spec = "SHIPLOG-SPEC-0010"
+plan = "plans/0.10.0/implementation-plan.md"
+commands = ["cargo xtask pr-body --work-item pr-body-generator", "git diff --check"]
+receipts = ["EffortlessMetrics/shiplog-swarm#36", "EffortlessMetrics/shiplog#479"]
+"#,
+        ),
+        (
+            "plans/0.10.0/implementation-plan.md",
+            r#"# 0.10.0 Source-of-Truth Rollout Plan
+
+## Work item: pr-body-generator
+
+### Claim boundary
+
+This generates PR body drafts only.
+"#,
+        ),
+    ]);
+
+    xtask()
+        .args(["--workspace-root", dir.path().to_str().expect("utf-8 path")])
+        .args([
+            "closeout",
+            "--goal",
+            "shiplog-source-of-truth-stack",
+            "--date",
+            "2026-05-22",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("closeout: wrote"));
+
+    let handoff = fs::read_to_string(
+        dir.path()
+            .join("docs/handoffs/2026-05-22-shiplog-source-of-truth-stack-closeout.md"),
+    )
+    .expect("read closeout handoff");
+    assert!(handoff.contains("## Landed work items"));
+    assert!(handoff.contains("pr-body-generator"));
+    assert!(handoff.contains("EffortlessMetrics/shiplog-swarm#36"));
+    assert!(handoff.contains("This generates PR body drafts only."));
+
+    let archive = fs::read_to_string(
+        dir.path()
+            .join(".codex/goals/archive/2026-05-22-shiplog-source-of-truth-stack.toml"),
+    )
+    .expect("read archived goal");
+    assert!(archive.contains("status = \"archived\""));
+}
+
+#[test]
+fn closeout_fails_on_wrong_goal() {
+    let dir = fixture_workspace(&[(
+        ".codex/goals/active.toml",
+        r#"
+schema_version = 1
+id = "shiplog-source-of-truth-stack"
+title = "Shiplog source-of-truth stack rollout"
+status = "active"
+owner = "codex"
+created = "2026-05-20"
+objective = "Keep repo source-of-truth artifacts linked."
+"#,
+    )]);
+
+    xtask()
+        .args(["--workspace-root", dir.path().to_str().expect("utf-8 path")])
+        .args(["closeout", "--goal", "other-goal", "--date", "2026-05-22"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("does not match requested goal"));
+}
+
+#[test]
 fn workspace_root_can_come_from_env() {
     let dir = fixture_workspace(&[(
         "ci-budget.toml",
