@@ -85,9 +85,9 @@ Required product outcomes:
 - `intake.report.json` is stable and machine-joinable: source identities are
   canonical, freshness is explicit, skipped and unavailable sources have
   reasons, and secret-bearing vocabulary is rejected at the schema layer.
-- Freshness remains honest: `fresh`, `cached`, `skipped`, and `unavailable` are
-  emitted today; `stale` stays reserved until `ApiCache` exposes
-  `CacheLookup::{Fresh, Stale, Miss}`.
+- Freshness remains honest: `fresh`, `cached`, `skipped`, `unavailable`, and
+  `stale` are emitted only when the underlying receipt proves that state.
+  `stale` specifically requires `CacheLookup::Stale(_)`.
 - Sharing remains fail-closed: redaction posture is visible, source opaque IDs
   do not leak across non-internal profiles, and share verification stays
   receipt-backed.
@@ -128,7 +128,7 @@ This lane succeeds when the following are true:
   receipts;
 - schema validation rejects secret-bearing report field names before values
   exist;
-- stale freshness is not emitted until a cache lookup can prove stale rows;
+- stale freshness is emitted only when a cache lookup proves stale rows;
 - manager/public sharing fails closed without `SHIPLOG_REDACT_KEY` or an
   explicit redaction key;
 - the active goal manifest links the current work item to proposal, specs,
@@ -261,9 +261,9 @@ keeps baking in naming drift.
 
 ### Emit `stale` from existing cache behavior
 
-Rejected. The current cache cannot honestly distinguish stale-hit from miss.
-`FreshnessStatus::Stale` remains reserved until `ApiCache` exposes
-`CacheLookup::{Fresh, Stale, Miss}`.
+Rejected. At proposal time, `ApiCache::get` could not honestly distinguish
+stale-hit from miss. `FreshnessStatus::Stale` became valid only after
+`ApiCache::lookup` exposed `CacheLookup::{Fresh, Stale, Miss}`.
 
 ### Treat this as a patch release
 
