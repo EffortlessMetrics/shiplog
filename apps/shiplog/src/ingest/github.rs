@@ -1501,7 +1501,7 @@ mod tests {
     use proptest::prelude::*;
     use std::io::{ErrorKind, Read, Write};
     use std::net::{SocketAddr, TcpListener, TcpStream};
-    use std::sync::{Arc, Mutex};
+    use std::sync::{Arc, Mutex, MutexGuard};
     use std::thread::{self, JoinHandle};
     use std::time::{Duration as StdDuration, Instant};
 
@@ -1828,6 +1828,17 @@ mod tests {
     // extend these to drive a full fresh-then-cached round trip
     // through `ingest()` and assert on `IngestOutput.freshness`.
 
+    // Windows CI runs lib tests in parallel; serialize this hand-rolled
+    // local-server harness so scheduler delays do not race server lifetime.
+    static RECORDED_FIXTURE_TEST_LOCK: Mutex<()> = Mutex::new(());
+
+    fn recorded_fixture_test_lock() -> MutexGuard<'static, ()> {
+        match RECORDED_FIXTURE_TEST_LOCK.lock() {
+            Ok(guard) => guard,
+            Err(poisoned) => poisoned.into_inner(),
+        }
+    }
+
     fn make_pr_details() -> anyhow::Result<PullRequestDetails> {
         let ts = Utc
             .with_ymd_and_hms(2025, 5, 1, 12, 0, 0)
@@ -2052,7 +2063,7 @@ mod tests {
         requests: Arc<Mutex<Vec<String>>>,
         expected_requests: usize,
     ) -> anyhow::Result<()> {
-        let deadline = Instant::now() + StdDuration::from_secs(10);
+        let deadline = Instant::now() + StdDuration::from_secs(30);
 
         while fixture_request_count(&requests)? < expected_requests {
             match listener.accept() {
@@ -2267,6 +2278,7 @@ mod tests {
 
     #[test]
     fn recorded_http_fixtures_prove_full_fresh_then_cached_ingest() -> anyhow::Result<()> {
+        let _fixture_guard = recorded_fixture_test_lock();
         let server = RecordedGithubServer::start(3)?;
         let cache_dir = tempfile::tempdir().context("create fixture cache dir")?;
 
@@ -2354,6 +2366,7 @@ mod tests {
 
     #[test]
     fn search_budget_exhaustion_stops_before_next_live_search_request() -> anyhow::Result<()> {
+        let _fixture_guard = recorded_fixture_test_lock();
         let server = RecordedGithubServer::start(1)?;
         let cache_dir = tempfile::tempdir().context("create fixture cache dir")?;
 
@@ -2399,6 +2412,7 @@ mod tests {
 
     #[test]
     fn core_budget_exhaustion_stops_before_detail_request() -> anyhow::Result<()> {
+        let _fixture_guard = recorded_fixture_test_lock();
         let server = RecordedGithubServer::start(2)?;
         let cache_dir = tempfile::tempdir().context("create fixture cache dir")?;
 
@@ -2443,6 +2457,7 @@ mod tests {
 
     #[test]
     fn api_request_counts_reset_between_ingest_runs_for_same_ingestor() -> anyhow::Result<()> {
+        let _fixture_guard = recorded_fixture_test_lock();
         let server = RecordedGithubServer::start(3)?;
         let cache_dir = tempfile::tempdir().context("create fixture cache dir")?;
 
