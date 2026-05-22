@@ -9,6 +9,7 @@ pub mod check_support_tiers;
 pub mod ci_actuals;
 pub mod ci_plan;
 pub mod clippy_policy;
+pub mod closeout;
 pub mod file_policy;
 pub mod no_panic;
 pub mod package_boundary;

@@ -229,6 +229,7 @@ fn known_xtask_subcommand(command: &str) -> bool {
             | "policy-report"
             | "repo-contract-report"
             | "pr-body"
+            | "closeout"
             | "ci"
             | "check-file-policy"
             | "check-generated"

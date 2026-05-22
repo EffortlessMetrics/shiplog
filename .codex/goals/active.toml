@@ -2,7 +2,7 @@ schema_version = 1
 
 id = "shiplog-source-of-truth-stack"
 title = "Shiplog source-of-truth stack rollout"
-status = "active"
+status = "done"
 owner = "codex"
 created = "2026-05-20"
 
@@ -129,6 +129,10 @@ commands = [
   "cargo xtask check-support-tiers",
   "git diff --check",
 ]
+receipts = [
+  "EffortlessMetrics/shiplog-swarm#35",
+  "EffortlessMetrics/shiplog#478",
+]
 
 [[work_item]]
 id = "pr-body-generator"
@@ -143,10 +147,14 @@ commands = [
   "cargo xtask check-goals",
   "git diff --check",
 ]
+receipts = [
+  "EffortlessMetrics/shiplog-swarm#36",
+  "EffortlessMetrics/shiplog#479",
+]
 
 [[work_item]]
 id = "closeout-generator"
-status = "active"
+status = "done"
 proposal = "SHIPLOG-PROP-0008"
 spec = "SHIPLOG-SPEC-0010"
 plan = "plans/0.10.0/implementation-plan.md"

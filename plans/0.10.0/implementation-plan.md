@@ -447,7 +447,7 @@ state, replace reviewer judgment, or prove runtime product behavior.
 
 ## Work item: closeout-generator
 
-Status: active
+Status: done
 Linked proposal: SHIPLOG-PROP-0008
 Linked spec: SHIPLOG-SPEC-0010
 Linked ADR: none

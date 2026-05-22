@@ -136,6 +136,32 @@ rollback when those fields are present in the linked plan/spec. It is a derived
 draft only: it does not call the GitHub API, create a PR, mutate source
 artifacts, change branch protection, or replace reviewer judgment.
 
+### `cargo xtask closeout`
+
+Generates source-of-truth closeout artifacts from
+[`.codex/goals/active.toml`](../.codex/goals/active.toml):
+
+```bash
+cargo xtask closeout --goal shiplog-source-of-truth-stack
+```
+
+The command verifies that the requested `--goal` matches the active goal
+manifest, reads linked plan text for work-item claim boundaries, and writes:
+
+- `docs/handoffs/<date>-<goal-id>-closeout.md`
+- `.codex/goals/archive/<date>-<goal-id>.toml`
+
+Use `--date YYYY-MM-DD` to make output filenames deterministic. Tests and
+automation can also pass `--handoff-output` and `--archive-output` to write to
+fixture or scratch paths.
+
+The generated handoff includes objective, end state, landed work items, proof
+commands, receipt refs, claim boundaries, remaining work, and a generated
+boundary. The archived TOML copy is written with `status = "archived"` so the
+goal history can be preserved without relying on chat history. The command does
+not call GitHub, inspect PR state, mutate provider records, change branch
+protection, move release authority, or prove runtime product behavior.
+
 ## Override workspace root
 
 For tests / development outside the repo:
