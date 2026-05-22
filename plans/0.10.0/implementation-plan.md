@@ -270,7 +270,7 @@ job. It does not enable GitHub branch protection or claim README coverage.
 
 ## Work item: repo-contract-report
 
-Status: active
+Status: done
 Linked proposal: SHIPLOG-PROP-0008
 Linked spec: SHIPLOG-SPEC-0010
 Linked ADR: none
@@ -278,7 +278,7 @@ Blocks: source-of-truth-closeout
 Blocked by: policy-ci-wiring
 Branch: infra/repo-contract-report
 Issue:
-PR: EffortlessMetrics/shiplog-swarm#33
+PR: EffortlessMetrics/shiplog-swarm#33, EffortlessMetrics/shiplog#476
 
 ### Goal
 
@@ -329,3 +329,60 @@ checks remain intact.
 This proves a generated repo-contract inspection report. It does not validate
 every product claim, enable branch protection, or replace the dedicated
 source-of-truth validators.
+
+## Work item: source-of-truth-closeout
+
+Status: active
+Linked proposal: SHIPLOG-PROP-0008
+Linked spec: SHIPLOG-SPEC-0010
+Linked ADR: none
+Blocks: none
+Blocked by: repo-contract-report
+Branch: docs/source-of-truth-closeout
+Issue:
+PR:
+
+### Goal
+
+Record the 0.10 source-of-truth stack rollout closeout so humans and agents can
+see what landed, what proof passed, what support-tier claims changed, and what
+work remains before the next control-plane slice starts.
+
+### Production delta
+
+Closeout/handoff documentation, active-goal status, and generated
+repo-contract report evidence only.
+
+### Non-goals
+
+No runtime behavior changes, no branch-protection settings change, no release
+authority move, and no new source-of-truth validator.
+
+### Acceptance
+
+- Closeout records landed PRs and promotion receipts.
+- Closeout records proof commands and CI signals.
+- Closeout records current claim boundaries and remaining work.
+- Active goal manifest no longer points agents at completed report work.
+- Generated repo-contract report reflects the current active work item.
+
+### Proof commands
+
+```bash
+cargo xtask repo-contract-report
+cargo xtask check-doc-artifacts
+cargo xtask check-goals
+cargo xtask check-support-tiers
+git diff --check
+```
+
+### Rollback
+
+Revert the closeout PR; the source-of-truth validators, support-tier map, and
+repo-contract report command remain available.
+
+### Claim boundary
+
+This records the rollout state. It does not prove branch protection,
+README-claim scanning, release execution, or complete product-governance
+automation.
