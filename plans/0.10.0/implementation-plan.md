@@ -389,7 +389,7 @@ automation.
 
 ## Work item: pr-body-generator
 
-Status: active
+Status: done
 Linked proposal: SHIPLOG-PROP-0008
 Linked spec: SHIPLOG-SPEC-0010
 Linked ADR: none
@@ -444,3 +444,60 @@ available.
 
 This would generate PR body drafts only. It would not open PRs, validate GitHub
 state, replace reviewer judgment, or prove runtime product behavior.
+
+## Work item: closeout-generator
+
+Status: active
+Linked proposal: SHIPLOG-PROP-0008
+Linked spec: SHIPLOG-SPEC-0010
+Linked ADR: none
+Blocks: none
+Blocked by: pr-body-generator
+Branch: infra/closeout-generator
+Issue:
+PR:
+
+### Goal
+
+Add a source-of-truth closeout generator so completed active goals can be
+archived with consistent proof, claim-boundary, and remaining-work sections.
+
+### Production delta
+
+`xtask` command, tests, `docs/xtask.md`, and source-of-truth plan/goal updates.
+
+### Non-goals
+
+No GitHub API calls, no PR creation, no release authority move, no branch
+protection changes, and no runtime product behavior changes.
+
+### Acceptance
+
+- `cargo xtask closeout --goal <goal-id>` reads `.codex/goals/active.toml`.
+- The command writes a Markdown closeout under `docs/handoffs/`.
+- The command writes an archived goal TOML under `.codex/goals/archive/`.
+- The closeout includes landed work items, proof commands, receipts, claim
+  boundaries, and remaining work.
+- Missing goal IDs fail clearly.
+- The command does not mutate provider state or call GitHub.
+
+### Proof commands
+
+```bash
+cargo test -p xtask closeout --locked
+cargo test -p xtask --test cli closeout --locked
+cargo xtask closeout --goal shiplog-source-of-truth-stack
+cargo xtask check-goals
+git diff --check
+```
+
+### Rollback
+
+Revert the closeout generator PR; closeout documents can still be written
+manually.
+
+### Claim boundary
+
+This would generate closeout drafts and archived goal manifests only. It would
+not infer PR state from GitHub, replace release handoffs, or prove runtime
+product behavior.

@@ -114,6 +114,28 @@ active goal, work items, artifact links, support-tier proof commands, and graph
 edges. It does not mutate source artifacts and does not replace the dedicated
 validators.
 
+### `cargo xtask pr-body`
+
+Generates a draft pull request body from a work item in
+[`.codex/goals/active.toml`](../.codex/goals/active.toml):
+
+```bash
+cargo xtask pr-body --work-item pr-body-generator
+```
+
+The command reads the active goal manifest, the linked implementation plan, and
+the ledgered proposal/spec/ADR refs in
+[`policy/doc-artifacts.toml`](../policy/doc-artifacts.toml). By default it
+writes:
+
+- `target/source-of-truth/pr-body.md`
+
+The generated body includes proposal, spec, ADR, plan item, scope, non-goals,
+support-tier impact, policy impact, proof commands, claim boundary, and
+rollback when those fields are present in the linked plan/spec. It is a derived
+draft only: it does not call the GitHub API, create a PR, mutate source
+artifacts, change branch protection, or replace reviewer judgment.
+
 ## Override workspace root
 
 For tests / development outside the repo:

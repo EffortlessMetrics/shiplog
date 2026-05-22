@@ -14,4 +14,5 @@ pub mod no_panic;
 pub mod package_boundary;
 pub mod package_version;
 pub mod policy_report;
+pub mod pr_body;
 pub mod repo_contract_report;

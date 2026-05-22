@@ -132,7 +132,7 @@ commands = [
 
 [[work_item]]
 id = "pr-body-generator"
-status = "active"
+status = "done"
 proposal = "SHIPLOG-PROP-0008"
 spec = "SHIPLOG-SPEC-0010"
 plan = "plans/0.10.0/implementation-plan.md"
@@ -140,6 +140,20 @@ commands = [
   "cargo test -p xtask pr_body --locked",
   "cargo test -p xtask --test cli pr_body --locked",
   "cargo xtask pr-body --work-item pr-body-generator",
+  "cargo xtask check-goals",
+  "git diff --check",
+]
+
+[[work_item]]
+id = "closeout-generator"
+status = "active"
+proposal = "SHIPLOG-PROP-0008"
+spec = "SHIPLOG-SPEC-0010"
+plan = "plans/0.10.0/implementation-plan.md"
+commands = [
+  "cargo test -p xtask closeout --locked",
+  "cargo test -p xtask --test cli closeout --locked",
+  "cargo xtask closeout --goal shiplog-source-of-truth-stack",
   "cargo xtask check-goals",
   "git diff --check",
 ]
