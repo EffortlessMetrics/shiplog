@@ -332,7 +332,7 @@ source-of-truth validators.
 
 ## Work item: source-of-truth-closeout
 
-Status: active
+Status: done
 Linked proposal: SHIPLOG-PROP-0008
 Linked spec: SHIPLOG-SPEC-0010
 Linked ADR: none
@@ -386,3 +386,61 @@ repo-contract report command remain available.
 This records the rollout state. It does not prove branch protection,
 README-claim scanning, release execution, or complete product-governance
 automation.
+
+## Work item: pr-body-generator
+
+Status: active
+Linked proposal: SHIPLOG-PROP-0008
+Linked spec: SHIPLOG-SPEC-0010
+Linked ADR: none
+Blocks: closeout-generator
+Blocked by: source-of-truth-closeout
+Branch: infra/pr-body-generator
+Issue:
+PR:
+
+### Goal
+
+Add a repo-native PR body generator that reads the active goal manifest and
+linked implementation plan so agents can open traceable PRs without recreating
+the source-of-truth stack by hand.
+
+### Production delta
+
+`xtask` command, tests, `docs/xtask.md`, and source-of-truth plan/goal updates.
+
+### Non-goals
+
+No GitHub API calls, no PR creation, no branch protection changes, no release
+authority move, and no runtime product behavior changes.
+
+### Acceptance
+
+- `cargo xtask pr-body --work-item <id>` reads `.codex/goals/active.toml`.
+- The command verifies the work item exists and links to a plan.
+- The command writes `target/source-of-truth/pr-body.md`.
+- The generated body includes proposal, spec, plan item, scope, non-goals,
+  support-tier impact, policy impact, proof commands, claim boundary, and
+  rollback when present in the plan.
+- Missing work items fail clearly.
+- The command does not mutate source artifacts.
+
+### Proof commands
+
+```bash
+cargo test -p xtask pr_body --locked
+cargo test -p xtask --test cli pr_body --locked
+cargo xtask pr-body --work-item pr-body-generator
+cargo xtask check-goals
+git diff --check
+```
+
+### Rollback
+
+Revert the generator PR; existing validators and manual PR bodies remain
+available.
+
+### Claim boundary
+
+This would generate PR body drafts only. It would not open PRs, validate GitHub
+state, replace reviewer judgment, or prove runtime product behavior.

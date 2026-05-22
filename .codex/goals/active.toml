@@ -118,7 +118,7 @@ receipts = [
 
 [[work_item]]
 id = "source-of-truth-closeout"
-status = "active"
+status = "done"
 proposal = "SHIPLOG-PROP-0008"
 spec = "SHIPLOG-SPEC-0010"
 plan = "plans/0.10.0/implementation-plan.md"
@@ -127,5 +127,19 @@ commands = [
   "cargo xtask check-doc-artifacts",
   "cargo xtask check-goals",
   "cargo xtask check-support-tiers",
+  "git diff --check",
+]
+
+[[work_item]]
+id = "pr-body-generator"
+status = "active"
+proposal = "SHIPLOG-PROP-0008"
+spec = "SHIPLOG-SPEC-0010"
+plan = "plans/0.10.0/implementation-plan.md"
+commands = [
+  "cargo test -p xtask pr_body --locked",
+  "cargo test -p xtask --test cli pr_body --locked",
+  "cargo xtask pr-body --work-item pr-body-generator",
+  "cargo xtask check-goals",
   "git diff --check",
 ]
