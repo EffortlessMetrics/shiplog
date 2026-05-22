@@ -15,7 +15,7 @@ The six-class protected-fields ladder is complete for the current codebase. Ever
 | `cpf-0003` trust-receipts | `type-enforced` | Single canonical computer in `shiplog::bundle` + determinism property tests + fuzz harness. |
 | `cpf-0004` source-opaque-ids | `type-enforced` | Canonical `SourceRef::opaque_id` wrapper + procedural nullification in `shiplog::redact::policy` + integration tests. |
 | `cpf-0005` cache-internals | `type-enforced` | Inner-struct refactor in #194 made raw fields unreachable; `ApiCacheInner` is private. |
-| `cpf-0006` policy-ledger-metadata | `type-enforced` | `xtask` is `publish = false` (crate-boundary) + dedicated `check-policy-schemas` gate (procedural). |
+| `cpf-0006` policy-ledger-metadata | `type-enforced` | `xtask` is `publish = false` (crate-boundary) + dedicated `check-policy-schemas` gate (procedural); `LoadedPolicy` fields are `pub(crate)`. |
 
 ### Doctrine
 
@@ -35,7 +35,6 @@ The ladder converged on three rules for choosing a protection mechanism:
 These are real but **not** currently in flight; do not pre-emptively pick them up:
 
 - **`cpf-0002` bundle-paths.** Waits for the bundle / share manifest entry types to land. When they do, apply the inner-struct pattern from day one rather than retrofitting it post hoc (the cache-internals lesson from #192 → #194).
-- **`LoadedPolicy` visibility tightening.** Optional `pub` → `pub(crate)` tightening on `xtask::policy::LoadedPolicy::{path, header, raw}`. The `cpf-0006` audit established this would not break any within-crate caller. Mirrors #208's `RunArtifactPaths::out_dir` change.
 - **Ledger-driven `xtask check-protected-fields`.** Optional step 6 in the activation ladder. Only justify it when a future regression demonstrates a real cross-file shape Clippy cannot catch — speculative scaffolding is out of scope.
 
 ### Final audit PR
@@ -146,7 +145,7 @@ The constraint at every step: **never activate the lint without a working access
 | `cpf-0003` trust-receipts | `type-enforced` | Audit landed post-#212: `FileChecksum` is the one existing receipt type; its fields are `pub` by serde-shape necessity (the type IS the bundle-manifest JSON schema). Protection is procedural — single canonical computer in `shiplog::bundle`, determinism property tests, fuzz harness. `disallowed_fields` is the wrong tool (fields must stay `pub` for serde). Other receipt types named in the doc (intake report receipt, cache receipt) don't yet exist; when they land, apply the canonical-computer pattern from day one. See `cpf-0003` audit-history comment in `policy/clippy-protected-fields.toml`. |
 | `cpf-0004` source-opaque-ids | `type-enforced` | Audit landed post-#214: the doc's framing turned out to be outdated. Per-source raw `node_id` fields do not exist on adapter event types -- every ingest adapter (`shiplog::ingest::{github,gitlab,jira,linear,git,json,manual}`) populates the single canonical wrapper field `SourceRef::opaque_id: Option<String>` in `shiplog::schema`. The field is `pub` by serde-shape necessity (the event ledger JSON contract). Protection is procedural: `shiplog::redact::policy::redact_event_with_aliases` sets `event.source.opaque_id = None` for non-internal profiles; property + integration tests prove the nullification works. `disallowed_fields` is the wrong tool. See `cpf-0004` audit-history comment in `policy/clippy-protected-fields.toml`. |
 | `cpf-0005` cache-internals | `type-enforced` | Audit + refactor + probe complete: #192 → #194 → #196. Type system is the protection mechanism; lint not activated. |
-| `cpf-0006` policy-ledger-metadata | `type-enforced` | Audit landed post-#210: the wrapper type `LoadedPolicy` does exist in `xtask::policy`. Two structural pillars protect the seam: (a) `xtask` is `publish = false`, so external code cannot depend on the crate or reach the type; (b) `cargo xtask check-policy-schemas` is the dedicated header-validation gate that runs in `blocking-allowlist` mode on every PR. `LoadedPolicy::{path, header, raw}` are currently `pub` within `xtask` — a tiny `pub(crate)` tightening (mirroring #208's `RunArtifactPaths::out_dir` change) is framed as a candidate follow-up. `disallowed_fields` is the wrong tool for this class. See `cpf-0006` audit-history comment in `policy/clippy-protected-fields.toml`. |
+| `cpf-0006` policy-ledger-metadata | `type-enforced` | Audit landed post-#210: the wrapper type `LoadedPolicy` does exist in `xtask::policy`. Two structural pillars protect the seam: (a) `xtask` is `publish = false`, so external code cannot depend on the crate or reach the type; (b) `cargo xtask check-policy-schemas` is the dedicated header-validation gate that runs in `blocking-allowlist` mode on every PR. `LoadedPolicy::{path, header, raw}` are now `pub(crate)` within `xtask`, closing the visibility follow-up without changing checker behavior. `disallowed_fields` is the wrong tool for this class. See `cpf-0006` audit-history comment in `policy/clippy-protected-fields.toml`. |
 
 ## Out of scope
 

@@ -24,9 +24,9 @@ pub struct PolicyHeader {
 /// One loaded policy ledger.
 #[derive(Debug)]
 pub struct LoadedPolicy {
-    pub path: PathBuf,
-    pub header: PolicyHeader,
-    pub raw: toml::Table,
+    pub(crate) path: PathBuf,
+    pub(crate) header: PolicyHeader,
+    pub(crate) raw: toml::Table,
 }
 
 /// Detect the workspace root by walking up from `CARGO_MANIFEST_DIR` looking
