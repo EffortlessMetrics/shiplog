@@ -211,7 +211,8 @@ Implementation PRs follow only after the spec stack lands.
 - [Issue #224](https://github.com/EffortlessMetrics/shiplog/issues/224):
   `CacheLookup::{Fresh, Stale, Miss}` for honest stale reporting.
 - [Issue #225](https://github.com/EffortlessMetrics/shiplog/issues/225):
-  recorded HTTP fixtures for full CLI freshness integration tests.
+  recorded HTTP fixtures for full CLI freshness integration tests;
+  implemented by [#245](https://github.com/EffortlessMetrics/shiplog/pull/245).
 - [Issue #229](https://github.com/EffortlessMetrics/shiplog/issues/229):
   skipped sources in `source_freshness`.
 

@@ -1820,13 +1820,9 @@ mod tests {
     // miss-then-fresh transition is also pinned here at the cache
     // primitive layer (cache.get returns None → set value → cache.get
     // returns Some); the miss branch of `fetch_pr_details` itself
-    // requires a working HTTP endpoint (or a recorded-fixtures harness)
-    // and is therefore deferred to a follow-up integration fixture.
-    //
-    // TODO(follow-up): once a recorded-fixtures HTTP harness lands
-    // (e.g. `wiremock` or a pre-recorded cassette in `fuzz/` style),
-    // extend these to drive a full fresh-then-cached round trip
-    // through `ingest()` and assert on `IngestOutput.freshness`.
+    // is exercised below by the recorded fixture HTTP harness: the
+    // first run fetches fixture responses, the second run reuses the
+    // populated cache, and IngestOutput.freshness reports `cached`.
 
     // Windows CI runs lib tests in parallel; serialize this hand-rolled
     // local-server harness so scheduler delays do not race server lifetime.
