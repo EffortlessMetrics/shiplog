@@ -121,6 +121,6 @@ Weekly Monday 08:00 UTC full repository security scan.
 
 ## References
 
-- Droid action: `EffortlessMetrics/droid-action-safe@01e76b659e4b1e5f23feedc8cfabf8dc14c7485f`
+- Droid action: `EffortlessMetrics/droid-action-safe@7c1377ccbacddc95560d1570547a5baa51de01ec`
 - MiniMax model: `custom:MiniMax-M2.7-0`
 - LLM provider: Anthropic API (via MiniMax BYOK bridge)

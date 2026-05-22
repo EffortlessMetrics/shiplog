@@ -19,7 +19,7 @@ rg 'uses: actions/checkout@[A-Za-z]' \
   .github/workflows/droid*.yml 2>/dev/null && echo "ERROR: Unpinned Droid checkout" || true
 
 # Safe action ref
-rg 'uses: EffortlessMetrics/droid-action-safe@01e76b659e4b1e5f23feedc8cfabf8dc14c7485f' \
+rg 'uses: EffortlessMetrics/droid-action-safe@7c1377ccbacddc95560d1570547a5baa51de01ec' \
   .github/workflows/droid*.yml | wc -l
 # Expected: 3 (one per workflow file)
 ```
@@ -184,7 +184,7 @@ Expected: At least 2–4 API calls from test runs are visible.
 ### No MiniMax model in logs
 
 - Check: Is the safe action ref correct?
-  `EffortlessMetrics/droid-action-safe@01e76b659e4b1e5f23feedc8cfabf8dc14c7485f`
+  `EffortlessMetrics/droid-action-safe@7c1377ccbacddc95560d1570547a5baa51de01ec`
 - Check: Is `MINIMAX_API_KEY` configured as a GitHub secret?
 - Check: Is the MiniMax BYOK step running before the action?
 - Action: Check workflow file for MiniMax config step
