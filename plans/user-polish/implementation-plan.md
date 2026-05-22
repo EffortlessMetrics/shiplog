@@ -1,12 +1,12 @@
 # Shiplog User-Polish Implementation Plan
 
-Status: active
+Status: done
 Owner: Codex
 Created: 2026-05-13
 Related proposal:
 [`SHIPLOG-PROP-0001-user-polish-release`](../../docs/proposals/SHIPLOG-PROP-0001-user-polish-release.md)
-Active goal:
-[`active.toml`](../../.shiplog/goals/active.toml)
+Archived goal:
+[`2026-05-13-user-polish-0.6.0.toml`](../../.shiplog/goals/archive/2026-05-13-user-polish-0.6.0.toml)
 
 ## Purpose
 
@@ -15,7 +15,7 @@ source-of-truth stack has landed. Specs define what must be true. ADRs define
 durable architectural decisions. This plan defines PR order, proof commands,
 rollback, and follow-up.
 
-The lane remains narrow: make the first-run review-pack path obvious,
+The lane remained narrow: make the first-run review-pack path obvious,
 receipt-backed, and safe to extend.
 
 Target user path:
@@ -74,6 +74,30 @@ Scaffold PRs already landed:
 - [#234](https://github.com/EffortlessMetrics/shiplog/pull/234):
   receipt, source identity, and stale ADRs.
 
+Implementation and release receipts:
+
+- [#236](https://github.com/EffortlessMetrics/shiplog/pull/236):
+  intake next-step footer.
+- [#237](https://github.com/EffortlessMetrics/shiplog/pull/237):
+  latest artifact opening.
+- [#238](https://github.com/EffortlessMetrics/shiplog/pull/238):
+  source identity canonicalization.
+- [#243](https://github.com/EffortlessMetrics/shiplog/pull/243):
+  skipped sources in freshness.
+- [#244](https://github.com/EffortlessMetrics/shiplog/pull/244):
+  `CacheLookup` and stale freshness.
+- [#245](https://github.com/EffortlessMetrics/shiplog/pull/245):
+  recorded HTTP warm-rerun fixtures.
+- [#246](https://github.com/EffortlessMetrics/shiplog/pull/246):
+  user-polish 0.6.0 release prep.
+- [#247](https://github.com/EffortlessMetrics/shiplog/pull/247):
+  active goal archive after release.
+
+Release receipts:
+
+- [`docs/release/0.6.0-readiness.md`](../../docs/release/0.6.0-readiness.md)
+- [`RELEASE_HANDOFF_0.6.0.md`](../../RELEASE_HANDOFF_0.6.0.md)
+
 ## Operating Rules
 
 - One implementation behavior change per PR.
@@ -93,7 +117,7 @@ Scaffold PRs already landed:
 
 Title: `feat(cli): print next-step commands after intake`
 
-Status: ready
+Status: done
 
 Depends on:
 
@@ -134,15 +158,20 @@ Rollback:
 - Revert the footer rendering and stdout assertions. Generated artifacts should
   remain unchanged unless the PR deliberately adds report next-command fields.
 
+Receipt:
+
+- Landed in [#236](https://github.com/EffortlessMetrics/shiplog/pull/236).
+- Release readiness records this as `Intake next-step footer (#236)`.
+
 Follow-up:
 
-- Open-latest can rely on the footer commands matching the guide and report.
+- Completed by PR 2.
 
 ### PR 2: Latest Artifact Opening
 
 Title: `feat(open): improve latest artifact discovery`
 
-Status: blocked on PR 1
+Status: done
 
 Depends on:
 
@@ -188,15 +217,20 @@ Rollback:
   to commands only if they still work; otherwise revert the footer command text
   in the same rollback.
 
+Receipt:
+
+- Landed in [#237](https://github.com/EffortlessMetrics/shiplog/pull/237).
+- Release readiness records this as `Latest artifact opening (#237)`.
+
 Follow-up:
 
-- Release notes should call out the "where did it go?" fix.
+- Included in the 0.6.0 release notes.
 
 ### PR 3: Source Identity Canonicalization
 
 Title: `feat(report): canonicalize source identities in intake.report.json`
 
-Status: blocked on PR 2
+Status: done
 
 Depends on:
 
@@ -242,15 +276,20 @@ Rollback:
 - Revert JSON writer, schema/docs, and tests together. Do not leave schema docs
   advertising fields that writers do not emit.
 
+Receipt:
+
+- Landed in [#238](https://github.com/EffortlessMetrics/shiplog/pull/238).
+- Release readiness records this as `Source identity canonicalization (#238)`.
+
 Follow-up:
 
-- Skipped-source freshness can start only after this lands.
+- Completed by PR 4.
 
 ### PR 4: Skipped Sources In Freshness
 
 Title: `feat(report): include skipped sources in source_freshness`
 
-Status: blocked on PR 3
+Status: done
 
 Depends on:
 
@@ -295,9 +334,14 @@ Rollback:
 - Revert skipped freshness population and assertions. Keep source identity
   canonicalization intact.
 
+Receipt:
+
+- Landed in [#243](https://github.com/EffortlessMetrics/shiplog/pull/243).
+- Release readiness records this as `Skipped sources in freshness (#243)`.
+
 Follow-up:
 
-- Warm-rerun fixtures should prove fresh/cached without live network.
+- Completed by PR 6.
 
 ### PR 5: CacheLookup And Stale
 
@@ -349,6 +393,11 @@ Follow-up:
 - Recorded HTTP fixtures prove warm reruns without live network in PR 6.
   Stale behavior remains proved by the CacheLookup stale-hit test.
 
+Receipt:
+
+- Landed in [#244](https://github.com/EffortlessMetrics/shiplog/pull/244).
+- Release readiness records this as `CacheLookup and stale freshness (#244)`.
+
 ### PR 6: Recorded HTTP Fixtures
 
 Title: `test(harness): add recorded HTTP fixtures for full warm-rerun`
@@ -395,11 +444,16 @@ Follow-up:
 
 - Release prep can cite fixture-backed freshness proof.
 
+Receipt:
+
+- Landed in [#245](https://github.com/EffortlessMetrics/shiplog/pull/245).
+- Release readiness records this as `Recorded HTTP warm-rerun fixtures (#245)`.
+
 ### PR 7: User-Polish Release Prep
 
 Title: `release: prepare user-polish release`
 
-Status: blocked on PR 6
+Status: done
 
 Depends on:
 
@@ -443,7 +497,14 @@ Rollback:
 
 Follow-up:
 
-- Archive `.shiplog/goals/active.toml` after the lane ships or is superseded.
+- Completed by [#247](https://github.com/EffortlessMetrics/shiplog/pull/247).
+  The archived goal is
+  [`.shiplog/goals/archive/2026-05-13-user-polish-0.6.0.toml`](../../.shiplog/goals/archive/2026-05-13-user-polish-0.6.0.toml).
+
+Receipt:
+
+- Release prep landed in [#246](https://github.com/EffortlessMetrics/shiplog/pull/246).
+- Release readiness records this as `Release prep (#246)`.
 
 ## Stop Conditions
 
@@ -461,3 +522,9 @@ Stop and record a decision receipt before proceeding if:
 Shiplog now gets a first-time user from an empty directory to a defensible
 review pack, with clear source state, freshness, redaction posture, next-step
 commands, latest-artifact opening, and proof-backed docs/tests.
+
+## Closure Receipt
+
+The user-polish lane shipped as `v0.6.0` on 2026-05-13. The release readiness
+ledger records each implementation PR as merged, the release handoff records
+the release operation, and the active goal was archived by #247.

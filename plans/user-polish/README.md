@@ -1,8 +1,8 @@
 # User-Polish Plan Lane
 
-This directory owns implementation sequencing for the user-polish lane. The
-lane is intentionally narrow: make the first-run review-pack path obvious,
-receipt-backed, and safe to extend.
+This directory owns the completed implementation sequencing for the
+user-polish lane. The lane was intentionally narrow: make the first-run
+review-pack path obvious, receipt-backed, and safe to extend.
 
 The target user path is:
 
@@ -43,5 +43,7 @@ freshness-stale.md
 release.md
 ```
 
-The first implementation plan should make the next Codex or Droid move clear
-from the active goal manifest without rereading old conversations.
+The active goal for this lane is archived at
+[`../../.shiplog/goals/archive/2026-05-13-user-polish-0.6.0.toml`](../../.shiplog/goals/archive/2026-05-13-user-polish-0.6.0.toml).
+Use the implementation plan as a historical receipt, not as the current Codex
+work queue.
