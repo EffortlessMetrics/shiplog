@@ -825,6 +825,23 @@ EffortlessMetrics/shiplog#498:
   result: regular merge commit; repo contract report now includes
           source/swarm git topology; source post-merge routed CI, CI, smoke,
           security, BDD/property testing, and CI Actuals passed
+
+EffortlessMetrics/shiplog#499:
+  swarm head: 8c502812b75778ddd6cc4a4844fd163996cea05a
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#57
+  source merge: 84485cc17102a8282e9a9b903efe9c1307184fb2
+  result: regular merge commit; promotion receipts refreshed; source
+          post-merge routed CI, CI, smoke, security, testing, and CI Actuals
+          passed
+
+EffortlessMetrics/shiplog#500:
+  swarm head: cced6c84bdd939e9f5c2212d08bdf992c4fbb064
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#58
+  source merge: 426433fea87f4d9e3773b0ea4a9e6f59c92dc384
+  result: regular merge commit; repo contract report classifies source-ahead
+          promotion merge commits separately from source-only drift; source
+          post-merge routed CI, CI, smoke, security, testing, and CI Actuals
+          passed
 ```
 
 ### Proof commands
@@ -834,6 +851,7 @@ git fetch origin main --prune --tags
 git fetch swarm main --prune
 git merge-base origin/main swarm/main
 git log --oneline origin/main..swarm/main
+cargo xtask repo-contract-report
 gh pr create --base main --head promote/swarm-YYYYMMDD-SHA
 git diff --check
 ```

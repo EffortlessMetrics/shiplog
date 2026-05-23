@@ -88,6 +88,8 @@ After merge, verify source `main`:
 ```powershell
 rtk gh run list --repo EffortlessMetrics/shiplog --branch main --limit 12 --json databaseId,workflowName,status,conclusion,headSha,createdAt,displayTitle
 
+rtk cargo xtask repo-contract-report
+
 rtk gh pr list --repo EffortlessMetrics/shiplog --state open --limit 50
 rtk gh pr list --repo EffortlessMetrics/shiplog-swarm --state open --limit 50
 rtk gh api repos/EffortlessMetrics/shiplog-swarm/branches/main/protection/required_status_checks --jq '{strict: .strict, contexts: .contexts, checks: .checks}'
@@ -98,6 +100,9 @@ Expected:
 ```text
 source post-merge EM CI Routed Shiplog Rust: success
 source post-merge CI: success
+repo-contract-report git topology: tree-aligned
+repo-contract-report source ahead classification: promotion-merge-only
+repo-contract-report source other commits: 0
 shiplog open PR queue: empty or explicitly deferred
 shiplog-swarm open PR queue: empty or explicitly deferred
 shiplog-swarm required checks: Shiplog Rust Small Result only

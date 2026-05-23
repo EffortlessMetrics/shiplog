@@ -39,6 +39,7 @@ commands = [
   "gh issue list --repo EffortlessMetrics/shiplog-swarm --state open --limit 30",
   "gh issue list --repo EffortlessMetrics/shiplog --state open --limit 30",
   "gh run list --repo EffortlessMetrics/shiplog-swarm --branch main --limit 10",
+  "cargo xtask repo-contract-report",
   "git diff --check",
 ]
 receipts = [
@@ -75,6 +76,10 @@ receipts = [
   "EffortlessMetrics/shiplog#497",
   "EffortlessMetrics/shiplog-swarm#56",
   "EffortlessMetrics/shiplog#498",
+  "EffortlessMetrics/shiplog-swarm#57",
+  "EffortlessMetrics/shiplog#499",
+  "EffortlessMetrics/shiplog-swarm#58",
+  "EffortlessMetrics/shiplog#500",
   "EffortlessMetrics/shiplog#205 closed as completed by #206/#208",
   "EffortlessMetrics/shiplog#203 closed as completed by #204",
   "EffortlessMetrics/shiplog#201 closed as completed by #202",

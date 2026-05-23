@@ -273,22 +273,12 @@ fn inspect_git_topology(workspace_root: &Path) -> GitTopologyReport {
     );
     let source_ahead = git_lines(
         workspace_root,
-        &[
-            "log",
-            "--oneline",
-            "--max-count=20",
-            &format!("{SWARM_REF}..{SOURCE_REF}"),
-        ],
+        &["log", "--oneline", &format!("{SWARM_REF}..{SOURCE_REF}")],
         &mut notes,
     );
     let swarm_ahead = git_lines(
         workspace_root,
-        &[
-            "log",
-            "--oneline",
-            "--max-count=20",
-            &format!("{SOURCE_REF}..{SWARM_REF}"),
-        ],
+        &["log", "--oneline", &format!("{SOURCE_REF}..{SWARM_REF}")],
         &mut notes,
     );
     let source_ahead_summary = classify_source_ahead(&source_ahead);

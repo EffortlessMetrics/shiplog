@@ -115,9 +115,9 @@ The report reads [`policy/doc-artifacts.toml`](../policy/doc-artifacts.toml),
 [`docs/status/SUPPORT_TIERS.md`](status/SUPPORT_TIERS.md). It summarizes the
 active goal, work items, artifact links, support-tier proof commands, and graph
 edges. It also reports the current `origin/main` / `swarm/main` topology and
-classifies source-ahead commits so expected `promote/swarm-*` merge commits are
-not confused with source-only content drift. It does not mutate source artifacts
-and does not replace the dedicated validators.
+classifies the full source-ahead commit range so expected `promote/swarm-*`
+merge commits are not confused with source-only content drift. It does not
+mutate source artifacts and does not replace the dedicated validators.
 
 ### `cargo xtask pr-body`
 
