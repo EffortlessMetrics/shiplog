@@ -671,6 +671,8 @@ fn render_markdown(report: &RepoContractReport) -> String {
         ));
     }
 
+    push_work_item_proof_commands(&mut out, &report.work_items);
+
     out.push_str("\n## Artifacts\n\n");
     out.push_str("| ID | Kind | Status | Owner | Path |\n");
     out.push_str("|---|---|---|---|---|\n");
@@ -723,6 +725,34 @@ fn push_markdown_list(out: &mut String, title: &str, values: &[String]) {
     out.push_str(&format!("\n### {title}\n\n"));
     for value in values {
         out.push_str(&format!("- `{}`\n", md(value)));
+    }
+}
+
+fn push_work_item_proof_commands(out: &mut String, work_items: &[WorkItem]) {
+    let items_with_commands = work_items
+        .iter()
+        .filter(|item| {
+            item.commands
+                .iter()
+                .any(|command| !command.trim().is_empty())
+        })
+        .collect::<Vec<_>>();
+    if items_with_commands.is_empty() {
+        return;
+    }
+
+    out.push_str("\n## Work item proof commands\n\n");
+    for item in items_with_commands {
+        out.push_str(&format!("### {}\n\n", md(&item.id)));
+        out.push_str("```bash\n");
+        for command in &item.commands {
+            let command = command.trim();
+            if !command.is_empty() {
+                out.push_str(command);
+                out.push('\n');
+            }
+        }
+        out.push_str("```\n\n");
     }
 }
 
@@ -832,7 +862,7 @@ status = "active"
 proposal = "SHIPLOG-PROP-0008"
 spec = "SHIPLOG-SPEC-0010"
 plan = "plans/0.10.0/implementation-plan.md"
-commands = ["cargo xtask repo-contract-report", "git diff --check"]
+commands = ["rtk cargo xtask repo-contract-report", "rtk git diff --check"]
 "#,
         );
         write(
@@ -859,6 +889,8 @@ commands = ["cargo xtask repo-contract-report", "git diff --check"]
         let markdown = fs::read_to_string(graph_md).unwrap();
         assert!(markdown.contains("# Source-of-truth graph"));
         assert!(markdown.contains("Repo contract report"));
+        assert!(markdown.contains("## Work item proof commands"));
+        assert!(markdown.contains("rtk cargo xtask repo-contract-report"));
         assert!(markdown.contains("## Git topology"));
     }
 
