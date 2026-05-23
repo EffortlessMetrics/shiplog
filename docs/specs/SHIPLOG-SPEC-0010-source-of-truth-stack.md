@@ -1,6 +1,6 @@
 # SHIPLOG-SPEC-0010: Source-of-truth stack contract
 
-Status: proposed
+Status: accepted
 Owner: repo-infra
 Created: 2026-05-20
 Linked proposal: SHIPLOG-PROP-0008-source-of-truth-stack
@@ -11,7 +11,24 @@ Linked plan:
 Linked issues:
 - none
 Linked PRs:
-- TBD
+- EffortlessMetrics/shiplog-swarm#29
+- EffortlessMetrics/shiplog-swarm#30
+- EffortlessMetrics/shiplog-swarm#31
+- EffortlessMetrics/shiplog-swarm#32
+- EffortlessMetrics/shiplog-swarm#33
+- EffortlessMetrics/shiplog-swarm#34
+- EffortlessMetrics/shiplog-swarm#35
+- EffortlessMetrics/shiplog-swarm#36
+- EffortlessMetrics/shiplog-swarm#37
+- EffortlessMetrics/shiplog#472
+- EffortlessMetrics/shiplog#473
+- EffortlessMetrics/shiplog#474
+- EffortlessMetrics/shiplog#475
+- EffortlessMetrics/shiplog#476
+- EffortlessMetrics/shiplog#477
+- EffortlessMetrics/shiplog#478
+- EffortlessMetrics/shiplog#479
+- EffortlessMetrics/shiplog#480
 Support-tier impact: stabilizing
 Policy impact:
 - policy/doc-artifacts.toml
@@ -59,6 +76,11 @@ The `CI / Policy gates` job runs the dedicated source-of-truth validators:
 Promote from stabilizing to stable when `check-doc-artifacts`, `check-goals`,
 and `check-support-tiers` are implemented, run in CI, and covered by the
 branch-protection target policy.
+
+Current status: accepted but still stabilizing. The dedicated validators,
+policy-gates wiring, repo-contract report, PR body generator, and closeout
+generator have landed. Stable support-tier promotion is intentionally separate
+from spec acceptance.
 
 ## Failure modes
 
