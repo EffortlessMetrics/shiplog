@@ -392,8 +392,8 @@ fn check_support_tiers_passes_for_valid_claim_map() {
 
 | Surface | Tier | Claim | Proof command | Notes |
 |---|---|---|---|---|
-| Document artifact links | Stabilizing | Proposal/spec/ADR/plan artifacts are linked. | `cargo xtask check-doc-artifacts` | Dedicated checker. |
-| Policy ledgers | Stable | Policy files parse. | `cargo xtask check-policy-schemas` | Required proof. |
+| Document artifact links | Stabilizing | Proposal/spec/ADR/plan artifacts are linked. | `rtk cargo xtask check-doc-artifacts` | Dedicated checker. |
+| Policy ledgers | Stable | Policy files parse. | `rtk cargo xtask check-policy-schemas` | Required proof. |
 "#,
     )]);
 
@@ -415,7 +415,7 @@ fn check_support_tiers_fails_on_unknown_xtask_proof() {
 
 | Surface | Tier | Claim | Proof command | Notes |
 |---|---|---|---|---|
-| Policy ledgers | Stable | Policy files parse. | `cargo xtask made-up-check` | Required proof. |
+| Policy ledgers | Stable | Policy files parse. | `rtk cargo xtask made-up-check` | Required proof. |
 "#,
     )]);
 
@@ -524,7 +524,7 @@ commands = ["rtk cargo xtask repo-contract-report", "rtk git diff --check"]
 
 | Surface | Tier | Claim | Proof command | Notes |
 |---|---|---|---|---|
-| Repo contract report | Stabilizing | Agents can inspect the graph. | `cargo xtask repo-contract-report` | Writes graph reports. |
+| Repo contract report | Stabilizing | Agents can inspect the graph. | `rtk cargo xtask repo-contract-report` | Writes graph reports. |
 "#,
         ),
     ]);

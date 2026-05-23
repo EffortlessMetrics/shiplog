@@ -79,7 +79,8 @@ source-of-truth map from product/governance claims to proof commands:
 - the claim map table exists and has the expected columns;
 - support-tier names are recognized;
 - stable and stabilizing claims have backticked proof commands; and
-- `cargo xtask ...` proof commands reference known xtask subcommands.
+- proof commands start with `rtk cargo xtask ...` and reference known xtask
+  subcommands.
 
 Exits with non-zero if any finding. This is the dedicated proof command for
 the support-tier claim-map surface.
