@@ -159,6 +159,8 @@ struct ReceiptFreshnessReport {
     latest_swarm_receipt: Option<String>,
     latest_swarm_receipt_in_active_goal: Option<bool>,
     latest_swarm_receipt_in_plan: Option<bool>,
+    missing_active_goal_receipts: Vec<String>,
+    missing_plan_receipts: Vec<String>,
     notes: Vec<String>,
     next_actions: Vec<String>,
 }
@@ -457,6 +459,30 @@ fn inspect_receipt_freshness(
     let latest_swarm_receipt_in_plan =
         receipt_presence_in_text(&plan_text, latest_swarm_receipt.as_deref());
 
+    let mut missing_active_goal_receipts = Vec::new();
+    push_missing_receipt(
+        &mut missing_active_goal_receipts,
+        latest_source_promotion_receipt.as_deref(),
+        latest_source_receipt_in_active_goal,
+    );
+    push_missing_receipt(
+        &mut missing_active_goal_receipts,
+        latest_swarm_receipt.as_deref(),
+        latest_swarm_receipt_in_active_goal,
+    );
+
+    let mut missing_plan_receipts = Vec::new();
+    push_missing_receipt(
+        &mut missing_plan_receipts,
+        latest_source_promotion_receipt.as_deref(),
+        latest_source_receipt_in_plan,
+    );
+    push_missing_receipt(
+        &mut missing_plan_receipts,
+        latest_swarm_receipt.as_deref(),
+        latest_swarm_receipt_in_plan,
+    );
+
     let mut required = Vec::new();
     if let Some(value) = latest_source_receipt_in_active_goal {
         required.push(value);
@@ -499,8 +525,22 @@ fn inspect_receipt_freshness(
         latest_swarm_receipt,
         latest_swarm_receipt_in_active_goal,
         latest_swarm_receipt_in_plan,
+        missing_active_goal_receipts,
+        missing_plan_receipts,
         notes,
         next_actions,
+    }
+}
+
+fn push_missing_receipt(
+    missing_receipts: &mut Vec<String>,
+    receipt: Option<&str>,
+    present: Option<bool>,
+) {
+    if present == Some(false)
+        && let Some(receipt) = receipt
+    {
+        missing_receipts.push(receipt.to_string());
     }
 }
 
@@ -1114,6 +1154,22 @@ fn render_markdown(report: &RepoContractReport) -> String {
     );
     push_row(
         &mut out,
+        "Missing active goal receipts",
+        &format!(
+            "{} item(s)",
+            report.receipt_freshness.missing_active_goal_receipts.len()
+        ),
+    );
+    push_row(
+        &mut out,
+        "Missing plan receipts",
+        &format!(
+            "{} item(s)",
+            report.receipt_freshness.missing_plan_receipts.len()
+        ),
+    );
+    push_row(
+        &mut out,
         "Notes",
         &format!("{} note(s)", report.receipt_freshness.notes.len()),
     );
@@ -1126,6 +1182,16 @@ fn render_markdown(report: &RepoContractReport) -> String {
         &mut out,
         "Receipt freshness notes",
         &report.receipt_freshness.notes,
+    );
+    push_markdown_list(
+        &mut out,
+        "Missing active goal receipts",
+        &report.receipt_freshness.missing_active_goal_receipts,
+    );
+    push_markdown_list(
+        &mut out,
+        "Missing plan receipts",
+        &report.receipt_freshness.missing_plan_receipts,
     );
     push_markdown_bullets(
         &mut out,
@@ -1652,5 +1718,25 @@ receipts = [
                 .iter()
                 .any(|action| action.contains("plans/shiplog-swarm/implementation-plan.md"))
         );
+    }
+
+    #[test]
+    fn push_missing_receipt_records_only_known_absent_receipts() {
+        let mut missing = Vec::new();
+
+        push_missing_receipt(
+            &mut missing,
+            Some("EffortlessMetrics/shiplog#520"),
+            Some(false),
+        );
+        push_missing_receipt(
+            &mut missing,
+            Some("EffortlessMetrics/shiplog-swarm#77"),
+            Some(true),
+        );
+        push_missing_receipt(&mut missing, None, Some(false));
+        push_missing_receipt(&mut missing, Some("unknown"), None);
+
+        assert_eq!(missing, vec!["EffortlessMetrics/shiplog#520"]);
     }
 }
