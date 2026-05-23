@@ -810,6 +810,21 @@ EffortlessMetrics/shiplog#496:
   result: regular merge commit; user-polish plan archived as completed;
           source post-merge routed CI, CI, smoke, security, testing, and
           CI Actuals passed
+
+EffortlessMetrics/shiplog#497:
+  swarm head: 10c16780479914b1ee84f6d750c3ef622947f9b4
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#55
+  source merge: 386a5e0ea177d4565a257d3cbaf58ffa91d4c7d3
+  result: regular merge commit; promotion ledger refreshed; source post-merge
+          routed CI and CI passed
+
+EffortlessMetrics/shiplog#498:
+  swarm head: cbcd866adfe8f64ab476cb254e593bec86015807
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#56
+  source merge: ecdd4d98e543857fb0f893043efe4be9439a3230
+  result: regular merge commit; repo contract report now includes
+          source/swarm git topology; source post-merge routed CI, CI, smoke,
+          security, BDD/property testing, and CI Actuals passed
 ```
 
 ### Proof commands
