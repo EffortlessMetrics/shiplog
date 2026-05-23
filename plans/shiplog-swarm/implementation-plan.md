@@ -890,6 +890,15 @@ EffortlessMetrics/shiplog#507:
           swarm development trunk; source-side Dependabot PR #506 was closed as
           superseded by the swarm PR plus source promotion; source post-merge
           routed CI and CI passed
+
+EffortlessMetrics/shiplog#508:
+  swarm head: 3c706389b518ddc68fa1888df35ab8e8185b0bd8
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#65
+  source merge: 6de8fe4437866881b1e0a518fd8805ff2aaa2373
+  result: regular merge commit; `repo-contract-report` now classifies both
+          GitHub default promotion merge subjects and explicit
+          `merge(swarm): promote shiplog-swarm through <sha>` subjects as
+          promotion merges; source post-merge routed CI and CI passed
 ```
 
 ### Proof commands

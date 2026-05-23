@@ -30,17 +30,17 @@ spec = "SHIPLOG-SPEC-0011"
 adr = "SHIPLOG-ADR-0011"
 plan = "plans/shiplog-swarm/implementation-plan.md"
 commands = [
-  "git fetch origin --prune",
-  "git fetch swarm --prune",
-  "git merge-base origin/main swarm/main",
-  "git log --oneline origin/main..swarm/main",
-  "gh pr list --repo EffortlessMetrics/shiplog-swarm --state open --limit 30",
-  "gh pr list --repo EffortlessMetrics/shiplog --state open --limit 30",
-  "gh issue list --repo EffortlessMetrics/shiplog-swarm --state open --limit 30",
-  "gh issue list --repo EffortlessMetrics/shiplog --state open --limit 30",
-  "gh run list --repo EffortlessMetrics/shiplog-swarm --branch main --limit 10",
-  "cargo xtask repo-contract-report",
-  "git diff --check",
+  "rtk git fetch origin --prune",
+  "rtk git fetch swarm --prune",
+  "rtk git merge-base origin/main swarm/main",
+  "rtk git log --oneline origin/main..swarm/main",
+  "rtk gh pr list --repo EffortlessMetrics/shiplog-swarm --state open --limit 30",
+  "rtk gh pr list --repo EffortlessMetrics/shiplog --state open --limit 30",
+  "rtk gh issue list --repo EffortlessMetrics/shiplog-swarm --state open --limit 30",
+  "rtk gh issue list --repo EffortlessMetrics/shiplog --state open --limit 30",
+  "rtk gh run list --repo EffortlessMetrics/shiplog-swarm --branch main --limit 10",
+  "rtk cargo xtask repo-contract-report",
+  "rtk git diff --check",
 ]
 receipts = [
   "EffortlessMetrics/shiplog-swarm#37",
@@ -93,6 +93,8 @@ receipts = [
   "EffortlessMetrics/shiplog-swarm#64",
   "EffortlessMetrics/shiplog#507",
   "EffortlessMetrics/shiplog#506 closed as superseded by #64/#507",
+  "EffortlessMetrics/shiplog-swarm#65",
+  "EffortlessMetrics/shiplog#508",
   "EffortlessMetrics/shiplog#205 closed as completed by #206/#208",
   "EffortlessMetrics/shiplog#203 closed as completed by #204",
   "EffortlessMetrics/shiplog#201 closed as completed by #202",

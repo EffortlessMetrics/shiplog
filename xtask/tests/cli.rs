@@ -190,7 +190,7 @@ status = "active"
 proposal = "SHIPLOG-PROP-0008"
 spec = "SHIPLOG-SPEC-0010"
 plan = "plans/0.10.0/implementation-plan.md"
-commands = ["cargo xtask check-goals", "git diff --check"]
+commands = ["rtk cargo xtask check-goals", "rtk git diff --check"]
 "#,
         ),
     ]);
@@ -263,7 +263,7 @@ status = "active"
 proposal = "SHIPLOG-PROP-0008"
 spec = "SHIPLOG-SPEC-0010"
 plan = "plans/0.10.0/implementation-plan.md"
-commands = ["cargo xtask check-goals", "git diff --check"]
+commands = ["rtk cargo xtask check-goals", "rtk git diff --check"]
 "#,
         ),
         (
@@ -286,7 +286,7 @@ status = "done"
 proposal = "SHIPLOG-PROP-0008"
 spec = "SHIPLOG-SPEC-0010"
 plan = "plans/0.10.0/implementation-plan.md"
-commands = ["cargo xtask check-goals", "git diff --check"]
+commands = ["rtk cargo xtask check-goals", "rtk git diff --check"]
 "#,
         ),
     ]);
@@ -361,7 +361,7 @@ status = "active"
 proposal = "SHIPLOG-PROP-0008"
 spec = "SHIPLOG-SPEC-0010"
 plan = "plans/0.10.0/implementation-plan.md"
-commands = ["git diff --check"]
+commands = ["rtk git diff --check"]
 
 [[work_item]]
 id = "two"
@@ -369,7 +369,7 @@ status = "active"
 proposal = "SHIPLOG-PROP-0008"
 spec = "SHIPLOG-SPEC-0010"
 plan = "plans/0.10.0/implementation-plan.md"
-commands = ["git diff --check"]
+commands = ["rtk git diff --check"]
 "#,
         ),
     ]);
@@ -513,7 +513,7 @@ status = "active"
 proposal = "SHIPLOG-PROP-0008"
 spec = "SHIPLOG-SPEC-0010"
 plan = "plans/0.10.0/implementation-plan.md"
-commands = ["cargo xtask repo-contract-report", "git diff --check"]
+commands = ["rtk cargo xtask repo-contract-report", "rtk git diff --check"]
 "#,
         ),
         (
@@ -607,7 +607,7 @@ status = "active"
 proposal = "SHIPLOG-PROP-0008"
 spec = "SHIPLOG-SPEC-0010"
 plan = "plans/0.10.0/implementation-plan.md"
-commands = ["cargo xtask pr-body --work-item pr-body-generator", "git diff --check"]
+commands = ["rtk cargo xtask pr-body --work-item pr-body-generator", "rtk git diff --check"]
 "#,
         ),
         (
@@ -639,8 +639,8 @@ No GitHub API calls and no PR creation.
 ### Proof commands
 
 ```bash
-cargo xtask pr-body --work-item pr-body-generator
-git diff --check
+rtk cargo xtask pr-body --work-item pr-body-generator
+rtk git diff --check
 ```
 
 ### Rollback
@@ -741,7 +741,7 @@ status = "done"
 proposal = "SHIPLOG-PROP-0008"
 spec = "SHIPLOG-SPEC-0010"
 plan = "plans/0.10.0/implementation-plan.md"
-commands = ["cargo xtask pr-body --work-item pr-body-generator", "git diff --check"]
+commands = ["rtk cargo xtask pr-body --work-item pr-body-generator", "rtk git diff --check"]
 receipts = ["EffortlessMetrics/shiplog-swarm#36", "EffortlessMetrics/shiplog#479"]
 "#,
         ),
