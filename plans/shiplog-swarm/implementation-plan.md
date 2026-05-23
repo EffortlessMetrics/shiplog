@@ -946,6 +946,15 @@ EffortlessMetrics/shiplog#515:
   result: regular merge commit; repo contract report Markdown now includes
           active goal objective and end-state context; source post-merge
           routed CI, CI, smoke, security, testing, and CI Actuals passed
+
+EffortlessMetrics/shiplog#516:
+  swarm head: 197f0d23154c63c21fc98237040eafc2ba4dd0e4
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#73
+  source merge: 4d437db2dc30a39764f0804745429db3e6e3a52d
+  result: regular merge commit; repo contract report Markdown now compacts
+          long work-item receipt history while preserving full receipt data in
+          JSON and the active goal manifest; source post-merge routed CI, CI,
+          smoke, security, testing, and CI Actuals passed
 ```
 
 ### Proof commands

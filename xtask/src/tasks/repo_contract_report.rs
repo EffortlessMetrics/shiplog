@@ -648,10 +648,11 @@ fn render_markdown(report: &RepoContractReport) -> String {
         "Source ahead non-promotion commits",
         &report.git_topology.source_ahead_other_commits,
     );
-    push_markdown_list(
+    push_markdown_list_limited(
         &mut out,
         "Source promotion merge commits",
         &report.git_topology.source_ahead_promotion_merges,
+        12,
     );
     push_markdown_list(
         &mut out,
@@ -729,6 +730,24 @@ fn push_markdown_list(out: &mut String, title: &str, values: &[String]) {
     out.push_str(&format!("\n### {title}\n\n"));
     for value in values {
         out.push_str(&format!("- `{}`\n", md(value)));
+    }
+}
+
+fn push_markdown_list_limited(out: &mut String, title: &str, values: &[String], limit: usize) {
+    if values.is_empty() {
+        return;
+    }
+
+    out.push_str(&format!("\n### {title}\n\n"));
+    let shown = values.len().min(limit);
+    for value in values.iter().take(shown) {
+        out.push_str(&format!("- `{}`\n", md(value)));
+    }
+    let hidden = values.len().saturating_sub(shown);
+    if hidden > 0 {
+        out.push_str(&format!(
+            "- ... {hidden} earlier item(s) omitted from Markdown; see `graph.json` for the full list.\n"
+        ));
     }
 }
 
@@ -956,6 +975,22 @@ receipts = [
         assert!(markdown.contains("## Work item proof commands"));
         assert!(markdown.contains("rtk cargo xtask repo-contract-report"));
         assert!(markdown.contains("## Git topology"));
+    }
+
+    #[test]
+    fn limits_long_markdown_lists_without_losing_latest_items() {
+        let values = (1..=14)
+            .map(|index| format!("commit-{index:02}"))
+            .collect::<Vec<_>>();
+        let mut markdown = String::new();
+
+        push_markdown_list_limited(&mut markdown, "Source promotion merge commits", &values, 12);
+
+        assert!(markdown.contains("commit-01"));
+        assert!(markdown.contains("commit-12"));
+        assert!(!markdown.contains("commit-13"));
+        assert!(markdown.contains("2 earlier item(s) omitted"));
+        assert!(markdown.contains("graph.json"));
     }
 
     #[test]
