@@ -3192,6 +3192,28 @@ fn review_loop_status_adr_keeps_status_receipt_derived() {
 }
 
 #[test]
+fn policy_docs_use_current_workflow_checker_name() {
+    let root = repo_root();
+    let file_policy_path = root.join("docs/FILE_POLICY.md");
+    let allowlists_path = root.join("docs/POLICY_ALLOWLISTS.md");
+
+    for path in [&file_policy_path, &allowlists_path] {
+        let doc = std::fs::read_to_string(path)
+            .unwrap_or_else(|err| panic!("read {}: {err}", path.display()));
+        assert!(
+            doc.contains("cargo xtask check-workflows"),
+            "{} should document the current workflow allowlist checker",
+            path.display()
+        );
+        assert!(
+            !doc.contains("check-workflow-surfaces"),
+            "{} should not document the old, nonexistent workflow checker name",
+            path.display()
+        );
+    }
+}
+
+#[test]
 fn release_hold_guard_allows_resumed_0_9_tag() {
     let root = repo_root();
     let workflow_path = root.join(".github/workflows/release.yml");

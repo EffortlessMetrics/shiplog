@@ -859,6 +859,20 @@ EffortlessMetrics/shiplog#502:
   result: regular merge commit; source-of-truth stack artifacts accepted;
           source post-merge routed CI, CI, smoke, security, testing, and
           CI Actuals passed
+
+EffortlessMetrics/shiplog#503:
+  swarm head: 96d1108cec3e3aa51ebe709abd6568cd00342bda
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#61
+  source merge: 4f75a0a5689bb93361442dd2183b24624449f8ac
+  result: regular merge commit; source-of-truth rollout accepted in the
+          artifact ledger; source post-merge routed CI and CI passed
+
+EffortlessMetrics/shiplog#504:
+  swarm head: 1c97e8a8e2d1820688f73529bde242946eacc058
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#62
+  source merge: def4967cbcaf7c91fab41b80a6f574a7e9cef54b
+  result: regular merge commit; support-tier proof commands made copyable and
+          validated; source post-merge routed CI and CI passed
 ```
 
 ### Proof commands

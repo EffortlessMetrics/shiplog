@@ -53,7 +53,7 @@ cargo xtask check-file-policy          # CI gate (mode: advisory or blocking)
 cargo xtask check-generated            # generated files allowlist
 cargo xtask check-executable-files     # executable bit allowlist
 cargo xtask check-dependency-surfaces  # third-party dep declarations
-cargo xtask check-workflow-surfaces    # workflow permission/secret scopes
+cargo xtask check-workflows            # workflow permission/secret scopes
 cargo xtask check-process-policy       # process-spawning surfaces
 cargo xtask check-network-policy       # network-calling surfaces
 cargo xtask policy-report              # combined human summary
@@ -141,7 +141,7 @@ external_actions = [
 ]
 ```
 
-`check-workflow-surfaces` verifies the declared list matches the file. A new
+`check-workflows` verifies the declared list matches the file. A new
 `uses:` line in any workflow is a policy event, not just a code change.
 
 ## Network and process scopes
