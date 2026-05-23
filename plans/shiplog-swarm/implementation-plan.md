@@ -921,6 +921,14 @@ EffortlessMetrics/shiplog#511:
   result: regular merge commit; support-tier proof commands now require
           copyable `rtk cargo xtask` prefixes; source post-merge routed CI, CI,
           smoke, security, testing, and CI Actuals passed
+
+EffortlessMetrics/shiplog#513:
+  swarm head: a51cf13068f8b410ca9844617242f72a38b0a7b1
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#70
+  source merge: 740b2cfc839356ecd3bc88f416c4bbe60a0801c6
+  result: regular merge commit; repo contract report Markdown now includes
+          work item proof commands; source post-merge routed CI, CI, smoke,
+          security, testing, and CI Actuals passed
 ```
 
 ### Proof commands
