@@ -938,6 +938,14 @@ EffortlessMetrics/shiplog#514:
           acceptance criteria and compact active-goal receipt refs; source
           post-merge routed CI, CI, smoke, security, testing, and CI Actuals
           passed
+
+EffortlessMetrics/shiplog#515:
+  swarm head: bd0610d302883d78cc938a8d1c6ad31c8cf3a922
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#72
+  source merge: 02eb5b602436c86f0332948217912add7edfddeb
+  result: regular merge commit; repo contract report Markdown now includes
+          active goal objective and end-state context; source post-merge
+          routed CI, CI, smoke, security, testing, and CI Actuals passed
 ```
 
 ### Proof commands
