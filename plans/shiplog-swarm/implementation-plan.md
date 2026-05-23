@@ -842,6 +842,15 @@ EffortlessMetrics/shiplog#500:
           promotion merge commits separately from source-only drift; source
           post-merge routed CI, CI, smoke, security, testing, and CI Actuals
           passed
+
+EffortlessMetrics/shiplog#501:
+  swarm head: f527febd61e1fc4ce83ff995a201a0594370d783
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#59
+  source merge: bee7d0095a931025557717b654617d7694c82c8e
+  result: regular merge commit; repo contract report classifies the full
+          source-ahead promotion range; swarm PR routed through CX53 and
+          source post-merge routed CI, CI, smoke, security, testing, and
+          CI Actuals passed
 ```
 
 ### Proof commands

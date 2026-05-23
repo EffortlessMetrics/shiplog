@@ -1,6 +1,6 @@
 # SHIPLOG-ADR-0011: Swarm Is Dev Landing Zone, Not Release Surface
 
-Status: proposed
+Status: accepted
 Date: 2026-05-21
 Owner: repo-infra/release
 Linked proposal:
@@ -40,8 +40,12 @@ The initial remote audit found `shiplog-swarm/main` as an orphan initialization
 commit, not a shared-history import from `shiplog/main`. A follow-up
 remote-state operation on 2026-05-21 reseeded `shiplog-swarm/main` from
 `shiplog/main`, making both refs point at
-`48c0da1b9a5aeefe58a79c472a8c35d9590e3657`. Promotion merges are still not the
-normal operating model until routed CI and branch protection are proven.
+`48c0da1b9a5aeefe58a79c472a8c35d9590e3657`.
+
+Follow-up receipts in the implementation plan now show routed CI, fork
+admission, branch protection, machine cutover, and merge-commit source
+promotions are proven. Promotion merges are the normal source-update model for
+accepted swarm work. Release authority has not moved.
 
 ## Consequences
 
@@ -79,8 +83,12 @@ sequence of accepted swarm commits from the release/source repo.
 
 ## Follow-up Specs / Plans
 
-- Prove or repair shared history before normal swarm work starts.
-- Add the routed `Shiplog Rust Small Result` workflow in `shiplog-swarm`.
-- Prove same-repo PR, fallback, fork safety, and branch-protection behavior.
-- Write cutover instructions that tell agents to clone `shiplog-swarm`
-  side-by-side instead of retargeting existing `shiplog` clones.
+[`SHIPLOG-SPEC-0011`](../specs/SHIPLOG-SPEC-0011-shiplog-swarm-cutover-contract.md)
+and [`plans/shiplog-swarm/implementation-plan.md`](../../plans/shiplog-swarm/implementation-plan.md)
+now hold the accepted contract and receipts for:
+
+- repaired shared history before normal swarm work started;
+- the routed `Shiplog Rust Small Result` workflow in `shiplog-swarm`;
+- same-repo PR, fallback, fork safety, and branch-protection proof;
+- cutover instructions telling agents to clone `shiplog-swarm` side-by-side;
+- merge-commit source promotions back into `EffortlessMetrics/shiplog`.

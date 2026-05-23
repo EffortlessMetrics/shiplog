@@ -1,6 +1,6 @@
 # SHIPLOG-PROP-0010: Shiplog Swarm Development Landing Zone
 
-Status: proposed
+Status: accepted
 Owner: repo-infra/release
 Created: 2026-05-20
 Target release: post-0.9.0 development cutover
@@ -12,6 +12,11 @@ Linked plan:
 [`plans/shiplog-swarm/implementation-plan.md`](../../plans/shiplog-swarm/implementation-plan.md)
 
 ## Summary
+
+Accepted on 2026-05-23 after shared history, routed CI proof, branch
+protection, normal-development cutover instructions, and repeated merge-commit
+source promotions were recorded in
+[`plans/shiplog-swarm/implementation-plan.md`](../../plans/shiplog-swarm/implementation-plan.md).
 
 Shiplog should get a dedicated swarm landing zone:
 
@@ -278,3 +283,8 @@ Required proof should include:
 This proposal is done when the follow-up spec, ADR, and implementation plan
 exist and the repo has an explicit decision about when `shiplog-swarm` becomes
 the development target. It does not itself execute the cutover.
+
+2026-05-23 receipt: the exit criteria are met. The accepted spec, ADR, and
+implementation plan exist; normal development targets `shiplog-swarm`; and the
+source repo remains the release surface until a separate release-authority
+cutover is approved.

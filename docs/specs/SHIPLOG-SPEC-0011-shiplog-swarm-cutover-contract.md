@@ -1,6 +1,6 @@
 # SHIPLOG-SPEC-0011: Shiplog Swarm Cutover Contract
 
-Status: proposed
+Status: accepted
 Owner: repo-infra/release
 Created: 2026-05-20
 Related proposal:
@@ -42,6 +42,12 @@ Follow-up receipt on 2026-05-21: `shiplog-swarm/main` was reseeded from
 swarm/main` prints that commit. Merge policy was also configured so normal
 swarm PRs squash while source promotion can still use merge commits in
 `shiplog`.
+
+Acceptance receipt on 2026-05-23: the implementation plan now records shared
+history repair, routed CI proof, fork admission proof, branch protection,
+machine cutover instructions, and repeated merge-commit source promotions. The
+contract is accepted as the current development-control-plane rule while
+release authority remains on `EffortlessMetrics/shiplog`.
 
 ## Scope
 
@@ -357,5 +363,15 @@ Future implementation PRs should link:
 - the final source-sync receipt;
 - the cutover instruction update.
 
-This spec has no direct code proof. It is validated by `git diff --check` until
-the planned implementation artifacts exist.
+This spec is enforced by the implementation-plan receipts and the active-goal
+control-plane checks:
+
+```bash
+cargo xtask check-doc-artifacts
+cargo xtask check-goals
+cargo xtask repo-contract-report
+git diff --check
+```
+
+Those checks do not replace live GitHub route or branch-protection inspection;
+they keep the repo-native contract linked and current.
