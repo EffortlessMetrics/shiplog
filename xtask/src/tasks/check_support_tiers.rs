@@ -4,6 +4,7 @@
 //! product/governance claims to proof commands.
 
 use anyhow::{Context, Result};
+use serde::Deserialize;
 use std::fs;
 use std::path::Path;
 
@@ -17,6 +18,18 @@ struct ClaimRow {
     notes: String,
 }
 
+#[derive(Debug, Deserialize)]
+struct ActiveGoal {
+    id: String,
+    #[serde(default)]
+    work_item: Vec<ActiveGoalWorkItem>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ActiveGoalWorkItem {
+    id: String,
+}
+
 pub fn run(workspace_root: &Path) -> Result<()> {
     let path = workspace_root
         .join("docs")
@@ -28,7 +41,7 @@ pub fn run(workspace_root: &Path) -> Result<()> {
     let rows = parse_claim_rows(&text, &mut findings);
 
     for row in &rows {
-        validate_claim_row(row, &mut findings);
+        validate_claim_row(workspace_root, row, &mut findings);
     }
 
     if findings.is_empty() {
@@ -108,7 +121,7 @@ fn parse_claim_rows(text: &str, findings: &mut Vec<String>) -> Vec<ClaimRow> {
     rows
 }
 
-fn validate_claim_row(row: &ClaimRow, findings: &mut Vec<String>) {
+fn validate_claim_row(workspace_root: &Path, row: &ClaimRow, findings: &mut Vec<String>) {
     for (field, value) in [
         ("surface", row.surface.as_str()),
         ("tier", row.tier.as_str()),
@@ -145,12 +158,17 @@ fn validate_claim_row(row: &ClaimRow, findings: &mut Vec<String>) {
             ));
         }
         for command in commands {
-            validate_proof_command(row.line, command, findings);
+            validate_proof_command(workspace_root, row.line, command, findings);
         }
     }
 }
 
-fn validate_proof_command(line: usize, command: &str, findings: &mut Vec<String>) {
+fn validate_proof_command(
+    workspace_root: &Path,
+    line: usize,
+    command: &str,
+    findings: &mut Vec<String>,
+) {
     let parts: Vec<&str> = command.split_whitespace().collect();
     if parts.len() < 3 || parts[0] != "cargo" || parts[1] != "xtask" {
         findings.push(format!(
@@ -163,7 +181,123 @@ fn validate_proof_command(line: usize, command: &str, findings: &mut Vec<String>
         findings.push(format!(
             "[support-tier-proof-unknown-xtask] line {line} proof command {command:?} references unknown xtask subcommand {subcommand:?}"
         ));
+        return;
     }
+
+    match subcommand {
+        "pr-body" => validate_pr_body_proof(workspace_root, line, command, &parts, findings),
+        "closeout" => validate_closeout_proof(workspace_root, line, command, &parts, findings),
+        _ => {}
+    }
+}
+
+fn validate_pr_body_proof(
+    workspace_root: &Path,
+    line: usize,
+    command: &str,
+    parts: &[&str],
+    findings: &mut Vec<String>,
+) {
+    let Some(work_item) = flag_value(parts, "--work-item") else {
+        findings.push(format!(
+            "[support-tier-pr-body-missing-work-item] line {line} proof command {command:?} must include `--work-item <id>`"
+        ));
+        return;
+    };
+
+    let Some(goal) = load_active_goal(workspace_root, line, findings) else {
+        return;
+    };
+    if !goal.work_item.iter().any(|item| item.id == work_item) {
+        findings.push(format!(
+            "[support-tier-pr-body-unknown-work-item] line {line} proof command {command:?} references work item {work_item:?}, but `.codex/goals/active.toml` does not contain it"
+        ));
+    }
+}
+
+fn validate_closeout_proof(
+    workspace_root: &Path,
+    line: usize,
+    command: &str,
+    parts: &[&str],
+    findings: &mut Vec<String>,
+) {
+    let Some(goal_id) = flag_value(parts, "--goal") else {
+        findings.push(format!(
+            "[support-tier-closeout-missing-goal] line {line} proof command {command:?} must include `--goal <id>`"
+        ));
+        return;
+    };
+
+    let Some(goal) = load_active_goal(workspace_root, line, findings) else {
+        return;
+    };
+    if goal.id != goal_id {
+        findings.push(format!(
+            "[support-tier-closeout-goal-mismatch] line {line} proof command {command:?} references goal {goal_id:?}, but `.codex/goals/active.toml` is {:?}",
+            goal.id
+        ));
+    }
+
+    for flag in ["--handoff-output", "--archive-output"] {
+        let Some(output) = flag_value(parts, flag) else {
+            findings.push(format!(
+                "[support-tier-closeout-source-writing-proof] line {line} proof command {command:?} must include `{flag} target/...` so support-tier proof does not write source closeout artifacts"
+            ));
+            continue;
+        };
+        if !output.starts_with("target/") && !output.starts_with("target\\") {
+            findings.push(format!(
+                "[support-tier-closeout-source-writing-proof] line {line} proof command {command:?} uses `{flag} {output}`; support-tier closeout proof must write under `target/`"
+            ));
+        }
+    }
+}
+
+fn load_active_goal(
+    workspace_root: &Path,
+    line: usize,
+    findings: &mut Vec<String>,
+) -> Option<ActiveGoal> {
+    let path = workspace_root
+        .join(".codex")
+        .join("goals")
+        .join("active.toml");
+    let text = match fs::read_to_string(&path) {
+        Ok(text) => text,
+        Err(err) => {
+            findings.push(format!(
+                "[support-tier-active-goal-unreadable] line {line} could not read {}: {err}",
+                path.display()
+            ));
+            return None;
+        }
+    };
+    match toml::from_str(&text) {
+        Ok(goal) => Some(goal),
+        Err(err) => {
+            findings.push(format!(
+                "[support-tier-active-goal-invalid] line {line} could not parse {}: {err}",
+                path.display()
+            ));
+            None
+        }
+    }
+}
+
+fn flag_value<'a>(parts: &'a [&str], flag: &str) -> Option<&'a str> {
+    for (index, part) in parts.iter().enumerate() {
+        if *part == flag {
+            return parts
+                .get(index + 1)
+                .copied()
+                .filter(|value| !value.starts_with("--"));
+        }
+        if let Some(value) = part.strip_prefix(&format!("{flag}=")) {
+            return (!value.is_empty()).then_some(value);
+        }
+    }
+    None
 }
 
 fn table_cells(line: &str) -> Vec<&str> {
@@ -263,6 +397,31 @@ mod tests {
         dir
     }
 
+    fn write_active_goal(dir: &tempfile::TempDir) {
+        let path = dir.path().join(".codex").join("goals");
+        fs::create_dir_all(&path).unwrap();
+        fs::write(
+            path.join("active.toml"),
+            r#"
+schema_version = 1
+id = "shiplog-swarm-control-plane"
+title = "Shiplog swarm development control plane"
+status = "active"
+owner = "codex"
+created = "2026-05-22"
+objective = "Keep normal shiplog development moving through swarm."
+end_state = ["Promotion remains boring."]
+
+[[work_item]]
+id = "promotion-cadence"
+status = "active"
+plan = "plans/shiplog-swarm/implementation-plan.md"
+commands = ["cargo xtask repo-contract-report"]
+"#,
+        )
+        .unwrap();
+    }
+
     fn valid_doc() -> String {
         r#"# Support tiers
 
@@ -314,5 +473,60 @@ mod tests {
         let dir = write_support_tiers(&doc);
         let err = run(dir.path()).unwrap_err();
         assert!(err.to_string().contains("1 finding"));
+    }
+
+    #[test]
+    fn source_of_truth_generator_proofs_validate_active_goal_refs() {
+        let doc = r#"# Support tiers
+
+## Claim map
+
+| Surface | Tier | Claim | Proof command | Notes |
+|---|---|---|---|---|
+| PR body generator | Stabilizing | Agents can draft PR bodies. | `cargo xtask pr-body --work-item promotion-cadence --output target/source-of-truth/pr-body.md` | Derived draft. |
+| Closeout generator | Stabilizing | Agents can draft closeouts. | `cargo xtask closeout --goal shiplog-swarm-control-plane --handoff-output target/source-of-truth/closeout.md --archive-output target/source-of-truth/active-goal-archive.toml` | Derived draft. |
+"#;
+        let dir = write_support_tiers(doc);
+        write_active_goal(&dir);
+        run(dir.path()).expect("generator support-tier proofs should pass");
+    }
+
+    #[test]
+    fn stale_pr_body_work_item_is_finding() {
+        let doc = valid_doc().replace(
+            "`cargo xtask check-policy-schemas`",
+            "`cargo xtask pr-body --work-item pr-body-generator`",
+        );
+        let dir = write_support_tiers(&doc);
+        write_active_goal(&dir);
+
+        let err = run(dir.path()).unwrap_err();
+        assert!(err.to_string().contains("1 finding"));
+    }
+
+    #[test]
+    fn stale_closeout_goal_is_finding() {
+        let doc = valid_doc().replace(
+            "`cargo xtask check-policy-schemas`",
+            "`cargo xtask closeout --goal shiplog-source-of-truth-stack --handoff-output target/source-of-truth/closeout.md --archive-output target/source-of-truth/active-goal-archive.toml`",
+        );
+        let dir = write_support_tiers(&doc);
+        write_active_goal(&dir);
+
+        let err = run(dir.path()).unwrap_err();
+        assert!(err.to_string().contains("1 finding"));
+    }
+
+    #[test]
+    fn source_writing_closeout_proof_is_finding() {
+        let doc = valid_doc().replace(
+            "`cargo xtask check-policy-schemas`",
+            "`cargo xtask closeout --goal shiplog-swarm-control-plane`",
+        );
+        let dir = write_support_tiers(&doc);
+        write_active_goal(&dir);
+
+        let err = run(dir.path()).unwrap_err();
+        assert!(err.to_string().contains("2 finding"));
     }
 }
