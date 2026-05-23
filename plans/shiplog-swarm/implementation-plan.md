@@ -974,6 +974,15 @@ EffortlessMetrics/shiplog#518:
           swarm work, source promotion, or drift repair from repo evidence;
           source post-merge routed CI, CI, smoke, security, testing, and
           CI Actuals passed
+
+EffortlessMetrics/shiplog#519:
+  swarm head: 6147ab3843361f28617459c235248ef9eb0eec0f
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#76
+  source merge: e4ac1c7315e7063c9777df0b9d825dc8031f0c65
+  result: regular merge commit; repo contract report JSON and Markdown now
+          include local checkout state so agents can see whether scoped work
+          is clean before continuing; source post-merge routed CI, CI, smoke,
+          security, testing, and CI Actuals passed
 ```
 
 ### Proof commands

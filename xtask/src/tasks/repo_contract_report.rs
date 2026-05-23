@@ -113,6 +113,7 @@ struct RepoContractReport {
     active_goal: ActiveGoalReport,
     git_topology: GitTopologyReport,
     local_checkout: LocalCheckoutReport,
+    receipt_freshness: ReceiptFreshnessReport,
     artifacts: Vec<Artifact>,
     work_items: Vec<WorkItem>,
     support_tiers: Vec<SupportTierClaim>,
@@ -147,12 +148,28 @@ struct LocalCheckoutReport {
     next_actions: Vec<String>,
 }
 
+#[derive(Debug, Serialize)]
+struct ReceiptFreshnessReport {
+    status: String,
+    latest_source_promotion_merge: Option<String>,
+    latest_source_promotion_receipt: Option<String>,
+    latest_source_receipt_in_active_goal: Option<bool>,
+    latest_source_receipt_in_plan: Option<bool>,
+    latest_swarm_head: Option<String>,
+    latest_swarm_receipt: Option<String>,
+    latest_swarm_receipt_in_active_goal: Option<bool>,
+    latest_swarm_receipt_in_plan: Option<bool>,
+    notes: Vec<String>,
+    next_actions: Vec<String>,
+}
+
 pub fn run(workspace_root: &Path) -> Result<()> {
     let artifacts = load_doc_artifacts(workspace_root)?;
     let goal = load_active_goal(workspace_root)?;
     let support_tiers = load_support_tiers(workspace_root)?;
     let git_topology = inspect_git_topology(workspace_root);
     let local_checkout = inspect_local_checkout(workspace_root);
+    let receipt_freshness = inspect_receipt_freshness(workspace_root, &goal, &git_topology);
 
     let output_dir = workspace_root.join("target").join("source-of-truth");
     fs::create_dir_all(&output_dir).with_context(|| format!("create {}", output_dir.display()))?;
@@ -166,6 +183,7 @@ pub fn run(workspace_root: &Path) -> Result<()> {
         support_tiers,
         git_topology,
         local_checkout,
+        receipt_freshness,
         vec![
             display_path(workspace_root, &graph_json),
             display_path(workspace_root, &graph_md),
@@ -219,6 +237,7 @@ fn build_report(
     support_tiers: Vec<SupportTierClaim>,
     git_topology: GitTopologyReport,
     local_checkout: LocalCheckoutReport,
+    receipt_freshness: ReceiptFreshnessReport,
     outputs: Vec<String>,
 ) -> RepoContractReport {
     let active_work_items = goal
@@ -268,6 +287,7 @@ fn build_report(
         },
         git_topology,
         local_checkout,
+        receipt_freshness,
         artifacts: artifacts.to_vec(),
         work_items: goal.work_item,
         support_tiers,
@@ -396,6 +416,166 @@ fn local_checkout_next_actions(clean: Option<bool>) -> Vec<String> {
         ],
         None => vec![
             "Run from a Git checkout with `origin` and `swarm` remotes available, then rerun `rtk cargo xtask repo-contract-report`."
+                .to_string(),
+        ],
+    }
+}
+
+fn inspect_receipt_freshness(
+    workspace_root: &Path,
+    goal: &ActiveGoal,
+    git_topology: &GitTopologyReport,
+) -> ReceiptFreshnessReport {
+    const SOURCE_REPO: &str = "EffortlessMetrics/shiplog";
+    const SWARM_REPO: &str = "EffortlessMetrics/shiplog-swarm";
+
+    let mut notes = Vec::new();
+    let plan_text = load_plan_texts(workspace_root, goal, &mut notes);
+
+    let latest_source_promotion_merge = git_topology.source_ahead_promotion_merges.first().cloned();
+    let latest_source_promotion_receipt = latest_source_promotion_merge
+        .as_deref()
+        .and_then(extract_merge_pull_request_number)
+        .map(|number| github_receipt(SOURCE_REPO, number));
+
+    let latest_swarm_head = git_line(
+        workspace_root,
+        &["log", "--oneline", "-1", "swarm/main"],
+        &mut notes,
+    );
+    let latest_swarm_receipt = latest_swarm_head
+        .as_deref()
+        .and_then(extract_parenthesized_pull_request_number)
+        .map(|number| github_receipt(SWARM_REPO, number));
+
+    let latest_source_receipt_in_active_goal =
+        receipt_presence_in_goal(goal, latest_source_promotion_receipt.as_deref());
+    let latest_source_receipt_in_plan =
+        receipt_presence_in_text(&plan_text, latest_source_promotion_receipt.as_deref());
+    let latest_swarm_receipt_in_active_goal =
+        receipt_presence_in_goal(goal, latest_swarm_receipt.as_deref());
+    let latest_swarm_receipt_in_plan =
+        receipt_presence_in_text(&plan_text, latest_swarm_receipt.as_deref());
+
+    let mut required = Vec::new();
+    if let Some(value) = latest_source_receipt_in_active_goal {
+        required.push(value);
+    } else {
+        notes.push(
+            "latest source promotion PR could not be inferred from source promotion commits"
+                .to_string(),
+        );
+    }
+    if let Some(value) = latest_source_receipt_in_plan {
+        required.push(value);
+    }
+    if let Some(value) = latest_swarm_receipt_in_active_goal {
+        required.push(value);
+    } else {
+        notes.push("latest swarm PR could not be inferred from swarm/main head".to_string());
+    }
+    if let Some(value) = latest_swarm_receipt_in_plan {
+        required.push(value);
+    }
+
+    let status = if required.is_empty() {
+        "unavailable"
+    } else if required.iter().all(|present| *present) {
+        "current"
+    } else {
+        "stale"
+    }
+    .to_string();
+
+    let next_actions = receipt_freshness_next_actions(&status);
+
+    ReceiptFreshnessReport {
+        status,
+        latest_source_promotion_merge,
+        latest_source_promotion_receipt,
+        latest_source_receipt_in_active_goal,
+        latest_source_receipt_in_plan,
+        latest_swarm_head,
+        latest_swarm_receipt,
+        latest_swarm_receipt_in_active_goal,
+        latest_swarm_receipt_in_plan,
+        notes,
+        next_actions,
+    }
+}
+
+fn load_plan_texts(workspace_root: &Path, goal: &ActiveGoal, notes: &mut Vec<String>) -> String {
+    let mut text = String::new();
+    for plan in goal
+        .work_item
+        .iter()
+        .map(|item| item.plan.trim())
+        .filter(|plan| !plan.is_empty())
+    {
+        match fs::read_to_string(workspace_root.join(plan)) {
+            Ok(plan_text) => {
+                text.push_str(&plan_text);
+                text.push('\n');
+            }
+            Err(err) => notes.push(format!("read {plan} failed: {err}")),
+        }
+    }
+    text
+}
+
+fn receipt_presence_in_goal(goal: &ActiveGoal, receipt: Option<&str>) -> Option<bool> {
+    let receipt = receipt?;
+    Some(
+        goal.work_item
+            .iter()
+            .any(|item| item.receipts.iter().any(|value| value == receipt)),
+    )
+}
+
+fn receipt_presence_in_text(text: &str, receipt: Option<&str>) -> Option<bool> {
+    receipt.map(|receipt| text.contains(receipt))
+}
+
+fn github_receipt(repo: &str, number: u64) -> String {
+    format!("{repo}#{number}")
+}
+
+fn extract_merge_pull_request_number(commit: &str) -> Option<u64> {
+    let subject = commit
+        .split_once(' ')
+        .map(|(_, subject)| subject)
+        .unwrap_or(commit);
+    let rest = subject.strip_prefix("Merge pull request #")?;
+    parse_leading_number(rest)
+}
+
+fn extract_parenthesized_pull_request_number(commit: &str) -> Option<u64> {
+    let start = commit.rfind("(#")?;
+    let rest = &commit[start + 2..];
+    let end = rest.find(')')?;
+    rest[..end].parse().ok()
+}
+
+fn parse_leading_number(text: &str) -> Option<u64> {
+    let digits = text
+        .chars()
+        .take_while(|value| value.is_ascii_digit())
+        .collect::<String>();
+    digits.parse().ok()
+}
+
+fn receipt_freshness_next_actions(status: &str) -> Vec<String> {
+    match status {
+        "current" => vec![
+            "Latest completed source promotion and swarm PR receipts are recorded in the active goal and plan."
+                .to_string(),
+        ],
+        "stale" => vec![
+            "Record the latest completed source promotion and swarm PR receipts in `.codex/goals/active.toml` and `plans/shiplog-swarm/implementation-plan.md` during the next substantive swarm PR."
+                .to_string(),
+        ],
+        _ => vec![
+            "Verify source promotion and swarm PR subjects, then refresh receipt records manually if needed."
                 .to_string(),
         ],
     }
@@ -869,6 +1049,90 @@ fn render_markdown(report: &RepoContractReport) -> String {
         &report.local_checkout.next_actions,
     );
 
+    out.push_str("\n## Receipt freshness\n\n");
+    out.push_str("| Field | Value |\n|---|---|\n");
+    push_row(&mut out, "Status", &report.receipt_freshness.status);
+    push_row(
+        &mut out,
+        "Latest source promotion merge",
+        report
+            .receipt_freshness
+            .latest_source_promotion_merge
+            .as_deref()
+            .unwrap_or("-"),
+    );
+    push_row(
+        &mut out,
+        "Latest source promotion receipt",
+        report
+            .receipt_freshness
+            .latest_source_promotion_receipt
+            .as_deref()
+            .unwrap_or("-"),
+    );
+    push_row(
+        &mut out,
+        "Source receipt in active goal",
+        &bool_opt(
+            &report
+                .receipt_freshness
+                .latest_source_receipt_in_active_goal,
+        ),
+    );
+    push_row(
+        &mut out,
+        "Source receipt in plan",
+        &bool_opt(&report.receipt_freshness.latest_source_receipt_in_plan),
+    );
+    push_row(
+        &mut out,
+        "Latest swarm head",
+        report
+            .receipt_freshness
+            .latest_swarm_head
+            .as_deref()
+            .unwrap_or("-"),
+    );
+    push_row(
+        &mut out,
+        "Latest swarm receipt",
+        report
+            .receipt_freshness
+            .latest_swarm_receipt
+            .as_deref()
+            .unwrap_or("-"),
+    );
+    push_row(
+        &mut out,
+        "Swarm receipt in active goal",
+        &bool_opt(&report.receipt_freshness.latest_swarm_receipt_in_active_goal),
+    );
+    push_row(
+        &mut out,
+        "Swarm receipt in plan",
+        &bool_opt(&report.receipt_freshness.latest_swarm_receipt_in_plan),
+    );
+    push_row(
+        &mut out,
+        "Notes",
+        &format!("{} note(s)", report.receipt_freshness.notes.len()),
+    );
+    push_row(
+        &mut out,
+        "Next actions",
+        &format!("{} action(s)", report.receipt_freshness.next_actions.len()),
+    );
+    push_markdown_list(
+        &mut out,
+        "Receipt freshness notes",
+        &report.receipt_freshness.notes,
+    );
+    push_markdown_bullets(
+        &mut out,
+        "Receipt freshness next actions",
+        &report.receipt_freshness.next_actions,
+    );
+
     out.push_str("\n## Work items\n\n");
     out.push_str("| ID | Status | Proposal | Spec | Plan | Receipts |\n");
     out.push_str("|---|---|---|---|---|---|\n");
@@ -1055,6 +1319,12 @@ fn md_opt(value: &Option<String>) -> String {
     md(value.as_deref().unwrap_or("-"))
 }
 
+fn bool_opt(value: &Option<bool>) -> String {
+    value
+        .map(|value| value.to_string())
+        .unwrap_or_else(|| "-".to_string())
+}
+
 fn md(value: &str) -> String {
     value.replace('|', "\\|").replace('\n', " ")
 }
@@ -1173,6 +1443,7 @@ receipts = [
         assert!(json.contains("\"repo-contract-report\""));
         assert!(json.contains("\"git_topology\""));
         assert!(json.contains("\"local_checkout\""));
+        assert!(json.contains("\"receipt_freshness\""));
         let markdown = fs::read_to_string(graph_md).unwrap();
         assert!(markdown.contains("# Source-of-truth graph"));
         assert!(markdown.contains("Keep repo source-of-truth artifacts linked."));
@@ -1186,6 +1457,7 @@ receipts = [
         assert!(markdown.contains("## Git topology"));
         assert!(markdown.contains("Git topology next actions"));
         assert!(markdown.contains("## Local checkout"));
+        assert!(markdown.contains("## Receipt freshness"));
     }
 
     #[test]
@@ -1348,6 +1620,37 @@ receipts = [
                 .next_actions
                 .iter()
                 .any(|action| action.contains("Git checkout"))
+        );
+    }
+
+    #[test]
+    fn extracts_source_promotion_pr_from_merge_subject() {
+        let commit =
+            "e4ac1c7 Merge pull request #519 from EffortlessMetrics/promote/swarm-20260523-6147ab3";
+
+        assert_eq!(extract_merge_pull_request_number(commit), Some(519));
+    }
+
+    #[test]
+    fn extracts_swarm_pr_from_squash_subject() {
+        let commit = "6147ab3 xtask: report local checkout state (#76)";
+
+        assert_eq!(extract_parenthesized_pull_request_number(commit), Some(76));
+    }
+
+    #[test]
+    fn receipt_freshness_next_actions_explain_stale_receipts() {
+        let actions = receipt_freshness_next_actions("stale");
+
+        assert!(
+            actions
+                .iter()
+                .any(|action| action.contains(".codex/goals/active.toml"))
+        );
+        assert!(
+            actions
+                .iter()
+                .any(|action| action.contains("plans/shiplog-swarm/implementation-plan.md"))
         );
     }
 }
