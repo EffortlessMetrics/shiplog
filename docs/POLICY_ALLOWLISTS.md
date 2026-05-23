@@ -144,7 +144,7 @@ cargo xtask check-file-policy            # non-Rust master
 cargo xtask check-generated
 cargo xtask check-executable-files
 cargo xtask check-dependency-surfaces
-cargo xtask check-workflow-surfaces
+cargo xtask check-workflows
 cargo xtask check-process-policy
 cargo xtask check-network-policy
 cargo xtask policy-report                # combined human summary
