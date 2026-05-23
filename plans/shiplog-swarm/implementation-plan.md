@@ -873,6 +873,23 @@ EffortlessMetrics/shiplog#504:
   source merge: def4967cbcaf7c91fab41b80a6f574a7e9cef54b
   result: regular merge commit; support-tier proof commands made copyable and
           validated; source post-merge routed CI and CI passed
+
+EffortlessMetrics/shiplog#505:
+  swarm head: 55dae9fc3ca8d3739e4fafc1a10f6346f972e084
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#63
+  source merge: 9db8cd813a4e7de70a429d25a1fee6a53d4f3d50
+  result: regular merge commit; workflow checker proof command docs were
+          aligned with `cargo xtask check-workflows`; source post-merge routed
+          CI and CI passed
+
+EffortlessMetrics/shiplog#507:
+  swarm head: f4fc2d5ba9172de1b313fbeebb33c5674a3dfea5
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#64
+  source merge: 1a35a90d822ddc42b268443f6fdf22a57a19d8ff
+  result: regular merge commit; `serde_json` bumped to 1.0.150 through the
+          swarm development trunk; source-side Dependabot PR #506 was closed as
+          superseded by the swarm PR plus source promotion; source post-merge
+          routed CI and CI passed
 ```
 
 ### Proof commands
