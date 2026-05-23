@@ -431,7 +431,7 @@ status = "done"
 proposal = "SHIPLOG-PROP-0008"
 spec = "SHIPLOG-SPEC-0010"
 plan = "plans/0.10.0/implementation-plan.md"
-commands = ["cargo xtask pr-body --work-item pr-body-generator", "git diff --check"]
+commands = ["rtk cargo xtask pr-body --work-item pr-body-generator", "rtk git diff --check"]
 receipts = ["EffortlessMetrics/shiplog-swarm#36", "EffortlessMetrics/shiplog#479"]
 
 [[work_item]]
@@ -440,7 +440,7 @@ status = "active"
 proposal = "SHIPLOG-PROP-0008"
 spec = "SHIPLOG-SPEC-0010"
 plan = "plans/0.10.0/implementation-plan.md"
-commands = ["cargo xtask closeout --goal shiplog-source-of-truth-stack", "git diff --check"]
+commands = ["rtk cargo xtask closeout --goal shiplog-source-of-truth-stack", "rtk git diff --check"]
 "#,
         );
         write(

@@ -32,6 +32,8 @@ struct WorkItem {
     #[serde(default)]
     adr: Option<String>,
     plan: String,
+    #[serde(default)]
+    commands: Vec<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -358,14 +360,26 @@ fn render_pr_body(
     }
 
     out.push_str("## Proof\n\n");
-    let proof = section_or_fallback(plan_item, "Proof commands", "No proof commands recorded.");
-    if proof.trim_start().starts_with("```") {
-        out.push_str(proof.trim());
-        out.push_str("\n\n");
-    } else {
+    if !work_item.commands.is_empty() {
         out.push_str("```bash\n");
-        out.push_str(proof.trim());
-        out.push_str("\n```\n\n");
+        for command in &work_item.commands {
+            let command = command.trim();
+            if !command.is_empty() {
+                out.push_str(command);
+                out.push('\n');
+            }
+        }
+        out.push_str("```\n\n");
+    } else {
+        let proof = section_or_fallback(plan_item, "Proof commands", "No proof commands recorded.");
+        if proof.trim_start().starts_with("```") {
+            out.push_str(proof.trim());
+            out.push_str("\n\n");
+        } else {
+            out.push_str("```bash\n");
+            out.push_str(proof.trim());
+            out.push_str("\n```\n\n");
+        }
     }
 
     push_named_section(
@@ -509,7 +523,7 @@ status = "active"
 proposal = "SHIPLOG-PROP-0008"
 spec = "SHIPLOG-SPEC-0010"
 plan = "plans/0.10.0/implementation-plan.md"
-commands = ["cargo xtask pr-body --work-item pr-body-generator", "git diff --check"]
+commands = ["rtk cargo xtask pr-body --work-item pr-body-generator", "rtk git diff --check"]
 "#,
         );
         write(
@@ -541,8 +555,8 @@ No GitHub API calls and no PR creation.
 ### Proof commands
 
 ```bash
-cargo xtask pr-body --work-item pr-body-generator
-git diff --check
+cargo xtask stale-plan-proof
+git stale-plan-proof
 ```
 
 ### Rollback
@@ -593,7 +607,8 @@ Policy impact:
         assert!(body.contains("No GitHub API calls"));
         assert!(body.contains("Support-tier impact"));
         assert!(body.contains("stabilizing"));
-        assert!(body.contains("cargo xtask pr-body --work-item pr-body-generator"));
+        assert!(body.contains("rtk cargo xtask pr-body --work-item pr-body-generator"));
+        assert!(!body.contains("cargo xtask stale-plan-proof"));
         assert!(body.contains("This generates drafts only."));
     }
 
