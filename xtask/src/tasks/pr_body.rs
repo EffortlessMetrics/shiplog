@@ -34,6 +34,8 @@ struct WorkItem {
     plan: String,
     #[serde(default)]
     commands: Vec<String>,
+    #[serde(default)]
+    receipts: Vec<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -342,6 +344,11 @@ fn render_pr_body(
         "Non-goals",
         section_or_fallback(plan_item, "Non-goals", "No non-goals recorded."),
     );
+    push_named_section(
+        &mut out,
+        "Acceptance",
+        section_or_fallback(plan_item, "Acceptance", "No acceptance criteria recorded."),
+    );
 
     out.push_str("## Support-tier impact\n\n");
     match spec_impact.support_tier.as_deref() {
@@ -358,6 +365,8 @@ fn render_pr_body(
         }
         out.push('\n');
     }
+
+    push_receipt_refs(&mut out, work_item);
 
     out.push_str("## Proof\n\n");
     if !work_item.commands.is_empty() {
@@ -394,6 +403,34 @@ fn render_pr_body(
     );
 
     out
+}
+
+fn push_receipt_refs(out: &mut String, work_item: &WorkItem) {
+    const MAX_RECEIPTS: usize = 12;
+
+    let receipts = work_item
+        .receipts
+        .iter()
+        .map(|receipt| receipt.trim())
+        .filter(|receipt| !receipt.is_empty())
+        .collect::<Vec<_>>();
+    if receipts.is_empty() {
+        return;
+    }
+
+    out.push_str("## Existing receipts\n\n");
+    if receipts.len() > MAX_RECEIPTS {
+        out.push_str(&format!(
+            "Showing latest {MAX_RECEIPTS} of {} recorded receipt refs.\n\n",
+            receipts.len()
+        ));
+    }
+
+    let start = receipts.len().saturating_sub(MAX_RECEIPTS);
+    for receipt in receipts.iter().skip(start) {
+        out.push_str(&format!("- `{receipt}`\n"));
+    }
+    out.push('\n');
 }
 
 fn push_named_section(out: &mut String, title: &str, content: &str) {
@@ -524,6 +561,7 @@ proposal = "SHIPLOG-PROP-0008"
 spec = "SHIPLOG-SPEC-0010"
 plan = "plans/0.10.0/implementation-plan.md"
 commands = ["rtk cargo xtask pr-body --work-item pr-body-generator", "rtk git diff --check"]
+receipts = ["EffortlessMetrics/shiplog-swarm#36", "EffortlessMetrics/shiplog#479"]
 "#,
         );
         write(
@@ -551,6 +589,10 @@ Add a repo-native PR body generator.
 ### Non-goals
 
 No GitHub API calls and no PR creation.
+
+### Acceptance
+
+The generated body includes links, proof, and receipt refs.
 
 ### Proof commands
 
@@ -605,8 +647,13 @@ Policy impact:
         assert!(body.contains("Proposal: `SHIPLOG-PROP-0008`"));
         assert!(body.contains("Spec: `SHIPLOG-SPEC-0010`"));
         assert!(body.contains("No GitHub API calls"));
+        assert!(body.contains("## Acceptance"));
+        assert!(body.contains("The generated body includes links, proof, and receipt refs."));
         assert!(body.contains("Support-tier impact"));
         assert!(body.contains("stabilizing"));
+        assert!(body.contains("## Existing receipts"));
+        assert!(body.contains("EffortlessMetrics/shiplog-swarm#36"));
+        assert!(body.contains("EffortlessMetrics/shiplog#479"));
         assert!(body.contains("rtk cargo xtask pr-body --work-item pr-body-generator"));
         assert!(!body.contains("cargo xtask stale-plan-proof"));
         assert!(body.contains("This generates drafts only."));
