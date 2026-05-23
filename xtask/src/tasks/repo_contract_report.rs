@@ -6,6 +6,7 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
+use std::process::Command;
 
 #[derive(Debug, Deserialize)]
 struct DocArtifactsPolicy {
@@ -110,16 +111,32 @@ struct RepoContractReport {
     generated_by: String,
     outputs: Vec<String>,
     active_goal: ActiveGoalReport,
+    git_topology: GitTopologyReport,
     artifacts: Vec<Artifact>,
     work_items: Vec<WorkItem>,
     support_tiers: Vec<SupportTierClaim>,
     edges: Vec<GraphEdge>,
 }
 
+#[derive(Debug, Serialize)]
+struct GitTopologyReport {
+    source_ref: String,
+    swarm_ref: String,
+    source_head: Option<String>,
+    swarm_head: Option<String>,
+    merge_base: Option<String>,
+    trees_aligned: Option<bool>,
+    source_ahead: Vec<String>,
+    swarm_ahead: Vec<String>,
+    status: String,
+    notes: Vec<String>,
+}
+
 pub fn run(workspace_root: &Path) -> Result<()> {
     let artifacts = load_doc_artifacts(workspace_root)?;
     let goal = load_active_goal(workspace_root)?;
     let support_tiers = load_support_tiers(workspace_root)?;
+    let git_topology = inspect_git_topology(workspace_root);
 
     let output_dir = workspace_root.join("target").join("source-of-truth");
     fs::create_dir_all(&output_dir).with_context(|| format!("create {}", output_dir.display()))?;
@@ -131,6 +148,7 @@ pub fn run(workspace_root: &Path) -> Result<()> {
         &artifacts,
         goal,
         support_tiers,
+        git_topology,
         vec![
             display_path(workspace_root, &graph_json),
             display_path(workspace_root, &graph_md),
@@ -182,6 +200,7 @@ fn build_report(
     artifacts: &[Artifact],
     goal: ActiveGoal,
     support_tiers: Vec<SupportTierClaim>,
+    git_topology: GitTopologyReport,
     outputs: Vec<String>,
 ) -> RepoContractReport {
     let active_work_items = goal
@@ -229,10 +248,143 @@ fn build_report(
             active_work_items,
             ready_work_items,
         },
+        git_topology,
         artifacts: artifacts.to_vec(),
         work_items: goal.work_item,
         support_tiers,
         edges,
+    }
+}
+
+fn inspect_git_topology(workspace_root: &Path) -> GitTopologyReport {
+    const SOURCE_REF: &str = "origin/main";
+    const SWARM_REF: &str = "swarm/main";
+
+    let mut notes = Vec::new();
+    let source_head = git_line(workspace_root, &["rev-parse", SOURCE_REF], &mut notes);
+    let swarm_head = git_line(workspace_root, &["rev-parse", SWARM_REF], &mut notes);
+    let merge_base = git_line(
+        workspace_root,
+        &["merge-base", SOURCE_REF, SWARM_REF],
+        &mut notes,
+    );
+    let source_ahead = git_lines(
+        workspace_root,
+        &[
+            "log",
+            "--oneline",
+            "--max-count=20",
+            &format!("{SWARM_REF}..{SOURCE_REF}"),
+        ],
+        &mut notes,
+    );
+    let swarm_ahead = git_lines(
+        workspace_root,
+        &[
+            "log",
+            "--oneline",
+            "--max-count=20",
+            &format!("{SOURCE_REF}..{SWARM_REF}"),
+        ],
+        &mut notes,
+    );
+    let trees_aligned = git_trees_aligned(workspace_root, SOURCE_REF, SWARM_REF, &mut notes);
+    let status = match (
+        source_head.as_ref(),
+        swarm_head.as_ref(),
+        merge_base.as_ref(),
+        trees_aligned,
+        source_ahead.is_empty(),
+        swarm_ahead.is_empty(),
+    ) {
+        (Some(source), Some(swarm), Some(_), Some(true), true, true) if source == swarm => {
+            "identical".to_string()
+        }
+        (Some(_), Some(_), Some(_), Some(true), _, _) => "tree-aligned".to_string(),
+        (Some(_), Some(_), Some(_), Some(false), false, false) => "diverged".to_string(),
+        (Some(_), Some(_), Some(_), Some(false), true, false) => "swarm-ahead".to_string(),
+        (Some(_), Some(_), Some(_), Some(false), false, true) => "source-ahead".to_string(),
+        (Some(_), Some(_), Some(_), Some(false), true, true) => "tree-drift".to_string(),
+        _ => "unavailable".to_string(),
+    };
+
+    GitTopologyReport {
+        source_ref: SOURCE_REF.to_string(),
+        swarm_ref: SWARM_REF.to_string(),
+        source_head,
+        swarm_head,
+        merge_base,
+        trees_aligned,
+        source_ahead,
+        swarm_ahead,
+        status,
+        notes,
+    }
+}
+
+fn git_line(workspace_root: &Path, args: &[&str], notes: &mut Vec<String>) -> Option<String> {
+    git_lines(workspace_root, args, notes).into_iter().next()
+}
+
+fn git_lines(workspace_root: &Path, args: &[&str], notes: &mut Vec<String>) -> Vec<String> {
+    match Command::new("git")
+        .arg("-C")
+        .arg(workspace_root)
+        .args(args)
+        .output()
+    {
+        Ok(output) if output.status.success() => String::from_utf8_lossy(&output.stdout)
+            .lines()
+            .map(str::trim)
+            .filter(|line| !line.is_empty())
+            .map(ToOwned::to_owned)
+            .collect(),
+        Ok(output) => {
+            let detail = String::from_utf8_lossy(&output.stderr).trim().to_string();
+            notes.push(format!(
+                "git {} failed: {}",
+                args.join(" "),
+                if detail.is_empty() {
+                    output.status.to_string()
+                } else {
+                    detail
+                }
+            ));
+            Vec::new()
+        }
+        Err(err) => {
+            notes.push(format!("git {} failed: {err}", args.join(" ")));
+            Vec::new()
+        }
+    }
+}
+
+fn git_trees_aligned(
+    workspace_root: &Path,
+    source_ref: &str,
+    swarm_ref: &str,
+    notes: &mut Vec<String>,
+) -> Option<bool> {
+    match Command::new("git")
+        .arg("-C")
+        .arg(workspace_root)
+        .args(["diff", "--quiet", source_ref, swarm_ref])
+        .status()
+    {
+        Ok(status) if status.success() => Some(true),
+        Ok(status) if status.code() == Some(1) => Some(false),
+        Ok(status) => {
+            notes.push(format!(
+                "git diff --quiet {source_ref} {swarm_ref} failed: {status}"
+            ));
+            None
+        }
+        Err(err) => {
+            notes.push(format!(
+                "git diff --quiet {source_ref} {swarm_ref} failed: {err}"
+            ));
+            None
+        }
     }
 }
 
@@ -377,6 +529,62 @@ fn render_markdown(report: &RepoContractReport) -> String {
         &join_or_dash(&report.active_goal.ready_work_items),
     );
 
+    out.push_str("\n## Git topology\n\n");
+    out.push_str("| Field | Value |\n|---|---|\n");
+    push_row(&mut out, "Status", &report.git_topology.status);
+    push_row(&mut out, "Source ref", &report.git_topology.source_ref);
+    push_row(&mut out, "Swarm ref", &report.git_topology.swarm_ref);
+    push_row(
+        &mut out,
+        "Source head",
+        report.git_topology.source_head.as_deref().unwrap_or("-"),
+    );
+    push_row(
+        &mut out,
+        "Swarm head",
+        report.git_topology.swarm_head.as_deref().unwrap_or("-"),
+    );
+    push_row(
+        &mut out,
+        "Merge base",
+        report.git_topology.merge_base.as_deref().unwrap_or("-"),
+    );
+    push_row(
+        &mut out,
+        "Trees aligned",
+        &report
+            .git_topology
+            .trees_aligned
+            .map(|value| value.to_string())
+            .unwrap_or_else(|| "-".to_string()),
+    );
+    push_row(
+        &mut out,
+        "Source ahead",
+        &format!("{} commit(s)", report.git_topology.source_ahead.len()),
+    );
+    push_row(
+        &mut out,
+        "Swarm ahead",
+        &format!("{} commit(s)", report.git_topology.swarm_ahead.len()),
+    );
+    push_row(
+        &mut out,
+        "Notes",
+        &format!("{} note(s)", report.git_topology.notes.len()),
+    );
+    push_markdown_list(
+        &mut out,
+        "Source ahead commits",
+        &report.git_topology.source_ahead,
+    );
+    push_markdown_list(
+        &mut out,
+        "Swarm ahead commits",
+        &report.git_topology.swarm_ahead,
+    );
+    push_markdown_list(&mut out, "Git topology notes", &report.git_topology.notes);
+
     out.push_str("\n## Work items\n\n");
     out.push_str("| ID | Status | Proposal | Spec | Plan | Receipts |\n");
     out.push_str("|---|---|---|---|---|---|\n");
@@ -435,6 +643,16 @@ fn render_markdown(report: &RepoContractReport) -> String {
 
 fn push_row(out: &mut String, key: &str, value: &str) {
     out.push_str(&format!("| {} | {} |\n", md(key), md(value)));
+}
+
+fn push_markdown_list(out: &mut String, title: &str, values: &[String]) {
+    if values.is_empty() {
+        return;
+    }
+    out.push_str(&format!("\n### {title}\n\n"));
+    for value in values {
+        out.push_str(&format!("- `{}`\n", md(value)));
+    }
 }
 
 fn table_cells(line: &str) -> Vec<&str> {
@@ -566,8 +784,10 @@ commands = ["cargo xtask repo-contract-report", "git diff --check"]
         assert!(graph_md.is_file());
         let json = fs::read_to_string(graph_json).unwrap();
         assert!(json.contains("\"repo-contract-report\""));
+        assert!(json.contains("\"git_topology\""));
         let markdown = fs::read_to_string(graph_md).unwrap();
         assert!(markdown.contains("# Source-of-truth graph"));
         assert!(markdown.contains("Repo contract report"));
+        assert!(markdown.contains("## Git topology"));
     }
 }
