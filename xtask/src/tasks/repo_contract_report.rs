@@ -573,6 +573,10 @@ fn render_markdown(report: &RepoContractReport) -> String {
         "Ready work items",
         &join_or_dash(&report.active_goal.ready_work_items),
     );
+    out.push_str("\n### Objective\n\n");
+    out.push_str(&md(report.active_goal.objective.trim()));
+    out.push('\n');
+    push_markdown_bullets(&mut out, "End state", &report.active_goal.end_state);
 
     out.push_str("\n## Git topology\n\n");
     out.push_str("| Field | Value |\n|---|---|\n");
@@ -725,6 +729,16 @@ fn push_markdown_list(out: &mut String, title: &str, values: &[String]) {
     out.push_str(&format!("\n### {title}\n\n"));
     for value in values {
         out.push_str(&format!("- `{}`\n", md(value)));
+    }
+}
+
+fn push_markdown_bullets(out: &mut String, title: &str, values: &[String]) {
+    if values.is_empty() {
+        return;
+    }
+    out.push_str(&format!("\n### {title}\n\n"));
+    for value in values {
+        out.push_str(&format!("- {}\n", md(value.trim())));
     }
 }
 
@@ -888,6 +902,9 @@ commands = ["rtk cargo xtask repo-contract-report", "rtk git diff --check"]
         assert!(json.contains("\"git_topology\""));
         let markdown = fs::read_to_string(graph_md).unwrap();
         assert!(markdown.contains("# Source-of-truth graph"));
+        assert!(markdown.contains("Keep repo source-of-truth artifacts linked."));
+        assert!(markdown.contains("### End state"));
+        assert!(markdown.contains("Artifacts are linked."));
         assert!(markdown.contains("Repo contract report"));
         assert!(markdown.contains("## Work item proof commands"));
         assert!(markdown.contains("rtk cargo xtask repo-contract-report"));
