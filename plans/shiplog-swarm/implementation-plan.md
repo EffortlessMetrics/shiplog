@@ -955,6 +955,15 @@ EffortlessMetrics/shiplog#516:
           long work-item receipt history while preserving full receipt data in
           JSON and the active goal manifest; source post-merge routed CI, CI,
           smoke, security, testing, and CI Actuals passed
+
+EffortlessMetrics/shiplog#517:
+  swarm head: b099bdb4a5e9e4aa135ebf8358738422f21e1d64
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#74
+  source merge: cd54808b975585a5a6656b96997b99bd3ff7daca
+  result: regular merge commit; repo contract report Markdown now compacts
+          long promotion history while preserving full promotion data in JSON;
+          source post-merge routed CI, CI, smoke, security, testing, and
+          CI Actuals passed
 ```
 
 ### Proof commands

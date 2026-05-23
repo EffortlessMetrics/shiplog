@@ -133,6 +133,7 @@ struct GitTopologyReport {
     swarm_ahead: Vec<String>,
     status: String,
     notes: Vec<String>,
+    next_actions: Vec<String>,
 }
 
 pub fn run(workspace_root: &Path) -> Result<()> {
@@ -302,6 +303,14 @@ fn inspect_git_topology(workspace_root: &Path) -> GitTopologyReport {
         _ => "unavailable".to_string(),
     };
 
+    let next_actions = topology_next_actions(
+        &status,
+        trees_aligned,
+        &source_ahead_summary.classification,
+        &source_ahead_summary.other_commits,
+        &swarm_ahead,
+    );
+
     GitTopologyReport {
         source_ref: SOURCE_REF.to_string(),
         swarm_ref: SWARM_REF.to_string(),
@@ -316,6 +325,7 @@ fn inspect_git_topology(workspace_root: &Path) -> GitTopologyReport {
         swarm_ahead,
         status,
         notes,
+        next_actions,
     }
 }
 
@@ -365,6 +375,70 @@ fn is_source_promotion_merge(commit: &str) -> bool {
 
     (subject.starts_with("Merge pull request #") && subject.contains("promote/swarm-"))
         || subject.starts_with("merge(swarm): promote shiplog-swarm through ")
+}
+
+fn topology_next_actions(
+    status: &str,
+    trees_aligned: Option<bool>,
+    source_ahead_classification: &str,
+    source_ahead_other_commits: &[String],
+    swarm_ahead: &[String],
+) -> Vec<String> {
+    let mut actions = Vec::new();
+
+    if !source_ahead_other_commits.is_empty() {
+        actions.push(
+            "Pause promotion cadence and reconcile source-only non-promotion commits before new swarm work lands."
+                .to_string(),
+        );
+    }
+
+    if !swarm_ahead.is_empty() {
+        actions.push(
+            "Open a source promotion PR from `swarm/main` and merge it with a regular merge commit after checks pass."
+                .to_string(),
+        );
+    }
+
+    match (status, trees_aligned, source_ahead_classification) {
+        ("identical", _, _) => actions.push(
+            "Continue normal development in `EffortlessMetrics/shiplog-swarm` with a focused PR."
+                .to_string(),
+        ),
+        ("tree-aligned", Some(true), "promotion-merge-only") if swarm_ahead.is_empty() => {
+            actions.push(
+                "Continue normal development in `EffortlessMetrics/shiplog-swarm`; no source promotion is pending."
+                    .to_string(),
+            );
+        }
+        ("tree-aligned", Some(true), "none") if swarm_ahead.is_empty() => actions.push(
+            "Continue normal development in `EffortlessMetrics/shiplog-swarm`; source and swarm trees are aligned."
+                .to_string(),
+        ),
+        ("diverged", _, _) | ("tree-drift", Some(false), _) => actions.push(
+            "Stop normal promotion and inspect the source/swarm diff before merging more work."
+                .to_string(),
+        ),
+        ("swarm-ahead", _, _) if !swarm_ahead.is_empty() => {}
+        ("source-ahead", _, "promotion-merge-only") => actions.push(
+            "No swarm promotion is pending; source is ahead only by promotion merge commits."
+                .to_string(),
+        ),
+        ("unavailable", _, _) => actions.push(
+            "Fetch `origin` and `swarm`, verify both refs exist, and rerun `rtk cargo xtask repo-contract-report`."
+                .to_string(),
+        ),
+        _ => {
+            if actions.is_empty() {
+                actions.push(
+                    "Inspect source/swarm topology before choosing the next promotion or development step."
+                        .to_string(),
+                );
+            }
+        }
+    }
+
+    actions
 }
 
 fn git_line(workspace_root: &Path, args: &[&str], notes: &mut Vec<String>) -> Option<String> {
@@ -643,6 +717,11 @@ fn render_markdown(report: &RepoContractReport) -> String {
         "Notes",
         &format!("{} note(s)", report.git_topology.notes.len()),
     );
+    push_row(
+        &mut out,
+        "Next actions",
+        &format!("{} action(s)", report.git_topology.next_actions.len()),
+    );
     push_markdown_list(
         &mut out,
         "Source ahead non-promotion commits",
@@ -660,6 +739,11 @@ fn render_markdown(report: &RepoContractReport) -> String {
         &report.git_topology.swarm_ahead,
     );
     push_markdown_list(&mut out, "Git topology notes", &report.git_topology.notes);
+    push_markdown_bullets(
+        &mut out,
+        "Git topology next actions",
+        &report.git_topology.next_actions,
+    );
 
     out.push_str("\n## Work items\n\n");
     out.push_str("| ID | Status | Proposal | Spec | Plan | Receipts |\n");
@@ -975,6 +1059,7 @@ receipts = [
         assert!(markdown.contains("## Work item proof commands"));
         assert!(markdown.contains("rtk cargo xtask repo-contract-report"));
         assert!(markdown.contains("## Git topology"));
+        assert!(markdown.contains("Git topology next actions"));
     }
 
     #[test]
@@ -1034,5 +1119,52 @@ receipts = [
         assert_eq!(summary.classification, "mixed");
         assert_eq!(summary.promotion_merges, vec![promotion]);
         assert_eq!(summary.other_commits, vec![source_only]);
+    }
+
+    #[test]
+    fn next_actions_continue_when_tree_aligned_after_promotions() {
+        let actions =
+            topology_next_actions("tree-aligned", Some(true), "promotion-merge-only", &[], &[]);
+
+        assert_eq!(
+            actions,
+            vec![
+                "Continue normal development in `EffortlessMetrics/shiplog-swarm`; no source promotion is pending."
+            ]
+        );
+    }
+
+    #[test]
+    fn next_actions_promote_when_swarm_is_ahead() {
+        let actions = topology_next_actions(
+            "swarm-ahead",
+            Some(false),
+            "none",
+            &[],
+            &["abc1234 docs: next swarm change".to_string()],
+        );
+
+        assert!(
+            actions
+                .iter()
+                .any(|action| { action.contains("Open a source promotion PR from `swarm/main`") })
+        );
+    }
+
+    #[test]
+    fn next_actions_pause_on_source_only_drift() {
+        let actions = topology_next_actions(
+            "source-ahead",
+            Some(false),
+            "non-promotion",
+            &["abc1234 docs: source-only release note".to_string()],
+            &[],
+        );
+
+        assert!(
+            actions
+                .iter()
+                .any(|action| action.contains("source-only non-promotion commits"))
+        );
     }
 }
