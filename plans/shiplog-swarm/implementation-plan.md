@@ -899,6 +899,28 @@ EffortlessMetrics/shiplog#508:
           GitHub default promotion merge subjects and explicit
           `merge(swarm): promote shiplog-swarm through <sha>` subjects as
           promotion merges; source post-merge routed CI and CI passed
+
+EffortlessMetrics/shiplog#509:
+  swarm head: f0ca11a04ec59597d2470bde99ef3479fd224b5e
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#66
+  source merge: b1cdf2f970a80d46bd1e29e8dee71ffb306f5e40
+  result: regular merge commit; active goal proof commands now require `rtk`
+          prefixes; source post-merge routed CI and CI passed
+
+EffortlessMetrics/shiplog#510:
+  swarm head: cf83e7206fbbd2671912a2cb51d7106141aae9ed
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#67
+  source merge: d8cb7b4037eb06eeb23fb6387dd0d57ffe669ec2
+  result: regular merge commit; PR body generation now prefers active goal
+          proof commands; source post-merge routed CI and CI passed
+
+EffortlessMetrics/shiplog#511:
+  swarm head: 4425bbc2c8a1199a39302e8c7b5631ce09c030da
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#68
+  source merge: 727ed24a8896db219ec7357fdf0c2f0478c648fe
+  result: regular merge commit; support-tier proof commands now require
+          copyable `rtk cargo xtask` prefixes; source post-merge routed CI, CI,
+          smoke, security, testing, and CI Actuals passed
 ```
 
 ### Proof commands
