@@ -358,7 +358,13 @@ fn classify_source_ahead(commits: &[String]) -> SourceAheadSummary {
 }
 
 fn is_source_promotion_merge(commit: &str) -> bool {
-    commit.contains("Merge pull request #") && commit.contains("promote/swarm-")
+    let subject = commit
+        .split_once(' ')
+        .map(|(_, subject)| subject)
+        .unwrap_or(commit);
+
+    (subject.starts_with("Merge pull request #") && subject.contains("promote/swarm-"))
+        || subject.starts_with("merge(swarm): promote shiplog-swarm through ")
 }
 
 fn git_line(workspace_root: &Path, args: &[&str], notes: &mut Vec<String>) -> Option<String> {
@@ -864,6 +870,18 @@ commands = ["cargo xtask repo-contract-report", "git diff --check"]
             "ecdd4d9 Merge pull request #498 from EffortlessMetrics/promote/swarm-20260522-cbcd866"
                 .to_string(),
         ];
+
+        let summary = classify_source_ahead(&commits);
+
+        assert_eq!(summary.classification, "promotion-merge-only");
+        assert_eq!(summary.promotion_merges, commits);
+        assert!(summary.other_commits.is_empty());
+    }
+
+    #[test]
+    fn classifies_explicit_source_promotion_subjects() {
+        let commits =
+            vec!["1a35a90 merge(swarm): promote shiplog-swarm through f4fc2d5".to_string()];
 
         let summary = classify_source_ahead(&commits);
 
