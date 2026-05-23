@@ -983,6 +983,15 @@ EffortlessMetrics/shiplog#519:
           include local checkout state so agents can see whether scoped work
           is clean before continuing; source post-merge routed CI, CI, smoke,
           security, testing, and CI Actuals passed
+
+EffortlessMetrics/shiplog#520:
+  swarm head: 1f23e19444344ed0152c38416eb931b490669362
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#77
+  source merge: 5cf267b1778b09b3a7d404a29cc3b4c1d4ebc57f
+  result: regular merge commit; repo contract report JSON and Markdown now
+          include promotion receipt freshness so agents can see when source
+          promotion and swarm PR receipts need refreshing; source post-merge
+          routed CI, CI, smoke, security, testing, and CI Actuals passed
 ```
 
 ### Proof commands
