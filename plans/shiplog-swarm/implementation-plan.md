@@ -964,6 +964,16 @@ EffortlessMetrics/shiplog#517:
           long promotion history while preserving full promotion data in JSON;
           source post-merge routed CI, CI, smoke, security, testing, and
           CI Actuals passed
+
+EffortlessMetrics/shiplog#518:
+  swarm head: 6f376c92cb44a5bac00ddb3cf6175b32600594d6
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#75
+  source merge: 05a2d1a6ad56e00e6dd9819a9aae50eeb323453e
+  result: regular merge commit; repo contract report JSON and Markdown now
+          include git-topology next actions so agents can choose between normal
+          swarm work, source promotion, or drift repair from repo evidence;
+          source post-merge routed CI, CI, smoke, security, testing, and
+          CI Actuals passed
 ```
 
 ### Proof commands

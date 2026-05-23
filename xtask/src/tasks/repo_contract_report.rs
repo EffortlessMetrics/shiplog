@@ -112,6 +112,7 @@ struct RepoContractReport {
     outputs: Vec<String>,
     active_goal: ActiveGoalReport,
     git_topology: GitTopologyReport,
+    local_checkout: LocalCheckoutReport,
     artifacts: Vec<Artifact>,
     work_items: Vec<WorkItem>,
     support_tiers: Vec<SupportTierClaim>,
@@ -136,11 +137,22 @@ struct GitTopologyReport {
     next_actions: Vec<String>,
 }
 
+#[derive(Debug, Serialize)]
+struct LocalCheckoutReport {
+    branch_summary: Option<String>,
+    clean: Option<bool>,
+    status_entries: Vec<String>,
+    status: String,
+    notes: Vec<String>,
+    next_actions: Vec<String>,
+}
+
 pub fn run(workspace_root: &Path) -> Result<()> {
     let artifacts = load_doc_artifacts(workspace_root)?;
     let goal = load_active_goal(workspace_root)?;
     let support_tiers = load_support_tiers(workspace_root)?;
     let git_topology = inspect_git_topology(workspace_root);
+    let local_checkout = inspect_local_checkout(workspace_root);
 
     let output_dir = workspace_root.join("target").join("source-of-truth");
     fs::create_dir_all(&output_dir).with_context(|| format!("create {}", output_dir.display()))?;
@@ -153,6 +165,7 @@ pub fn run(workspace_root: &Path) -> Result<()> {
         goal,
         support_tiers,
         git_topology,
+        local_checkout,
         vec![
             display_path(workspace_root, &graph_json),
             display_path(workspace_root, &graph_md),
@@ -205,6 +218,7 @@ fn build_report(
     goal: ActiveGoal,
     support_tiers: Vec<SupportTierClaim>,
     git_topology: GitTopologyReport,
+    local_checkout: LocalCheckoutReport,
     outputs: Vec<String>,
 ) -> RepoContractReport {
     let active_work_items = goal
@@ -253,6 +267,7 @@ fn build_report(
             ready_work_items,
         },
         git_topology,
+        local_checkout,
         artifacts: artifacts.to_vec(),
         work_items: goal.work_item,
         support_tiers,
@@ -326,6 +341,63 @@ fn inspect_git_topology(workspace_root: &Path) -> GitTopologyReport {
         status,
         notes,
         next_actions,
+    }
+}
+
+fn inspect_local_checkout(workspace_root: &Path) -> LocalCheckoutReport {
+    let mut notes = Vec::new();
+    let lines = git_lines(
+        workspace_root,
+        &["status", "--short", "--branch"],
+        &mut notes,
+    );
+    local_checkout_from_status_lines(lines, notes)
+}
+
+fn local_checkout_from_status_lines(lines: Vec<String>, notes: Vec<String>) -> LocalCheckoutReport {
+    let branch_summary = lines
+        .first()
+        .and_then(|line| line.strip_prefix("## "))
+        .map(ToOwned::to_owned);
+    let status_entries = lines
+        .into_iter()
+        .skip(usize::from(branch_summary.is_some()))
+        .collect::<Vec<_>>();
+    let clean = branch_summary
+        .as_ref()
+        .map(|_| status_entries.iter().all(|entry| entry.trim().is_empty()));
+    let status = match clean {
+        Some(true) => "clean",
+        Some(false) => "dirty",
+        None => "unavailable",
+    }
+    .to_string();
+    let next_actions = local_checkout_next_actions(clean);
+
+    LocalCheckoutReport {
+        branch_summary,
+        clean,
+        status_entries,
+        status,
+        notes,
+        next_actions,
+    }
+}
+
+fn local_checkout_next_actions(clean: Option<bool>) -> Vec<String> {
+    match clean {
+        Some(true) => vec![
+            "Local checkout is clean; continue with the active source-of-truth work item."
+                .to_string(),
+        ],
+        Some(false) => vec![
+            "Inspect `rtk git status`, keep only scoped changes, and leave no dirty or untracked files before handoff."
+                .to_string(),
+        ],
+        None => vec![
+            "Run from a Git checkout with `origin` and `swarm` remotes available, then rerun `rtk cargo xtask repo-contract-report`."
+                .to_string(),
+        ],
     }
 }
 
@@ -745,6 +817,58 @@ fn render_markdown(report: &RepoContractReport) -> String {
         &report.git_topology.next_actions,
     );
 
+    out.push_str("\n## Local checkout\n\n");
+    out.push_str("| Field | Value |\n|---|---|\n");
+    push_row(&mut out, "Status", &report.local_checkout.status);
+    push_row(
+        &mut out,
+        "Branch",
+        report
+            .local_checkout
+            .branch_summary
+            .as_deref()
+            .unwrap_or("-"),
+    );
+    push_row(
+        &mut out,
+        "Clean",
+        &report
+            .local_checkout
+            .clean
+            .map(|value| value.to_string())
+            .unwrap_or_else(|| "-".to_string()),
+    );
+    push_row(
+        &mut out,
+        "Status entries",
+        &format!("{} item(s)", report.local_checkout.status_entries.len()),
+    );
+    push_row(
+        &mut out,
+        "Notes",
+        &format!("{} note(s)", report.local_checkout.notes.len()),
+    );
+    push_row(
+        &mut out,
+        "Next actions",
+        &format!("{} action(s)", report.local_checkout.next_actions.len()),
+    );
+    push_markdown_list(
+        &mut out,
+        "Local checkout status entries",
+        &report.local_checkout.status_entries,
+    );
+    push_markdown_list(
+        &mut out,
+        "Local checkout notes",
+        &report.local_checkout.notes,
+    );
+    push_markdown_bullets(
+        &mut out,
+        "Local checkout next actions",
+        &report.local_checkout.next_actions,
+    );
+
     out.push_str("\n## Work items\n\n");
     out.push_str("| ID | Status | Proposal | Spec | Plan | Receipts |\n");
     out.push_str("|---|---|---|---|---|---|\n");
@@ -1048,6 +1172,7 @@ receipts = [
         let json = fs::read_to_string(graph_json).unwrap();
         assert!(json.contains("\"repo-contract-report\""));
         assert!(json.contains("\"git_topology\""));
+        assert!(json.contains("\"local_checkout\""));
         let markdown = fs::read_to_string(graph_md).unwrap();
         assert!(markdown.contains("# Source-of-truth graph"));
         assert!(markdown.contains("Keep repo source-of-truth artifacts linked."));
@@ -1060,6 +1185,7 @@ receipts = [
         assert!(markdown.contains("rtk cargo xtask repo-contract-report"));
         assert!(markdown.contains("## Git topology"));
         assert!(markdown.contains("Git topology next actions"));
+        assert!(markdown.contains("## Local checkout"));
     }
 
     #[test]
@@ -1165,6 +1291,63 @@ receipts = [
             actions
                 .iter()
                 .any(|action| action.contains("source-only non-promotion commits"))
+        );
+    }
+
+    #[test]
+    fn local_checkout_reports_clean_branch() {
+        let report =
+            local_checkout_from_status_lines(vec!["## main...origin/main".to_string()], Vec::new());
+
+        assert_eq!(report.status, "clean");
+        assert_eq!(report.branch_summary.as_deref(), Some("main...origin/main"));
+        assert_eq!(report.clean, Some(true));
+        assert!(report.status_entries.is_empty());
+        assert!(
+            report
+                .next_actions
+                .iter()
+                .any(|action| action.contains("Local checkout is clean"))
+        );
+    }
+
+    #[test]
+    fn local_checkout_reports_dirty_entries() {
+        let report = local_checkout_from_status_lines(
+            vec![
+                "## xtask/report-local-checkout...swarm/main".to_string(),
+                " M xtask/src/tasks/repo_contract_report.rs".to_string(),
+                "?? scratch.txt".to_string(),
+            ],
+            Vec::new(),
+        );
+
+        assert_eq!(report.status, "dirty");
+        assert_eq!(report.clean, Some(false));
+        assert_eq!(report.status_entries.len(), 2);
+        assert!(
+            report
+                .next_actions
+                .iter()
+                .any(|action| action.contains("rtk git status"))
+        );
+    }
+
+    #[test]
+    fn local_checkout_reports_unavailable_without_branch() {
+        let report = local_checkout_from_status_lines(
+            Vec::new(),
+            vec!["git status --short --branch failed".to_string()],
+        );
+
+        assert_eq!(report.status, "unavailable");
+        assert_eq!(report.clean, None);
+        assert_eq!(report.notes.len(), 1);
+        assert!(
+            report
+                .next_actions
+                .iter()
+                .any(|action| action.contains("Git checkout"))
         );
     }
 }
