@@ -671,7 +671,7 @@ fn render_markdown(report: &RepoContractReport) -> String {
             md_opt(&item.proposal),
             md_opt(&item.spec),
             md(&item.plan),
-            md(&join_or_dash(&item.receipts))
+            md(&receipt_summary(&item.receipts))
         ));
     }
 
@@ -795,6 +795,35 @@ fn join_or_dash(values: &[String]) -> String {
     }
 }
 
+fn receipt_summary(receipts: &[String]) -> String {
+    const LIMIT: usize = 12;
+
+    if receipts.is_empty() {
+        return "-".to_string();
+    }
+
+    let proof_receipts = receipts
+        .iter()
+        .filter(|receipt| !receipt.contains(" closed as "))
+        .collect::<Vec<_>>();
+    let summary_source = if proof_receipts.is_empty() {
+        receipts.iter().collect::<Vec<_>>()
+    } else {
+        proof_receipts
+    };
+    let start = summary_source.len().saturating_sub(LIMIT);
+    let selected = summary_source[start..]
+        .iter()
+        .map(|receipt| receipt.as_str())
+        .collect::<Vec<_>>();
+    let hidden = receipts.len().saturating_sub(selected.len());
+    let mut summary = selected.join(", ");
+    if hidden > 0 {
+        summary.push_str(&format!(" (+{hidden} earlier/other)"));
+    }
+    summary
+}
+
 fn md_opt(value: &Option<String>) -> String {
     md(value.as_deref().unwrap_or("-"))
 }
@@ -877,6 +906,22 @@ proposal = "SHIPLOG-PROP-0008"
 spec = "SHIPLOG-SPEC-0010"
 plan = "plans/0.10.0/implementation-plan.md"
 commands = ["rtk cargo xtask repo-contract-report", "rtk git diff --check"]
+receipts = [
+  "receipt-01",
+  "receipt-02",
+  "receipt-03 closed as completed by receipt-04",
+  "receipt-04",
+  "receipt-05",
+  "receipt-06",
+  "receipt-07",
+  "receipt-08",
+  "receipt-09",
+  "receipt-10",
+  "receipt-11",
+  "receipt-12",
+  "receipt-13",
+  "receipt-14",
+]
 "#,
         );
         write(
@@ -906,6 +951,8 @@ commands = ["rtk cargo xtask repo-contract-report", "rtk git diff --check"]
         assert!(markdown.contains("### End state"));
         assert!(markdown.contains("Artifacts are linked."));
         assert!(markdown.contains("Repo contract report"));
+        assert!(markdown.contains("receipt-14 (+2 earlier/other)"));
+        assert!(!markdown.contains("receipt-01"));
         assert!(markdown.contains("## Work item proof commands"));
         assert!(markdown.contains("rtk cargo xtask repo-contract-report"));
         assert!(markdown.contains("## Git topology"));
