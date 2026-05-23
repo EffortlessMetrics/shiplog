@@ -851,6 +851,14 @@ EffortlessMetrics/shiplog#501:
           source-ahead promotion range; swarm PR routed through CX53 and
           source post-merge routed CI, CI, smoke, security, testing, and
           CI Actuals passed
+
+EffortlessMetrics/shiplog#502:
+  swarm head: e475fa8018deba7d020b81daa4017eb13d9cefd7
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#60
+  source merge: f1f714e19cc07c134762f8e125d94cc71e173847
+  result: regular merge commit; source-of-truth stack artifacts accepted;
+          source post-merge routed CI, CI, smoke, security, testing, and
+          CI Actuals passed
 ```
 
 ### Proof commands

@@ -340,7 +340,7 @@ Blocks: none
 Blocked by: repo-contract-report
 Branch: docs/source-of-truth-closeout
 Issue:
-PR:
+PR: EffortlessMetrics/shiplog-swarm#35, EffortlessMetrics/shiplog#478
 
 ### Goal
 
@@ -397,7 +397,7 @@ Blocks: closeout-generator
 Blocked by: source-of-truth-closeout
 Branch: infra/pr-body-generator
 Issue:
-PR:
+PR: EffortlessMetrics/shiplog-swarm#36, EffortlessMetrics/shiplog#479
 
 ### Goal
 
@@ -455,7 +455,7 @@ Blocks: none
 Blocked by: pr-body-generator
 Branch: infra/closeout-generator
 Issue:
-PR:
+PR: EffortlessMetrics/shiplog-swarm#37, EffortlessMetrics/shiplog#480
 
 ### Goal
 

@@ -160,6 +160,11 @@ git diff --check
 - `EffortlessMetrics/shiplog-swarm#36`
 - `EffortlessMetrics/shiplog#479`
 
+### closeout-generator
+
+- `EffortlessMetrics/shiplog-swarm#37`
+- `EffortlessMetrics/shiplog#480`
+
 ## Claim boundaries
 
 ### docs-source-of-truth-scaffold
