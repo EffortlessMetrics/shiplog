@@ -109,6 +109,7 @@ external_actions = [
   "actions/checkout@v6.0.2",
   "dtolnay/rust-toolchain@master",
   "Swatinem/rust-cache@v2",
+  "taiki-e/install-action@cargo-deny",
 ]
 created = "2026-05-09"
 expires = "permanent"
