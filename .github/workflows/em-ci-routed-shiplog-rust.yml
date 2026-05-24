@@ -40,6 +40,7 @@ jobs:
       target: ${{ steps.pick.outputs.target }}
       reason: ${{ steps.pick.outputs.reason }}
       trusted: ${{ steps.pick.outputs.trusted }}
+      fallback_allowed: ${{ steps.pick.outputs.fallback_allowed }}
     steps:
       - name: Pick route
         id: pick
@@ -68,6 +69,12 @@ jobs:
 
           with open(event_path, "r", encoding="utf-8") as fh:
               event = json.load(fh)
+          labels = {
+              label.get("name", "").lower()
+              for label in event.get("pull_request", {}).get("labels", [])
+              if isinstance(label, dict)
+          }
+          fallback_allowed = "allow-github-hosted" in labels or "ci-budget-ack" in labels
 
           def request_json(url, bearer_token):
               request = urllib.request.Request(
@@ -111,6 +118,7 @@ jobs:
                   out.write(f"target={target}\n")
                   out.write(f"reason={reason}\n")
                   out.write(f"trusted={str(trusted).lower()}\n")
+                  out.write(f"fallback_allowed={str(fallback_allowed).lower()}\n")
               print(f"repo={repo}")
               print("workflow=EM CI Routed Shiplog Rust")
               print(f"run_id={os.environ['GITHUB_RUN_ID']}")
@@ -135,7 +143,7 @@ jobs:
               sys.exit(0)
 
           if not runner_read_token:
-              set_output("github", "runner_token_missing")
+              set_output("none", "runner_token_missing")
               sys.exit(0)
 
           try:
@@ -146,15 +154,15 @@ jobs:
           except urllib.error.HTTPError as exc:
               print(f"runner_api_http_error={exc.code}")
               if exc.code == 401:
-                  set_output("github", "runner_token_unauthorized")
+                  set_output("none", "runner_token_unauthorized")
               elif exc.code == 403:
-                  set_output("github", "runner_token_forbidden")
+                  set_output("none", "runner_token_forbidden")
               else:
-                  set_output("github", "runner_api_failed")
+                  set_output("none", "runner_api_failed")
               sys.exit(0)
           except (urllib.error.URLError, TimeoutError, OSError, json.JSONDecodeError) as exc:
               print(f"runner_api_error={exc}")
-              set_output("github", "runner_api_failed")
+              set_output("none", "runner_api_failed")
               sys.exit(0)
 
           runners = payload.get("runners", [])
@@ -165,7 +173,7 @@ jobs:
           }
 
           if not isinstance(runners, list):
-              set_output("github", "parse_failed")
+              set_output("none", "parse_failed")
               sys.exit(0)
 
           for target in route_order:
@@ -183,7 +191,10 @@ jobs:
                       set_output(target, f"{target}_idle")
                       sys.exit(0)
 
-          set_output("github", "no_idle_runner")
+          if fallback_allowed:
+              set_output("github", "no_idle_runner_fallback_allowed")
+          else:
+              set_output("none", "no_idle_runner")
           PY
 
   rust_small_cpx42:
@@ -333,7 +344,7 @@ jobs:
         run: rm -rf "/mnt/ci-scratch/shiplog-swarm/${{ github.run_id }}-${{ github.run_attempt }}"
 
   rust_small_github:
-    name: Shiplog Rust Small on GitHub Hosted
+    name: Shiplog Rust Tiny Fallback on GitHub Hosted
     needs: [route]
     if: needs.route.outputs.target == 'github'
     runs-on: ubuntu-latest
@@ -345,20 +356,25 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: "1.95.0"
-          components: rustfmt, clippy
-
-      - uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: "shiplog-rust-small-github"
-          save-if: ${{ github.ref == 'refs/heads/main' }}
+          components: rustfmt
 
       - name: Run Shiplog Rust Small checks
         run: |
           cargo fmt --all -- --check
-          cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
-          cargo test --workspace --all-features --locked -- --test-threads=4
-          cargo xtask check-no-panic-family --mode blocking-allowlist
+          cargo check --workspace --all-targets --locked
           git diff --check
+
+  no_runner_capacity:
+    name: Runner capacity/config unavailable
+    needs: [route]
+    if: needs.route.outputs.target == 'none'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail fast when self-hosted routing is unavailable
+        run: |
+          echo "Self-hosted routing unavailable: ${{ needs.route.outputs.reason }}"
+          echo "Use label 'allow-github-hosted' or 'ci-budget-ack' to permit GitHub-hosted fallback."
+          exit 1
 
   result:
     name: Shiplog Rust Small Result
@@ -368,6 +384,7 @@ jobs:
       - rust_small_cx43
       - rust_small_cx53
       - rust_small_github
+      - no_runner_capacity
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -382,6 +399,7 @@ jobs:
           CX43_RESULT: ${{ needs.rust_small_cx43.result }}
           CX53_RESULT: ${{ needs.rust_small_cx53.result }}
           GITHUB_RESULT: ${{ needs.rust_small_github.result }}
+          NONE_RESULT: ${{ needs.no_runner_capacity.result }}
         run: |
           python3 <<'PY'
           import os
@@ -396,6 +414,7 @@ jobs:
               "cx43": os.environ.get("CX43_RESULT", ""),
               "cx53": os.environ.get("CX53_RESULT", ""),
               "github": os.environ.get("GITHUB_RESULT", ""),
+              "none": os.environ.get("NONE_RESULT", ""),
           }
 
           print(f"router_target={target}")

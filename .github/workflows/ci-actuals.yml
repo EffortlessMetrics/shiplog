@@ -46,6 +46,7 @@ env:
 
 jobs:
   collect:
+    if: github.event.workflow_run.head_branch == 'main'
     name: collect
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -116,10 +117,10 @@ jobs:
             --output target/ci/ci-actuals.json
 
       - name: Upload actuals artifact
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: ci-actuals-${{ github.event.workflow_run.id }}
           path: target/ci/ci-actuals.json
-          retention-days: 30
+          retention-days: 7
           if-no-files-found: warn
