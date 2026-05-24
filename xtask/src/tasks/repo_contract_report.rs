@@ -506,14 +506,13 @@ fn inspect_receipt_freshness(
         required.push(value);
     }
 
-    let status = if required.is_empty() {
-        "unavailable"
-    } else if required.iter().all(|present| *present) {
-        "current"
-    } else {
-        "stale"
+    let status = receipt_freshness_status(&required, latest_swarm_head.as_deref()).to_string();
+    if status == "pending-next-substantive-pr" {
+        notes.push(
+            "latest swarm head is a promotion-receipt refresh; self-referential receipts should be carried by the next substantive swarm PR"
+                .to_string(),
+        );
     }
-    .to_string();
 
     let next_actions = receipt_freshness_next_actions(&status);
 
@@ -544,6 +543,30 @@ fn push_missing_receipt(
     {
         missing_receipts.push(receipt.to_string());
     }
+}
+
+fn receipt_freshness_status(required: &[bool], latest_swarm_head: Option<&str>) -> &'static str {
+    if required.is_empty() {
+        "unavailable"
+    } else if required.iter().all(|present| *present) {
+        "current"
+    } else if is_promotion_receipt_refresh_head(latest_swarm_head) {
+        "pending-next-substantive-pr"
+    } else {
+        "stale"
+    }
+}
+
+fn is_promotion_receipt_refresh_head(latest_swarm_head: Option<&str>) -> bool {
+    let Some(latest_swarm_head) = latest_swarm_head else {
+        return false;
+    };
+    let subject = latest_swarm_head
+        .split_once(' ')
+        .map(|(_, subject)| subject)
+        .unwrap_or(latest_swarm_head)
+        .to_ascii_lowercase();
+    subject.contains("refresh promotion receipts")
 }
 
 fn load_plan_texts(workspace_root: &Path, goal: &ActiveGoal, notes: &mut Vec<String>) -> String {
@@ -614,6 +637,10 @@ fn receipt_freshness_next_actions(status: &str) -> Vec<String> {
         ],
         "stale" => vec![
             "Record the latest completed source promotion and swarm PR receipts in `.codex/goals/active.toml` and `plans/shiplog-swarm/implementation-plan.md` during the next substantive swarm PR."
+                .to_string(),
+        ],
+        "pending-next-substantive-pr" => vec![
+            "The latest swarm change is itself a promotion-receipt refresh; carry these self-referential receipts in the next substantive swarm PR instead of opening another receipt-only loop."
                 .to_string(),
         ],
         _ => vec![
@@ -1720,6 +1747,32 @@ receipts = [
                 .iter()
                 .any(|action| action.contains("plans/shiplog-swarm/implementation-plan.md"))
         );
+    }
+
+    #[test]
+    fn receipt_freshness_defers_self_referential_receipt_refreshes() {
+        let status = receipt_freshness_status(
+            &[true, false, true, false],
+            Some("37ad2c5 docs(swarm): refresh promotion receipts (#88)"),
+        );
+
+        assert_eq!(status, "pending-next-substantive-pr");
+        let actions = receipt_freshness_next_actions(status);
+        assert!(
+            actions
+                .iter()
+                .any(|action| action.contains("receipt-only loop"))
+        );
+    }
+
+    #[test]
+    fn receipt_freshness_keeps_substantive_missing_receipts_stale() {
+        let status = receipt_freshness_status(
+            &[true, false, true, false],
+            Some("ae20816 ci: allow hosted fallback on non-PR routes (#87)"),
+        );
+
+        assert_eq!(status, "stale");
     }
 
     #[test]
