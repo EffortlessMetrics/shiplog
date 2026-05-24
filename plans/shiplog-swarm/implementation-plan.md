@@ -992,18 +992,27 @@ EffortlessMetrics/shiplog#520:
           include promotion receipt freshness so agents can see when source
           promotion and swarm PR receipts need refreshing; source post-merge
           routed CI, CI, smoke, security, testing, and CI Actuals passed
+
+EffortlessMetrics/shiplog#521:
+  swarm head: d68af2a687c346cc58081fb2d8dcff333d1d4124
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#78
+  source merge: 34bcd6e9439edcc073f7f8f9dbbb53acfcd953f3
+  result: regular merge commit; repo contract report JSON and Markdown now
+          list stale promotion receipts explicitly so agents know which source
+          promotion and swarm PR refs must be refreshed; source post-merge
+          routed CI, CI, smoke, security, testing, and CI Actuals passed
 ```
 
 ### Proof commands
 
 ```bash
-git fetch origin main --prune --tags
-git fetch swarm main --prune
-git merge-base origin/main swarm/main
-git log --oneline origin/main..swarm/main
-cargo xtask repo-contract-report
-gh pr create --base main --head promote/swarm-YYYYMMDD-SHA
-git diff --check
+rtk git fetch origin main --prune --tags
+rtk git fetch swarm main --prune
+rtk git merge-base origin/main swarm/main
+rtk git log --oneline origin/main..swarm/main
+rtk cargo xtask repo-contract-report
+rtk gh pr create --base main --head promote/swarm-YYYYMMDD-SHA
+rtk git diff --check
 ```
 
 ### Rollback
