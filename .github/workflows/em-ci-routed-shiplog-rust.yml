@@ -74,7 +74,12 @@ jobs:
               for label in event.get("pull_request", {}).get("labels", [])
               if isinstance(label, dict)
           }
-          fallback_allowed = "allow-github-hosted" in labels or "ci-budget-ack" in labels
+          source_repo_release_surface = repo == "EffortlessMetrics/shiplog"
+          fallback_allowed = (
+              source_repo_release_surface
+              or "allow-github-hosted" in labels
+              or "ci-budget-ack" in labels
+          )
 
           def request_json(url, bearer_token):
               request = urllib.request.Request(
