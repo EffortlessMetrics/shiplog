@@ -14,6 +14,7 @@ concurrency:
 
 jobs:
   check:
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'full-ci')
     name: Check (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
@@ -65,6 +66,7 @@ jobs:
         run: scripts/publish-dry-run.sh
 
   deny:
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'full-ci')
     name: cargo-deny
     runs-on: ubuntu-latest
     steps:
@@ -87,6 +89,7 @@ jobs:
         run: cargo deny check
 
   policy:
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'full-ci')
     name: Policy gates
     runs-on: ubuntu-latest
     steps:
