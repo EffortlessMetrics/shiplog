@@ -1010,6 +1010,16 @@ EffortlessMetrics/shiplog#522:
           uses the repo-required `rtk cargo xtask repo-contract-report`
           spelling; source post-merge routed CI, CI, smoke, security, testing,
           and CI Actuals passed
+
+EffortlessMetrics/shiplog#523:
+  swarm head: f0fdd45b3984be38d908de7efd2b82d94cc82204
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#80
+  source merge: 0e90f5526f45f0f31eb195a3bf7e84abc998c408
+  result: regular merge commit; `check-policy-ledgers` landed as the
+          first-class policy-ledger proof command while preserving
+          `check-policy-schemas` as a compatibility alias; source post-merge
+          routed CI, CI, smoke, security, BDD/property testing, and
+          CI Actuals passed
 ```
 
 ### Proof commands

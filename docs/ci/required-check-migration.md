@@ -108,7 +108,8 @@ settings update was required.
 ## At PR #165 (Policy gates job)
 
 Added a `Policy gates` job to `ci.yml` that runs `cargo xtask` policy
-ledger gates (`check-policy-schemas` plus the blocking-allowlist checks).
+ledger gates (`check-policy-ledgers`, formerly `check-policy-schemas`, plus
+the blocking-allowlist checks).
 
 | Required check | Action | Why |
 |---|---|---|
