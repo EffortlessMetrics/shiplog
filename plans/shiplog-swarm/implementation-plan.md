@@ -1020,6 +1020,57 @@ EffortlessMetrics/shiplog#523:
           `check-policy-schemas` as a compatibility alias; source post-merge
           routed CI, CI, smoke, security, BDD/property testing, and
           CI Actuals passed
+
+EffortlessMetrics/shiplog#524:
+  swarm head: 84552f86c6109e6185cf8af634cdfd0f2ff360a2
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#81
+  source merge: a8c173b2fe848a193d3903ba47a577da2bf58c55
+  result: regular merge commit; policy-ledger gate command usage refreshed;
+          post-merge swarm/main passed routed CI on CPX42, CI, smoke,
+          security, BDD/property testing, Fuzzing, and CI Actuals
+
+EffortlessMetrics/shiplog#525:
+  swarm head: d2b20964996daf61c2b93b179c5979cfefaad3f1
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#82
+  source merge: f02bbccee061cd942b0ab6234b87885ff8bf0957
+  result: regular merge commit; workflow concurrency and cargo-deny
+          install-action allowlist receipt landed; post-merge swarm/main
+          passed routed CI on CPX42, policy gates, CI, smoke, security,
+          BDD/property testing, Fuzzing, and CI Actuals
+
+EffortlessMetrics/shiplog#526:
+  swarm head: 8ff21a527354d59e22a9a86f6a3c4a04439b8bf7
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#83
+  result: closed as superseded by EffortlessMetrics/shiplog#528 after the
+          source fallback contract needed additional repair
+
+EffortlessMetrics/shiplog#527:
+  swarm head: e250c3472b05321dc0664f980b04c2be177a2683
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#83,
+                       EffortlessMetrics/shiplog-swarm#84
+  result: closed as superseded by EffortlessMetrics/shiplog#528 after the
+          router-token-missing path needed the same hosted fallback behavior
+
+EffortlessMetrics/shiplog#528:
+  swarm head: de889e56d67ae7a11c37f47c7340464c073536b5
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#83,
+                       EffortlessMetrics/shiplog-swarm#84,
+                       EffortlessMetrics/shiplog-swarm#86
+  source merge: c0e06a1540c0c18200f9c22858a27e8ecad0f851
+  result: regular merge commit; source/release repo hosted fallback now covers
+          runner-token, runner API, parse, and no-idle unavailable states;
+          source post-merge routed CI, CI, smoke, security, testing, and
+          CI Actuals passed
+
+EffortlessMetrics/shiplog#529:
+  swarm head: ae20816dddc6c921e4bce25d7176588120aa4c98
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#85,
+                       EffortlessMetrics/shiplog-swarm#87
+  source merge: 84eb6ca7b70ca9bb2e3f22659719695f39a74547
+  result: regular merge commit; Codex CI-efficiency compatibility docs were
+          aligned with current gates and non-PR hosted fallback was allowed for
+          push/manual/merge-group routes; source post-merge routed CI, CI,
+          smoke, security, testing, and CI Actuals passed
 ```
 
 ### Proof commands
