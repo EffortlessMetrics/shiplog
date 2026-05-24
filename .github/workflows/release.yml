@@ -26,7 +26,7 @@ jobs:
   # Prove the package surface before building release assets
   release-preflight:
     name: Release Preflight
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     outputs:
       release_tag: ${{ steps.release_tag.outputs.release_tag }}
 
@@ -100,16 +100,16 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: self-hosted
             target: x86_64-unknown-linux-gnu
             ext: ''
           - os: macos-15-intel
             target: x86_64-apple-darwin
             ext: ''
-          - os: macos-latest
+          - os: self-hosted
             target: aarch64-apple-darwin
             ext: ''
-          - os: windows-latest
+          - os: self-hosted
             target: x86_64-pc-windows-msvc
             ext: .exe
 
@@ -171,7 +171,7 @@ jobs:
   # Create GitHub release
   create-release:
     name: Create Release
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: [release-preflight, build-binary]
     outputs:
       version: ${{ steps.version.outputs.version }}
@@ -202,7 +202,7 @@ jobs:
   # Upload binaries to release
   upload-assets:
     name: Upload Assets
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: [release-preflight, build-binary, create-release]
 
     steps:
@@ -235,7 +235,7 @@ jobs:
   # Validate the release
   release-validation:
     name: Release Validation
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: [release-preflight, build-binary, create-release]
 
     steps:
@@ -318,7 +318,7 @@ jobs:
   # Run integration tests
   release-test:
     name: Release Integration Tests
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: [release-preflight, build-binary, create-release]
 
     steps:

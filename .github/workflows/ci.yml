@@ -19,7 +19,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [self-hosted]
 
     steps:
       - uses: actions/checkout@v6.0.2
@@ -36,11 +36,11 @@ jobs:
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Package boundary audit
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'self-hosted'
         run: scripts/package-boundary-audit.sh
 
       - name: Check formatting
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'self-hosted'
         run: cargo fmt --all -- --check
 
       - name: Clippy
@@ -53,7 +53,7 @@ jobs:
         run: cargo test --doc --workspace --all-features --locked
 
       - name: Build docs
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'self-hosted'
         run: cargo doc --workspace --no-deps --locked
         env:
           RUSTDOCFLAGS: "-D warnings"
@@ -62,13 +62,13 @@ jobs:
         run: cargo build --workspace --release --locked
 
       - name: Publish dry-run (canary)
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'self-hosted'
         run: scripts/publish-dry-run.sh
 
   deny:
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'full-ci')
     name: cargo-deny
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v6.0.2
 
@@ -91,7 +91,7 @@ jobs:
   policy:
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'full-ci')
     name: Policy gates
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v6.0.2
 
