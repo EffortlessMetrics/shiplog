@@ -75,8 +75,10 @@ jobs:
               if isinstance(label, dict)
           }
           source_repo_release_surface = repo == "EffortlessMetrics/shiplog"
+          non_pr_event = event_name != "pull_request"
           fallback_allowed = (
               source_repo_release_surface
+              or non_pr_event
               or "allow-github-hosted" in labels
               or "ci-budget-ack" in labels
           )
