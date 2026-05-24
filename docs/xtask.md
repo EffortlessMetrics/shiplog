@@ -20,6 +20,16 @@ cargo xtask <subcommand>
 
 ## Commands
 
+### `cargo xtask check-policy-ledgers`
+
+Validates every `policy/*.toml` ledger for the common header and file-stem
+contract. This is the preferred proof command for the Policy ledgers support
+tier.
+
+It currently delegates to the same implementation as
+`cargo xtask check-policy-schemas`, which remains available as a compatibility
+name for older release docs and CI references.
+
 ### `cargo xtask check-policy-schemas`
 
 Validates every `policy/*.toml` file for a well-formed common header:

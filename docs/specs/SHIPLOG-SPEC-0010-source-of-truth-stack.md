@@ -57,9 +57,9 @@ Proposal and spec IDs resolve in `policy/doc-artifacts.toml`; active goal links 
 
 ## Test mapping
 
-`cargo xtask check-doc-artifacts`, `cargo xtask check-goals`,
-`cargo xtask check-support-tiers`, `cargo xtask repo-contract-report`,
-`cargo xtask policy-report`, and `cargo xtask check-policy-schemas`.
+`rtk cargo xtask check-doc-artifacts`, `rtk cargo xtask check-goals`,
+`rtk cargo xtask check-support-tiers`, `rtk cargo xtask repo-contract-report`,
+`rtk cargo xtask policy-report`, and `rtk cargo xtask check-policy-ledgers`.
 
 ## Implementation mapping
 
@@ -68,8 +68,8 @@ Proposal and spec IDs resolve in `policy/doc-artifacts.toml`; active goal links 
 ## CI proof
 
 The `CI / Policy gates` job runs the dedicated source-of-truth validators:
-`cargo xtask check-doc-artifacts`, `cargo xtask check-goals`, and
-`cargo xtask check-support-tiers`.
+`rtk cargo xtask check-doc-artifacts`, `rtk cargo xtask check-goals`, and
+`rtk cargo xtask check-support-tiers`.
 
 ## Metrics / promotion rule
 

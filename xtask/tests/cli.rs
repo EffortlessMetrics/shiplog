@@ -45,6 +45,20 @@ fn check_policy_schemas_passes_for_well_formed_fixture() {
 }
 
 #[test]
+fn check_policy_ledgers_alias_passes_for_well_formed_fixture() {
+    let dir = fixture_workspace(&[(
+        "ci-budget.toml",
+        "schema_version = 1\npolicy = \"ci-budget\"\nowner = \"EffortlessMetrics\"\nstatus = \"advisory\"\n",
+    )]);
+    xtask()
+        .args(["--workspace-root", dir.path().to_str().expect("utf-8 path")])
+        .arg("check-policy-ledgers")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("well-formed"));
+}
+
+#[test]
 fn check_policy_schemas_fails_on_status_typo() {
     let dir = fixture_workspace(&[(
         "ci-budget.toml",
@@ -393,7 +407,7 @@ fn check_support_tiers_passes_for_valid_claim_map() {
 | Surface | Tier | Claim | Proof command | Notes |
 |---|---|---|---|---|
 | Document artifact links | Stabilizing | Proposal/spec/ADR/plan artifacts are linked. | `rtk cargo xtask check-doc-artifacts` | Dedicated checker. |
-| Policy ledgers | Stable | Policy files parse. | `rtk cargo xtask check-policy-schemas` | Required proof. |
+| Policy ledgers | Stable | Policy files parse. | `rtk cargo xtask check-policy-ledgers` | Required proof. |
 "#,
     )]);
 

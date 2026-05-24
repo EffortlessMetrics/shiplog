@@ -355,6 +355,7 @@ fn known_xtask_subcommand(command: &str) -> bool {
     matches!(
         command,
         "check-policy-schemas"
+            | "check-policy-ledgers"
             | "check-doc-artifacts"
             | "check-goals"
             | "check-support-tiers"
@@ -437,7 +438,7 @@ commands = ["rtk cargo xtask repo-contract-report"]
 | Surface | Tier | Claim | Proof command | Notes |
 |---|---|---|---|---|
 | Document artifact links | Stabilizing | Proposal/spec/ADR/plan artifacts are linked. | `rtk cargo xtask check-doc-artifacts` | Dedicated checker. |
-| Policy ledgers | Stable | Policy files parse. | `rtk cargo xtask check-policy-schemas` | Required proof. |
+| Policy ledgers | Stable | Policy files parse. | `rtk cargo xtask check-policy-ledgers` | Required proof. |
 "#
         .to_string()
     }
@@ -458,7 +459,7 @@ commands = ["rtk cargo xtask repo-contract-report"]
 
     #[test]
     fn stable_claim_without_proof_is_finding() {
-        let doc = valid_doc().replace("`rtk cargo xtask check-policy-schemas`", "TBD");
+        let doc = valid_doc().replace("`rtk cargo xtask check-policy-ledgers`", "TBD");
         let dir = write_support_tiers(&doc);
         let err = run(dir.path()).unwrap_err();
         assert!(err.to_string().contains("2 finding"));
@@ -467,7 +468,7 @@ commands = ["rtk cargo xtask repo-contract-report"]
     #[test]
     fn unknown_xtask_proof_is_finding() {
         let doc = valid_doc().replace(
-            "`rtk cargo xtask check-policy-schemas`",
+            "`rtk cargo xtask check-policy-ledgers`",
             "`rtk cargo xtask made-up-check`",
         );
         let dir = write_support_tiers(&doc);
@@ -502,7 +503,7 @@ commands = ["rtk cargo xtask repo-contract-report"]
     #[test]
     fn stale_pr_body_work_item_is_finding() {
         let doc = valid_doc().replace(
-            "`rtk cargo xtask check-policy-schemas`",
+            "`rtk cargo xtask check-policy-ledgers`",
             "`rtk cargo xtask pr-body --work-item pr-body-generator`",
         );
         let dir = write_support_tiers(&doc);
@@ -515,7 +516,7 @@ commands = ["rtk cargo xtask repo-contract-report"]
     #[test]
     fn stale_closeout_goal_is_finding() {
         let doc = valid_doc().replace(
-            "`rtk cargo xtask check-policy-schemas`",
+            "`rtk cargo xtask check-policy-ledgers`",
             "`rtk cargo xtask closeout --goal shiplog-source-of-truth-stack --handoff-output target/source-of-truth/closeout.md --archive-output target/source-of-truth/active-goal-archive.toml`",
         );
         let dir = write_support_tiers(&doc);
@@ -528,7 +529,7 @@ commands = ["rtk cargo xtask repo-contract-report"]
     #[test]
     fn source_writing_closeout_proof_is_finding() {
         let doc = valid_doc().replace(
-            "`rtk cargo xtask check-policy-schemas`",
+            "`rtk cargo xtask check-policy-ledgers`",
             "`rtk cargo xtask closeout --goal shiplog-swarm-control-plane`",
         );
         let dir = write_support_tiers(&doc);

@@ -23,6 +23,9 @@ enum Command {
     /// Validate `policy/*.toml` common headers and well-formed structure.
     CheckPolicySchemas,
 
+    /// Validate policy ledgers. Alias for `check-policy-schemas`.
+    CheckPolicyLedgers,
+
     /// Validate `policy/doc-artifacts.toml` artifact links and file receipts.
     CheckDocArtifacts,
 
@@ -257,6 +260,7 @@ impl Cli {
         };
         match self.command {
             Command::CheckPolicySchemas => tasks::check_policy_schemas::run(&workspace_root),
+            Command::CheckPolicyLedgers => tasks::check_policy_schemas::run(&workspace_root),
             Command::CheckDocArtifacts => tasks::check_doc_artifacts::run(&workspace_root),
             Command::CheckGoals => tasks::check_goals::run(&workspace_root),
             Command::CheckSupportTiers => tasks::check_support_tiers::run(&workspace_root),

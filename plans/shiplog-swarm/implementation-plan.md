@@ -1001,6 +1001,15 @@ EffortlessMetrics/shiplog#521:
           list stale promotion receipts explicitly so agents know which source
           promotion and swarm PR refs must be refreshed; source post-merge
           routed CI, CI, smoke, security, testing, and CI Actuals passed
+
+EffortlessMetrics/shiplog#522:
+  swarm head: 11b90411eed72fe1498213dd3c447fd67fbdbe5d
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#79
+  source merge: f4e7d82b848cd97e1c27a432100986a25201ee16
+  result: regular merge commit; repo contract report command provenance now
+          uses the repo-required `rtk cargo xtask repo-contract-report`
+          spelling; source post-merge routed CI, CI, smoke, security, testing,
+          and CI Actuals passed
 ```
 
 ### Proof commands
