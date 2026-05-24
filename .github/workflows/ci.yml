@@ -98,8 +98,8 @@ jobs:
           shared-key: "policy"
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
-      - name: check-policy-schemas
-        run: cargo xtask check-policy-schemas
+      - name: check-policy-ledgers
+        run: cargo xtask check-policy-ledgers
 
       - name: check-doc-artifacts
         run: cargo xtask check-doc-artifacts
