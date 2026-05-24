@@ -4,6 +4,9 @@ This document is the doctrine for how shiplog spends CI minutes. It is the
 "why" behind the lane assignments in [`test-evidence-lanes.md`](test-evidence-lanes.md)
 and the cost model in [`lem-budgeting.md`](lem-budgeting.md).
 
+For Codex-authored CI-efficiency changes, also follow the compatibility
+contract in [`codex-ci-efficiency-compatibility.md`](codex-ci-efficiency-compatibility.md).
+
 It is part of the [Rust 1.95 / 0.5.0 quality
 rollout](rust-1.95-rollout.md). The TOML ledgers it describes
 (`policy/ci-budget.toml`, `policy/ci-lanes.toml`, `policy/ci-risk-packs.toml`,
