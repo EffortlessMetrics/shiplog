@@ -131,6 +131,12 @@ jobs:
               print(f"router_reason={reason}")
               print(f"trusted={str(trusted).lower()}")
 
+          def set_unavailable(reason):
+              if fallback_allowed:
+                  set_output("github", f"{reason}_fallback_allowed")
+              else:
+                  set_output("none", reason)
+
           if not trusted:
               set_output("github", "fork_pr")
               sys.exit(0)
@@ -148,7 +154,7 @@ jobs:
               sys.exit(0)
 
           if not runner_read_token:
-              set_output("none", "runner_token_missing")
+              set_unavailable("runner_token_missing")
               sys.exit(0)
 
           try:
@@ -159,15 +165,15 @@ jobs:
           except urllib.error.HTTPError as exc:
               print(f"runner_api_http_error={exc.code}")
               if exc.code == 401:
-                  set_output("none", "runner_token_unauthorized")
+                  set_unavailable("runner_token_unauthorized")
               elif exc.code == 403:
-                  set_output("none", "runner_token_forbidden")
+                  set_unavailable("runner_token_forbidden")
               else:
-                  set_output("none", "runner_api_failed")
+                  set_unavailable("runner_api_failed")
               sys.exit(0)
           except (urllib.error.URLError, TimeoutError, OSError, json.JSONDecodeError) as exc:
               print(f"runner_api_error={exc}")
-              set_output("none", "runner_api_failed")
+              set_unavailable("runner_api_failed")
               sys.exit(0)
 
           runners = payload.get("runners", [])
@@ -178,7 +184,7 @@ jobs:
           }
 
           if not isinstance(runners, list):
-              set_output("none", "parse_failed")
+              set_unavailable("parse_failed")
               sys.exit(0)
 
           for target in route_order:
@@ -196,10 +202,7 @@ jobs:
                       set_output(target, f"{target}_idle")
                       sys.exit(0)
 
-          if fallback_allowed:
-              set_output("github", "no_idle_runner_fallback_allowed")
-          else:
-              set_output("none", "no_idle_runner")
+          set_unavailable("no_idle_runner")
           PY
 
   rust_small_cpx42:
