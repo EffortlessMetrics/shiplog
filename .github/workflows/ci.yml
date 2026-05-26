@@ -126,8 +126,11 @@ jobs:
       - name: check-no-panic-family (blocking)
         run: cargo xtask check-no-panic-family --mode blocking-allowlist
 
-      - name: check-file-policy (blocking)
-        run: cargo xtask check-file-policy --mode blocking-allowlist
+      - name: Install cargo-allow
+        run: cargo install --git https://github.com/EffortlessMetrics/cargo-allow --rev 454928e73f6437beaac640f7068e27ea77a95a83 --locked cargo-allow
+
+      - name: cargo-allow non-Rust policy (blocking)
+        run: cargo allow check --compat --kind non-rust --mode no-new --format markdown --output target/cargo-allow/non-rust-compat.md
 
       - name: check-generated (blocking)
         run: cargo xtask check-generated --mode blocking-allowlist

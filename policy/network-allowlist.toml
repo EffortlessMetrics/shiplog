@@ -72,6 +72,16 @@ created = "2026-05-09"
 expires = "permanent"
 
 [[allow]]
+id = "net-github-cargo-allow-source"
+destination = "github.com"
+auth_required = false
+lane = "build"
+owner = "release/ci"
+reason = "Policy CI installs pinned cargo-allow from EffortlessMetrics/cargo-allow until the tool has a published or vendored distribution path."
+created = "2026-05-26"
+review_after = "2026-09-26"
+
+[[allow]]
 id = "net-codecov"
 destination = "codecov.io"
 auth_required = true

@@ -102,7 +102,7 @@ expires = "permanent"
 [[entry]]
 path = ".github/workflows/ci.yml"
 owner = "release/ci"
-reason = "Primary PR correctness gate (Ubuntu + Windows). Check job covers fmt --check, clippy -D --locked --all-features, workspace tests --locked --all-features, doc-tests --locked --all-features, doc build -D warnings, release build --locked, canary `shiplog` publish --dry-run --locked. Sibling jobs: cargo-deny dependency policy, Policy gates (runs policy ledger checks plus source-of-truth validators; added in PR #165 and expanded for SHIPLOG-SPEC-0010)."
+reason = "Primary PR correctness gate (Ubuntu + Windows). Check job covers fmt --check, clippy -D --locked --all-features, workspace tests --locked --all-features, doc-tests --locked --all-features, doc build -D warnings, release build --locked, canary `shiplog` publish --dry-run --locked. Sibling jobs: cargo-deny dependency policy, Policy gates (runs policy ledger checks plus source-of-truth validators, with cargo-allow replacing the non-Rust file-policy xtask gate; added in PR #165 and expanded for SHIPLOG-SPEC-0010)."
 permissions = ["contents:read"]
 secrets_used = []
 external_actions = [

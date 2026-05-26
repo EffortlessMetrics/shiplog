@@ -20,6 +20,17 @@ created = "2026-05-09"
 review_after = "2026-09-09"
 
 [[allow]]
+id = "proc-cargo-install-cargo-allow"
+binary = "cargo"
+argv_shape = ["install", "--git", "https://github.com/EffortlessMetrics/cargo-allow", "--rev", "454928e73f6437beaac640f7068e27ea77a95a83", "--locked", "cargo-allow"]
+network_reach = true
+called_by = [".github/workflows/ci.yml"]
+owner = "release/ci"
+reason = "Installs pinned cargo-allow so the policy job can replace the non-Rust file-policy xtask gate while cargo-allow is still consumed from Git."
+created = "2026-05-26"
+review_after = "2026-09-26"
+
+[[allow]]
 id = "proc-cargo-install-cargo-fuzz"
 binary = "cargo"
 argv_shape = ["install", "cargo-fuzz", "--locked"]

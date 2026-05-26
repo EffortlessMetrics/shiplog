@@ -140,7 +140,8 @@ The `xtask` runner (PR #143 onward) provides:
 cargo xtask check-lint-policy            # Clippy
 cargo xtask check-clippy-exceptions
 cargo xtask check-no-panic-family        # no-panic
-cargo xtask check-file-policy            # non-Rust master
+cargo allow check --compat --kind non-rust --mode no-new
+                                          # non-Rust master
 cargo xtask check-generated
 cargo xtask check-executable-files
 cargo xtask check-dependency-surfaces

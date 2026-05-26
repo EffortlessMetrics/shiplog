@@ -49,7 +49,8 @@ All ledgers share the schema documented in
 ```bash
 cargo xtask non-rust inventory         # report all non-Rust files
 cargo xtask non-rust propose           # write a starter allowlist for review
-cargo xtask check-file-policy          # CI gate (mode: advisory or blocking)
+cargo allow check --compat --kind non-rust --mode no-new
+                                       # CI gate for the non-Rust master ledger
 cargo xtask check-generated            # generated files allowlist
 cargo xtask check-executable-files     # executable bit allowlist
 cargo xtask check-dependency-surfaces  # third-party dep declarations
