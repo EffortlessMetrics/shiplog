@@ -8,15 +8,6 @@ status = "advisory"
 # See docs/ci/cost-and-verification-policy.md (Rule 3).
 
 [[exception]]
-id = "ci-exception-0001"
-lane = "lane.ci_check_windows"
-owner = "release"
-reason = "Windows release build is the only cross-platform parity check shiplog has on PRs; moving it nightly would let Windows-only regressions ship to a tag."
-created = "2026-05-09"
-review_after = "2026-09-09"
-expires = "permanent"
-
-[[exception]]
 id = "ci-exception-0002"
 lane = "lane.bdd"
 owner = "policy"

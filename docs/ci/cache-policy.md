@@ -46,8 +46,8 @@ artifacts the PR doesn't need.
 | Lane | `shared-key` | Saves on `main`? | Restores on PR? |
 |---|---|---|---|
 | `lane.pr_plan` | `pr-plan` | yes | yes |
-| `lane.ci_check` Ubuntu | `check-ubuntu-latest` | yes | yes |
-| `lane.ci_check_windows` | `check-windows-latest` | yes | yes |
+| `lane.ci_check` self-hosted | `check-self-hosted` | yes | yes |
+| `lane.ci_check_windows` | n/a (metadata-only) | no | no |
 | `lane.ci_deny` | `deny` | yes | yes |
 | `lane.ci_policy` | `policy` | yes | yes |
 | `lane.ci_actuals` | `ci-actuals` | yes | yes |
@@ -83,7 +83,7 @@ The `coverage.yml` workflow already does this (`save-if: ${{ github.ref == 'refs
 
 PR #147 applied the pattern to the rest (now landed):
 
-- `ci.yml` (`check`, `deny`, `msrv`) — `save-if: ${{ github.ref == 'refs/heads/main' }}` on each
+- `ci.yml` (`check`, `deny`, `policy`) — `save-if: ${{ github.ref == 'refs/heads/main' }}` on each
 - `bdd-testing.yml` (5 jobs) — distinct `shared-key` per job + main-only save
 - `property-testing.yml` — `shared-key: property` + main-only save
 - `fuzzing.yml` (quick + extended) — `shared-key: fuzz` + save on main or scheduled cron

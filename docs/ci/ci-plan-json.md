@@ -36,9 +36,9 @@ This doc is the human reference.
     ],
     "lanes": [
       {"id": "lane.pr_plan", "selected_by": "default_pr"},
-      {"id": "lane.ci_check", "selected_by": "default_pr"},
-      {"id": "lane.ci_check_windows", "selected_by": "default_pr"},
-      {"id": "lane.ci_deny", "selected_by": "default_pr"},
+      {"id": "lane.ci_check", "selected_by": "label:full-ci"},
+      {"id": "lane.ci_deny", "selected_by": "label:full-ci"},
+      {"id": "lane.ci_policy", "selected_by": "label:full-ci"},
       {"id": "lane.droid_review", "selected_by": "default_pr"}
     ],
     "skipped_lanes": [
@@ -57,7 +57,7 @@ This doc is the human reference.
     "ack_present": true
   },
   "warnings": [
-    "lane.ci_check_windows estimated 36 LEM; covered by ci-exception-0001"
+    "PR is in band \"elevated\" (~57 LEM); label \"ci-budget-ack\" expected (advisory: not enforced in v0.5.0)"
   ]
 }
 ```

@@ -52,14 +52,16 @@ doctrine.
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | `collect` | workflow_run completion for 16 instrumented workflows | indirect (per upstream completion) | no | ubuntu-latest | 2 | LEM feedback loop | (advisory) per-lane actual_lem vs estimated_lem drift, plus `lane.unknown` mappings if `policy/ci-lanes.toml` and live workflow drift | `target/ci/ci-actuals.json` (ci-actuals v1 schema) per upstream run | — | post-workflow | release/ci |
 
-## ci.yml — primary PR correctness gate
+## ci.yml — self-hosted main/full-ci correctness gates
 
 | Job | Trigger | Default PR? | Blocking | Runner | Base LEM | Intent | Failure mode caught | Evidence | duplicate_of | Target lane | Owner |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `Check (ubuntu-latest)` | push main + PR | yes | yes | ubuntu-latest | 12 | Rust correctness | Type/borrow errors, lint regressions, doc-test failure, broken release build, broken canary publish | step summary | — | PR fast | release/ci |
-| `Check (windows-latest)` | push main + PR | yes | yes | windows-latest | 36 | Rust correctness (Windows parity) | Windows-only regressions before tag | step summary | — | PR fast (with `ci-exception-0001`) | release/ci |
-| `cargo-deny` | push main + PR | yes | yes | ubuntu-latest | 4 | Dependency policy | Disallowed bans/licenses/sources/advisories | step summary | — | PR fast | release/ci |
-| `Policy gates` | push main + PR | yes | yes | ubuntu-latest | 3 | Policy and source-of-truth enforcement | Drift in policy ledgers or linked source-of-truth artifacts (`check-policy-schemas`, `check-doc-artifacts`, `check-goals`, `check-support-tiers`, lint/file/panic/lane checks) | step output | — | PR fast | release/ci |
+| `Check (self-hosted)` | push main + PR with `full-ci` | no | yes | self-hosted | 12 | Rust correctness | Type/borrow errors, lint regressions, doc-test failure, broken release build, broken canary publish | step summary | — | main/full-ci | release/ci |
+| `cargo-deny` | push main + PR with `full-ci` | no | yes | self-hosted | 4 | Dependency policy | Disallowed bans/licenses/sources/advisories | step summary | — | main/full-ci | release/ci |
+| `Policy gates` | push main + PR with `full-ci` | no | yes | self-hosted | 3 | Policy and source-of-truth enforcement | Drift in policy ledgers or linked source-of-truth artifacts (`check-policy-schemas`, `check-doc-artifacts`, `check-goals`, `check-support-tiers`, lint/file/panic/lane checks) | step output | — | main/full-ci | release/ci |
+
+`lane.ci_check_windows` remains in `policy/ci-lanes.toml` as a metadata-only
+placeholder, but no Windows job is currently wired in `ci.yml`.
 
 ## release.yml — tag-triggered release pipeline
 

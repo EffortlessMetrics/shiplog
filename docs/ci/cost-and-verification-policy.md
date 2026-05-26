@@ -214,10 +214,10 @@ on Linux) and is `default_pr = true` must have a corresponding entry in
 
 ```toml
 [[exception]]
-id = "ci-exception-0001"
-lane = "lane.ci_check_windows"
+id = "ci-exception-NNNN"
+lane = "lane.example_expensive_default"
 owner = "release"
-reason = "Windows release build is the only cross-platform parity check shiplog has on PRs; moving it nightly would let Windows-only regressions ship to a tag."
+reason = "This lane is the cheapest available signal for a required PR-time release invariant."
 review_after = "2026-09-09"
 ```
 

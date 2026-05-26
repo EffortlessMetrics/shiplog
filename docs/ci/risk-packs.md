@@ -49,7 +49,7 @@ PR plan + the always-on PR-fast lanes (which are still gated by the
 | `period-window` | Period and window resolution, named periods | `apps/shiplog/src/coverage/**/period*.rs`, `apps/shiplog/src/coverage/**/window*.rs`, `apps/shiplog/src/**/period*.rs` | `property-tests` | `property` |
 | `cli-product` | CLI / user-flow surface | `apps/shiplog/**` | `bdd` | `bdd` |
 | `release-package` | Release scripts, release.yml, package metadata, version alignment | `scripts/**`, `.github/workflows/release.yml`, `Cargo.toml`, `**/Cargo.toml` | `release-check` | `release_preflight` |
-| `policy-workflows` | Policy ledgers, xtask, GitHub Actions workflows | `policy/**`, `xtask/**`, `.github/workflows/**` | `full-ci` | `pr_plan`, `ci_check`, `ci_check_windows`, `ci_deny`, `ci_policy` |
+| `policy-workflows` | Policy ledgers, xtask, GitHub Actions workflows | `policy/**`, `xtask/**`, `.github/workflows/**` | `full-ci` | `pr_plan`, `ci_check`, `ci_deny`, `ci_policy` |
 | `parsers-serde` | Parser surfaces (fuzz targets, `*_parse.rs`, serde derives at trust boundaries) | `fuzz/fuzz_targets/**`, `**/serde*.rs`, `**/*_parse.rs`, `**/parse*.rs` | `fuzz` | `fuzz_quick` |
 | `docs-only` | Docs-only changes — skip compile-heavy lanes | `docs/**`, `README.md`, `CHANGELOG.md`, `*.md` | (none) | `pr_plan` |
 
