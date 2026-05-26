@@ -2,14 +2,34 @@
 set -euo pipefail
 
 mkdir -p target
-cargo metadata --format-version 1 --no-deps > target/package-version-metadata.json
+metadata_path="${PACKAGE_VERSION_METADATA_PATH:-target/package-version-metadata.json}"
 
-python - <<'PY'
+if [[ -z "${PACKAGE_VERSION_METADATA_PATH:-}" ]]; then
+  mkdir -p "$(dirname "$metadata_path")"
+  cargo metadata --format-version 1 --no-deps > "$metadata_path"
+fi
+
+export PACKAGE_VERSION_METADATA_PATH="$metadata_path"
+
+python_bin="${PYTHON:-}"
+if [[ -z "$python_bin" ]]; then
+  if command -v python3 >/dev/null 2>&1; then
+    python_bin=python3
+  elif command -v python >/dev/null 2>&1; then
+    python_bin=python
+  else
+    echo "python3 or python is required for package version audit" >&2
+    exit 127
+  fi
+fi
+
+"$python_bin" - <<'PY'
 import json
+import os
 import sys
 from pathlib import Path
 
-metadata = json.loads(Path("target/package-version-metadata.json").read_text())
+metadata = json.loads(Path(os.environ["PACKAGE_VERSION_METADATA_PATH"]).read_text())
 workspace_ids = set(metadata["workspace_members"])
 packages = {
     package["id"]: package
