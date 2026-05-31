@@ -163,6 +163,8 @@ struct RemoteBranchHygieneReport {
     source_review_cleanup_candidates: Vec<String>,
     swarm_merged_cleanup_candidates: Vec<String>,
     swarm_review_cleanup_candidates: Vec<String>,
+    source_merged_cleanup_review_commands: Vec<String>,
+    swarm_merged_cleanup_review_commands: Vec<String>,
     protected_branches: Vec<String>,
     notes: Vec<String>,
     next_actions: Vec<String>,
@@ -543,6 +545,16 @@ fn remote_branch_hygiene_from_lines_with_merged(
         partition_merged_candidates(&source_cleanup_candidates, &source_merged);
     let (swarm_merged_cleanup_candidates, swarm_review_cleanup_candidates) =
         partition_merged_candidates(&swarm_cleanup_candidates, &swarm_merged);
+    let source_merged_cleanup_review_commands = merged_cleanup_review_commands(
+        &source_merged_cleanup_candidates,
+        source_remote,
+        "EffortlessMetrics/shiplog",
+    );
+    let swarm_merged_cleanup_review_commands = merged_cleanup_review_commands(
+        &swarm_merged_cleanup_candidates,
+        swarm_remote,
+        "EffortlessMetrics/shiplog-swarm",
+    );
 
     let status = if !notes.is_empty() {
         "unavailable"
@@ -572,10 +584,28 @@ fn remote_branch_hygiene_from_lines_with_merged(
         source_review_cleanup_candidates,
         swarm_merged_cleanup_candidates,
         swarm_review_cleanup_candidates,
+        source_merged_cleanup_review_commands,
+        swarm_merged_cleanup_review_commands,
         protected_branches,
         notes,
         next_actions,
     }
+}
+
+fn merged_cleanup_review_commands(candidates: &[String], remote: &str, repo: &str) -> Vec<String> {
+    candidates
+        .iter()
+        .filter_map(|candidate| remote_branch_head(candidate, remote).map(|head| (candidate, head)))
+        .map(|(candidate, head)| {
+            format!(
+                "rtk gh pr list --repo {repo} --state all --head EffortlessMetrics:{head} --limit 10 && rtk git log --oneline --max-count 3 {candidate}"
+            )
+        })
+        .collect()
+}
+
+fn remote_branch_head<'a>(branch: &'a str, remote: &str) -> Option<&'a str> {
+    branch.strip_prefix(&format!("{remote}/"))
 }
 
 fn remote_branch_set(lines: Vec<String>) -> BTreeSet<String> {
@@ -1432,6 +1462,14 @@ fn render_markdown(report: &RepoContractReport) -> String {
     );
     push_markdown_list_limited(
         &mut out,
+        "Source merged cleanup review commands",
+        &report
+            .remote_branch_hygiene
+            .source_merged_cleanup_review_commands,
+        10,
+    );
+    push_markdown_list_limited(
+        &mut out,
         "Source review cleanup candidate branches",
         &report
             .remote_branch_hygiene
@@ -1443,6 +1481,14 @@ fn render_markdown(report: &RepoContractReport) -> String {
         "Swarm merged cleanup candidate branches",
         &report.remote_branch_hygiene.swarm_merged_cleanup_candidates,
         20,
+    );
+    push_markdown_list_limited(
+        &mut out,
+        "Swarm merged cleanup review commands",
+        &report
+            .remote_branch_hygiene
+            .swarm_merged_cleanup_review_commands,
+        10,
     );
     push_markdown_list_limited(
         &mut out,
@@ -1890,6 +1936,7 @@ receipts = [
         assert!(json.contains("\"remote_branch_hygiene\""));
         assert!(json.contains("\"source_merged_cleanup_candidates\""));
         assert!(json.contains("\"swarm_review_cleanup_candidates\""));
+        assert!(json.contains("\"source_merged_cleanup_review_commands\""));
         assert!(json.contains("\"receipt_freshness\""));
         let markdown = fs::read_to_string(graph_md).unwrap();
         assert!(markdown.contains("# Repo contract report"));
@@ -2158,6 +2205,18 @@ receipts = [
         assert_eq!(
             report.swarm_review_cleanup_candidates,
             vec!["swarm/codex/unmerged-agent-branch"]
+        );
+        assert_eq!(
+            report.source_merged_cleanup_review_commands,
+            vec![
+                "rtk gh pr list --repo EffortlessMetrics/shiplog --state all --head EffortlessMetrics:promote/swarm-20260531-1046ae2 --limit 10 && rtk git log --oneline --max-count 3 origin/promote/swarm-20260531-1046ae2"
+            ]
+        );
+        assert_eq!(
+            report.swarm_merged_cleanup_review_commands,
+            vec![
+                "rtk gh pr list --repo EffortlessMetrics/shiplog-swarm --state all --head EffortlessMetrics:codex/stale-agent-branch --limit 10 && rtk git log --oneline --max-count 3 swarm/codex/stale-agent-branch"
+            ]
         );
         assert!(report.next_actions.iter().any(|action| {
             action.contains("start with 1 source and 1 swarm candidate(s) already merged")
