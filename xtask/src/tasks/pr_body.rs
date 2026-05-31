@@ -337,12 +337,20 @@ fn render_pr_body(
     push_named_section(
         &mut out,
         "Scope",
-        section_or_fallback(plan_item, "Production delta", "No scope recorded."),
+        section_or_first_fallback(
+            plan_item,
+            &["Production delta", "Goal"],
+            "No scope recorded.",
+        ),
     );
     push_named_section(
         &mut out,
         "Non-goals",
-        section_or_fallback(plan_item, "Non-goals", "No non-goals recorded."),
+        section_or_first_fallback(
+            plan_item,
+            &["Non-goals", "Claim boundary"],
+            "No non-goals recorded.",
+        ),
     );
     push_named_section(
         &mut out,
@@ -440,12 +448,26 @@ fn push_named_section(out: &mut String, title: &str, content: &str) {
 }
 
 fn section_or_fallback<'a>(plan_item: &'a PlanItem, name: &str, fallback: &'a str) -> &'a str {
-    plan_item
-        .sections
-        .get(name)
-        .map(String::as_str)
-        .filter(|value| !value.trim().is_empty())
-        .unwrap_or(fallback)
+    section_or_first_fallback(plan_item, &[name], fallback)
+}
+
+fn section_or_first_fallback<'a>(
+    plan_item: &'a PlanItem,
+    names: &[&str],
+    fallback: &'a str,
+) -> &'a str {
+    for name in names {
+        if let Some(value) = plan_item
+            .sections
+            .get(*name)
+            .map(String::as_str)
+            .filter(|value| !value.trim().is_empty())
+        {
+            return value;
+        }
+    }
+
+    fallback
 }
 
 fn artifact_link(artifact: Option<&Artifact>, fallback_id: Option<&str>) -> String {
@@ -657,6 +679,37 @@ Policy impact:
         assert!(body.contains("rtk cargo xtask pr-body --work-item pr-body-generator"));
         assert!(!body.contains("cargo xtask stale-plan-proof"));
         assert!(body.contains("This generates drafts only."));
+    }
+
+    #[test]
+    fn section_lookup_uses_ordered_fallback_sections() {
+        let plan_item = PlanItem {
+            metadata: BTreeMap::new(),
+            sections: BTreeMap::from([
+                ("Goal".to_string(), "Keep the PR useful.".to_string()),
+                (
+                    "Claim boundary".to_string(),
+                    "This does not move release authority.".to_string(),
+                ),
+            ]),
+        };
+
+        assert_eq!(
+            section_or_first_fallback(
+                &plan_item,
+                &["Production delta", "Goal"],
+                "No scope recorded.",
+            ),
+            "Keep the PR useful."
+        );
+        assert_eq!(
+            section_or_first_fallback(
+                &plan_item,
+                &["Non-goals", "Claim boundary"],
+                "No non-goals recorded.",
+            ),
+            "This does not move release authority."
+        );
     }
 
     #[test]
