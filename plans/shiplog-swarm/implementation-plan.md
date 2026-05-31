@@ -4,7 +4,7 @@ Plan artifact: SHIPLOG-PLAN-0011
 
 ## Current Preflight
 
-Status: shared history repaired; branch protection enabled; normal development cutover documented; promotion cadence active
+Status: shared history repaired; branch protection enabled; normal development cutover documented; promotion cadence active; branch hygiene clean
 Linked proposal: SHIPLOG-PROP-0010
 Linked spec: SHIPLOG-SPEC-0011
 Linked ADR: SHIPLOG-ADR-0011
@@ -1241,6 +1241,25 @@ EffortlessMetrics/shiplog#549:
           swarm/main routed proof passed through GitHub-hosted fallback in run
           26724290394, and source post-merge routed proof passed through
           GitHub-hosted fallback in run 26724558976
+
+EffortlessMetrics/shiplog#550:
+  swarm head: e86bcde481e175d77e83e20f6640375f0ed65ba2
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#113
+  source merge: b99166a88a9bf912cf347122ce6686b758b8680d
+  result: regular merge commit; repo-contract-report branch cleanup PR lookup
+          was fixed so generated review commands use `--head <branch>` instead
+          of the invalid `--head EffortlessMetrics:<branch>` shape; swarm PR
+          routed proof passed through GitHub-hosted fallback in run
+          26724794869, swarm/main routed proof passed through GitHub-hosted
+          fallback in run 26725885443, and source post-merge routed proof
+          passed through GitHub-hosted fallback in run 26726005951
+
+Remote branch hygiene after EffortlessMetrics/shiplog#550:
+  result: remote branch hygiene is clean; audited stale source and swarm
+          branch candidates before deletion, preserved protected release
+          branches, left no open PRs or issues in either repo, and reran
+          `rtk cargo xtask repo-contract-report` with 0 source and 0 swarm
+          cleanup candidates
 ```
 
 ### Proof commands
