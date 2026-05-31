@@ -1260,6 +1260,18 @@ Remote branch hygiene after EffortlessMetrics/shiplog#550:
           branches, left no open PRs or issues in either repo, and reran
           `rtk cargo xtask repo-contract-report` with 0 source and 0 swarm
           cleanup candidates
+
+EffortlessMetrics/shiplog#551:
+  swarm head: f2cacaa612efdea3ecc9bff84a8fcb24698e25bf
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#114
+  source merge: 8f2e802a4ea582db978acda248bd8ae4106930f4
+  result: regular merge commit; repo-contract-report now reports scoped
+          receipt-refresh heads as `pending-next-substantive-pr` even when the
+          subject does not include the word `promotion`; swarm PR routed proof
+          passed on CX43 in run 26726754000, swarm/main routed proof passed
+          through GitHub-hosted fallback in run 26726941507, and source
+          post-merge routed proof passed through GitHub-hosted fallback in run
+          26727092150
 ```
 
 ### Proof commands

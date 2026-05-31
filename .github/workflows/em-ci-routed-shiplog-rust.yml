@@ -76,12 +76,6 @@ jobs:
           }
           source_repo_release_surface = repo == "EffortlessMetrics/shiplog"
           non_pr_event = event_name != "pull_request"
-          fallback_allowed = (
-              source_repo_release_surface
-              or non_pr_event
-              or "allow-github-hosted" in labels
-              or "ci-budget-ack" in labels
-          )
 
           def request_json(url, bearer_token):
               request = urllib.request.Request(
@@ -118,6 +112,14 @@ jobs:
               trusted = head_repo == repo
               if not trusted and head_repo is None:
                   trusted = source_branch_matches(head.get("ref"), head.get("sha"))
+
+          fallback_allowed = (
+              trusted
+              or source_repo_release_surface
+              or non_pr_event
+              or "allow-github-hosted" in labels
+              or "ci-budget-ack" in labels
+          )
 
           def set_output(target, reason):
               output_path = os.environ["GITHUB_OUTPUT"]
@@ -354,7 +356,7 @@ jobs:
         run: rm -rf "/mnt/ci-scratch/shiplog-swarm/${{ github.run_id }}-${{ github.run_attempt }}"
 
   rust_small_github:
-    name: Shiplog Rust Tiny Fallback on GitHub Hosted
+    name: Shiplog Rust Small on GitHub Hosted
     needs: [route]
     if: needs.route.outputs.target == 'github'
     runs-on: ubuntu-latest
@@ -366,12 +368,14 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: "1.95.0"
-          components: rustfmt
+          components: rustfmt, clippy
 
       - name: Run Shiplog Rust Small checks
         run: |
           cargo fmt --all -- --check
-          cargo check --workspace --all-targets --locked
+          cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+          cargo test --workspace --all-features --locked -- --test-threads=4
+          cargo xtask check-no-panic-family --mode blocking-allowlist
           git diff --check
 
   no_runner_capacity:
