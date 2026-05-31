@@ -116,7 +116,7 @@ ledger growth without opening each file.
 
 ### `cargo xtask repo-contract-report`
 
-Writes source-of-truth graph reports for humans and agents:
+Writes repo-contract inspection reports for humans and agents:
 
 - `target/source-of-truth/graph.json`
 - `target/source-of-truth/graph.md`

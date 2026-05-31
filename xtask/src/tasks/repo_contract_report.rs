@@ -1,6 +1,6 @@
 //! `rtk cargo xtask repo-contract-report`
 //!
-//! Writes a compact source-of-truth graph report for humans and agents.
+//! Writes a compact repo-contract inspection report for humans and agents.
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};

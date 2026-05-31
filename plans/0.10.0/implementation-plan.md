@@ -283,8 +283,9 @@ PR: EffortlessMetrics/shiplog-swarm#33, EffortlessMetrics/shiplog#476
 ### Goal
 
 Add `cargo xtask repo-contract-report` so humans and agents can inspect the
-current source-of-truth graph without manually opening every proposal, spec,
-plan, goal manifest, support-tier row, and policy ledger.
+current repo-contract state without manually opening every proposal, spec,
+plan, goal manifest, support-tier row, policy ledger, topology receipt, branch
+hygiene receipt, and promotion receipt.
 
 ### Production delta
 
@@ -303,8 +304,8 @@ authority move, and no runtime product behavior changes.
 - `cargo xtask repo-contract-report` reads `docs/status/SUPPORT_TIERS.md`.
 - The command writes `target/source-of-truth/graph.json`.
 - The command writes `target/source-of-truth/graph.md`.
-- The report includes active goal, work items, artifacts, support tiers, and
-  graph edges.
+- The report includes active goal, work items, artifacts, support tiers, graph
+  edges, local checkout state, topology, branch hygiene, and receipt freshness.
 - The report is derived only; dedicated validators remain the enforcement
   commands.
 
