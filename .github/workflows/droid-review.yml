@@ -13,7 +13,7 @@ jobs:
     if: |
       github.event.pull_request.head.repo.full_name == github.repository &&
       !contains(github.event.pull_request.title, '[skip-review]')
-    runs-on: self-hosted
+    runs-on: ${{ github.repository == 'EffortlessMetrics/shiplog-swarm' && 'self-hosted' || 'ubuntu-latest' }}
     permissions:
       contents: write
       pull-requests: write

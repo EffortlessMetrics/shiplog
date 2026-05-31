@@ -47,7 +47,7 @@ env:
 jobs:
   smoke:
     name: smoke
-    runs-on: self-hosted
+    runs-on: ${{ github.repository == 'EffortlessMetrics/shiplog-swarm' && 'self-hosted' || 'ubuntu-latest' }}
     timeout-minutes: 15
 
     steps:

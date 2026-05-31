@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   droid-security-scan:
-    runs-on: self-hosted
+    runs-on: ${{ github.repository == 'EffortlessMetrics/shiplog-swarm' && 'self-hosted' || 'ubuntu-latest' }}
 
     env:
       MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}

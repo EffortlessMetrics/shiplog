@@ -68,7 +68,7 @@ jobs:
   deny:
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'full-ci')
     name: cargo-deny
-    runs-on: self-hosted
+    runs-on: ${{ github.repository == 'EffortlessMetrics/shiplog-swarm' && 'self-hosted' || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v6.0.2
 
@@ -91,7 +91,7 @@ jobs:
   policy:
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'full-ci')
     name: Policy gates
-    runs-on: self-hosted
+    runs-on: ${{ github.repository == 'EffortlessMetrics/shiplog-swarm' && 'self-hosted' || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v6.0.2
 
