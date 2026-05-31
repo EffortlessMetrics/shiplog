@@ -124,11 +124,16 @@ Writes source-of-truth graph reports for humans and agents:
 The report reads [`policy/doc-artifacts.toml`](../policy/doc-artifacts.toml),
 [`.codex/goals/active.toml`](../.codex/goals/active.toml), and
 [`docs/status/SUPPORT_TIERS.md`](status/SUPPORT_TIERS.md). It summarizes the
-active goal, work items, artifact links, support-tier proof commands, and graph
-edges. It also reports the current `origin/main` / `swarm/main` topology and
-classifies the full source-ahead commit range so expected `promote/swarm-*`
-merge commits are not confused with source-only content drift. It does not
-mutate source artifacts and does not replace the dedicated validators.
+active goal, work items, artifact links, support-tier proof commands, graph
+edges, local checkout state, source/swarm topology, remote branch hygiene, and
+promotion receipt freshness. The topology section classifies the full
+source-ahead commit range so expected `promote/swarm-*` merge commits are not
+confused with source-only content drift. The branch hygiene section separates
+source and swarm cleanup candidates into merged and review buckets; it is an
+inspection receipt and does not delete branches. The receipt freshness section
+shows which latest swarm/source promotion receipts need to be carried into the
+next substantive swarm PR. It does not mutate source artifacts and does not
+replace the dedicated validators.
 
 ### `cargo xtask pr-body`
 
