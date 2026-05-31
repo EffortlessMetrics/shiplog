@@ -15,8 +15,8 @@ concurrency:
 jobs:
   check:
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'full-ci')
-    name: Check (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
+    name: Check (${{ github.repository == 'EffortlessMetrics/shiplog-swarm' && matrix.os || 'ubuntu-latest' }})
+    runs-on: ${{ github.repository == 'EffortlessMetrics/shiplog-swarm' && matrix.os || 'ubuntu-latest' }}
     strategy:
       matrix:
         os: [self-hosted]
