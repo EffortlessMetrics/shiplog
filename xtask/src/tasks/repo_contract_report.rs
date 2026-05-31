@@ -598,7 +598,7 @@ fn merged_cleanup_review_commands(candidates: &[String], remote: &str, repo: &st
         .filter_map(|candidate| remote_branch_head(candidate, remote).map(|head| (candidate, head)))
         .map(|(candidate, head)| {
             format!(
-                "rtk gh pr list --repo {repo} --state all --head EffortlessMetrics:{head} --limit 10 && rtk git log --oneline --max-count 3 {candidate}"
+                "rtk gh pr list --repo {repo} --state all --head {head} --limit 10 && rtk git log --oneline --max-count 3 {candidate}"
             )
         })
         .collect()
@@ -2209,13 +2209,13 @@ receipts = [
         assert_eq!(
             report.source_merged_cleanup_review_commands,
             vec![
-                "rtk gh pr list --repo EffortlessMetrics/shiplog --state all --head EffortlessMetrics:promote/swarm-20260531-1046ae2 --limit 10 && rtk git log --oneline --max-count 3 origin/promote/swarm-20260531-1046ae2"
+                "rtk gh pr list --repo EffortlessMetrics/shiplog --state all --head promote/swarm-20260531-1046ae2 --limit 10 && rtk git log --oneline --max-count 3 origin/promote/swarm-20260531-1046ae2"
             ]
         );
         assert_eq!(
             report.swarm_merged_cleanup_review_commands,
             vec![
-                "rtk gh pr list --repo EffortlessMetrics/shiplog-swarm --state all --head EffortlessMetrics:codex/stale-agent-branch --limit 10 && rtk git log --oneline --max-count 3 swarm/codex/stale-agent-branch"
+                "rtk gh pr list --repo EffortlessMetrics/shiplog-swarm --state all --head codex/stale-agent-branch --limit 10 && rtk git log --oneline --max-count 3 swarm/codex/stale-agent-branch"
             ]
         );
         assert!(report.next_actions.iter().any(|action| {
