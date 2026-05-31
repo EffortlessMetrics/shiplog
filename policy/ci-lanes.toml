@@ -137,13 +137,13 @@ note = "Same intent as lane.ci_deny on PR; PR #155 routed PR fires to label-only
 description = "Critical CLI flow BDD scenarios (merge + render contract), bounded and deterministic."
 intent = "PR-fast acceptance smoke"
 runner = "ubuntu_24_04"
-base_lem = 6
+base_lem = 12
 default_pr = true
 blocking = false
 workflow = ".github/workflows/bdd-smoke.yml"
 workflow_name = "BDD Smoke"
 job_name = "smoke"
-note = "Added in PR #154. Two scenarios: multi_source_merging_scenario_7_10_pipeline_contract (--features merge_pipeline) + multi_source_merging_scenario_7_8_render."
+note = "Added in PR #154. Two exact nested scenarios: bdd_v03x_tests::v03x_tests::multi_source_merging_scenario_7_10_pipeline_contract (--features merge_pipeline) + bdd_v03x_tests::v03x_tests::multi_source_merging_scenario_7_8_render. Timeout is 20m to tolerate cold self-hosted builds."
 
 [lane.property_smoke]
 description = "Foundation crate property tests at PROPTEST_CASES=64, deterministic seed."

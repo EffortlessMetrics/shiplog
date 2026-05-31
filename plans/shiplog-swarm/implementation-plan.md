@@ -1167,6 +1167,16 @@ EffortlessMetrics/shiplog#542:
           CPX42 in run 26719860670, swarm/main routed proof passed in run
           26720054356, and source post-merge routed proof passed in run
           26720251607
+
+EffortlessMetrics/shiplog#543:
+  swarm head: bf259dc9c6d668edca9cddc8fae4dc924a5a0932
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#106
+  source merge: 2c83e1d16d954ce181dbf5730e1badb769ff1004
+  result: regular merge commit; repo-contract report now surfaces remote
+          branch hygiene cleanup candidates without deleting branches; swarm
+          PR proof ran on CPX42 in run 26720449439, swarm/main routed proof
+          passed in run 26720636561, and source post-merge routed proof passed
+          in run 26720872910
 ```
 
 ### Proof commands

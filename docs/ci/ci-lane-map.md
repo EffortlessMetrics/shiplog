@@ -90,7 +90,7 @@ placeholder, but no Windows job is currently wired in `ci.yml`.
 
 | Job | Trigger | Default PR? | Blocking | Runner | Base LEM | Intent | Failure mode caught | Evidence | duplicate_of | Target lane | Owner |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `smoke` | push main + PR | yes | no | ubuntu-latest | 6 | PR-fast acceptance smoke | Multi-source merge + render contract regression | step summary | smoke subset of `lane.bdd` | PR fast advisory | policy |
+| `smoke` | push main + PR | yes | no | ubuntu-latest | 12 | PR-fast acceptance smoke | Multi-source merge + render contract regression | step summary | smoke subset of `lane.bdd` | PR fast advisory | policy |
 
 ## property-smoke.yml — bounded property smoke (added in PR #154)
 

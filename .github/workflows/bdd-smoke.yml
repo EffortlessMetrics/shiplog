@@ -35,7 +35,7 @@ jobs:
   smoke:
     name: smoke
     runs-on: ${{ github.repository == 'EffortlessMetrics/shiplog-swarm' && 'self-hosted' || 'ubuntu-latest' }}
-    timeout-minutes: 10
+    timeout-minutes: 20
 
     steps:
       - uses: actions/checkout@v6.0.2
@@ -53,7 +53,7 @@ jobs:
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Critical merge + render contract scenario
-        run: cargo test -p shiplog-testkit --features merge_pipeline multi_source_merging_scenario_7_10_pipeline_contract -- --exact --nocapture
+        run: cargo test -p shiplog-testkit --features merge_pipeline bdd_v03x_tests::v03x_tests::multi_source_merging_scenario_7_10_pipeline_contract -- --exact --nocapture
 
       - name: Critical multi-source render scenario
-        run: cargo test -p shiplog-testkit multi_source_merging_scenario_7_8_render -- --exact --nocapture
+        run: cargo test -p shiplog-testkit --features merge_pipeline bdd_v03x_tests::v03x_tests::multi_source_merging_scenario_7_8_render -- --exact --nocapture
