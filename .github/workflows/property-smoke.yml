@@ -53,6 +53,9 @@ jobs:
         with:
           toolchain: "1.95.0"
 
+      - name: Ensure native Rust build dependencies
+        uses: ./.github/actions/native-build-deps
+
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: property-smoke

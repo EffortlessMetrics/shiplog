@@ -1,0 +1,57 @@
+name: Ensure native Rust build dependencies
+description: Ensure Linux runners have the native compiler/linker inputs used by Rust CI jobs.
+
+runs:
+  using: composite
+  steps:
+    - name: Ensure native Rust build dependencies
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        pick_cxx() {
+          for bin in c++ clang++ g++; do
+            if command -v "$bin" >/dev/null 2>&1; then
+              command -v "$bin"
+              return 0
+            fi
+          done
+          return 1
+        }
+
+        check_zlib() {
+          local probe="${RUNNER_TEMP:-/tmp}/shiplog-zlib-check"
+          printf 'int main(void) { return 0; }\n' | cc -x c - -lz -o "$probe" >/dev/null 2>&1
+          rm -f "$probe"
+        }
+
+        compiler="$(pick_cxx || true)"
+        zlib_ok=true
+        if ! check_zlib; then
+          zlib_ok=false
+        fi
+
+        if { [ -z "$compiler" ] || [ "$zlib_ok" = false ]; } &&
+          command -v sudo >/dev/null 2>&1 &&
+          command -v apt-get >/dev/null 2>&1; then
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends g++ zlib1g-dev
+          compiler="$(pick_cxx || true)"
+          zlib_ok=true
+          if ! check_zlib; then
+            zlib_ok=false
+          fi
+        fi
+
+        if [ -z "$compiler" ]; then
+          echo "::error::Rust CI jobs require c++, clang++, or g++ on the runner."
+          exit 1
+        fi
+
+        if [ "$zlib_ok" = false ]; then
+          echo "::error::Rust CI jobs require zlib development libraries linkable with -lz."
+          exit 1
+        fi
+
+        echo "CXX=$compiler" >> "$GITHUB_ENV"
+        "$compiler" --version
