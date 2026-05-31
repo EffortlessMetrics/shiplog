@@ -119,6 +119,10 @@ jobs:
           toolchain: nightly-2026-05-20
           components: llvm-tools-preview
 
+      - name: Ensure native Rust build dependencies
+        if: steps.targets.outputs.targets != ''
+        uses: ./.github/actions/native-build-deps
+
       - name: Cache cargo binaries
         if: steps.targets.outputs.targets != ''
         uses: actions/cache@v5
