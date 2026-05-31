@@ -154,9 +154,9 @@ jobs:
               *) dict="" ;;
             esac
             if [ -n "$dict" ]; then
-              cargo fuzz run "$t" -- -max_total_time=30 -dict=dictionaries/"$dict"
+              cargo +nightly-2026-05-20 fuzz run "$t" -- -max_total_time=30 -dict=dictionaries/"$dict"
             else
-              cargo fuzz run "$t" -- -max_total_time=30
+              cargo +nightly-2026-05-20 fuzz run "$t" -- -max_total_time=30
             fi
           done
 
