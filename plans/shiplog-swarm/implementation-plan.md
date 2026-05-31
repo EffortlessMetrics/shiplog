@@ -1148,6 +1148,15 @@ EffortlessMetrics/shiplog#540:
           observed Fuzzing `c++` failure and BDD Smoke `-lz` failure were both
           repaired on PR runs; source post-merge routed CI, CI, Fuzzing, BDD
           Testing, Property Testing, Coverage, smoke, and Security passed
+
+EffortlessMetrics/shiplog#541:
+  swarm head: b046873f79d9110d60e7bfc042f404140fc949ea
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#104
+  source merge: 2a60835df9e5b164c2eb0cef22fac67a066c5f8c
+  result: regular merge commit; promotion receipts were refreshed through
+          source #540 and swarm #103; swarm/main routed proof passed in run
+          26719505213, and source post-merge routed proof passed in run
+          26719661881
 ```
 
 ### Proof commands

@@ -566,7 +566,7 @@ fn is_promotion_receipt_refresh_head(latest_swarm_head: Option<&str>) -> bool {
         .map(|(_, subject)| subject)
         .unwrap_or(latest_swarm_head)
         .to_ascii_lowercase();
-    subject.contains("refresh promotion receipts")
+    subject.contains("refresh") && subject.contains("promotion") && subject.contains("receipt")
 }
 
 fn load_plan_texts(workspace_root: &Path, goal: &ActiveGoal, notes: &mut Vec<String>) -> String {
@@ -1763,6 +1763,16 @@ receipts = [
                 .iter()
                 .any(|action| action.contains("receipt-only loop"))
         );
+    }
+
+    #[test]
+    fn receipt_freshness_defers_scoped_promotion_receipt_refreshes() {
+        let status = receipt_freshness_status(
+            &[true, false, true, false],
+            Some("b046873 docs(swarm): refresh native-deps promotion receipts (#104)"),
+        );
+
+        assert_eq!(status, "pending-next-substantive-pr");
     }
 
     #[test]
