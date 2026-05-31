@@ -1129,6 +1129,25 @@ EffortlessMetrics/shiplog#538:
           policy-ledger value while preserving source-safe runner selection;
           source post-merge routed CI, CI, Fuzzing, BDD Testing, and Property
           Testing passed; both PR queues were empty after merge
+
+EffortlessMetrics/shiplog#539:
+  swarm head: ec2a6d62e65d0647a432a4f46d687cb03226276b
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#102
+  source merge: 82b205acecc48d6d09d46c8a76075270c63069df
+  result: regular merge commit; promotion receipts were refreshed through
+          source #538 and swarm #101; swarm proof included #102 PR run
+          26717077588, swarm/main push run 26717191002, `check-goals`,
+          `repo-contract-report`, and `git diff --check`
+
+EffortlessMetrics/shiplog#540:
+  swarm head: d8ea5515f60ce121bc6c2f7ae4ab802d98630433
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#103
+  source merge: 31f3ec64d4381b4e15ddcbf1c3be72125e94c37d
+  result: regular merge commit; raw self-hosted Rust-building workflows gained
+          a shared native build dependency preflight for C++ and zlib; the
+          observed Fuzzing `c++` failure and BDD Smoke `-lz` failure were both
+          repaired on PR runs; source post-merge routed CI, CI, Fuzzing, BDD
+          Testing, Property Testing, Coverage, smoke, and Security passed
 ```
 
 ### Proof commands
