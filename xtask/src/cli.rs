@@ -51,7 +51,7 @@ enum Command {
     /// Print a human summary of every policy ledger.
     PolicyReport,
 
-    /// Write a source-of-truth graph report for humans and agents.
+    /// Write a repo-contract inspection report for humans and agents.
     RepoContractReport,
 
     /// Generate a pull request body from the active source-of-truth work item.
