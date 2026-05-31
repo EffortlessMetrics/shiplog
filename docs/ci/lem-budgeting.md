@@ -32,6 +32,7 @@ A wall-clock minute on a non-Linux runner converts to LEM by multiplier:
 | Runner | Multiplier | Notes |
 | ------ | ---------: | ----- |
 | `ubuntu-24.04`, `ubuntu-latest` | **1.0×** | Baseline. |
+| `self-hosted` | **1.0×** | Treated as Linux-equivalent wall time for forecasting and actuals. |
 | `windows-latest` | **2.0×** | GitHub-hosted Windows is ~2× Linux billing. |
 | `macos-latest` | **10.0×** | GitHub-hosted macOS is ~10× Linux billing. |
 | docker build / `docker buildx` | **6.0×** | Heavy IO + image fetch + layer cost. |
@@ -131,9 +132,9 @@ A representative shiplog PR after the rollout (target):
 
 | Lane | LEM (~) | Notes |
 | ---- | ------: | ----- |
-| `ci.yml#check` Ubuntu | 12 | unchanged |
-| `ci.yml#check` Windows | 36 | covered by exception entry; reviewable |
-| `ci.yml#deny` | 4 | unchanged |
+| `ci.yml#check` self-hosted | 12 | main/full-ci route |
+| `ci.yml#check` Windows | 0 | no PR job currently wired; metadata lane retained |
+| `ci.yml#deny` | 4 | main/full-ci route |
 | `ci.yml#msrv` | 0–5 | candidate to drop in PR #147 (redundant with `check` while pin == MSRV) |
 | `ripr.yml` advisory | 4 | added in PR #153 |
 | `pr-plan.yml` | 1 | added in PR #146 |

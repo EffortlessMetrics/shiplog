@@ -16,6 +16,7 @@ hard_limit_lem = 125
 linux_minute_rate_usd = 0.008
 
 [runner_multipliers]
+self_hosted = 1.0
 ubuntu_latest = 1.0
 ubuntu_24_04 = 1.0
 windows_latest = 2.0

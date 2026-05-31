@@ -30,7 +30,7 @@ expires = "permanent"
 [[entry]]
 path = ".github/workflows/ci-actuals.yml"
 owner = "release/ci"
-reason = "CI Actuals collector. Triggers on workflow_run completion for every instrumented workflow, fetches per-job timings via `gh api`, joins to policy/ci-lanes.toml + policy/ci-budget.toml via `cargo xtask ci actuals`, emits target/ci/ci-actuals.json against contracts/schemas/ci-actuals.v1.schema.json. Closes the LEM feedback loop. Never blocks merge."
+reason = "CI Actuals collector. Triggers on workflow_run completion for every instrumented workflow, fetches per-job timings via the GitHub REST API, joins to policy/ci-lanes.toml + policy/ci-budget.toml via `cargo xtask ci actuals`, emits target/ci/ci-actuals.json against contracts/schemas/ci-actuals.v1.schema.json. Closes the LEM feedback loop. Never blocks merge."
 permissions = ["contents:read", "actions:read"]
 secrets_used = ["GITHUB_TOKEN"]
 external_actions = [
@@ -102,7 +102,7 @@ expires = "permanent"
 [[entry]]
 path = ".github/workflows/ci.yml"
 owner = "release/ci"
-reason = "Primary PR correctness gate (Ubuntu + Windows). Check job covers fmt --check, clippy -D --locked --all-features, workspace tests --locked --all-features, doc-tests --locked --all-features, doc build -D warnings, release build --locked, canary `shiplog` publish --dry-run --locked. Sibling jobs: cargo-deny dependency policy, Policy gates (runs policy ledger checks plus source-of-truth validators; added in PR #165 and expanded for SHIPLOG-SPEC-0010)."
+reason = "Self-hosted main/full-ci correctness gate. Check job covers fmt --check, clippy -D --locked --all-features, workspace tests --locked --all-features, doc-tests --locked --all-features, doc build -D warnings, release build --locked, canary `shiplog` publish --dry-run --locked. Sibling jobs: cargo-deny dependency policy, Policy gates (runs policy ledger checks plus source-of-truth validators, with cargo-allow replacing the non-Rust file-policy xtask gate; added in PR #165 and expanded for SHIPLOG-SPEC-0010)."
 permissions = ["contents:read"]
 secrets_used = []
 external_actions = [

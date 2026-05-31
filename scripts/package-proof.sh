@@ -13,7 +13,19 @@ cargo check --manifest-path fuzz/Cargo.toml --bins
 cargo deny check
 git diff --check
 
-mapfile -t packages < <(python - <<'PY' | tr -d '\r'
+python_bin="${PYTHON:-}"
+if [[ -z "$python_bin" ]]; then
+  if command -v python3 >/dev/null 2>&1; then
+    python_bin=python3
+  elif command -v python >/dev/null 2>&1; then
+    python_bin=python
+  else
+    echo "python3 or python is required for package proof" >&2
+    exit 127
+  fi
+fi
+
+mapfile -t packages < <("$python_bin" - <<'PY' | tr -d '\r'
 from pathlib import Path
 import sys
 

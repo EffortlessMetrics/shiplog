@@ -56,49 +56,55 @@ not_subscribed = [
 # ── ci.yml jobs (PR-fast required gate) ────────────────────────────────
 
 [lane.ci_check]
-description = "Primary shiplog PR correctness gate (Ubuntu)."
+description = "Primary shiplog correctness gate on the self-hosted main/full-ci route."
 intent = "Rust correctness"
-runner = "ubuntu_24_04"
+runner = "self_hosted"
 base_lem = 12
-default_pr = true
+default_pr = false
 blocking = true
 workflow = ".github/workflows/ci.yml"
 workflow_name = "CI"
-job_name = "Check (ubuntu-latest)"
+job_name = "Check (self-hosted)"
+labels = ["full-ci"]
+branches = ["main"]
+note = "Runs on push to main and on PRs labeled full-ci. The required default PR gate is the routed Shiplog Rust Small Result lane."
 
 [lane.ci_check_windows]
-description = "Cross-platform parity check (Windows)."
+description = "Cross-platform parity check placeholder; no Windows job is wired in ci.yml while CI is routed through the self-hosted main/full-ci lane."
 intent = "Rust correctness (Windows parity)"
 runner = "windows_latest"
-base_lem = 36
-default_pr = true
-blocking = true
-workflow = ".github/workflows/ci.yml"
-workflow_name = "CI"
-job_name = "Check (windows-latest)"
-note = "Windows runners are 2x Linux billing; covered by ci-exception-0001."
+base_lem = 0
+default_pr = false
+blocking = false
+note = "Metadata-only lane retained so historical risk/cost references have a stable ID. Reintroduce workflow/workflow_name/job_name and a fresh exception before restoring Windows PR parity."
 
 [lane.ci_deny]
 description = "Dependency policy: bans, advisories, licenses, sources."
 intent = "dependency policy"
-runner = "ubuntu_24_04"
+runner = "self_hosted"
 base_lem = 4
-default_pr = true
+default_pr = false
 blocking = true
 workflow = ".github/workflows/ci.yml"
 workflow_name = "CI"
 job_name = "cargo-deny"
+labels = ["full-ci"]
+branches = ["main"]
+note = "Runs on push to main and on PRs labeled full-ci."
 
 [lane.ci_policy]
 description = "Policy and source-of-truth enforcement: schemas, doc artifacts, goals, support tiers, and blocking-allowlist checks."
 intent = "policy enforcement"
-runner = "ubuntu_24_04"
+runner = "self_hosted"
 base_lem = 3
-default_pr = true
+default_pr = false
 blocking = true
 workflow = ".github/workflows/ci.yml"
 workflow_name = "CI"
 job_name = "Policy gates"
+labels = ["full-ci"]
+branches = ["main"]
+note = "Runs on push to main and on PRs labeled full-ci."
 
 # ── Standalone security workflow (label-gated; duplicate of ci_deny) ──
 

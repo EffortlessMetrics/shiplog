@@ -13,7 +13,19 @@ fi
 export PACKAGE_BOUNDARY_METADATA_PATH="$metadata_path"
 export PACKAGE_BOUNDARY_POLICY_PATH="$policy_path"
 
-python - <<'PY'
+python_bin="${PYTHON:-}"
+if [[ -z "$python_bin" ]]; then
+  if command -v python3 >/dev/null 2>&1; then
+    python_bin=python3
+  elif command -v python >/dev/null 2>&1; then
+    python_bin=python
+  else
+    echo "python3 or python is required for package boundary audit" >&2
+    exit 127
+  fi
+fi
+
+"$python_bin" - <<'PY'
 import json
 import os
 import sys

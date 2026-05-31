@@ -41,7 +41,7 @@ env:
 jobs:
   coverage:
     name: Codecov Coverage
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.repository == 'EffortlessMetrics/shiplog-swarm' && 'self-hosted' || 'ubuntu-latest' }}
     timeout-minutes: 45
 
     if: >-
