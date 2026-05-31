@@ -1177,6 +1177,17 @@ EffortlessMetrics/shiplog#543:
           PR proof ran on CPX42 in run 26720449439, swarm/main routed proof
           passed in run 26720636561, and source post-merge routed proof passed
           in run 26720872910
+
+EffortlessMetrics/shiplog#544:
+  swarm head: 5887abc74cbbb35829be28f42334f8932046ec28
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#107
+  source merge: 178bee3d6c03e531a83b2bb7e016c8161dd09118
+  result: regular merge commit; BDD Smoke now runs the intended exact nested
+          test names and has a 20-minute cold-build budget; swarm PR BDD Smoke
+          passed in runs 26721132266 and 26721235327, swarm PR routed proof
+          passed on CPX42 in run 26721235320, swarm/main routed proof passed in
+          run 26721494988, and source post-merge routed proof passed in run
+          26721679448
 ```
 
 ### Proof commands
