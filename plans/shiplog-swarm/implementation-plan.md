@@ -1071,6 +1071,64 @@ EffortlessMetrics/shiplog#529:
           aligned with current gates and non-PR hosted fallback was allowed for
           push/manual/merge-group routes; source post-merge routed CI, CI,
           smoke, security, testing, and CI Actuals passed
+
+EffortlessMetrics/shiplog#530:
+  swarm head: 37ad2c5deb17c35afe8fa0dbcec8f6d044a8f9b1
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#88
+  source merge: 1793bd44c10e8c392bcf7243e7964e662fc9bf6d
+  result: regular merge commit; promotion receipts refreshed through #88;
+          source post-merge checks passed
+
+EffortlessMetrics/shiplog#531:
+  swarm head: 04ff63427ce4014c37b6b6d9dee21c74a0ddfd3d
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#89
+  source merge: 40a3ce6a9cd4ea2dbd90918cfc24584a2aca968c
+  result: regular merge commit; receipt-refresh loop status was deferred so
+          future agents refresh receipts during substantive swarm PRs instead
+          of creating an infinite receipt-only loop
+
+EffortlessMetrics/shiplog#535:
+  swarm head: 7415ab8118400d2f4f10e9477f67a796f16cf19e
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#90,
+                       EffortlessMetrics/shiplog-swarm#91,
+                       EffortlessMetrics/shiplog-swarm#92,
+                       EffortlessMetrics/shiplog-swarm#93,
+                       EffortlessMetrics/shiplog-swarm#96,
+                       EffortlessMetrics/shiplog-swarm#94,
+                       EffortlessMetrics/shiplog-swarm#95,
+                       EffortlessMetrics/shiplog-swarm#97
+  source merge: 50effd4c94848e91a64d5c24795438855888ff18
+  result: regular merge commit; routed control-plane and promoted workflows
+          were repaired so source fallback runs on GitHub-hosted runners and
+          source-only dependency PRs #534 and #533 were closed as superseded by
+          the swarm dependency PRs plus this source promotion
+
+EffortlessMetrics/shiplog#536:
+  swarm head: ec058bf6ba0f8832ff1862a9116dab3d13607637
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#98,
+                       EffortlessMetrics/shiplog-swarm#99
+  source merge: 9a3eabd9c257239ad8c94758052745f544091013
+  result: regular merge commit; fuzz nightly and cargo-fuzz invocation were
+          pinned after the rusqlite update exposed the old floating-nightly
+          `cfg_select` failure; source Fuzzing proof passed before merge
+
+EffortlessMetrics/shiplog#537:
+  swarm head: 05abb57e5bc68e7326af88cfa2a114b195bdf06b
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#100
+  source merge: 81d971a203566e30d6d58c6803af453cb9e6c6fd
+  result: regular merge commit; source CI matrix routing was made
+          GitHub-hosted-safe without adding self-hosted access to
+          EffortlessMetrics/shiplog; stale source-only security report PR #532
+          was closed rather than creating source-only divergence
+
+EffortlessMetrics/shiplog#538:
+  swarm head: e295d0c080f2c1e1df8671aeb979d2062212061d
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#101
+  source merge: 3bd3bcc393b3709390afce857bc7bee5831e705b
+  result: regular merge commit; CI lane display name was restored to the
+          policy-ledger value while preserving source-safe runner selection;
+          source post-merge routed CI, CI, Fuzzing, BDD Testing, and Property
+          Testing passed; both PR queues were empty after merge
 ```
 
 ### Proof commands
