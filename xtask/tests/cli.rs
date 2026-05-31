@@ -538,7 +538,7 @@ commands = ["rtk cargo xtask repo-contract-report", "rtk git diff --check"]
 
 | Surface | Tier | Claim | Proof command | Notes |
 |---|---|---|---|---|
-| Repo contract report | Stabilizing | Agents can inspect the graph. | `rtk cargo xtask repo-contract-report` | Writes graph reports. |
+| Repo contract report | Stabilizing | Agents can inspect repo contract state. | `rtk cargo xtask repo-contract-report` | Writes inspection reports. |
 "#,
         ),
     ]);
@@ -562,7 +562,7 @@ commands = ["rtk cargo xtask repo-contract-report", "rtk git diff --check"]
     assert!(
         fs::read_to_string(graph_md)
             .expect("read graph md")
-            .contains("# Source-of-truth graph")
+            .contains("# Repo contract report")
     );
 }
 
