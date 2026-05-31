@@ -737,7 +737,7 @@ fn inspect_receipt_freshness(
     let status = receipt_freshness_status(&required, latest_swarm_head.as_deref()).to_string();
     if status == "pending-next-substantive-pr" {
         notes.push(
-            "latest swarm head is a promotion-receipt refresh; self-referential receipts should be carried by the next substantive swarm PR"
+            "latest swarm head is a receipt refresh; self-referential receipts should be carried by the next substantive swarm PR"
                 .to_string(),
         );
     }
@@ -778,14 +778,14 @@ fn receipt_freshness_status(required: &[bool], latest_swarm_head: Option<&str>) 
         "unavailable"
     } else if required.iter().all(|present| *present) {
         "current"
-    } else if is_promotion_receipt_refresh_head(latest_swarm_head) {
+    } else if is_receipt_refresh_head(latest_swarm_head) {
         "pending-next-substantive-pr"
     } else {
         "stale"
     }
 }
 
-fn is_promotion_receipt_refresh_head(latest_swarm_head: Option<&str>) -> bool {
+fn is_receipt_refresh_head(latest_swarm_head: Option<&str>) -> bool {
     let Some(latest_swarm_head) = latest_swarm_head else {
         return false;
     };
@@ -794,7 +794,7 @@ fn is_promotion_receipt_refresh_head(latest_swarm_head: Option<&str>) -> bool {
         .map(|(_, subject)| subject)
         .unwrap_or(latest_swarm_head)
         .to_ascii_lowercase();
-    subject.contains("refresh") && subject.contains("promotion") && subject.contains("receipt")
+    (subject.contains("refresh") || subject.contains("refreshed")) && subject.contains("receipt")
 }
 
 fn load_plan_texts(workspace_root: &Path, goal: &ActiveGoal, notes: &mut Vec<String>) -> String {
@@ -868,7 +868,7 @@ fn receipt_freshness_next_actions(status: &str) -> Vec<String> {
                 .to_string(),
         ],
         "pending-next-substantive-pr" => vec![
-            "The latest swarm change is itself a promotion-receipt refresh; carry these self-referential receipts in the next substantive swarm PR instead of opening another receipt-only loop."
+            "The latest swarm change is itself a receipt refresh; carry these self-referential receipts in the next substantive swarm PR instead of opening another receipt-only loop."
                 .to_string(),
         ],
         _ => vec![
@@ -2300,6 +2300,16 @@ receipts = [
         let status = receipt_freshness_status(
             &[true, false, true, false],
             Some("b046873 docs(swarm): refresh native-deps promotion receipts (#104)"),
+        );
+
+        assert_eq!(status, "pending-next-substantive-pr");
+    }
+
+    #[test]
+    fn receipt_freshness_defers_scoped_receipt_refreshes_without_promotion_word() {
+        let status = receipt_freshness_status(
+            &[true, false, true, false],
+            Some("e86bcde docs(swarm): refresh branch cleanup receipts (#114)"),
         );
 
         assert_eq!(status, "pending-next-substantive-pr");
