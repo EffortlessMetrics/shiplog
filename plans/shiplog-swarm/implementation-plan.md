@@ -1157,6 +1157,16 @@ EffortlessMetrics/shiplog#541:
           source #540 and swarm #103; swarm/main routed proof passed in run
           26719505213, and source post-merge routed proof passed in run
           26719661881
+
+EffortlessMetrics/shiplog#542:
+  swarm head: 1046ae2eac0e7a99ad8af580fff2cce510a1ea7d
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#105
+  source merge: e19e518246bbdff255d83b6878ebe12ca5614e57
+  result: regular merge commit; repo-contract receipt freshness now defers
+          scoped receipt-refresh loop subjects correctly; swarm PR proof ran on
+          CPX42 in run 26719860670, swarm/main routed proof passed in run
+          26720054356, and source post-merge routed proof passed in run
+          26720251607
 ```
 
 ### Proof commands

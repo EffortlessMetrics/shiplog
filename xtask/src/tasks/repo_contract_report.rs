@@ -115,6 +115,7 @@ struct RepoContractReport {
     active_goal: ActiveGoalReport,
     git_topology: GitTopologyReport,
     local_checkout: LocalCheckoutReport,
+    remote_branch_hygiene: RemoteBranchHygieneReport,
     receipt_freshness: ReceiptFreshnessReport,
     artifacts: Vec<Artifact>,
     work_items: Vec<WorkItem>,
@@ -151,6 +152,18 @@ struct LocalCheckoutReport {
 }
 
 #[derive(Debug, Serialize)]
+struct RemoteBranchHygieneReport {
+    status: String,
+    source_remote: String,
+    swarm_remote: String,
+    source_cleanup_candidates: Vec<String>,
+    swarm_cleanup_candidates: Vec<String>,
+    protected_branches: Vec<String>,
+    notes: Vec<String>,
+    next_actions: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
 struct ReceiptFreshnessReport {
     status: String,
     latest_source_promotion_merge: Option<String>,
@@ -173,6 +186,7 @@ pub fn run(workspace_root: &Path) -> Result<()> {
     let support_tiers = load_support_tiers(workspace_root)?;
     let git_topology = inspect_git_topology(workspace_root);
     let local_checkout = inspect_local_checkout(workspace_root);
+    let remote_branch_hygiene = inspect_remote_branch_hygiene(workspace_root);
     let receipt_freshness = inspect_receipt_freshness(workspace_root, &goal, &git_topology);
 
     let output_dir = workspace_root.join("target").join("source-of-truth");
@@ -187,6 +201,7 @@ pub fn run(workspace_root: &Path) -> Result<()> {
         support_tiers,
         git_topology,
         local_checkout,
+        remote_branch_hygiene,
         receipt_freshness,
         vec![
             display_path(workspace_root, &graph_json),
@@ -241,6 +256,7 @@ fn build_report(
     support_tiers: Vec<SupportTierClaim>,
     git_topology: GitTopologyReport,
     local_checkout: LocalCheckoutReport,
+    remote_branch_hygiene: RemoteBranchHygieneReport,
     receipt_freshness: ReceiptFreshnessReport,
     outputs: Vec<String>,
 ) -> RepoContractReport {
@@ -291,6 +307,7 @@ fn build_report(
         },
         git_topology,
         local_checkout,
+        remote_branch_hygiene,
         receipt_freshness,
         artifacts: artifacts.to_vec(),
         work_items: goal.work_item,
@@ -419,6 +436,96 @@ fn local_checkout_next_actions(clean: Option<bool>) -> Vec<String> {
                 .to_string(),
         ],
         None => vec![
+            "Run from a Git checkout with `origin` and `swarm` remotes available, then rerun `rtk cargo xtask repo-contract-report`."
+                .to_string(),
+        ],
+    }
+}
+
+fn inspect_remote_branch_hygiene(workspace_root: &Path) -> RemoteBranchHygieneReport {
+    const SOURCE_REMOTE: &str = "origin";
+    const SWARM_REMOTE: &str = "swarm";
+
+    let mut notes = Vec::new();
+    let lines = git_lines(
+        workspace_root,
+        &["branch", "-r", "--format=%(refname:short)"],
+        &mut notes,
+    );
+    remote_branch_hygiene_from_lines(lines, notes, SOURCE_REMOTE, SWARM_REMOTE)
+}
+
+fn remote_branch_hygiene_from_lines(
+    lines: Vec<String>,
+    notes: Vec<String>,
+    source_remote: &str,
+    swarm_remote: &str,
+) -> RemoteBranchHygieneReport {
+    let mut source_cleanup_candidates = Vec::new();
+    let mut swarm_cleanup_candidates = Vec::new();
+    let mut protected_branches = Vec::new();
+
+    for line in lines {
+        let branch = line.trim();
+        if branch.is_empty() || branch == source_remote || branch == swarm_remote {
+            continue;
+        }
+        if is_protected_remote_branch(branch, source_remote, swarm_remote) {
+            protected_branches.push(branch.to_string());
+        } else if branch.starts_with(&format!("{source_remote}/")) {
+            source_cleanup_candidates.push(branch.to_string());
+        } else if branch.starts_with(&format!("{swarm_remote}/")) {
+            swarm_cleanup_candidates.push(branch.to_string());
+        }
+    }
+
+    source_cleanup_candidates.sort();
+    swarm_cleanup_candidates.sort();
+    protected_branches.sort();
+
+    let status = if !notes.is_empty() {
+        "unavailable"
+    } else if source_cleanup_candidates.is_empty() && swarm_cleanup_candidates.is_empty() {
+        "clean"
+    } else {
+        "review-needed"
+    }
+    .to_string();
+    let next_actions = remote_branch_hygiene_next_actions(
+        &status,
+        source_cleanup_candidates.len(),
+        swarm_cleanup_candidates.len(),
+    );
+
+    RemoteBranchHygieneReport {
+        status,
+        source_remote: source_remote.to_string(),
+        swarm_remote: swarm_remote.to_string(),
+        source_cleanup_candidates,
+        swarm_cleanup_candidates,
+        protected_branches,
+        notes,
+        next_actions,
+    }
+}
+
+fn is_protected_remote_branch(branch: &str, source_remote: &str, swarm_remote: &str) -> bool {
+    branch == format!("{source_remote}/main")
+        || branch == format!("{swarm_remote}/main")
+        || branch.starts_with(&format!("{source_remote}/release/"))
+}
+
+fn remote_branch_hygiene_next_actions(
+    status: &str,
+    source_count: usize,
+    swarm_count: usize,
+) -> Vec<String> {
+    match status {
+        "clean" => vec!["Remote branch hygiene is clean.".to_string()],
+        "review-needed" => vec![format!(
+            "Review {source_count} source and {swarm_count} swarm remote cleanup candidate(s); delete only after confirming no open PR, release need, or preserved follow-up value."
+        )],
+        _ => vec![
             "Run from a Git checkout with `origin` and `swarm` remotes available, then rerun `rtk cargo xtask repo-contract-report`."
                 .to_string(),
         ],
@@ -1118,6 +1225,85 @@ fn render_markdown(report: &RepoContractReport) -> String {
         &report.local_checkout.next_actions,
     );
 
+    out.push_str("\n## Remote branch hygiene\n\n");
+    out.push_str("| Field | Value |\n|---|---|\n");
+    push_row(&mut out, "Status", &report.remote_branch_hygiene.status);
+    push_row(
+        &mut out,
+        "Source remote",
+        &report.remote_branch_hygiene.source_remote,
+    );
+    push_row(
+        &mut out,
+        "Swarm remote",
+        &report.remote_branch_hygiene.swarm_remote,
+    );
+    push_row(
+        &mut out,
+        "Source cleanup candidates",
+        &format!(
+            "{} branch(es)",
+            report.remote_branch_hygiene.source_cleanup_candidates.len()
+        ),
+    );
+    push_row(
+        &mut out,
+        "Swarm cleanup candidates",
+        &format!(
+            "{} branch(es)",
+            report.remote_branch_hygiene.swarm_cleanup_candidates.len()
+        ),
+    );
+    push_row(
+        &mut out,
+        "Protected branches",
+        &format!(
+            "{} branch(es)",
+            report.remote_branch_hygiene.protected_branches.len()
+        ),
+    );
+    push_row(
+        &mut out,
+        "Notes",
+        &format!("{} note(s)", report.remote_branch_hygiene.notes.len()),
+    );
+    push_row(
+        &mut out,
+        "Next actions",
+        &format!(
+            "{} action(s)",
+            report.remote_branch_hygiene.next_actions.len()
+        ),
+    );
+    push_markdown_list_limited(
+        &mut out,
+        "Source cleanup candidate branches",
+        &report.remote_branch_hygiene.source_cleanup_candidates,
+        20,
+    );
+    push_markdown_list_limited(
+        &mut out,
+        "Swarm cleanup candidate branches",
+        &report.remote_branch_hygiene.swarm_cleanup_candidates,
+        20,
+    );
+    push_markdown_list_limited(
+        &mut out,
+        "Protected remote branches",
+        &report.remote_branch_hygiene.protected_branches,
+        20,
+    );
+    push_markdown_list(
+        &mut out,
+        "Remote branch hygiene notes",
+        &report.remote_branch_hygiene.notes,
+    );
+    push_markdown_bullets(
+        &mut out,
+        "Remote branch hygiene next actions",
+        &report.remote_branch_hygiene.next_actions,
+    );
+
     out.push_str("\n## Receipt freshness\n\n");
     out.push_str("| Field | Value |\n|---|---|\n");
     push_row(&mut out, "Status", &report.receipt_freshness.status);
@@ -1538,6 +1724,7 @@ receipts = [
         assert!(json.contains("\"repo-contract-report\""));
         assert!(json.contains("\"git_topology\""));
         assert!(json.contains("\"local_checkout\""));
+        assert!(json.contains("\"remote_branch_hygiene\""));
         assert!(json.contains("\"receipt_freshness\""));
         let markdown = fs::read_to_string(graph_md).unwrap();
         assert!(markdown.contains("# Source-of-truth graph"));
@@ -1552,6 +1739,7 @@ receipts = [
         assert!(markdown.contains("## Git topology"));
         assert!(markdown.contains("Git topology next actions"));
         assert!(markdown.contains("## Local checkout"));
+        assert!(markdown.contains("## Remote branch hygiene"));
         assert!(markdown.contains("## Receipt freshness"));
     }
 
@@ -1716,6 +1904,68 @@ receipts = [
                 .iter()
                 .any(|action| action.contains("Git checkout"))
         );
+    }
+
+    #[test]
+    fn remote_branch_hygiene_keeps_release_branches_protected() {
+        let report = remote_branch_hygiene_from_lines(
+            vec![
+                "origin".to_string(),
+                "origin/main".to_string(),
+                "origin/release/v0.9.0".to_string(),
+                "origin/promote/swarm-20260531-1046ae2".to_string(),
+                "origin/feat/stale-source-work".to_string(),
+                "swarm".to_string(),
+                "swarm/main".to_string(),
+                "swarm/codex/stale-agent-branch".to_string(),
+            ],
+            Vec::new(),
+            "origin",
+            "swarm",
+        );
+
+        assert_eq!(report.status, "review-needed");
+        assert_eq!(
+            report.protected_branches,
+            vec!["origin/main", "origin/release/v0.9.0", "swarm/main"]
+        );
+        assert_eq!(
+            report.source_cleanup_candidates,
+            vec![
+                "origin/feat/stale-source-work",
+                "origin/promote/swarm-20260531-1046ae2",
+            ]
+        );
+        assert_eq!(
+            report.swarm_cleanup_candidates,
+            vec!["swarm/codex/stale-agent-branch"]
+        );
+        assert!(
+            report
+                .next_actions
+                .iter()
+                .any(|action| action.contains("delete only after confirming no open PR"))
+        );
+    }
+
+    #[test]
+    fn remote_branch_hygiene_reports_clean_when_only_protected_refs_exist() {
+        let report = remote_branch_hygiene_from_lines(
+            vec![
+                "origin".to_string(),
+                "origin/main".to_string(),
+                "origin/release/v0.9.0".to_string(),
+                "swarm".to_string(),
+                "swarm/main".to_string(),
+            ],
+            Vec::new(),
+            "origin",
+            "swarm",
+        );
+
+        assert_eq!(report.status, "clean");
+        assert!(report.source_cleanup_candidates.is_empty());
+        assert!(report.swarm_cleanup_candidates.is_empty());
     }
 
     #[test]
