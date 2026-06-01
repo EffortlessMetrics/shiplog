@@ -190,7 +190,7 @@ Generates source-of-truth closeout artifacts from
 [`.codex/goals/active.toml`](../.codex/goals/active.toml):
 
 ```bash
-cargo xtask closeout --goal shiplog-source-of-truth-stack
+rtk cargo xtask closeout --goal shiplog-swarm-control-plane --handoff-output target/source-of-truth/closeout.md --archive-output target/source-of-truth/active-goal-archive.toml
 ```
 
 The command verifies that the requested `--goal` matches the active goal
@@ -199,9 +199,9 @@ manifest, reads linked plan text for work-item claim boundaries, and writes:
 - `docs/handoffs/<date>-<goal-id>-closeout.md`
 - `.codex/goals/archive/<date>-<goal-id>.toml`
 
-Use `--date YYYY-MM-DD` to make output filenames deterministic. Tests and
-automation can also pass `--handoff-output` and `--archive-output` to write to
-fixture or scratch paths.
+Use `--date YYYY-MM-DD` to make output filenames deterministic. Agents should
+write review copies to `target/source-of-truth/` with `--handoff-output` and
+`--archive-output` unless the lane is intentionally archiving the active goal.
 
 The generated handoff includes objective, end state, landed work items, proof
 commands, receipt refs, claim boundaries, remaining work, and a generated
