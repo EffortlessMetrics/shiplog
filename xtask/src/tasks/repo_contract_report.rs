@@ -1987,7 +1987,14 @@ fn is_receipt_refresh_head(latest_swarm_head: Option<&str>) -> bool {
         .map(|(_, subject)| subject)
         .unwrap_or(latest_swarm_head)
         .to_ascii_lowercase();
-    (subject.contains("refresh") || subject.contains("refreshed")) && subject.contains("receipt")
+    let receipt_word = subject.contains("receipt");
+    let receipt_ledger = subject.contains("ledger") && subject.contains("promotion");
+    let refresh_action = subject.contains("refresh") || subject.contains("refreshed");
+    let record_action =
+        subject.contains("record") || subject.contains("records") || subject.contains("recorded");
+    let update_action =
+        subject.contains("update") || subject.contains("updates") || subject.contains("updated");
+    (refresh_action || record_action || update_action) && (receipt_word || receipt_ledger)
 }
 
 fn load_plan_texts(workspace_root: &Path, goal: &ActiveGoal, notes: &mut Vec<String>) -> String {
@@ -4470,6 +4477,26 @@ Merge this PR with a regular merge commit; do not squash.
         let status = receipt_freshness_status(
             &[true, false, true, false],
             Some("e86bcde docs(swarm): refresh branch cleanup receipts (#114)"),
+        );
+
+        assert_eq!(status, "pending-next-substantive-pr");
+    }
+
+    #[test]
+    fn receipt_freshness_defers_recorded_receipt_refreshes() {
+        let status = receipt_freshness_status(
+            &[true, false, true, false],
+            Some("8efda78 docs(swarm): record workflow admission receipts (#133)"),
+        );
+
+        assert_eq!(status, "pending-next-substantive-pr");
+    }
+
+    #[test]
+    fn receipt_freshness_defers_updated_promotion_ledger_refreshes() {
+        let status = receipt_freshness_status(
+            &[true, false, true, false],
+            Some("123abcd docs(swarm): update promotion ledger (#134)"),
         );
 
         assert_eq!(status, "pending-next-substantive-pr");
