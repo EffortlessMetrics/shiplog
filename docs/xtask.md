@@ -125,14 +125,18 @@ The report reads [`policy/doc-artifacts.toml`](../policy/doc-artifacts.toml),
 [`.codex/goals/active.toml`](../.codex/goals/active.toml), and
 [`docs/status/SUPPORT_TIERS.md`](status/SUPPORT_TIERS.md). It summarizes the
 active goal, work items, artifact links, support-tier proof commands, graph
-edges, local checkout state, source/swarm topology, remote branch hygiene,
+edges, local checkout state, local merged branch cleanup candidates,
+source/swarm topology, remote branch hygiene,
 remote PR/issue queue hygiene, routed CI health, latest promotion PR
 traceability, branch-protection settings, and promotion receipt freshness. The
 topology section classifies the full source-ahead commit range so expected
 `promote/swarm-*` merge commits are not confused with source-only content
-drift. The branch hygiene section separates source and swarm cleanup candidates
-into merged and review buckets and reports open PR-backed branches separately;
-it is an inspection receipt and does not delete branches. The queue section
+drift. The local checkout section reports clean/dirty status and any local
+branches already merged into source or swarm so agents can clean up their own
+merged branches deliberately. The branch hygiene section separates source and
+swarm cleanup candidates into merged and review buckets and reports open
+PR-backed branches separately; it is an inspection receipt and does not delete
+branches. The queue section
 reports open PRs and issues in both repos when GitHub inspection is available.
 The routed CI section reports the latest
 `EM CI Routed Shiplog Rust` run on source and swarm `main`. The promotion PR

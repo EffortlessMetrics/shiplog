@@ -1391,6 +1391,19 @@ EffortlessMetrics/shiplog#560:
           26739095859, source PR routed proof passed through GitHub-hosted
           fallback in run 26739477590, and source post-merge routed proof
           passed through GitHub-hosted fallback in run 26740543589
+
+EffortlessMetrics/shiplog#561:
+  swarm head: cb1e120ab88382b115226ccb6434134611e1c7a8
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#125
+  source merge: eb07299eec2b7cc4b1b491ad31dd78e7d2943799
+  result: regular merge commit; PR-body receipt wording now reports the last
+          recorded receipt refs in manifest order rather than implying
+          chronological ordering; swarm PR routed proof selected CX53 and
+          passed in run 26741193351, swarm/main routed proof passed through
+          GitHub-hosted fallback in run 26741406611, source PR routed proof
+          passed through GitHub-hosted fallback in run 26741814649, and source
+          post-merge routed proof passed through GitHub-hosted fallback in run
+          26742339037
 ```
 
 ### Proof commands

@@ -175,6 +175,10 @@ struct LocalCheckoutReport {
     branch_summary: Option<String>,
     clean: Option<bool>,
     status_entries: Vec<String>,
+    local_branch_count: usize,
+    local_merged_cleanup_candidates: Vec<String>,
+    local_merged_cleanup_review_commands: Vec<String>,
+    protected_local_branches: Vec<String>,
     status: String,
     notes: Vec<String>,
     next_actions: Vec<String>,
@@ -521,15 +525,57 @@ fn inspect_git_topology(workspace_root: &Path) -> GitTopologyReport {
 
 fn inspect_local_checkout(workspace_root: &Path) -> LocalCheckoutReport {
     let mut notes = Vec::new();
-    let lines = git_lines(
+    let status_lines = git_lines(
         workspace_root,
         &["status", "--short", "--branch"],
         &mut notes,
     );
-    local_checkout_from_status_lines(lines, notes)
+    let local_branch_lines = git_lines(
+        workspace_root,
+        &["branch", "--format=%(refname:short)"],
+        &mut notes,
+    );
+    let source_merged_lines = git_lines(
+        workspace_root,
+        &[
+            "branch",
+            "--merged",
+            "origin/main",
+            "--format=%(refname:short)",
+        ],
+        &mut notes,
+    );
+    let swarm_merged_lines = git_lines(
+        workspace_root,
+        &[
+            "branch",
+            "--merged",
+            "swarm/main",
+            "--format=%(refname:short)",
+        ],
+        &mut notes,
+    );
+    local_checkout_from_status_and_branch_lines(
+        status_lines,
+        local_branch_lines,
+        source_merged_lines,
+        swarm_merged_lines,
+        notes,
+    )
 }
 
+#[cfg(test)]
 fn local_checkout_from_status_lines(lines: Vec<String>, notes: Vec<String>) -> LocalCheckoutReport {
+    local_checkout_from_status_and_branch_lines(lines, Vec::new(), Vec::new(), Vec::new(), notes)
+}
+
+fn local_checkout_from_status_and_branch_lines(
+    lines: Vec<String>,
+    local_branch_lines: Vec<String>,
+    source_merged_lines: Vec<String>,
+    swarm_merged_lines: Vec<String>,
+    notes: Vec<String>,
+) -> LocalCheckoutReport {
     let branch_summary = lines
         .first()
         .and_then(|line| line.strip_prefix("## "))
@@ -541,30 +587,89 @@ fn local_checkout_from_status_lines(lines: Vec<String>, notes: Vec<String>) -> L
     let clean = branch_summary
         .as_ref()
         .map(|_| status_entries.iter().all(|entry| entry.trim().is_empty()));
-    let status = match clean {
-        Some(true) => "clean",
-        Some(false) => "dirty",
-        None => "unavailable",
+    let local_branch_count = local_branch_lines.len();
+    let current_branch = current_branch_name(branch_summary.as_deref());
+    let source_merged = local_branch_set(source_merged_lines);
+    let swarm_merged = local_branch_set(swarm_merged_lines);
+    let mut protected_local_branches = Vec::new();
+    let mut local_merged_cleanup_candidates = Vec::new();
+
+    for branch in local_branch_lines {
+        if is_protected_local_branch(&branch) {
+            protected_local_branches.push(branch);
+        } else if Some(branch.as_str()) == current_branch.as_deref() {
+            continue;
+        } else if source_merged.contains(&branch) || swarm_merged.contains(&branch) {
+            local_merged_cleanup_candidates.push(branch);
+        }
+    }
+
+    protected_local_branches.sort();
+    local_merged_cleanup_candidates.sort();
+    let local_merged_cleanup_review_commands =
+        local_merged_cleanup_review_commands(&local_merged_cleanup_candidates);
+    let status = match (clean, local_merged_cleanup_candidates.is_empty()) {
+        (Some(true), true) => "clean",
+        (Some(true), false) => "review-needed",
+        (Some(false), _) => "dirty",
+        (None, _) => "unavailable",
     }
     .to_string();
-    let next_actions = local_checkout_next_actions(clean);
+    let next_actions = local_checkout_next_actions(clean, local_merged_cleanup_candidates.len());
 
     LocalCheckoutReport {
         branch_summary,
         clean,
         status_entries,
+        local_branch_count,
+        local_merged_cleanup_candidates,
+        local_merged_cleanup_review_commands,
+        protected_local_branches,
         status,
         notes,
         next_actions,
     }
 }
 
-fn local_checkout_next_actions(clean: Option<bool>) -> Vec<String> {
+fn current_branch_name(branch_summary: Option<&str>) -> Option<String> {
+    let summary = branch_summary?;
+    if summary.starts_with("HEAD ") || summary == "HEAD" {
+        return None;
+    }
+    Some(summary.split("...").next().unwrap_or(summary).to_string())
+}
+
+fn local_branch_set(lines: Vec<String>) -> BTreeSet<String> {
+    lines
+        .into_iter()
+        .map(|line| line.trim().to_string())
+        .filter(|line| !line.is_empty())
+        .collect()
+}
+
+fn is_protected_local_branch(branch: &str) -> bool {
+    branch == "main" || branch.starts_with("release/")
+}
+
+fn local_merged_cleanup_review_commands(candidates: &[String]) -> Vec<String> {
+    candidates
+        .iter()
+        .map(|branch| format!("rtk git log --oneline --max-count 3 {branch}"))
+        .collect()
+}
+
+fn local_checkout_next_actions(
+    clean: Option<bool>,
+    local_merged_cleanup_count: usize,
+) -> Vec<String> {
     match clean {
-        Some(true) => vec![
+        Some(true) if local_merged_cleanup_count == 0 => vec![
             "Local checkout is clean; continue with the active source-of-truth work item."
                 .to_string(),
         ],
+        Some(true) => vec![format!(
+            "Review {local_merged_cleanup_count} local branch(es) already merged into source or swarm before deleting with `rtk git branch -d <branch>`."
+        )],
         Some(false) => vec![
             "Inspect `rtk git status`, keep only scoped changes, and leave no dirty or untracked files before handoff."
                 .to_string(),
@@ -2291,6 +2396,27 @@ fn render_markdown(report: &RepoContractReport) -> String {
     );
     push_row(
         &mut out,
+        "Local branches",
+        &format!("{} branch(es)", report.local_checkout.local_branch_count),
+    );
+    push_row(
+        &mut out,
+        "Local merged cleanup candidates",
+        &format!(
+            "{} branch(es)",
+            report.local_checkout.local_merged_cleanup_candidates.len()
+        ),
+    );
+    push_row(
+        &mut out,
+        "Protected local branches",
+        &format!(
+            "{} branch(es)",
+            report.local_checkout.protected_local_branches.len()
+        ),
+    );
+    push_row(
+        &mut out,
         "Notes",
         &format!("{} note(s)", report.local_checkout.notes.len()),
     );
@@ -2303,6 +2429,24 @@ fn render_markdown(report: &RepoContractReport) -> String {
         &mut out,
         "Local checkout status entries",
         &report.local_checkout.status_entries,
+    );
+    push_markdown_list_limited(
+        &mut out,
+        "Local merged cleanup candidate branches",
+        &report.local_checkout.local_merged_cleanup_candidates,
+        20,
+    );
+    push_markdown_list_limited(
+        &mut out,
+        "Local merged cleanup review commands",
+        &report.local_checkout.local_merged_cleanup_review_commands,
+        10,
+    );
+    push_markdown_list_limited(
+        &mut out,
+        "Protected local branches",
+        &report.local_checkout.protected_local_branches,
+        20,
     );
     push_markdown_list(
         &mut out,
@@ -3355,6 +3499,7 @@ receipts = [
         assert!(json.contains("\"repo-contract-report\""));
         assert!(json.contains("\"git_topology\""));
         assert!(json.contains("\"local_checkout\""));
+        assert!(json.contains("\"local_merged_cleanup_candidates\""));
         assert!(json.contains("\"remote_branch_hygiene\""));
         assert!(json.contains("\"source_merged_cleanup_candidates\""));
         assert!(json.contains("\"swarm_review_cleanup_candidates\""));
@@ -3377,6 +3522,7 @@ receipts = [
         assert!(markdown.contains("## Git topology"));
         assert!(markdown.contains("Git topology next actions"));
         assert!(markdown.contains("## Local checkout"));
+        assert!(markdown.contains("Local merged cleanup candidates"));
         assert!(markdown.contains("## Remote branch hygiene"));
         assert!(markdown.contains("Source merged cleanup candidates"));
         assert!(markdown.contains("Swarm review cleanup candidates"));
@@ -3814,6 +3960,7 @@ Merge this PR with a regular merge commit; do not squash.
         assert_eq!(report.branch_summary.as_deref(), Some("main...origin/main"));
         assert_eq!(report.clean, Some(true));
         assert!(report.status_entries.is_empty());
+        assert!(report.local_merged_cleanup_candidates.is_empty());
         assert!(
             report
                 .next_actions
@@ -3841,6 +3988,41 @@ Merge this PR with a regular merge commit; do not squash.
                 .next_actions
                 .iter()
                 .any(|action| action.contains("rtk git status"))
+        );
+    }
+
+    #[test]
+    fn local_checkout_reports_merged_local_branch_candidates() {
+        let report = local_checkout_from_status_and_branch_lines(
+            vec!["## codex/current...swarm/main".to_string()],
+            vec![
+                "codex/current".to_string(),
+                "codex/done".to_string(),
+                "main".to_string(),
+                "release/v0.9.0".to_string(),
+            ],
+            vec!["main".to_string(), "codex/done".to_string()],
+            vec!["codex/current".to_string()],
+            Vec::new(),
+        );
+
+        assert_eq!(report.status, "review-needed");
+        assert_eq!(report.clean, Some(true));
+        assert_eq!(report.local_branch_count, 4);
+        assert_eq!(report.local_merged_cleanup_candidates, vec!["codex/done"]);
+        assert_eq!(
+            report.protected_local_branches,
+            vec!["main", "release/v0.9.0"]
+        );
+        assert_eq!(
+            report.local_merged_cleanup_review_commands,
+            vec!["rtk git log --oneline --max-count 3 codex/done"]
+        );
+        assert!(
+            report
+                .next_actions
+                .iter()
+                .any(|action| { action.contains("Review 1 local branch(es) already merged") })
         );
     }
 
