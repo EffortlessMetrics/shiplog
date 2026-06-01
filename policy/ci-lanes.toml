@@ -155,7 +155,7 @@ blocking = false
 workflow = ".github/workflows/property-smoke.yml"
 workflow_name = "Property Smoke"
 job_name = "smoke"
-note = "Added in PR #154. Bounded sweep over shiplog::ids, shiplog::schema, shiplog::coverage, shiplog::redact at 64 cases. Broad lane.property keeps PR-on-every until PR #155."
+note = "Added in PR #154. Bounded sweep over shiplog::ids, shiplog::schema, shiplog::coverage, shiplog::redact at 64 cases. Timeout is 20m to tolerate cold self-hosted builds. Broad lane.property keeps PR-on-every until PR #155."
 
 [lane.fuzz_smoke]
 description = "Touched-target quick fuzz at 30s on Rust diffs."

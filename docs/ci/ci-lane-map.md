@@ -98,6 +98,10 @@ placeholder, but no Windows job is currently wired in `ci.yml`.
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | `smoke` | push main + PR | yes | no | ubuntu-latest | 5 | PR-fast invariant smoke | Foundation surface property regression (shiplog::ids, schema, coverage, redact) at PROPTEST_CASES=64 | step summary | smoke subset of `lane.property` | PR fast advisory | policy |
 
+The workflow timeout is 20 minutes so cold same-repo self-hosted builds have
+the same headroom as the bounded BDD smoke lane. The property scope and
+`PROPTEST_CASES=64` budget remain unchanged.
+
 ## fuzz-smoke.yml — touched-target quick fuzz (added in PR #154)
 
 | Job | Trigger | Default PR? | Blocking | Runner | Base LEM | Intent | Failure mode caught | Evidence | duplicate_of | Target lane | Owner |

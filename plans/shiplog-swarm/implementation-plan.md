@@ -1543,6 +1543,19 @@ EffortlessMetrics/shiplog#572:
           fallback in run 26770376424, Droid Auto Review completed successfully
           in run 26770376364, and source post-merge routed proof passed through
           GitHub-hosted fallback in run 26771714657
+
+EffortlessMetrics/shiplog#573:
+  swarm head: 442681296d26f25a7d7c488848c0f6da3e720040
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#136
+  source merge: 392a1fa881fb82b211d4df2cd9bdc6a7891f2ea9
+  result: regular merge commit; `docs/xtask.md` now describes the current
+          compact PR receipt behavior for `pr-body` and records the active
+          control-plane receipt refs; swarm PR routed proof passed through
+          GitHub-hosted fallback in run 26772746144, swarm/main routed proof
+          passed through GitHub-hosted fallback in run 26773214910, source PR
+          routed proof passed through GitHub-hosted fallback in run 26773705725,
+          and source post-merge routed proof passed through GitHub-hosted
+          fallback in run 26774186947
 ```
 
 ### Proof commands
