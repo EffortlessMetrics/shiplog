@@ -160,7 +160,7 @@ Generates a draft pull request body from a work item in
 [`.codex/goals/active.toml`](../.codex/goals/active.toml):
 
 ```bash
-cargo xtask pr-body --work-item pr-body-generator
+rtk cargo xtask pr-body --work-item promotion-cadence --output target/source-of-truth/pr-body.md
 ```
 
 The command reads the active goal manifest, the linked implementation plan, and
@@ -175,13 +175,14 @@ support-tier impact, policy impact, proof commands, claim boundary, and
 rollback when those fields are present in the linked plan/spec. For the proof
 section, current work-item commands from `.codex/goals/active.toml` take
 precedence over plan prose so active-agent PR drafts use the same commands
-validated by `cargo xtask check-goals`; if no current commands are recorded,
+validated by `rtk cargo xtask check-goals`; if no current commands are recorded,
 the generator falls back to the linked plan item's proof commands. When the
-work item has many receipt refs, the generated body shows the last recorded
-refs in manifest order; it does not infer chronology from free-form receipt
-text. It is a derived draft only: it does not call the GitHub API, create a PR,
-mutate source artifacts, change branch protection, or replace reviewer
-judgment.
+work item has many receipt refs, the generated body prefers compact PR receipt
+refs such as `EffortlessMetrics/shiplog-swarm#135` over narrative closure notes
+and reports whether it is showing a filtered compact subset or the fallback
+manifest-order list. It does not infer chronology from free-form receipt text.
+It is a derived draft only: it does not call the GitHub API, create a PR, mutate
+source artifacts, change branch protection, or replace reviewer judgment.
 
 ### `cargo xtask closeout`
 

@@ -1530,6 +1530,19 @@ EffortlessMetrics/shiplog#571:
           26767557186, Droid Auto Review completed successfully in run
           26767557581, and source post-merge routed proof passed through
           GitHub-hosted fallback in run 26768552919
+
+EffortlessMetrics/shiplog#572:
+  swarm head: bbcde94bec72c6e1ed9e777f18e3b0622c268b3e
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#135
+  source merge: d043baf5bd1fc56d89f8ccc0e5eb33a1b395aee8
+  result: regular merge commit; PR-body generation now surfaces compact recent
+          PR receipt refs instead of older narrative closure notes; swarm PR
+          routed proof passed through GitHub-hosted fallback in run 26769447517,
+          swarm/main routed proof passed through GitHub-hosted fallback in run
+          26769915818, source PR routed proof passed through GitHub-hosted
+          fallback in run 26770376424, Droid Auto Review completed successfully
+          in run 26770376364, and source post-merge routed proof passed through
+          GitHub-hosted fallback in run 26771714657
 ```
 
 ### Proof commands
