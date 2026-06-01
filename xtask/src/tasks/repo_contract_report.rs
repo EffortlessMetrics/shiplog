@@ -654,7 +654,11 @@ fn is_protected_local_branch(branch: &str) -> bool {
 fn local_merged_cleanup_review_commands(candidates: &[String]) -> Vec<String> {
     candidates
         .iter()
-        .map(|branch| format!("rtk git log --oneline --max-count 3 {branch}"))
+        .map(|branch| {
+            format!(
+                "rtk gh pr list --repo {SWARM_REPO} --state all --head {branch} --limit 10 && rtk gh pr list --repo {SOURCE_REPO} --state all --head {branch} --limit 10 && rtk git log --oneline --max-count 3 {branch}"
+            )
+        })
         .collect()
 }
 
@@ -4016,7 +4020,9 @@ Merge this PR with a regular merge commit; do not squash.
         );
         assert_eq!(
             report.local_merged_cleanup_review_commands,
-            vec!["rtk git log --oneline --max-count 3 codex/done"]
+            vec![
+                "rtk gh pr list --repo EffortlessMetrics/shiplog-swarm --state all --head codex/done --limit 10 && rtk gh pr list --repo EffortlessMetrics/shiplog --state all --head codex/done --limit 10 && rtk git log --oneline --max-count 3 codex/done"
+            ]
         );
         assert!(
             report

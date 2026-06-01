@@ -1404,6 +1404,20 @@ EffortlessMetrics/shiplog#561:
           passed through GitHub-hosted fallback in run 26741814649, and source
           post-merge routed proof passed through GitHub-hosted fallback in run
           26742339037
+
+EffortlessMetrics/shiplog#562:
+  swarm head: e5f3e0a2cd03e3ce5e64706ca548af92994287ae
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#126
+  source merge: 5bd3aae89d789eca3397612a6ec88968a6825abe
+  result: regular merge commit; repo-contract-report now reports local branches
+          already merged into source or swarm so agents can clean up local branch
+          state deliberately; swarm PR routed proof passed through
+          GitHub-hosted fallback in run 26743582511, swarm/main routed proof
+          passed through GitHub-hosted fallback in run 26743990955, source PR
+          routed proof passed through GitHub-hosted fallback in run
+          26744475115, Droid Auto Review completed successfully in run
+          26744475073, and source post-merge routed proof passed through
+          GitHub-hosted fallback in run 26745960547
 ```
 
 ### Proof commands
