@@ -71,6 +71,7 @@ pub fn run(workspace_root: &Path) -> Result<()> {
     let by_plan_path = plan_artifact_by_path(&artifacts);
 
     let mut findings = Vec::new();
+    validate_no_legacy_active_goal(workspace_root, &mut findings);
     validate_goal_shape(&goal, &mut findings);
     validate_work_items(
         &goal,
@@ -99,6 +100,19 @@ pub fn run(workspace_root: &Path) -> Result<()> {
         "check-goals: {} finding(s)",
         findings.len()
     ))
+}
+
+fn validate_no_legacy_active_goal(workspace_root: &Path, findings: &mut Vec<String>) {
+    let legacy_path = workspace_root
+        .join(".shiplog")
+        .join("goals")
+        .join("active.toml");
+    if legacy_path.exists() {
+        findings.push(format!(
+            "[goal-legacy-active-manifest] {} exists; active execution state must live in .codex/goals/active.toml",
+            legacy_path.display()
+        ));
+    }
 }
 
 fn load_goal(path: &Path) -> Result<ActiveGoal> {
@@ -565,6 +579,27 @@ commands = ["rtk cargo xtask check-goals", "rtk git diff --check"]
     fn linked_active_goal_passes() {
         let dir = fixture(ACTIVE_GOAL, DOC_ARTIFACTS);
         run(dir.path()).expect("valid active goal should pass");
+    }
+
+    #[test]
+    fn legacy_shiplog_active_goal_is_rejected() {
+        let dir = fixture(ACTIVE_GOAL, DOC_ARTIFACTS);
+        write(
+            &dir.path()
+                .join(".shiplog")
+                .join("goals")
+                .join("active.toml"),
+            ACTIVE_GOAL,
+        );
+
+        let mut findings = Vec::new();
+        validate_no_legacy_active_goal(dir.path(), &mut findings);
+        assert_eq!(findings.len(), 1);
+        assert!(findings[0].contains("[goal-legacy-active-manifest]"));
+
+        let err = run(dir.path()).unwrap_err();
+
+        assert!(err.to_string().contains("1 finding"));
     }
 
     #[test]

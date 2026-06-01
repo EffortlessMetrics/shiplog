@@ -672,7 +672,7 @@ Promote `shiplog-swarm/main` into `shiplog/main` by merge-commit PRs.
   path.
 - Promotion PR title uses `merge(swarm): promote shiplog-swarm through <sha>`.
 - Promotion PR is merged with a regular merge commit, not squash.
-- PR body lists swarm head, included swarm PRs, and proof.
+- PR body lists swarm head, included swarm PRs, swarm proof, and source proof.
 - Source-only release changes are synced back into `shiplog-swarm` before more
   normal development lands.
 - Receipt-refresh PRs record the latest completed source promotion available at
@@ -1461,6 +1461,20 @@ EffortlessMetrics/shiplog#566:
           Review completed successfully in run 26752554743, and source
           post-merge routed proof passed through GitHub-hosted fallback in run
           26753212535
+
+EffortlessMetrics/shiplog#567:
+  swarm head: 094f4ba070dd29dc3ffe353af39866b89e9f3e63
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#130
+  source merge: 6f53b3df8657f2e576b1b04007493c72aed17f49
+  result: regular merge commit; repo-contract-report now requires promotion
+          PR bodies to record both swarm proof and source proof before the
+          promotion contract is aligned; swarm PR routed proof passed through
+          GitHub-hosted fallback in run 26753970486, swarm/main routed proof
+          passed through GitHub-hosted fallback in run 26754401083, source PR
+          routed proof passed through GitHub-hosted fallback in run
+          26754856700, Droid Auto Review completed successfully in run
+          26754856620, and source post-merge routed proof passed through
+          GitHub-hosted fallback in run 26755388308
 ```
 
 ### Proof commands
