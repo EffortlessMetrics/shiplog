@@ -131,9 +131,10 @@ traceability, branch-protection settings, and promotion receipt freshness. The
 topology section classifies the full source-ahead commit range so expected
 `promote/swarm-*` merge commits are not confused with source-only content
 drift. The branch hygiene section separates source and swarm cleanup candidates
-into merged and review buckets; it is an inspection receipt and does not delete
-branches. The queue section reports open PRs and issues in both repos when
-GitHub inspection is available. The routed CI section reports the latest
+into merged and review buckets and reports open PR-backed branches separately;
+it is an inspection receipt and does not delete branches. The queue section
+reports open PRs and issues in both repos when GitHub inspection is available.
+The routed CI section reports the latest
 `EM CI Routed Shiplog Rust` run on source and swarm `main`. The promotion PR
 contract section checks the latest source promotion PR title, body receipts, and
 merge commit against the swarm head. The branch-protection section checks that

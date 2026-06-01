@@ -193,6 +193,8 @@ struct RemoteBranchHygieneReport {
     swarm_review_cleanup_candidates: Vec<String>,
     source_merged_cleanup_review_commands: Vec<String>,
     swarm_merged_cleanup_review_commands: Vec<String>,
+    source_open_pr_branches: Vec<String>,
+    swarm_open_pr_branches: Vec<String>,
     protected_branches: Vec<String>,
     notes: Vec<String>,
     next_actions: Vec<String>,
@@ -305,8 +307,9 @@ pub fn run(workspace_root: &Path) -> Result<()> {
     let support_tiers = load_support_tiers(workspace_root)?;
     let git_topology = inspect_git_topology(workspace_root);
     let local_checkout = inspect_local_checkout(workspace_root);
-    let remote_branch_hygiene = inspect_remote_branch_hygiene(workspace_root);
     let remote_queue_hygiene = inspect_remote_queue_hygiene(workspace_root);
+    let remote_branch_hygiene =
+        inspect_remote_branch_hygiene(workspace_root, &remote_queue_hygiene);
     let routed_ci_health = inspect_routed_ci_health(workspace_root);
     let promotion_pr_contract = inspect_promotion_pr_contract(workspace_root, &git_topology);
     let branch_protection_contract = inspect_branch_protection_contract(workspace_root);
@@ -573,7 +576,10 @@ fn local_checkout_next_actions(clean: Option<bool>) -> Vec<String> {
     }
 }
 
-fn inspect_remote_branch_hygiene(workspace_root: &Path) -> RemoteBranchHygieneReport {
+fn inspect_remote_branch_hygiene(
+    workspace_root: &Path,
+    remote_queue_hygiene: &RemoteQueueHygieneReport,
+) -> RemoteBranchHygieneReport {
     const SOURCE_REMOTE: &str = "origin";
     const SWARM_REMOTE: &str = "swarm";
     const SOURCE_REF: &str = "origin/main";
@@ -614,6 +620,8 @@ fn inspect_remote_branch_hygiene(workspace_root: &Path) -> RemoteBranchHygieneRe
         notes,
         SOURCE_REMOTE,
         SWARM_REMOTE,
+        open_pr_branch_set(SOURCE_REMOTE, &remote_queue_hygiene.source_open_prs),
+        open_pr_branch_set(SWARM_REMOTE, &remote_queue_hygiene.swarm_open_prs),
     )
 }
 
@@ -631,6 +639,8 @@ fn remote_branch_hygiene_from_lines(
         notes,
         source_remote,
         swarm_remote,
+        BTreeSet::new(),
+        BTreeSet::new(),
     )
 }
 
@@ -641,9 +651,13 @@ fn remote_branch_hygiene_from_lines_with_merged(
     notes: Vec<String>,
     source_remote: &str,
     swarm_remote: &str,
+    source_open_pr_branches: BTreeSet<String>,
+    swarm_open_pr_branches: BTreeSet<String>,
 ) -> RemoteBranchHygieneReport {
     let mut source_cleanup_candidates = Vec::new();
     let mut swarm_cleanup_candidates = Vec::new();
+    let mut source_open_pr_branch_matches = Vec::new();
+    let mut swarm_open_pr_branch_matches = Vec::new();
     let mut protected_branches = Vec::new();
     let source_merged = remote_branch_set(source_merged_lines);
     let swarm_merged = remote_branch_set(swarm_merged_lines);
@@ -655,6 +669,10 @@ fn remote_branch_hygiene_from_lines_with_merged(
         }
         if is_protected_remote_branch(branch, source_remote, swarm_remote) {
             protected_branches.push(branch.to_string());
+        } else if source_open_pr_branches.contains(branch) {
+            source_open_pr_branch_matches.push(branch.to_string());
+        } else if swarm_open_pr_branches.contains(branch) {
+            swarm_open_pr_branch_matches.push(branch.to_string());
         } else if branch.starts_with(&format!("{source_remote}/")) {
             source_cleanup_candidates.push(branch.to_string());
         } else if branch.starts_with(&format!("{swarm_remote}/")) {
@@ -664,6 +682,8 @@ fn remote_branch_hygiene_from_lines_with_merged(
 
     source_cleanup_candidates.sort();
     swarm_cleanup_candidates.sort();
+    source_open_pr_branch_matches.sort();
+    swarm_open_pr_branch_matches.sort();
     protected_branches.sort();
     let (source_merged_cleanup_candidates, source_review_cleanup_candidates) =
         partition_merged_candidates(&source_cleanup_candidates, &source_merged);
@@ -710,6 +730,8 @@ fn remote_branch_hygiene_from_lines_with_merged(
         swarm_review_cleanup_candidates,
         source_merged_cleanup_review_commands,
         swarm_merged_cleanup_review_commands,
+        source_open_pr_branches: source_open_pr_branch_matches,
+        swarm_open_pr_branches: swarm_open_pr_branch_matches,
         protected_branches,
         notes,
         next_actions,
@@ -738,6 +760,29 @@ fn remote_branch_set(lines: Vec<String>) -> BTreeSet<String> {
         .map(|line| line.trim().to_string())
         .filter(|line| !line.is_empty())
         .collect()
+}
+
+fn open_pr_branch_set(remote: &str, prs: &[String]) -> BTreeSet<String> {
+    prs.iter()
+        .filter_map(|pr| formatted_pr_head(pr))
+        .map(|head| format!("{remote}/{head}"))
+        .collect()
+}
+
+fn formatted_pr_head(pr: &str) -> Option<&str> {
+    let marker = "head=";
+    let start = pr.find(marker)? + marker.len();
+    let rest = &pr[start..];
+    let end = rest
+        .find(", base=")
+        .or_else(|| rest.find(']'))
+        .unwrap_or(rest.len());
+    let head = rest[..end].trim();
+    if head.is_empty() || head == "-" {
+        None
+    } else {
+        Some(head)
+    }
 }
 
 fn partition_merged_candidates(
@@ -2345,6 +2390,22 @@ fn render_markdown(report: &RepoContractReport) -> String {
     );
     push_row(
         &mut out,
+        "Source open PR-backed branches",
+        &format!(
+            "{} branch(es)",
+            report.remote_branch_hygiene.source_open_pr_branches.len()
+        ),
+    );
+    push_row(
+        &mut out,
+        "Swarm open PR-backed branches",
+        &format!(
+            "{} branch(es)",
+            report.remote_branch_hygiene.swarm_open_pr_branches.len()
+        ),
+    );
+    push_row(
+        &mut out,
         "Protected branches",
         &format!(
             "{} branch(es)",
@@ -2418,6 +2479,18 @@ fn render_markdown(report: &RepoContractReport) -> String {
         &mut out,
         "Swarm review cleanup candidate branches",
         &report.remote_branch_hygiene.swarm_review_cleanup_candidates,
+        20,
+    );
+    push_markdown_list_limited(
+        &mut out,
+        "Source open PR-backed branches",
+        &report.remote_branch_hygiene.source_open_pr_branches,
+        20,
+    );
+    push_markdown_list_limited(
+        &mut out,
+        "Swarm open PR-backed branches",
+        &report.remote_branch_hygiene.swarm_open_pr_branches,
         20,
     );
     push_markdown_list_limited(
@@ -3857,6 +3930,8 @@ Merge this PR with a regular merge commit; do not squash.
             Vec::new(),
             "origin",
             "swarm",
+            BTreeSet::new(),
+            BTreeSet::new(),
         );
 
         assert_eq!(
@@ -3894,6 +3969,38 @@ Merge this PR with a regular merge commit; do not squash.
             report.next_actions.iter().any(|action| {
                 action.contains("inspect 1 source and 1 swarm unmerged candidate")
             })
+        );
+    }
+
+    #[test]
+    fn remote_branch_hygiene_excludes_open_pr_heads_from_cleanup_candidates() {
+        let report = remote_branch_hygiene_from_lines_with_merged(
+            vec![
+                "origin/main".to_string(),
+                "swarm/main".to_string(),
+                "swarm/codex/open-agent-branch".to_string(),
+                "swarm/codex/stale-agent-branch".to_string(),
+            ],
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            "origin",
+            "swarm",
+            BTreeSet::new(),
+            BTreeSet::from(["swarm/codex/open-agent-branch".to_string()]),
+        );
+
+        assert_eq!(
+            report.swarm_open_pr_branches,
+            vec!["swarm/codex/open-agent-branch"]
+        );
+        assert_eq!(
+            report.swarm_cleanup_candidates,
+            vec!["swarm/codex/stale-agent-branch"]
+        );
+        assert_eq!(
+            report.swarm_review_cleanup_candidates,
+            vec!["swarm/codex/stale-agent-branch"]
         );
     }
 
