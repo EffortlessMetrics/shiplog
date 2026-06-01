@@ -64,6 +64,8 @@ archived manifests under [`.codex/goals/archive/`](../.codex/goals/archive/),
 the Codex-facing execution-state manifests:
 
 - the active goal manifest exists and parses;
+- `.shiplog/goals/active.toml` does not exist, keeping active execution state
+  in `.codex/goals/active.toml`;
 - archived goal manifests parse and use `status = "archived"`;
 - goal and work-item status values are recognized;
 - work-item IDs are unique;

@@ -1,7 +1,10 @@
-# Shiplog Goal Manifests
+# Legacy Shiplog Goal Manifests
 
-This directory is the repo-local control plane for active agent work. It is
-not shiplog runtime configuration and should not be read by the product.
+This directory is archive-only. Active repo execution state now lives in
+`.codex/goals/active.toml`.
+
+This is not shiplog runtime configuration and should not be read by the
+product.
 
 Goal manifests tell Codex, Droid, or another repository agent what is actually
 being worked now:
@@ -15,8 +18,9 @@ being worked now:
 
 ## Active Goal
 
-Use `active.toml` for the current lane once a plan PR creates it. Keep it
-small enough that an agent can read it first and know the next safe move.
+Do not create `.shiplog/goals/active.toml`. `cargo xtask check-goals` rejects a
+legacy active manifest so agents do not split the control plane between
+`.shiplog/goals` and `.codex/goals`.
 
 Do not store secrets, tokens, private user data, or machine-local paths in goal
 manifests. Use repository-relative paths and public issue or PR references.
