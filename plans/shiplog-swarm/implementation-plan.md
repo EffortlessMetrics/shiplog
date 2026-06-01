@@ -1585,6 +1585,18 @@ EffortlessMetrics/shiplog#575:
           routed proof passed through GitHub-hosted fallback in run 26779820077,
           and source post-merge routed proof passed through GitHub-hosted
           fallback in run 26780631321
+
+EffortlessMetrics/shiplog#576:
+  swarm head: e270c48999546a0766ad2cbb32130e29f6206a24
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#139
+  source merge: 63440e6b76af107482cb642a65b3013039e5d6b9
+  result: regular merge commit; active-goal and implementation-plan receipts
+          through #138/#575 were refreshed, swarm PR routed proof passed
+          through GitHub-hosted fallback in run 26781450807, swarm/main routed
+          proof passed through GitHub-hosted fallback in run 26781921383,
+          source PR routed proof passed through GitHub-hosted fallback in run
+          26782380141, and source post-merge routed proof passed through
+          GitHub-hosted fallback in run 26783098701
 ```
 
 ### Proof commands
