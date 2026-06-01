@@ -1987,6 +1987,9 @@ fn is_receipt_refresh_head(latest_swarm_head: Option<&str>) -> bool {
         .map(|(_, subject)| subject)
         .unwrap_or(latest_swarm_head)
         .to_ascii_lowercase();
+    if !(subject.starts_with("docs:") || subject.starts_with("docs(")) {
+        return false;
+    }
     let receipt_word = subject.contains("receipt");
     let receipt_ledger = subject.contains("ledger") && subject.contains("promotion");
     let refresh_action = subject.contains("refresh") || subject.contains("refreshed");
@@ -4517,6 +4520,16 @@ Merge this PR with a regular merge commit; do not squash.
         let status = receipt_freshness_status(
             &[true, false, true, false],
             Some("ae20816 ci: allow hosted fallback on non-PR routes (#87)"),
+        );
+
+        assert_eq!(status, "stale");
+    }
+
+    #[test]
+    fn receipt_freshness_keeps_xtask_receipt_classifier_regressions_stale() {
+        let status = receipt_freshness_status(
+            &[true, false, true, false],
+            Some("66eb0bb xtask: cover unscoped receipt refresh heads (#140)"),
         );
 
         assert_eq!(status, "stale");
