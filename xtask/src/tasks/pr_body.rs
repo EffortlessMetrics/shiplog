@@ -425,20 +425,51 @@ fn push_receipt_refs(out: &mut String, work_item: &WorkItem) {
     if receipts.is_empty() {
         return;
     }
+    let actionable_receipts = receipts
+        .iter()
+        .copied()
+        .filter(|receipt| is_compact_pr_receipt_ref(receipt))
+        .collect::<Vec<_>>();
+    let display_receipts = if actionable_receipts.is_empty() {
+        receipts.as_slice()
+    } else {
+        actionable_receipts.as_slice()
+    };
 
     out.push_str("## Existing receipts\n\n");
-    if receipts.len() > MAX_RECEIPTS {
+    if actionable_receipts.is_empty() && receipts.len() > MAX_RECEIPTS {
         out.push_str(&format!(
             "Showing last {MAX_RECEIPTS} of {} recorded receipt refs in manifest order.\n\n",
             receipts.len()
         ));
+    } else if !actionable_receipts.is_empty() && actionable_receipts.len() > MAX_RECEIPTS {
+        out.push_str(&format!(
+            "Showing last {MAX_RECEIPTS} of {} compact PR receipt refs ({} total recorded receipts).\n\n",
+            actionable_receipts.len(),
+            receipts.len()
+        ));
+    } else if !actionable_receipts.is_empty() && actionable_receipts.len() < receipts.len() {
+        out.push_str(&format!(
+            "Showing {} compact PR receipt refs from {} total recorded receipts.\n\n",
+            actionable_receipts.len(),
+            receipts.len()
+        ));
     }
 
-    let start = receipts.len().saturating_sub(MAX_RECEIPTS);
-    for receipt in receipts.iter().skip(start) {
+    let start = display_receipts.len().saturating_sub(MAX_RECEIPTS);
+    for receipt in display_receipts.iter().skip(start) {
         out.push_str(&format!("- `{receipt}`\n"));
     }
     out.push('\n');
+}
+
+fn is_compact_pr_receipt_ref(receipt: &str) -> bool {
+    let receipt = receipt.trim();
+    !receipt.contains(char::is_whitespace)
+        && receipt.contains('/')
+        && receipt.rsplit_once('#').is_some_and(|(_, number)| {
+            !number.is_empty() && number.chars().all(|c| c.is_ascii_digit())
+        })
 }
 
 fn push_named_section(out: &mut String, title: &str, content: &str) {
@@ -682,6 +713,46 @@ Policy impact:
     }
 
     #[test]
+    fn existing_receipts_prefer_compact_pr_refs_over_closure_notes() {
+        let work_item = WorkItem {
+            id: "promotion-cadence".to_string(),
+            proposal: None,
+            spec: None,
+            adr: None,
+            plan: "plans/shiplog-swarm/implementation-plan.md".to_string(),
+            commands: Vec::new(),
+            receipts: vec![
+                "EffortlessMetrics/shiplog-swarm#132".to_string(),
+                "EffortlessMetrics/shiplog#569".to_string(),
+                "EffortlessMetrics/shiplog-swarm#133".to_string(),
+                "EffortlessMetrics/shiplog#570".to_string(),
+                "EffortlessMetrics/shiplog#205 closed as completed by #206/#208".to_string(),
+            ],
+        };
+        let mut body = String::new();
+
+        push_receipt_refs(&mut body, &work_item);
+
+        assert!(body.contains("4 compact PR receipt refs from 5 total recorded receipts"));
+        assert!(body.contains("EffortlessMetrics/shiplog-swarm#133"));
+        assert!(body.contains("EffortlessMetrics/shiplog#570"));
+        assert!(!body.contains("closed as completed"));
+    }
+
+    #[test]
+    fn compact_pr_receipt_refs_require_numeric_issue_suffix_and_no_narrative() {
+        assert!(is_compact_pr_receipt_ref(
+            "EffortlessMetrics/shiplog-swarm#134"
+        ));
+        assert!(!is_compact_pr_receipt_ref(
+            "EffortlessMetrics/shiplog#205 closed as completed by #206/#208"
+        ));
+        assert!(!is_compact_pr_receipt_ref(
+            "EffortlessMetrics/shiplog#closed"
+        ));
+    }
+
+    #[test]
     fn section_lookup_uses_ordered_fallback_sections() {
         let plan_item = PlanItem {
             metadata: BTreeMap::new(),
@@ -726,7 +797,7 @@ Policy impact:
     }
 
     #[test]
-    fn receipt_summary_does_not_claim_manifest_order_is_chronological() {
+    fn receipt_summary_limits_compact_pr_receipt_refs() {
         let mut out = String::new();
         let work_item = WorkItem {
             id: "receipts".to_string(),
@@ -742,7 +813,7 @@ Policy impact:
 
         push_receipt_refs(&mut out, &work_item);
 
-        assert!(out.contains("Showing last 12 of 13 recorded receipt refs in manifest order."));
+        assert!(out.contains("Showing last 12 of 13 compact PR receipt refs"));
         assert!(!out.contains("Showing latest"));
         assert!(!out.contains("- `EffortlessMetrics/shiplog#1`\n"));
         assert!(out.contains("- `EffortlessMetrics/shiplog#13`\n"));
