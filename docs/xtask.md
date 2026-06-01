@@ -136,8 +136,9 @@ branches already merged into source or swarm so agents can clean up their own
 merged branches deliberately. Its review commands check both GitHub repos for
 matching PR heads before showing recent branch commits. The branch hygiene
 section separates source and swarm cleanup candidates into merged and review
-buckets and reports open PR-backed branches separately; it is an inspection
-receipt and does not delete branches. The queue section
+buckets, includes non-destructive PR/log review commands for both buckets, and
+reports open PR-backed branches separately; it is an inspection receipt and
+does not delete branches. The queue section
 reports open PRs and issues in both repos when GitHub inspection is available.
 The routed CI section reports the latest
 `EM CI Routed Shiplog Rust` run on source and swarm `main`. The promotion PR
