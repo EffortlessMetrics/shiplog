@@ -1301,6 +1301,19 @@ EffortlessMetrics/shiplog#553:
           26728820398, source PR routed proof passed through GitHub-hosted
           fallback in run 26729052733, and source post-merge routed proof
           passed through GitHub-hosted fallback in run 26729302413
+
+EffortlessMetrics/shiplog#554:
+  swarm head: 111234b907cbe1dfe74bac7b6e2c6b4b3c50bbc7
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#118
+  source merge: ac7715ce5c179ce43e83ec0afe331c54f39b2447
+  result: regular merge commit; support-tier and spec wording now describe
+          the branch-protection report surface and its read-only GitHub
+          inspection boundary; swarm PR routed proof passed through
+          GitHub-hosted fallback in run 26729790699, swarm/main routed proof
+          passed through GitHub-hosted fallback in run 26730025625, source PR
+          routed proof passed through GitHub-hosted fallback in run
+          26730266286, and source post-merge routed proof passed through
+          GitHub-hosted fallback in run 26730531559
 ```
 
 ### Proof commands

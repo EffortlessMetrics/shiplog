@@ -128,6 +128,7 @@ struct RepoContractReport {
     git_topology: GitTopologyReport,
     local_checkout: LocalCheckoutReport,
     remote_branch_hygiene: RemoteBranchHygieneReport,
+    remote_queue_hygiene: RemoteQueueHygieneReport,
     branch_protection_contract: BranchProtectionContractReport,
     receipt_freshness: ReceiptFreshnessReport,
     artifacts: Vec<Artifact>,
@@ -140,6 +141,7 @@ struct RepoInspections {
     git_topology: GitTopologyReport,
     local_checkout: LocalCheckoutReport,
     remote_branch_hygiene: RemoteBranchHygieneReport,
+    remote_queue_hygiene: RemoteQueueHygieneReport,
     branch_protection_contract: BranchProtectionContractReport,
     receipt_freshness: ReceiptFreshnessReport,
 }
@@ -191,6 +193,19 @@ struct RemoteBranchHygieneReport {
 }
 
 #[derive(Debug, Serialize)]
+struct RemoteQueueHygieneReport {
+    status: String,
+    source_repo: String,
+    swarm_repo: String,
+    source_open_prs: Vec<String>,
+    swarm_open_prs: Vec<String>,
+    source_open_issues: Vec<String>,
+    swarm_open_issues: Vec<String>,
+    notes: Vec<String>,
+    next_actions: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
 struct BranchProtectionContractReport {
     status: String,
     repo: String,
@@ -234,6 +249,7 @@ pub fn run(workspace_root: &Path) -> Result<()> {
     let git_topology = inspect_git_topology(workspace_root);
     let local_checkout = inspect_local_checkout(workspace_root);
     let remote_branch_hygiene = inspect_remote_branch_hygiene(workspace_root);
+    let remote_queue_hygiene = inspect_remote_queue_hygiene(workspace_root);
     let branch_protection_contract = inspect_branch_protection_contract(workspace_root);
     let receipt_freshness = inspect_receipt_freshness(workspace_root, &goal, &git_topology);
 
@@ -247,6 +263,7 @@ pub fn run(workspace_root: &Path) -> Result<()> {
         git_topology,
         local_checkout,
         remote_branch_hygiene,
+        remote_queue_hygiene,
         branch_protection_contract,
         receipt_freshness,
     };
@@ -357,6 +374,7 @@ fn build_report(
         git_topology: inspections.git_topology,
         local_checkout: inspections.local_checkout,
         remote_branch_hygiene: inspections.remote_branch_hygiene,
+        remote_queue_hygiene: inspections.remote_queue_hygiene,
         branch_protection_contract: inspections.branch_protection_contract,
         receipt_freshness: inspections.receipt_freshness,
         artifacts: artifacts.to_vec(),
@@ -691,6 +709,218 @@ fn remote_branch_hygiene_next_actions(
         )],
         _ => vec![
             "Run from a Git checkout with `origin` and `swarm` remotes available, then rerun `rtk cargo xtask repo-contract-report`."
+                .to_string(),
+        ],
+    }
+}
+
+fn inspect_remote_queue_hygiene(workspace_root: &Path) -> RemoteQueueHygieneReport {
+    let mut notes = Vec::new();
+
+    if !workspace_root.join(".git").exists() {
+        notes
+            .push("not a Git checkout; live PR and issue queue inspection was skipped".to_string());
+        return remote_queue_hygiene_from_parts(
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            notes,
+        );
+    }
+
+    let source_open_prs = github_open_prs(SOURCE_REPO, &mut notes);
+    let swarm_open_prs = github_open_prs(SWARM_REPO, &mut notes);
+    let source_open_issues = github_open_issues(SOURCE_REPO, &mut notes);
+    let swarm_open_issues = github_open_issues(SWARM_REPO, &mut notes);
+
+    remote_queue_hygiene_from_parts(
+        source_open_prs,
+        swarm_open_prs,
+        source_open_issues,
+        swarm_open_issues,
+        notes,
+    )
+}
+
+fn remote_queue_hygiene_from_parts(
+    source_open_prs: Vec<String>,
+    swarm_open_prs: Vec<String>,
+    source_open_issues: Vec<String>,
+    swarm_open_issues: Vec<String>,
+    notes: Vec<String>,
+) -> RemoteQueueHygieneReport {
+    let status = if !notes.is_empty() {
+        "unavailable"
+    } else if source_open_prs.is_empty()
+        && swarm_open_prs.is_empty()
+        && source_open_issues.is_empty()
+        && swarm_open_issues.is_empty()
+    {
+        "clean"
+    } else {
+        "review-needed"
+    }
+    .to_string();
+    let next_actions = remote_queue_hygiene_next_actions(
+        &status,
+        source_open_prs.len(),
+        swarm_open_prs.len(),
+        source_open_issues.len(),
+        swarm_open_issues.len(),
+    );
+
+    RemoteQueueHygieneReport {
+        status,
+        source_repo: SOURCE_REPO.to_string(),
+        swarm_repo: SWARM_REPO.to_string(),
+        source_open_prs,
+        swarm_open_prs,
+        source_open_issues,
+        swarm_open_issues,
+        notes,
+        next_actions,
+    }
+}
+
+fn github_open_prs(repo: &str, notes: &mut Vec<String>) -> Vec<String> {
+    let args = [
+        "pr",
+        "list",
+        "--repo",
+        repo,
+        "--state",
+        "open",
+        "--limit",
+        "100",
+        "--json",
+        "number,title,isDraft,headRefName,baseRefName",
+    ];
+    gh_json_array(&args, notes)
+        .into_iter()
+        .map(|value| format_github_pr(repo, &value))
+        .collect()
+}
+
+fn github_open_issues(repo: &str, notes: &mut Vec<String>) -> Vec<String> {
+    let args = [
+        "issue",
+        "list",
+        "--repo",
+        repo,
+        "--state",
+        "open",
+        "--limit",
+        "100",
+        "--json",
+        "number,title,labels",
+    ];
+    gh_json_array(&args, notes)
+        .into_iter()
+        .map(|value| format_github_issue(repo, &value))
+        .collect()
+}
+
+fn gh_json_array(args: &[&str], notes: &mut Vec<String>) -> Vec<serde_json::Value> {
+    match Command::new("gh").args(args).output() {
+        Ok(output) if output.status.success() => {
+            match serde_json::from_slice::<Vec<serde_json::Value>>(&output.stdout) {
+                Ok(values) => values,
+                Err(err) => {
+                    notes.push(format!(
+                        "gh {} returned invalid JSON: {err}",
+                        args.join(" ")
+                    ));
+                    Vec::new()
+                }
+            }
+        }
+        Ok(output) => {
+            let detail = String::from_utf8_lossy(&output.stderr).trim().to_string();
+            notes.push(format!(
+                "gh {} failed: {}",
+                args.join(" "),
+                if detail.is_empty() {
+                    output.status.to_string()
+                } else {
+                    detail
+                }
+            ));
+            Vec::new()
+        }
+        Err(err) => {
+            notes.push(format!("gh {} failed: {err}", args.join(" ")));
+            Vec::new()
+        }
+    }
+}
+
+fn format_github_pr(repo: &str, value: &serde_json::Value) -> String {
+    let number = json_u64(value, "number");
+    let title = json_str(value, "title");
+    let draft = value
+        .get("isDraft")
+        .and_then(serde_json::Value::as_bool)
+        .map(|value| value.to_string())
+        .unwrap_or_else(|| "-".to_string());
+    let head = json_str(value, "headRefName");
+    let base = json_str(value, "baseRefName");
+
+    format!("{repo}#{number} {title} [draft={draft}, head={head}, base={base}]")
+}
+
+fn format_github_issue(repo: &str, value: &serde_json::Value) -> String {
+    let number = json_u64(value, "number");
+    let title = json_str(value, "title");
+    let labels = value
+        .get("labels")
+        .and_then(serde_json::Value::as_array)
+        .map(|labels| {
+            labels
+                .iter()
+                .filter_map(|label| label.get("name"))
+                .filter_map(serde_json::Value::as_str)
+                .collect::<Vec<_>>()
+                .join(",")
+        })
+        .filter(|labels| !labels.is_empty())
+        .unwrap_or_else(|| "-".to_string());
+
+    format!("{repo}#{number} {title} [labels={labels}]")
+}
+
+fn json_u64(value: &serde_json::Value, key: &str) -> String {
+    value
+        .get(key)
+        .and_then(serde_json::Value::as_u64)
+        .map(|value| value.to_string())
+        .unwrap_or_else(|| "?".to_string())
+}
+
+fn json_str(value: &serde_json::Value, key: &str) -> String {
+    value
+        .get(key)
+        .and_then(serde_json::Value::as_str)
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or("-")
+        .to_string()
+}
+
+fn remote_queue_hygiene_next_actions(
+    status: &str,
+    source_prs: usize,
+    swarm_prs: usize,
+    source_issues: usize,
+    swarm_issues: usize,
+) -> Vec<String> {
+    match status {
+        "clean" => vec!["Remote PR and issue queues are empty.".to_string()],
+        "review-needed" => vec![format!(
+            "Review {source_prs} source PR(s), {swarm_prs} swarm PR(s), {source_issues} source issue(s), and {swarm_issues} swarm issue(s); merge, close, defer, or convert each item before treating the queue as boring."
+        )],
+        _ => vec![
+            "Verify queues with `rtk gh pr list` and `rtk gh issue list` for both source and swarm repos."
                 .to_string(),
         ],
     }
@@ -1745,6 +1975,95 @@ fn render_markdown(report: &RepoContractReport) -> String {
         &report.remote_branch_hygiene.next_actions,
     );
 
+    out.push_str("\n## Remote queue hygiene\n\n");
+    out.push_str("| Field | Value |\n|---|---|\n");
+    push_row(&mut out, "Status", &report.remote_queue_hygiene.status);
+    push_row(
+        &mut out,
+        "Source repo",
+        &report.remote_queue_hygiene.source_repo,
+    );
+    push_row(
+        &mut out,
+        "Swarm repo",
+        &report.remote_queue_hygiene.swarm_repo,
+    );
+    push_row(
+        &mut out,
+        "Source open PRs",
+        &format!(
+            "{} item(s)",
+            report.remote_queue_hygiene.source_open_prs.len()
+        ),
+    );
+    push_row(
+        &mut out,
+        "Swarm open PRs",
+        &format!(
+            "{} item(s)",
+            report.remote_queue_hygiene.swarm_open_prs.len()
+        ),
+    );
+    push_row(
+        &mut out,
+        "Source open issues",
+        &format!(
+            "{} item(s)",
+            report.remote_queue_hygiene.source_open_issues.len()
+        ),
+    );
+    push_row(
+        &mut out,
+        "Swarm open issues",
+        &format!(
+            "{} item(s)",
+            report.remote_queue_hygiene.swarm_open_issues.len()
+        ),
+    );
+    push_row(
+        &mut out,
+        "Notes",
+        &format!("{} note(s)", report.remote_queue_hygiene.notes.len()),
+    );
+    push_row(
+        &mut out,
+        "Next actions",
+        &format!(
+            "{} action(s)",
+            report.remote_queue_hygiene.next_actions.len()
+        ),
+    );
+    push_markdown_list(
+        &mut out,
+        "Source open PRs",
+        &report.remote_queue_hygiene.source_open_prs,
+    );
+    push_markdown_list(
+        &mut out,
+        "Swarm open PRs",
+        &report.remote_queue_hygiene.swarm_open_prs,
+    );
+    push_markdown_list(
+        &mut out,
+        "Source open issues",
+        &report.remote_queue_hygiene.source_open_issues,
+    );
+    push_markdown_list(
+        &mut out,
+        "Swarm open issues",
+        &report.remote_queue_hygiene.swarm_open_issues,
+    );
+    push_markdown_list(
+        &mut out,
+        "Remote queue hygiene notes",
+        &report.remote_queue_hygiene.notes,
+    );
+    push_markdown_bullets(
+        &mut out,
+        "Remote queue hygiene next actions",
+        &report.remote_queue_hygiene.next_actions,
+    );
+
     out.push_str("\n## Branch protection contract\n\n");
     out.push_str("| Field | Value |\n|---|---|\n");
     push_row(
@@ -2295,6 +2614,7 @@ receipts = [
         assert!(json.contains("\"source_merged_cleanup_candidates\""));
         assert!(json.contains("\"swarm_review_cleanup_candidates\""));
         assert!(json.contains("\"source_merged_cleanup_review_commands\""));
+        assert!(json.contains("\"remote_queue_hygiene\""));
         assert!(json.contains("\"branch_protection_contract\""));
         assert!(json.contains("\"receipt_freshness\""));
         let markdown = fs::read_to_string(graph_md).unwrap();
@@ -2313,8 +2633,80 @@ receipts = [
         assert!(markdown.contains("## Remote branch hygiene"));
         assert!(markdown.contains("Source merged cleanup candidates"));
         assert!(markdown.contains("Swarm review cleanup candidates"));
+        assert!(markdown.contains("## Remote queue hygiene"));
         assert!(markdown.contains("## Branch protection contract"));
         assert!(markdown.contains("## Receipt freshness"));
+    }
+
+    #[test]
+    fn remote_queue_hygiene_reports_clean_when_queues_are_empty() {
+        let report = remote_queue_hygiene_from_parts(
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+        );
+
+        assert_eq!(report.status, "clean");
+        assert!(
+            report
+                .next_actions
+                .iter()
+                .any(|action| action.contains("queues are empty"))
+        );
+    }
+
+    #[test]
+    fn remote_queue_hygiene_reports_open_work() {
+        let report = remote_queue_hygiene_from_parts(
+            vec!["EffortlessMetrics/shiplog#1 source PR".to_string()],
+            vec!["EffortlessMetrics/shiplog-swarm#2 swarm PR".to_string()],
+            vec!["EffortlessMetrics/shiplog#3 source issue".to_string()],
+            vec!["EffortlessMetrics/shiplog-swarm#4 swarm issue".to_string()],
+            Vec::new(),
+        );
+
+        assert_eq!(report.status, "review-needed");
+        assert!(
+            report
+                .next_actions
+                .iter()
+                .any(|action| action.contains("1 source PR(s)"))
+        );
+        assert_eq!(report.source_open_prs.len(), 1);
+        assert_eq!(report.swarm_open_issues.len(), 1);
+    }
+
+    #[test]
+    fn formats_open_pr_and_issue_receipts() {
+        let pr = format_github_pr(
+            SWARM_REPO,
+            &serde_json::json!({
+                "number": 118,
+                "title": "docs: align claims",
+                "isDraft": false,
+                "headRefName": "docs/claims",
+                "baseRefName": "main"
+            }),
+        );
+        let issue = format_github_issue(
+            SOURCE_REPO,
+            &serde_json::json!({
+                "number": 12,
+                "title": "queue cleanup",
+                "labels": [{"name": "release"}]
+            }),
+        );
+
+        assert_eq!(
+            pr,
+            "EffortlessMetrics/shiplog-swarm#118 docs: align claims [draft=false, head=docs/claims, base=main]"
+        );
+        assert_eq!(
+            issue,
+            "EffortlessMetrics/shiplog#12 queue cleanup [labels=release]"
+        );
     }
 
     #[test]
