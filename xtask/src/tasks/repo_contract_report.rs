@@ -13,6 +13,8 @@ const REPORT_COMMAND: &str = "rtk cargo xtask repo-contract-report";
 const SWARM_REPO: &str = "EffortlessMetrics/shiplog-swarm";
 const SOURCE_REPO: &str = "EffortlessMetrics/shiplog";
 const SWARM_BRANCH: &str = "main";
+const SOURCE_BRANCH: &str = "main";
+const ROUTED_WORKFLOW: &str = "EM CI Routed Shiplog Rust";
 const SWARM_REQUIRED_CHECK: &str = "Shiplog Rust Small Result";
 const DISALLOWED_BRANCH_PROTECTION_CHECKS: &[&str] = &[
     "Route Shiplog Rust Small",
@@ -129,6 +131,7 @@ struct RepoContractReport {
     local_checkout: LocalCheckoutReport,
     remote_branch_hygiene: RemoteBranchHygieneReport,
     remote_queue_hygiene: RemoteQueueHygieneReport,
+    routed_ci_health: RoutedCiHealthReport,
     branch_protection_contract: BranchProtectionContractReport,
     receipt_freshness: ReceiptFreshnessReport,
     artifacts: Vec<Artifact>,
@@ -142,6 +145,7 @@ struct RepoInspections {
     local_checkout: LocalCheckoutReport,
     remote_branch_hygiene: RemoteBranchHygieneReport,
     remote_queue_hygiene: RemoteQueueHygieneReport,
+    routed_ci_health: RoutedCiHealthReport,
     branch_protection_contract: BranchProtectionContractReport,
     receipt_freshness: ReceiptFreshnessReport,
 }
@@ -205,6 +209,34 @@ struct RemoteQueueHygieneReport {
     next_actions: Vec<String>,
 }
 
+#[derive(Clone, Debug, Serialize)]
+struct RoutedCiRunReport {
+    id: Option<u64>,
+    status: String,
+    conclusion: String,
+    display_title: String,
+    event: String,
+    head_branch: String,
+    created_at: String,
+    updated_at: String,
+    url: String,
+    success: bool,
+}
+
+#[derive(Debug, Serialize)]
+struct RoutedCiHealthReport {
+    status: String,
+    workflow: String,
+    source_repo: String,
+    source_branch: String,
+    source_latest_run: Option<RoutedCiRunReport>,
+    swarm_repo: String,
+    swarm_branch: String,
+    swarm_latest_run: Option<RoutedCiRunReport>,
+    notes: Vec<String>,
+    next_actions: Vec<String>,
+}
+
 #[derive(Debug, Serialize)]
 struct BranchProtectionContractReport {
     status: String,
@@ -250,6 +282,7 @@ pub fn run(workspace_root: &Path) -> Result<()> {
     let local_checkout = inspect_local_checkout(workspace_root);
     let remote_branch_hygiene = inspect_remote_branch_hygiene(workspace_root);
     let remote_queue_hygiene = inspect_remote_queue_hygiene(workspace_root);
+    let routed_ci_health = inspect_routed_ci_health(workspace_root);
     let branch_protection_contract = inspect_branch_protection_contract(workspace_root);
     let receipt_freshness = inspect_receipt_freshness(workspace_root, &goal, &git_topology);
 
@@ -264,6 +297,7 @@ pub fn run(workspace_root: &Path) -> Result<()> {
         local_checkout,
         remote_branch_hygiene,
         remote_queue_hygiene,
+        routed_ci_health,
         branch_protection_contract,
         receipt_freshness,
     };
@@ -375,6 +409,7 @@ fn build_report(
         local_checkout: inspections.local_checkout,
         remote_branch_hygiene: inspections.remote_branch_hygiene,
         remote_queue_hygiene: inspections.remote_queue_hygiene,
+        routed_ci_health: inspections.routed_ci_health,
         branch_protection_contract: inspections.branch_protection_contract,
         receipt_freshness: inspections.receipt_freshness,
         artifacts: artifacts.to_vec(),
@@ -923,6 +958,135 @@ fn remote_queue_hygiene_next_actions(
             "Verify queues with `rtk gh pr list` and `rtk gh issue list` for both source and swarm repos."
                 .to_string(),
         ],
+    }
+}
+
+fn inspect_routed_ci_health(workspace_root: &Path) -> RoutedCiHealthReport {
+    let mut notes = Vec::new();
+
+    if !workspace_root.join(".git").exists() {
+        notes.push("not a Git checkout; live routed CI inspection was skipped".to_string());
+        return routed_ci_health_from_parts(None, None, notes);
+    }
+
+    let source_latest_run = github_latest_routed_ci_run(SOURCE_REPO, SOURCE_BRANCH, &mut notes);
+    let swarm_latest_run = github_latest_routed_ci_run(SWARM_REPO, SWARM_BRANCH, &mut notes);
+
+    routed_ci_health_from_parts(source_latest_run, swarm_latest_run, notes)
+}
+
+fn github_latest_routed_ci_run(
+    repo: &str,
+    branch: &str,
+    notes: &mut Vec<String>,
+) -> Option<RoutedCiRunReport> {
+    let args = [
+        "run",
+        "list",
+        "--repo",
+        repo,
+        "--workflow",
+        ROUTED_WORKFLOW,
+        "--branch",
+        branch,
+        "--limit",
+        "1",
+        "--json",
+        "databaseId,status,conclusion,displayTitle,event,headBranch,url,createdAt,updatedAt",
+    ];
+    gh_json_array(&args, notes)
+        .into_iter()
+        .next()
+        .map(routed_ci_run_from_json)
+}
+
+fn routed_ci_run_from_json(value: serde_json::Value) -> RoutedCiRunReport {
+    let status = json_str(&value, "status");
+    let conclusion = json_str(&value, "conclusion");
+    let success = status == "completed" && conclusion == "success";
+
+    RoutedCiRunReport {
+        id: value.get("databaseId").and_then(serde_json::Value::as_u64),
+        status,
+        conclusion,
+        display_title: json_str(&value, "displayTitle"),
+        event: json_str(&value, "event"),
+        head_branch: json_str(&value, "headBranch"),
+        created_at: json_str(&value, "createdAt"),
+        updated_at: json_str(&value, "updatedAt"),
+        url: json_str(&value, "url"),
+        success,
+    }
+}
+
+fn routed_ci_health_from_parts(
+    source_latest_run: Option<RoutedCiRunReport>,
+    swarm_latest_run: Option<RoutedCiRunReport>,
+    notes: Vec<String>,
+) -> RoutedCiHealthReport {
+    let source_ok = source_latest_run.as_ref().is_some_and(|run| run.success);
+    let swarm_ok = swarm_latest_run.as_ref().is_some_and(|run| run.success);
+    let status = if !notes.is_empty() {
+        "unavailable"
+    } else if source_ok && swarm_ok {
+        "green"
+    } else {
+        "attention-needed"
+    }
+    .to_string();
+    let next_actions = routed_ci_health_next_actions(&status, source_ok, swarm_ok);
+
+    RoutedCiHealthReport {
+        status,
+        workflow: ROUTED_WORKFLOW.to_string(),
+        source_repo: SOURCE_REPO.to_string(),
+        source_branch: SOURCE_BRANCH.to_string(),
+        source_latest_run,
+        swarm_repo: SWARM_REPO.to_string(),
+        swarm_branch: SWARM_BRANCH.to_string(),
+        swarm_latest_run,
+        notes,
+        next_actions,
+    }
+}
+
+fn routed_ci_health_next_actions(status: &str, source_ok: bool, swarm_ok: bool) -> Vec<String> {
+    match status {
+        "green" => vec![
+            "Latest routed CI runs on source and swarm main completed successfully.".to_string(),
+        ],
+        "attention-needed" => {
+            let mut missing = Vec::new();
+            if !source_ok {
+                missing.push("source main");
+            }
+            if !swarm_ok {
+                missing.push("swarm main");
+            }
+            vec![format!(
+                "Inspect the latest `{ROUTED_WORKFLOW}` run on {} before treating the control plane as green.",
+                missing.join(" and ")
+            )]
+        }
+        _ => vec![format!(
+            "Verify routed CI with `rtk gh run list --repo {SOURCE_REPO} --workflow \"{ROUTED_WORKFLOW}\" --branch {SOURCE_BRANCH} --limit 3` and the matching swarm command."
+        )],
+    }
+}
+
+fn routed_ci_run_summary(run: &Option<RoutedCiRunReport>) -> String {
+    match run {
+        Some(run) => {
+            let id = run
+                .id
+                .map(|value| value.to_string())
+                .unwrap_or_else(|| "?".to_string());
+            format!(
+                "#{id} {}/{} [{} on {}] {}",
+                run.conclusion, run.status, run.event, run.head_branch, run.display_title
+            )
+        }
+        None => "-".to_string(),
     }
 }
 
@@ -2064,6 +2228,77 @@ fn render_markdown(report: &RepoContractReport) -> String {
         &report.remote_queue_hygiene.next_actions,
     );
 
+    out.push_str("\n## Routed CI health\n\n");
+    out.push_str("| Field | Value |\n|---|---|\n");
+    push_row(&mut out, "Status", &report.routed_ci_health.status);
+    push_row(&mut out, "Workflow", &report.routed_ci_health.workflow);
+    push_row(
+        &mut out,
+        "Source repo",
+        &report.routed_ci_health.source_repo,
+    );
+    push_row(
+        &mut out,
+        "Source branch",
+        &report.routed_ci_health.source_branch,
+    );
+    push_row(
+        &mut out,
+        "Source latest run",
+        &routed_ci_run_summary(&report.routed_ci_health.source_latest_run),
+    );
+    push_row(
+        &mut out,
+        "Source latest run OK",
+        &report
+            .routed_ci_health
+            .source_latest_run
+            .as_ref()
+            .map(|run| run.success.to_string())
+            .unwrap_or_else(|| "-".to_string()),
+    );
+    push_row(&mut out, "Swarm repo", &report.routed_ci_health.swarm_repo);
+    push_row(
+        &mut out,
+        "Swarm branch",
+        &report.routed_ci_health.swarm_branch,
+    );
+    push_row(
+        &mut out,
+        "Swarm latest run",
+        &routed_ci_run_summary(&report.routed_ci_health.swarm_latest_run),
+    );
+    push_row(
+        &mut out,
+        "Swarm latest run OK",
+        &report
+            .routed_ci_health
+            .swarm_latest_run
+            .as_ref()
+            .map(|run| run.success.to_string())
+            .unwrap_or_else(|| "-".to_string()),
+    );
+    push_row(
+        &mut out,
+        "Notes",
+        &format!("{} note(s)", report.routed_ci_health.notes.len()),
+    );
+    push_row(
+        &mut out,
+        "Next actions",
+        &format!("{} action(s)", report.routed_ci_health.next_actions.len()),
+    );
+    push_markdown_list(
+        &mut out,
+        "Routed CI health notes",
+        &report.routed_ci_health.notes,
+    );
+    push_markdown_bullets(
+        &mut out,
+        "Routed CI health next actions",
+        &report.routed_ci_health.next_actions,
+    );
+
     out.push_str("\n## Branch protection contract\n\n");
     out.push_str("| Field | Value |\n|---|---|\n");
     push_row(
@@ -2615,6 +2850,7 @@ receipts = [
         assert!(json.contains("\"swarm_review_cleanup_candidates\""));
         assert!(json.contains("\"source_merged_cleanup_review_commands\""));
         assert!(json.contains("\"remote_queue_hygiene\""));
+        assert!(json.contains("\"routed_ci_health\""));
         assert!(json.contains("\"branch_protection_contract\""));
         assert!(json.contains("\"receipt_freshness\""));
         let markdown = fs::read_to_string(graph_md).unwrap();
@@ -2634,6 +2870,7 @@ receipts = [
         assert!(markdown.contains("Source merged cleanup candidates"));
         assert!(markdown.contains("Swarm review cleanup candidates"));
         assert!(markdown.contains("## Remote queue hygiene"));
+        assert!(markdown.contains("## Routed CI health"));
         assert!(markdown.contains("## Branch protection contract"));
         assert!(markdown.contains("## Receipt freshness"));
     }
@@ -2706,6 +2943,109 @@ receipts = [
         assert_eq!(
             issue,
             "EffortlessMetrics/shiplog#12 queue cleanup [labels=release]"
+        );
+    }
+
+    #[test]
+    fn routed_ci_health_reports_green_for_successful_latest_runs() {
+        let source = routed_ci_run_from_json(serde_json::json!({
+            "databaseId": 26731901009u64,
+            "status": "completed",
+            "conclusion": "success",
+            "displayTitle": "Merge pull request #555",
+            "event": "push",
+            "headBranch": "main",
+            "url": "https://example.test/source-run",
+            "createdAt": "2026-06-01T02:24:47Z",
+            "updatedAt": "2026-06-01T02:33:18Z"
+        }));
+        let swarm = routed_ci_run_from_json(serde_json::json!({
+            "databaseId": 26731460914u64,
+            "status": "completed",
+            "conclusion": "success",
+            "displayTitle": "xtask: report remote queue hygiene (#119)",
+            "event": "push",
+            "headBranch": "main",
+            "url": "https://example.test/swarm-run",
+            "createdAt": "2026-06-01T02:07:39Z",
+            "updatedAt": "2026-06-01T02:16:10Z"
+        }));
+
+        let report = routed_ci_health_from_parts(Some(source), Some(swarm), Vec::new());
+
+        assert_eq!(report.status, "green");
+        assert!(report.source_latest_run.as_ref().unwrap().success);
+        assert!(report.swarm_latest_run.as_ref().unwrap().success);
+        assert!(
+            report
+                .next_actions
+                .iter()
+                .any(|action| action.contains("completed successfully"))
+        );
+    }
+
+    #[test]
+    fn routed_ci_health_reports_attention_for_failed_latest_run() {
+        let source = routed_ci_run_from_json(serde_json::json!({
+            "databaseId": 1u64,
+            "status": "completed",
+            "conclusion": "failure",
+            "displayTitle": "Merge pull request #555",
+            "event": "push",
+            "headBranch": "main"
+        }));
+        let swarm = routed_ci_run_from_json(serde_json::json!({
+            "databaseId": 2u64,
+            "status": "completed",
+            "conclusion": "success",
+            "displayTitle": "xtask: report queue hygiene (#119)",
+            "event": "push",
+            "headBranch": "main"
+        }));
+
+        let report = routed_ci_health_from_parts(Some(source), Some(swarm), Vec::new());
+
+        assert_eq!(report.status, "attention-needed");
+        assert!(!report.source_latest_run.as_ref().unwrap().success);
+        assert!(
+            report
+                .next_actions
+                .iter()
+                .any(|action| action.contains("source main"))
+        );
+    }
+
+    #[test]
+    fn routed_ci_health_reports_unavailable_when_gh_inspection_fails() {
+        let report = routed_ci_health_from_parts(
+            None,
+            None,
+            vec!["gh run list failed: authentication required".to_string()],
+        );
+
+        assert_eq!(report.status, "unavailable");
+        assert!(
+            report
+                .next_actions
+                .iter()
+                .any(|action| action.contains("rtk gh run list"))
+        );
+    }
+
+    #[test]
+    fn formats_routed_ci_run_summary() {
+        let run = routed_ci_run_from_json(serde_json::json!({
+            "databaseId": 26731460914u64,
+            "status": "completed",
+            "conclusion": "success",
+            "displayTitle": "xtask: report remote queue hygiene (#119)",
+            "event": "push",
+            "headBranch": "main"
+        }));
+
+        assert_eq!(
+            routed_ci_run_summary(&Some(run)),
+            "#26731460914 success/completed [push on main] xtask: report remote queue hygiene (#119)"
         );
     }
 
