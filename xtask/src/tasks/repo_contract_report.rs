@@ -10,6 +10,17 @@ use std::path::Path;
 use std::process::Command;
 
 const REPORT_COMMAND: &str = "rtk cargo xtask repo-contract-report";
+const SWARM_REPO: &str = "EffortlessMetrics/shiplog-swarm";
+const SOURCE_REPO: &str = "EffortlessMetrics/shiplog";
+const SWARM_BRANCH: &str = "main";
+const SWARM_REQUIRED_CHECK: &str = "Shiplog Rust Small Result";
+const DISALLOWED_BRANCH_PROTECTION_CHECKS: &[&str] = &[
+    "Route Shiplog Rust Small",
+    "Shiplog Rust Small on CPX42",
+    "Shiplog Rust Small on CX43",
+    "Shiplog Rust Small on CX53",
+    "Shiplog Rust Small on GitHub Hosted",
+];
 
 #[derive(Debug, Deserialize)]
 struct DocArtifactsPolicy {
@@ -117,11 +128,20 @@ struct RepoContractReport {
     git_topology: GitTopologyReport,
     local_checkout: LocalCheckoutReport,
     remote_branch_hygiene: RemoteBranchHygieneReport,
+    branch_protection_contract: BranchProtectionContractReport,
     receipt_freshness: ReceiptFreshnessReport,
     artifacts: Vec<Artifact>,
     work_items: Vec<WorkItem>,
     support_tiers: Vec<SupportTierClaim>,
     edges: Vec<GraphEdge>,
+}
+
+struct RepoInspections {
+    git_topology: GitTopologyReport,
+    local_checkout: LocalCheckoutReport,
+    remote_branch_hygiene: RemoteBranchHygieneReport,
+    branch_protection_contract: BranchProtectionContractReport,
+    receipt_freshness: ReceiptFreshnessReport,
 }
 
 #[derive(Debug, Serialize)]
@@ -171,6 +191,26 @@ struct RemoteBranchHygieneReport {
 }
 
 #[derive(Debug, Serialize)]
+struct BranchProtectionContractReport {
+    status: String,
+    repo: String,
+    branch: String,
+    expected_required_status_checks: Vec<String>,
+    actual_required_status_checks: Vec<String>,
+    required_status_checks_ok: Option<bool>,
+    strict_required_status_checks: Option<bool>,
+    strict_required_status_checks_ok: Option<bool>,
+    enforce_admins: Option<bool>,
+    allow_force_pushes: Option<bool>,
+    allow_force_pushes_ok: Option<bool>,
+    allow_deletions: Option<bool>,
+    allow_deletions_ok: Option<bool>,
+    disallowed_required_checks: Vec<String>,
+    notes: Vec<String>,
+    next_actions: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
 struct ReceiptFreshnessReport {
     status: String,
     latest_source_promotion_merge: Option<String>,
@@ -194,6 +234,7 @@ pub fn run(workspace_root: &Path) -> Result<()> {
     let git_topology = inspect_git_topology(workspace_root);
     let local_checkout = inspect_local_checkout(workspace_root);
     let remote_branch_hygiene = inspect_remote_branch_hygiene(workspace_root);
+    let branch_protection_contract = inspect_branch_protection_contract(workspace_root);
     let receipt_freshness = inspect_receipt_freshness(workspace_root, &goal, &git_topology);
 
     let output_dir = workspace_root.join("target").join("source-of-truth");
@@ -202,14 +243,18 @@ pub fn run(workspace_root: &Path) -> Result<()> {
     let graph_json = output_dir.join("graph.json");
     let graph_md = output_dir.join("graph.md");
 
+    let inspections = RepoInspections {
+        git_topology,
+        local_checkout,
+        remote_branch_hygiene,
+        branch_protection_contract,
+        receipt_freshness,
+    };
     let report = build_report(
         &artifacts,
         goal,
         support_tiers,
-        git_topology,
-        local_checkout,
-        remote_branch_hygiene,
-        receipt_freshness,
+        inspections,
         vec![
             display_path(workspace_root, &graph_json),
             display_path(workspace_root, &graph_md),
@@ -261,10 +306,7 @@ fn build_report(
     artifacts: &[Artifact],
     goal: ActiveGoal,
     support_tiers: Vec<SupportTierClaim>,
-    git_topology: GitTopologyReport,
-    local_checkout: LocalCheckoutReport,
-    remote_branch_hygiene: RemoteBranchHygieneReport,
-    receipt_freshness: ReceiptFreshnessReport,
+    inspections: RepoInspections,
     outputs: Vec<String>,
 ) -> RepoContractReport {
     let active_work_items = goal
@@ -312,10 +354,11 @@ fn build_report(
             active_work_items,
             ready_work_items,
         },
-        git_topology,
-        local_checkout,
-        remote_branch_hygiene,
-        receipt_freshness,
+        git_topology: inspections.git_topology,
+        local_checkout: inspections.local_checkout,
+        remote_branch_hygiene: inspections.remote_branch_hygiene,
+        branch_protection_contract: inspections.branch_protection_contract,
+        receipt_freshness: inspections.receipt_freshness,
         artifacts: artifacts.to_vec(),
         work_items: goal.work_item,
         support_tiers,
@@ -653,14 +696,203 @@ fn remote_branch_hygiene_next_actions(
     }
 }
 
+fn inspect_branch_protection_contract(workspace_root: &Path) -> BranchProtectionContractReport {
+    let mut notes = Vec::new();
+    let expected_required_status_checks = vec![SWARM_REQUIRED_CHECK.to_string()];
+
+    if !workspace_root.join(".git").exists() {
+        notes.push("not a Git checkout; live branch protection inspection was skipped".to_string());
+        return branch_protection_contract_from_parts(
+            expected_required_status_checks,
+            Vec::new(),
+            None,
+            None,
+            None,
+            None,
+            notes,
+        );
+    }
+
+    let path = format!("repos/{SWARM_REPO}/branches/{SWARM_BRANCH}/protection");
+    match Command::new("gh").args(["api", &path]).output() {
+        Ok(output) if output.status.success() => {
+            match serde_json::from_slice::<serde_json::Value>(&output.stdout) {
+                Ok(value) => {
+                    branch_protection_contract_from_json(expected_required_status_checks, value)
+                }
+                Err(err) => {
+                    notes.push(format!("gh api {path} returned invalid JSON: {err}"));
+                    branch_protection_contract_from_parts(
+                        expected_required_status_checks,
+                        Vec::new(),
+                        None,
+                        None,
+                        None,
+                        None,
+                        notes,
+                    )
+                }
+            }
+        }
+        Ok(output) => {
+            let detail = String::from_utf8_lossy(&output.stderr).trim().to_string();
+            notes.push(format!(
+                "gh api {path} failed: {}",
+                if detail.is_empty() {
+                    output.status.to_string()
+                } else {
+                    detail
+                }
+            ));
+            branch_protection_contract_from_parts(
+                expected_required_status_checks,
+                Vec::new(),
+                None,
+                None,
+                None,
+                None,
+                notes,
+            )
+        }
+        Err(err) => {
+            notes.push(format!("gh api {path} failed: {err}"));
+            branch_protection_contract_from_parts(
+                expected_required_status_checks,
+                Vec::new(),
+                None,
+                None,
+                None,
+                None,
+                notes,
+            )
+        }
+    }
+}
+
+fn branch_protection_contract_from_json(
+    expected_required_status_checks: Vec<String>,
+    value: serde_json::Value,
+) -> BranchProtectionContractReport {
+    let actual_required_status_checks = value
+        .pointer("/required_status_checks/contexts")
+        .and_then(serde_json::Value::as_array)
+        .map(|items| {
+            items
+                .iter()
+                .filter_map(serde_json::Value::as_str)
+                .map(ToOwned::to_owned)
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    let strict_required_status_checks = value
+        .pointer("/required_status_checks/strict")
+        .and_then(serde_json::Value::as_bool);
+    let enforce_admins = value
+        .pointer("/enforce_admins/enabled")
+        .and_then(serde_json::Value::as_bool);
+    let allow_force_pushes = value
+        .pointer("/allow_force_pushes/enabled")
+        .and_then(serde_json::Value::as_bool);
+    let allow_deletions = value
+        .pointer("/allow_deletions/enabled")
+        .and_then(serde_json::Value::as_bool);
+
+    branch_protection_contract_from_parts(
+        expected_required_status_checks,
+        actual_required_status_checks,
+        strict_required_status_checks,
+        enforce_admins,
+        allow_force_pushes,
+        allow_deletions,
+        Vec::new(),
+    )
+}
+
+fn branch_protection_contract_from_parts(
+    expected_required_status_checks: Vec<String>,
+    actual_required_status_checks: Vec<String>,
+    strict_required_status_checks: Option<bool>,
+    enforce_admins: Option<bool>,
+    allow_force_pushes: Option<bool>,
+    allow_deletions: Option<bool>,
+    notes: Vec<String>,
+) -> BranchProtectionContractReport {
+    let required_status_checks_ok = if notes.is_empty() {
+        Some(same_string_set(
+            &expected_required_status_checks,
+            &actual_required_status_checks,
+        ))
+    } else {
+        None
+    };
+    let strict_required_status_checks_ok = strict_required_status_checks;
+    let allow_force_pushes_ok = allow_force_pushes.map(|value| !value);
+    let allow_deletions_ok = allow_deletions.map(|value| !value);
+    let disallowed_required_checks = actual_required_status_checks
+        .iter()
+        .filter(|check| DISALLOWED_BRANCH_PROTECTION_CHECKS.contains(&check.as_str()))
+        .cloned()
+        .collect::<Vec<_>>();
+
+    let status = if !notes.is_empty() {
+        "unavailable"
+    } else if required_status_checks_ok == Some(true)
+        && strict_required_status_checks_ok == Some(true)
+        && allow_force_pushes_ok == Some(true)
+        && allow_deletions_ok == Some(true)
+        && disallowed_required_checks.is_empty()
+    {
+        "aligned"
+    } else {
+        "drift"
+    }
+    .to_string();
+    let next_actions = branch_protection_next_actions(&status);
+
+    BranchProtectionContractReport {
+        status,
+        repo: SWARM_REPO.to_string(),
+        branch: SWARM_BRANCH.to_string(),
+        expected_required_status_checks,
+        actual_required_status_checks,
+        required_status_checks_ok,
+        strict_required_status_checks,
+        strict_required_status_checks_ok,
+        enforce_admins,
+        allow_force_pushes,
+        allow_force_pushes_ok,
+        allow_deletions,
+        allow_deletions_ok,
+        disallowed_required_checks,
+        notes,
+        next_actions,
+    }
+}
+
+fn same_string_set(expected: &[String], actual: &[String]) -> bool {
+    expected.iter().collect::<BTreeSet<_>>() == actual.iter().collect::<BTreeSet<_>>()
+}
+
+fn branch_protection_next_actions(status: &str) -> Vec<String> {
+    match status {
+        "aligned" => vec![
+            "Branch protection requires only `Shiplog Rust Small Result`; continue normal swarm PRs."
+                .to_string(),
+        ],
+        "drift" => vec![format!(
+            "Repair `{SWARM_REPO}/{SWARM_BRANCH}` branch protection so the only required status check is `{SWARM_REQUIRED_CHECK}` and conditional implementation jobs are not required."
+        )],
+        _ => vec![format!(
+            "Verify live branch protection with `rtk gh api repos/{SWARM_REPO}/branches/{SWARM_BRANCH}/protection`."
+        )],
+    }
+}
+
 fn inspect_receipt_freshness(
     workspace_root: &Path,
     goal: &ActiveGoal,
     git_topology: &GitTopologyReport,
 ) -> ReceiptFreshnessReport {
-    const SOURCE_REPO: &str = "EffortlessMetrics/shiplog";
-    const SWARM_REPO: &str = "EffortlessMetrics/shiplog-swarm";
-
     let mut notes = Vec::new();
     let plan_text = load_plan_texts(workspace_root, goal, &mut notes);
 
@@ -1513,6 +1745,132 @@ fn render_markdown(report: &RepoContractReport) -> String {
         &report.remote_branch_hygiene.next_actions,
     );
 
+    out.push_str("\n## Branch protection contract\n\n");
+    out.push_str("| Field | Value |\n|---|---|\n");
+    push_row(
+        &mut out,
+        "Status",
+        &report.branch_protection_contract.status,
+    );
+    push_row(&mut out, "Repo", &report.branch_protection_contract.repo);
+    push_row(
+        &mut out,
+        "Branch",
+        &report.branch_protection_contract.branch,
+    );
+    push_row(
+        &mut out,
+        "Expected required checks",
+        &join_or_dash(
+            &report
+                .branch_protection_contract
+                .expected_required_status_checks,
+        ),
+    );
+    push_row(
+        &mut out,
+        "Actual required checks",
+        &join_or_dash(
+            &report
+                .branch_protection_contract
+                .actual_required_status_checks,
+        ),
+    );
+    push_row(
+        &mut out,
+        "Required checks OK",
+        &bool_opt(&report.branch_protection_contract.required_status_checks_ok),
+    );
+    push_row(
+        &mut out,
+        "Strict required checks",
+        &bool_opt(
+            &report
+                .branch_protection_contract
+                .strict_required_status_checks,
+        ),
+    );
+    push_row(
+        &mut out,
+        "Strict required checks OK",
+        &bool_opt(
+            &report
+                .branch_protection_contract
+                .strict_required_status_checks_ok,
+        ),
+    );
+    push_row(
+        &mut out,
+        "Enforce admins",
+        &bool_opt(&report.branch_protection_contract.enforce_admins),
+    );
+    push_row(
+        &mut out,
+        "Allow force pushes",
+        &bool_opt(&report.branch_protection_contract.allow_force_pushes),
+    );
+    push_row(
+        &mut out,
+        "Allow force pushes OK",
+        &bool_opt(&report.branch_protection_contract.allow_force_pushes_ok),
+    );
+    push_row(
+        &mut out,
+        "Allow deletions",
+        &bool_opt(&report.branch_protection_contract.allow_deletions),
+    );
+    push_row(
+        &mut out,
+        "Allow deletions OK",
+        &bool_opt(&report.branch_protection_contract.allow_deletions_ok),
+    );
+    push_row(
+        &mut out,
+        "Disallowed required checks",
+        &format!(
+            "{} check(s)",
+            report
+                .branch_protection_contract
+                .disallowed_required_checks
+                .len()
+        ),
+    );
+    push_row(
+        &mut out,
+        "Notes",
+        &format!("{} note(s)", report.branch_protection_contract.notes.len()),
+    );
+    push_row(
+        &mut out,
+        "Next actions",
+        &format!(
+            "{} action(s)",
+            report.branch_protection_contract.next_actions.len()
+        ),
+    );
+    push_markdown_list(
+        &mut out,
+        "Branch protection actual required checks",
+        &report
+            .branch_protection_contract
+            .actual_required_status_checks,
+    );
+    push_markdown_list(
+        &mut out,
+        "Branch protection disallowed required checks",
+        &report.branch_protection_contract.disallowed_required_checks,
+    );
+    push_markdown_list(
+        &mut out,
+        "Branch protection notes",
+        &report.branch_protection_contract.notes,
+    );
+    push_markdown_bullets(
+        &mut out,
+        "Branch protection next actions",
+        &report.branch_protection_contract.next_actions,
+    );
+
     out.push_str("\n## Receipt freshness\n\n");
     out.push_str("| Field | Value |\n|---|---|\n");
     push_row(&mut out, "Status", &report.receipt_freshness.status);
@@ -1937,6 +2295,7 @@ receipts = [
         assert!(json.contains("\"source_merged_cleanup_candidates\""));
         assert!(json.contains("\"swarm_review_cleanup_candidates\""));
         assert!(json.contains("\"source_merged_cleanup_review_commands\""));
+        assert!(json.contains("\"branch_protection_contract\""));
         assert!(json.contains("\"receipt_freshness\""));
         let markdown = fs::read_to_string(graph_md).unwrap();
         assert!(markdown.contains("# Repo contract report"));
@@ -1954,7 +2313,62 @@ receipts = [
         assert!(markdown.contains("## Remote branch hygiene"));
         assert!(markdown.contains("Source merged cleanup candidates"));
         assert!(markdown.contains("Swarm review cleanup candidates"));
+        assert!(markdown.contains("## Branch protection contract"));
         assert!(markdown.contains("## Receipt freshness"));
+    }
+
+    #[test]
+    fn branch_protection_contract_accepts_normalized_result_only() {
+        let report = branch_protection_contract_from_json(
+            vec![SWARM_REQUIRED_CHECK.to_string()],
+            serde_json::json!({
+                "required_status_checks": {
+                    "contexts": [SWARM_REQUIRED_CHECK],
+                    "strict": true
+                },
+                "enforce_admins": { "enabled": false },
+                "allow_force_pushes": { "enabled": false },
+                "allow_deletions": { "enabled": false }
+            }),
+        );
+
+        assert_eq!(report.status, "aligned");
+        assert_eq!(report.required_status_checks_ok, Some(true));
+        assert!(report.disallowed_required_checks.is_empty());
+        assert_eq!(report.allow_force_pushes_ok, Some(true));
+        assert_eq!(report.allow_deletions_ok, Some(true));
+    }
+
+    #[test]
+    fn branch_protection_contract_flags_conditional_required_jobs() {
+        let report = branch_protection_contract_from_json(
+            vec![SWARM_REQUIRED_CHECK.to_string()],
+            serde_json::json!({
+                "required_status_checks": {
+                    "contexts": [
+                        SWARM_REQUIRED_CHECK,
+                        "Shiplog Rust Small on CX43"
+                    ],
+                    "strict": true
+                },
+                "enforce_admins": { "enabled": false },
+                "allow_force_pushes": { "enabled": false },
+                "allow_deletions": { "enabled": false }
+            }),
+        );
+
+        assert_eq!(report.status, "drift");
+        assert_eq!(report.required_status_checks_ok, Some(false));
+        assert_eq!(
+            report.disallowed_required_checks,
+            vec!["Shiplog Rust Small on CX43"]
+        );
+        assert!(
+            report
+                .next_actions
+                .iter()
+                .any(|action| action.contains("only required status check"))
+        );
     }
 
     #[test]
