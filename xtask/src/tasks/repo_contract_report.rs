@@ -4463,6 +4463,16 @@ Merge this PR with a regular merge commit; do not squash.
     }
 
     #[test]
+    fn receipt_freshness_defers_unscoped_docs_receipt_refreshes() {
+        let status = receipt_freshness_status(
+            &[true, false, true, false],
+            Some("e270c48 docs: refresh promotion receipts (#139)"),
+        );
+
+        assert_eq!(status, "pending-next-substantive-pr");
+    }
+
+    #[test]
     fn receipt_freshness_defers_scoped_promotion_receipt_refreshes() {
         let status = receipt_freshness_status(
             &[true, false, true, false],
