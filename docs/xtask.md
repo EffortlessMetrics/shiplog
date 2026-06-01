@@ -166,9 +166,12 @@ rollback when those fields are present in the linked plan/spec. For the proof
 section, current work-item commands from `.codex/goals/active.toml` take
 precedence over plan prose so active-agent PR drafts use the same commands
 validated by `cargo xtask check-goals`; if no current commands are recorded,
-the generator falls back to the linked plan item's proof commands. It is a
-derived draft only: it does not call the GitHub API, create a PR, mutate source
-artifacts, change branch protection, or replace reviewer judgment.
+the generator falls back to the linked plan item's proof commands. When the
+work item has many receipt refs, the generated body shows the last recorded
+refs in manifest order; it does not infer chronology from free-form receipt
+text. It is a derived draft only: it does not call the GitHub API, create a PR,
+mutate source artifacts, change branch protection, or replace reviewer
+judgment.
 
 ### `cargo xtask closeout`
 

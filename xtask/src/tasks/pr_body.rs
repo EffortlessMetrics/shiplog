@@ -429,7 +429,7 @@ fn push_receipt_refs(out: &mut String, work_item: &WorkItem) {
     out.push_str("## Existing receipts\n\n");
     if receipts.len() > MAX_RECEIPTS {
         out.push_str(&format!(
-            "Showing latest {MAX_RECEIPTS} of {} recorded receipt refs.\n\n",
+            "Showing last {MAX_RECEIPTS} of {} recorded receipt refs in manifest order.\n\n",
             receipts.len()
         ));
     }
@@ -723,5 +723,28 @@ Policy impact:
         .unwrap_err();
 
         assert!(err.to_string().contains("missing work item"));
+    }
+
+    #[test]
+    fn receipt_summary_does_not_claim_manifest_order_is_chronological() {
+        let mut out = String::new();
+        let work_item = WorkItem {
+            id: "receipts".to_string(),
+            proposal: None,
+            spec: None,
+            adr: None,
+            plan: "plans/test.md".to_string(),
+            commands: Vec::new(),
+            receipts: (1..=13)
+                .map(|number| format!("EffortlessMetrics/shiplog#{number}"))
+                .collect(),
+        };
+
+        push_receipt_refs(&mut out, &work_item);
+
+        assert!(out.contains("Showing last 12 of 13 recorded receipt refs in manifest order."));
+        assert!(!out.contains("Showing latest"));
+        assert!(!out.contains("- `EffortlessMetrics/shiplog#1`\n"));
+        assert!(out.contains("- `EffortlessMetrics/shiplog#13`\n"));
     }
 }
