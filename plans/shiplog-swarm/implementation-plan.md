@@ -1489,6 +1489,20 @@ EffortlessMetrics/shiplog#568:
           26757424047, Droid Auto Review completed successfully in run
           26757424097, and source post-merge routed proof passed through
           GitHub-hosted fallback in run 26758593852
+
+EffortlessMetrics/shiplog#569:
+  swarm head: 66befe0a19f91108c3df73df5fd80c6ff3fea470
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#132
+  source merge: 83ac231f8d95c41f10ee917ed15acc4e7a0d2eca
+  result: regular merge commit; non-routed shiplog-swarm workflow
+          self-hosted selectors now require a non-PR event or a same-repo PR
+          trust boundary before selecting self-hosted runners; swarm PR routed
+          proof selected CPX42 and passed in run 26759855378, swarm/main routed
+          proof passed through GitHub-hosted fallback in run 26760358230,
+          source PR routed proof passed through GitHub-hosted fallback in run
+          26760887261, Droid Auto Review completed successfully in run
+          26760884780, and source post-merge routed proof passed through
+          GitHub-hosted fallback in run 26762706895
 ```
 
 ### Proof commands
