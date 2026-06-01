@@ -1516,6 +1516,20 @@ EffortlessMetrics/shiplog#570:
           fallback in run 26764858981, Droid Auto Review completed
           successfully in run 26764858810, and source post-merge routed proof
           passed through GitHub-hosted fallback in run 26765810610
+
+EffortlessMetrics/shiplog#571:
+  swarm head: 471a5a9fd4c1640429611577e3e9e397fc6d45d9
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#134
+  source merge: ff5d89d9f3bd83184be726697757fff39ad36683
+  result: regular merge commit; repo-contract-report now treats record/update
+          receipt and promotion-ledger titles as receipt-refresh heads for the
+          self-referential loop guard; swarm PR routed proof passed through
+          GitHub-hosted fallback in run 26766596591, swarm/main routed proof
+          passed through GitHub-hosted fallback in run 26767070210, source PR
+          routed proof passed through GitHub-hosted fallback in run
+          26767557186, Droid Auto Review completed successfully in run
+          26767557581, and source post-merge routed proof passed through
+          GitHub-hosted fallback in run 26768552919
 ```
 
 ### Proof commands
