@@ -1597,6 +1597,34 @@ EffortlessMetrics/shiplog#576:
           source PR routed proof passed through GitHub-hosted fallback in run
           26782380141, and source post-merge routed proof passed through
           GitHub-hosted fallback in run 26783098701
+
+EffortlessMetrics/shiplog#577:
+  swarm head: 66eb0bbcef6aaa4f257b9457724fcdf611871962
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#140
+  source merge: 05024d84a954c32735c7ef45cd913d0d09b135a3
+  result: regular merge commit; `repo-contract-report` now covers unscoped
+          `docs: refresh promotion receipts (#139)` squash subjects, the
+          report correctly carried receipt freshness through #139/#576 before
+          the follow-up classifier fix exposed #140/#577 as a stale substantive
+          receipt gap, swarm PR routed proof passed through CX43 in run
+          26783814080, swarm/main routed proof passed through GitHub-hosted
+          fallback in run 26784090488, source PR routed proof passed through
+          GitHub-hosted fallback in run 26784549667, and source post-merge
+          routed proof passed through GitHub-hosted fallback in run 26785272771
+
+EffortlessMetrics/shiplog#578:
+  swarm head: e9936066ea7da07b9cf07603395b301648bd38f0
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#141
+  source merge: 90f0d454ae1a75e5b21173fba6a67be0e024cc6a
+  result: regular merge commit; receipt freshness classification now requires
+          docs receipt/ledger update subjects before deferring self-referential
+          receipt gaps, so substantive `xtask:` subjects that mention receipt
+          refresh behavior stay stale until receipt records are refreshed,
+          swarm PR routed proof passed through GitHub-hosted fallback in run
+          26786371091, swarm/main routed proof passed through GitHub-hosted
+          fallback in run 26787190126, source PR routed proof passed through
+          GitHub-hosted fallback in run 26787608860, and source post-merge
+          routed proof passed through GitHub-hosted fallback in run 26788013590
 ```
 
 ### Proof commands
