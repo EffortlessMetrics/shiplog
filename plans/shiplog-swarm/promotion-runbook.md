@@ -64,12 +64,14 @@ The PR body must include:
 ```text
 swarm head SHA
 included swarm PRs
-swarm proof, especially Shiplog Rust Small Result
-source proof after PR checks pass
-using a `Source proof` section
+`## Swarm proof` section with Shiplog Rust Small Result evidence
+`## Source proof` section with Shiplog Rust Small Result evidence
 explicit note to merge with a regular merge commit, not squash
 claim boundary: no release authority movement
 ```
+
+`repo-contract-report` validates the exact `Swarm proof` and `Source proof`
+section labels, and each section must mention `Shiplog Rust Small Result`.
 
 ## Merge
 

@@ -1556,6 +1556,21 @@ EffortlessMetrics/shiplog#573:
           routed proof passed through GitHub-hosted fallback in run 26773705725,
           and source post-merge routed proof passed through GitHub-hosted
           fallback in run 26774186947
+
+EffortlessMetrics/shiplog#574:
+  swarm head: 30c084178404eee0e24b33049d4ed6faf3fbf9a9
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#137
+  source merge: 40caa37fa0ccc82c098c58c34a89496b37ad9f21
+  result: regular merge commit; `docs/xtask.md` now points closeout review
+          examples at the active `shiplog-swarm-control-plane` goal, the
+          Property Smoke lane now has 20m cold-build headroom with matching
+          policy receipts, and the source promotion PR body was repaired to
+          include the exact `Swarm proof` and `Source proof` receipt markers;
+          swarm PR routed proof passed through GitHub-hosted fallback in run
+          26775628236, swarm/main routed proof passed through GitHub-hosted
+          fallback in run 26776098088, source PR routed proof passed through
+          GitHub-hosted fallback in run 26776576320, and source post-merge
+          routed proof passed through GitHub-hosted fallback in run 26777629405
 ```
 
 ### Proof commands
