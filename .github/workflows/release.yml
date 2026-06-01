@@ -26,7 +26,7 @@ jobs:
   # Prove the package surface before building release assets
   release-preflight:
     name: Release Preflight
-    runs-on: ${{ github.repository == 'EffortlessMetrics/shiplog-swarm' && 'self-hosted' || 'ubuntu-latest' }}
+    runs-on: ${{ github.repository == 'EffortlessMetrics/shiplog-swarm' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && 'self-hosted' || 'ubuntu-latest' }}
     outputs:
       release_tag: ${{ steps.release_tag.outputs.release_tag }}
 
@@ -171,7 +171,7 @@ jobs:
   # Create GitHub release
   create-release:
     name: Create Release
-    runs-on: ${{ github.repository == 'EffortlessMetrics/shiplog-swarm' && 'self-hosted' || 'ubuntu-latest' }}
+    runs-on: ${{ github.repository == 'EffortlessMetrics/shiplog-swarm' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && 'self-hosted' || 'ubuntu-latest' }}
     needs: [release-preflight, build-binary]
     outputs:
       version: ${{ steps.version.outputs.version }}
@@ -202,7 +202,7 @@ jobs:
   # Upload binaries to release
   upload-assets:
     name: Upload Assets
-    runs-on: ${{ github.repository == 'EffortlessMetrics/shiplog-swarm' && 'self-hosted' || 'ubuntu-latest' }}
+    runs-on: ${{ github.repository == 'EffortlessMetrics/shiplog-swarm' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && 'self-hosted' || 'ubuntu-latest' }}
     needs: [release-preflight, build-binary, create-release]
 
     steps:
@@ -235,7 +235,7 @@ jobs:
   # Validate the release
   release-validation:
     name: Release Validation
-    runs-on: ${{ github.repository == 'EffortlessMetrics/shiplog-swarm' && 'self-hosted' || 'ubuntu-latest' }}
+    runs-on: ${{ github.repository == 'EffortlessMetrics/shiplog-swarm' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && 'self-hosted' || 'ubuntu-latest' }}
     needs: [release-preflight, build-binary, create-release]
 
     steps:
@@ -318,7 +318,7 @@ jobs:
   # Run integration tests
   release-test:
     name: Release Integration Tests
-    runs-on: ${{ github.repository == 'EffortlessMetrics/shiplog-swarm' && 'self-hosted' || 'ubuntu-latest' }}
+    runs-on: ${{ github.repository == 'EffortlessMetrics/shiplog-swarm' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && 'self-hosted' || 'ubuntu-latest' }}
     needs: [release-preflight, build-binary, create-release]
 
     steps:

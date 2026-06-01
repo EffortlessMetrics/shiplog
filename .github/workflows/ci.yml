@@ -16,7 +16,7 @@ jobs:
   check:
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'full-ci')
     name: Check (${{ matrix.os }})
-    runs-on: ${{ github.repository == 'EffortlessMetrics/shiplog-swarm' && matrix.os || 'ubuntu-latest' }}
+    runs-on: ${{ github.repository == 'EffortlessMetrics/shiplog-swarm' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && matrix.os || 'ubuntu-latest' }}
     strategy:
       matrix:
         os: [self-hosted]
@@ -71,7 +71,7 @@ jobs:
   deny:
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'full-ci')
     name: cargo-deny
-    runs-on: ${{ github.repository == 'EffortlessMetrics/shiplog-swarm' && 'self-hosted' || 'ubuntu-latest' }}
+    runs-on: ${{ github.repository == 'EffortlessMetrics/shiplog-swarm' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && 'self-hosted' || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v6.0.2
 
@@ -94,7 +94,7 @@ jobs:
   policy:
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'full-ci')
     name: Policy gates
-    runs-on: ${{ github.repository == 'EffortlessMetrics/shiplog-swarm' && 'self-hosted' || 'ubuntu-latest' }}
+    runs-on: ${{ github.repository == 'EffortlessMetrics/shiplog-swarm' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && 'self-hosted' || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v6.0.2
 
