@@ -265,6 +265,7 @@ struct PromotionPrContractReport {
     body_mentions_swarm_head: Option<bool>,
     body_mentions_included_swarm_prs: Option<bool>,
     body_mentions_swarm_proof: Option<bool>,
+    body_mentions_source_proof: Option<bool>,
     body_mentions_merge_method: Option<bool>,
     failed_checks: Vec<String>,
     notes: Vec<String>,
@@ -1475,6 +1476,8 @@ fn promotion_pr_contract_from_parts_with_body(
     );
     let body_mentions_swarm_proof =
         Some(body.contains("Swarm proof") && body.contains(SWARM_REQUIRED_CHECK));
+    let body_mentions_source_proof =
+        Some(body.contains("Source proof") && body.contains(SWARM_REQUIRED_CHECK));
     let lower_body = body.to_ascii_lowercase();
     let body_mentions_merge_method =
         Some(lower_body.contains("regular merge commit") && lower_body.contains("do not squash"));
@@ -1491,6 +1494,7 @@ fn promotion_pr_contract_from_parts_with_body(
         expected_swarm_head: parts.expected_swarm_head.as_deref(),
         body_mentions_included_swarm_prs,
         body_mentions_swarm_proof,
+        body_mentions_source_proof,
         body_mentions_merge_method,
     });
 
@@ -1501,6 +1505,7 @@ fn promotion_pr_contract_from_parts_with_body(
         body_mentions_swarm_head,
         body_mentions_included_swarm_prs,
         body_mentions_swarm_proof,
+        body_mentions_source_proof,
         body_mentions_merge_method,
     ];
     let status = if !parts.notes.is_empty() {
@@ -1532,6 +1537,7 @@ fn promotion_pr_contract_from_parts_with_body(
         body_mentions_swarm_head,
         body_mentions_included_swarm_prs,
         body_mentions_swarm_proof,
+        body_mentions_source_proof,
         body_mentions_merge_method,
         failed_checks,
         notes: parts.notes,
@@ -1552,6 +1558,7 @@ struct PromotionPrContractCheckInputs<'a> {
     expected_swarm_head: Option<&'a str>,
     body_mentions_included_swarm_prs: Option<bool>,
     body_mentions_swarm_proof: Option<bool>,
+    body_mentions_source_proof: Option<bool>,
     body_mentions_merge_method: Option<bool>,
 }
 
@@ -1595,6 +1602,11 @@ fn promotion_pr_contract_failed_checks(inputs: PromotionPrContractCheckInputs<'_
             "body missing `Swarm proof` with `{SWARM_REQUIRED_CHECK}`"
         ));
     }
+    if inputs.body_mentions_source_proof == Some(false) {
+        failed.push(format!(
+            "body missing `Source proof` with `{SWARM_REQUIRED_CHECK}`"
+        ));
+    }
     if inputs.body_mentions_merge_method == Some(false) {
         failed.push(
             "body missing merge-method boundary: include `regular merge commit` and `do not squash`"
@@ -1621,7 +1633,7 @@ fn short_sha(value: &str) -> String {
 fn promotion_pr_contract_next_actions(status: &str, failed_checks: &[String]) -> Vec<String> {
     match status {
         "aligned" => vec![
-            "Latest source promotion PR records the swarm head, included swarm PRs, proof, and merge-commit boundary."
+            "Latest source promotion PR records the swarm head, included swarm PRs, swarm/source proof, and merge-commit boundary."
                 .to_string(),
         ],
         "drift" if failed_checks.is_empty() => {
@@ -3049,6 +3061,11 @@ fn render_markdown(report: &RepoContractReport) -> String {
     );
     push_row(
         &mut out,
+        "Body mentions source proof",
+        &bool_opt(&report.promotion_pr_contract.body_mentions_source_proof),
+    );
+    push_row(
+        &mut out,
         "Body mentions merge method",
         &bool_opt(&report.promotion_pr_contract.body_mentions_merge_method),
     );
@@ -3855,6 +3872,9 @@ Merge this PR with a regular merge commit; do not squash.
 
 ## Swarm proof
 - Shiplog Rust Small Result passed.
+
+## Source proof
+- Shiplog Rust Small Result passed.
 "#;
         let report = promotion_pr_contract_from_json(
             556,
@@ -3881,6 +3901,7 @@ Merge this PR with a regular merge commit; do not squash.
         assert_eq!(report.body_mentions_swarm_head, Some(true));
         assert_eq!(report.body_mentions_included_swarm_prs, Some(true));
         assert_eq!(report.body_mentions_swarm_proof, Some(true));
+        assert_eq!(report.body_mentions_source_proof, Some(true));
         assert_eq!(report.body_mentions_merge_method, Some(true));
         assert!(report.failed_checks.is_empty());
     }
@@ -3903,12 +3924,14 @@ Merge this PR with a regular merge commit; do not squash.
         assert_eq!(report.status, "drift");
         assert_eq!(report.body_mentions_included_swarm_prs, Some(false));
         assert_eq!(report.body_mentions_swarm_proof, Some(false));
+        assert_eq!(report.body_mentions_source_proof, Some(false));
         assert_eq!(report.body_mentions_merge_method, Some(false));
         assert_eq!(
             report.failed_checks,
             vec![
                 "body missing `Included swarm PRs` with `EffortlessMetrics/shiplog-swarm#...`",
                 "body missing `Swarm proof` with `Shiplog Rust Small Result`",
+                "body missing `Source proof` with `Shiplog Rust Small Result`",
                 "body missing merge-method boundary: include `regular merge commit` and `do not squash`",
             ]
         );

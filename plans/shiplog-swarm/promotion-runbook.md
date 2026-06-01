@@ -66,6 +66,7 @@ swarm head SHA
 included swarm PRs
 swarm proof, especially Shiplog Rust Small Result
 source proof after PR checks pass
+using a `Source proof` section
 explicit note to merge with a regular merge commit, not squash
 claim boundary: no release authority movement
 ```

@@ -143,8 +143,9 @@ reports open PRs and issues in both repos when GitHub inspection is available.
 The routed CI section reports the latest
 `EM CI Routed Shiplog Rust` run on source and swarm `main`. The promotion PR
 contract section checks the latest source promotion PR title, body receipts, and
-merge commit against the swarm head and lists any failed receipt checks with the
-missing field or required phrase. The branch-protection section checks that
+merge commit against the swarm head, including both swarm and source proof, and
+lists any failed receipt checks with the missing field or required phrase. The
+branch-protection section checks that
 `shiplog-swarm/main` requires only `Shiplog Rust Small Result`, not conditional
 runner jobs. The receipt freshness section shows which latest swarm/source
 promotion receipts need to be carried into the next substantive swarm PR. It

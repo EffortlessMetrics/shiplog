@@ -211,6 +211,8 @@ receipts = [
   "EffortlessMetrics/shiplog#563",
   "EffortlessMetrics/shiplog-swarm#128",
   "EffortlessMetrics/shiplog#565",
+  "EffortlessMetrics/shiplog-swarm#129",
+  "EffortlessMetrics/shiplog#566",
   "EffortlessMetrics/shiplog#205 closed as completed by #206/#208",
   "EffortlessMetrics/shiplog#203 closed as completed by #204",
   "EffortlessMetrics/shiplog#201 closed as completed by #202",
