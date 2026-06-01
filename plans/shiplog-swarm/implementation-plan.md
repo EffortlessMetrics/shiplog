@@ -1432,6 +1432,20 @@ EffortlessMetrics/shiplog#563:
           Review completed successfully in run 26747901204, and source
           post-merge routed proof passed through GitHub-hosted fallback in run
           26748501939
+
+EffortlessMetrics/shiplog#565:
+  swarm head: ec0c875381bf78494c747838effb6ff7d301e102
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#128
+  source merge: ddd9c37d323b635f8d026f599ba41d5e50517d43
+  result: regular merge commit; repo-contract-report now includes read-only
+          review commands for unmerged remote cleanup candidates and the stale
+          source-only Droid security-report branch was deleted after review;
+          swarm PR routed proof passed through GitHub-hosted fallback in run
+          26749487577, swarm/main routed proof passed through GitHub-hosted
+          fallback in run 26749890755, source PR routed proof passed through
+          GitHub-hosted fallback in run 26750318232, Droid Auto Review
+          completed successfully in run 26750318209, and source post-merge
+          routed proof passed through GitHub-hosted fallback in run 26750893579
 ```
 
 ### Proof commands

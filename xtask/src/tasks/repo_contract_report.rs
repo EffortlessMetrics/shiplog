@@ -266,6 +266,7 @@ struct PromotionPrContractReport {
     body_mentions_included_swarm_prs: Option<bool>,
     body_mentions_swarm_proof: Option<bool>,
     body_mentions_merge_method: Option<bool>,
+    failed_checks: Vec<String>,
     notes: Vec<String>,
     next_actions: Vec<String>,
 }
@@ -1477,6 +1478,21 @@ fn promotion_pr_contract_from_parts_with_body(
     let lower_body = body.to_ascii_lowercase();
     let body_mentions_merge_method =
         Some(lower_body.contains("regular merge commit") && lower_body.contains("do not squash"));
+    let failed_checks = promotion_pr_contract_failed_checks(PromotionPrContractCheckInputs {
+        title_ok,
+        expected_title: parts.expected_title.as_deref(),
+        actual_title: parts.actual_title.as_deref(),
+        state_ok,
+        state: parts.state.as_deref(),
+        merge_commit_ok,
+        merge_commit: parts.merge_commit.as_deref(),
+        expected_source_head: parts.expected_source_head.as_deref(),
+        body_mentions_swarm_head,
+        expected_swarm_head: parts.expected_swarm_head.as_deref(),
+        body_mentions_included_swarm_prs,
+        body_mentions_swarm_proof,
+        body_mentions_merge_method,
+    });
 
     let checks = [
         title_ok,
@@ -1497,7 +1513,7 @@ fn promotion_pr_contract_from_parts_with_body(
         "drift"
     }
     .to_string();
-    let next_actions = promotion_pr_contract_next_actions(&status);
+    let next_actions = promotion_pr_contract_next_actions(&status, &failed_checks);
 
     PromotionPrContractReport {
         status,
@@ -1517,9 +1533,76 @@ fn promotion_pr_contract_from_parts_with_body(
         body_mentions_included_swarm_prs,
         body_mentions_swarm_proof,
         body_mentions_merge_method,
+        failed_checks,
         notes: parts.notes,
         next_actions,
     }
+}
+
+struct PromotionPrContractCheckInputs<'a> {
+    title_ok: Option<bool>,
+    expected_title: Option<&'a str>,
+    actual_title: Option<&'a str>,
+    state_ok: Option<bool>,
+    state: Option<&'a str>,
+    merge_commit_ok: Option<bool>,
+    merge_commit: Option<&'a str>,
+    expected_source_head: Option<&'a str>,
+    body_mentions_swarm_head: Option<bool>,
+    expected_swarm_head: Option<&'a str>,
+    body_mentions_included_swarm_prs: Option<bool>,
+    body_mentions_swarm_proof: Option<bool>,
+    body_mentions_merge_method: Option<bool>,
+}
+
+fn promotion_pr_contract_failed_checks(inputs: PromotionPrContractCheckInputs<'_>) -> Vec<String> {
+    let mut failed = Vec::new();
+
+    if inputs.title_ok == Some(false) {
+        failed.push(format!(
+            "title mismatch: expected `{}`, actual `{}`",
+            inputs.expected_title.unwrap_or("-"),
+            inputs.actual_title.unwrap_or("-")
+        ));
+    }
+    if inputs.state_ok == Some(false) {
+        failed.push(format!(
+            "state is not `MERGED`: actual `{}`",
+            inputs.state.unwrap_or("-")
+        ));
+    }
+    if inputs.merge_commit_ok == Some(false) {
+        failed.push(format!(
+            "merge commit mismatch: expected source head `{}`, actual `{}`",
+            inputs.expected_source_head.unwrap_or("-"),
+            inputs.merge_commit.unwrap_or("-")
+        ));
+    }
+    if inputs.body_mentions_swarm_head == Some(false) {
+        failed.push(format!(
+            "body missing swarm head SHA `{}`",
+            inputs.expected_swarm_head.unwrap_or("-")
+        ));
+    }
+    if inputs.body_mentions_included_swarm_prs == Some(false) {
+        failed.push(
+            "body missing `Included swarm PRs` with `EffortlessMetrics/shiplog-swarm#...`"
+                .to_string(),
+        );
+    }
+    if inputs.body_mentions_swarm_proof == Some(false) {
+        failed.push(format!(
+            "body missing `Swarm proof` with `{SWARM_REQUIRED_CHECK}`"
+        ));
+    }
+    if inputs.body_mentions_merge_method == Some(false) {
+        failed.push(
+            "body missing merge-method boundary: include `regular merge commit` and `do not squash`"
+                .to_string(),
+        );
+    }
+
+    failed
 }
 
 fn expected_promotion_title(swarm_head: Option<&str>) -> Option<String> {
@@ -1535,16 +1618,22 @@ fn short_sha(value: &str) -> String {
     value.chars().take(7).collect()
 }
 
-fn promotion_pr_contract_next_actions(status: &str) -> Vec<String> {
+fn promotion_pr_contract_next_actions(status: &str, failed_checks: &[String]) -> Vec<String> {
     match status {
         "aligned" => vec![
             "Latest source promotion PR records the swarm head, included swarm PRs, proof, and merge-commit boundary."
                 .to_string(),
         ],
-        "drift" => vec![
-            "Inspect the latest source promotion PR body and title before relying on it as a traceability receipt."
-                .to_string(),
-        ],
+        "drift" if failed_checks.is_empty() => {
+            vec![
+                "Inspect the latest source promotion PR body and title before relying on it as a traceability receipt."
+                    .to_string(),
+            ]
+        }
+        "drift" => vec![format!(
+            "Repair the latest source promotion PR receipt before relying on it: {}.",
+            failed_checks.join("; ")
+        )],
         "not-applicable" => vec![
             "No source promotion PR is available yet; create one after the next proven swarm change lands."
                 .to_string(),
@@ -2965,6 +3054,14 @@ fn render_markdown(report: &RepoContractReport) -> String {
     );
     push_row(
         &mut out,
+        "Failed checks",
+        &format!(
+            "{} check(s)",
+            report.promotion_pr_contract.failed_checks.len()
+        ),
+    );
+    push_row(
+        &mut out,
         "Notes",
         &format!("{} note(s)", report.promotion_pr_contract.notes.len()),
     );
@@ -2975,6 +3072,11 @@ fn render_markdown(report: &RepoContractReport) -> String {
             "{} action(s)",
             report.promotion_pr_contract.next_actions.len()
         ),
+    );
+    push_markdown_list(
+        &mut out,
+        "Promotion PR contract failed checks",
+        &report.promotion_pr_contract.failed_checks,
     );
     push_markdown_list(
         &mut out,
@@ -3780,10 +3882,11 @@ Merge this PR with a regular merge commit; do not squash.
         assert_eq!(report.body_mentions_included_swarm_prs, Some(true));
         assert_eq!(report.body_mentions_swarm_proof, Some(true));
         assert_eq!(report.body_mentions_merge_method, Some(true));
+        assert!(report.failed_checks.is_empty());
     }
 
     #[test]
-    fn promotion_pr_contract_reports_drift_when_body_omits_proof() {
+    fn promotion_pr_contract_reports_drift_with_failed_checks_when_body_omits_receipts() {
         let report = promotion_pr_contract_from_json(
             556,
             Some("474bf93ad7f120d173136f474e8e912b08005798".to_string()),
@@ -3800,6 +3903,21 @@ Merge this PR with a regular merge commit; do not squash.
         assert_eq!(report.status, "drift");
         assert_eq!(report.body_mentions_included_swarm_prs, Some(false));
         assert_eq!(report.body_mentions_swarm_proof, Some(false));
+        assert_eq!(report.body_mentions_merge_method, Some(false));
+        assert_eq!(
+            report.failed_checks,
+            vec![
+                "body missing `Included swarm PRs` with `EffortlessMetrics/shiplog-swarm#...`",
+                "body missing `Swarm proof` with `Shiplog Rust Small Result`",
+                "body missing merge-method boundary: include `regular merge commit` and `do not squash`",
+            ]
+        );
+        assert!(
+            report
+                .next_actions
+                .iter()
+                .any(|action| action.contains("Included swarm PRs"))
+        );
     }
 
     #[test]
