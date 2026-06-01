@@ -196,7 +196,9 @@ struct RemoteBranchHygieneReport {
     swarm_merged_cleanup_candidates: Vec<String>,
     swarm_review_cleanup_candidates: Vec<String>,
     source_merged_cleanup_review_commands: Vec<String>,
+    source_review_cleanup_review_commands: Vec<String>,
     swarm_merged_cleanup_review_commands: Vec<String>,
+    swarm_review_cleanup_review_commands: Vec<String>,
     source_open_pr_branches: Vec<String>,
     swarm_open_pr_branches: Vec<String>,
     protected_branches: Vec<String>,
@@ -798,13 +800,23 @@ fn remote_branch_hygiene_from_lines_with_merged(
         partition_merged_candidates(&source_cleanup_candidates, &source_merged);
     let (swarm_merged_cleanup_candidates, swarm_review_cleanup_candidates) =
         partition_merged_candidates(&swarm_cleanup_candidates, &swarm_merged);
-    let source_merged_cleanup_review_commands = merged_cleanup_review_commands(
+    let source_merged_cleanup_review_commands = remote_cleanup_review_commands(
         &source_merged_cleanup_candidates,
         source_remote,
         "EffortlessMetrics/shiplog",
     );
-    let swarm_merged_cleanup_review_commands = merged_cleanup_review_commands(
+    let source_review_cleanup_review_commands = remote_cleanup_review_commands(
+        &source_review_cleanup_candidates,
+        source_remote,
+        "EffortlessMetrics/shiplog",
+    );
+    let swarm_merged_cleanup_review_commands = remote_cleanup_review_commands(
         &swarm_merged_cleanup_candidates,
+        swarm_remote,
+        "EffortlessMetrics/shiplog-swarm",
+    );
+    let swarm_review_cleanup_review_commands = remote_cleanup_review_commands(
+        &swarm_review_cleanup_candidates,
         swarm_remote,
         "EffortlessMetrics/shiplog-swarm",
     );
@@ -838,7 +850,9 @@ fn remote_branch_hygiene_from_lines_with_merged(
         swarm_merged_cleanup_candidates,
         swarm_review_cleanup_candidates,
         source_merged_cleanup_review_commands,
+        source_review_cleanup_review_commands,
         swarm_merged_cleanup_review_commands,
+        swarm_review_cleanup_review_commands,
         source_open_pr_branches: source_open_pr_branch_matches,
         swarm_open_pr_branches: swarm_open_pr_branch_matches,
         protected_branches,
@@ -847,7 +861,7 @@ fn remote_branch_hygiene_from_lines_with_merged(
     }
 }
 
-fn merged_cleanup_review_commands(candidates: &[String], remote: &str, repo: &str) -> Vec<String> {
+fn remote_cleanup_review_commands(candidates: &[String], remote: &str, repo: &str) -> Vec<String> {
     candidates
         .iter()
         .filter_map(|candidate| remote_branch_head(candidate, remote).map(|head| (candidate, head)))
@@ -2611,6 +2625,14 @@ fn render_markdown(report: &RepoContractReport) -> String {
     );
     push_markdown_list_limited(
         &mut out,
+        "Source review cleanup review commands",
+        &report
+            .remote_branch_hygiene
+            .source_review_cleanup_review_commands,
+        10,
+    );
+    push_markdown_list_limited(
+        &mut out,
         "Swarm merged cleanup candidate branches",
         &report.remote_branch_hygiene.swarm_merged_cleanup_candidates,
         20,
@@ -2628,6 +2650,14 @@ fn render_markdown(report: &RepoContractReport) -> String {
         "Swarm review cleanup candidate branches",
         &report.remote_branch_hygiene.swarm_review_cleanup_candidates,
         20,
+    );
+    push_markdown_list_limited(
+        &mut out,
+        "Swarm review cleanup review commands",
+        &report
+            .remote_branch_hygiene
+            .swarm_review_cleanup_review_commands,
+        10,
     );
     push_markdown_list_limited(
         &mut out,
@@ -4086,6 +4116,13 @@ Merge this PR with a regular merge commit; do not squash.
             report.source_cleanup_candidates
         );
         assert_eq!(
+            report.source_review_cleanup_review_commands,
+            vec![
+                "rtk gh pr list --repo EffortlessMetrics/shiplog --state all --head feat/stale-source-work --limit 10 && rtk git log --oneline --max-count 3 origin/feat/stale-source-work",
+                "rtk gh pr list --repo EffortlessMetrics/shiplog --state all --head promote/swarm-20260531-1046ae2 --limit 10 && rtk git log --oneline --max-count 3 origin/promote/swarm-20260531-1046ae2"
+            ]
+        );
+        assert_eq!(
             report.swarm_cleanup_candidates,
             vec!["swarm/codex/stale-agent-branch"]
         );
@@ -4093,6 +4130,12 @@ Merge this PR with a regular merge commit; do not squash.
         assert_eq!(
             report.swarm_review_cleanup_candidates,
             report.swarm_cleanup_candidates
+        );
+        assert_eq!(
+            report.swarm_review_cleanup_review_commands,
+            vec![
+                "rtk gh pr list --repo EffortlessMetrics/shiplog-swarm --state all --head codex/stale-agent-branch --limit 10 && rtk git log --oneline --max-count 3 swarm/codex/stale-agent-branch"
+            ]
         );
         assert!(
             report
@@ -4145,9 +4188,21 @@ Merge this PR with a regular merge commit; do not squash.
             ]
         );
         assert_eq!(
+            report.source_review_cleanup_review_commands,
+            vec![
+                "rtk gh pr list --repo EffortlessMetrics/shiplog --state all --head feat/stale-source-work --limit 10 && rtk git log --oneline --max-count 3 origin/feat/stale-source-work"
+            ]
+        );
+        assert_eq!(
             report.swarm_merged_cleanup_review_commands,
             vec![
                 "rtk gh pr list --repo EffortlessMetrics/shiplog-swarm --state all --head codex/stale-agent-branch --limit 10 && rtk git log --oneline --max-count 3 swarm/codex/stale-agent-branch"
+            ]
+        );
+        assert_eq!(
+            report.swarm_review_cleanup_review_commands,
+            vec![
+                "rtk gh pr list --repo EffortlessMetrics/shiplog-swarm --state all --head codex/unmerged-agent-branch --limit 10 && rtk git log --oneline --max-count 3 swarm/codex/unmerged-agent-branch"
             ]
         );
         assert!(report.next_actions.iter().any(|action| {
