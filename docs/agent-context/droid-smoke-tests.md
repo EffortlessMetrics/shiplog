@@ -15,7 +15,7 @@ rg "uses: Factory-AI/droid-action|droid-action@main|droid-action@v[0-9]+|upload_
   .github/workflows/droid*.yml 2>/dev/null && echo "ERROR: Found forbidden Droid workflow pattern" || true
 
 # Checkout action pinning for Droid workflows
-rg 'uses: actions/checkout@[A-Za-z]' \
+rg -P 'uses: actions/checkout@(?![0-9a-f]{40}(\s|$|#))[^\s#]+' \
   .github/workflows/droid*.yml 2>/dev/null && echo "ERROR: Unpinned Droid checkout" || true
 
 # Safe action ref
@@ -36,7 +36,7 @@ Expected results:
 
 ## Live Smoke Validation
 
-For each Droid workflow change, validate with a same-repo draft PR:
+For each Droid workflow change, validate with a same-repo non-draft PR:
 
 ### 1. Auto Review Trigger
 
@@ -45,7 +45,7 @@ For each Droid workflow change, validate with a same-repo draft PR:
 2. Make a trivial change (comment, whitespace, test tweak)
 3. Commit: git commit -m "test: droid smoke test"
 4. Push: git push -u origin test-droid-<date>
-5. Open a draft PR via GitHub UI
+5. Open a non-draft PR via GitHub UI
 6. Wait 2–3 minutes for Droid Auto Review to trigger
 ```
 
@@ -55,14 +55,14 @@ Expected: Droid Auto Review job starts and completes within 5–10 minutes.
 
 ```
 1. Open the Droid Auto Review workflow run
-2. Click the "Run Droid Auto Review with MiniMax M2.7 BYOK" step
+2. Click the "Run Droid Auto Review with MiniMax M3 BYOK" step
 3. Check logs for:
-   - "Processing with model: custom:MiniMax-M2.7-0"
+   - "Processing with model: custom:MiniMax-M3-0"
    - No errors or timeouts
    - Review published (review comment appears on PR)
 ```
 
-Expected: Review uses MiniMax M2.7 model; no API errors.
+Expected: Review uses MiniMax M3 model; no API errors.
 
 ### 3. Artifact Validation
 
@@ -77,7 +77,7 @@ If sanitized artifacts were explicitly enabled for diagnostics:
 - Expected artifact name: `droid-review-debug-sanitized-<run_id>`
 - Normal rollout: This should never appear
 
-### 4. Draft Review Quality
+### 4. Review Quality
 
 ```
 1. View the review comment on the test PR
@@ -118,7 +118,7 @@ Expected: Manual review runs; uses same MiniMax model; follows format.
 3. Check logs for security-focused analysis
 ```
 
-Expected: Security analysis runs; model uses `custom:MiniMax-M2.7-0`.
+Expected: Security analysis runs; model uses `custom:MiniMax-M3-0`.
 
 ### 7. Fork PR Secret Containment
 
@@ -138,7 +138,7 @@ Expected: Droid does NOT trigger (fork PR protection); if it does, verify that n
 2. Click "Run workflow" → select branch → confirm
 3. Wait 5–10 minutes for scan to complete
 4. Check the run output for:
-   - Model: custom:MiniMax-M2.7-0
+   - Model: custom:MiniMax-M3-0
    - Severity threshold: medium
    - Block on critical: true
    - No debug artifacts uploaded
@@ -218,9 +218,9 @@ Droid smoke test results (date: 2026-05-07, branch: claude/migrate-factory-patte
 
 ✅ Static validation: No forbidden patterns
 ✅ Auto review trigger: Job ran within 5 minutes
-✅ Model verification: custom:MiniMax-M2.7-0 confirmed
+✅ Model verification: custom:MiniMax-M3-0 confirmed
 ✅ No raw artifacts: Only review comment published
-✅ Draft review format: Inspection record present
+✅ Review format: Inspection record present
 ✅ Manual @droid review: Ran successfully
 ✅ Manual @droid security: Ran successfully
 ✅ Fork PR protection: No secret exposure

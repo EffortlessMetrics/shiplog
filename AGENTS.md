@@ -88,7 +88,7 @@ Droid auto-reviews all non-draft PRs from the same repository.
 - Trigger: `pull_request` (opened, synchronize, ready_for_review, reopened)
 - Guard: Same-repo origin only; [skip-review] tag bypasses
 - Permissions: `contents: write` (for review publication)
-- Model: `custom:MiniMax-M2.7-0`
+- Model: `custom:MiniMax-M3-0`
 - Depth: `shallow`
 - Secrets: `FACTORY_API_KEY` and `MINIMAX_API_KEY`; runs skip if either is unavailable
 - No raw debug artifacts uploaded
@@ -104,7 +104,7 @@ Trusted actors (OWNER, MEMBER, COLLABORATOR) can invoke Droid manually:
 
 - Guard: Author must be trusted actor
 - Permissions: `contents: read` (manual requests are read-only)
-- Model: `custom:MiniMax-M2.7-0`
+- Model: `custom:MiniMax-M3-0`
 - Depth: `shallow`
 - Secrets: `FACTORY_API_KEY` and `MINIMAX_API_KEY`; runs skip if either is unavailable
 
@@ -114,7 +114,7 @@ Weekly Monday 08:00 UTC full repository security scan.
 
 - Trigger: Schedule + manual workflow dispatch
 - Permissions: `contents: write` (for scan report publication)
-- Model: `custom:MiniMax-M2.7-0`
+- Model: `custom:MiniMax-M3-0`
 - Threshold: Medium
 - Secrets: `FACTORY_API_KEY` and `MINIMAX_API_KEY`; runs skip if either is unavailable
 - Critical issues block; High issues reported only
@@ -122,5 +122,5 @@ Weekly Monday 08:00 UTC full repository security scan.
 ## References
 
 - Droid action: `EffortlessMetrics/droid-action-safe@7c1377ccbacddc95560d1570547a5baa51de01ec`
-- MiniMax model: `custom:MiniMax-M2.7-0`
+- MiniMax model: `custom:MiniMax-M3-0`
 - LLM provider: Anthropic API (via MiniMax BYOK bridge)

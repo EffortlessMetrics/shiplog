@@ -6,11 +6,12 @@ on:
 
 concurrency:
   group: droid-review-${{ github.repository }}-${{ github.event.pull_request.number }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   droid-review:
     if: |
+      github.event.pull_request.draft == false &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       !contains(github.event.pull_request.title, '[skip-review]')
     runs-on: ${{ github.repository == 'EffortlessMetrics/shiplog-swarm' && 'self-hosted' || 'ubuntu-latest' }}
@@ -23,6 +24,8 @@ jobs:
     env:
       MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
       FACTORY_API_KEY: ${{ secrets.FACTORY_API_KEY }}
+      ANTHROPIC_AUTH_TOKEN: ""
+      ANTHROPIC_BASE_URL: ""
     steps:
       - name: Skip when Droid secrets are unavailable
         if: env.FACTORY_API_KEY == '' || env.MINIMAX_API_KEY == ''
@@ -32,33 +35,29 @@ jobs:
         if: env.FACTORY_API_KEY != '' && env.MINIMAX_API_KEY != ''
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          fetch-depth: 1
+          fetch-depth: 0
 
-      - name: Configure MiniMax BYOK for Factory Droid
+      - name: Configure MiniMax M3 for Droid BYOK
         if: env.FACTORY_API_KEY != '' && env.MINIMAX_API_KEY != ''
         shell: bash
         run: |
           mkdir -p "$HOME/.factory"
-          cat > "$HOME/.factory/settings.local.json" <<JSON
+          cat > "$HOME/.factory/settings.json" <<JSON
           {
             "customModels": [
               {
-                "displayName": "MiniMax-M2.7",
-                "model": "MiniMax-M2.7",
+                "model": "MiniMax-M3",
+                "displayName": "MiniMax-M3",
                 "baseUrl": "https://api.minimax.io/anthropic",
                 "apiKey": "${MINIMAX_API_KEY}",
                 "provider": "anthropic",
-                "maxOutputTokens": 64000,
-                "noImageSupport": true,
-                "extraArgs": {
-                  "temperature": 1
-                }
+                "maxOutputTokens": 64000
               }
             ]
           }
           JSON
 
-      - name: Run Droid Auto Review with MiniMax M2.7 BYOK
+      - name: Run Droid Auto Review with MiniMax M3 BYOK
         if: env.FACTORY_API_KEY != '' && env.MINIMAX_API_KEY != ''
         continue-on-error: true
         uses: EffortlessMetrics/droid-action-safe@7c1377ccbacddc95560d1570547a5baa51de01ec # safe pinned Droid action; raw debug artifact upload disabled
@@ -70,8 +69,8 @@ jobs:
           automatic_security_review: true
 
           review_depth: shallow
-          review_model: "custom:MiniMax-M2.7-0"
-          security_model: "custom:MiniMax-M2.7-0"
+          review_model: "custom:MiniMax-M3-0"
+          security_model: "custom:MiniMax-M3-0"
 
           security_severity_threshold: high
           security_block_on_critical: true
