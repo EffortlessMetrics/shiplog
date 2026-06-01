@@ -440,6 +440,7 @@ pub fn check_workflows(workspace_root: &Path, mode: Mode) -> Result<()> {
         }
         let text = fs::read_to_string(&workflow_path)
             .with_context(|| format!("read {}", workflow_path.display()))?;
+        findings.extend(workflow_self_hosted_trust_findings(path, &text));
         let actual_uses: BTreeSet<String> = text.lines().filter_map(extract_uses).collect();
         let declared: BTreeSet<String> = table
             .get("external_actions")
@@ -474,6 +475,31 @@ pub fn check_workflows(workspace_root: &Path, mode: Mode) -> Result<()> {
     }
 
     report("check-workflows", &findings, mode)
+}
+
+fn workflow_self_hosted_trust_findings(path: &str, text: &str) -> Vec<Finding> {
+    const SWARM_REPO_SELECTOR: &str = "github.repository == 'EffortlessMetrics/shiplog-swarm'";
+    const SAME_REPO_PULL_REQUEST: &str =
+        "github.event.pull_request.head.repo.full_name == github.repository";
+    const NON_PULL_REQUEST: &str = "github.event_name != 'pull_request'";
+
+    text.lines()
+        .enumerate()
+        .filter_map(|(index, line)| {
+            let selects_swarm_repo = line.contains(SWARM_REPO_SELECTOR);
+            let selects_self_hosted =
+                line.contains("'self-hosted'") || line.contains("matrix.os");
+            let has_trust_boundary =
+                line.contains(NON_PULL_REQUEST) && line.contains(SAME_REPO_PULL_REQUEST);
+            (selects_swarm_repo && selects_self_hosted && !has_trust_boundary).then(|| Finding {
+                kind: "workflow-self-hosted-without-trust-boundary".to_string(),
+                detail: format!(
+                    "workflow {path:?} line {} selects self-hosted for shiplog-swarm without a same-repo pull_request guard",
+                    index + 1
+                ),
+            })
+        })
+        .collect()
 }
 
 fn extract_uses(line: &str) -> Option<String> {
@@ -737,6 +763,37 @@ created = "2026-05-09"
         );
         assert_eq!(extract_uses("name: foo"), None);
         assert_eq!(extract_uses("uses:"), None);
+    }
+
+    #[test]
+    fn workflow_self_hosted_trust_boundary_accepts_same_repo_guard() {
+        let text = "runs-on: ${{ github.repository == 'EffortlessMetrics/shiplog-swarm' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && 'self-hosted' || 'ubuntu-latest' }}";
+
+        let findings = workflow_self_hosted_trust_findings(".github/workflows/test.yml", text);
+
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn workflow_self_hosted_trust_boundary_rejects_repo_only_selector() {
+        let text = "runs-on: ${{ github.repository == 'EffortlessMetrics/shiplog-swarm' && 'self-hosted' || 'ubuntu-latest' }}";
+
+        let findings = workflow_self_hosted_trust_findings(".github/workflows/test.yml", text);
+
+        assert_eq!(findings.len(), 1);
+        assert_eq!(
+            findings[0].kind,
+            "workflow-self-hosted-without-trust-boundary"
+        );
+    }
+
+    #[test]
+    fn workflow_self_hosted_trust_boundary_rejects_matrix_selector_without_guard() {
+        let text = "runs-on: ${{ github.repository == 'EffortlessMetrics/shiplog-swarm' && matrix.os || 'ubuntu-latest' }}";
+
+        let findings = workflow_self_hosted_trust_findings(".github/workflows/test.yml", text);
+
+        assert_eq!(findings.len(), 1);
     }
 
     fn allow(glob: Option<&str>, reason: Option<&str>) -> AllowGlob {

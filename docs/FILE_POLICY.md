@@ -142,8 +142,10 @@ external_actions = [
 ]
 ```
 
-`check-workflows` verifies the declared list matches the file. A new
-`uses:` line in any workflow is a policy event, not just a code change.
+`check-workflows` verifies the declared list matches the file. It also rejects
+`shiplog-swarm` self-hosted runner selectors that do not guard pull requests to
+same-repo branches. A new `uses:` line or self-hosted admission change in any
+workflow is a policy event, not just a code change.
 
 ## Network and process scopes
 

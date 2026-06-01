@@ -1475,6 +1475,20 @@ EffortlessMetrics/shiplog#567:
           26754856700, Droid Auto Review completed successfully in run
           26754856620, and source post-merge routed proof passed through
           GitHub-hosted fallback in run 26755388308
+
+EffortlessMetrics/shiplog#568:
+  swarm head: 07f7b4f4bc7ad7919fd9861538bb5886514ce45b
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#131
+  source merge: 6c3229738184017e05ec918e096b806b767e2bba
+  result: regular merge commit; check-goals now rejects legacy
+          .shiplog/goals/active.toml manifests so active execution state stays
+          in .codex/goals/active.toml; swarm PR routed proof passed through
+          GitHub-hosted fallback in run 26756481456, swarm/main routed proof
+          passed through GitHub-hosted fallback in run 26756949390, source PR
+          routed proof passed through GitHub-hosted fallback in run
+          26757424047, Droid Auto Review completed successfully in run
+          26757424097, and source post-merge routed proof passed through
+          GitHub-hosted fallback in run 26758593852
 ```
 
 ### Proof commands
