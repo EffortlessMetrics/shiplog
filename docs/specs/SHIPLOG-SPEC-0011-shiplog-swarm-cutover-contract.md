@@ -367,11 +367,14 @@ This spec is enforced by the implementation-plan receipts and the active-goal
 control-plane checks:
 
 ```bash
-cargo xtask check-doc-artifacts
-cargo xtask check-goals
-cargo xtask repo-contract-report
-git diff --check
+rtk cargo xtask check-doc-artifacts
+rtk cargo xtask check-goals
+rtk cargo xtask repo-contract-report
+rtk git diff --check
 ```
 
-Those checks do not replace live GitHub route or branch-protection inspection;
-they keep the repo-native contract linked and current.
+`repo-contract-report` may inspect live `shiplog-swarm/main` branch protection
+when GitHub CLI access is available; otherwise it records that branch-protection
+inspection is unavailable. These checks still do not replace route burn-in or
+GitHub setting changes. They keep the repo-native contract linked and current
+without mutating branch protection.

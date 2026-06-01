@@ -1288,6 +1288,19 @@ EffortlessMetrics/shiplog#552:
           routed proof passed through GitHub-hosted fallback in run
           26727848375, and source post-merge routed proof passed through
           GitHub-hosted fallback in run 26728029584
+
+EffortlessMetrics/shiplog#553:
+  swarm head: 033751b5bb953d9298e069e2bb0c92b227c7404d
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#117
+  source merge: ff2d9edc4bda168c5c810110b2518ce16741bc7f
+  result: regular merge commit; repo-contract-report now emits a
+          branch-protection contract section and reports whether
+          `shiplog-swarm/main` requires only `Shiplog Rust Small Result`;
+          swarm PR routed proof passed on CPX42 in run 26728631454,
+          swarm/main routed proof passed through GitHub-hosted fallback in run
+          26728820398, source PR routed proof passed through GitHub-hosted
+          fallback in run 26729052733, and source post-merge routed proof
+          passed through GitHub-hosted fallback in run 26729302413
 ```
 
 ### Proof commands
