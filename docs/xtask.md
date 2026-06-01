@@ -125,15 +125,23 @@ The report reads [`policy/doc-artifacts.toml`](../policy/doc-artifacts.toml),
 [`.codex/goals/active.toml`](../.codex/goals/active.toml), and
 [`docs/status/SUPPORT_TIERS.md`](status/SUPPORT_TIERS.md). It summarizes the
 active goal, work items, artifact links, support-tier proof commands, graph
-edges, local checkout state, source/swarm topology, remote branch hygiene, and
-promotion receipt freshness. The topology section classifies the full
-source-ahead commit range so expected `promote/swarm-*` merge commits are not
-confused with source-only content drift. The branch hygiene section separates
-source and swarm cleanup candidates into merged and review buckets; it is an
-inspection receipt and does not delete branches. The receipt freshness section
-shows which latest swarm/source promotion receipts need to be carried into the
-next substantive swarm PR. It does not mutate source artifacts and does not
-replace the dedicated validators.
+edges, local checkout state, source/swarm topology, remote branch hygiene,
+remote PR/issue queue hygiene, routed CI health, latest promotion PR
+traceability, branch-protection settings, and promotion receipt freshness. The
+topology section classifies the full source-ahead commit range so expected
+`promote/swarm-*` merge commits are not confused with source-only content
+drift. The branch hygiene section separates source and swarm cleanup candidates
+into merged and review buckets; it is an inspection receipt and does not delete
+branches. The queue section reports open PRs and issues in both repos when
+GitHub inspection is available. The routed CI section reports the latest
+`EM CI Routed Shiplog Rust` run on source and swarm `main`. The promotion PR
+contract section checks the latest source promotion PR title, body receipts, and
+merge commit against the swarm head. The branch-protection section checks that
+`shiplog-swarm/main` requires only `Shiplog Rust Small Result`, not conditional
+runner jobs. The receipt freshness section shows which latest swarm/source
+promotion receipts need to be carried into the next substantive swarm PR. It
+does not mutate source artifacts, rerun CI, change branch protection, open or
+close PRs/issues, delete branches, or replace the dedicated validators.
 
 ### `cargo xtask pr-body`
 
