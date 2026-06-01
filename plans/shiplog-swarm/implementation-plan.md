@@ -1272,6 +1272,22 @@ EffortlessMetrics/shiplog#551:
           through GitHub-hosted fallback in run 26726941507, and source
           post-merge routed proof passed through GitHub-hosted fallback in run
           26727092150
+
+EffortlessMetrics/shiplog#552:
+  swarm head: e62fb36fb111792f123dc4d700cac346da3386d1
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#116
+  superseded swarm PRs: EffortlessMetrics/shiplog-swarm#115
+  source merge: 0cdedd1803e955fe1525ddf87c6d0ec31ad2c662
+  result: regular merge commit; PR-body generation now fills Scope from
+          Production delta or Goal and Non-goals from Non-goals or Claim
+          boundary; trusted same-repo no-idle routes now fall back to the full
+          GitHub-hosted Shiplog Rust Small proof instead of failing with
+          `router_target=none`; swarm PR routed proof passed through
+          GitHub-hosted fallback in run 26727445468, swarm/main routed proof
+          passed through GitHub-hosted fallback in run 26727644817, source PR
+          routed proof passed through GitHub-hosted fallback in run
+          26727848375, and source post-merge routed proof passed through
+          GitHub-hosted fallback in run 26728029584
 ```
 
 ### Proof commands
