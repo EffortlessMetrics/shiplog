@@ -132,6 +132,7 @@ struct RepoContractReport {
     remote_branch_hygiene: RemoteBranchHygieneReport,
     remote_queue_hygiene: RemoteQueueHygieneReport,
     routed_ci_health: RoutedCiHealthReport,
+    promotion_pr_contract: PromotionPrContractReport,
     branch_protection_contract: BranchProtectionContractReport,
     receipt_freshness: ReceiptFreshnessReport,
     artifacts: Vec<Artifact>,
@@ -146,6 +147,7 @@ struct RepoInspections {
     remote_branch_hygiene: RemoteBranchHygieneReport,
     remote_queue_hygiene: RemoteQueueHygieneReport,
     routed_ci_health: RoutedCiHealthReport,
+    promotion_pr_contract: PromotionPrContractReport,
     branch_protection_contract: BranchProtectionContractReport,
     receipt_freshness: ReceiptFreshnessReport,
 }
@@ -238,6 +240,29 @@ struct RoutedCiHealthReport {
 }
 
 #[derive(Debug, Serialize)]
+struct PromotionPrContractReport {
+    status: String,
+    source_repo: String,
+    latest_promotion_pr: Option<String>,
+    latest_promotion_url: Option<String>,
+    expected_title: Option<String>,
+    actual_title: Option<String>,
+    state: Option<String>,
+    state_ok: Option<bool>,
+    merge_commit: Option<String>,
+    expected_source_head: Option<String>,
+    merge_commit_ok: Option<bool>,
+    expected_swarm_head: Option<String>,
+    title_ok: Option<bool>,
+    body_mentions_swarm_head: Option<bool>,
+    body_mentions_included_swarm_prs: Option<bool>,
+    body_mentions_swarm_proof: Option<bool>,
+    body_mentions_merge_method: Option<bool>,
+    notes: Vec<String>,
+    next_actions: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
 struct BranchProtectionContractReport {
     status: String,
     repo: String,
@@ -283,6 +308,7 @@ pub fn run(workspace_root: &Path) -> Result<()> {
     let remote_branch_hygiene = inspect_remote_branch_hygiene(workspace_root);
     let remote_queue_hygiene = inspect_remote_queue_hygiene(workspace_root);
     let routed_ci_health = inspect_routed_ci_health(workspace_root);
+    let promotion_pr_contract = inspect_promotion_pr_contract(workspace_root, &git_topology);
     let branch_protection_contract = inspect_branch_protection_contract(workspace_root);
     let receipt_freshness = inspect_receipt_freshness(workspace_root, &goal, &git_topology);
 
@@ -298,6 +324,7 @@ pub fn run(workspace_root: &Path) -> Result<()> {
         remote_branch_hygiene,
         remote_queue_hygiene,
         routed_ci_health,
+        promotion_pr_contract,
         branch_protection_contract,
         receipt_freshness,
     };
@@ -410,6 +437,7 @@ fn build_report(
         remote_branch_hygiene: inspections.remote_branch_hygiene,
         remote_queue_hygiene: inspections.remote_queue_hygiene,
         routed_ci_health: inspections.routed_ci_health,
+        promotion_pr_contract: inspections.promotion_pr_contract,
         branch_protection_contract: inspections.branch_protection_contract,
         receipt_freshness: inspections.receipt_freshness,
         artifacts: artifacts.to_vec(),
@@ -890,6 +918,40 @@ fn gh_json_array(args: &[&str], notes: &mut Vec<String>) -> Vec<serde_json::Valu
     }
 }
 
+fn gh_json_object(args: &[&str], notes: &mut Vec<String>) -> Option<serde_json::Value> {
+    match Command::new("gh").args(args).output() {
+        Ok(output) if output.status.success() => {
+            match serde_json::from_slice::<serde_json::Value>(&output.stdout) {
+                Ok(value) => Some(value),
+                Err(err) => {
+                    notes.push(format!(
+                        "gh {} returned invalid JSON: {err}",
+                        args.join(" ")
+                    ));
+                    None
+                }
+            }
+        }
+        Ok(output) => {
+            let detail = String::from_utf8_lossy(&output.stderr).trim().to_string();
+            notes.push(format!(
+                "gh {} failed: {}",
+                args.join(" "),
+                if detail.is_empty() {
+                    output.status.to_string()
+                } else {
+                    detail
+                }
+            ));
+            None
+        }
+        Err(err) => {
+            notes.push(format!("gh {} failed: {err}", args.join(" ")));
+            None
+        }
+    }
+}
+
 fn format_github_pr(repo: &str, value: &serde_json::Value) -> String {
     let number = json_u64(value, "number");
     let title = json_str(value, "title");
@@ -940,6 +1002,24 @@ fn json_str(value: &serde_json::Value, key: &str) -> String {
         .filter(|value| !value.is_empty())
         .unwrap_or("-")
         .to_string()
+}
+
+fn json_string_opt(value: &serde_json::Value, key: &str) -> Option<String> {
+    value
+        .get(key)
+        .and_then(serde_json::Value::as_str)
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToOwned::to_owned)
+}
+
+fn json_pointer_string_opt(value: &serde_json::Value, pointer: &str) -> Option<String> {
+    value
+        .pointer(pointer)
+        .and_then(serde_json::Value::as_str)
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToOwned::to_owned)
 }
 
 fn remote_queue_hygiene_next_actions(
@@ -1087,6 +1167,224 @@ fn routed_ci_run_summary(run: &Option<RoutedCiRunReport>) -> String {
             )
         }
         None => "-".to_string(),
+    }
+}
+
+fn inspect_promotion_pr_contract(
+    workspace_root: &Path,
+    git_topology: &GitTopologyReport,
+) -> PromotionPrContractReport {
+    let mut notes = Vec::new();
+
+    if !workspace_root.join(".git").exists() {
+        notes.push("not a Git checkout; live promotion PR inspection was skipped".to_string());
+        return promotion_pr_contract_from_parts(PromotionPrContractParts {
+            latest_promotion_pr: None,
+            latest_promotion_url: None,
+            expected_title: None,
+            actual_title: None,
+            state: None,
+            merge_commit: None,
+            expected_source_head: git_topology.source_head.clone(),
+            expected_swarm_head: git_topology.swarm_head.clone(),
+            notes,
+        });
+    }
+
+    let latest_promotion_merge = git_topology.source_ahead_promotion_merges.first();
+    let Some(pr_number) =
+        latest_promotion_merge.and_then(|merge| extract_merge_pull_request_number(merge))
+    else {
+        notes.push("no source promotion merge commit was found".to_string());
+        return promotion_pr_contract_from_parts(PromotionPrContractParts {
+            latest_promotion_pr: None,
+            latest_promotion_url: None,
+            expected_title: None,
+            actual_title: None,
+            state: None,
+            merge_commit: None,
+            expected_source_head: git_topology.source_head.clone(),
+            expected_swarm_head: git_topology.swarm_head.clone(),
+            notes,
+        });
+    };
+
+    let pr_number_text = pr_number.to_string();
+    let args = [
+        "pr",
+        "view",
+        pr_number_text.as_str(),
+        "--repo",
+        SOURCE_REPO,
+        "--json",
+        "title,body,state,mergeCommit,url",
+    ];
+
+    let Some(value) = gh_json_object(&args, &mut notes) else {
+        return promotion_pr_contract_from_parts(PromotionPrContractParts {
+            latest_promotion_pr: Some(github_receipt(SOURCE_REPO, pr_number)),
+            latest_promotion_url: None,
+            expected_title: expected_promotion_title(git_topology.swarm_head.as_deref()),
+            actual_title: None,
+            state: None,
+            merge_commit: None,
+            expected_source_head: git_topology.source_head.clone(),
+            expected_swarm_head: git_topology.swarm_head.clone(),
+            notes,
+        });
+    };
+
+    promotion_pr_contract_from_json(
+        pr_number,
+        git_topology.source_head.clone(),
+        git_topology.swarm_head.clone(),
+        value,
+        notes,
+    )
+}
+
+struct PromotionPrContractParts {
+    latest_promotion_pr: Option<String>,
+    latest_promotion_url: Option<String>,
+    expected_title: Option<String>,
+    actual_title: Option<String>,
+    state: Option<String>,
+    merge_commit: Option<String>,
+    expected_source_head: Option<String>,
+    expected_swarm_head: Option<String>,
+    notes: Vec<String>,
+}
+
+fn promotion_pr_contract_from_json(
+    pr_number: u64,
+    expected_source_head: Option<String>,
+    expected_swarm_head: Option<String>,
+    value: serde_json::Value,
+    notes: Vec<String>,
+) -> PromotionPrContractReport {
+    let body = json_string_opt(&value, "body").unwrap_or_default();
+    let parts = PromotionPrContractParts {
+        latest_promotion_pr: Some(github_receipt(SOURCE_REPO, pr_number)),
+        latest_promotion_url: json_string_opt(&value, "url"),
+        expected_title: expected_promotion_title(expected_swarm_head.as_deref()),
+        actual_title: json_string_opt(&value, "title"),
+        state: json_string_opt(&value, "state"),
+        merge_commit: json_pointer_string_opt(&value, "/mergeCommit/oid"),
+        expected_source_head,
+        expected_swarm_head,
+        notes,
+    };
+
+    promotion_pr_contract_from_parts_with_body(parts, &body)
+}
+
+fn promotion_pr_contract_from_parts(parts: PromotionPrContractParts) -> PromotionPrContractReport {
+    promotion_pr_contract_from_parts_with_body(parts, "")
+}
+
+fn promotion_pr_contract_from_parts_with_body(
+    parts: PromotionPrContractParts,
+    body: &str,
+) -> PromotionPrContractReport {
+    let title_ok = match (&parts.expected_title, &parts.actual_title) {
+        (Some(expected), Some(actual)) => Some(actual == expected),
+        (None, None) if parts.latest_promotion_pr.is_none() => None,
+        _ => Some(false),
+    };
+    let state_ok = parts.state.as_ref().map(|state| state == "MERGED");
+    let merge_commit_ok = match (&parts.merge_commit, &parts.expected_source_head) {
+        (Some(actual), Some(expected)) => Some(actual == expected),
+        (None, None) if parts.latest_promotion_pr.is_none() => None,
+        _ => Some(false),
+    };
+    let body_mentions_swarm_head = parts.expected_swarm_head.as_ref().map(|head| {
+        let short = short_sha(head);
+        body.contains(head) || body.contains(&short)
+    });
+    let body_mentions_included_swarm_prs = Some(
+        body.contains("Included swarm PRs") && body.contains("EffortlessMetrics/shiplog-swarm#"),
+    );
+    let body_mentions_swarm_proof =
+        Some(body.contains("Swarm proof") && body.contains(SWARM_REQUIRED_CHECK));
+    let lower_body = body.to_ascii_lowercase();
+    let body_mentions_merge_method =
+        Some(lower_body.contains("regular merge commit") && lower_body.contains("do not squash"));
+
+    let checks = [
+        title_ok,
+        state_ok,
+        merge_commit_ok,
+        body_mentions_swarm_head,
+        body_mentions_included_swarm_prs,
+        body_mentions_swarm_proof,
+        body_mentions_merge_method,
+    ];
+    let status = if !parts.notes.is_empty() {
+        "unavailable"
+    } else if parts.latest_promotion_pr.is_none() {
+        "not-applicable"
+    } else if checks.iter().all(|check| *check == Some(true)) {
+        "aligned"
+    } else {
+        "drift"
+    }
+    .to_string();
+    let next_actions = promotion_pr_contract_next_actions(&status);
+
+    PromotionPrContractReport {
+        status,
+        source_repo: SOURCE_REPO.to_string(),
+        latest_promotion_pr: parts.latest_promotion_pr,
+        latest_promotion_url: parts.latest_promotion_url,
+        expected_title: parts.expected_title,
+        actual_title: parts.actual_title,
+        state: parts.state,
+        state_ok,
+        merge_commit: parts.merge_commit,
+        expected_source_head: parts.expected_source_head,
+        merge_commit_ok,
+        expected_swarm_head: parts.expected_swarm_head,
+        title_ok,
+        body_mentions_swarm_head,
+        body_mentions_included_swarm_prs,
+        body_mentions_swarm_proof,
+        body_mentions_merge_method,
+        notes: parts.notes,
+        next_actions,
+    }
+}
+
+fn expected_promotion_title(swarm_head: Option<&str>) -> Option<String> {
+    swarm_head.map(|head| {
+        format!(
+            "merge(swarm): promote shiplog-swarm through {}",
+            short_sha(head)
+        )
+    })
+}
+
+fn short_sha(value: &str) -> String {
+    value.chars().take(7).collect()
+}
+
+fn promotion_pr_contract_next_actions(status: &str) -> Vec<String> {
+    match status {
+        "aligned" => vec![
+            "Latest source promotion PR records the swarm head, included swarm PRs, proof, and merge-commit boundary."
+                .to_string(),
+        ],
+        "drift" => vec![
+            "Inspect the latest source promotion PR body and title before relying on it as a traceability receipt."
+                .to_string(),
+        ],
+        "not-applicable" => vec![
+            "No source promotion PR is available yet; create one after the next proven swarm change lands."
+                .to_string(),
+        ],
+        _ => vec![
+            "Verify the latest source promotion PR with `rtk gh pr view <number> --repo EffortlessMetrics/shiplog --json title,body,state,mergeCommit,url`."
+                .to_string(),
+        ],
     }
 }
 
@@ -2299,6 +2597,145 @@ fn render_markdown(report: &RepoContractReport) -> String {
         &report.routed_ci_health.next_actions,
     );
 
+    out.push_str("\n## Promotion PR contract\n\n");
+    out.push_str("| Field | Value |\n|---|---|\n");
+    push_row(&mut out, "Status", &report.promotion_pr_contract.status);
+    push_row(
+        &mut out,
+        "Source repo",
+        &report.promotion_pr_contract.source_repo,
+    );
+    push_row(
+        &mut out,
+        "Latest promotion PR",
+        report
+            .promotion_pr_contract
+            .latest_promotion_pr
+            .as_deref()
+            .unwrap_or("-"),
+    );
+    push_row(
+        &mut out,
+        "Latest promotion URL",
+        report
+            .promotion_pr_contract
+            .latest_promotion_url
+            .as_deref()
+            .unwrap_or("-"),
+    );
+    push_row(
+        &mut out,
+        "Expected title",
+        report
+            .promotion_pr_contract
+            .expected_title
+            .as_deref()
+            .unwrap_or("-"),
+    );
+    push_row(
+        &mut out,
+        "Actual title",
+        report
+            .promotion_pr_contract
+            .actual_title
+            .as_deref()
+            .unwrap_or("-"),
+    );
+    push_row(
+        &mut out,
+        "Title OK",
+        &bool_opt(&report.promotion_pr_contract.title_ok),
+    );
+    push_row(
+        &mut out,
+        "State",
+        report.promotion_pr_contract.state.as_deref().unwrap_or("-"),
+    );
+    push_row(
+        &mut out,
+        "State OK",
+        &bool_opt(&report.promotion_pr_contract.state_ok),
+    );
+    push_row(
+        &mut out,
+        "Merge commit",
+        report
+            .promotion_pr_contract
+            .merge_commit
+            .as_deref()
+            .unwrap_or("-"),
+    );
+    push_row(
+        &mut out,
+        "Expected source head",
+        report
+            .promotion_pr_contract
+            .expected_source_head
+            .as_deref()
+            .unwrap_or("-"),
+    );
+    push_row(
+        &mut out,
+        "Merge commit OK",
+        &bool_opt(&report.promotion_pr_contract.merge_commit_ok),
+    );
+    push_row(
+        &mut out,
+        "Expected swarm head",
+        report
+            .promotion_pr_contract
+            .expected_swarm_head
+            .as_deref()
+            .unwrap_or("-"),
+    );
+    push_row(
+        &mut out,
+        "Body mentions swarm head",
+        &bool_opt(&report.promotion_pr_contract.body_mentions_swarm_head),
+    );
+    push_row(
+        &mut out,
+        "Body mentions included swarm PRs",
+        &bool_opt(
+            &report
+                .promotion_pr_contract
+                .body_mentions_included_swarm_prs,
+        ),
+    );
+    push_row(
+        &mut out,
+        "Body mentions swarm proof",
+        &bool_opt(&report.promotion_pr_contract.body_mentions_swarm_proof),
+    );
+    push_row(
+        &mut out,
+        "Body mentions merge method",
+        &bool_opt(&report.promotion_pr_contract.body_mentions_merge_method),
+    );
+    push_row(
+        &mut out,
+        "Notes",
+        &format!("{} note(s)", report.promotion_pr_contract.notes.len()),
+    );
+    push_row(
+        &mut out,
+        "Next actions",
+        &format!(
+            "{} action(s)",
+            report.promotion_pr_contract.next_actions.len()
+        ),
+    );
+    push_markdown_list(
+        &mut out,
+        "Promotion PR contract notes",
+        &report.promotion_pr_contract.notes,
+    );
+    push_markdown_bullets(
+        &mut out,
+        "Promotion PR contract next actions",
+        &report.promotion_pr_contract.next_actions,
+    );
+
     out.push_str("\n## Branch protection contract\n\n");
     out.push_str("| Field | Value |\n|---|---|\n");
     push_row(
@@ -2851,6 +3288,7 @@ receipts = [
         assert!(json.contains("\"source_merged_cleanup_review_commands\""));
         assert!(json.contains("\"remote_queue_hygiene\""));
         assert!(json.contains("\"routed_ci_health\""));
+        assert!(json.contains("\"promotion_pr_contract\""));
         assert!(json.contains("\"branch_protection_contract\""));
         assert!(json.contains("\"receipt_freshness\""));
         let markdown = fs::read_to_string(graph_md).unwrap();
@@ -2871,6 +3309,7 @@ receipts = [
         assert!(markdown.contains("Swarm review cleanup candidates"));
         assert!(markdown.contains("## Remote queue hygiene"));
         assert!(markdown.contains("## Routed CI health"));
+        assert!(markdown.contains("## Promotion PR contract"));
         assert!(markdown.contains("## Branch protection contract"));
         assert!(markdown.contains("## Receipt freshness"));
     }
@@ -3046,6 +3485,90 @@ receipts = [
         assert_eq!(
             routed_ci_run_summary(&Some(run)),
             "#26731460914 success/completed [push on main] xtask: report remote queue hygiene (#119)"
+        );
+    }
+
+    #[test]
+    fn promotion_pr_contract_reports_aligned_when_body_has_required_receipts() {
+        let body = r#"
+Promotes shiplog-swarm/main through 491dd34b4f3e2fb1c7588679d6832c09f6257924.
+
+Merge this PR with a regular merge commit; do not squash.
+
+## Included swarm PRs
+- EffortlessMetrics/shiplog-swarm#120
+
+## Swarm proof
+- Shiplog Rust Small Result passed.
+"#;
+        let report = promotion_pr_contract_from_json(
+            556,
+            Some("474bf93ad7f120d173136f474e8e912b08005798".to_string()),
+            Some("491dd34b4f3e2fb1c7588679d6832c09f6257924".to_string()),
+            serde_json::json!({
+                "title": "merge(swarm): promote shiplog-swarm through 491dd34",
+                "body": body,
+                "state": "MERGED",
+                "mergeCommit": {"oid": "474bf93ad7f120d173136f474e8e912b08005798"},
+                "url": "https://github.com/EffortlessMetrics/shiplog/pull/556"
+            }),
+            Vec::new(),
+        );
+
+        assert_eq!(report.status, "aligned");
+        assert_eq!(
+            report.latest_promotion_pr.as_deref(),
+            Some("EffortlessMetrics/shiplog#556")
+        );
+        assert_eq!(report.title_ok, Some(true));
+        assert_eq!(report.state_ok, Some(true));
+        assert_eq!(report.merge_commit_ok, Some(true));
+        assert_eq!(report.body_mentions_swarm_head, Some(true));
+        assert_eq!(report.body_mentions_included_swarm_prs, Some(true));
+        assert_eq!(report.body_mentions_swarm_proof, Some(true));
+        assert_eq!(report.body_mentions_merge_method, Some(true));
+    }
+
+    #[test]
+    fn promotion_pr_contract_reports_drift_when_body_omits_proof() {
+        let report = promotion_pr_contract_from_json(
+            556,
+            Some("474bf93ad7f120d173136f474e8e912b08005798".to_string()),
+            Some("491dd34b4f3e2fb1c7588679d6832c09f6257924".to_string()),
+            serde_json::json!({
+                "title": "merge(swarm): promote shiplog-swarm through 491dd34",
+                "body": "Promotes shiplog-swarm/main through 491dd34.",
+                "state": "MERGED",
+                "mergeCommit": {"oid": "474bf93ad7f120d173136f474e8e912b08005798"}
+            }),
+            Vec::new(),
+        );
+
+        assert_eq!(report.status, "drift");
+        assert_eq!(report.body_mentions_included_swarm_prs, Some(false));
+        assert_eq!(report.body_mentions_swarm_proof, Some(false));
+    }
+
+    #[test]
+    fn promotion_pr_contract_reports_unavailable_when_gh_fails() {
+        let report = promotion_pr_contract_from_parts(PromotionPrContractParts {
+            latest_promotion_pr: Some("EffortlessMetrics/shiplog#556".to_string()),
+            latest_promotion_url: None,
+            expected_title: Some("merge(swarm): promote shiplog-swarm through 491dd34".to_string()),
+            actual_title: None,
+            state: None,
+            merge_commit: None,
+            expected_source_head: Some("474bf93ad7f120d173136f474e8e912b08005798".to_string()),
+            expected_swarm_head: Some("491dd34b4f3e2fb1c7588679d6832c09f6257924".to_string()),
+            notes: vec!["gh pr view failed: authentication required".to_string()],
+        });
+
+        assert_eq!(report.status, "unavailable");
+        assert!(
+            report
+                .next_actions
+                .iter()
+                .any(|action| action.contains("rtk gh pr view"))
         );
     }
 
