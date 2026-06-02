@@ -39,6 +39,7 @@ commands = [
   "rtk gh issue list --repo EffortlessMetrics/shiplog-swarm --state open --limit 30",
   "rtk gh issue list --repo EffortlessMetrics/shiplog --state open --limit 30",
   "rtk gh run list --repo EffortlessMetrics/shiplog-swarm --branch main --limit 10",
+  "rtk gh run list --repo EffortlessMetrics/shiplog --branch main --limit 10",
   "rtk cargo xtask repo-contract-report",
   "rtk git diff --check",
 ]
