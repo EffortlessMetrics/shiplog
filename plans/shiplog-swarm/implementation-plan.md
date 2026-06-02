@@ -1625,6 +1625,31 @@ EffortlessMetrics/shiplog#578:
           fallback in run 26787190126, source PR routed proof passed through
           GitHub-hosted fallback in run 26787608860, and source post-merge
           routed proof passed through GitHub-hosted fallback in run 26788013590
+
+EffortlessMetrics/shiplog#579:
+  swarm head: bd223fb7fcaa922a5c48bcdc6316497f465df8bf
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#142
+  source merge: ce6b8720fa82465e590ed5278c79ef27650967a7
+  result: regular merge commit; active-goal and implementation-plan receipts
+          through #141/#578 were refreshed, swarm PR routed proof passed
+          through CX43 in run 26788587214, swarm/main routed proof passed
+          through GitHub-hosted fallback in run 26788802915, source PR routed
+          proof passed through GitHub-hosted fallback in run 26789185427, and
+          source post-merge routed proof passed through GitHub-hosted fallback
+          in run 26789532279
+
+EffortlessMetrics/shiplog#580:
+  swarm head: 099cbd3571a78ea1cd0d423198549b69c5b0fb1a
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#143
+  source merge: 92e9d72ae8d45c0c637926d68340ef4762c6cc75
+  result: regular merge commit; `repo-contract-report` Markdown now sanitizes
+          live non-ASCII GitHub text for operator-facing output while leaving
+          `graph.json` as the raw receipt, swarm PR routed proof passed through
+          GitHub-hosted fallback in run 26790268290, swarm/main routed proof
+          passed through GitHub-hosted fallback in run 26790567804, source PR
+          routed proof passed through GitHub-hosted fallback in run
+          26790993290, and source post-merge routed proof passed through
+          GitHub-hosted fallback in run 26791401614
 ```
 
 ### Proof commands
