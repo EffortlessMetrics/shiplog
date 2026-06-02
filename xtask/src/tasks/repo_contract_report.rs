@@ -127,6 +127,7 @@ struct RepoContractReport {
     generated_by: String,
     outputs: Vec<String>,
     active_goal: ActiveGoalReport,
+    recommended_next_slice: RecommendedNextSliceReport,
     git_topology: GitTopologyReport,
     local_checkout: LocalCheckoutReport,
     remote_branch_hygiene: RemoteBranchHygieneReport,
@@ -150,6 +151,16 @@ struct RepoInspections {
     promotion_pr_contract: PromotionPrContractReport,
     branch_protection_contract: BranchProtectionContractReport,
     receipt_freshness: ReceiptFreshnessReport,
+}
+
+#[derive(Debug, Serialize)]
+struct RecommendedNextSliceReport {
+    status: String,
+    title: String,
+    reason: String,
+    source: String,
+    next_actions: Vec<String>,
+    claim_boundary: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -428,6 +439,18 @@ fn build_report(
         }
     }
 
+    let recommended_next_slice = recommended_next_slice_from_statuses(
+        &inspections.local_checkout.status,
+        &inspections.remote_queue_hygiene.status,
+        &inspections.git_topology.status,
+        inspections.git_topology.swarm_ahead.len(),
+        &inspections.remote_branch_hygiene.status,
+        &inspections.routed_ci_health.status,
+        &inspections.promotion_pr_contract.status,
+        &inspections.branch_protection_contract.status,
+        &inspections.receipt_freshness.status,
+    );
+
     RepoContractReport {
         schema_version: 1,
         generated_by: REPORT_COMMAND.to_string(),
@@ -443,6 +466,7 @@ fn build_report(
             active_work_items,
             ready_work_items,
         },
+        recommended_next_slice,
         git_topology: inspections.git_topology,
         local_checkout: inspections.local_checkout,
         remote_branch_hygiene: inspections.remote_branch_hygiene,
@@ -455,6 +479,171 @@ fn build_report(
         work_items: goal.work_item,
         support_tiers,
         edges,
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn recommended_next_slice_from_statuses(
+    local_checkout_status: &str,
+    remote_queue_status: &str,
+    git_topology_status: &str,
+    swarm_ahead_count: usize,
+    remote_branch_status: &str,
+    routed_ci_status: &str,
+    promotion_contract_status: &str,
+    branch_protection_status: &str,
+    receipt_freshness_status: &str,
+) -> RecommendedNextSliceReport {
+    if local_checkout_status != "clean" {
+        return RecommendedNextSliceReport {
+            status: "blocked".to_string(),
+            title: "Clean the local checkout before opening new work".to_string(),
+            reason: format!("local checkout status is `{local_checkout_status}`"),
+            source: "local_checkout".to_string(),
+            next_actions: vec![
+                "Run `rtk git status --short --branch` and separate user work before editing."
+                    .to_string(),
+            ],
+            claim_boundary:
+                "Do not start a new swarm PR until the local worktree state is understood."
+                    .to_string(),
+        };
+    }
+
+    if remote_queue_status != "clean" {
+        return RecommendedNextSliceReport {
+            status: "review-needed".to_string(),
+            title: "Triage open source/swarm PRs and issues".to_string(),
+            reason: format!("remote queue hygiene status is `{remote_queue_status}`"),
+            source: "remote_queue_hygiene".to_string(),
+            next_actions: vec![
+                "Review open source and swarm PRs before opening new work.".to_string(),
+                "Merge, fix, close, or defer existing work with a clear note.".to_string(),
+            ],
+            claim_boundary: "Queue triage is an inspection and review task, not release execution."
+                .to_string(),
+        };
+    }
+
+    if swarm_ahead_count > 0 {
+        return RecommendedNextSliceReport {
+            status: "ready".to_string(),
+            title: "Promote completed swarm work to source".to_string(),
+            reason: format!("swarm is ahead of source by {swarm_ahead_count} commit(s)"),
+            source: "git_topology".to_string(),
+            next_actions: vec![
+                "Open a source promotion PR from `swarm/main`.".to_string(),
+                "Merge the source promotion with a regular merge commit, not squash.".to_string(),
+            ],
+            claim_boundary: "Promotion keeps source current; it does not move release authority."
+                .to_string(),
+        };
+    }
+
+    if git_topology_status != "tree-aligned" {
+        return RecommendedNextSliceReport {
+            status: "review-needed".to_string(),
+            title: "Resolve source/swarm topology before new work".to_string(),
+            reason: format!("git topology status is `{git_topology_status}`"),
+            source: "git_topology".to_string(),
+            next_actions: vec![
+                "Inspect `origin/main` and `swarm/main` before opening new development PRs."
+                    .to_string(),
+            ],
+            claim_boundary: "Topology repair should not change release authority.".to_string(),
+        };
+    }
+
+    if remote_branch_status != "clean" {
+        return RecommendedNextSliceReport {
+            status: "review-needed".to_string(),
+            title: "Review remote branch hygiene".to_string(),
+            reason: format!("remote branch hygiene status is `{remote_branch_status}`"),
+            source: "remote_branch_hygiene".to_string(),
+            next_actions: vec![
+                "Use the report cleanup review commands before deleting any branch.".to_string(),
+            ],
+            claim_boundary:
+                "Branch cleanup is non-release maintenance and must preserve active PR work."
+                    .to_string(),
+        };
+    }
+
+    if routed_ci_status != "green" {
+        return RecommendedNextSliceReport {
+            status: "blocked".to_string(),
+            title: "Restore routed CI health".to_string(),
+            reason: format!("routed CI health status is `{routed_ci_status}`"),
+            source: "routed_ci_health".to_string(),
+            next_actions: vec![
+                "Inspect the latest source and swarm `EM CI Routed Shiplog Rust` runs.".to_string(),
+            ],
+            claim_boundary:
+                "CI repair should keep `Shiplog Rust Small Result` as the normalized gate."
+                    .to_string(),
+        };
+    }
+
+    if promotion_contract_status != "aligned" {
+        return RecommendedNextSliceReport {
+            status: "review-needed".to_string(),
+            title: "Repair the latest source promotion contract".to_string(),
+            reason: format!("promotion PR contract status is `{promotion_contract_status}`"),
+            source: "promotion_pr_contract".to_string(),
+            next_actions: vec![
+                "Update or repair the latest source promotion PR body/merge evidence.".to_string(),
+            ],
+            claim_boundary: "Promotion contract repair must not squash source promotions."
+                .to_string(),
+        };
+    }
+
+    if branch_protection_status != "aligned" {
+        return RecommendedNextSliceReport {
+            status: "review-needed".to_string(),
+            title: "Repair swarm branch-protection drift".to_string(),
+            reason: format!("branch protection contract status is `{branch_protection_status}`"),
+            source: "branch_protection_contract".to_string(),
+            next_actions: vec![
+                "Require only `Shiplog Rust Small Result`; do not require conditional runner jobs."
+                    .to_string(),
+            ],
+            claim_boundary:
+                "Branch-protection changes require explicit approval if policy changes are needed."
+                    .to_string(),
+        };
+    }
+
+    if receipt_freshness_status != "current" {
+        return RecommendedNextSliceReport {
+            status: "ready".to_string(),
+            title: "Choose a substantive swarm improvement and carry latest receipts".to_string(),
+            reason: format!("receipt freshness status is `{receipt_freshness_status}`"),
+            source: "receipt_freshness".to_string(),
+            next_actions: vec![
+                "Pick a small product, proof, docs, or CI hardening slice.".to_string(),
+                "Carry the latest source promotion and swarm PR receipts in that substantive PR."
+                    .to_string(),
+            ],
+            claim_boundary:
+                "Do not create an infinite receipt-only loop solely to refresh self-referential receipts."
+                    .to_string(),
+        };
+    }
+
+    RecommendedNextSliceReport {
+        status: "ready".to_string(),
+        title: "Choose the next small user-value hardening slice".to_string(),
+        reason: "source/swarm topology, queues, CI, promotion contract, branch protection, and receipts are clean"
+            .to_string(),
+        source: "repo_contract_report".to_string(),
+        next_actions: vec![
+            "Scan setup, status, intake, repair, diff, share, GitHub activity, docs, examples, and schemas."
+                .to_string(),
+            "Open one focused swarm PR with proof commands and a clear claim boundary.".to_string(),
+        ],
+        claim_boundary: "This recommendation is derived from report receipts; it does not execute work."
+            .to_string(),
     }
 }
 
@@ -2382,6 +2571,23 @@ fn render_markdown(report: &RepoContractReport) -> String {
     out.push_str("# Repo contract report\n\n");
     out.push_str(&format!("Generated by `{REPORT_COMMAND}`.\n\n"));
 
+    out.push_str("## Recommended next slice\n\n");
+    out.push_str("| Field | Value |\n|---|---|\n");
+    push_row(&mut out, "Status", &report.recommended_next_slice.status);
+    push_row(&mut out, "Title", &report.recommended_next_slice.title);
+    push_row(&mut out, "Reason", &report.recommended_next_slice.reason);
+    push_row(&mut out, "Source", &report.recommended_next_slice.source);
+    push_row(
+        &mut out,
+        "Claim boundary",
+        &report.recommended_next_slice.claim_boundary,
+    );
+    push_markdown_bullets(
+        &mut out,
+        "Recommended next actions",
+        &report.recommended_next_slice.next_actions,
+    );
+
     out.push_str("## Active goal\n\n");
     out.push_str("| Field | Value |\n|---|---|\n");
     push_row(&mut out, "ID", &report.active_goal.id);
@@ -3676,6 +3882,7 @@ receipts = [
         assert!(graph_md.is_file());
         let json = fs::read_to_string(graph_json).unwrap();
         assert!(json.contains("\"repo-contract-report\""));
+        assert!(json.contains("\"recommended_next_slice\""));
         assert!(json.contains("\"git_topology\""));
         assert!(json.contains("\"local_checkout\""));
         assert!(json.contains("\"local_merged_cleanup_candidates\""));
@@ -3690,6 +3897,7 @@ receipts = [
         assert!(json.contains("\"receipt_freshness\""));
         let markdown = fs::read_to_string(graph_md).unwrap();
         assert!(markdown.contains("# Repo contract report"));
+        assert!(markdown.contains("## Recommended next slice"));
         assert!(markdown.contains("Keep repo source-of-truth artifacts linked."));
         assert!(markdown.contains("### End state"));
         assert!(markdown.contains("Artifacts are linked."));
@@ -3710,6 +3918,59 @@ receipts = [
         assert!(markdown.contains("## Promotion PR contract"));
         assert!(markdown.contains("## Branch protection contract"));
         assert!(markdown.contains("## Receipt freshness"));
+    }
+
+    #[test]
+    fn recommended_next_slice_prioritizes_swarm_promotion() {
+        let recommendation = recommended_next_slice_from_statuses(
+            "clean",
+            "clean",
+            "tree-aligned",
+            2,
+            "clean",
+            "green",
+            "aligned",
+            "aligned",
+            "current",
+        );
+
+        assert_eq!(recommendation.status, "ready");
+        assert_eq!(recommendation.source, "git_topology");
+        assert!(
+            recommendation
+                .title
+                .contains("Promote completed swarm work")
+        );
+        assert!(
+            recommendation
+                .next_actions
+                .iter()
+                .any(|action| action.contains("regular merge commit"))
+        );
+    }
+
+    #[test]
+    fn recommended_next_slice_defers_receipts_to_substantive_work() {
+        let recommendation = recommended_next_slice_from_statuses(
+            "clean",
+            "clean",
+            "tree-aligned",
+            0,
+            "clean",
+            "green",
+            "aligned",
+            "aligned",
+            "stale",
+        );
+
+        assert_eq!(recommendation.status, "ready");
+        assert_eq!(recommendation.source, "receipt_freshness");
+        assert!(
+            recommendation
+                .title
+                .contains("substantive swarm improvement")
+        );
+        assert!(recommendation.claim_boundary.contains("receipt-only loop"));
     }
 
     #[test]

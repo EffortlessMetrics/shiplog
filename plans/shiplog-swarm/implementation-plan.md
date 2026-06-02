@@ -1741,6 +1741,19 @@ EffortlessMetrics/shiplog#585:
           26799787190, source PR routed proof passed through GitHub-hosted
           fallback in run 26800102161, and source post-merge routed proof
           passed through GitHub-hosted fallback in run 26800465344
+
+EffortlessMetrics/shiplog#586:
+  swarm head: af007d488514767c66eec9b975eeddc038fec552
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#149
+  source merge: e0fa0d2ae500a4a1b24cd8adec1313ef9f5e2dce
+  result: regular merge commit; next-improvement discovery is now first-class
+          in the swarm implementation plan, active-goal and
+          implementation-plan receipts carried the #148/#585 receipt refresh,
+          swarm PR routed proof passed through GitHub-hosted fallback in run
+          26801268204, swarm/main routed proof passed through GitHub-hosted
+          fallback in run 26801761421, source PR routed proof passed through
+          GitHub-hosted fallback in run 26802105537, and source post-merge
+          routed proof passed through GitHub-hosted fallback in run 26802617979
 ```
 
 ### Proof commands

@@ -126,12 +126,15 @@ Writes repo-contract inspection reports for humans and agents:
 The report reads [`policy/doc-artifacts.toml`](../policy/doc-artifacts.toml),
 [`.codex/goals/active.toml`](../.codex/goals/active.toml), and
 [`docs/status/SUPPORT_TIERS.md`](status/SUPPORT_TIERS.md). It summarizes the
-active goal, work items, artifact links, support-tier proof commands, graph
-edges, local checkout state, local merged branch cleanup candidates,
-source/swarm topology, remote branch hygiene,
+active goal, recommended next slice, work items, artifact links,
+support-tier proof commands, graph edges, local checkout state, local merged
+branch cleanup candidates, source/swarm topology, remote branch hygiene,
 remote PR/issue queue hygiene, routed CI health, latest promotion PR
 traceability, branch-protection settings, and promotion receipt freshness. The
-topology section classifies the full source-ahead commit range so expected
+recommended next slice is derived from existing report statuses so agents can
+see whether to triage queues, promote swarm work, repair blocking report state,
+carry receipts in the next substantive PR, or choose the next user-value slice.
+The topology section classifies the full source-ahead commit range so expected
 `promote/swarm-*` merge commits are not confused with source-only content
 drift. The local checkout section reports clean/dirty status and any local
 branches already merged into source or swarm so agents can clean up their own
