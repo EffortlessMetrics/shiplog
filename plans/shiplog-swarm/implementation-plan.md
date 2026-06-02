@@ -1659,6 +1659,8 @@ rtk git fetch origin main --prune --tags
 rtk git fetch swarm main --prune
 rtk git merge-base origin/main swarm/main
 rtk git log --oneline origin/main..swarm/main
+rtk gh run list --repo EffortlessMetrics/shiplog-swarm --branch main --limit 10
+rtk gh run list --repo EffortlessMetrics/shiplog --branch main --limit 10
 rtk cargo xtask repo-contract-report
 rtk gh pr create --base main --head promote/swarm-YYYYMMDD-SHA
 rtk git diff --check
