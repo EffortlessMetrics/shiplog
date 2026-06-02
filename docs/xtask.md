@@ -187,6 +187,31 @@ manifest-order list. It does not infer chronology from free-form receipt text.
 It is a derived draft only: it does not call the GitHub API, create a PR, mutate
 source artifacts, change branch protection, or replace reviewer judgment.
 
+### `cargo xtask promotion-body`
+
+Generates a source promotion PR body from the current source/swarm refs:
+
+```bash
+rtk cargo xtask promotion-body --output target/source-of-truth/promotion-body.md
+```
+
+By default it compares `origin/main..swarm/main`, resolves the swarm head, and
+infers included swarm PRs from squash-merge commit subjects like `(#150)`. Run
+IDs can be supplied when known:
+
+```bash
+rtk cargo xtask promotion-body \
+  --swarm-pr-run 26803480265 \
+  --swarm-main-run 26803857830 \
+  --source-pr-run 26804246444 \
+  --output target/source-of-truth/promotion-body.md
+```
+
+The body includes the regular-merge-commit instruction, swarm head, included
+swarm PRs, swarm/source proof slots, and the release-authority claim boundary.
+It is a derived draft only: it does not call GitHub, open or edit PRs, merge,
+change branch protection, tag, release, publish, or move release authority.
+
 ### `cargo xtask closeout`
 
 Generates source-of-truth closeout artifacts from
