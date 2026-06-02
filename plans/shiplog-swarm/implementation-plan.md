@@ -1782,6 +1782,20 @@ EffortlessMetrics/shiplog#588:
           fallback in run 26806546874, source PR routed proof passed through
           GitHub-hosted fallback in run 26806997856, and source post-merge
           routed proof passed through GitHub-hosted fallback in run 26807984200
+
+EffortlessMetrics/shiplog#589:
+  swarm head: 9d2a7a345bdf2e3cb0a31d1874649885343ef356
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#152
+  source merge: 67ac2181e73af421bd464e5b683e2ebdae433654
+  result: regular merge commit; `cargo xtask promotion-body` now supports
+          explicit swarm head and included swarm PR inputs for final proof
+          updates after source/swarm refs align, active-goal and
+          implementation-plan receipts carried the #151/#588 receipt refresh,
+          swarm PR routed proof passed through GitHub-hosted fallback in run
+          26809053685, swarm/main routed proof passed through GitHub-hosted
+          fallback in run 26809523308, source PR routed proof passed through
+          GitHub-hosted fallback in run 26810019933, and source post-merge
+          routed proof passed through GitHub-hosted fallback in run 26811022845
 ```
 
 ### Proof commands

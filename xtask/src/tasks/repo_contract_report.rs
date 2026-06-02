@@ -439,6 +439,8 @@ fn build_report(
         }
     }
 
+    let receipt_freshness_missing_receipts =
+        receipt_freshness_missing_receipts(&inspections.receipt_freshness);
     let recommended_next_slice = recommended_next_slice_from_statuses(
         &inspections.local_checkout.status,
         &inspections.remote_queue_hygiene.status,
@@ -449,6 +451,7 @@ fn build_report(
         &inspections.promotion_pr_contract.status,
         &inspections.branch_protection_contract.status,
         &inspections.receipt_freshness.status,
+        &receipt_freshness_missing_receipts,
     );
 
     RepoContractReport {
@@ -493,6 +496,7 @@ fn recommended_next_slice_from_statuses(
     promotion_contract_status: &str,
     branch_protection_status: &str,
     receipt_freshness_status: &str,
+    receipt_freshness_missing_receipts: &[String],
 ) -> RecommendedNextSliceReport {
     if local_checkout_status != "clean" {
         return RecommendedNextSliceReport {
@@ -615,16 +619,27 @@ fn recommended_next_slice_from_statuses(
     }
 
     if receipt_freshness_status != "current" {
+        let mut next_actions = vec![
+            "Pick a small product, proof, docs, or CI hardening slice.".to_string(),
+            "Carry the latest source promotion and swarm PR receipts in that substantive PR."
+                .to_string(),
+        ];
+        if !receipt_freshness_missing_receipts.is_empty() {
+            next_actions.push(format!(
+                "Carry missing receipts: {}.",
+                receipt_freshness_missing_receipts
+                    .iter()
+                    .map(|receipt| format!("`{receipt}`"))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ));
+        }
         return RecommendedNextSliceReport {
             status: "ready".to_string(),
             title: "Choose a substantive swarm improvement and carry latest receipts".to_string(),
             reason: format!("receipt freshness status is `{receipt_freshness_status}`"),
             source: "receipt_freshness".to_string(),
-            next_actions: vec![
-                "Pick a small product, proof, docs, or CI hardening slice.".to_string(),
-                "Carry the latest source promotion and swarm PR receipts in that substantive PR."
-                    .to_string(),
-            ],
+            next_actions,
             claim_boundary:
                 "Do not create an infinite receipt-only loop solely to refresh self-referential receipts."
                     .to_string(),
@@ -2153,6 +2168,17 @@ fn push_missing_receipt(
     {
         missing_receipts.push(receipt.to_string());
     }
+}
+
+fn receipt_freshness_missing_receipts(report: &ReceiptFreshnessReport) -> Vec<String> {
+    report
+        .missing_active_goal_receipts
+        .iter()
+        .chain(report.missing_plan_receipts.iter())
+        .cloned()
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect()
 }
 
 fn receipt_freshness_status(required: &[bool], latest_swarm_head: Option<&str>) -> &'static str {
@@ -3932,6 +3958,7 @@ receipts = [
             "aligned",
             "aligned",
             "current",
+            &[],
         );
 
         assert_eq!(recommendation.status, "ready");
@@ -3951,6 +3978,10 @@ receipts = [
 
     #[test]
     fn recommended_next_slice_defers_receipts_to_substantive_work() {
+        let missing_receipts = vec![
+            "EffortlessMetrics/shiplog#589".to_string(),
+            "EffortlessMetrics/shiplog-swarm#152".to_string(),
+        ];
         let recommendation = recommended_next_slice_from_statuses(
             "clean",
             "clean",
@@ -3961,6 +3992,7 @@ receipts = [
             "aligned",
             "aligned",
             "stale",
+            &missing_receipts,
         );
 
         assert_eq!(recommendation.status, "ready");
@@ -3969,6 +4001,13 @@ receipts = [
             recommendation
                 .title
                 .contains("substantive swarm improvement")
+        );
+        assert!(
+            recommendation
+                .next_actions
+                .iter()
+                .any(|action| action.contains("EffortlessMetrics/shiplog#589")
+                    && action.contains("EffortlessMetrics/shiplog-swarm#152"))
         );
         assert!(recommendation.claim_boundary.contains("receipt-only loop"));
     }
