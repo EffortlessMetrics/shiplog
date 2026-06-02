@@ -1650,6 +1650,30 @@ EffortlessMetrics/shiplog#580:
           routed proof passed through GitHub-hosted fallback in run
           26790993290, and source post-merge routed proof passed through
           GitHub-hosted fallback in run 26791401614
+
+EffortlessMetrics/shiplog#581:
+  swarm head: 93d336183d925f7855fbc15088c8786831ff9ccb
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#144
+  source merge: cd83e4439ae7ac24edd1b4cf92c9d1d7a520ef00
+  result: regular merge commit; active-goal and implementation-plan receipts
+          through #143/#580 were refreshed, swarm PR routed proof passed
+          through GitHub-hosted fallback in run 26791933885, swarm/main
+          routed proof passed through GitHub-hosted fallback in run
+          26792616370, source PR routed proof passed through GitHub-hosted
+          fallback in run 26793027261, and source post-merge routed proof
+          passed through GitHub-hosted fallback in run 26793641823
+
+EffortlessMetrics/shiplog#582:
+  swarm head: 40050e960612230a1cef4e3db540e6682f13b0a2
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#145
+  source merge: 083eaa6b1f774afd9d4bdb53dcc085c8634a8287
+  result: regular merge commit; promotion-cadence proof commands now inspect
+          both source and swarm main runs, swarm PR routed proof passed through
+          GitHub-hosted fallback in run 26794270404, swarm/main routed proof
+          passed through GitHub-hosted fallback in run 26794577722, source PR
+          routed proof passed through GitHub-hosted fallback in run
+          26794994894, and source post-merge routed proof passed through
+          GitHub-hosted fallback in run 26795421678
 ```
 
 ### Proof commands
