@@ -791,8 +791,14 @@ This generates PR body drafts only.
     )
     .expect("read closeout handoff");
     assert!(handoff.contains("## Landed work items"));
+    assert!(handoff.contains("## Source/swarm state"));
+    assert!(handoff.contains("## Queue state"));
+    assert!(handoff.contains("## Promotion proof"));
     assert!(handoff.contains("pr-body-generator"));
     assert!(handoff.contains("EffortlessMetrics/shiplog-swarm#36"));
+    assert!(handoff.contains("## Receipt carry-forward"));
+    assert!(handoff.contains("- Swarm: `EffortlessMetrics/shiplog-swarm#36`"));
+    assert!(handoff.contains("- Source: `EffortlessMetrics/shiplog#479`"));
     assert!(handoff.contains("This generates PR body drafts only."));
 
     let archive = fs::read_to_string(

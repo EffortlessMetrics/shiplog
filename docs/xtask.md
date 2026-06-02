@@ -256,12 +256,14 @@ Use `--date YYYY-MM-DD` to make output filenames deterministic. Agents should
 write review copies to `target/source-of-truth/` with `--handoff-output` and
 `--archive-output` unless the lane is intentionally archiving the active goal.
 
-The generated handoff includes objective, end state, landed work items, proof
-commands, receipt refs, claim boundaries, remaining work, and a generated
-boundary. The archived TOML copy is written with `status = "archived"` so the
-goal history can be preserved without relying on chat history. The command does
-not call GitHub, inspect PR state, mutate provider records, change branch
-protection, move release authority, or prove runtime product behavior.
+The generated handoff includes objective, end state, source/swarm state
+placeholders, queue state placeholders, landed work items, proof commands,
+promotion proof placeholders, receipt refs, receipt carry-forward hints, claim
+boundaries, remaining work, and a generated boundary. The archived TOML copy is
+written with `status = "archived"` so the goal history can be preserved without
+relying on chat history. The command does not call GitHub, inspect PR state,
+mutate provider records, change branch protection, move release authority, or
+prove runtime product behavior.
 
 ## Override workspace root
 
