@@ -3710,7 +3710,7 @@ fn push_markdown_list_limited(out: &mut String, title: &str, values: &[String], 
     let hidden = values.len().saturating_sub(shown);
     if hidden > 0 {
         out.push_str(&format!(
-            "- ... {hidden} earlier item(s) omitted from Markdown; see `graph.json` for the full list.\n"
+            "- ... {hidden} additional item(s) omitted from Markdown; see `graph.json` for the full list.\n"
         ));
     }
 }
@@ -4389,7 +4389,7 @@ Merge this PR with a regular merge commit; do not squash.
     }
 
     #[test]
-    fn limits_long_markdown_lists_without_losing_latest_items() {
+    fn limits_long_markdown_lists_with_full_list_pointer() {
         let values = (1..=14)
             .map(|index| format!("commit-{index:02}"))
             .collect::<Vec<_>>();
@@ -4400,7 +4400,7 @@ Merge this PR with a regular merge commit; do not squash.
         assert!(markdown.contains("commit-01"));
         assert!(markdown.contains("commit-12"));
         assert!(!markdown.contains("commit-13"));
-        assert!(markdown.contains("2 earlier item(s) omitted"));
+        assert!(markdown.contains("2 additional item(s) omitted"));
         assert!(markdown.contains("graph.json"));
     }
 
