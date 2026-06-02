@@ -42,10 +42,12 @@ pub fn run(inputs: PromotionBodyInputs) -> Result<()> {
             .with_context(|| format!("promotion-body: resolve {}", inputs.swarm_ref))?,
     };
     let included_swarm_prs = if inputs.included_swarm_prs.is_empty() {
-        let range = format!("{}..{}", inputs.source_ref, inputs.swarm_ref);
-        let subjects = git_output_lines(&inputs.workspace_root, &["log", "--pretty=%s", &range])
-            .with_context(|| format!("promotion-body: list commits in {range}"))?;
-        included_swarm_prs_from_subjects(&subjects)
+        infer_included_swarm_prs(
+            &inputs.workspace_root,
+            &inputs.source_ref,
+            &inputs.swarm_ref,
+            &swarm_head,
+        )?
     } else {
         normalize_included_swarm_prs(&inputs.included_swarm_prs)
     };
@@ -100,6 +102,30 @@ fn git_output_lines(workspace_root: &Path, args: &[&str]) -> Result<Vec<String>>
         .collect())
 }
 
+fn infer_included_swarm_prs(
+    workspace_root: &Path,
+    source_ref: &str,
+    swarm_ref: &str,
+    swarm_head: &str,
+) -> Result<Vec<String>> {
+    let range = format!("{source_ref}..{swarm_ref}");
+    let subjects = git_output_lines(workspace_root, &["log", "--pretty=%s", &range])
+        .with_context(|| format!("promotion-body: list commits in {range}"))?;
+    let prs = included_swarm_prs_from_subjects(&subjects);
+    if !prs.is_empty() {
+        return Ok(prs);
+    }
+
+    let parent_line = git_output(workspace_root, &["show", "-s", "--format=%P", source_ref])
+        .with_context(|| format!("promotion-body: inspect parents for {source_ref}"))?;
+    let Some(parent_range) = promotion_merge_parent_range(&parent_line, swarm_head) else {
+        return Ok(prs);
+    };
+    let subjects = git_output_lines(workspace_root, &["log", "--pretty=%s", &parent_range])
+        .with_context(|| format!("promotion-body: list merged swarm commits in {parent_range}"))?;
+    Ok(included_swarm_prs_from_subjects(&subjects))
+}
+
 fn included_swarm_prs_from_subjects(subjects: &[String]) -> Vec<String> {
     let mut prs = Vec::new();
     for subject in subjects.iter().rev() {
@@ -132,6 +158,30 @@ fn normalize_included_swarm_prs(values: &[String]) -> Vec<String> {
         }
     }
     prs
+}
+
+fn promotion_merge_parent_range(parent_line: &str, swarm_head: &str) -> Option<String> {
+    let parents = parent_line.split_whitespace().collect::<Vec<_>>();
+    let [source_parent, swarm_parent] = parents.as_slice() else {
+        return None;
+    };
+    if same_commit_id(swarm_parent, swarm_head) {
+        Some(format!("{source_parent}..{swarm_parent}"))
+    } else {
+        None
+    }
+}
+
+fn same_commit_id(left: &str, right: &str) -> bool {
+    let left = left.trim();
+    let right = right.trim();
+    if left.is_empty() || right.is_empty() {
+        return false;
+    }
+    if left == right {
+        return true;
+    }
+    left.len().min(right.len()) >= 7 && (left.starts_with(right) || right.starts_with(left))
 }
 
 fn extract_parenthesized_pull_request_number(subject: &str) -> Option<u64> {
@@ -263,6 +313,67 @@ mod tests {
                 "EffortlessMetrics/shiplog-swarm#151",
                 "EffortlessMetrics/shiplog-swarm#152",
                 "EffortlessMetrics/shiplog-swarm#153"
+            ]
+        );
+    }
+
+    #[test]
+    fn promotion_merge_parent_range_matches_swarm_second_parent() {
+        let range = promotion_merge_parent_range(
+            "1111111111111111111111111111111111111111 2222222222222222222222222222222222222222",
+            "2222222222222222222222222222222222222222",
+        );
+
+        assert_eq!(
+            range.as_deref(),
+            Some(
+                "1111111111111111111111111111111111111111..2222222222222222222222222222222222222222"
+            )
+        );
+    }
+
+    #[test]
+    fn promotion_merge_parent_range_allows_abbreviated_swarm_head() {
+        let range = promotion_merge_parent_range(
+            "1111111111111111111111111111111111111111 2222222222222222222222222222222222222222",
+            "2222222",
+        );
+
+        assert!(range.is_some());
+    }
+
+    #[test]
+    fn promotion_merge_parent_range_rejects_too_short_swarm_head() {
+        let range = promotion_merge_parent_range(
+            "1111111111111111111111111111111111111111 2222222222222222222222222222222222222222",
+            "222",
+        );
+
+        assert_eq!(range, None);
+    }
+
+    #[test]
+    fn promotion_merge_parent_range_rejects_non_matching_second_parent() {
+        let range = promotion_merge_parent_range(
+            "1111111111111111111111111111111111111111 2222222222222222222222222222222222222222",
+            "3333333333333333333333333333333333333333",
+        );
+
+        assert_eq!(range, None);
+    }
+
+    #[test]
+    fn promotion_merge_subjects_infer_swarm_prs_after_source_merge() {
+        let subjects = vec![
+            "xtask: include control-plane closeout sections (#161)".to_string(),
+            "docs: expand closeout control-plane template (#160)".to_string(),
+        ];
+
+        assert_eq!(
+            included_swarm_prs_from_subjects(&subjects),
+            vec![
+                "EffortlessMetrics/shiplog-swarm#160",
+                "EffortlessMetrics/shiplog-swarm#161"
             ]
         );
     }

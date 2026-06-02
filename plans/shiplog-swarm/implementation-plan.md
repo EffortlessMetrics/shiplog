@@ -1900,6 +1900,20 @@ EffortlessMetrics/shiplog#597:
           source PR routed proof passed through GitHub-hosted fallback in run
           26833200452, and source post-merge routed proof passed through
           GitHub-hosted fallback in run 26833693156
+
+EffortlessMetrics/shiplog#598:
+  swarm head: 21a90720ecbb4b90256aec3f1df4951f8dd28d51
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#161
+  source merge: 1b77f99c2525f392af648fffb909f956911908fa
+  result: regular merge commit; `promotion-body` can now infer final
+          promotion body included swarm PRs from the source merge parents after
+          the promotion has landed, active-goal and implementation-plan
+          receipts carried the #160/#597 receipt refresh, swarm PR routed proof
+          passed through GitHub-hosted fallback in run 26834617418, swarm/main
+          routed proof passed through GitHub-hosted fallback in run 26835147360,
+          source PR routed proof passed through GitHub-hosted fallback in run
+          26835683305, and source post-merge routed proof passed through
+          GitHub-hosted fallback in run 26836167341
 ```
 
 ### Proof commands

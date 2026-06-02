@@ -215,8 +215,20 @@ rtk cargo xtask promotion-body \
 ```
 
 After the source promotion has merged, `origin/main..swarm/main` is normally
-empty. Use explicit inputs to regenerate or update the body with final source
-proof without relying on a stale pre-merge draft:
+empty. When `origin/main` is the promotion merge and its second parent matches
+`swarm/main`, the generator infers included swarm PRs from the merge parents.
+Pass the final source run ID to update the proof section without restating the
+swarm head or included PRs:
+
+```bash
+rtk cargo xtask promotion-body \
+  --source-post-merge-run 26807984200 \
+  --output target/source-of-truth/promotion-body.md
+```
+
+Use explicit inputs when regenerating a historical promotion body from a
+different checkout state or when source/swarm refs no longer point at the
+promotion being edited:
 
 ```bash
 rtk cargo xtask promotion-body \
