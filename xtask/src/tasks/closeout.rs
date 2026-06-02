@@ -225,6 +225,19 @@ fn render_closeout(
         out.push('\n');
     }
 
+    out.push_str("## Source/swarm state\n\n");
+    out.push_str("- Source head: Not inspected by `rtk cargo xtask closeout`.\n");
+    out.push_str("- Swarm head: Not inspected by `rtk cargo xtask closeout`.\n");
+    out.push_str("- Trees aligned: Not inspected by `rtk cargo xtask closeout`.\n");
+    out.push_str("- Promotion PR: Not inspected by `rtk cargo xtask closeout`.\n");
+    out.push_str("- Release authority: Not changed by generated closeout.\n\n");
+
+    out.push_str("## Queue state\n\n");
+    out.push_str("- Source PRs: Not inspected by `rtk cargo xtask closeout`.\n");
+    out.push_str("- Swarm PRs: Not inspected by `rtk cargo xtask closeout`.\n");
+    out.push_str("- Source issues: Not inspected by `rtk cargo xtask closeout`.\n");
+    out.push_str("- Swarm issues: Not inspected by `rtk cargo xtask closeout`.\n\n");
+
     out.push_str("## Landed work items\n\n");
     let landed = goal
         .work_item
@@ -263,6 +276,12 @@ fn render_closeout(
         out.push_str("```\n\n");
     }
 
+    out.push_str("## Promotion proof\n\n");
+    out.push_str("- Swarm PR run: Not inspected by `rtk cargo xtask closeout`.\n");
+    out.push_str("- Swarm main run: Not inspected by `rtk cargo xtask closeout`.\n");
+    out.push_str("- Source PR run: Not inspected by `rtk cargo xtask closeout`.\n");
+    out.push_str("- Source main run: Not inspected by `rtk cargo xtask closeout`.\n\n");
+
     out.push_str("## Receipts\n\n");
     let items_with_receipts = goal
         .work_item
@@ -280,6 +299,22 @@ fn render_closeout(
             out.push('\n');
         }
     }
+
+    out.push_str("## Receipt carry-forward\n\n");
+    out.push_str("Latest exact PR receipt refs recorded in the active goal manifest:\n\n");
+    match latest_exact_receipt(goal, "EffortlessMetrics/shiplog-swarm#") {
+        Some(receipt) => out.push_str(&format!("- Swarm: `{}`\n", receipt)),
+        None => out.push_str("- Swarm: none recorded\n"),
+    }
+    match latest_exact_receipt(goal, "EffortlessMetrics/shiplog#") {
+        Some(receipt) => out.push_str(&format!("- Source: `{}`\n", receipt)),
+        None => out.push_str("- Source: none recorded\n"),
+    }
+    out.push_str(
+        "\nAfter this closeout or a later promotion lands, run \
+         `rtk cargo xtask repo-contract-report` and carry any newly missing \
+         latest refs into the next substantive swarm PR.\n\n",
+    );
 
     out.push_str("## Claim boundaries\n\n");
     for item in &goal.work_item {
@@ -325,6 +360,21 @@ fn render_closeout(
     );
 
     out
+}
+
+fn latest_exact_receipt<'a>(goal: &'a ActiveGoal, prefix: &str) -> Option<&'a str> {
+    goal.work_item
+        .iter()
+        .flat_map(|item| item.receipts.iter())
+        .rev()
+        .find(|receipt| exact_receipt_ref(receipt, prefix))
+        .map(String::as_str)
+}
+
+fn exact_receipt_ref(receipt: &str, prefix: &str) -> bool {
+    receipt
+        .strip_prefix(prefix)
+        .is_some_and(|suffix| !suffix.is_empty() && suffix.chars().all(|ch| ch.is_ascii_digit()))
 }
 
 fn validate_date(date: &str) -> Result<()> {
@@ -481,9 +531,16 @@ This generates closeout drafts only.
         )
         .expect("read generated handoff");
         assert!(handoff.contains("# Shiplog source-of-truth stack rollout closeout"));
+        assert!(handoff.contains("## Source/swarm state"));
+        assert!(handoff.contains("- Source head: Not inspected by `rtk cargo xtask closeout`."));
+        assert!(handoff.contains("## Queue state"));
         assert!(handoff.contains("## Landed work items"));
         assert!(handoff.contains("pr-body-generator"));
+        assert!(handoff.contains("## Promotion proof"));
         assert!(handoff.contains("EffortlessMetrics/shiplog-swarm#36"));
+        assert!(handoff.contains("## Receipt carry-forward"));
+        assert!(handoff.contains("- Swarm: `EffortlessMetrics/shiplog-swarm#36`"));
+        assert!(handoff.contains("- Source: `EffortlessMetrics/shiplog#479`"));
         assert!(handoff.contains("This generates PR body drafts only."));
         assert!(handoff.contains("closeout-generator"));
 
