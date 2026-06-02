@@ -186,6 +186,9 @@ fn validate_proof_command(
 
     match subcommand {
         "pr-body" => validate_pr_body_proof(workspace_root, line, command, &parts, findings),
+        "promotion-body" => {
+            validate_target_output_proof("promotion-body", line, command, &parts, findings)
+        }
         "closeout" => validate_closeout_proof(workspace_root, line, command, &parts, findings),
         _ => {}
     }
@@ -251,6 +254,26 @@ fn validate_closeout_proof(
                 "[support-tier-closeout-source-writing-proof] line {line} proof command {command:?} uses `{flag} {output}`; support-tier closeout proof must write under `target/`"
             ));
         }
+    }
+}
+
+fn validate_target_output_proof(
+    label: &str,
+    line: usize,
+    command: &str,
+    parts: &[&str],
+    findings: &mut Vec<String>,
+) {
+    let Some(output) = flag_value(parts, "--output") else {
+        findings.push(format!(
+            "[support-tier-{label}-missing-output] line {line} proof command {command:?} must include `--output target/...`"
+        ));
+        return;
+    };
+    if !output.starts_with("target/") && !output.starts_with("target\\") {
+        findings.push(format!(
+            "[support-tier-{label}-source-writing-proof] line {line} proof command {command:?} uses `--output {output}`; proof must write under `target/`"
+        ));
     }
 }
 
@@ -364,6 +387,7 @@ fn known_xtask_subcommand(command: &str) -> bool {
             | "policy-report"
             | "repo-contract-report"
             | "pr-body"
+            | "promotion-body"
             | "closeout"
             | "ci"
             | "check-file-policy"
@@ -493,6 +517,7 @@ commands = ["rtk cargo xtask repo-contract-report"]
 | Surface | Tier | Claim | Proof command | Notes |
 |---|---|---|---|---|
 | PR body generator | Stabilizing | Agents can draft PR bodies. | `rtk cargo xtask pr-body --work-item promotion-cadence --output target/source-of-truth/pr-body.md` | Derived draft. |
+| Promotion body generator | Stabilizing | Agents can draft promotion bodies. | `rtk cargo xtask promotion-body --output target/source-of-truth/promotion-body.md` | Derived draft. |
 | Closeout generator | Stabilizing | Agents can draft closeouts. | `rtk cargo xtask closeout --goal shiplog-swarm-control-plane --handoff-output target/source-of-truth/closeout.md --archive-output target/source-of-truth/active-goal-archive.toml` | Derived draft. |
 "#;
         let dir = write_support_tiers(doc);
@@ -537,5 +562,17 @@ commands = ["rtk cargo xtask repo-contract-report"]
 
         let err = run(dir.path()).unwrap_err();
         assert!(err.to_string().contains("2 finding"));
+    }
+
+    #[test]
+    fn source_writing_promotion_body_proof_is_finding() {
+        let doc = valid_doc().replace(
+            "`rtk cargo xtask check-policy-ledgers`",
+            "`rtk cargo xtask promotion-body --output docs/promotion-body.md`",
+        );
+        let dir = write_support_tiers(&doc);
+
+        let err = run(dir.path()).unwrap_err();
+        assert!(err.to_string().contains("1 finding"));
     }
 }

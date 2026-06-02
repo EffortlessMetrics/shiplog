@@ -57,6 +57,9 @@ enum Command {
     /// Generate a pull request body from the active source-of-truth work item.
     PrBody(PrBodyArgs),
 
+    /// Generate a source promotion pull request body from source/swarm refs.
+    PromotionBody(PromotionBodyArgs),
+
     /// Generate source-of-truth closeout and archived-goal artifacts.
     Closeout(CloseoutArgs),
 
@@ -156,6 +159,37 @@ pub struct PrBodyArgs {
 
     /// Output path for the generated PR body.
     #[arg(long, default_value = "target/source-of-truth/pr-body.md")]
+    pub output: PathBuf,
+}
+
+#[derive(Debug, Args)]
+pub struct PromotionBodyArgs {
+    /// Source/release ref. Defaults to origin/main.
+    #[arg(long, default_value = "origin/main")]
+    pub source_ref: String,
+
+    /// Swarm/dev ref. Defaults to swarm/main.
+    #[arg(long, default_value = "swarm/main")]
+    pub swarm_ref: String,
+
+    /// Swarm PR routed run ID for Shiplog Rust Small Result.
+    #[arg(long)]
+    pub swarm_pr_run: Option<String>,
+
+    /// Swarm main post-merge routed run ID.
+    #[arg(long)]
+    pub swarm_main_run: Option<String>,
+
+    /// Source promotion PR routed run ID.
+    #[arg(long)]
+    pub source_pr_run: Option<String>,
+
+    /// Source main post-merge routed run ID.
+    #[arg(long)]
+    pub source_post_merge_run: Option<String>,
+
+    /// Output path for the generated promotion PR body.
+    #[arg(long, default_value = "target/source-of-truth/promotion-body.md")]
     pub output: PathBuf,
 }
 
@@ -273,6 +307,18 @@ impl Cli {
                 work_item: args.work_item,
                 output: args.output,
             }),
+            Command::PromotionBody(args) => {
+                tasks::promotion_body::run(tasks::promotion_body::PromotionBodyInputs {
+                    workspace_root,
+                    source_ref: args.source_ref,
+                    swarm_ref: args.swarm_ref,
+                    swarm_pr_run: args.swarm_pr_run,
+                    swarm_main_run: args.swarm_main_run,
+                    source_pr_run: args.source_pr_run,
+                    source_post_merge_run: args.source_post_merge_run,
+                    output: args.output,
+                })
+            }
             Command::Closeout(args) => tasks::closeout::run(tasks::closeout::CloseoutInputs {
                 workspace_root,
                 goal: args.goal,
