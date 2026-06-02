@@ -1686,6 +1686,19 @@ EffortlessMetrics/shiplog#583:
           26796544861, source PR routed proof passed through GitHub-hosted
           fallback in run 26796861733, and source post-merge routed proof
           passed through GitHub-hosted fallback in run 26797371000
+
+EffortlessMetrics/shiplog#584:
+  swarm head: 1a9fa4c13b87ac98fc1bfa7232c382b38772ad11
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#147
+  source merge: 1a9d54c1b8fd79cb9f7b2b3ceaa84f0c310f9174
+  result: regular merge commit; swarm implementation-plan proof commands are
+          now copyable with repo-required `rtk` prefixes, active-goal and
+          implementation-plan receipts carried the #146/#583 receipt refresh,
+          swarm PR routed proof passed through GitHub-hosted fallback in run
+          26797936753, swarm/main routed proof passed through GitHub-hosted
+          fallback in run 26798209915, source PR routed proof passed through
+          GitHub-hosted fallback in run 26798516435, and source post-merge
+          routed proof passed through GitHub-hosted fallback in run 26799025334
 ```
 
 ### Proof commands
