@@ -662,6 +662,36 @@ Branch: promote/swarm-YYYYMMDD-SHA
 Issue:
 PR: EffortlessMetrics/shiplog-swarm#28
 
+### Next Improvement Discovery
+
+Start every swarm/source work session from live repo state, not chat memory:
+
+```bash
+rtk git status --short --branch
+rtk git fetch origin --prune
+rtk git fetch swarm --prune
+rtk gh pr list --repo EffortlessMetrics/shiplog-swarm --state open --limit 30
+rtk gh pr list --repo EffortlessMetrics/shiplog --state open --limit 30
+rtk gh issue list --repo EffortlessMetrics/shiplog-swarm --state open --limit 30
+rtk gh issue list --repo EffortlessMetrics/shiplog --state open --limit 30
+rtk cargo xtask repo-contract-report
+rtk cargo xtask check-goals
+```
+
+Choose the next slice in this order:
+
+1. Merge, fix, close, or defer existing PRs before opening new work.
+2. Promote completed swarm work to source when source/swarm trees differ.
+3. Repair report states marked blocking or review-needed.
+4. Carry self-referential receipt-refresh refs in the next substantive PR.
+5. Prefer small user-value hardening in setup, status, intake, repair, diff,
+   share, GitHub activity, docs, examples, or schemas.
+6. Treat support-tier and policy drift as inputs, not automatic rewrite work.
+7. Prefer proof-generating improvements over cosmetic text edits.
+
+Do not start release, tag, publish, branch-protection, runner-policy, or release
+authority changes without explicit approval.
+
 ### Goal
 
 Promote `shiplog-swarm/main` into `shiplog/main` by merge-commit PRs.
@@ -1699,6 +1729,18 @@ EffortlessMetrics/shiplog#584:
           fallback in run 26798209915, source PR routed proof passed through
           GitHub-hosted fallback in run 26798516435, and source post-merge
           routed proof passed through GitHub-hosted fallback in run 26799025334
+
+EffortlessMetrics/shiplog#585:
+  swarm head: e0f5c7cd75977b28242c050914059ff84b9274bf
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#148
+  source merge: 68d3460d43e1e6d0725800246c5706700c545e96
+  result: regular merge commit; active-goal and implementation-plan receipts
+          carried the #147/#584 receipt refresh, swarm PR routed proof passed
+          through GitHub-hosted fallback in run 26799496644, swarm/main
+          routed proof passed through GitHub-hosted fallback in run
+          26799787190, source PR routed proof passed through GitHub-hosted
+          fallback in run 26800102161, and source post-merge routed proof
+          passed through GitHub-hosted fallback in run 26800465344
 ```
 
 ### Proof commands
