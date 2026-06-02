@@ -3545,7 +3545,23 @@ fn bool_opt(value: &Option<bool>) -> String {
 }
 
 fn md(value: &str) -> String {
-    value.replace('|', "\\|").replace('\n', " ")
+    operator_markdown_text(value)
+        .replace('|', "\\|")
+        .replace('\n', " ")
+}
+
+fn operator_markdown_text(value: &str) -> String {
+    value
+        .chars()
+        .map(|ch| match ch {
+            '\u{2026}' => "...".to_string(),
+            '\u{2013}' | '\u{2014}' => "-".to_string(),
+            '\u{2018}' | '\u{2019}' => "'".to_string(),
+            '\u{201c}' | '\u{201d}' => "\"".to_string(),
+            ch if ch.is_ascii() => ch.to_string(),
+            _ => "?".to_string(),
+        })
+        .collect()
 }
 
 fn display_path(workspace_root: &Path, path: &Path) -> String {
@@ -4044,6 +4060,16 @@ Merge this PR with a regular merge commit; do not squash.
         assert!(!markdown.contains("commit-13"));
         assert!(markdown.contains("2 earlier item(s) omitted"));
         assert!(markdown.contains("graph.json"));
+    }
+
+    #[test]
+    fn markdown_output_sanitizes_live_non_ascii_text() {
+        let value = "Merge pull request #579 \u{2026} routed \u{2014} proof | ok";
+
+        assert_eq!(
+            md(value),
+            "Merge pull request #579 ... routed - proof \\| ok"
+        );
     }
 
     #[test]
