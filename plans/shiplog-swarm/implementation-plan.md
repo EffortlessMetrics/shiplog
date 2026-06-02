@@ -92,10 +92,10 @@ EffortlessMetrics/shiplog-swarm main
 ### Proof commands
 
 ```bash
-git fetch origin main --prune --tags
-git fetch swarm main --prune
-git merge-base origin/main swarm/main
-git diff --stat origin/main..swarm/main
+rtk git fetch origin main --prune --tags
+rtk git fetch swarm main --prune
+rtk git merge-base origin/main swarm/main
+rtk git diff --stat origin/main..swarm/main
 ```
 
 ### Rollback
@@ -150,8 +150,8 @@ EffortlessMetrics/shiplog
 ### Proof commands
 
 ```bash
-gh api repos/EffortlessMetrics/shiplog-swarm --jq '{allow_squash_merge,allow_merge_commit,allow_rebase_merge,allow_auto_merge,delete_branch_on_merge}'
-gh api repos/EffortlessMetrics/shiplog --jq '{allow_merge_commit}'
+rtk gh api repos/EffortlessMetrics/shiplog-swarm --jq '{allow_squash_merge,allow_merge_commit,allow_rebase_merge,allow_auto_merge,delete_branch_on_merge}'
+rtk gh api repos/EffortlessMetrics/shiplog --jq '{allow_merge_commit}'
 ```
 
 ### Rollback
@@ -234,9 +234,9 @@ manual dispatch result: Shiplog Rust Small Result passed
 ### Proof commands
 
 ```bash
-cargo xtask check-workflows --mode blocking-allowlist
-cargo xtask check-policy-schemas
-git diff --check
+rtk cargo xtask check-workflows --mode blocking-allowlist
+rtk cargo xtask check-policy-schemas
+rtk git diff --check
 ```
 
 The routed lane itself runs:
@@ -504,9 +504,9 @@ result:        regular merge commit; source and swarm checks passed
 ### Proof commands
 
 ```bash
-gh run list --repo EffortlessMetrics/shiplog-swarm --workflow "EM CI Routed Shiplog Rust" --limit 10
-gh pr checks --repo EffortlessMetrics/shiplog-swarm <proof-pr>
-git diff --check
+rtk gh run list --repo EffortlessMetrics/shiplog-swarm --workflow "EM CI Routed Shiplog Rust" --limit 10
+rtk gh pr checks --repo EffortlessMetrics/shiplog-swarm <proof-pr>
+rtk git diff --check
 ```
 
 ### Rollback
@@ -563,8 +563,8 @@ This PR is the protected same-repo PR proof. It must pass
 ### Proof commands
 
 ```bash
-gh api repos/EffortlessMetrics/shiplog-swarm/branches/main/protection
-gh pr checks --repo EffortlessMetrics/shiplog-swarm <post-protection-pr>
+rtk gh api repos/EffortlessMetrics/shiplog-swarm/branches/main/protection
+rtk gh pr checks --repo EffortlessMetrics/shiplog-swarm <post-protection-pr>
 ```
 
 ### Rollback
@@ -638,7 +638,7 @@ post-merge CI:  EM CI Routed Shiplog Rust passed; CI passed
 ### Proof commands
 
 ```bash
-git diff --check
+rtk git diff --check
 ```
 
 ### Rollback
@@ -1674,6 +1674,18 @@ EffortlessMetrics/shiplog#582:
           routed proof passed through GitHub-hosted fallback in run
           26794994894, and source post-merge routed proof passed through
           GitHub-hosted fallback in run 26795421678
+
+EffortlessMetrics/shiplog#583:
+  swarm head: 22c8f5bc26a5b84772d8e7974adee7b7898505e4
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#146
+  source merge: 6fb0697c4a7ddcbd062564744e3ae20af4a18492
+  result: regular merge commit; active-goal and implementation-plan receipts
+          through #145/#582 were refreshed, swarm PR routed proof passed
+          through GitHub-hosted fallback in run 26796027272, swarm/main
+          routed proof passed through GitHub-hosted fallback in run
+          26796544861, source PR routed proof passed through GitHub-hosted
+          fallback in run 26796861733, and source post-merge routed proof
+          passed through GitHub-hosted fallback in run 26797371000
 ```
 
 ### Proof commands
