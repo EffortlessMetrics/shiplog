@@ -1858,6 +1858,20 @@ EffortlessMetrics/shiplog#594:
           26822840956, swarm/main routed proof passed in run 26823375066,
           source PR routed proof passed in run 26824002206, and source
           post-merge routed proof passed in run 26825615427
+
+EffortlessMetrics/shiplog#595:
+  swarm head: 9a4149886c019b6422d860bd14deb9639f238c40
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#158
+  source merge: 2fbe6dc1064238b01ff84d3885260e39e43559fb
+  result: regular merge commit; docs now clarify that runnable
+          `promotion-body` references use the repo-required `rtk` command
+          prefix, active-goal and implementation-plan receipts carried the
+          #157/#594 receipt refresh, swarm PR routed proof passed through
+          GitHub-hosted fallback in run 26826683887, swarm/main routed proof
+          passed through GitHub-hosted fallback in run 26827252649, source PR
+          routed proof passed through GitHub-hosted fallback in run
+          26827854664, and source post-merge routed proof passed through
+          GitHub-hosted fallback in run 26828509937
 ```
 
 ### Proof commands
