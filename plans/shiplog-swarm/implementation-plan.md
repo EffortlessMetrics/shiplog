@@ -1808,6 +1808,18 @@ EffortlessMetrics/shiplog#590:
           fallback in run 26812016152, swarm/main routed proof passed in run
           26812554439, source PR routed proof passed in run 26813036617, and
           source post-merge routed proof passed in run 26813576612
+
+EffortlessMetrics/shiplog#591:
+  swarm head: bfbc2e9e7fb24b7dbe18fb7206c0004b03b08b45
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#154
+  source merge: 775fa680fec1a1f77b8a4e57402d111d4a3b9ca8
+  result: regular merge commit; repo-contract-report now surfaces large
+          unprotected local branch inventories as non-destructive review hints,
+          active-goal and implementation-plan receipts carried the #153/#590
+          receipt refresh, swarm PR routed proof passed through GitHub-hosted
+          fallback in run 26814867579, swarm/main routed proof passed in run
+          26815289146, source PR routed proof passed in run 26815756705, and
+          source post-merge routed proof passed in run 26816269463
 ```
 
 ### Proof commands

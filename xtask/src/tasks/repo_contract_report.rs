@@ -188,6 +188,7 @@ struct LocalCheckoutReport {
     status_entries: Vec<String>,
     local_branch_count: usize,
     unprotected_local_branch_count: usize,
+    unprotected_local_branches: Vec<String>,
     local_merged_cleanup_candidates: Vec<String>,
     local_merged_cleanup_review_commands: Vec<String>,
     protected_local_branches: Vec<String>,
@@ -801,22 +802,28 @@ fn local_checkout_from_status_and_branch_lines(
     let source_merged = local_branch_set(source_merged_lines);
     let swarm_merged = local_branch_set(swarm_merged_lines);
     let mut protected_local_branches = Vec::new();
+    let mut unprotected_local_branches = Vec::new();
     let mut local_merged_cleanup_candidates = Vec::new();
 
     for branch in local_branch_lines {
         if is_protected_local_branch(&branch) {
             protected_local_branches.push(branch);
-        } else if Some(branch.as_str()) == current_branch.as_deref() {
-            continue;
-        } else if source_merged.contains(&branch) || swarm_merged.contains(&branch) {
-            local_merged_cleanup_candidates.push(branch);
+        } else {
+            let is_current_branch = Some(branch.as_str()) == current_branch.as_deref();
+            unprotected_local_branches.push(branch.clone());
+            if is_current_branch {
+                continue;
+            }
+            if source_merged.contains(&branch) || swarm_merged.contains(&branch) {
+                local_merged_cleanup_candidates.push(branch);
+            }
         }
     }
 
     protected_local_branches.sort();
+    unprotected_local_branches.sort();
     local_merged_cleanup_candidates.sort();
-    let unprotected_local_branch_count =
-        local_branch_count.saturating_sub(protected_local_branches.len());
+    let unprotected_local_branch_count = unprotected_local_branches.len();
     let local_merged_cleanup_review_commands =
         local_merged_cleanup_review_commands(&local_merged_cleanup_candidates);
     let status = match (clean, local_merged_cleanup_candidates.is_empty()) {
@@ -838,6 +845,7 @@ fn local_checkout_from_status_and_branch_lines(
         status_entries,
         local_branch_count,
         unprotected_local_branch_count,
+        unprotected_local_branches,
         local_merged_cleanup_candidates,
         local_merged_cleanup_review_commands,
         protected_local_branches,
@@ -2820,6 +2828,12 @@ fn render_markdown(report: &RepoContractReport) -> String {
     );
     push_markdown_list_limited(
         &mut out,
+        "Unprotected local branches",
+        &report.local_checkout.unprotected_local_branches,
+        20,
+    );
+    push_markdown_list_limited(
+        &mut out,
         "Local merged cleanup candidate branches",
         &report.local_checkout.local_merged_cleanup_candidates,
         20,
@@ -3938,6 +3952,7 @@ receipts = [
         assert!(json.contains("\"recommended_next_slice\""));
         assert!(json.contains("\"git_topology\""));
         assert!(json.contains("\"local_checkout\""));
+        assert!(json.contains("\"unprotected_local_branches\""));
         assert!(json.contains("\"local_merged_cleanup_candidates\""));
         assert!(json.contains("\"remote_branch_hygiene\""));
         assert!(json.contains("\"source_merged_cleanup_candidates\""));
@@ -4499,6 +4514,7 @@ Merge this PR with a regular merge commit; do not squash.
         assert_eq!(report.clean, Some(true));
         assert!(report.status_entries.is_empty());
         assert_eq!(report.unprotected_local_branch_count, 0);
+        assert!(report.unprotected_local_branches.is_empty());
         assert!(report.local_merged_cleanup_candidates.is_empty());
         assert!(
             report
@@ -4525,6 +4541,14 @@ Merge this PR with a regular merge commit; do not squash.
         assert_eq!(report.clean, Some(true));
         assert_eq!(report.local_branch_count, 51);
         assert_eq!(report.unprotected_local_branch_count, 50);
+        assert_eq!(report.unprotected_local_branches.len(), 50);
+        assert_eq!(
+            report
+                .unprotected_local_branches
+                .first()
+                .map(String::as_str),
+            Some("codex/topic-0")
+        );
         assert!(report.local_merged_cleanup_candidates.is_empty());
         assert!(
             report
@@ -4581,6 +4605,10 @@ Merge this PR with a regular merge commit; do not squash.
         assert_eq!(report.clean, Some(true));
         assert_eq!(report.local_branch_count, 4);
         assert_eq!(report.unprotected_local_branch_count, 2);
+        assert_eq!(
+            report.unprotected_local_branches,
+            vec!["codex/current", "codex/done"]
+        );
         assert_eq!(report.local_merged_cleanup_candidates, vec!["codex/done"]);
         assert_eq!(
             report.protected_local_branches,
