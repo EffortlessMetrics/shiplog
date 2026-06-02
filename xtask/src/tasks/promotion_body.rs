@@ -14,6 +14,8 @@ pub struct PromotionBodyInputs {
     pub workspace_root: PathBuf,
     pub source_ref: String,
     pub swarm_ref: String,
+    pub swarm_head: Option<String>,
+    pub included_swarm_prs: Vec<String>,
     pub swarm_pr_run: Option<String>,
     pub swarm_main_run: Option<String>,
     pub source_pr_run: Option<String>,
@@ -34,17 +36,25 @@ struct PromotionBodyData {
 }
 
 pub fn run(inputs: PromotionBodyInputs) -> Result<()> {
-    let swarm_head = git_output(&inputs.workspace_root, &["rev-parse", &inputs.swarm_ref])
-        .with_context(|| format!("promotion-body: resolve {}", inputs.swarm_ref))?;
-    let range = format!("{}..{}", inputs.source_ref, inputs.swarm_ref);
-    let subjects = git_output_lines(&inputs.workspace_root, &["log", "--pretty=%s", &range])
-        .with_context(|| format!("promotion-body: list commits in {range}"))?;
+    let swarm_head = match inputs.swarm_head {
+        Some(value) if !value.trim().is_empty() => value.trim().to_string(),
+        _ => git_output(&inputs.workspace_root, &["rev-parse", &inputs.swarm_ref])
+            .with_context(|| format!("promotion-body: resolve {}", inputs.swarm_ref))?,
+    };
+    let included_swarm_prs = if inputs.included_swarm_prs.is_empty() {
+        let range = format!("{}..{}", inputs.source_ref, inputs.swarm_ref);
+        let subjects = git_output_lines(&inputs.workspace_root, &["log", "--pretty=%s", &range])
+            .with_context(|| format!("promotion-body: list commits in {range}"))?;
+        included_swarm_prs_from_subjects(&subjects)
+    } else {
+        normalize_included_swarm_prs(&inputs.included_swarm_prs)
+    };
 
     let data = PromotionBodyData {
         source_ref: inputs.source_ref,
         swarm_ref: inputs.swarm_ref,
         swarm_head,
-        included_swarm_prs: included_swarm_prs_from_subjects(&subjects),
+        included_swarm_prs,
         swarm_pr_run: inputs.swarm_pr_run,
         swarm_main_run: inputs.swarm_main_run,
         source_pr_run: inputs.source_pr_run,
@@ -98,6 +108,27 @@ fn included_swarm_prs_from_subjects(subjects: &[String]) -> Vec<String> {
             if !prs.contains(&receipt) {
                 prs.push(receipt);
             }
+        }
+    }
+    prs
+}
+
+fn normalize_included_swarm_prs(values: &[String]) -> Vec<String> {
+    let mut prs = Vec::new();
+    for value in values {
+        let value = value.trim();
+        if value.is_empty() {
+            continue;
+        }
+        let receipt = match value.strip_prefix('#') {
+            Some(number) => format!("{SWARM_REPO}#{number}"),
+            None if value.chars().all(|ch| ch.is_ascii_digit()) => {
+                format!("{SWARM_REPO}#{value}")
+            }
+            None => value.to_string(),
+        };
+        if !prs.contains(&receipt) {
+            prs.push(receipt);
         }
     }
     prs
@@ -212,6 +243,26 @@ mod tests {
             vec![
                 "EffortlessMetrics/shiplog-swarm#149",
                 "EffortlessMetrics/shiplog-swarm#150"
+            ]
+        );
+    }
+
+    #[test]
+    fn normalizes_explicit_included_swarm_prs() {
+        let values = vec![
+            "151".to_string(),
+            "#152".to_string(),
+            "EffortlessMetrics/shiplog-swarm#153".to_string(),
+            "151".to_string(),
+            " ".to_string(),
+        ];
+
+        assert_eq!(
+            normalize_included_swarm_prs(&values),
+            vec![
+                "EffortlessMetrics/shiplog-swarm#151",
+                "EffortlessMetrics/shiplog-swarm#152",
+                "EffortlessMetrics/shiplog-swarm#153"
             ]
         );
     }

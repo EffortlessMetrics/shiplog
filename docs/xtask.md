@@ -207,6 +207,24 @@ rtk cargo xtask promotion-body \
   --output target/source-of-truth/promotion-body.md
 ```
 
+After the source promotion has merged, `origin/main..swarm/main` is normally
+empty. Use explicit inputs to regenerate or update the body with final source
+proof without relying on a stale pre-merge draft:
+
+```bash
+rtk cargo xtask promotion-body \
+  --swarm-head cdda3746bca4ea3760c24ac9b987b8d1bdf00b61 \
+  --included-swarm-pr EffortlessMetrics/shiplog-swarm#151 \
+  --swarm-pr-run 26806111994 \
+  --swarm-main-run 26806546874 \
+  --source-pr-run 26806997856 \
+  --source-post-merge-run 26807984200 \
+  --output target/source-of-truth/promotion-body.md
+```
+
+`--included-swarm-pr` may be repeated and accepts `151`, `#151`, or
+`EffortlessMetrics/shiplog-swarm#151`.
+
 The body includes the regular-merge-commit instruction, swarm head, included
 swarm PRs, swarm/source proof slots, and the release-authority claim boundary.
 It is a derived draft only: it does not call GitHub, open or edit PRs, merge,

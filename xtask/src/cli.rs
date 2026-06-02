@@ -172,6 +172,14 @@ pub struct PromotionBodyArgs {
     #[arg(long, default_value = "swarm/main")]
     pub swarm_ref: String,
 
+    /// Explicit swarm head SHA. Defaults to resolving --swarm-ref.
+    #[arg(long)]
+    pub swarm_head: Option<String>,
+
+    /// Explicit included swarm PR receipt. Repeat for multiple PRs.
+    #[arg(long)]
+    pub included_swarm_pr: Vec<String>,
+
     /// Swarm PR routed run ID for Shiplog Rust Small Result.
     #[arg(long)]
     pub swarm_pr_run: Option<String>,
@@ -312,6 +320,8 @@ impl Cli {
                     workspace_root,
                     source_ref: args.source_ref,
                     swarm_ref: args.swarm_ref,
+                    swarm_head: args.swarm_head,
+                    included_swarm_prs: args.included_swarm_pr,
                     swarm_pr_run: args.swarm_pr_run,
                     swarm_main_run: args.swarm_main_run,
                     source_pr_run: args.source_pr_run,
