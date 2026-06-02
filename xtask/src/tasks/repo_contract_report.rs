@@ -187,6 +187,7 @@ struct LocalCheckoutReport {
     clean: Option<bool>,
     status_entries: Vec<String>,
     local_branch_count: usize,
+    unprotected_local_branch_count: usize,
     local_merged_cleanup_candidates: Vec<String>,
     local_merged_cleanup_review_commands: Vec<String>,
     protected_local_branches: Vec<String>,
@@ -814,6 +815,8 @@ fn local_checkout_from_status_and_branch_lines(
 
     protected_local_branches.sort();
     local_merged_cleanup_candidates.sort();
+    let unprotected_local_branch_count =
+        local_branch_count.saturating_sub(protected_local_branches.len());
     let local_merged_cleanup_review_commands =
         local_merged_cleanup_review_commands(&local_merged_cleanup_candidates);
     let status = match (clean, local_merged_cleanup_candidates.is_empty()) {
@@ -823,13 +826,18 @@ fn local_checkout_from_status_and_branch_lines(
         (None, _) => "unavailable",
     }
     .to_string();
-    let next_actions = local_checkout_next_actions(clean, local_merged_cleanup_candidates.len());
+    let next_actions = local_checkout_next_actions(
+        clean,
+        local_merged_cleanup_candidates.len(),
+        unprotected_local_branch_count,
+    );
 
     LocalCheckoutReport {
         branch_summary,
         clean,
         status_entries,
         local_branch_count,
+        unprotected_local_branch_count,
         local_merged_cleanup_candidates,
         local_merged_cleanup_review_commands,
         protected_local_branches,
@@ -873,12 +881,23 @@ fn local_merged_cleanup_review_commands(candidates: &[String]) -> Vec<String> {
 fn local_checkout_next_actions(
     clean: Option<bool>,
     local_merged_cleanup_count: usize,
+    unprotected_local_branch_count: usize,
 ) -> Vec<String> {
+    const LOCAL_BRANCH_INVENTORY_REVIEW_THRESHOLD: usize = 50;
+
     match clean {
-        Some(true) if local_merged_cleanup_count == 0 => vec![
-            "Local checkout is clean; continue with the active source-of-truth work item."
-                .to_string(),
-        ],
+        Some(true) if local_merged_cleanup_count == 0 => {
+            let mut actions = vec![
+                "Local checkout is clean; continue with the active source-of-truth work item."
+                    .to_string(),
+            ];
+            if unprotected_local_branch_count >= LOCAL_BRANCH_INVENTORY_REVIEW_THRESHOLD {
+                actions.push(format!(
+                    "Local branch inventory has {unprotected_local_branch_count} unprotected branch(es); review with `rtk git branch --format=\"%(refname:short)\"` before deleting anything."
+                ));
+            }
+            actions
+        }
         Some(true) => vec![format!(
             "Review {local_merged_cleanup_count} local branch(es) already merged into source or swarm before deleting with `rtk git branch -d <branch>`."
         )],
@@ -2762,6 +2781,14 @@ fn render_markdown(report: &RepoContractReport) -> String {
     );
     push_row(
         &mut out,
+        "Unprotected local branches",
+        &format!(
+            "{} branch(es)",
+            report.local_checkout.unprotected_local_branch_count
+        ),
+    );
+    push_row(
+        &mut out,
         "Local merged cleanup candidates",
         &format!(
             "{} branch(es)",
@@ -4471,12 +4498,45 @@ Merge this PR with a regular merge commit; do not squash.
         assert_eq!(report.branch_summary.as_deref(), Some("main...origin/main"));
         assert_eq!(report.clean, Some(true));
         assert!(report.status_entries.is_empty());
+        assert_eq!(report.unprotected_local_branch_count, 0);
         assert!(report.local_merged_cleanup_candidates.is_empty());
         assert!(
             report
                 .next_actions
                 .iter()
                 .any(|action| action.contains("Local checkout is clean"))
+        );
+    }
+
+    #[test]
+    fn local_checkout_reports_large_unprotected_branch_inventory() {
+        let branches = std::iter::once("main".to_string())
+            .chain((0..50).map(|index| format!("codex/topic-{index}")))
+            .collect::<Vec<_>>();
+        let report = local_checkout_from_status_and_branch_lines(
+            vec!["## main...origin/main".to_string()],
+            branches,
+            vec!["main".to_string()],
+            vec!["main".to_string()],
+            Vec::new(),
+        );
+
+        assert_eq!(report.status, "clean");
+        assert_eq!(report.clean, Some(true));
+        assert_eq!(report.local_branch_count, 51);
+        assert_eq!(report.unprotected_local_branch_count, 50);
+        assert!(report.local_merged_cleanup_candidates.is_empty());
+        assert!(
+            report
+                .next_actions
+                .iter()
+                .any(|action| action.contains("50 unprotected branch(es)"))
+        );
+        assert!(
+            report
+                .next_actions
+                .iter()
+                .any(|action| action.contains("rtk git branch --format"))
         );
     }
 
@@ -4520,6 +4580,7 @@ Merge this PR with a regular merge commit; do not squash.
         assert_eq!(report.status, "review-needed");
         assert_eq!(report.clean, Some(true));
         assert_eq!(report.local_branch_count, 4);
+        assert_eq!(report.unprotected_local_branch_count, 2);
         assert_eq!(report.local_merged_cleanup_candidates, vec!["codex/done"]);
         assert_eq!(
             report.protected_local_branches,
