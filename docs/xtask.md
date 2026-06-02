@@ -188,7 +188,7 @@ manifest-order list. It does not infer chronology from free-form receipt text.
 `pr-body` is scoped to the selected active-goal work item. It is not a generic
 PR-body generator for arbitrary local diffs. If the active work item is
 `promotion-cadence`, the generated body describes that governance work item; use
-`cargo xtask promotion-body` for source promotion PRs, and write normal one-off
+`rtk cargo xtask promotion-body` for source promotion PRs, and write normal one-off
 swarm PR bodies from the actual diff, proof commands, and claim boundary when no
 separate active work item exists.
 It is a derived draft only: it does not call the GitHub API, create a PR, mutate

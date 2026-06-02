@@ -1845,6 +1845,19 @@ EffortlessMetrics/shiplog#593:
           passed in run 26820793523, source PR routed proof passed in run
           26821367761, and source post-merge routed proof passed in run
           26821870109
+
+EffortlessMetrics/shiplog#594:
+  swarm head: 2cab333f1bd36ce2c904a76298aa534114c1c021
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#157
+  source merge: 9cd16a0fc94c007e710742e125321c42d47cf261
+  result: regular merge commit; docs and support tiers now clarify that
+          `cargo xtask pr-body` drafts selected active-goal work-item PR
+          bodies rather than arbitrary local diffs, active-goal and
+          implementation-plan receipts carried the #156/#593 receipt refresh,
+          swarm PR routed proof passed through GitHub-hosted fallback in run
+          26822840956, swarm/main routed proof passed in run 26823375066,
+          source PR routed proof passed in run 26824002206, and source
+          post-merge routed proof passed in run 26825615427
 ```
 
 ### Proof commands
