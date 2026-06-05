@@ -160,9 +160,19 @@ shiplog doctor --setup
 shiplog status --latest
 shiplog intake --last-6-months --explain
 shiplog status --latest
-shiplog open intake-report --latest
-shiplog open packet --latest
+shiplog repair plan --latest
+shiplog journal add --from-repair <repair_id>
+shiplog intake --last-6-months --explain
+shiplog repair diff --latest
+shiplog runs diff --latest
+shiplog share explain manager --latest
 ```
+
+Use `open intake-report --latest` and `open packet --latest` when you want to
+inspect the generated files after any intake run. Use the read-first repair
+handoff before writing manual evidence: `repair plan` chooses the safe repair
+ID, `journal add --from-repair` writes local manual evidence only, and the
+diff/share commands read receipts before any explicit share rendering.
 
 When a future 0.9 release is explicitly approved, the release smoke should
 include this setup/status path before intake. Do not run a 0.9 release-install
