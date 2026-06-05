@@ -49,3 +49,18 @@ expires = "2027-02-10"
 kind = "expr"
 container = "cache lookup"
 text_contains = "if let Some(... cache ...)"
+
+[[exception]]
+id = "clippy-0003"
+lint = "clippy::too_many_arguments"
+classification = "report-status-aggregation"
+owner = "xtask::repo_contract_report"
+reason = "recommended_next_slice_from_statuses receives the already-derived status fields from each repo-contract inspection so the priority order remains explicit and auditable. Grouping these into a temporary struct would hide which report sections influence the top recommendation and would add indirection to a policy-reporting path."
+created = "2026-06-05"
+review_after = "2026-09-05"
+expires = "2027-02-05"
+
+[exception.selector]
+kind = "fn-signature"
+container = "xtask::repo_contract_report"
+text_contains = "recommended_next_slice_from_statuses"

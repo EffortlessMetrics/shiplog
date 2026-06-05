@@ -487,7 +487,7 @@ fn build_report(
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments, reason = "policy:clippy-0003")]
 fn recommended_next_slice_from_statuses(
     local_checkout_status: &str,
     remote_queue_status: &str,
