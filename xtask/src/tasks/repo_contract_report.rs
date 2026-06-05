@@ -1593,8 +1593,12 @@ fn inspect_promotion_pr_contract(
     }
 
     let latest_promotion_merge = git_topology.source_ahead_promotion_merges.first();
-    let Some(pr_number) =
-        latest_promotion_merge.and_then(|merge| extract_merge_pull_request_number(merge))
+    let Some(pr_number) = latest_promotion_merge
+        .and_then(|merge| extract_merge_pull_request_number(merge))
+        .or_else(|| {
+            latest_promotion_merge
+                .and_then(|merge| infer_merged_pr_number_by_commit(SOURCE_REPO, merge, &mut notes))
+        })
     else {
         notes.push("no source promotion merge commit was found".to_string());
         return promotion_pr_contract_from_parts(PromotionPrContractParts {
@@ -2092,6 +2096,11 @@ fn inspect_receipt_freshness(
     let latest_source_promotion_receipt = latest_source_promotion_merge
         .as_deref()
         .and_then(extract_merge_pull_request_number)
+        .or_else(|| {
+            latest_source_promotion_merge
+                .as_deref()
+                .and_then(|merge| infer_merged_pr_number_by_commit(SOURCE_REPO, merge, &mut notes))
+        })
         .map(|number| github_receipt(SOURCE_REPO, number));
 
     let latest_swarm_head = git_line(
@@ -2102,6 +2111,11 @@ fn inspect_receipt_freshness(
     let latest_swarm_receipt = latest_swarm_head
         .as_deref()
         .and_then(extract_parenthesized_pull_request_number)
+        .or_else(|| {
+            latest_swarm_head
+                .as_deref()
+                .and_then(|head| infer_merged_pr_number_by_commit(SWARM_REPO, head, &mut notes))
+        })
         .map(|number| github_receipt(SWARM_REPO, number));
 
     let latest_source_receipt_in_active_goal =
@@ -2285,6 +2299,52 @@ fn extract_merge_pull_request_number(commit: &str) -> Option<u64> {
         .unwrap_or(commit);
     let rest = subject.strip_prefix("Merge pull request #")?;
     parse_leading_number(rest)
+}
+
+fn infer_merged_pr_number_by_commit(
+    repo: &str,
+    commit: &str,
+    notes: &mut Vec<String>,
+) -> Option<u64> {
+    let commit_hash = extract_commit_hash(commit)?;
+    let args = [
+        "pr",
+        "list",
+        "--repo",
+        repo,
+        "--state",
+        "merged",
+        "--search",
+        commit_hash,
+        "--json",
+        "number,mergeCommit",
+        "--limit",
+        "10",
+    ];
+
+    merged_pr_number_for_commit_hash(commit_hash, &gh_json_array(&args, notes))
+}
+
+fn merged_pr_number_for_commit_hash(
+    commit_hash: &str,
+    values: &[serde_json::Value],
+) -> Option<u64> {
+    let commit_hash = commit_hash.to_ascii_lowercase();
+    values.iter().find_map(|value| {
+        let oid = json_pointer_string_opt(value, "/mergeCommit/oid")?.to_ascii_lowercase();
+        if oid.starts_with(&commit_hash) {
+            value.get("number").and_then(serde_json::Value::as_u64)
+        } else {
+            None
+        }
+    })
+}
+
+fn extract_commit_hash(commit: &str) -> Option<&str> {
+    commit
+        .split_whitespace()
+        .next()
+        .filter(|hash| hash.chars().all(|value| value.is_ascii_hexdigit()))
 }
 
 fn extract_parenthesized_pull_request_number(commit: &str) -> Option<u64> {
@@ -4332,6 +4392,33 @@ Merge this PR with a regular merge commit; do not squash.
                 .iter()
                 .any(|action| action.contains("rtk gh pr view"))
         );
+    }
+
+    #[test]
+    fn merged_pr_number_for_commit_hash_matches_short_merge_sha() {
+        let values = vec![serde_json::json!({
+            "number": 606,
+            "mergeCommit": {
+                "oid": "56dc04511b190d6b4318c5e7b77bbeab83b3d2f1"
+            }
+        })];
+
+        assert_eq!(
+            merged_pr_number_for_commit_hash("56dc0451", &values),
+            Some(606)
+        );
+    }
+
+    #[test]
+    fn merged_pr_number_for_commit_hash_ignores_unrelated_results() {
+        let values = vec![serde_json::json!({
+            "number": 605,
+            "mergeCommit": {
+                "oid": "11b2ad607549496f146543add1fb1dfe01e310ce"
+            }
+        })];
+
+        assert_eq!(merged_pr_number_for_commit_hash("56dc0451", &values), None);
     }
 
     #[test]

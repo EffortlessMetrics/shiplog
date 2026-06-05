@@ -2010,6 +2010,19 @@ EffortlessMetrics/shiplog#605:
           proof passed in run 27033481799, source post-merge routed proof
           passed in run 27034101966, and source post-merge CI passed in run
           27034101931
+
+EffortlessMetrics/shiplog#606:
+  swarm head: c7589cc65dafd54608983390fd9237357fa5554a
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#185
+  source merge: 56dc04511b190d6b4318c5e7b77bbeab83b3d2f1
+  result: regular merge commit; review-deadline guide now starts urgent users
+          with read-only status before intake and routes share posture through
+          share explain before verify/render, active-goal and implementation-plan
+          receipts carried the #184/#605 receipt refresh, swarm PR routed proof
+          passed in run 27035080599, swarm/main routed proof passed in run
+          27035743225, source PR routed proof passed in run 27036221239, source
+          post-merge routed proof passed in run 27036919676, and source
+          post-merge CI passed in run 27036919697
 ```
 
 ### Proof commands
