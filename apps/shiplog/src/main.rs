@@ -71,6 +71,23 @@ Advanced GitHub activity:
 Read-first commands:
   doctor --setup, status --latest, repair plan, repair diff, runs diff, and share explain inspect setup/receipts before write-producing commands.";
 
+const GITHUB_ACTIVITY_AFTER_HELP: &str = "\
+Recommended harvest path:
+  shiplog github activity plan
+  shiplog github activity scout
+  shiplog github activity run --profile authored --resume
+  shiplog github activity run --profile full --resume
+  shiplog github activity status
+  shiplog github activity report
+  shiplog github activity merge
+
+API-budget posture:
+  plan reads config and writes github.activity.plan.json without provider calls.
+  scout and run read GitHub, write progress/API-ledger receipts, and honor --resume.
+  status reads existing receipts only.
+  report writes github.activity.report.json and .md from receipts.
+  merge writes final activity outputs from completed receipts; it does not render share profiles.";
+
 #[derive(Parser, Debug)]
 #[command(name = "shiplog", version)]
 #[command(
@@ -530,6 +547,11 @@ enum SourcesCommand {
 #[derive(Subcommand, Debug)]
 enum GithubCommand {
     /// Plan a GitHub activity harvest without making provider API calls.
+    #[command(
+        about = "Plan, resume, inspect, report, and merge GitHub activity harvests.",
+        long_about = "Plan, resume, inspect, report, and merge GitHub activity harvests while keeping API cost and receipt state visible.",
+        after_help = GITHUB_ACTIVITY_AFTER_HELP
+    )]
     Activity {
         #[command(subcommand)]
         cmd: GithubActivityCommand,

@@ -1734,6 +1734,42 @@ fn help_shows_all_subcommands() {
 }
 
 #[test]
+fn github_activity_help_teaches_budget_aware_harvest_path() {
+    shiplog_cmd()
+        .args(["github", "activity", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Recommended harvest path:"))
+        .stdout(predicate::str::contains("shiplog github activity plan"))
+        .stdout(predicate::str::contains("shiplog github activity scout"))
+        .stdout(predicate::str::contains(
+            "shiplog github activity run --profile authored --resume",
+        ))
+        .stdout(predicate::str::contains(
+            "shiplog github activity run --profile full --resume",
+        ))
+        .stdout(predicate::str::contains("shiplog github activity status"))
+        .stdout(predicate::str::contains("shiplog github activity report"))
+        .stdout(predicate::str::contains("shiplog github activity merge"))
+        .stdout(predicate::str::contains("API-budget posture:"))
+        .stdout(predicate::str::contains(
+            "plan reads config and writes github.activity.plan.json without provider calls",
+        ))
+        .stdout(predicate::str::contains(
+            "scout and run read GitHub, write progress/API-ledger receipts, and honor --resume",
+        ))
+        .stdout(predicate::str::contains(
+            "status reads existing receipts only",
+        ))
+        .stdout(predicate::str::contains(
+            "merge writes final activity outputs from completed receipts",
+        ))
+        .stdout(predicate::str::contains(
+            "it does not render share profiles",
+        ));
+}
+
+#[test]
 fn init_help_shows_options() {
     shiplog_cmd()
         .args(["init", "--help"])
