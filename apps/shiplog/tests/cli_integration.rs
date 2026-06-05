@@ -2037,7 +2037,28 @@ fn share_help_shows_profiles_and_safety_options() {
         .assert()
         .success()
         .stdout(predicate::str::contains("manager"))
-        .stdout(predicate::str::contains("public"));
+        .stdout(predicate::str::contains("public"))
+        .stdout(predicate::str::contains("Read-first share path:"))
+        .stdout(predicate::str::contains(
+            "shiplog share explain manager --latest",
+        ))
+        .stdout(predicate::str::contains(
+            "shiplog share verify manager --latest",
+        ))
+        .stdout(predicate::str::contains("shiplog share manager --latest"))
+        .stdout(predicate::str::contains("Safety posture:"))
+        .stdout(predicate::str::contains(
+            "share explain reads receipts and reports what a profile would include, remove, or block",
+        ))
+        .stdout(predicate::str::contains(
+            "share verify checks readiness without writing profile packets",
+        ))
+        .stdout(predicate::str::contains(
+            "manager/public render commands write profile artifacts only after redaction setup is available",
+        ))
+        .stdout(predicate::str::contains(
+            "Use share explain before rendering when packet readiness, evidence debt, or redaction setup is uncertain",
+        ));
 
     shiplog_cmd()
         .args(["share", "manager", "--help"])

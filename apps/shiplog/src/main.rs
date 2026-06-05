@@ -88,6 +88,18 @@ API-budget posture:
   report writes github.activity.report.json and .md from receipts.
   merge writes final activity outputs from completed receipts; it does not render share profiles.";
 
+const SHARE_AFTER_HELP: &str = "\
+Read-first share path:
+  shiplog share explain manager --latest
+  shiplog share verify manager --latest
+  shiplog share manager --latest
+
+Safety posture:
+  share explain reads receipts and reports what a profile would include, remove, or block.
+  share verify checks readiness without writing profile packets.
+  manager/public render commands write profile artifacts only after redaction setup is available.
+  Use share explain before rendering when packet readiness, evidence debt, or redaction setup is uncertain.";
+
 #[derive(Parser, Debug)]
 #[command(name = "shiplog", version)]
 #[command(
@@ -269,7 +281,12 @@ enum Command {
         zip: bool,
     },
 
-    /// Render a manager- or public-safe share packet.
+    /// Explain, verify, or render a manager- or public-safe share packet.
+    #[command(
+        about = "Explain, verify, or render manager/public share profiles.",
+        long_about = "Explain and verify manager/public share posture before rendering profile artifacts.",
+        after_help = SHARE_AFTER_HELP
+    )]
     Share {
         #[command(subcommand)]
         cmd: ShareCommand,
