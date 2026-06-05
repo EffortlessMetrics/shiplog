@@ -2052,6 +2052,37 @@ fn intake_help_shows_rescue_mode_options() {
 }
 
 #[test]
+fn intake_help_teaches_evidence_collection_handoff() {
+    shiplog_cmd()
+        .args(["intake", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Evidence collection path:"))
+        .stdout(predicate::str::contains("shiplog doctor --setup"))
+        .stdout(predicate::str::contains("shiplog status --latest"))
+        .stdout(predicate::str::contains(
+            "shiplog intake --last-6-months --explain",
+        ))
+        .stdout(predicate::str::contains("shiplog repair plan --latest"))
+        .stdout(predicate::str::contains(
+            "shiplog share explain manager --latest",
+        ))
+        .stdout(predicate::str::contains("Safety posture:"))
+        .stdout(predicate::str::contains(
+            "intake writes a new run under the output directory and renders packet/report receipts",
+        ))
+        .stdout(predicate::str::contains(
+            "--explain prints source decisions and repair hints to the terminal",
+        ))
+        .stdout(predicate::str::contains(
+            "--no-open prevents launching artifacts after writes; it does not make intake read-only",
+        ))
+        .stdout(predicate::str::contains(
+            "Run status --latest after intake to choose repair, diff, or share explain next",
+        ));
+}
+
+#[test]
 fn review_help_shows_run_options() {
     shiplog_cmd()
         .args(["review", "--help"])

@@ -117,6 +117,21 @@ Safety posture:
   status reports the first safe next action; it does not repair, rerun intake, or render share packets.
   Use status before first intake and after reruns to choose the next command.";
 
+const INTAKE_AFTER_HELP: &str = "\
+Evidence collection path:
+  shiplog doctor --setup
+  shiplog status --latest
+  shiplog intake --last-6-months --explain
+  shiplog status --latest
+  shiplog repair plan --latest
+  shiplog share explain manager --latest
+
+Safety posture:
+  intake writes a new run under the output directory and renders packet/report receipts.
+  --explain prints source decisions and repair hints to the terminal.
+  --no-open prevents launching artifacts after writes; it does not make intake read-only.
+  Run status --latest after intake to choose repair, diff, or share explain next.";
+
 const SHARE_AFTER_HELP: &str = "\
 Read-first share path:
   shiplog share explain manager --latest
@@ -198,6 +213,11 @@ enum Command {
     },
 
     /// Run a guided best-effort review intake and print next steps.
+    #[command(
+        about = "Run a guided best-effort review intake and print next steps.",
+        long_about = "Collect review evidence into a new run, render packet and intake report receipts, explain source decisions, and hand back to status for the next safe action.",
+        after_help = INTAKE_AFTER_HELP
+    )]
     Intake(IntakeArgs),
 
     /// Validate and explain shiplog.toml without collecting data.
