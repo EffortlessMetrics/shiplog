@@ -2031,6 +2031,41 @@ fn review_fixups_help_shows_run_options() {
 }
 
 #[test]
+fn repair_help_teaches_receipt_derived_handoff_loop() {
+    shiplog_cmd()
+        .args(["repair", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("plan"))
+        .stdout(predicate::str::contains("diff"))
+        .stdout(predicate::str::contains(
+            "Receipt-derived repair loop:",
+        ))
+        .stdout(predicate::str::contains("shiplog repair plan --latest"))
+        .stdout(predicate::str::contains(
+            "shiplog journal add --from-repair <repair_id>",
+        ))
+        .stdout(predicate::str::contains(
+            "shiplog intake --last-6-months --explain",
+        ))
+        .stdout(predicate::str::contains("shiplog repair diff --latest"))
+        .stdout(predicate::str::contains("shiplog runs diff --latest"))
+        .stdout(predicate::str::contains("Safety posture:"))
+        .stdout(predicate::str::contains(
+            "repair plan reads the latest intake.report.json and does not rediscover sources",
+        ))
+        .stdout(predicate::str::contains(
+            "journal add --from-repair writes manual evidence only for safe report-derived manual repairs",
+        ))
+        .stdout(predicate::str::contains(
+            "repair diff and runs diff compare receipts across runs without writing repair data",
+        ))
+        .stdout(predicate::str::contains(
+            "Run repair plan before copying individual repair commands",
+        ));
+}
+
+#[test]
 fn share_help_shows_profiles_and_safety_options() {
     shiplog_cmd()
         .args(["share", "--help"])

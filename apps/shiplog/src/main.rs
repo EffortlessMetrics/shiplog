@@ -100,6 +100,20 @@ Safety posture:
   manager/public render commands write profile artifacts only after redaction setup is available.
   Use share explain before rendering when packet readiness, evidence debt, or redaction setup is uncertain.";
 
+const REPAIR_AFTER_HELP: &str = "\
+Receipt-derived repair loop:
+  shiplog repair plan --latest
+  shiplog journal add --from-repair <repair_id>
+  shiplog intake --last-6-months --explain
+  shiplog repair diff --latest
+  shiplog runs diff --latest
+
+Safety posture:
+  repair plan reads the latest intake.report.json and does not rediscover sources.
+  journal add --from-repair writes manual evidence only for safe report-derived manual repairs.
+  repair diff and runs diff compare receipts across runs without writing repair data.
+  Run repair plan before copying individual repair commands.";
+
 #[derive(Parser, Debug)]
 #[command(name = "shiplog", version)]
 #[command(
@@ -349,7 +363,12 @@ enum Command {
         cmd: ReportCommand,
     },
 
-    /// Render repair guidance from durable intake report receipts.
+    /// Plan repairs and compare receipt-backed repair movement.
+    #[command(
+        about = "Plan repairs and compare receipt-backed repair movement.",
+        long_about = "Plan report-derived repairs, add safe manual repair evidence, rerun intake, and compare repair/run movement from receipts.",
+        after_help = REPAIR_AFTER_HELP
+    )]
     Repair {
         #[command(subcommand)]
         cmd: RepairCommand,
