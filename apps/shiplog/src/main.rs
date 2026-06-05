@@ -102,6 +102,21 @@ Safety posture:
   sources status shows source readiness without collecting evidence.
   Run doctor --setup before intake when setup or redaction state is uncertain.";
 
+const STATUS_AFTER_HELP: &str = "\
+Review-loop cockpit:
+  shiplog doctor --setup
+  shiplog status --latest
+  shiplog intake --last-6-months --explain
+  shiplog status --latest
+  shiplog repair plan --latest
+  shiplog share explain manager --latest
+
+Safety posture:
+  status --latest reads setup state and durable receipts without collecting evidence.
+  status --latest --json exposes the same review-loop state for agents and scripts.
+  status reports the first safe next action; it does not repair, rerun intake, or render share packets.
+  Use status before first intake and after reruns to choose the next command.";
+
 const SHARE_AFTER_HELP: &str = "\
 Read-first share path:
   shiplog share explain manager --latest
@@ -198,6 +213,11 @@ enum Command {
     },
 
     /// Inspect review-loop state across setup, evidence, repair, diff, and share receipts.
+    #[command(
+        about = "Inspect review-loop state across setup, evidence, repair, diff, and share receipts.",
+        long_about = "Inspect the read-only review-loop cockpit: setup state, latest evidence, repair movement, diff receipts, share posture, and first safe next action.",
+        after_help = STATUS_AFTER_HELP
+    )]
     Status(StatusArgs),
 
     /// Plan and inspect GitHub activity harvests without provider mutation.

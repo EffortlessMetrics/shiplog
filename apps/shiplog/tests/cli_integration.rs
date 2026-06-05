@@ -1823,6 +1823,39 @@ fn doctor_help_teaches_setup_first_path() {
 }
 
 #[test]
+fn status_help_teaches_review_loop_cockpit() {
+    shiplog_cmd()
+        .args(["status", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--latest"))
+        .stdout(predicate::str::contains("--json"))
+        .stdout(predicate::str::contains("Review-loop cockpit:"))
+        .stdout(predicate::str::contains("shiplog doctor --setup"))
+        .stdout(predicate::str::contains("shiplog status --latest"))
+        .stdout(predicate::str::contains(
+            "shiplog intake --last-6-months --explain",
+        ))
+        .stdout(predicate::str::contains("shiplog repair plan --latest"))
+        .stdout(predicate::str::contains(
+            "shiplog share explain manager --latest",
+        ))
+        .stdout(predicate::str::contains("Safety posture:"))
+        .stdout(predicate::str::contains(
+            "status --latest reads setup state and durable receipts without collecting evidence",
+        ))
+        .stdout(predicate::str::contains(
+            "status --latest --json exposes the same review-loop state for agents and scripts",
+        ))
+        .stdout(predicate::str::contains(
+            "status reports the first safe next action; it does not repair, rerun intake, or render share packets",
+        ))
+        .stdout(predicate::str::contains(
+            "Use status before first intake and after reruns to choose the next command",
+        ));
+}
+
+#[test]
 fn sources_help_shows_status_options() {
     shiplog_cmd()
         .args(["sources", "--help"])
