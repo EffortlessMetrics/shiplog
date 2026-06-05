@@ -2630,7 +2630,8 @@ fn run_init(sources: Vec<InitSource>, dry_run: bool, force: bool, guided: bool) 
     if guided {
         println!("  shiplog doctor --setup");
         println!("  shiplog sources status");
-        println!("  {}", init_next_command(&selected));
+        println!("  shiplog status --latest");
+        println!("  shiplog intake --last-6-months --explain");
     } else {
         println!("  edit {CONFIG_FILENAME}");
         for env_var in init_env_vars(&selected) {

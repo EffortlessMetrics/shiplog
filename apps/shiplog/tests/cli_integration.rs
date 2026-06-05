@@ -2206,9 +2206,11 @@ fn init_guided_creates_local_first_setup_without_token_providers() -> CliTestRes
         .stdout(predicate::str::contains("Initialized guided shiplog setup"))
         .stdout(predicate::str::contains("shiplog doctor --setup"))
         .stdout(predicate::str::contains("shiplog sources status"))
+        .stdout(predicate::str::contains("shiplog status --latest"))
         .stdout(predicate::str::contains(
-            "shiplog collect multi --last-6-months",
+            "shiplog intake --last-6-months --explain",
         ))
+        .stdout(predicate::str::contains("shiplog collect multi").not())
         .stdout(predicate::str::contains("export GITHUB_TOKEN").not());
 
     let config = std::fs::read_to_string(tmp.path().join("shiplog.toml"))?;
