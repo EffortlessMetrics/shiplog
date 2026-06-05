@@ -160,7 +160,7 @@ Safety posture:
   runs diff reports improvement, regressions, and remaining weak signals without writing files.
   Use share explain after runs diff before rendering any share profile.";
 
-const SHARE_EXPLAIN_AFTER_HELP: &str = "\
+const SHARE_EXPLAIN_MANAGER_AFTER_HELP: &str = "\
 Read-first explain path:
   shiplog status --latest
   shiplog runs diff --latest
@@ -171,8 +171,70 @@ Read-first explain path:
 Safety posture:
   share explain reads run receipts, intake reports, workstreams, and share posture without rendering profile artifacts.
   It reports included, removed, blocked, and needs-review items before any profile write.
-  Missing SHIPLOG_REDACT_KEY blocks rendering but does not block explanation.
+  Missing a redaction key blocks rendering but does not block explanation.
   Use share verify after explain, then render only when the profile is ready.";
+
+const SHARE_EXPLAIN_PUBLIC_AFTER_HELP: &str = "\
+Read-first explain path:
+  shiplog status --latest
+  shiplog runs diff --latest
+  shiplog share explain public --latest
+  shiplog share verify public --latest --strict
+  shiplog share public --latest
+
+Safety posture:
+  share explain reads run receipts, intake reports, workstreams, and share posture without rendering profile artifacts.
+  It reports included, removed, blocked, and needs-review items before any profile write.
+  Missing a redaction key blocks rendering but does not block explanation.
+  Use strict public verify after explain, then render only when the public profile is ready.";
+
+const SHARE_VERIFY_MANAGER_AFTER_HELP: &str = "\
+Read-before-render verification path:
+  shiplog share explain manager --latest
+  shiplog share verify manager --latest
+  shiplog share manager --latest
+
+Safety posture:
+  share verify reads the selected run and share posture without writing profile packets.
+  If neither SHIPLOG_REDACT_KEY nor --redact-key is present, verification fails closed before rendering.
+  For public verification, --strict also scans the existing public packet for obvious raw URLs and names.
+  Render only after verify reports the selected profile is ready.";
+
+const SHARE_VERIFY_PUBLIC_AFTER_HELP: &str = "\
+Read-before-render verification path:
+  shiplog share explain public --latest
+  shiplog share verify public --latest --strict
+  shiplog share public --latest
+
+Safety posture:
+  share verify reads the selected run and share posture without writing profile packets.
+  If neither SHIPLOG_REDACT_KEY nor --redact-key is present, verification fails closed before rendering.
+  For public verification, --strict also scans the existing public packet for obvious raw URLs and names.
+  Render only after strict verify reports the public profile is ready.";
+
+const SHARE_RENDER_MANAGER_AFTER_HELP: &str = "\
+Verify-first render path:
+  shiplog share explain manager --latest
+  shiplog share verify manager --latest
+  shiplog share manager --latest
+
+Safety posture:
+  manager/public render commands write share profile artifacts and optionally a zip.
+  Rendering requires SHIPLOG_REDACT_KEY or --redact-key so deterministic aliases are available.
+  Use share verify before rendering when readiness, evidence debt, or redaction setup is uncertain.
+  Use public for the strictest redaction profile; use manager only for manager-safe review.";
+
+const SHARE_RENDER_PUBLIC_AFTER_HELP: &str = "\
+Verify-first render path:
+  shiplog share explain public --latest
+  shiplog share verify public --latest --strict
+  shiplog share public --latest
+
+Safety posture:
+  manager/public render commands write share profile artifacts and optionally a zip.
+  Rendering requires SHIPLOG_REDACT_KEY or --redact-key so deterministic aliases are available.
+  Use strict public verify before rendering when readiness, evidence debt, or redaction setup is uncertain.
+  Public is the strictest redaction profile; use manager only for manager-safe review.";
 
 const SHARE_AFTER_HELP: &str = "\
 Read-first share path:
@@ -1557,8 +1619,18 @@ impl From<RenderAppendixMode> for AppendixMode {
 #[derive(Subcommand, Debug)]
 enum ShareCommand {
     /// Render the manager-safe packet profile.
+    #[command(
+        about = "Render the manager-safe packet profile.",
+        long_about = "Render the manager-safe packet profile after share explanation and verification confirm redaction setup and packet readiness.",
+        after_help = SHARE_RENDER_MANAGER_AFTER_HELP
+    )]
     Manager(ShareOptions),
     /// Render the public-safe packet profile.
+    #[command(
+        about = "Render the public-safe packet profile.",
+        long_about = "Render the public-safe packet profile after share explanation and verification confirm redaction setup and packet readiness.",
+        after_help = SHARE_RENDER_PUBLIC_AFTER_HELP
+    )]
     Public(ShareOptions),
     /// Explain what a share profile would include, remove, or block.
     Explain {
@@ -1597,14 +1669,14 @@ enum ShareExplainCommand {
     #[command(
         about = "Explain the manager-safe share profile without rendering it.",
         long_about = "Explain what the manager-safe profile would include, remove, block, or still need before rendering any profile artifacts.",
-        after_help = SHARE_EXPLAIN_AFTER_HELP
+        after_help = SHARE_EXPLAIN_MANAGER_AFTER_HELP
     )]
     Manager(ShareExplainOptions),
     /// Explain the public-safe share profile without rendering it.
     #[command(
         about = "Explain the public-safe share profile without rendering it.",
         long_about = "Explain what the public-safe profile would include, remove, block, or still need before rendering any profile artifacts.",
-        after_help = SHARE_EXPLAIN_AFTER_HELP
+        after_help = SHARE_EXPLAIN_PUBLIC_AFTER_HELP
     )]
     Public(ShareExplainOptions),
 }
@@ -1628,8 +1700,18 @@ struct ShareExplainOptions {
 #[derive(Subcommand, Debug)]
 enum ShareVerifyCommand {
     /// Verify the manager-safe share profile without rendering it.
+    #[command(
+        about = "Verify the manager-safe share profile without rendering it.",
+        long_about = "Verify that the manager-safe profile is ready before rendering any profile artifacts.",
+        after_help = SHARE_VERIFY_MANAGER_AFTER_HELP
+    )]
     Manager(ShareVerifyOptions),
     /// Verify the public-safe share profile without rendering it.
+    #[command(
+        about = "Verify the public-safe share profile without rendering it.",
+        long_about = "Verify that the public-safe profile is ready before rendering any profile artifacts.",
+        after_help = SHARE_VERIFY_PUBLIC_AFTER_HELP
+    )]
     Public(ShareVerifyOptions),
     /// Verify an existing share.manifest.json without rendering anything.
     Manifest(ShareManifestVerifyOptions),

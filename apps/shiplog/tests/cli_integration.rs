@@ -2256,7 +2256,50 @@ fn share_help_shows_profiles_and_safety_options() {
         .stdout(predicate::str::contains("--latest"))
         .stdout(predicate::str::contains("--run"))
         .stdout(predicate::str::contains("--redact-key"))
-        .stdout(predicate::str::contains("--zip"));
+        .stdout(predicate::str::contains("--zip"))
+        .stdout(predicate::str::contains("Verify-first render path:"))
+        .stdout(predicate::str::contains(
+            "shiplog share explain manager --latest",
+        ))
+        .stdout(predicate::str::contains(
+            "shiplog share verify manager --latest",
+        ))
+        .stdout(predicate::str::contains("shiplog share manager --latest"))
+        .stdout(predicate::str::contains("Safety posture:"))
+        .stdout(predicate::str::contains(
+            "manager/public render commands write share profile artifacts and optionally a zip",
+        ))
+        .stdout(predicate::str::contains(
+            "Rendering requires SHIPLOG_REDACT_KEY or --redact-key so deterministic aliases are available",
+        ))
+        .stdout(predicate::str::contains(
+            "Use share verify before rendering when readiness, evidence debt, or redaction setup is uncertain",
+        ))
+        .stdout(predicate::str::contains(
+            "Use public for the strictest redaction profile; use manager only for manager-safe review",
+        ));
+
+    shiplog_cmd()
+        .args(["share", "public", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--out"))
+        .stdout(predicate::str::contains("--latest"))
+        .stdout(predicate::str::contains("--run"))
+        .stdout(predicate::str::contains("--redact-key"))
+        .stdout(predicate::str::contains("--zip"))
+        .stdout(predicate::str::contains("Verify-first render path:"))
+        .stdout(predicate::str::contains("shiplog share explain public --latest"))
+        .stdout(predicate::str::contains(
+            "shiplog share verify public --latest --strict",
+        ))
+        .stdout(predicate::str::contains("shiplog share public --latest"))
+        .stdout(predicate::str::contains(
+            "Use strict public verify before rendering when readiness, evidence debt, or redaction setup is uncertain",
+        ))
+        .stdout(predicate::str::contains(
+            "Public is the strictest redaction profile; use manager only for manager-safe review",
+        ));
 
     shiplog_cmd()
         .args(["share", "explain", "manager", "--help"])
@@ -2284,10 +2327,30 @@ fn share_help_shows_profiles_and_safety_options() {
             "It reports included, removed, blocked, and needs-review items before any profile write",
         ))
         .stdout(predicate::str::contains(
-            "Missing SHIPLOG_REDACT_KEY blocks rendering but does not block explanation",
+            "Missing a redaction key blocks rendering but does not block explanation",
         ))
         .stdout(predicate::str::contains(
             "Use share verify after explain, then render only when the profile is ready",
+        ));
+
+    shiplog_cmd()
+        .args(["share", "explain", "public", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--out"))
+        .stdout(predicate::str::contains("--latest"))
+        .stdout(predicate::str::contains("--run"))
+        .stdout(predicate::str::contains("--redact-key"))
+        .stdout(predicate::str::contains("Read-first explain path:"))
+        .stdout(predicate::str::contains("shiplog status --latest"))
+        .stdout(predicate::str::contains("shiplog runs diff --latest"))
+        .stdout(predicate::str::contains("shiplog share explain public --latest"))
+        .stdout(predicate::str::contains(
+            "shiplog share verify public --latest --strict",
+        ))
+        .stdout(predicate::str::contains("shiplog share public --latest"))
+        .stdout(predicate::str::contains(
+            "Use strict public verify after explain, then render only when the public profile is ready",
         ));
 
     shiplog_cmd()
@@ -2298,7 +2361,53 @@ fn share_help_shows_profiles_and_safety_options() {
         .stdout(predicate::str::contains("--latest"))
         .stdout(predicate::str::contains("--run"))
         .stdout(predicate::str::contains("--redact-key"))
-        .stdout(predicate::str::contains("--strict"));
+        .stdout(predicate::str::contains("--strict"))
+        .stdout(predicate::str::contains(
+            "Read-before-render verification path:",
+        ))
+        .stdout(predicate::str::contains(
+            "shiplog share explain manager --latest",
+        ))
+        .stdout(predicate::str::contains(
+            "shiplog share verify manager --latest",
+        ))
+        .stdout(predicate::str::contains("shiplog share manager --latest"))
+        .stdout(predicate::str::contains("Safety posture:"))
+        .stdout(predicate::str::contains(
+            "share verify reads the selected run and share posture without writing profile packets",
+        ))
+        .stdout(predicate::str::contains(
+            "If neither SHIPLOG_REDACT_KEY nor --redact-key is present, verification fails closed before rendering",
+        ))
+        .stdout(predicate::str::contains(
+            "For public verification, --strict also scans the existing public packet for obvious raw URLs and names",
+        ))
+        .stdout(predicate::str::contains(
+            "Render only after verify reports the selected profile is ready",
+        ));
+
+    shiplog_cmd()
+        .args(["share", "verify", "public", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--out"))
+        .stdout(predicate::str::contains("--latest"))
+        .stdout(predicate::str::contains("--run"))
+        .stdout(predicate::str::contains("--redact-key"))
+        .stdout(predicate::str::contains("--strict"))
+        .stdout(predicate::str::contains(
+            "Read-before-render verification path:",
+        ))
+        .stdout(predicate::str::contains(
+            "shiplog share explain public --latest",
+        ))
+        .stdout(predicate::str::contains(
+            "shiplog share verify public --latest --strict",
+        ))
+        .stdout(predicate::str::contains("shiplog share public --latest"))
+        .stdout(predicate::str::contains(
+            "Render only after strict verify reports the public profile is ready",
+        ));
 
     shiplog_cmd()
         .args(["share", "verify", "manifest", "--help"])
