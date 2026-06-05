@@ -4423,14 +4423,19 @@ fn review_deadline_guide_documents_rescue_path() {
         .unwrap_or_else(|err| panic!("read {}: {err}", doc_path.display()));
 
     for needle in [
+        "Start with the read-only cockpit",
+        "shiplog status --latest",
         "shiplog intake --last-6-months --explain",
         "shiplog open intake-report --latest",
         "shiplog review fixups --latest --commands-only",
         "shiplog review fixups --latest --journal-template",
         "shiplog share explain manager --latest",
+        "shiplog share explain public --latest",
         "shiplog share verify manager --latest",
         "shiplog share verify public --latest --strict",
         "shiplog share manager --latest --zip",
+        "`share explain` is read-only and does not require `SHIPLOG_REDACT_KEY`",
+        "`profiles/manager/packet.md` or `share.manifest.json`",
         "Repair sources",
         "shiplog journal add",
         "shiplog journal list",
