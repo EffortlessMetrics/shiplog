@@ -52,7 +52,7 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v6.0.3
         with:
           # Policy ledgers + xtask source for the run that produced the
           # workflow we're summarizing. The workflow_run head_sha is the
