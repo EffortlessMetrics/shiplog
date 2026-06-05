@@ -279,6 +279,33 @@ What changes:
 - `workstreams.suggested.yaml` is regenerated.
 - All artifacts under the new run directory are fresh.
 
+## Compare the rerun
+
+After a repair and rerun, compare the new receipts before deciding the packet is
+ready. These commands are read-first: they inspect existing run artifacts and
+point you at the next safe step.
+
+```bash
+shiplog status --latest
+shiplog repair diff --latest
+shiplog runs diff --latest
+shiplog share explain manager --latest
+```
+
+Read `repair diff` before judging the rerun. `Cleared` means a repair key was
+present in the older report and absent in the newer report. `Still open` means
+the same repair remains. `New` and `Changed` tell you to inspect why the packet
+moved before treating it as better or worse.
+
+Then read `runs diff` for packet-quality movement: evidence count, manual
+evidence, readiness, claim candidates, open repairs, and caveats. A useful first
+packet can still be `Ready with caveats`; keep the caveats visible instead of
+turning them into unsupported claims.
+
+Use `share explain manager --latest` before rendering a manager packet. It is
+read-only and explains what would be included, removed, or blocked so you can
+decide whether rendering is safe.
+
 ## Share safely
 
 Use `share explain` before rendering when you want to see what a profile

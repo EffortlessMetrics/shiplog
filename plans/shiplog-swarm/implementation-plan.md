@@ -1914,6 +1914,64 @@ EffortlessMetrics/shiplog#598:
           source PR routed proof passed through GitHub-hosted fallback in run
           26835683305, and source post-merge routed proof passed through
           GitHub-hosted fallback in run 26836167341
+
+EffortlessMetrics/shiplog#599:
+  swarm head: b1cebe0ce6c92b427916d995dd6bbc0a554b2107
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#162
+  source merge: 7d150b355fceea8c6ea19d37f466be93adf7d00b
+  result: regular merge commit; source promotion PR checks are currently green,
+          and the promotion body recorded swarm PR routed proof in run
+          26837999500 and swarm/main routed proof in run 26838500141
+
+EffortlessMetrics/shiplog#600:
+  swarm head: 8ff5ada92296cec809c9c1701801ca21e14143d9
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#163,
+    EffortlessMetrics/shiplog-swarm#164,
+    EffortlessMetrics/shiplog-swarm#165,
+    EffortlessMetrics/shiplog-swarm#166,
+    EffortlessMetrics/shiplog-swarm#167,
+    EffortlessMetrics/shiplog-swarm#168,
+    EffortlessMetrics/shiplog-swarm#169,
+    EffortlessMetrics/shiplog-swarm#170,
+    EffortlessMetrics/shiplog-swarm#171,
+    EffortlessMetrics/shiplog-swarm#172,
+    EffortlessMetrics/shiplog-swarm#173,
+    EffortlessMetrics/shiplog-swarm#174,
+    EffortlessMetrics/shiplog-swarm#175,
+    EffortlessMetrics/shiplog-swarm#176,
+    EffortlessMetrics/shiplog-swarm#177,
+    EffortlessMetrics/shiplog-swarm#178,
+    EffortlessMetrics/shiplog-swarm#179
+  source merge: e3d8a19a460961be70282c8741b461bb37436b96
+  result: regular merge commit; source promotion PR checks are currently green,
+          swarm/main routed proof passed in run 27018266683, and source PR
+          routed proof passed in run 27019046510. Source main policy CI later
+          exposed missing workflow/clippy policy metadata, repaired by
+          EffortlessMetrics/shiplog-swarm#180/#181 and source promotions
+          EffortlessMetrics/shiplog#601/#602.
+
+EffortlessMetrics/shiplog#601:
+  swarm head: 0968e38cd5f79a2c799f85386417fc085930df37
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#180
+  source merge: 92464d81d3c237c53133ff05a3ae6c3f2bbdae60
+  result: regular merge commit; source promotion PR checks are currently green,
+          swarm/main routed proof passed in run 27020959639, and source PR
+          routed proof passed in run 27021676754. Source main policy CI later
+          exposed stale workflow action allowlist metadata, repaired by
+          EffortlessMetrics/shiplog-swarm#181 and source promotion
+          EffortlessMetrics/shiplog#602.
+
+EffortlessMetrics/shiplog#602:
+  swarm head: ff3e22517b0803b3c2db4467cb055d855ddff720
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#181
+  source merge: d0a830fb42300ed965a5e14035fde0f61164be3b
+  result: regular merge commit; workflow action allowlist metadata now matches
+          the promoted checkout v6.0.3 workflows, active-goal and
+          implementation-plan receipts carried the #162-#181/#599-#602 receipt
+          range, swarm PR routed proof passed in run 27023031003, swarm/main
+          routed proof passed in run 27023494902, source PR routed proof passed
+          in run 27023996827, source post-merge routed proof passed in run
+          27024607089, and source post-merge CI passed in run 27024606708
 ```
 
 ### Proof commands

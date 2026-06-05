@@ -2414,6 +2414,12 @@ fn rapid_first_intake_guide_routes_manual_evidence_through_repair_plan() {
         "shiplog journal add --from-repair <repair_id>",
         "write-producing curation command",
         "not tied to a repair item",
+        "Compare the rerun",
+        "shiplog repair diff --latest",
+        "shiplog runs diff --latest",
+        "shiplog share explain manager --latest",
+        "Read `repair diff` before judging the rerun",
+        "packet-quality movement",
     ] {
         assert!(
             doc.contains(needle),
