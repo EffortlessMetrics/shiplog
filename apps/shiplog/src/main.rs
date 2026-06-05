@@ -160,6 +160,20 @@ Safety posture:
   runs diff reports improvement, regressions, and remaining weak signals without writing files.
   Use share explain after runs diff before rendering any share profile.";
 
+const SHARE_EXPLAIN_AFTER_HELP: &str = "\
+Read-first explain path:
+  shiplog status --latest
+  shiplog runs diff --latest
+  shiplog share explain manager --latest
+  shiplog share verify manager --latest
+  shiplog share manager --latest
+
+Safety posture:
+  share explain reads run receipts, intake reports, workstreams, and share posture without rendering profile artifacts.
+  It reports included, removed, blocked, and needs-review items before any profile write.
+  Missing SHIPLOG_REDACT_KEY blocks rendering but does not block explanation.
+  Use share verify after explain, then render only when the profile is ready.";
+
 const SHARE_AFTER_HELP: &str = "\
 Read-first share path:
   shiplog share explain manager --latest
@@ -1580,8 +1594,18 @@ struct ShareOptions {
 #[derive(Subcommand, Debug)]
 enum ShareExplainCommand {
     /// Explain the manager-safe share profile without rendering it.
+    #[command(
+        about = "Explain the manager-safe share profile without rendering it.",
+        long_about = "Explain what the manager-safe profile would include, remove, block, or still need before rendering any profile artifacts.",
+        after_help = SHARE_EXPLAIN_AFTER_HELP
+    )]
     Manager(ShareExplainOptions),
     /// Explain the public-safe share profile without rendering it.
+    #[command(
+        about = "Explain the public-safe share profile without rendering it.",
+        long_about = "Explain what the public-safe profile would include, remove, block, or still need before rendering any profile artifacts.",
+        after_help = SHARE_EXPLAIN_AFTER_HELP
+    )]
     Public(ShareExplainOptions),
 }
 

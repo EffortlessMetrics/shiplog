@@ -2259,6 +2259,38 @@ fn share_help_shows_profiles_and_safety_options() {
         .stdout(predicate::str::contains("--zip"));
 
     shiplog_cmd()
+        .args(["share", "explain", "manager", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--out"))
+        .stdout(predicate::str::contains("--latest"))
+        .stdout(predicate::str::contains("--run"))
+        .stdout(predicate::str::contains("--redact-key"))
+        .stdout(predicate::str::contains("Read-first explain path:"))
+        .stdout(predicate::str::contains("shiplog status --latest"))
+        .stdout(predicate::str::contains("shiplog runs diff --latest"))
+        .stdout(predicate::str::contains(
+            "shiplog share explain manager --latest",
+        ))
+        .stdout(predicate::str::contains(
+            "shiplog share verify manager --latest",
+        ))
+        .stdout(predicate::str::contains("shiplog share manager --latest"))
+        .stdout(predicate::str::contains("Safety posture:"))
+        .stdout(predicate::str::contains(
+            "share explain reads run receipts, intake reports, workstreams, and share posture without rendering profile artifacts",
+        ))
+        .stdout(predicate::str::contains(
+            "It reports included, removed, blocked, and needs-review items before any profile write",
+        ))
+        .stdout(predicate::str::contains(
+            "Missing SHIPLOG_REDACT_KEY blocks rendering but does not block explanation",
+        ))
+        .stdout(predicate::str::contains(
+            "Use share verify after explain, then render only when the profile is ready",
+        ));
+
+    shiplog_cmd()
         .args(["share", "verify", "manager", "--help"])
         .assert()
         .success()
