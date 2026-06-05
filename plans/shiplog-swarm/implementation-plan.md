@@ -1984,6 +1984,19 @@ EffortlessMetrics/shiplog#603:
           passed in run 27026535421, source PR routed proof passed in run
           27027035021, source post-merge routed proof passed in run
           27027729716, and source post-merge CI passed in run 27027729736
+
+EffortlessMetrics/shiplog#604:
+  swarm head: 5e1ebdd204e1f6936413cb6373a73956ecc2e247
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#183
+  source merge: ff24e6aa2a26592c110c33e5ce83d5ba65afc9bb
+  result: regular merge commit; GitHub activity harvest guide now teaches the
+          activity-specific status/report/merge receipt handoff before generic
+          run inspection, active-goal and implementation-plan receipts carried
+          the #182/#603 receipt refresh, swarm PR routed proof passed in run
+          27028930678, swarm/main routed proof passed in run 27029436915,
+          source PR routed proof passed in run 27029939800, and source
+          post-merge routed guard passed via workflow_dispatch in run
+          27030869584
 ```
 
 ### Proof commands
