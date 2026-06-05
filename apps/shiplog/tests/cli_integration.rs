@@ -1767,6 +1767,132 @@ fn github_activity_help_teaches_budget_aware_harvest_path() {
         .stdout(predicate::str::contains(
             "it does not render share profiles",
         ));
+
+    shiplog_cmd()
+        .args(["github", "activity", "plan", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--config"))
+        .stdout(predicate::str::contains("--out"))
+        .stdout(predicate::str::contains("--profile"))
+        .stdout(predicate::str::contains("Static planning path:"))
+        .stdout(predicate::str::contains("shiplog github activity plan"))
+        .stdout(predicate::str::contains(
+            "shiplog github activity scout --resume",
+        ))
+        .stdout(predicate::str::contains(
+            "plan reads [github_activity] config and writes github.activity.plan.json",
+        ))
+        .stdout(predicate::str::contains(
+            "It makes no GitHub provider calls and does not create API cache entries",
+        ))
+        .stdout(predicate::str::contains(
+            "Run scout after plan before spending budget on a larger harvest profile",
+        ));
+
+    shiplog_cmd()
+        .args(["github", "activity", "scout", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--config"))
+        .stdout(predicate::str::contains("--out"))
+        .stdout(predicate::str::contains("--profile"))
+        .stdout(predicate::str::contains("--resume"))
+        .stdout(predicate::str::contains("Search-only scout path:"))
+        .stdout(predicate::str::contains(
+            "shiplog github activity scout --resume",
+        ))
+        .stdout(predicate::str::contains(
+            "scout is the first provider-call step and uses the search-only scout profile",
+        ))
+        .stdout(predicate::str::contains(
+            "It writes progress and API-ledger receipts so later status/report commands can explain cost",
+        ))
+        .stdout(predicate::str::contains(
+            "--resume skips work when a matching completed progress receipt already exists",
+        ));
+
+    shiplog_cmd()
+        .args(["github", "activity", "run", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--config"))
+        .stdout(predicate::str::contains("--out"))
+        .stdout(predicate::str::contains("--profile"))
+        .stdout(predicate::str::contains("--resume"))
+        .stdout(predicate::str::contains("Resumable harvest path:"))
+        .stdout(predicate::str::contains(
+            "shiplog github activity run --profile authored --resume",
+        ))
+        .stdout(predicate::str::contains(
+            "shiplog github activity run --profile full --resume",
+        ))
+        .stdout(predicate::str::contains(
+            "run reads GitHub according to the selected profile and writes progress/API-ledger receipts",
+        ))
+        .stdout(predicate::str::contains(
+            "Inspect status and report before merge so partial receipts do not look complete",
+        ));
+
+    shiplog_cmd()
+        .args(["github", "activity", "status", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--config"))
+        .stdout(predicate::str::contains("--out"))
+        .stdout(predicate::str::contains("Receipt inspection path:"))
+        .stdout(predicate::str::contains("shiplog github activity status"))
+        .stdout(predicate::str::contains("shiplog github activity report"))
+        .stdout(predicate::str::contains("shiplog github activity merge"))
+        .stdout(predicate::str::contains(
+            "status reads existing plan, progress, API-ledger, and output receipts only",
+        ))
+        .stdout(predicate::str::contains(
+            "It writes nothing and makes no GitHub provider calls",
+        ))
+        .stdout(predicate::str::contains(
+            "Missing or partial receipts include the next [writes] action to continue the harvest",
+        ));
+
+    shiplog_cmd()
+        .args(["github", "activity", "report", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--config"))
+        .stdout(predicate::str::contains("--out"))
+        .stdout(predicate::str::contains("Receipt report path:"))
+        .stdout(predicate::str::contains("shiplog github activity status"))
+        .stdout(predicate::str::contains("shiplog github activity report"))
+        .stdout(predicate::str::contains("shiplog github activity merge"))
+        .stdout(predicate::str::contains(
+            "report reads activity receipts and writes github.activity.report.json and .md",
+        ))
+        .stdout(predicate::str::contains(
+            "It reports API cost, cache reuse, owner filtering, and completion state from receipts",
+        ))
+        .stdout(predicate::str::contains(
+            "It makes no GitHub provider calls and does not render share profiles",
+        ));
+
+    shiplog_cmd()
+        .args(["github", "activity", "merge", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--config"))
+        .stdout(predicate::str::contains("--out"))
+        .stdout(predicate::str::contains("Final output path:"))
+        .stdout(predicate::str::contains("shiplog github activity status"))
+        .stdout(predicate::str::contains("shiplog github activity report"))
+        .stdout(predicate::str::contains("shiplog github activity merge"))
+        .stdout(predicate::str::contains(
+            "merge reads completed harvest receipts and writes final activity outputs",
+        ))
+        .stdout(predicate::str::contains(
+            "It makes no GitHub provider calls and does not render share profiles",
+        ))
+        .stdout(predicate::str::contains(
+            "Use status/report first if receipts are missing, partial, stale, or budget-limited",
+        ));
 }
 
 #[test]

@@ -88,6 +88,82 @@ API-budget posture:
   report writes github.activity.report.json and .md from receipts.
   merge writes final activity outputs from completed receipts; it does not render share profiles.";
 
+const GITHUB_ACTIVITY_PLAN_AFTER_HELP: &str = "\
+Static planning path:
+  shiplog github activity plan
+  shiplog github activity scout --resume
+  shiplog github activity run --profile authored --resume
+  shiplog github activity status
+
+API-budget posture:
+  plan reads [github_activity] config and writes github.activity.plan.json.
+  It makes no GitHub provider calls and does not create API cache entries.
+  Use --profile scout, authored, or full to preview a specific harvest breadth.
+  Run scout after plan before spending budget on a larger harvest profile.";
+
+const GITHUB_ACTIVITY_SCOUT_AFTER_HELP: &str = "\
+Search-only scout path:
+  shiplog github activity plan
+  shiplog github activity scout --resume
+  shiplog github activity run --profile authored --resume
+  shiplog github activity status
+
+API-budget posture:
+  scout is the first provider-call step and uses the search-only scout profile.
+  It writes progress and API-ledger receipts so later status/report commands can explain cost.
+  --resume skips work when a matching completed progress receipt already exists.
+  Use scout before authored/full harvests when API budget or owner filtering is uncertain.";
+
+const GITHUB_ACTIVITY_RUN_AFTER_HELP: &str = "\
+Resumable harvest path:
+  shiplog github activity run --profile authored --resume
+  shiplog github activity run --profile full --resume
+  shiplog github activity status
+  shiplog github activity report
+  shiplog github activity merge
+
+API-budget posture:
+  run reads GitHub according to the selected profile and writes progress/API-ledger receipts.
+  --resume skips work when a matching completed progress receipt already exists.
+  Use authored before full to reconstruct lower-cost actor-owned history first.
+  Inspect status and report before merge so partial receipts do not look complete.";
+
+const GITHUB_ACTIVITY_STATUS_AFTER_HELP: &str = "\
+Receipt inspection path:
+  shiplog github activity status
+  shiplog github activity report
+  shiplog github activity merge
+
+API-budget posture:
+  status reads existing plan, progress, API-ledger, and output receipts only.
+  It writes nothing and makes no GitHub provider calls.
+  Missing or partial receipts include the next [writes] action to continue the harvest.
+  Run status before rerunning or merging when resume state is uncertain.";
+
+const GITHUB_ACTIVITY_REPORT_AFTER_HELP: &str = "\
+Receipt report path:
+  shiplog github activity status
+  shiplog github activity report
+  shiplog github activity merge
+
+API-budget posture:
+  report reads activity receipts and writes github.activity.report.json and .md.
+  It reports API cost, cache reuse, owner filtering, and completion state from receipts.
+  It makes no GitHub provider calls and does not render share profiles.
+  Run report before merge when reviewers need API-budget evidence.";
+
+const GITHUB_ACTIVITY_MERGE_AFTER_HELP: &str = "\
+Final output path:
+  shiplog github activity status
+  shiplog github activity report
+  shiplog github activity merge
+
+API-budget posture:
+  merge reads completed harvest receipts and writes final activity outputs.
+  It makes no GitHub provider calls and does not render share profiles.
+  Use status/report first if receipts are missing, partial, stale, or budget-limited.
+  After merge, inspect activity outputs before running intake or share commands.";
+
 const DOCTOR_AFTER_HELP: &str = "\
 Setup-first path:
   shiplog init --guided
@@ -760,16 +836,46 @@ enum GithubCommand {
 #[derive(Subcommand, Debug)]
 enum GithubActivityCommand {
     /// Write github.activity.plan.json from [github_activity] config.
+    #[command(
+        about = "Write github.activity.plan.json from [github_activity] config.",
+        long_about = "Write github.activity.plan.json from [github_activity] config without making GitHub provider calls.",
+        after_help = GITHUB_ACTIVITY_PLAN_AFTER_HELP
+    )]
     Plan(GithubActivityPlanArgs),
     /// Run a search-only GitHub activity scout profile.
+    #[command(
+        about = "Run a search-only GitHub activity scout profile.",
+        long_about = "Run a search-only GitHub activity scout profile, recording progress and API-ledger receipts for later resume/status/report commands.",
+        after_help = GITHUB_ACTIVITY_SCOUT_AFTER_HELP
+    )]
     Scout(GithubActivityRunArgs),
     /// Run a GitHub activity harvest profile.
+    #[command(
+        about = "Run a GitHub activity harvest profile.",
+        long_about = "Run a GitHub activity harvest profile, recording resumable progress and API-ledger receipts.",
+        after_help = GITHUB_ACTIVITY_RUN_AFTER_HELP
+    )]
     Run(GithubActivityRunArgs),
     /// Read GitHub activity receipts and print harvest status.
+    #[command(
+        about = "Read GitHub activity receipts and print harvest status.",
+        long_about = "Read GitHub activity receipts and print harvest status without writing files or making GitHub provider calls.",
+        after_help = GITHUB_ACTIVITY_STATUS_AFTER_HELP
+    )]
     Status(GithubActivityStatusArgs),
     /// Read GitHub activity receipts and report API cost/cache/owner filtering.
+    #[command(
+        about = "Read GitHub activity receipts and report API cost/cache/owner filtering.",
+        long_about = "Read GitHub activity receipts and write a report of API cost, cache reuse, owner filtering, and completion state.",
+        after_help = GITHUB_ACTIVITY_REPORT_AFTER_HELP
+    )]
     Report(GithubActivityStatusArgs),
     /// Write final activity outputs from a completed harvest run.
+    #[command(
+        about = "Write final activity outputs from a completed harvest run.",
+        long_about = "Write final activity outputs from completed GitHub activity harvest receipts without rendering share profiles.",
+        after_help = GITHUB_ACTIVITY_MERGE_AFTER_HELP
+    )]
     Merge(GithubActivityStatusArgs),
 }
 
