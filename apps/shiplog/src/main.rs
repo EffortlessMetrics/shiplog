@@ -88,6 +88,20 @@ API-budget posture:
   report writes github.activity.report.json and .md from receipts.
   merge writes final activity outputs from completed receipts; it does not render share profiles.";
 
+const DOCTOR_AFTER_HELP: &str = "\
+Setup-first path:
+  shiplog init --guided
+  shiplog doctor --setup
+  shiplog sources status
+  shiplog status --latest
+  shiplog intake --last-6-months --explain
+
+Safety posture:
+  doctor --setup reads local setup state without provider network calls or writes.
+  doctor --repair-plan prints setup repair guidance, not evidence repair commands.
+  sources status shows source readiness without collecting evidence.
+  Run doctor --setup before intake when setup or redaction state is uncertain.";
+
 const SHARE_AFTER_HELP: &str = "\
 Read-first share path:
   shiplog share explain manager --latest
@@ -145,6 +159,11 @@ enum Command {
     },
 
     /// Check local config, source setup, tokens, and output safety.
+    #[command(
+        about = "Check local config, source setup, tokens, and output safety.",
+        long_about = "Check setup readiness before intake, including local files, source readiness, credentials, and share redaction state.",
+        after_help = DOCTOR_AFTER_HELP
+    )]
     Doctor {
         /// Path to shiplog.toml.
         #[arg(long, default_value = CONFIG_FILENAME)]

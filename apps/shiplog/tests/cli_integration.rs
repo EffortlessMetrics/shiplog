@@ -1794,6 +1794,35 @@ fn doctor_help_shows_options() {
 }
 
 #[test]
+fn doctor_help_teaches_setup_first_path() {
+    shiplog_cmd()
+        .args(["doctor", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Setup-first path:"))
+        .stdout(predicate::str::contains("shiplog init --guided"))
+        .stdout(predicate::str::contains("shiplog doctor --setup"))
+        .stdout(predicate::str::contains("shiplog sources status"))
+        .stdout(predicate::str::contains("shiplog status --latest"))
+        .stdout(predicate::str::contains(
+            "shiplog intake --last-6-months --explain",
+        ))
+        .stdout(predicate::str::contains("Safety posture:"))
+        .stdout(predicate::str::contains(
+            "doctor --setup reads local setup state without provider network calls or writes",
+        ))
+        .stdout(predicate::str::contains(
+            "doctor --repair-plan prints setup repair guidance, not evidence repair commands",
+        ))
+        .stdout(predicate::str::contains(
+            "sources status shows source readiness without collecting evidence",
+        ))
+        .stdout(predicate::str::contains(
+            "Run doctor --setup before intake when setup or redaction state is uncertain",
+        ));
+}
+
+#[test]
 fn sources_help_shows_status_options() {
     shiplog_cmd()
         .args(["sources", "--help"])
