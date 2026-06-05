@@ -18,19 +18,27 @@ It should not invent impact claims or turn receipts into a productivity score.
 
 ## 5-minute packet
 
-Start with intake. It is best-effort: one working source is enough to produce a
-packet, and missing sources are recorded as skipped-source warnings.
+Start with the read-only cockpit when you have a minute. It tells you whether
+setup is usable, whether an older run already exists, and whether intake is the
+next safe receipt-producing command.
 
 ```bash
+shiplog status --latest
 shiplog intake --last-6-months --explain
+shiplog status --latest
 shiplog open intake-report --latest
 shiplog open packet --latest
 ```
+
+`status --latest` is read-only. It does not query providers, repair evidence, or
+render share artifacts. `intake` is best-effort: one working source is enough to
+produce a packet, and missing sources are recorded as skipped-source warnings.
 
 If your config has a saved review window, use it instead of retyping dates:
 
 ```bash
 shiplog intake --period review-cycle --explain
+shiplog status --latest
 shiplog review --period review-cycle
 ```
 
@@ -68,23 +76,30 @@ context before you rely on the packet.
 
 ## 30-minute manager-safe packet
 
-Manager and public packets fail closed. Set a stable redaction key before
-rendering a share profile.
+Manager and public packets fail closed. Explain the profile before setting a
+key or writing artifacts, then verify, then render only when the posture is
+ready.
 
 ```bash
+shiplog share explain manager --latest
+
 export SHIPLOG_REDACT_KEY=replace-with-a-stable-secret
 shiplog share verify manager --latest
 shiplog share manager --latest --zip
 ```
 
-`share verify` is read-only. Use it before writing a share packet when you want
-to check that the run has coverage, visible gaps, and the redaction key needed
-for the selected audience.
+`share explain` is read-only and does not require `SHIPLOG_REDACT_KEY`. It
+reports what the manager profile would include, remove, or block without
+writing `profiles/manager/packet.md` or `share.manifest.json`. `share verify` is
+also read-only. Use both before writing a share packet when you want to check
+that the run has coverage, visible gaps, and the redaction key needed for the
+selected audience.
 
 For a public packet, use the stricter profile and read the output before
 publishing it:
 
 ```bash
+shiplog share explain public --latest
 shiplog share verify public --latest --strict
 shiplog share public --latest --zip
 ```
@@ -161,6 +176,7 @@ shiplog journal add \
 Before sending a packet:
 
 ```bash
+shiplog status --latest
 shiplog share explain manager --latest
 shiplog share verify manager --latest
 shiplog share manager --latest

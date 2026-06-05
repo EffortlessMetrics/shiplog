@@ -1997,6 +1997,19 @@ EffortlessMetrics/shiplog#604:
           source PR routed proof passed in run 27029939800, and source
           post-merge routed guard passed via workflow_dispatch in run
           27030869584
+
+EffortlessMetrics/shiplog#605:
+  swarm head: f2ecd8c725c1a454136c10784525afa275042be3
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#184
+  source merge: 11b2ad607549496f146543add1fb1dfe01e310ce
+  result: regular merge commit; install guide now carries post-install users
+          through repair, rerun, diff, and read-only share explanation,
+          active-goal and implementation-plan receipts carried the #183/#604
+          receipt refresh, swarm PR routed proof passed in run 27032231453,
+          swarm/main routed proof passed in run 27032909158, source PR routed
+          proof passed in run 27033481799, source post-merge routed proof
+          passed in run 27034101966, and source post-merge CI passed in run
+          27034101931
 ```
 
 ### Proof commands
