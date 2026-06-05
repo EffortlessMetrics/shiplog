@@ -8,6 +8,10 @@ This doc lands in PR #143 (the foundation). The four initial commands
 are minimal; per-ledger checkers (file/Clippy/no-panic/ripr) and the
 PR-plan/actuals lanes are added in later PRs.
 
+See [`docs/ci/tooling-substrate.md`](ci/tooling-substrate.md) for the standard
+upstream substrate and the long-term wrapper surface that `xtask` presents to
+humans, agents, and CI.
+
 ## Invocation
 
 The workspace [`.cargo/config.toml`](../.cargo/config.toml) provides an
