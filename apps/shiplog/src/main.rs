@@ -132,6 +132,20 @@ Safety posture:
   --no-open prevents launching artifacts after writes; it does not make intake read-only.
   Run status --latest after intake to choose repair, diff, or share explain next.";
 
+const JOURNAL_ADD_AFTER_HELP: &str = "\
+Report-derived repair path:
+  shiplog repair plan --latest
+  shiplog journal add --from-repair <repair_id>
+  shiplog intake --last-6-months --explain
+  shiplog repair diff --latest
+  shiplog runs diff --latest
+
+Safety posture:
+  --from-repair resolves one manual-evidence repair item from intake.report.json.
+  journal add writes local manual_events.yaml unless --dry-run is used.
+  --out, --run, and --latest select the report used for --from-repair lookup.
+  Rerun intake after adding evidence so repair diff and runs diff can compare receipts.";
+
 const SHARE_AFTER_HELP: &str = "\
 Read-first share path:
   shiplog share explain manager --latest
@@ -803,6 +817,11 @@ enum IdentifyCommand {
 #[derive(Subcommand, Debug)]
 enum JournalCommand {
     /// Append one manual evidence entry to manual_events.yaml.
+    #[command(
+        about = "Append one manual evidence entry to manual_events.yaml.",
+        long_about = "Append factual manual evidence directly or from a report-derived repair item, then rerun intake so repair and run diffs can compare receipts.",
+        after_help = JOURNAL_ADD_AFTER_HELP
+    )]
     Add(JournalAddArgs),
     /// List manual evidence entries without editing manual_events.yaml.
     List(JournalListArgs),

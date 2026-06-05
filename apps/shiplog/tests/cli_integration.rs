@@ -1953,6 +1953,34 @@ fn journal_help_shows_add_options() {
         .stdout(predicate::str::contains("--dry-run"));
 
     shiplog_cmd()
+        .args(["journal", "add", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Report-derived repair path:"))
+        .stdout(predicate::str::contains("shiplog repair plan --latest"))
+        .stdout(predicate::str::contains(
+            "shiplog journal add --from-repair <repair_id>",
+        ))
+        .stdout(predicate::str::contains(
+            "shiplog intake --last-6-months --explain",
+        ))
+        .stdout(predicate::str::contains("shiplog repair diff --latest"))
+        .stdout(predicate::str::contains("shiplog runs diff --latest"))
+        .stdout(predicate::str::contains("Safety posture:"))
+        .stdout(predicate::str::contains(
+            "--from-repair resolves one manual-evidence repair item from intake.report.json",
+        ))
+        .stdout(predicate::str::contains(
+            "journal add writes local manual_events.yaml unless --dry-run is used",
+        ))
+        .stdout(predicate::str::contains(
+            "--out, --run, and --latest select the report used for --from-repair lookup",
+        ))
+        .stdout(predicate::str::contains(
+            "Rerun intake after adding evidence so repair diff and runs diff can compare receipts",
+        ));
+
+    shiplog_cmd()
         .args(["journal", "list", "--help"])
         .assert()
         .success()
