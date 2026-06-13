@@ -115,7 +115,7 @@ jobs:
 
       - name: Upload coverage to Codecov (main)
         if: ${{ always() && github.event_name == 'push' && hashFiles('lcov.info') != '' && steps.codecov-token.outputs.present == 'true' }}
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: lcov.info
@@ -125,7 +125,7 @@ jobs:
 
       - name: Upload coverage to Codecov (advisory)
         if: ${{ always() && github.event_name != 'push' && hashFiles('lcov.info') != '' && steps.codecov-token.outputs.present == 'true' }}
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: lcov.info
