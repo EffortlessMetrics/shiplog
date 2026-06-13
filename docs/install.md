@@ -145,12 +145,21 @@ After any install method:
 
 ```bash
 shiplog --version
+shiplog --help
 shiplog init --dry-run
 shiplog doctor --setup --help
-shiplog status --help
-shiplog intake --help
-shiplog share verify manager --help
+shiplog status --latest --help
+shiplog intake --last-6-months --explain --help
+shiplog repair plan --latest --help
+shiplog repair diff --latest --help
+shiplog runs diff --latest --help
+shiplog share explain manager --latest --help
 ```
+
+This first smoke is help-only except for `init --dry-run`; it should not require
+provider tokens, write intake evidence, or render share artifacts. It checks that
+the installed binary exposes the same setup, status, intake, repair, diff, and
+read-only share explanation path documented below.
 
 Then start the review loop:
 

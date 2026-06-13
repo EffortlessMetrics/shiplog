@@ -2023,6 +2023,33 @@ EffortlessMetrics/shiplog#606:
           27035743225, source PR routed proof passed in run 27036221239, source
           post-merge routed proof passed in run 27036919676, and source
           post-merge CI passed in run 27036919697
+
+EffortlessMetrics/shiplog#607:
+  swarm head: 6f89913fc035fc2182e8f35379d407298a2a5b0c
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#186
+  source merge: 3a6abadcebccf5c7db6a06a16c84bdb22710b7a8
+  result: regular merge commit; repo-contract report now infers promotion
+          receipts from merge commit SHA when custom promotion subjects or
+          squash subjects omit PR numbers, active-goal and implementation-plan
+          receipts carried the #185/#606 receipt refresh, swarm PR routed proof
+          passed in run 27037764061, swarm/main routed proof passed in run
+          27038408924, source PR routed proof passed in run 27038903314, source
+          post-merge routed proof passed in run 27040043216, and source
+          post-merge CI passed in run 27040043198
+
+Pending source promotion after EffortlessMetrics/shiplog#607:
+  swarm head: e8cf408788f03dfbcea68f952bebe39d4708d206
+  included swarm PRs: EffortlessMetrics/shiplog-swarm#187,
+                      EffortlessMetrics/shiplog-swarm#188,
+                      EffortlessMetrics/shiplog-swarm#189,
+                      EffortlessMetrics/shiplog-swarm#190
+  source merge: pending
+  result: swarm queue triaged and merged; Codecov action v7 and chrono,
+          rusqlite, and regex lockfile updates passed Shiplog Rust Small Result
+          on their PRs, swarm/main routed proof passed in run 27464404708, and
+          direct source bot PRs #608-#613 were closed or deferred so source
+          remains a promotion checkpoint instead of a dependency-maintenance
+          trunk
 ```
 
 ### Proof commands
