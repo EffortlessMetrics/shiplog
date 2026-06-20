@@ -223,7 +223,7 @@ jobs:
       TMPDIR: /mnt/ci-scratch/tmp/${{ github.run_id }}-${{ github.run_attempt }}
       CARGO_TARGET_DIR: /mnt/ci-scratch/shiplog-swarm/${{ github.run_id }}-${{ github.run_attempt }}
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.0
         with:
           fetch-depth: 1
 
@@ -280,7 +280,7 @@ jobs:
       CARGO_TARGET_DIR: /mnt/ci-scratch/shiplog-swarm/${{ github.run_id }}-${{ github.run_attempt }}/target
       TMPDIR: /mnt/ci-scratch/shiplog-swarm/${{ github.run_id }}-${{ github.run_attempt }}/tmp
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.0
 
       - name: Prepare scratch
         run: |
@@ -323,7 +323,7 @@ jobs:
       CARGO_TARGET_DIR: /mnt/ci-scratch/shiplog-swarm/${{ github.run_id }}-${{ github.run_attempt }}/target
       TMPDIR: /mnt/ci-scratch/shiplog-swarm/${{ github.run_id }}-${{ github.run_attempt }}/tmp
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.0
 
       - name: Prepare scratch
         run: |
@@ -362,7 +362,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.0
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@v1
