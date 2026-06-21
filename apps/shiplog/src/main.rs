@@ -17389,75 +17389,86 @@ mod tests {
     }
 
     #[test]
-    fn set_source_enabled_flips_only_the_target_flag() {
+    fn set_source_enabled_flips_only_the_target_flag() -> Result<()> {
         let text =
             "[sources.github]\nenabled = false\nuser = \"\"\n\n[sources.git]\nenabled = false\n";
-        let enabled = set_source_enabled_in_text(text, InitSource::Github, true).unwrap();
+        let enabled = set_source_enabled_in_text(text, InitSource::Github, true)?;
         assert_eq!(
             enabled,
             "[sources.github]\nenabled = true\nuser = \"\"\n\n[sources.git]\nenabled = false\n"
         );
+        Ok(())
     }
 
     #[test]
-    fn set_source_enabled_preserves_indentation_and_trailing_comment() {
+    fn set_source_enabled_preserves_indentation_and_trailing_comment() -> Result<()> {
         let text = "[sources.git]\n  enabled = false  # toggle me\n";
-        let enabled = set_source_enabled_in_text(text, InitSource::Git, true).unwrap();
+        let enabled = set_source_enabled_in_text(text, InitSource::Git, true)?;
         assert_eq!(enabled, "[sources.git]\n  enabled = true  # toggle me\n");
+        Ok(())
     }
 
     #[test]
-    fn set_source_enabled_preserves_crlf_line_endings() {
+    fn set_source_enabled_preserves_crlf_line_endings() -> Result<()> {
         let text = "[sources.git]\r\nenabled = false\r\n";
-        let enabled = set_source_enabled_in_text(text, InitSource::Git, true).unwrap();
+        let enabled = set_source_enabled_in_text(text, InitSource::Git, true)?;
         assert_eq!(enabled, "[sources.git]\r\nenabled = true\r\n");
+        Ok(())
     }
 
     #[test]
-    fn set_source_enabled_inserts_flag_when_section_lacks_one() {
+    fn set_source_enabled_inserts_flag_when_section_lacks_one() -> Result<()> {
         let text = "[sources.git]\nrepo = \".\"\n";
-        let enabled = set_source_enabled_in_text(text, InitSource::Git, true).unwrap();
+        let enabled = set_source_enabled_in_text(text, InitSource::Git, true)?;
         assert_eq!(enabled, "[sources.git]\nenabled = true\nrepo = \".\"\n");
+        Ok(())
     }
 
     #[test]
-    fn set_source_enabled_ignores_enabled_keys_in_other_sections() {
+    fn set_source_enabled_ignores_enabled_keys_in_other_sections() -> Result<()> {
         let text = "[sources.github]\nenabled = true\n\n[sources.git]\nenabled = false\n";
-        let disabled = set_source_enabled_in_text(text, InitSource::Git, false).unwrap();
+        let disabled = set_source_enabled_in_text(text, InitSource::Git, false)?;
         assert_eq!(disabled, text, "git already disabled, github untouched");
+        Ok(())
     }
 
     #[test]
     fn set_source_enabled_errors_when_section_absent() {
         let text = "[sources.github]\nenabled = false\n";
-        let err = set_source_enabled_in_text(text, InitSource::Manual, true).unwrap_err();
-        assert!(err.to_string().contains("no [sources.manual] section"));
-    }
-
-    #[test]
-    fn set_source_enabled_matches_hand_spaced_header() {
-        let text = "[ sources.git ]\nenabled = false\n";
-        let enabled = set_source_enabled_in_text(text, InitSource::Git, true).unwrap();
-        assert_eq!(enabled, "[ sources.git ]\nenabled = true\n");
-    }
-
-    #[test]
-    fn set_source_enabled_inserts_with_crlf_when_section_lacks_flag() {
-        let text = "[sources.git]\r\nrepo = \".\"\r\n";
-        let enabled = set_source_enabled_in_text(text, InitSource::Git, true).unwrap();
-        assert_eq!(
-            enabled,
-            "[sources.git]\r\nenabled = true\r\nrepo = \".\"\r\n"
+        let result = set_source_enabled_in_text(text, InitSource::Manual, true);
+        assert!(
+            result.is_err_and(|err| err.to_string().contains("no [sources.manual] section")),
+            "missing section should error"
         );
     }
 
     #[test]
-    fn set_source_enabled_skips_bare_token_without_equals() {
+    fn set_source_enabled_matches_hand_spaced_header() -> Result<()> {
+        let text = "[ sources.git ]\nenabled = false\n";
+        let enabled = set_source_enabled_in_text(text, InitSource::Git, true)?;
+        assert_eq!(enabled, "[ sources.git ]\nenabled = true\n");
+        Ok(())
+    }
+
+    #[test]
+    fn set_source_enabled_inserts_with_crlf_when_section_lacks_flag() -> Result<()> {
+        let text = "[sources.git]\r\nrepo = \".\"\r\n";
+        let enabled = set_source_enabled_in_text(text, InitSource::Git, true)?;
+        assert_eq!(
+            enabled,
+            "[sources.git]\r\nenabled = true\r\nrepo = \".\"\r\n"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn set_source_enabled_skips_bare_token_without_equals() -> Result<()> {
         // A stray `enabled` word (no `=`) must not be treated as the flag; the
         // real `enabled = false` assignment below it is the one that flips.
         let text = "[sources.git]\nenabled\nenabled = false\n";
-        let enabled = set_source_enabled_in_text(text, InitSource::Git, true).unwrap();
+        let enabled = set_source_enabled_in_text(text, InitSource::Git, true)?;
         assert_eq!(enabled, "[sources.git]\nenabled\nenabled = true\n");
+        Ok(())
     }
 
     #[test]
