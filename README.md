@@ -101,6 +101,12 @@ shiplog status --latest
 `doctor --setup --json`, and `status --latest` are read-only. They do not query
 providers, render share packets, or mutate provider records.
 
+Use `shiplog sources list` to see which sources are configured and enabled, and
+`shiplog sources enable --source <name>` / `shiplog sources disable --source <name>`
+to toggle a source on or off. The toggle flips only the `enabled` flag in
+`shiplog.toml`, keeps your comments and provider records intact, and never
+writes tokens.
+
 ## First packet
 
 Collect usable evidence and then inspect the cockpit again:

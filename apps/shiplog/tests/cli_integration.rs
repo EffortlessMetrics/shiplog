@@ -1987,7 +1987,10 @@ fn sources_help_shows_status_options() {
         .args(["sources", "--help"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("status"));
+        .stdout(predicate::str::contains("status"))
+        .stdout(predicate::str::contains("list"))
+        .stdout(predicate::str::contains("enable"))
+        .stdout(predicate::str::contains("disable"));
 
     shiplog_cmd()
         .args(["sources", "status", "--help"])
@@ -1995,6 +1998,161 @@ fn sources_help_shows_status_options() {
         .success()
         .stdout(predicate::str::contains("--config"))
         .stdout(predicate::str::contains("--source"));
+
+    shiplog_cmd()
+        .args(["sources", "list", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--config"))
+        .stdout(predicate::str::contains("--json"));
+
+    shiplog_cmd()
+        .args(["sources", "enable", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--source"));
+}
+
+#[test]
+fn sources_list_reports_present_and_enabled_state() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["init", "--source", "github", "--source", "git"])
+        .assert()
+        .success();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["sources", "list"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Configured sources:"))
+        .stdout(predicate::str::contains("github      yes      yes"))
+        .stdout(predicate::str::contains("gitlab      yes      no"))
+        .stdout(predicate::str::contains("git         yes      yes"));
+
+    let assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["sources", "list", "--json"])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
+    let report: serde_json::Value = serde_json::from_str(&stdout)?;
+    let sources = report["sources"].as_array().expect("sources array");
+    assert_eq!(sources.len(), 7, "all source keys are listed");
+    let github = sources
+        .iter()
+        .find(|entry| entry["source"] == "github")
+        .expect("github entry");
+    assert_eq!(github["present"], true);
+    assert_eq!(github["enabled"], true);
+    let jira = sources
+        .iter()
+        .find(|entry| entry["source"] == "jira")
+        .expect("jira entry");
+    assert_eq!(jira["enabled"], false);
+    Ok(())
+}
+
+#[test]
+fn sources_enable_and_disable_flip_only_enabled_flag() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["init", "--source", "github"])
+        .assert()
+        .success();
+
+    let config_path = tmp.path().join("shiplog.toml");
+    let before = std::fs::read_to_string(&config_path)?;
+
+    // Enable a source that ships disabled by default.
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["sources", "enable", "--source", "jira"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("jira: enabled"));
+
+    let after_enable = std::fs::read_to_string(&config_path)?;
+    assert!(
+        after_enable.contains("# Set JIRA_TOKEN"),
+        "enable preserves provider-record comments"
+    );
+    assert!(
+        after_enable.contains("user = \"your-jira-account-id-or-email\""),
+        "enable does not mutate provider-record fields"
+    );
+
+    // Only the jira `enabled` line should change versus the original config.
+    let changed_lines: Vec<(&str, &str)> = before
+        .lines()
+        .zip(after_enable.lines())
+        .filter(|(a, b)| a != b)
+        .collect();
+    assert_eq!(
+        changed_lines,
+        vec![("enabled = false", "enabled = true")],
+        "exactly one enabled flag flips: {changed_lines:?}"
+    );
+
+    // Re-enabling is idempotent and reported as a no-op change.
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["sources", "enable", "--source", "jira"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("jira: already enabled"));
+
+    // Disabling flips it back.
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["sources", "disable", "--source", "jira"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("jira: disabled"));
+    let after_disable = std::fs::read_to_string(&config_path)?;
+    assert_eq!(
+        before, after_disable,
+        "enable then disable round-trips to the original config"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn sources_enable_missing_section_errors_without_writing() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let config_path = tmp.path().join("shiplog.toml");
+    std::fs::write(
+        &config_path,
+        "[shiplog]\nconfig_version = 1\n\n[sources.github]\nenabled = false\n",
+    )?;
+    let before = std::fs::read_to_string(&config_path)?;
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["sources", "enable", "--source", "manual"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("no [sources.manual] section"));
+
+    assert_eq!(
+        before,
+        std::fs::read_to_string(&config_path)?,
+        "a failed enable leaves the config untouched"
+    );
+    Ok(())
+}
+
+#[test]
+fn sources_enable_requires_a_source() {
+    shiplog_cmd()
+        .args(["sources", "enable"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("--source"));
 }
 
 #[test]

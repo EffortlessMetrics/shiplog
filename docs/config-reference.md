@@ -15,6 +15,9 @@ shiplog doctor --config shiplog.toml
 shiplog doctor --config shiplog.toml --setup
 shiplog doctor --config shiplog.toml --setup --json
 shiplog sources status --config shiplog.toml
+shiplog sources list --config shiplog.toml
+shiplog sources enable --source github --config shiplog.toml
+shiplog sources disable --source jira --config shiplog.toml
 shiplog status --latest
 shiplog status --latest --json
 shiplog doctor --config shiplog.toml --repair-plan
@@ -34,7 +37,14 @@ share prerequisites, and read/write next actions without collecting data or
 writing run artifacts. `doctor --setup --json` prints the same typed setup model
 for agents and scripts. `sources status` is the source-only version of that
 view: it prints canonical source keys, labels, enabled state, setup status,
-reasons, and source next actions without share-profile noise.
+reasons, and source next actions without share-profile noise. `sources list`
+(with `--json`) is a lighter inventory that reports which `[sources.<name>]`
+sections are present and whether each is enabled, without provider calls or
+readiness checks. `sources enable --source <name>` and
+`sources disable --source <name>` toggle the `enabled` flag for one or more
+sources directly in `shiplog.toml`; they flip only that flag, preserve comments
+and formatting, and never edit provider records (user, instance, owners) or
+write tokens.
 `doctor --repair-plan` is also read-only: it classifies setup issues and prints
 source-by-source repair commands without collecting data or writing run
 artifacts.
