@@ -9358,25 +9358,29 @@ fn is_shiplog_table_header(line: &str) -> bool {
     before_comment == "[shiplog]"
 }
 
-/// Return the trimmed table header (e.g. `[sources.github]`) for a line, or
-/// `None` when the line is not a table header.
-fn toml_table_header(line: &str) -> Option<&str> {
+/// Return the whitespace-normalized table header (e.g. `[sources.github]`) for
+/// a line, or `None` when the line is not a table header. Internal whitespace is
+/// stripped so hand-edited variants like `[ sources.github ]` still match.
+fn toml_table_header(line: &str) -> Option<String> {
     let code = line.split('#').next().unwrap_or("").trim();
     if code.len() >= 2 && code.starts_with('[') && code.ends_with(']') {
-        Some(code)
+        Some(code.chars().filter(|c| !c.is_whitespace()).collect())
     } else {
         None
     }
 }
 
 /// Return the bare key (e.g. `enabled`) for a `key = value` line, or `None`
-/// when the line is blank, a comment, or a table header.
+/// when the line is blank, a comment, a table header, or lacks an `=`.
 fn toml_line_key(line: &str) -> Option<&str> {
     let code = line.split('#').next().unwrap_or("").trim();
     if code.is_empty() || code.starts_with('[') {
         return None;
     }
-    let key = code.split('=').next()?.trim();
+    let mut parts = code.splitn(2, '=');
+    let key = parts.next()?.trim();
+    // Require a value side so a bare `enabled` token (no `=`) does not match.
+    parts.next()?;
     (!key.is_empty()).then_some(key)
 }
 
@@ -9413,7 +9417,7 @@ fn set_source_enabled_in_text(text: &str, source: InitSource, enabled: bool) -> 
 
     let Some(header_idx) = lines
         .iter()
-        .position(|line| toml_table_header(line) == Some(header.as_str()))
+        .position(|line| toml_table_header(line).as_deref() == Some(header.as_str()))
     else {
         anyhow::bail!(
             "no [sources.{}] section in {}; run `shiplog init` or add it before enable/disable",
@@ -9445,14 +9449,15 @@ fn set_source_enabled_in_text(text: &str, source: InitSource, enabled: bool) -> 
         }
         None => {
             // The section exists but has no `enabled` key; insert one directly
-            // under the header.
+            // under the header, matching the header line's own line ending.
             for (i, line) in lines.iter().enumerate() {
                 out.push_str(line);
                 if i == header_idx {
+                    let newline = if line.ends_with("\r\n") { "\r\n" } else { "\n" };
                     if !line.ends_with('\n') {
-                        out.push('\n');
+                        out.push_str(newline);
                     }
-                    out.push_str(&format!("enabled = {enabled}\n"));
+                    out.push_str(&format!("enabled = {enabled}{newline}"));
                 }
             }
         }
@@ -17427,5 +17432,47 @@ mod tests {
         let text = "[sources.github]\nenabled = false\n";
         let err = set_source_enabled_in_text(text, InitSource::Manual, true).unwrap_err();
         assert!(err.to_string().contains("no [sources.manual] section"));
+    }
+
+    #[test]
+    fn set_source_enabled_matches_hand_spaced_header() {
+        let text = "[ sources.git ]\nenabled = false\n";
+        let enabled = set_source_enabled_in_text(text, InitSource::Git, true).unwrap();
+        assert_eq!(enabled, "[ sources.git ]\nenabled = true\n");
+    }
+
+    #[test]
+    fn set_source_enabled_inserts_with_crlf_when_section_lacks_flag() {
+        let text = "[sources.git]\r\nrepo = \".\"\r\n";
+        let enabled = set_source_enabled_in_text(text, InitSource::Git, true).unwrap();
+        assert_eq!(
+            enabled,
+            "[sources.git]\r\nenabled = true\r\nrepo = \".\"\r\n"
+        );
+    }
+
+    #[test]
+    fn set_source_enabled_skips_bare_token_without_equals() {
+        // A stray `enabled` word (no `=`) must not be treated as the flag; the
+        // real `enabled = false` assignment below it is the one that flips.
+        let text = "[sources.git]\nenabled\nenabled = false\n";
+        let enabled = set_source_enabled_in_text(text, InitSource::Git, true).unwrap();
+        assert_eq!(enabled, "[sources.git]\nenabled\nenabled = true\n");
+    }
+
+    #[test]
+    fn toml_line_key_requires_an_assignment() {
+        assert_eq!(toml_line_key("enabled = false"), Some("enabled"));
+        assert_eq!(toml_line_key("enabled"), None);
+        assert_eq!(toml_line_key("# enabled = false"), None);
+    }
+
+    #[test]
+    fn toml_table_header_normalizes_internal_whitespace() {
+        assert_eq!(
+            toml_table_header("[ sources.git ]").as_deref(),
+            Some("[sources.git]")
+        );
+        assert_eq!(toml_table_header("enabled = true"), None);
     }
 }
