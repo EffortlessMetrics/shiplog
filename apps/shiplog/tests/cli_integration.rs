@@ -6983,6 +6983,109 @@ user = "octo"
 }
 
 #[test]
+fn sources_status_json_matches_text_projection_without_writing_outputs() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    git2::Repository::init(tmp.path())?;
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[shiplog]
+config_version = 1
+
+[defaults]
+out = "./out"
+window = "last-6-months"
+profile = "internal"
+
+[sources.git]
+enabled = true
+repo = "."
+
+[sources.github]
+enabled = true
+user = "octo"
+"#,
+    )?;
+
+    let text_assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args(["sources", "status"])
+        .assert()
+        .failure();
+    let text_stdout = String::from_utf8(text_assert.get_output().stdout.clone())?;
+    let text_rows = parse_sources_status_rows(&text_stdout);
+
+    let before = file_tree_manifest(tmp.path());
+    let json_assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args(["sources", "status", "--json"])
+        .assert()
+        .failure();
+    let json_stdout = String::from_utf8(json_assert.get_output().stdout.clone())?;
+    let after = file_tree_manifest(tmp.path());
+    assert_eq!(
+        before, after,
+        "sources status --json should be a read-only setup projection"
+    );
+
+    let json: serde_json::Value = serde_json::from_str(&json_stdout)?;
+    assert_eq!(
+        json["needs_action"].as_bool(),
+        Some(true),
+        "missing GitHub token should require source setup action"
+    );
+
+    let json_sources = json["sources"]
+        .as_array()
+        .expect("sources status JSON should include sources array");
+    assert_eq!(
+        json_sources.len(),
+        text_rows.len(),
+        "sources status --json should mirror the printed source rows"
+    );
+    for source in json_sources {
+        let key = source["key"].as_str().expect("source should include key");
+        let row = text_rows
+            .get(key)
+            .unwrap_or_else(|| panic!("text rows should include {key}"));
+        assert_eq!(row.label, source["label"].as_str().unwrap_or_default());
+        assert_eq!(row.enabled, source["enabled"].as_bool().unwrap_or_default());
+        assert_eq!(row.status, source["status"].as_str().unwrap_or_default());
+        assert_eq!(row.reason, source["reason"].as_str().unwrap_or_default());
+    }
+
+    let github = json_sources
+        .iter()
+        .find(|source| source["key"] == "github")
+        .expect("sources status JSON should include github");
+    assert_eq!(github["status"], "unavailable");
+    assert_eq!(github["next_action"]["command"], "set GITHUB_TOKEN");
+
+    let next_commands: Vec<&str> = json["next_actions"]
+        .as_array()
+        .expect("sources status JSON should include next_actions array")
+        .iter()
+        .filter_map(|action| action["command"].as_str())
+        .collect();
+    assert!(
+        next_commands.contains(&"set GITHUB_TOKEN"),
+        "next_actions should surface the missing-token action: {next_commands:?}"
+    );
+
+    assert!(
+        !json_stdout.contains("Manager share")
+            && !json_stdout.contains("SHIPLOG_REDACT_KEY")
+            && !json_stdout.contains("redaction_key"),
+        "sources status --json should stay source-scoped without share/credential noise"
+    );
+
+    Ok(())
+}
+
+#[test]
 fn doctor_setup_json_exposes_agent_safe_decisions_for_blocked_setup() -> CliTestResult {
     let tmp = TempDir::new()?;
     git2::Repository::init(tmp.path())?;

@@ -59,7 +59,9 @@ pub(super) fn dispatch() -> Result<()> {
         },
 
         Command::Sources { cmd } => match cmd {
-            SourcesCommand::Status(args) => run_sources_status(&args.config, &args.sources)?,
+            SourcesCommand::Status(args) => {
+                run_sources_status(&args.config, &args.sources, args.json)?
+            }
         },
 
         Command::Status(args) => {

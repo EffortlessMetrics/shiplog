@@ -122,6 +122,12 @@ manual      yes      blocked      manual_events.yaml missing version
 github      yes      unavailable  GITHUB_TOKEN not set
 ```
 
+`shiplog sources status --json` emits the same source-scoped projection for
+agents and scripts: a `needs_action` flag (the read-only exit signal), the
+`sources[]` rows, and the deduplicated source `next_actions[]`. It is derived
+from the same `setup_status` model as `doctor --setup --json`, scoped to
+sources, so the JSON and text views cannot drift.
+
 Both commands should keep read-only and write-producing actions visibly
 separate. Doctor and source status are read-only by default. `init --guided`
 and repair commands may write only when the user invokes them explicitly.
@@ -138,6 +144,15 @@ setup_status:
   local_files[]
   credentials[]
   share_profiles[]
+  next_actions[]
+```
+
+`sources status --json` is the source-scoped projection of that model:
+
+```text
+sources_status:
+  needs_action
+  sources[]
   next_actions[]
 ```
 

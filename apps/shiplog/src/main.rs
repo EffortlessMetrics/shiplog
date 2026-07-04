@@ -926,6 +926,9 @@ struct SourcesStatusArgs {
     /// Limit status to one or more sources.
     #[arg(long = "source", value_enum)]
     sources: Vec<InitSource>,
+    /// Print source setup readiness as JSON for agent/script consumers.
+    #[arg(long)]
+    json: bool,
 }
 
 #[derive(Args, Debug)]
@@ -7755,9 +7758,16 @@ fn run_doctor_setup(config_path: &Path, sources: &[InitSource], json: bool) -> R
     Ok(())
 }
 
-fn run_sources_status(config_path: &Path, sources: &[InitSource]) -> Result<()> {
+fn run_sources_status(config_path: &Path, sources: &[InitSource], json: bool) -> Result<()> {
     let status = doctor::build_setup_status(config_path, sources);
-    doctor::print_sources_status(&status);
+    if json {
+        let view = doctor::build_sources_status_view(&status);
+        serde_json::to_writer_pretty(std::io::stdout(), &view)
+            .context("serialize sources status json")?;
+        println!();
+    } else {
+        doctor::print_sources_status(&status);
+    }
     if doctor::source_status_needs_action(&status) {
         anyhow::bail!("source status found setup action(s)");
     }

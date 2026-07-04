@@ -284,13 +284,42 @@ pub(crate) fn setup_status_needs_action(status: &SetupStatus) -> bool {
     )
 }
 
+/// Source-scoped projection of [`SetupStatus`] for the `sources status` command.
+///
+/// This carries the same source rows and deduplicated source next-actions that
+/// the human `sources status` view prints, plus the read-only `needs_action`
+/// exit signal, so agents and scripts get a stable machine contract that cannot
+/// drift from the text output.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub(crate) struct SourcesStatusView {
+    pub(crate) needs_action: bool,
+    pub(crate) sources: Vec<SetupItem>,
+    pub(crate) next_actions: Vec<SetupNextAction>,
+}
+
+pub(crate) fn build_sources_status_view(status: &SetupStatus) -> SourcesStatusView {
+    let mut seen = BTreeSet::new();
+    let next_actions = status
+        .sources
+        .iter()
+        .filter_map(|source| source.next_action.clone())
+        .filter(|action| seen.insert(action.command.clone()))
+        .collect();
+    SourcesStatusView {
+        needs_action: source_status_needs_action(status),
+        sources: status.sources.clone(),
+        next_actions,
+    }
+}
+
 pub(crate) fn print_sources_status(status: &SetupStatus) {
+    let view = build_sources_status_view(status);
     println!("Source setup status:");
     println!(
         "{:<11} {:<7} {:<18} {:<15} reason",
         "source_key", "enabled", "status", "source_label"
     );
-    for source in &status.sources {
+    for source in &view.sources {
         println!(
             "{:<11} {:<7} {:<18} {:<15} {}",
             source.key,
@@ -301,18 +330,10 @@ pub(crate) fn print_sources_status(status: &SetupStatus) {
         );
     }
 
-    let mut seen = BTreeSet::new();
-    let source_actions: Vec<&SetupNextAction> = status
-        .sources
-        .iter()
-        .filter_map(|source| source.next_action.as_ref())
-        .filter(|action| seen.insert(action.command.clone()))
-        .collect();
-
     println!();
     println!("Next:");
-    if source_actions.is_empty() {
-        if status
+    if view.next_actions.is_empty() {
+        if view
             .sources
             .iter()
             .any(|source| source.status == SetupItemStatus::Ready)
@@ -324,7 +345,7 @@ pub(crate) fn print_sources_status(status: &SetupStatus) {
         return;
     }
 
-    for (index, action) in source_actions.iter().enumerate() {
+    for (index, action) in view.next_actions.iter().enumerate() {
         println!(
             "{}. {} [{}] - {}",
             index + 1,
@@ -1625,6 +1646,62 @@ events = "./manual_events.yaml"
             SetupItemStatus::Malformed
         );
         assert_eq!(status.overall_status, SetupOverallStatus::Blocked);
+        Ok(())
+    }
+
+    #[test]
+    fn sources_status_view_dedupes_actions_and_scopes_to_sources() -> anyhow::Result<()> {
+        let temp = tempfile::tempdir()?;
+        std::fs::write(
+            temp.path().join("shiplog.toml"),
+            r#"[shiplog]
+config_version = 1
+
+[defaults]
+profile = "internal"
+
+[sources.git]
+enabled = true
+repo = "."
+
+[sources.github]
+enabled = true
+user = "octo"
+"#,
+        )?;
+        git2::Repository::init(temp.path())?;
+
+        let status = build_setup_status(
+            &temp.path().join("shiplog.toml"),
+            &[InitSource::Git, InitSource::Github],
+        );
+        let view = build_sources_status_view(&status);
+
+        // The view carries exactly the source rows, not credentials/share noise.
+        assert_eq!(view.sources, status.sources);
+        assert!(view.needs_action, "missing token should require action");
+
+        // git is ready (no action); github needs a token (one action).
+        assert_eq!(
+            find_item(&view.sources, "git")?.status,
+            SetupItemStatus::Ready
+        );
+        assert_eq!(
+            find_item(&view.sources, "github")?.status,
+            SetupItemStatus::Unavailable
+        );
+
+        // next_actions are deduped by command and contain the github token action.
+        let mut commands: Vec<&str> = view
+            .next_actions
+            .iter()
+            .map(|action| action.command.as_str())
+            .collect();
+        commands.sort_unstable();
+        let mut deduped = commands.clone();
+        deduped.dedup();
+        assert_eq!(commands, deduped, "next_actions must be deduped by command");
+        assert!(commands.contains(&"set GITHUB_TOKEN"));
         Ok(())
     }
 

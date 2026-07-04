@@ -138,8 +138,8 @@ fn changelog_curates_0_9_as_review_loop_cockpit_release_notes() {
 
     let unreleased = section_between(&doc, "## [Unreleased]", "## [0.9.0]");
     assert!(
-        unreleased.contains("No user-facing changes yet after 0.9.0."),
-        "Unreleased should stay empty after 0.9.0"
+        unreleased.contains("shiplog sources status --json"),
+        "Unreleased should record the sources status --json surface"
     );
     assert!(
         !unreleased.contains("#424")
