@@ -20,7 +20,15 @@ Snapshot tests use `insta` (YAML format). Update snapshots when intentionally ch
 - PowerShell: `$env:INSTA_UPDATE='auto'; cargo test -p <crate-name>`
 - Unix: `INSTA_UPDATE=auto cargo test -p <crate-name>`
 
-Run the CLI: `cargo run -p shiplog -- <subcommand>`. Preferred workflow: `collect` (fetch events) → edit `workstreams.suggested.yaml` into `workstreams.yaml` → `render` (regenerate packet). `refresh` re-fetches events while preserving curated workstreams. `import` re-renders a pre-built ledger directory. `run` is legacy (collect + render in one shot).
+Run the CLI: `cargo run -p shiplog -- <subcommand>`. The product flow is the review-readiness loop: `init --guided` → `doctor --setup` → `status --latest` → `intake` (guided collect) → `repair plan|diff` → `journal add` → `runs diff` → `share explain`. Underneath, the core data flow is still `collect` (fetch events) → edit `workstreams.suggested.yaml` into `workstreams.yaml` → `render` (regenerate packet). `refresh` re-fetches events while preserving curated workstreams. `import` re-renders a pre-built ledger directory. `merge` combines existing run directories into one packet. `run` is legacy (collect + render in one shot).
+
+Command groups (see `shiplog --help` for the full surface):
+- Setup/readiness (read-only, no provider calls): `init`, `doctor`, `config`, `sources status`, `periods`, `identify`
+- Review loop: `status`, `intake`, `repair`, `journal`, `runs`, `review`, `open`, `report`
+- Evidence: `collect|refresh|run` with sources `github|gitlab|jira|linear|json|manual|git` and `collect multi` (all enabled sources from `shiplog.toml`)
+- Advanced GitHub harvest: `github activity plan|scout|run|status|report|merge`
+- Sharing: `share explain|verify|render`, `render`, `merge`, `cache`
+- Agent/script JSON surfaces (read-only): `doctor --setup --json`, `status --latest --json`, `sources status --json`
 
 Key CLI flags:
 - `--mode merged|created` (which PR lens to ingest)
