@@ -125,9 +125,27 @@ instructions above are versionless.
 ## Package-manager status
 
 The supported binary channels are the versionless installers, GitHub release
-assets, cargo-binstall, and `cargo install`. Homebrew is not an official tap,
-and Scoop and winget manifests are not official channels yet; do not treat
-third-party packages as Shiplog releases.
+assets, cargo-binstall, `cargo install`, and the owned
+[EffortlessMetrics Homebrew tap](https://github.com/EffortlessMetrics/homebrew-tap):
+
+```bash
+brew install effortlessmetrics/tap/shiplog
+```
+
+The Homebrew formula supports Intel and Apple Silicon macOS plus Intel Linux.
+Linux ARM users should use the versionless direct installer until a matching
+release asset is published.
+
+On Windows x86_64, the owned Scoop bucket is also supported:
+
+```powershell
+scoop bucket add effortlessmetrics https://github.com/EffortlessMetrics/scoop-bucket
+scoop install effortlessmetrics/shiplog
+```
+
+The Scoop manifest verifies the Windows release asset hash and exposes the
+binary as `shiplog`. winget is not an official channel yet; do not treat
+third-party winget packages as Shiplog releases.
 
 ## Safety boundaries
 
