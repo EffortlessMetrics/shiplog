@@ -4,7 +4,9 @@ Use the GitHub release binary when you need shiplog quickly and do not already
 have Rust installed. Use `cargo install` when you already have a Rust toolchain
 or want optional Cargo features.
 
-Latest shipped release assets for `v0.8.0`:
+Current shipped release: `v0.10.0`.
+
+Latest shipped release assets:
 
 ```text
 shiplog-x86_64-unknown-linux-gnu
@@ -19,9 +21,8 @@ SHA256SUMS.txt
 ### Windows PowerShell
 
 ```powershell
-$version = "v0.8.0"
 $asset = "shiplog-x86_64-pc-windows-msvc.exe"
-$base = "https://github.com/EffortlessMetrics/shiplog/releases/download/$version"
+$base = "https://github.com/EffortlessMetrics/shiplog/releases/latest/download"
 $bin = "$HOME\bin"
 
 New-Item -ItemType Directory -Force $bin | Out-Null
@@ -57,8 +58,7 @@ asset=shiplog-x86_64-apple-darwin
 Then download, verify, and install:
 
 ```bash
-version=v0.8.0
-base="https://github.com/EffortlessMetrics/shiplog/releases/download/$version"
+base="https://github.com/EffortlessMetrics/shiplog/releases/latest/download"
 
 curl -fsSLo shiplog "$base/$asset"
 curl -fsSLo SHA256SUMS.txt "$base/SHA256SUMS.txt"
@@ -77,9 +77,8 @@ mv shiplog "$HOME/bin/shiplog"
 ### Linux x86_64
 
 ```bash
-version=v0.8.0
 asset=shiplog-x86_64-unknown-linux-gnu
-base="https://github.com/EffortlessMetrics/shiplog/releases/download/$version"
+base="https://github.com/EffortlessMetrics/shiplog/releases/latest/download"
 
 curl -fsSLo shiplog "$base/$asset"
 curl -fsSLo SHA256SUMS.txt "$base/SHA256SUMS.txt"
@@ -183,9 +182,7 @@ handoff before writing manual evidence: `repair plan` chooses the safe repair
 ID, `journal add --from-repair` writes local manual evidence only, and the
 diff/share commands read receipts before any explicit share rendering.
 
-When a future 0.9 release is explicitly approved, the release smoke should
-include this setup/status path before intake. Do not run a 0.9 release-install
-smoke while the 0.9 hold is active.
+For the current shipped release, run the release-install smoke against v0.10.0 when verifying a downloaded binary.
 
 ## Release binary smoke
 
@@ -197,13 +194,13 @@ fixture-backed review rescue demo without provider tokens or Rust installed.
 Linux and macOS:
 
 ```bash
-scripts/release-install-smoke.sh v0.8.0
+scripts/release-install-smoke.sh v0.10.0
 ```
 
 Windows PowerShell:
 
 ```powershell
-pwsh -File .\scripts\release-install-smoke.ps1 v0.8.0
+pwsh -File .\scripts\release-install-smoke.ps1 v0.10.0
 ```
 
 The smoke path runs:

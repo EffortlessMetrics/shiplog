@@ -1,7 +1,8 @@
 # Recurring review-loop guide
 
 Start here if you want to use Shiplog weekly, monthly, or for manager/promotion
-packet prep. This is the flagship 0.9 guide for the status-first loop.
+packet prep. First use is intentionally shorter: run `shiplog intake`, then
+use this guide for the receipt-backed recurring loop.
 
 The goal is not to generate a report once. The goal is to keep review readiness
 visible:

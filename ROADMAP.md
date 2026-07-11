@@ -11,12 +11,13 @@ This roadmap is organized by product posture, not calendar date.
   Historical implementation crates remain historical artifacts; internal seams
   now live as modules.
 
-## Release Candidate
+Current shipped release: `v0.10.0`.
 
-`v0.10.0` is prepared for final merged-main preflight. Do not tag, publish,
-create a GitHub release, dispatch the release workflow, or run release-install
-smoke until the release-prep PR is merged and the current final preflight
-passes from `main`.
+## Shipped
+
+`v0.10.0` shipped the source configuration ergonomics and LLM endpoint
+security slices. The public release, crates.io package, checksums, and install
+smoke are complete.
 
 Release scope on `main`:
 
@@ -26,11 +27,11 @@ Release scope on `main`:
 - **LLM endpoint security** - opt-in OpenAI-compatible clustering rejects
   malformed and non-HTTPS endpoints before any request or authorization header.
 - **Release contract maintenance** - package metadata, changelog, readiness,
-  decision, handoff, and final preflight instructions describe `0.10.0`.
+  decision, handoff, and post-release proof describe `0.10.0`.
 
 ## Next Candidates
 
-These are future lanes, not 0.10 release promises.
+These are future lanes, not `0.10.0` release promises.
 
 - **Guided provider readiness** - improve token/setup guidance without OAuth or
   live provider probing by default.

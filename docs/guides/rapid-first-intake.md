@@ -63,15 +63,12 @@ scaffolds a starter `manual_events.yaml` and treats your own typed
 notes as the one working source — see
 [Add manual evidence](#add-manual-evidence) below.
 
-Recommended preflight:
-
-```bash
-shiplog init --guided
-shiplog doctor --setup
-shiplog sources status
-shiplog doctor --setup --json
-shiplog status --latest
-```
+No preflight is required for the first packet. If setup is uncertain, use the
+read-only diagnostics `shiplog doctor --setup`, `shiplog sources status`,
+`shiplog doctor --setup --json`, or `shiplog status --latest` before or after
+intake.
+Use `shiplog init --guided` only when you want to explicitly recreate the
+starter setup files.
 
 `init --guided` writes the local setup files. `doctor --setup` and
 `sources status` are read-only checks that explain which sources are
@@ -85,24 +82,17 @@ it should route you to collection only when setup is safe enough to proceed.
 From an empty directory:
 
 ```bash
-shiplog intake --last-6-months --explain
-shiplog status --latest
-shiplog open intake-report --latest
-shiplog open packet --latest
+shiplog intake
 ```
 
-That is the whole happy path. `intake` does the work, then `open`
-launches the durable report and the rendered pack in your platform's
-default markdown viewer. `--explain` prints per-source decisions and
-repair hints to the terminal so you can see what happened without
-reading the report first.
-`status --latest` then joins the run receipts into one read-only handoff:
-repair plan, rerun, diff, or share explanation depending on the packet state.
+That is the whole happy path. `intake` uses the default six-month window,
+creates starter setup files when needed, and produces the first packet without
+provider credentials. Add `--explain` for per-source decisions and repair
+hints, or run `shiplog open packet --latest` to open the rendered artifact.
 
-If you skipped the setup preflight, `intake` still creates starter setup
-files when needed. Prefer `doctor --setup` first when you want to avoid
-discovering malformed local files, disabled sources, or missing share
-redaction setup in the finished packet.
+Use `shiplog doctor --setup` or `shiplog status --latest` when you need to
+diagnose malformed local files, disabled sources, or later share redaction
+setup. Those are troubleshooting surfaces, not first-use prerequisites.
 
 The first run creates the following under `./out/<run_id>/`:
 
@@ -122,8 +112,9 @@ shiplog will not overwrite them.
 
 ## How to read `intake.report.md`
 
-Open the report first — it is the reviewer's view of "what is in this
-pack and what's missing." Read the sections in this order:
+Open the packet first — it is the human artifact you give to a reviewer.
+Use the report when you need diagnostic detail about what is in the pack and
+what is missing. Read the packet first, then inspect these report sections:
 
 1. **Header** — run id, packet readiness, window, config path, packet path.
 2. **Redaction profile** — one line saying which profile rendered this run.

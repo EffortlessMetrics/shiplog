@@ -26,6 +26,8 @@ shiplog turns work evidence into a review-readiness loop: diagnose setup,
 inspect status, collect receipts, repair gaps, rerun, compare, and share
 safely.
 
+Current shipped release: `v0.10.0`.
+
 ## The problem
 
 Performance reviews ask what shipped, what mattered, and what evidence supports
@@ -40,7 +42,7 @@ setup -> status -> intake -> repair -> rerun -> diff -> share explain
 It is for individual contributors, tech leads, and anyone who wants a
 repeatable evidence trail for self-reviews, promo packets, or brag documents.
 
-## What works in 0.9
+## What works in 0.10
 
 | Surface | Status | Command |
 |---------|--------|---------|
@@ -55,6 +57,25 @@ repeatable evidence trail for self-reviews, promo packets, or brag documents.
 | Packet movement | Ready | `shiplog runs diff --latest` |
 | Share posture | Ready | `shiplog share explain manager --latest` |
 | Advanced GitHub harvest | Ready | `shiplog github activity plan` |
+
+## Quick start
+
+From a work directory, run the one command that creates the first packet:
+
+```bash
+shiplog intake
+```
+
+Intake uses the default six-month window, discovers usable local evidence,
+creates `shiplog.toml` and `manual_events.yaml` when needed, and records
+missing optional providers without requiring credentials. Add `--explain` when
+you want per-source decisions in the terminal.
+
+Open the packet after intake when you want the rendered artifact immediately:
+
+```bash
+shiplog open packet --latest
+```
 
 ## Install
 
@@ -85,9 +106,10 @@ Prerequisites:
   `GITHUB_TOKEN`, `GITLAB_TOKEN`, `JIRA_TOKEN`, or `LINEAR_API_KEY`
 - `SHIPLOG_REDACT_KEY` only when rendering manager/public share packets
 
-## First setup
+## Setup troubleshooting
 
-Start here when the directory is empty, messy, or newly configured:
+Setup commands are optional for the first packet. Use them when you want to
+inspect or repair configuration before collecting evidence:
 
 ```bash
 shiplog init --guided
@@ -109,11 +131,10 @@ writes tokens.
 
 ## First packet
 
-Collect usable evidence and then inspect the cockpit again:
+Collect usable evidence from the default six-month window:
 
 ```bash
-shiplog intake --last-6-months --explain
-shiplog status --latest
+shiplog intake
 shiplog open packet --latest
 ```
 
@@ -176,7 +197,7 @@ deterministic ordering, no secret values, and no Markdown scraping.
 | Evidence repair | [docs/guides/evidence-repair-loop.md](docs/guides/evidence-repair-loop.md) |
 | Packet interpretation and share posture | [docs/guides/review-ready-packet.md](docs/guides/review-ready-packet.md) |
 | Full configuration reference | [docs/config-reference.md](docs/config-reference.md) |
-| 0.9 release readiness | [docs/release/0.9.0-readiness.md](docs/release/0.9.0-readiness.md) |
+| 0.10 release readiness | [docs/release/0.10.0-readiness.md](docs/release/0.10.0-readiness.md) |
 | Changelog | [CHANGELOG.md](CHANGELOG.md) |
 
 Machine-readable contracts:

@@ -174,7 +174,7 @@ Inlined product and trust modules include:
 - `shiplog::ingest::*`
 
 Remaining internal support packages are tracked by
-[`docs/release/0.7-crate-surface.md`](release/0.7-crate-surface.md).
+[`docs/release/0.7-crate-surface.md`](../release/0.7-crate-surface.md).
 
 Dev-only tooling:
 
@@ -201,12 +201,12 @@ The release proof scripts enforce both sides of the boundary:
 ## Release Posture
 
 v0.3.0 is shipped. The historical release record is
-[`RELEASE_HANDOFF_0.3.0.md`](../RELEASE_HANDOFF_0.3.0.md), including the
+[`RELEASE_HANDOFF_0.3.0.md`](../../RELEASE_HANDOFF_0.3.0.md), including the
 published crate order, release workflow, asset set, checksum verification, and
 install smoke evidence.
 
 v0.4.0 is shipped. The release record is
-[`RELEASE_HANDOFF_0.4.0.md`](../RELEASE_HANDOFF_0.4.0.md), including the
+[`RELEASE_HANDOFF_0.4.0.md`](../../RELEASE_HANDOFF_0.4.0.md), including the
 published crate order, release workflow, asset set, checksum verification, and
 install smoke evidence.
 
@@ -216,4 +216,4 @@ packet safety checks where redaction rules make them testable, and follow-on
 release/distribution polish. Documented mutation baselines now include
 `shiplog::coverage`, `shiplog::ids`, `shiplog::schema`, `shiplog::redact`,
 `shiplog::bundle`, and a `shiplog::ports` no-target scan, recorded in
-[`docs/ci/mutation.md`](ci/mutation.md).
+[`docs/ci/mutation.md`](../ci/mutation.md).
