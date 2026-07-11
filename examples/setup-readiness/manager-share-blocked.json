@@ -1,0 +1,58 @@
+{
+  "overall_status": "ready_with_caveats",
+  "requested_objective": "manager-share",
+  "requested_status": "blocked",
+  "sources": [],
+  "local_files": [],
+  "credentials": [
+    {
+      "key": "redaction_key",
+      "label": "Redaction key",
+      "enabled": true,
+      "status": "unavailable",
+      "reason": "SHIPLOG_REDACT_KEY not set",
+      "next_action": {
+        "key": "set_shiplog_redact_key",
+        "label": "Set redaction key",
+        "command": "set SHIPLOG_REDACT_KEY",
+        "writes": false,
+        "reason": "SHIPLOG_REDACT_KEY is missing",
+        "priority": 1,
+        "receipt_refs": []
+      },
+      "writes": false,
+      "receipt_refs": []
+    }
+  ],
+  "share_profiles": [
+    {
+      "key": "manager",
+      "label": "Manager share",
+      "enabled": true,
+      "status": "blocked",
+      "reason": "SHIPLOG_REDACT_KEY not set",
+      "next_action": {
+        "key": "set_shiplog_redact_key",
+        "label": "Set redaction key",
+        "command": "set SHIPLOG_REDACT_KEY",
+        "writes": false,
+        "reason": "SHIPLOG_REDACT_KEY is missing",
+        "priority": 1,
+        "receipt_refs": []
+      },
+      "writes": false,
+      "receipt_refs": []
+    }
+  ],
+  "next_actions": [
+    {
+      "key": "set_shiplog_redact_key",
+      "label": "Set redaction key",
+      "command": "set SHIPLOG_REDACT_KEY",
+      "writes": false,
+      "reason": "SHIPLOG_REDACT_KEY is missing",
+      "priority": 1,
+      "receipt_refs": []
+    }
+  ]
+}

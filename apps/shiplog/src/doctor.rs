@@ -6,6 +6,7 @@ use super::{
     ShiplogConfig, config_base_dir, config_redaction_key_env, config_version_state,
     env_var_present, gitlab_api_base, optional_config_string, required_config_path,
 };
+use clap::ValueEnum;
 use serde::Serialize;
 use shiplog::ingest::manual::read_manual_events;
 use std::{
@@ -16,11 +17,34 @@ use std::{
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub(crate) struct SetupStatus {
     pub(crate) overall_status: SetupOverallStatus,
+    pub(crate) requested_objective: SetupObjective,
+    pub(crate) requested_status: SetupOverallStatus,
     pub(crate) sources: Vec<SetupItem>,
     pub(crate) local_files: Vec<SetupItem>,
     pub(crate) credentials: Vec<SetupItem>,
     pub(crate) share_profiles: Vec<SetupItem>,
     pub(crate) next_actions: Vec<SetupNextAction>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, ValueEnum)]
+#[value(rename_all = "kebab-case")]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum SetupObjective {
+    Intake,
+    ManagerShare,
+    PublicShare,
+    All,
+}
+
+impl SetupObjective {
+    pub(crate) fn label(self) -> &'static str {
+        match self {
+            Self::Intake => "intake",
+            Self::ManagerShare => "manager-share",
+            Self::PublicShare => "public-share",
+            Self::All => "all",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -112,6 +136,14 @@ pub(crate) fn build_setup_status(
     config_path: &Path,
     selected_sources: &[InitSource],
 ) -> SetupStatus {
+    build_setup_status_for(config_path, selected_sources, SetupObjective::Intake)
+}
+
+pub(crate) fn build_setup_status_for(
+    config_path: &Path,
+    selected_sources: &[InitSource],
+    objective: SetupObjective,
+) -> SetupStatus {
     let mut builder = SetupStatusBuilder::default();
     let config_ref = receipt(
         "config",
@@ -138,7 +170,7 @@ pub(crate) fn build_setup_status(
             Some(action),
             vec![config_ref],
         ));
-        return builder.finish();
+        return builder.finish(objective);
     }
 
     let config_text = match std::fs::read_to_string(config_path) {
@@ -165,7 +197,7 @@ pub(crate) fn build_setup_status(
                 Some(action),
                 vec![config_ref],
             ));
-            return builder.finish();
+            return builder.finish(objective);
         }
     };
 
@@ -193,7 +225,7 @@ pub(crate) fn build_setup_status(
                 Some(action),
                 vec![config_ref],
             ));
-            return builder.finish();
+            return builder.finish(objective);
         }
     };
 
@@ -236,13 +268,14 @@ pub(crate) fn build_setup_status(
     build_source_items(&mut builder, &config, &base_dir, selected_sources);
     build_credential_items(&mut builder, &config);
     build_share_profile_items(&mut builder, &config);
-    builder.finish()
+    builder.finish(objective)
 }
 
 pub(crate) fn print_setup_status(status: &SetupStatus) {
     println!(
-        "Setup readiness: {}",
-        setup_overall_status_label(status.overall_status)
+        "Setup readiness for {}: {}",
+        status.requested_objective.label(),
+        setup_overall_status_label(status.requested_status)
     );
 
     let items: Vec<&SetupItem> = status
@@ -279,7 +312,7 @@ pub(crate) fn print_setup_status(status: &SetupStatus) {
 
 pub(crate) fn setup_status_needs_action(status: &SetupStatus) -> bool {
     matches!(
-        status.overall_status,
+        status.requested_status,
         SetupOverallStatus::NeedsSetup | SetupOverallStatus::Blocked
     )
 }
@@ -521,7 +554,7 @@ impl SetupStatusBuilder {
         }
     }
 
-    fn finish(mut self) -> SetupStatus {
+    fn finish(mut self, objective: SetupObjective) -> SetupStatus {
         self.next_actions.sort_by(|left, right| {
             left.priority
                 .cmp(&right.priority)
@@ -565,14 +598,83 @@ impl SetupStatusBuilder {
             SetupOverallStatus::Ready
         };
 
+        let requested_status = requested_status_for_objective(
+            objective,
+            config_not_ready,
+            &self.sources,
+            &self.local_files,
+            &self.credentials,
+            &self.share_profiles,
+            overall_status,
+        );
+
         SetupStatus {
             overall_status,
+            requested_objective: objective,
+            requested_status,
             sources: self.sources,
             local_files: self.local_files,
             credentials: self.credentials,
             share_profiles: self.share_profiles,
             next_actions: self.next_actions,
         }
+    }
+}
+
+fn requested_status_for_objective(
+    objective: SetupObjective,
+    config_not_ready: bool,
+    sources: &[SetupItem],
+    local_files: &[SetupItem],
+    credentials: &[SetupItem],
+    share_profiles: &[SetupItem],
+    overall_status: SetupOverallStatus,
+) -> SetupOverallStatus {
+    if objective == SetupObjective::All {
+        return overall_status;
+    }
+
+    let relevant_credentials = credentials
+        .iter()
+        .filter(|item| objective != SetupObjective::Intake || item.key != "redaction_key");
+    let relevant_share_profiles = share_profiles.iter().filter(|item| match objective {
+        SetupObjective::Intake => false,
+        SetupObjective::ManagerShare => item.key == "manager",
+        SetupObjective::PublicShare => item.key == "public",
+        SetupObjective::All => true,
+    });
+
+    let any_ready_source = sources
+        .iter()
+        .any(|item| item.status == SetupItemStatus::Ready);
+    let has_blocking = local_files
+        .iter()
+        .chain(sources.iter())
+        .chain(relevant_credentials)
+        .chain(relevant_share_profiles)
+        .any(|item| item.status.is_blocking());
+    let has_caveat = local_files
+        .iter()
+        .chain(sources.iter())
+        .chain(
+            credentials
+                .iter()
+                .filter(|item| objective != SetupObjective::Intake || item.key != "redaction_key"),
+        )
+        .chain(share_profiles.iter().filter(|item| match objective {
+            SetupObjective::Intake => false,
+            SetupObjective::ManagerShare => item.key == "manager",
+            SetupObjective::PublicShare => item.key == "public",
+            SetupObjective::All => true,
+        }))
+        .any(|item| item.status.needs_setup() || item.status.caveated());
+
+    if config_not_ready || !any_ready_source || has_blocking {
+        SetupOverallStatus::Blocked
+    } else if has_caveat {
+        SetupOverallStatus::ReadyWithCaveats
+    } else {
+        SetupOverallStatus::Ready
     }
 }
 
@@ -1560,6 +1662,60 @@ events = "./manual_events.yaml"
             find_item(&status.local_files, "manual_events")?.status,
             SetupItemStatus::Ready
         );
+        Ok(())
+    }
+
+    #[test]
+    fn setup_objective_keeps_share_blockers_out_of_intake_readiness() -> anyhow::Result<()> {
+        let temp = tempfile::tempdir()?;
+        git2::Repository::init(temp.path())?;
+        let manual_path = temp.path().join("manual_events.yaml");
+        write_manual_events(
+            &manual_path,
+            &ManualEventsFile {
+                version: 1,
+                generated_at: chrono::Utc::now(),
+                events: Vec::new(),
+            },
+        )?;
+        let config_path = temp.path().join("shiplog.toml");
+        std::fs::write(
+            &config_path,
+            r#"[shiplog]
+config_version = 1
+
+[defaults]
+profile = "internal"
+
+[redaction]
+key_env = "SHIPLOG_OBJECTIVE_TEST_REDACT_KEY"
+
+[sources.git]
+enabled = true
+repo = "."
+
+[sources.manual]
+enabled = true
+events = "./manual_events.yaml"
+"#,
+        )?;
+
+        let intake = build_setup_status_for(&config_path, &[], SetupObjective::Intake);
+        assert_eq!(intake.requested_objective, SetupObjective::Intake);
+        assert_eq!(
+            intake.requested_status,
+            SetupOverallStatus::ReadyWithCaveats
+        );
+        assert_eq!(intake.overall_status, SetupOverallStatus::NeedsSetup);
+
+        let manager = build_setup_status_for(&config_path, &[], SetupObjective::ManagerShare);
+        assert_eq!(manager.requested_status, SetupOverallStatus::Blocked);
+
+        let public = build_setup_status_for(&config_path, &[], SetupObjective::PublicShare);
+        assert_eq!(public.requested_status, SetupOverallStatus::Blocked);
+
+        let all = build_setup_status_for(&config_path, &[], SetupObjective::All);
+        assert_eq!(all.requested_status, all.overall_status);
         Ok(())
     }
 

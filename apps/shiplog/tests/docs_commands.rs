@@ -426,6 +426,14 @@ fn setup_readiness_schema_docs_and_examples_describe_v1_contract() {
         schema["properties"]["overall_status"]["$ref"],
         "#/$defs/overall_status"
     );
+    assert_eq!(
+        schema["properties"]["requested_objective"]["$ref"],
+        "#/$defs/requested_objective"
+    );
+    assert_eq!(
+        schema["properties"]["requested_status"]["$ref"],
+        "#/$defs/overall_status"
+    );
     assert!(
         schema["propertyNames"].is_object(),
         "setup readiness schema should include property-name hygiene"
@@ -453,6 +461,17 @@ fn setup_readiness_schema_docs_and_examples_describe_v1_contract() {
         );
     }
 
+    for field in ["requested_objective", "requested_status"] {
+        assert!(
+            schema["properties"].get(field).is_some(),
+            "schema should define optional field {field}"
+        );
+        assert!(
+            doc.contains(field),
+            "setup readiness schema docs should mention optional field {field}"
+        );
+    }
+
     for needle in [
         "contracts/schemas/setup-readiness.v1.schema.json",
         "shiplog doctor --setup --json",
@@ -463,6 +482,12 @@ fn setup_readiness_schema_docs_and_examples_describe_v1_contract() {
         "ready_with_caveats",
         "needs_setup",
         "blocked",
+        "intake",
+        "manager-share",
+        "public-share",
+        "all",
+        "appear together",
+        "legacy v1 documents",
         "next_action.writes",
         "must not include token values",
         "does not query providers",
@@ -517,6 +542,7 @@ fn setup_readiness_schema_docs_and_examples_describe_v1_contract() {
         "blocked.json",
         "needs-setup.json",
         "ready-with-caveats.json",
+        "manager-share-blocked.json",
     ] {
         let example_path = root.join("examples/setup-readiness").join(example);
         let text = std::fs::read_to_string(&example_path)
@@ -1147,18 +1173,40 @@ fn assert_setup_readiness_example_matches_schema_shape(
     item_statuses: &std::collections::BTreeSet<String>,
     path: &Path,
 ) {
-    assert_allowed_object_keys(
-        json,
-        &[
-            "overall_status",
-            "sources",
-            "local_files",
-            "credentials",
-            "share_profiles",
-            "next_actions",
-        ],
-        path,
-    );
+    let object = json
+        .as_object()
+        .unwrap_or_else(|| panic!("{} should contain an object", path.display()));
+    for required in [
+        "overall_status",
+        "sources",
+        "local_files",
+        "credentials",
+        "share_profiles",
+        "next_actions",
+    ] {
+        assert!(
+            object.contains_key(required),
+            "{} object should contain required key {required}",
+            path.display()
+        );
+    }
+    for key in object.keys() {
+        assert!(
+            matches!(
+                key.as_str(),
+                "overall_status"
+                    | "requested_objective"
+                    | "requested_status"
+                    | "sources"
+                    | "local_files"
+                    | "credentials"
+                    | "share_profiles"
+                    | "next_actions"
+            ),
+            "{} object contains unexpected key {key:?}",
+            path.display()
+        );
+    }
     let overall = json["overall_status"]
         .as_str()
         .unwrap_or_else(|| panic!("{} overall_status should be a string", path.display()));
@@ -1167,6 +1215,34 @@ fn assert_setup_readiness_example_matches_schema_shape(
         "{} overall_status {overall:?} should be allowed by schema",
         path.display()
     );
+
+    assert_eq!(
+        json.get("requested_objective").is_some(),
+        json.get("requested_status").is_some(),
+        "{} requested objective and status must appear together",
+        path.display()
+    );
+    if let (Some(objective), Some(status)) = (
+        json.get("requested_objective"),
+        json.get("requested_status"),
+    ) {
+        assert!(
+            matches!(
+                objective.as_str(),
+                Some("intake") | Some("manager-share") | Some("public-share") | Some("all")
+            ),
+            "{} requested_objective should use the documented enum",
+            path.display()
+        );
+        let requested_status = status
+            .as_str()
+            .unwrap_or_else(|| panic!("{} requested_status should be a string", path.display()));
+        assert!(
+            overall_statuses.contains(requested_status),
+            "{} requested_status {requested_status:?} should use the overall status enum",
+            path.display()
+        );
+    }
 
     for group in ["sources", "local_files", "credentials", "share_profiles"] {
         let items = json[group]

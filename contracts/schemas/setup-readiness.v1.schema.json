@@ -15,8 +15,31 @@
     "share_profiles",
     "next_actions"
   ],
+  "oneOf": [
+    {
+      "not": {
+        "anyOf": [
+          {
+            "required": ["requested_objective"]
+          },
+          {
+            "required": ["requested_status"]
+          }
+        ]
+      }
+    },
+    {
+      "required": ["requested_objective", "requested_status"]
+    }
+  ],
   "properties": {
     "overall_status": {
+      "$ref": "#/$defs/overall_status"
+    },
+    "requested_objective": {
+      "$ref": "#/$defs/requested_objective"
+    },
+    "requested_status": {
       "$ref": "#/$defs/overall_status"
     },
     "sources": {
@@ -70,6 +93,15 @@
         "ready_with_caveats",
         "needs_setup",
         "blocked"
+      ]
+    },
+    "requested_objective": {
+      "type": "string",
+      "enum": [
+        "intake",
+        "manager-share",
+        "public-share",
+        "all"
       ]
     },
     "item_status": {
