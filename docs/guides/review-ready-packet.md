@@ -15,11 +15,18 @@ The loop is:
 setup -> collect -> repair -> rerun -> compare -> interpret -> share
 ```
 
-If setup is new or uncertain, run the read-only front door before the first
-packet:
+Start with the first packet. Setup diagnostics are optional:
 
 ```bash
-shiplog init --guided
+shiplog intake
+```
+
+Use `shiplog init --guided` only when you need to explicitly recreate starter
+setup files.
+
+If setup is blocked, use the read-only diagnostics:
+
+```bash
 shiplog doctor --setup
 shiplog sources status
 shiplog doctor --setup --json
@@ -46,16 +53,10 @@ The examples below use the default `./out` for brevity. If you set `OUT`, add
 
 ## Run the first packet
 
-Start with setup readiness when needed, then intake, and read the report before
-editing anything.
+Start with intake, then read the packet before editing anything.
 
 ```bash
-shiplog doctor --setup
-shiplog sources status
-shiplog status --latest
-shiplog intake --last-6-months --explain
-shiplog status --latest
-shiplog open intake-report --latest
+shiplog intake
 shiplog open packet --latest
 ```
 

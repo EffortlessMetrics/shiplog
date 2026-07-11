@@ -6,6 +6,8 @@
 
 > Review evidence loop for people who need receipts, not review prose.
 
+Current shipped release: `v0.10.0`.
+
 shiplog turns work evidence into a review-readiness loop: diagnose setup,
 inspect status, collect receipts, repair gaps, rerun, compare, and share
 safely.
@@ -44,22 +46,21 @@ JSON, and manual evidence can run without provider tokens.
 
 ## First useful loop
 
-Start with setup and status:
+Start with the first packet. Setup files are created automatically when they
+are needed, and provider credentials are optional:
 
 ```bash
-shiplog init --guided
-shiplog doctor --setup
-shiplog sources status
-shiplog doctor --setup --json
-shiplog status --latest
+shiplog intake
 ```
 
-Collect the first packet:
+Open the packet when you want to read it immediately:
 
 ```bash
-shiplog intake --last-6-months --explain
-shiplog status --latest
+shiplog open packet --latest
 ```
+
+For setup troubleshooting or agent automation, use `doctor --setup`,
+`sources status`, and `status --latest --json` as read-only diagnostics.
 
 Repair and compare when status says the packet needs evidence:
 

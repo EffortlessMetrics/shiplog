@@ -1,13 +1,12 @@
 # shiplog 0.10.0 - Release Execution Handoff
 
-**Planned tag:** `v0.10.0`
-**Status:** release-prep PR pending final merged-main preflight
+**Shipped tag:** `v0.10.0`
+**Status:** released on 2026-07-11
 **Readiness ledger:** [`docs/release/0.10.0-readiness.md`](docs/release/0.10.0-readiness.md)
 **Release decision:** [`docs/release/0.10.0-release-decision.md`](docs/release/0.10.0-release-decision.md)
 
-This handoff records the bounded `0.10.0` release path. It does not claim
-that the tag, crates.io publication, GitHub release, assets, or install smoke
-already exist.
+This handoff records the bounded `0.10.0` release path and its completed
+public-state proof.
 
 ## Release contents
 
