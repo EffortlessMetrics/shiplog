@@ -77,6 +77,10 @@ pub(super) fn dispatch() -> Result<()> {
             run_status(args)?;
         }
 
+        Command::Next(args) => {
+            run_next(args)?;
+        }
+
         Command::Github { cmd } => match cmd {
             GithubCommand::Activity { cmd } => match cmd {
                 GithubActivityCommand::Plan(args) => github_activity::run_plan(args)?,

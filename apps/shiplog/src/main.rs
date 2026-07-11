@@ -434,6 +434,9 @@ enum Command {
     )]
     Status(StatusArgs),
 
+    /// Show the safest useful next action without executing it.
+    Next(NextArgs),
+
     /// Plan and inspect GitHub activity harvests without provider mutation.
     Github {
         #[command(subcommand)]
@@ -984,6 +987,26 @@ struct StatusArgs {
     /// Print review-loop status as JSON for agent/control-plane consumers.
     #[arg(long)]
     json: bool,
+}
+
+#[derive(Args, Debug)]
+struct NextArgs {
+    /// Path to shiplog.toml.
+    #[arg(long, default_value = CONFIG_FILENAME)]
+    config: PathBuf,
+    /// Output directory containing run folders.
+    #[arg(long, default_value = "./out")]
+    out: PathBuf,
+    /// Print the selected action and receipt references as JSON.
+    #[arg(long)]
+    json: bool,
+}
+
+#[derive(serde::Serialize)]
+struct NextOutput {
+    overall_status: status::ReviewLoopOverallStatus,
+    action: Option<status::StatusNextAction>,
+    receipt_refs: Vec<status::StatusReceiptRef>,
 }
 
 #[derive(Subcommand, Debug)]
@@ -7872,16 +7895,7 @@ fn run_github_auth_status(args: &GithubAuthStatusArgs) -> Result<()> {
 
 fn run_status(args: StatusArgs) -> Result<()> {
     let _explicit_latest = args.latest;
-    let setup_status =
-        doctor::build_setup_status_for(&args.config, &[], doctor::SetupObjective::Intake);
-    let resolution = status::resolve_latest_review_loop_receipts(&args.out);
-    let report_json = load_status_report_json(&resolution);
-    let mut status = status::ReviewLoopStatus::from_inputs(review_loop_status_inputs(
-        &setup_status,
-        &resolution,
-        report_json.as_ref(),
-    ));
-    apply_status_output_context(&mut status, &args.out);
+    let (status, resolution) = build_review_loop_status(&args.config, &args.out);
 
     if args.json {
         serde_json::to_writer_pretty(std::io::stdout(), &status)
@@ -7891,6 +7905,69 @@ fn run_status(args: StatusArgs) -> Result<()> {
         print_review_loop_status(&status, &resolution);
     }
     Ok(())
+}
+
+fn run_next(args: NextArgs) -> Result<()> {
+    let (status, resolution) = build_review_loop_status(&args.config, &args.out);
+    let action = status::select_next_action(&status.next_actions);
+
+    if args.json {
+        serde_json::to_writer_pretty(
+            std::io::stdout(),
+            &NextOutput {
+                overall_status: status.overall_status,
+                action,
+                receipt_refs: status.receipt_refs.clone(),
+            },
+        )
+        .context("serialize next action json")?;
+        println!();
+    } else {
+        println!(
+            "Status: {}",
+            review_overall_status_label(status.overall_status)
+        );
+        match action {
+            Some(action) => {
+                println!("Next: {}", action.label);
+                println!("Command: {}", action.command);
+                println!("Writes: {}", if action.writes { "yes" } else { "no" });
+                println!("Reason: {}", action.reason);
+                if !action.preconditions.is_empty() {
+                    println!("Preconditions: {}", action.preconditions.join(", "));
+                }
+            }
+            None => {
+                println!("Next: none");
+                println!("Reason: no safe typed action is available");
+            }
+        }
+        println!();
+        println!("Receipts:");
+        print_review_status_receipts(&status, &resolution);
+    }
+
+    Ok(())
+}
+
+fn build_review_loop_status(
+    config_path: &Path,
+    out_dir: &Path,
+) -> (
+    status::ReviewLoopStatus,
+    status::ReviewLoopReceiptResolution,
+) {
+    let setup_status =
+        doctor::build_setup_status_for(config_path, &[], doctor::SetupObjective::Intake);
+    let resolution = status::resolve_latest_review_loop_receipts(out_dir);
+    let report_json = load_status_report_json(&resolution);
+    let mut status = status::ReviewLoopStatus::from_inputs(review_loop_status_inputs(
+        &setup_status,
+        &resolution,
+        report_json.as_ref(),
+    ));
+    apply_status_output_context(&mut status, out_dir);
+    (status, resolution)
 }
 
 fn review_loop_status_inputs(

@@ -2806,6 +2806,51 @@ fn status_latest_ready_setup_without_run_routes_to_intake() -> CliTestResult {
 }
 
 #[test]
+fn next_is_read_only_and_projects_the_status_action() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let out = tmp.path().join("custom-out");
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["init", "--guided"])
+        .assert()
+        .success();
+
+    let before = file_tree_manifest(tmp.path());
+    let out_arg = out.to_string_lossy().to_string();
+    let assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args(["next", "--out", out_arg.as_str(), "--json"])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
+    let json: serde_json::Value = serde_json::from_str(&stdout)?;
+
+    assert_eq!(json["overall_status"], "ready_to_collect");
+    assert_eq!(json["action"]["key"], "intake");
+    assert_eq!(json["action"]["writes"], true);
+    assert!(json["action"]["command"].as_str().is_some_and(|command| {
+        command.starts_with("shiplog intake --out ")
+            && command.ends_with("--last-6-months --explain")
+    }));
+    assert!(json["receipt_refs"].is_array());
+    assert_eq!(before, file_tree_manifest(tmp.path()));
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args(["next", "--out", out_arg.as_str()])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Next: Collect evidence"))
+        .stdout(predicate::str::contains("Writes: yes"))
+        .stdout(predicate::str::contains("Reason:"));
+
+    Ok(())
+}
+
+#[test]
 fn github_activity_plan_writes_static_receipt_without_provider_calls() -> CliTestResult {
     let tmp = TempDir::new()?;
     let config = tmp.path().join("shiplog-github-full.toml");
