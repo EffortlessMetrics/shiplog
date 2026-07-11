@@ -11,6 +11,8 @@ Related repair spec:
 [`SHIPLOG-SPEC-0005-evidence-repair-loop`](SHIPLOG-SPEC-0005-evidence-repair-loop.md)
 Related packet-quality spec:
 [`SHIPLOG-SPEC-0006-packet-quality-and-claim-candidates`](SHIPLOG-SPEC-0006-packet-quality-and-claim-candidates.md)
+Related objective-scoped extension:
+[`SHIPLOG-SPEC-0010-objective-scoped-setup-readiness`](SHIPLOG-SPEC-0010-objective-scoped-setup-readiness.md)
 
 ## Purpose
 
@@ -366,6 +368,13 @@ When no safe action exists, the item should say so with a reason instead of
 printing a copyable command that cannot succeed.
 
 ## Compatibility Notes
+
+The global setup model remains the compatibility baseline. Objective-scoped
+requested results and the `doctor --setup --for <objective>` command contract
+are defined by
+[`SHIPLOG-SPEC-0010-objective-scoped-setup-readiness`](SHIPLOG-SPEC-0010-objective-scoped-setup-readiness.md).
+That extension is additive and does not change the meaning of
+`overall_status`.
 
 This spec does not itself change the current intake report schema, existing
 `shiplog doctor` behavior, or CLI output. It defines the contract future PRs

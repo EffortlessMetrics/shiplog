@@ -1,5 +1,7 @@
 {
   "overall_status": "ready_with_caveats",
+  "requested_objective": "intake",
+  "requested_status": "ready_with_caveats",
   "sources": [
     {
       "key": "github",

@@ -18,6 +18,7 @@ Examples live under:
 examples/setup-readiness/blocked.json
 examples/setup-readiness/needs-setup.json
 examples/setup-readiness/ready-with-caveats.json
+examples/setup-readiness/manager-share-blocked.json
 ```
 
 The JSON is the agent-readable form of the same setup model used by the human
@@ -40,6 +41,18 @@ share_profiles
 next_actions
 ```
 
+The following top-level fields are optional and must appear together when
+present:
+
+```text
+requested_objective
+requested_status
+```
+
+They are defined by
+[`SHIPLOG-SPEC-0010-objective-scoped-setup-readiness`](../specs/SHIPLOG-SPEC-0010-objective-scoped-setup-readiness.md).
+Their absence is valid for legacy v1 documents.
+
 Future compatible changes should be additive and must update the schema,
 examples, and tests together. Removing required fields, renaming stable keys, or
 changing status meanings requires a new schema version or an ADR.
@@ -57,6 +70,29 @@ blocked
 
 It answers whether setup is usable enough to choose the next command. It must
 not be interpreted as evidence quality or review readiness.
+
+## Requested Objective
+
+`requested_objective` is one of:
+
+```text
+intake
+manager-share
+public-share
+all
+```
+
+`intake` is the default for `shiplog doctor --setup`. `all` preserves the
+global interpretation represented by `overall_status`.
+
+`requested_status` uses the same values as `overall_status`, but answers
+whether the selected objective can proceed. For example, intake may be
+`ready_with_caveats` while manager and public share profiles remain blocked by
+an absent redaction key.
+
+Older consumers should use `overall_status` when the requested fields are
+absent. New producers must emit `requested_objective` and `requested_status`
+as a pair; emitting only one is invalid.
 
 ## Setup Items
 

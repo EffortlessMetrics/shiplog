@@ -1,5 +1,7 @@
 {
   "overall_status": "blocked",
+  "requested_objective": "intake",
+  "requested_status": "blocked",
   "sources": [],
   "local_files": [
     {
