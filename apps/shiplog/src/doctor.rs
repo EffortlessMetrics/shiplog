@@ -6,6 +6,7 @@ use super::{
     ShiplogConfig, config_base_dir, config_redaction_key_env, config_version_state,
     env_var_present, gitlab_api_base, optional_config_string, required_config_path,
 };
+use crate::github_auth;
 use clap::ValueEnum;
 use serde::Serialize;
 use shiplog::ingest::manual::read_manual_events;
@@ -317,13 +318,42 @@ pub(crate) fn setup_status_needs_action(status: &SetupStatus) -> bool {
     )
 }
 
+/// Source-scoped projection of [`SetupStatus`] for the `sources status` command.
+///
+/// This carries the same source rows and deduplicated source next-actions that
+/// the human `sources status` view prints, plus the read-only `needs_action`
+/// exit signal, so agents and scripts get a stable machine contract that cannot
+/// drift from the text output.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub(crate) struct SourcesStatusView {
+    pub(crate) needs_action: bool,
+    pub(crate) sources: Vec<SetupItem>,
+    pub(crate) next_actions: Vec<SetupNextAction>,
+}
+
+pub(crate) fn build_sources_status_view(status: &SetupStatus) -> SourcesStatusView {
+    let mut seen = BTreeSet::new();
+    let next_actions = status
+        .sources
+        .iter()
+        .filter_map(|source| source.next_action.clone())
+        .filter(|action| seen.insert(action.command.clone()))
+        .collect();
+    SourcesStatusView {
+        needs_action: source_status_needs_action(status),
+        sources: status.sources.clone(),
+        next_actions,
+    }
+}
+
 pub(crate) fn print_sources_status(status: &SetupStatus) {
+    let view = build_sources_status_view(status);
     println!("Source setup status:");
     println!(
         "{:<11} {:<7} {:<18} {:<15} reason",
         "source_key", "enabled", "status", "source_label"
     );
-    for source in &status.sources {
+    for source in &view.sources {
         println!(
             "{:<11} {:<7} {:<18} {:<15} {}",
             source.key,
@@ -334,18 +364,10 @@ pub(crate) fn print_sources_status(status: &SetupStatus) {
         );
     }
 
-    let mut seen = BTreeSet::new();
-    let source_actions: Vec<&SetupNextAction> = status
-        .sources
-        .iter()
-        .filter_map(|source| source.next_action.as_ref())
-        .filter(|action| seen.insert(action.command.clone()))
-        .collect();
-
     println!();
     println!("Next:");
-    if source_actions.is_empty() {
-        if status
+    if view.next_actions.is_empty() {
+        if view
             .sources
             .iter()
             .any(|source| source.status == SetupItemStatus::Ready)
@@ -357,7 +379,7 @@ pub(crate) fn print_sources_status(status: &SetupStatus) {
         return;
     }
 
-    for (index, action) in source_actions.iter().enumerate() {
+    for (index, action) in view.next_actions.iter().enumerate() {
         println!(
             "{}. {} [{}] - {}",
             index + 1,
@@ -709,8 +731,10 @@ fn build_github_source(
     }
 
     let user = optional_config_string(source.user.as_deref());
-    let token_present = env_var_present("GITHUB_TOKEN");
-    let (status, reason, action) = match (user.as_deref(), source.me, token_present) {
+    let auth = github_auth::resolve(source.api_base.as_deref());
+    let auth_ready = auth.metadata().availability == github_auth::GithubAuthAvailability::Ready;
+    let auth_summary = github_auth_summary(auth.metadata());
+    let (status, reason, action) = match (user.as_deref(), source.me, auth_ready) {
         (Some(_), true, _) => (
             SetupItemStatus::Blocked,
             "configure either sources.github.user or me = true, not both".to_string(),
@@ -723,28 +747,63 @@ fn build_github_source(
         ),
         (Some(user), false, false) => (
             SetupItemStatus::Unavailable,
-            format!("GITHUB_TOKEN not set for configured user {user}"),
-            Some(env_action("GITHUB_TOKEN", "github token")),
+            format!("{auth_summary}; configured user {user}"),
+            Some(github_auth_action()),
         ),
         (None, true, false) => (
             SetupItemStatus::Unavailable,
-            "GITHUB_TOKEN not set for me identity discovery".to_string(),
-            Some(env_action("GITHUB_TOKEN", "github token")),
+            format!("{auth_summary}; me identity discovery unavailable"),
+            Some(github_auth_action()),
         ),
         (Some(user), false, true) => (
             SetupItemStatus::Ready,
-            format!("token present, user {user}"),
+            format!("{auth_summary}; configured user {user}"),
             None,
         ),
         (None, true, true) => (
             SetupItemStatus::Ready,
-            "token present, me identity can be resolved during intake".to_string(),
+            format!("{auth_summary}; me identity can be resolved during intake"),
             None,
         ),
     };
     builder.push_source(source_item(
         "github", "GitHub", true, status, reason, action,
     ));
+}
+
+fn github_auth_summary(metadata: &github_auth::GithubAuthMetadata) -> String {
+    let account = metadata
+        .account
+        .as_deref()
+        .map(|account| format!(", account {account}"))
+        .unwrap_or_default();
+    match metadata.reason {
+        Some(reason) => format!(
+            "GitHub authentication unavailable via {} for {}: {}{}",
+            metadata.source.label(),
+            metadata.host,
+            reason.label(),
+            account
+        ),
+        None => format!(
+            "GitHub authentication ready via {} for {}{}",
+            metadata.source.label(),
+            metadata.host,
+            account
+        ),
+    }
+}
+
+fn github_auth_action() -> SetupNextAction {
+    next_action(
+        "github_auth_status",
+        "Inspect GitHub authentication",
+        "shiplog auth github status",
+        false,
+        "GitHub credential resolution needs attention",
+        2,
+        Vec::new(),
+    )
 }
 
 fn build_gitlab_source(
@@ -1274,17 +1333,7 @@ fn build_manual_source(
 }
 
 fn build_credential_items(builder: &mut SetupStatusBuilder, config: &ShiplogConfig) {
-    credential_item(
-        builder,
-        "github_token",
-        "GitHub token",
-        config
-            .sources
-            .github
-            .as_ref()
-            .is_some_and(|source| source.enabled),
-        "GITHUB_TOKEN",
-    );
+    github_credential_item(builder, config);
     credential_item(
         builder,
         "gitlab_token",
@@ -1326,6 +1375,49 @@ fn build_credential_items(builder: &mut SetupStatusBuilder, config: &ShiplogConf
         true,
         &redaction_env,
     );
+}
+
+fn github_credential_item(builder: &mut SetupStatusBuilder, config: &ShiplogConfig) {
+    let enabled = config
+        .sources
+        .github
+        .as_ref()
+        .is_some_and(|source| source.enabled);
+    let receipt_ref = receipt("auth", Some("github"), None);
+    if !enabled {
+        builder.push_credential(item(
+            "github_token",
+            "GitHub authentication",
+            false,
+            SetupItemStatus::Disabled,
+            "GitHub authentication not required by enabled setup".to_string(),
+            None,
+            vec![receipt_ref],
+        ));
+        return;
+    }
+
+    let api_base = config
+        .sources
+        .github
+        .as_ref()
+        .and_then(|source| source.api_base.as_deref());
+    let metadata = github_auth::resolve(api_base).metadata().clone();
+    let (status, action) = match metadata.availability {
+        github_auth::GithubAuthAvailability::Ready => (SetupItemStatus::Ready, None),
+        github_auth::GithubAuthAvailability::Unavailable => {
+            (SetupItemStatus::Unavailable, Some(github_auth_action()))
+        }
+    };
+    builder.push_credential(item(
+        "github_token",
+        "GitHub authentication",
+        true,
+        status,
+        github_auth_summary(&metadata),
+        action,
+        vec![receipt_ref],
+    ));
 }
 
 fn credential_item(
@@ -1781,6 +1873,63 @@ events = "./manual_events.yaml"
             SetupItemStatus::Malformed
         );
         assert_eq!(status.overall_status, SetupOverallStatus::Blocked);
+        Ok(())
+    }
+
+    #[test]
+    fn sources_status_view_dedupes_actions_and_scopes_to_sources() -> anyhow::Result<()> {
+        let temp = tempfile::tempdir()?;
+        std::fs::write(
+            temp.path().join("shiplog.toml"),
+            r#"[shiplog]
+config_version = 1
+
+[defaults]
+profile = "internal"
+
+[sources.git]
+enabled = true
+repo = "."
+
+[sources.github]
+enabled = true
+user = "octo"
+api_base = "https://no-such.shiplog.test/api/v3"
+"#,
+        )?;
+        git2::Repository::init(temp.path())?;
+
+        let status = build_setup_status(
+            &temp.path().join("shiplog.toml"),
+            &[InitSource::Git, InitSource::Github],
+        );
+        let view = build_sources_status_view(&status);
+
+        // The view carries exactly the source rows, not credentials/share noise.
+        assert_eq!(view.sources, status.sources);
+        assert!(view.needs_action, "missing token should require action");
+
+        // git is ready (no action); github needs authentication (one action).
+        assert_eq!(
+            find_item(&view.sources, "git")?.status,
+            SetupItemStatus::Ready
+        );
+        assert_eq!(
+            find_item(&view.sources, "github")?.status,
+            SetupItemStatus::Unavailable
+        );
+
+        // next_actions are deduped by command and contain the github auth action.
+        let mut commands: Vec<&str> = view
+            .next_actions
+            .iter()
+            .map(|action| action.command.as_str())
+            .collect();
+        commands.sort_unstable();
+        let mut deduped = commands.clone();
+        deduped.dedup();
+        assert_eq!(commands, deduped, "next_actions must be deduped by command");
+        assert!(commands.contains(&"shiplog auth github status"));
         Ok(())
     }
 

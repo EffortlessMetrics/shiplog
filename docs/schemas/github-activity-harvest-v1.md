@@ -325,6 +325,18 @@ observed_at
 
 `stop_reason` may be `null` when the run completed normally.
 
+`auth` records only safe credential metadata for provider execution:
+
+```text
+source
+host
+account
+```
+
+`source` identifies the resolver path, such as `GH_TOKEN`, `GITHUB_TOKEN`, or
+`gh_cli`. Credential values are never written to the activity ledger. The field
+is optional when reading older v1 receipts and is present on new provider runs.
+
 ## Owner Filter
 
 The API ledger carries the owner-filter receipt:

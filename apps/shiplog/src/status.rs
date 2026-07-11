@@ -1090,6 +1090,19 @@ impl StatusNextAction {
     }
 }
 
+pub(crate) fn select_next_action(actions: &[StatusNextAction]) -> Option<StatusNextAction> {
+    actions
+        .iter()
+        .filter(|action| !action.command.contains('<') || !action.command.contains('>'))
+        .min_by(|left, right| {
+            left.priority
+                .cmp(&right.priority)
+                .then_with(|| left.key.cmp(&right.key))
+                .then_with(|| left.command.cmp(&right.command))
+        })
+        .cloned()
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 pub(crate) struct StatusReceiptRef {
     pub(crate) field: String,
@@ -1422,6 +1435,26 @@ mod tests {
             .collect();
 
         assert_eq!(keys, ["doctor_setup", "init_guided", "sources_status"]);
+    }
+
+    #[test]
+    fn selected_next_action_is_safe_to_present_directly() -> StatusTestResult {
+        let placeholder = StatusNextAction::journal_add_from_repair("repair context is needed");
+        let safe = StatusNextAction::repair_plan("inspect repair context");
+
+        let selected =
+            select_next_action(&[placeholder, safe]).ok_or("safe action should exist")?;
+
+        assert_eq!(selected.key, "repair_plan");
+        assert!(!selected.command.contains('<'));
+        assert!(!selected.command.contains('>'));
+        assert!(
+            select_next_action(&[StatusNextAction::journal_add_from_repair(
+                "repair context is needed",
+            )])
+            .is_none()
+        );
+        Ok(())
     }
 
     #[test]

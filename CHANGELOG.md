@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No user-facing changes yet after 0.10.0.
+### Added
+
+- Added `shiplog sources status --json`, the source-scoped projection of the
+  setup-readiness model for agents and scripts. It emits a `needs_action` exit
+  signal, the `sources[]` rows, and deduplicated source `next_actions[]`, derived
+  from the same model as `doctor --setup --json` so the JSON and text views
+  cannot drift.
 
 ## [0.10.0] - 2026-07-10
 
@@ -42,7 +48,6 @@ hardening release**.
   listing, toggling, idempotency, formatting preservation, and failed writes.
 - The LLM endpoint guard has focused feature-gated tests, package Clippy proof,
   no-panic proof, and green routed CI.
-
 ## [0.9.0] - 2026-05-20
 
 shiplog 0.9.0 is the **review-loop cockpit release**.

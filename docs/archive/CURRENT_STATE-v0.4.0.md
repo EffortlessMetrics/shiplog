@@ -58,6 +58,8 @@ First-run and setup:
 - `shiplog config validate`
 - `shiplog config explain`
 - `shiplog config migrate`
+- `shiplog sources status`
+- `shiplog sources status --json`
 - `shiplog journal add`
 - `shiplog journal list`
 - `shiplog journal edit`

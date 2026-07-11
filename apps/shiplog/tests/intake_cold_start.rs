@@ -35,6 +35,7 @@ fn cold_start_cmd(tmp: &Path, out: &Path) -> Command {
     let mut cmd = Command::from_std(std::process::Command::new(env!("CARGO_BIN_EXE_shiplog")));
     cmd.current_dir(tmp)
         .env_remove("GITHUB_TOKEN")
+        .env("GH_CONFIG_DIR", tmp.join("gh-config"))
         .env_remove("GITLAB_TOKEN")
         .env_remove("JIRA_TOKEN")
         .env_remove("LINEAR_API_KEY")
@@ -253,6 +254,7 @@ fn cold_start_default_window_resolves_to_six_months_when_flag_omitted() {
     Command::from_std(std::process::Command::new(env!("CARGO_BIN_EXE_shiplog")))
         .current_dir(tmp.path())
         .env_remove("GITHUB_TOKEN")
+        .env("GH_CONFIG_DIR", tmp.path().join("gh-config"))
         .env_remove("GITLAB_TOKEN")
         .env_remove("JIRA_TOKEN")
         .env_remove("LINEAR_API_KEY")
@@ -476,6 +478,7 @@ enabled = false
     Command::from_std(std::process::Command::new(env!("CARGO_BIN_EXE_shiplog")))
         .current_dir(tmp.path())
         .env_remove("GITHUB_TOKEN")
+        .env("GH_CONFIG_DIR", tmp.path().join("gh-config"))
         .env_remove("GITLAB_TOKEN")
         .env_remove("JIRA_TOKEN")
         .env_remove("LINEAR_API_KEY")

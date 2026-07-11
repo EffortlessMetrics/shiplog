@@ -60,6 +60,9 @@
         }
       ]
     },
+    "auth": {
+      "$ref": "#/$defs/auth_metadata"
+    },
     "github_api": {
       "$ref": "#/$defs/github_api"
     },
@@ -115,6 +118,39 @@
         "provider_error",
         "malformed_receipt",
         "unknown"
+      ]
+    },
+    "auth_metadata": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/object_base"
+        },
+        {
+          "additionalProperties": false,
+          "required": [
+            "source",
+            "host",
+            "account"
+          ],
+          "properties": {
+            "source": {
+              "$ref": "#/$defs/display_string"
+            },
+            "host": {
+              "$ref": "#/$defs/display_string"
+            },
+            "account": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/display_string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     "github_api": {

@@ -1,6 +1,10 @@
 # SHIPLOG-PROP-0009: Seamless GitHub Credential Resolution (Env + gh CLI)
 
-Status: proposed
+Status: promoted to accepted spec and ADR
+Related spec:
+[`SHIPLOG-SPEC-0012-github-credential-resolution`](../specs/SHIPLOG-SPEC-0012-github-credential-resolution.md)
+Related architecture decision:
+[`SHIPLOG-ADR-0012-github-credentials-are-discovered-not-owned`](../adr/SHIPLOG-ADR-0012-github-credentials-are-discovered-not-owned.md)
 Owner: product/docs
 Created: 2026-05-20
 Target release: 0.9.x follow-up lane
