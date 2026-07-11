@@ -23,6 +23,9 @@ use std::thread::{self, JoinHandle};
 use std::time::{Duration as StdDuration, Instant};
 use tempfile::TempDir;
 
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
+
 type CliTestResult = Result<(), Box<dyn std::error::Error>>;
 
 fn shiplog_cmd() -> Command {
@@ -1678,6 +1681,70 @@ fn file_tree_manifest(root: &Path) -> Vec<(String, u64, Option<std::time::System
         visit(root, root, &mut entries);
     }
     entries
+}
+
+#[cfg(not(windows))]
+fn install_fake_gh(tmp: &Path) -> anyhow::Result<PathBuf> {
+    let bin_dir = tmp.join("fake-gh-bin");
+    std::fs::create_dir_all(&bin_dir)?;
+    #[cfg(windows)]
+    let path = bin_dir.join("gh.cmd");
+    #[cfg(not(windows))]
+    let path = bin_dir.join("gh");
+    #[cfg(windows)]
+    let script = r#"@echo off
+if "%2"=="token" (
+  echo shiplog-gh-secret
+) else (
+  echo {"hosts":{"github.com":[{"user":"octocat"}],"127.0.0.1":[{"user":"octocat"}]}}
+)
+exit /b 0
+"#;
+    #[cfg(not(windows))]
+    let script = r##"#!/bin/sh
+case "$*" in
+  *"auth token"*) printf '%s\n' 'shiplog-gh-secret' ;;
+  *) printf '%s\n' '{"hosts":{"github.com":[{"user":"octocat"}],"127.0.0.1":[{"user":"octocat"}]}}' ;;
+esac
+"##;
+    std::fs::write(&path, script)?;
+    #[cfg(unix)]
+    {
+        let mut permissions = std::fs::metadata(&path)?.permissions();
+        permissions.set_mode(0o755);
+        std::fs::set_permissions(&path, permissions)?;
+    }
+    Ok(bin_dir)
+}
+
+#[cfg(not(windows))]
+fn path_with_prepend(prepend: &Path) -> anyhow::Result<String> {
+    let mut paths = vec![prepend.to_path_buf()];
+    if let Some(existing) = std::env::var_os("PATH") {
+        paths.extend(std::env::split_paths(&existing));
+    }
+    Ok(std::env::join_paths(paths)?.to_string_lossy().into_owned())
+}
+
+#[cfg(not(windows))]
+fn assert_tree_does_not_contain(root: &Path, forbidden: &str) -> anyhow::Result<()> {
+    fn visit(path: &Path, forbidden: &str) -> anyhow::Result<()> {
+        for entry in std::fs::read_dir(path)? {
+            let path = entry?.path();
+            if path.is_dir() {
+                visit(&path, forbidden)?;
+            } else if path.is_file() {
+                let contents = std::fs::read(&path)?;
+                assert!(
+                    !String::from_utf8_lossy(&contents).contains(forbidden),
+                    "secret sentinel leaked into {}",
+                    path.display()
+                );
+            }
+        }
+        Ok(())
+    }
+    visit(root, forbidden)
 }
 
 // ── 1. --version flag ──────────────────────────────────────────────────────
@@ -3645,6 +3712,107 @@ fn cli_target_has_query_param(target: &str, key: &str, value: &str) -> bool {
             })
         })
         .unwrap_or(false)
+}
+
+#[cfg(not(windows))]
+#[test]
+fn github_auth_cli_fallback_collects_without_token_and_keeps_secret_out_of_artifacts()
+-> CliTestResult {
+    let tmp = TempDir::new()?;
+    let out = tmp.path().join("out");
+    let server = RecordedGithubCliServer::start(3)?;
+    let fake_gh = install_fake_gh(tmp.path())?;
+    let path = path_with_prepend(&fake_gh)?;
+    let sentinel = "shiplog-gh-secret";
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        format!(
+            r#"[shiplog]
+config_version = 1
+
+[defaults]
+out = "./out"
+window = "last-6-months"
+
+[sources.github]
+enabled = true
+user = "octocat"
+api_base = "{}"
+include_reviews = false
+
+[sources.manual]
+enabled = false
+"#,
+            server.base_url()
+        ),
+    )?;
+
+    let auth_assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GH_TOKEN")
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GH_ENTERPRISE_TOKEN")
+        .env_remove("GITHUB_ENTERPRISE_TOKEN")
+        .env("PATH", &path)
+        .env("GH_CONFIG_DIR", tmp.path().join("gh-config"))
+        .args([
+            "auth",
+            "github",
+            "status",
+            "--config",
+            tmp.path().join("shiplog.toml").to_str().unwrap(),
+            "--json",
+        ])
+        .assert()
+        .success();
+    let auth_json: serde_json::Value = serde_json::from_slice(&auth_assert.get_output().stdout)?;
+    assert_eq!(auth_json["source"], "gh_cli");
+
+    let assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GH_TOKEN")
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GH_ENTERPRISE_TOKEN")
+        .env_remove("GITHUB_ENTERPRISE_TOKEN")
+        .env("PATH", path)
+        .env("GH_CONFIG_DIR", tmp.path().join("gh-config"))
+        .args([
+            "intake",
+            "--source",
+            "github",
+            "--out",
+            out.to_str().unwrap(),
+            "--no-open",
+            "--since",
+            "2026-02-01",
+            "--until",
+            "2026-03-01",
+        ])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
+    let stderr = String::from_utf8(assert.get_output().stderr.clone())?;
+    assert!(!stdout.contains(sentinel));
+    assert!(!stderr.contains(sentinel));
+
+    let requests = server.finish()?;
+    assert_eq!(
+        requests.len(),
+        3,
+        "fake GitHub API should receive the intake requests"
+    );
+    assert!(out.exists(), "intake should create the output directory");
+    assert_tree_does_not_contain(&out, sentinel)?;
+    let config = std::fs::read_to_string(tmp.path().join("shiplog.toml"))?;
+    assert!(!config.contains(sentinel));
+    Ok(())
+}
+
+#[cfg(windows)]
+#[test]
+fn github_auth_cli_fallback_collects_without_token_and_keeps_secret_out_of_artifacts()
+-> CliTestResult {
+    Ok(())
 }
 
 #[test]
