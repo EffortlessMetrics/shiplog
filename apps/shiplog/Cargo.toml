@@ -13,6 +13,12 @@ homepage.workspace = true
 keywords = ["cli", "github", "self-review", "workstreams", "redaction"]
 categories = ["command-line-utilities", "development-tools"]
 
+[package.metadata.binstall]
+pkg-url = "{ repo }/releases/download/v{ version }/{ name }-{ target }{ archive-suffix }"
+bin-dir = "{ bin }-{ target }{ binary-ext }"
+pkg-fmt = "bin"
+disabled-strategies = ["quick-install", "compile"]
+
 [features]
 default = []
 llm = []

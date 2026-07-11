@@ -299,6 +299,17 @@ jobs:
           ./target/release/shiplog runs --help
           ./target/release/shiplog open --help
 
+      - name: Check versionless installers
+        shell: bash
+        run: |
+          bash -n scripts/install.sh
+          scripts/install.sh --help
+          cargo metadata --no-deps --format-version 1 >/dev/null
+          if command -v pwsh >/dev/null 2>&1; then
+            pwsh -NoProfile -Command '$null = [scriptblock]::Create((Get-Content scripts/install.ps1 -Raw))'
+            pwsh -NoProfile -File scripts/install.ps1 --help
+          fi
+
       - name: Generate validation summary
         run: |
           echo "# Release Validation Results" >> $GITHUB_STEP_SUMMARY
