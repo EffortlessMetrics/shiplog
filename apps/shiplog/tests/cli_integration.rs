@@ -26,7 +26,9 @@ use tempfile::TempDir;
 type CliTestResult = Result<(), Box<dyn std::error::Error>>;
 
 fn shiplog_cmd() -> Command {
-    Command::from_std(std::process::Command::new(env!("CARGO_BIN_EXE_shiplog")))
+    let mut command = Command::from_std(std::process::Command::new(env!("CARGO_BIN_EXE_shiplog")));
+    command.env("GH_CONFIG_DIR", ".shiplog-test-gh-config");
+    command
 }
 
 fn fixture_dir() -> PathBuf {
@@ -2617,9 +2619,11 @@ fn init_guided_creates_local_first_setup_without_token_providers() -> CliTestRes
     let config = std::fs::read_to_string(tmp.path().join("shiplog.toml"))?;
     assert!(config.contains("[sources.git]\nenabled = true"));
     assert!(config.contains("[sources.manual]\nenabled = true"));
-    assert!(config.contains("[sources.github]\n# Set GITHUB_TOKEN"));
     assert!(config.contains(
-        "[sources.github]\n# Set GITHUB_TOKEN. Use either user or me = true.\nenabled = false"
+        "[sources.github]\n# GitHub auth uses environment credentials or an authenticated gh CLI session."
+    ));
+    assert!(config.contains(
+        "[sources.github]\n# GitHub auth uses environment credentials or an authenticated gh CLI session.\n# Use either user or me = true.\nenabled = false"
     ));
     assert!(config.contains(
         "[sources.gitlab]\n# Set GITLAB_TOKEN. Use either user or me = true.\nenabled = false"
@@ -4780,7 +4784,7 @@ user = "octo"
                 source["source_key"] == "github"
                     && source["reason"]
                         .as_str()
-                        .is_some_and(|reason| reason.contains("GITHUB_TOKEN"))
+                        .is_some_and(|reason| reason.contains("GitHub authentication"))
             })),
         "status source summary should carry the GitHub blocker from receipts"
     );
@@ -5198,7 +5202,7 @@ fn init_force_overwrites_existing_files() {
         "[sources.linear]\n# Set LINEAR_API_KEY and user_id before enabling.\nenabled = true"
     ));
     assert!(config.contains(
-        "[sources.github]\n# Set GITHUB_TOKEN. Use either user or me = true.\nenabled = false"
+        "[sources.github]\n# GitHub auth uses environment credentials or an authenticated gh CLI session.\n# Use either user or me = true.\nenabled = false"
     ));
     assert!(config.contains("[sources.manual]\nenabled = false"));
 }
@@ -10320,7 +10324,7 @@ fn intake_summary_and_report_skipped_sources_mirror_skipped_decisions() {
         .success();
     let stdout = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
 
-    assert!(stdout.contains("Skipped:\n- GitHub: GITHUB_TOKEN not found"));
+    assert!(stdout.contains("Skipped:\n- GitHub: GitHub authentication unavailable"));
     assert!(
         !stdout.contains("Skipped:\n- None\n\nSource decisions:\n- GitHub: skipped"),
         "summary should not say no sources were skipped while source decisions list skipped sources"
@@ -10359,7 +10363,7 @@ fn intake_summary_and_report_skipped_sources_mirror_skipped_decisions() {
         );
     }
     assert!(
-        packet.contains("Skipped:\n- GitHub: GITHUB_TOKEN not found"),
+        packet.contains("Skipped:\n- GitHub: GitHub authentication unavailable"),
         "packet coverage summary should mirror skipped source decisions. packet:\n{packet}"
     );
     assert!(
@@ -10772,10 +10776,12 @@ fn intake_explain_reports_source_decisions_for_rescue_config() {
         .success()
         .stdout(predicate::str::contains("Source decisions:"))
         .stdout(predicate::str::contains(
-            "- GitHub: skipped, GITHUB_TOKEN not found",
+            "- GitHub: skipped, GitHub authentication unavailable",
         ))
         .stdout(predicate::str::contains("Fix:"))
-        .stdout(predicate::str::contains("export GITHUB_TOKEN=..."))
+        .stdout(predicate::str::contains(
+            "Set sources.github.user explicitly",
+        ))
         .stdout(predicate::str::contains(
             "- Local git: skipped, current directory is not a git repo",
         ))
@@ -13904,7 +13910,7 @@ user = "octo"
         "missing provider token should route through setup status before repair plan. stdout:\n{stdout}"
     );
     assert!(
-        stdout.contains("GitHub: missing GITHUB_TOKEN"),
+        stdout.contains("GitHub: GitHub authentication unavailable"),
         "intake should still explain the concrete provider setup gap. stdout:\n{stdout}"
     );
 
@@ -16521,7 +16527,7 @@ fn share_explain_manager_surfaces_open_source_repairs_without_writing() -> CliTe
 
     assert!(
         stdout.contains("Open source repair:")
-            && stdout.contains("GitHub needs repair: GITHUB_TOKEN not found"),
+            && stdout.contains("GitHub needs repair: GitHub authentication unavailable"),
         "share explain should name source repairs that remain open after journal-only repair. stdout:\n{stdout}"
     );
     assert!(

@@ -6161,7 +6161,7 @@ fn selected_intake_sources(requested_sources: &[InitSource]) -> Vec<InitSource> 
     }
 
     let mut selected = Vec::new();
-    if env_var_present("GITHUB_TOKEN") {
+    if github_auth_is_available(None) {
         selected.push(InitSource::Github);
     }
     if env_var_present("GITLAB_TOKEN") {
@@ -6201,7 +6201,7 @@ fn intake_autodetect_explanations(
             &mut explanations,
             "github",
             IntakeSourceDecision::Skipped,
-            "GITHUB_TOKEN not found",
+            github_auth_unavailable_reason(None),
         );
     }
     if !init_source_enabled(selected, InitSource::Gitlab) {
@@ -6260,39 +6260,52 @@ fn prepare_intake_sources(
         if !intake_source_in_scope(explicit_sources, InitSource::Github) {
             source.enabled = false;
         } else if source.enabled {
+            let api_base = optional_config_string(source.api_base.as_deref())
+                .unwrap_or_else(|| "https://api.github.com".to_string());
+            let credential = match resolve_github_credential(&api_base) {
+                Ok(credential) => Some(credential),
+                Err(err) => {
+                    source.enabled = false;
+                    push_intake_skip(&mut plan, "github", err.to_string());
+                    None
+                }
+            };
             if optional_config_string(source.user.as_deref()).is_some() && source.me {
                 source.enabled = false;
                 push_intake_skip(&mut plan, "github", "configured both user and me");
-            } else if !env_var_present("GITHUB_TOKEN") {
-                source.enabled = false;
-                push_intake_skip(&mut plan, "github", "missing GITHUB_TOKEN");
-            } else if source.me {
-                let api_base = optional_config_string(source.api_base.as_deref())
-                    .unwrap_or_else(|| "https://api.github.com".to_string());
-                match discover_github_user(&api_base, None) {
-                    Ok(user) => {
-                        push_intake_include(
-                            &mut plan,
-                            "github",
-                            format!("GITHUB_TOKEN found; --me resolved as {user}"),
-                        );
-                        source.user = Some(user);
-                        source.me = false;
+            } else if let Some(credential) = credential {
+                if source.me {
+                    match discover_github_user(&api_base, Some(credential.secret())) {
+                        Ok(user) => {
+                            push_intake_include(
+                                &mut plan,
+                                "github",
+                                format!(
+                                    "GitHub authentication ready via {}; --me resolved as {user}",
+                                    credential.metadata().source.label()
+                                ),
+                            );
+                            source.user = Some(user);
+                            source.me = false;
+                        }
+                        Err(err) => {
+                            source.enabled = false;
+                            push_intake_skip(&mut plan, "github", err.to_string());
+                        }
                     }
-                    Err(err) => {
-                        source.enabled = false;
-                        push_intake_skip(&mut plan, "github", err.to_string());
-                    }
+                } else if optional_config_string(source.user.as_deref()).is_none() {
+                    source.enabled = false;
+                    push_intake_skip(&mut plan, "github", "set sources.github.user or me = true");
+                } else if let Some(user) = optional_config_string(source.user.as_deref()) {
+                    push_intake_include(
+                        &mut plan,
+                        "github",
+                        format!(
+                            "GitHub authentication ready via {}; user configured as {user}",
+                            credential.metadata().source.label()
+                        ),
+                    );
                 }
-            } else if optional_config_string(source.user.as_deref()).is_none() && !source.me {
-                source.enabled = false;
-                push_intake_skip(&mut plan, "github", "set sources.github.user or me = true");
-            } else if let Some(user) = optional_config_string(source.user.as_deref()) {
-                push_intake_include(
-                    &mut plan,
-                    "github",
-                    format!("GITHUB_TOKEN found; user configured as {user}"),
-                );
             }
         }
     }
@@ -6885,9 +6898,10 @@ fn render_init_config_with_git_repo(selected: &[InitSource], git_repo: &str) -> 
     format!(
         r#"# shiplog local configuration.
 # Tokens stay in environment variables:
-# GITHUB_TOKEN, GITLAB_TOKEN, JIRA_TOKEN, LINEAR_API_KEY, SHIPLOG_REDACT_KEY.
-# Enable token-backed sources only after the matching env var and identity
-# fields below are configured.
+# GH_TOKEN, GITHUB_TOKEN, GH_ENTERPRISE_TOKEN, GITHUB_ENTERPRISE_TOKEN,
+# GITLAB_TOKEN, JIRA_TOKEN, LINEAR_API_KEY, SHIPLOG_REDACT_KEY.
+# GitHub can also reuse an authenticated gh CLI session. Credential values
+# are never written here.
 
 [shiplog]
 config_version = 1
@@ -6905,7 +6919,8 @@ preset = "last-6-months"
 label = "Your Name"
 
 [sources.github]
-# Set GITHUB_TOKEN. Use either user or me = true.
+# GitHub auth uses environment credentials or an authenticated gh CLI session.
+# Use either user or me = true.
 enabled = {github}
 user = ""
 me = {github}
@@ -12078,6 +12093,34 @@ fn resolve_github_credential(api_base: &str) -> Result<github_auth::GithubCreden
                 .map(github_auth::GithubAuthReason::label)
                 .unwrap_or("unknown");
             anyhow::bail!(
+                "GitHub authentication unavailable via {} for {}: {}",
+                metadata.source.label(),
+                metadata.host,
+                reason
+            )
+        }
+    }
+}
+
+fn github_auth_is_available(api_base: Option<&str>) -> bool {
+    matches!(
+        github_auth::resolve(api_base),
+        github_auth::GithubAuthResolution::Available(_)
+    )
+}
+
+fn github_auth_unavailable_reason(api_base: Option<&str>) -> String {
+    match github_auth::resolve(api_base) {
+        github_auth::GithubAuthResolution::Available(credential) => format!(
+            "GitHub authentication available via {}",
+            credential.metadata().source.label()
+        ),
+        github_auth::GithubAuthResolution::Unavailable(metadata) => {
+            let reason = metadata
+                .reason
+                .map(github_auth::GithubAuthReason::label)
+                .unwrap_or("unknown");
+            format!(
                 "GitHub authentication unavailable via {} for {}: {}",
                 metadata.source.label(),
                 metadata.host,
