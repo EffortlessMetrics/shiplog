@@ -52,7 +52,9 @@ After setup is known, `status --latest` is the review-loop preflight. It reads
 durable setup and run receipts, not `packet.md`, to summarize latest-run,
 packet-readiness, repair, diff, share, and next-action state without writing.
 Use `status --latest --json` when an agent or script needs the same cockpit
-state without terminal-prose scraping.
+state without terminal-prose scraping. Add `status --check` for a cron/CI gate:
+it prints the usual text (or `--json`) output and exits `0` when the loop is
+ready or `1` when it needs action, reading receipts only.
 
 Machine-readable control-plane contracts:
 
