@@ -2926,6 +2926,84 @@ fn status_latest_missing_setup_prints_init_guidance_without_writing() -> CliTest
 }
 
 #[test]
+fn status_check_exits_nonzero_when_review_loop_needs_action() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let before = file_tree_manifest(tmp.path());
+
+    // Text output still prints, and the process exits 1 for a needs-action loop.
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args(["status", "--check"])
+        .assert()
+        .failure()
+        .code(1)
+        .stdout(predicate::str::contains("Review loop status: Needs setup"));
+
+    // --check composes with --json: JSON is still emitted and the exit is 1.
+    let assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args(["status", "--check", "--json"])
+        .assert()
+        .failure()
+        .code(1);
+    let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
+    let json: serde_json::Value = serde_json::from_str(&stdout)?;
+    assert_eq!(json["overall_status"], "needs_setup");
+
+    assert_eq!(
+        before,
+        file_tree_manifest(tmp.path()),
+        "status --check should not write setup or run artifacts"
+    );
+    Ok(())
+}
+
+#[test]
+fn status_check_exits_zero_when_review_loop_ready() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let out = tmp.path().join("out");
+    let run = out.join("run_ready_caveats");
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["init", "--guided"])
+        .assert()
+        .success();
+    std::fs::create_dir_all(&run)?;
+    std::fs::write(
+        run.join("intake.report.json"),
+        serde_json::to_string_pretty(&serde_json::json!({
+            "run_id": "run_ready_caveats",
+            "included_sources": [
+                {
+                    "source_key": "manual",
+                    "source_label": "Manual journal",
+                    "event_count": 1
+                }
+            ],
+            "skipped_sources": [],
+            "repair_items": [],
+            "packet_quality": {
+                "packet_readiness": {
+                    "status": "ready_with_caveats",
+                    "summary": "manual-only packet is ready with caveats"
+                }
+            }
+        }))?,
+    )?;
+
+    let out_arg = out.to_string_lossy().to_string();
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env("SHIPLOG_REDACT_KEY", "stable-redact-key")
+        .args(["status", "--out", out_arg.as_str(), "--latest", "--check"])
+        .assert()
+        .success();
+    Ok(())
+}
+
+#[test]
 fn status_latest_ready_setup_without_run_routes_to_intake() -> CliTestResult {
     let tmp = TempDir::new()?;
     let out = tmp.path().join("custom-out");

@@ -1048,6 +1048,10 @@ struct StatusArgs {
     /// Print review-loop status as JSON for agent/control-plane consumers.
     #[arg(long)]
     json: bool,
+    /// Exit 0 when the review loop is ready, 1 when it needs action. For cron/CI
+    /// gating; composes with --json. Reads receipts only, never provider state.
+    #[arg(long)]
+    check: bool,
 }
 
 #[derive(Args, Debug)]
@@ -8230,6 +8234,14 @@ fn run_status(args: StatusArgs) -> Result<()> {
         println!();
     } else {
         print_review_loop_status(&status, &resolution);
+    }
+
+    if args.check {
+        // Automation gate: exit 0 when the loop is ready, 1 when it needs
+        // action, after emitting the normal (text or JSON) status output.
+        std::io::Write::flush(&mut std::io::stdout()).ok();
+        let code = i32::from(!status.overall_status.check_is_ready());
+        std::process::exit(code);
     }
     Ok(())
 }

@@ -569,6 +569,19 @@ pub(crate) enum ReviewLoopOverallStatus {
     Blocked,
 }
 
+impl ReviewLoopOverallStatus {
+    /// Whether the review loop needs no further action for a `status --check`
+    /// automation gate. Ready-to-share and the ready-with-caveats/explain-share
+    /// terminal states pass; every actionable, blocked, or unknown state does
+    /// not. Used to derive a cron/CI-friendly exit code (0 = ready).
+    pub(crate) fn check_is_ready(self) -> bool {
+        matches!(
+            self,
+            Self::ReadyWithCaveats | Self::ReadyToExplainShare | Self::ReadyToShare
+        )
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub(crate) struct SetupStatusSummary {
     pub(crate) status: SetupSummaryStatus,
@@ -1180,6 +1193,29 @@ mod tests {
     use tempfile::TempDir;
 
     type StatusTestResult = Result<(), Box<dyn std::error::Error>>;
+
+    #[test]
+    fn check_is_ready_passes_only_for_terminal_ready_states() {
+        use ReviewLoopOverallStatus::*;
+        for status in [ReadyWithCaveats, ReadyToExplainShare, ReadyToShare] {
+            assert!(status.check_is_ready(), "{status:?} should be check-ready");
+        }
+        for status in [
+            Unknown,
+            NeedsSetup,
+            ReadyToCollect,
+            NeedsEvidence,
+            NeedsRepair,
+            RepairInProgress,
+            ShareBlocked,
+            Blocked,
+        ] {
+            assert!(
+                !status.check_is_ready(),
+                "{status:?} should not be check-ready"
+            );
+        }
+    }
 
     #[test]
     fn no_config_status_can_represent_setup_writer() {

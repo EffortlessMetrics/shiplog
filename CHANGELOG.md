@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   one command) and `scripts/install-hooks.sh` (installs an opt-in git
   pre-commit hook running fmt + clippy) to catch quality-gate failures
   before pushing.
+- Added `shiplog status --check`, a cron/CI-friendly gate that exits `0` when the
+  review loop is ready (ready-to-share, ready-to-explain-share, or
+  ready-with-caveats) and `1` when it needs action. It emits the normal text or
+  `--json` status output first and reads receipts only, never provider state.
 
 ## [0.10.0] - 2026-07-10
 

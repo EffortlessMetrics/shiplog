@@ -170,7 +170,12 @@ Use status as the cockpit for recurring review work:
 ```bash
 shiplog status --latest
 shiplog status --latest --json
+shiplog status --check
 ```
+
+`status --check` is a cron/CI gate: it prints the usual status (add `--json`
+for the model) and exits `0` when the loop is ready or `1` when it needs
+action, so a scheduled job can alert only when there is work to do.
 
 Human output answers:
 
