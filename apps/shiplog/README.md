@@ -44,21 +44,24 @@ JSON, and manual evidence can run without provider tokens.
 
 ## First useful loop
 
-Start with setup and status:
+Start from the directory that contains the work you want to capture:
 
 ```bash
-shiplog init --guided
-shiplog doctor --setup
-shiplog sources status
-shiplog doctor --setup --json
-shiplog status --latest
+shiplog intake
+shiplog open packet --latest
 ```
 
-Collect the first packet:
+`intake` creates safe local setup, collects available evidence using the default
+window, and produces the packet. Provider credentials are optional; missing or
+unavailable sources are recorded as caveats instead of blocking local/manual
+use.
+
+Setup and status commands are troubleshooting and automation surfaces:
 
 ```bash
-shiplog intake --last-6-months --explain
-shiplog status --latest
+shiplog doctor --setup --for intake
+shiplog sources status
+shiplog status --latest --json
 ```
 
 Repair and compare when status says the packet needs evidence:

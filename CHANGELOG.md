@@ -15,6 +15,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   from the same model as `doctor --setup --json` so the JSON and text views
   cannot drift.
 
+## [0.10.0] - 2026-07-11
+
+shiplog 0.10.0 is the **usable review front door release**.
+
+It keeps the receipt-backed review loop while making first use and recurring
+maintenance much shorter: collect a first packet, reuse existing GitHub CLI
+authentication, inspect the safest next action, record human context quickly,
+and refresh the packet with one command.
+
+### Added
+
+- Added objective-scoped setup readiness for intake, manager sharing, public
+  sharing, and the full setup surface.
+- Added GitHub credential discovery with environment-variable precedence and
+  authenticated `gh` CLI fallback without persisting secrets.
+- Added `shiplog auth github status`, `shiplog next`, no-argument status, and
+  the recurring `shiplog update` workflow.
+- Added positional `shiplog add` for quick factual evidence capture.
+- Added versionless checksum-verifying installers and cargo-binstall metadata
+  for prebuilt release assets.
+
+### Changed
+
+- Made `shiplog intake` the documented one-command first-use path and made the
+  packet the primary human artifact.
+- Organized the short help surface around starting, updating, capturing,
+  opening, and sharing while retaining advanced commands.
+
 ## [0.9.0] - 2026-05-20
 
 shiplog 0.9.0 is the **review-loop cockpit release**.
@@ -704,7 +732,8 @@ rollout map and the 18-PR ladder (#140–#157).
 - Basic workspace configuration with Cargo
 - MIT/Apache-2.0 dual licensing
 
-[Unreleased]: https://github.com/EffortlessMetrics/shiplog/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/EffortlessMetrics/shiplog/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/EffortlessMetrics/shiplog/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/EffortlessMetrics/shiplog/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/EffortlessMetrics/shiplog/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/EffortlessMetrics/shiplog/compare/v0.6.0...v0.7.0

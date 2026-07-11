@@ -24,6 +24,8 @@ examples/setup-readiness/manager-share-blocked.json
 The JSON is the agent-readable form of the same setup model used by the human
 `shiplog doctor --setup` output. It is setup readiness, not evidence freshness,
 packet readiness, repair clearance, or share posture.
+The broader review-loop cockpit is available through `shiplog status --latest --json`,
+which consumes setup readiness alongside packet and receipt state.
 
 ## Compatibility
 

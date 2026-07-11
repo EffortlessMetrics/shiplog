@@ -40,21 +40,20 @@ setup -> status -> intake -> repair -> rerun -> diff -> share explain
 It is for individual contributors, tech leads, and anyone who wants a
 repeatable evidence trail for self-reviews, promo packets, or brag documents.
 
-## What works in 0.9
+## Current product
+
+Shiplog 0.10.0 is the current shipped release. The normal first-use path is
+one command from a work directory, with local Git and manual evidence available
+even when no provider credentials are configured.
 
 | Surface | Status | Command |
 |---------|--------|---------|
-| Setup preflight | Ready | `shiplog doctor --setup` |
-| Agent setup state | Ready | `shiplog doctor --setup --json` |
+| First packet | Ready | `shiplog intake` |
 | Review cockpit | Ready | `shiplog status --latest` |
-| Agent review state | Ready | `shiplog status --latest --json` |
-| Evidence collection | Ready | `shiplog intake --last-6-months --explain` |
-| Repair queue | Ready | `shiplog repair plan --latest` |
-| Local repair | Ready | `shiplog journal add --from-repair <repair_id>` |
-| Repair movement | Ready | `shiplog repair diff --latest` |
-| Packet movement | Ready | `shiplog runs diff --latest` |
+| Safe next action | Ready | `shiplog next` |
+| Human context | Ready | `shiplog add "..."` |
+| Recurring refresh | Ready | `shiplog update` |
 | Share posture | Ready | `shiplog share explain manager --latest` |
-| Advanced GitHub harvest | Ready | `shiplog github activity plan` |
 
 ## Install
 
@@ -85,30 +84,25 @@ Prerequisites:
   `GITHUB_TOKEN`, `GITLAB_TOKEN`, `JIRA_TOKEN`, or `LINEAR_API_KEY`
 - `SHIPLOG_REDACT_KEY` only when rendering manager/public share packets
 
-## First setup
+## First use
 
-Start here when the directory is empty, messy, or newly configured:
+From an empty or existing work directory:
 
 ```bash
-shiplog init --guided
-shiplog doctor --setup
-shiplog sources status
-shiplog doctor --setup --json
-shiplog status --latest
+shiplog intake
+shiplog open packet --latest
 ```
 
-`init --guided` writes local setup files. `doctor --setup`, `sources status`,
-`doctor --setup --json`, and `status --latest` are read-only. They do not query
-providers, render share packets, or mutate provider records.
+`intake` creates safe local setup, uses the default six-month window, collects
+available evidence, and produces the packet. Provider credentials are optional.
+If a source needs attention, the packet explains the gap and the next action.
 
-## First packet
-
-Collect usable evidence and then inspect the cockpit again:
+Setup and diagnostics are troubleshooting tools, not prerequisites:
 
 ```bash
-shiplog intake --last-6-months --explain
-shiplog status --latest
-shiplog open packet --latest
+shiplog doctor --setup --for intake
+shiplog sources status
+shiplog status --latest --json
 ```
 
 `intake` writes run artifacts under `out/<run_id>/`, including
@@ -170,7 +164,7 @@ deterministic ordering, no secret values, and no Markdown scraping.
 | Evidence repair | [docs/guides/evidence-repair-loop.md](docs/guides/evidence-repair-loop.md) |
 | Packet interpretation and share posture | [docs/guides/review-ready-packet.md](docs/guides/review-ready-packet.md) |
 | Full configuration reference | [docs/config-reference.md](docs/config-reference.md) |
-| 0.9 release readiness | [docs/release/0.9.0-readiness.md](docs/release/0.9.0-readiness.md) |
+| Current release posture | [docs/install.md](docs/install.md) |
 | Changelog | [CHANGELOG.md](CHANGELOG.md) |
 
 Machine-readable contracts:

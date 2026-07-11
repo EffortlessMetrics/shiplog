@@ -4,6 +4,8 @@ Use a prebuilt binary when you want shiplog without installing Rust. The
 versionless installers select the latest GitHub release, verify its SHA-256
 checksum, and install to a user-local directory.
 
+Current shipped release: `v0.10.0`.
+
 ## Prebuilt binary
 
 ### Linux and macOS

@@ -63,41 +63,38 @@ scaffolds a starter `manual_events.yaml` and treats your own typed
 notes as the one working source — see
 [Add manual evidence](#add-manual-evidence) below.
 
-Recommended preflight:
+No setup command is required before the first packet. From the directory whose
+history you want to capture:
 
 ```bash
-shiplog init --guided
-shiplog doctor --setup
-shiplog sources status
-shiplog doctor --setup --json
-shiplog status --latest
-```
-
-`init --guided` writes the local setup files. `doctor --setup` and
-`sources status` are read-only checks that explain which sources are
-ready, disabled, unavailable, or blocked before intake spends a run.
-`doctor --setup --json` exposes the same setup state for agents and
-scripts. `status --latest` is the review-loop cockpit. Before the first intake,
-it should route you to collection only when setup is safe enough to proceed.
-
-## One-command cold-start
-
-From an empty directory:
-
-```bash
-shiplog intake --last-6-months --explain
-shiplog status --latest
-shiplog open intake-report --latest
+shiplog intake
 shiplog open packet --latest
 ```
 
-That is the whole happy path. `intake` does the work, then `open`
-launches the durable report and the rendered pack in your platform's
-default markdown viewer. `--explain` prints per-source decisions and
-repair hints to the terminal so you can see what happened without
-reading the report first.
-`status --latest` then joins the run receipts into one read-only handoff:
-repair plan, rerun, diff, or share explanation depending on the packet state.
+`intake` scaffolds safe local files, uses the default six-month window, and
+produces the packet. `doctor --setup`, `sources status`, and
+`status --latest --json` remain available when you need diagnostics or machine
+readiness details. On an established workspace, `status` is the read-only
+review-loop cockpit for the latest packet.
+
+For automation, the setup model is also available as JSON:
+
+```bash
+shiplog doctor --setup --json
+```
+
+## One-command cold-start
+
+From an empty directory, the same two-command path applies:
+
+```bash
+shiplog intake
+shiplog open packet --latest
+```
+
+That is the whole happy path. `intake` does the work, then `open` launches the
+packet in your platform's default markdown viewer. Use `--explain` when you
+want per-source decisions and repair hints in the terminal.
 
 If you skipped the setup preflight, `intake` still creates starter setup
 files when needed. Prefer `doctor --setup` first when you want to avoid
