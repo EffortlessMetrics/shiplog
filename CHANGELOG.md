@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   signal, the `sources[]` rows, and deduplicated source `next_actions[]`, derived
   from the same model as `doctor --setup --json` so the JSON and text views
   cannot drift.
+- Added `scripts/dev-check.sh` (runs the CI fmt/clippy/test gate locally in
+  one command) and `scripts/install-hooks.sh` (installs an opt-in git
+  pre-commit hook running fmt + clippy) to catch quality-gate failures
+  before pushing.
 
 ## [0.10.0] - 2026-07-10
 
