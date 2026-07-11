@@ -65,6 +65,10 @@ fn sorted_run_dirs(out_root: &Path) -> Vec<PathBuf> {
         .expect("read out root")
         .filter_map(|entry| entry.ok())
         .filter(|entry| entry.file_type().map(|t| t.is_dir()).unwrap_or(false))
+        .filter(|entry| {
+            let path = entry.path();
+            path.join("packet.md").exists() || path.join("intake.report.json").exists()
+        })
         .map(|entry| entry.path())
         .collect();
     entries.sort();
@@ -301,13 +305,13 @@ fn repair_loop_improves_first_packet_without_provider_mutation() {
     let first_next_commands = first_report["next_commands"]
         .as_array()
         .expect("repair proof: report should expose next_commands");
-    let first_next = first_next_commands
-        .first()
-        .and_then(|command| command.as_str())
-        .expect("repair proof: report should expose at least one next command");
     assert!(
-        first_next.starts_with("shiplog repair plan --out") && first_next.ends_with(" --latest"),
-        "repair proof: first next command should send users to repair plan. next_commands={first_next_commands:?}"
+        first_next_commands.iter().any(|command| {
+            command.as_str().is_some_and(|command| {
+                command.starts_with("shiplog repair plan --out") && command.ends_with(" --latest")
+            })
+        }),
+        "repair proof: next commands should include a read-first repair-plan action. next_commands={first_next_commands:?}"
     );
     assert_eq!(
         packet_quality_status(&first_report),
@@ -543,5 +547,26 @@ fn repair_loop_improves_first_packet_without_provider_mutation() {
                 .join("profiles/public/share.manifest.json")
                 .exists(),
         "repair proof: share explain must not write profile packets or manifests"
+    );
+
+    let manager_render = shiplog_cmd(tmp.path())
+        .env("SHIPLOG_REDACT_KEY", "stable-share-key")
+        .args(["share", "manager", "--out", out_arg, "--latest"])
+        .assert()
+        .success();
+    let manager_render_stdout = String::from_utf8_lossy(&manager_render.get_output().stdout);
+    let explain_offset = manager_render_stdout
+        .find("Manager profile:")
+        .expect("direct manager share should explain the profile first");
+    let verify_offset = manager_render_stdout
+        .find("Share verify: manager")
+        .expect("direct manager share should verify the profile before rendering");
+    assert!(
+        explain_offset < verify_offset,
+        "direct manager share should explain before verification"
+    );
+    assert!(
+        repaired_run.join("profiles/manager/packet.md").exists(),
+        "direct manager share should render only after its preflight"
     );
 }

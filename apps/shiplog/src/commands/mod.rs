@@ -13,6 +13,28 @@ use clap::Parser;
 
 use crate::*;
 
+fn run_share_preflight(options: &ShareOptions, bundle_profile: BundleProfile) -> Result<()> {
+    explain_share_profile(
+        ShareExplainOptions {
+            out: options.out.clone(),
+            run: options.run.clone(),
+            latest: options.latest,
+            redact_key: options.redact_key.clone(),
+        },
+        bundle_profile.clone(),
+    )?;
+    verify_share_profile(
+        ShareVerifyOptions {
+            out: options.out.clone(),
+            run: options.run.clone(),
+            latest: options.latest,
+            redact_key: options.redact_key.clone(),
+            strict: matches!(&bundle_profile, BundleProfile::Public),
+        },
+        bundle_profile,
+    )
+}
+
 pub(super) fn dispatch() -> Result<()> {
     let cli = Cli::parse();
     let command = match cli.cmd {
@@ -192,6 +214,7 @@ pub(super) fn dispatch() -> Result<()> {
         Command::Share { cmd } => match cmd {
             ShareCommand::Manager(options) => {
                 let bundle_profile = BundleProfile::Manager;
+                run_share_preflight(&options, bundle_profile.clone())?;
                 let redaction_key =
                     RedactionKey::resolve_for_share(options.redact_key, &bundle_profile)?;
                 let outputs = render_existing_run(RenderExistingArgs {
@@ -213,6 +236,7 @@ pub(super) fn dispatch() -> Result<()> {
             }
             ShareCommand::Public(options) => {
                 let bundle_profile = BundleProfile::Public;
+                run_share_preflight(&options, bundle_profile.clone())?;
                 let redaction_key =
                     RedactionKey::resolve_for_share(options.redact_key, &bundle_profile)?;
                 let outputs = render_existing_run(RenderExistingArgs {
