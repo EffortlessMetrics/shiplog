@@ -437,6 +437,9 @@ enum Command {
     /// Show the safest useful next action without executing it.
     Next(NextArgs),
 
+    /// Refresh evidence, rebuild the packet, and compare against the prior run.
+    Update(UpdateArgs),
+
     /// Plan and inspect GitHub activity harvests without provider mutation.
     Github {
         #[command(subcommand)]
@@ -1000,6 +1003,25 @@ struct NextArgs {
     /// Print the selected action and receipt references as JSON.
     #[arg(long)]
     json: bool,
+}
+
+#[derive(Args, Debug)]
+struct UpdateArgs {
+    /// Path to shiplog.toml. Created with rescue-mode defaults if missing.
+    #[arg(long, default_value = CONFIG_FILENAME)]
+    config: PathBuf,
+    /// Output directory (a run folder will be created inside).
+    #[arg(long)]
+    out: Option<PathBuf>,
+    /// Use a named `periods.<name>` window from shiplog.toml.
+    #[arg(long)]
+    period: Option<String>,
+    /// Explain why update used or skipped each source.
+    #[arg(long)]
+    explain: bool,
+    /// Do not launch the packet after update; print paths only.
+    #[arg(long)]
+    no_open: bool,
 }
 
 #[derive(serde::Serialize)]
@@ -3118,6 +3140,45 @@ fn run_intake(args: IntakeArgs) -> Result<()> {
         open_or_print_path(&result.outputs.packet_md, false)?;
     }
 
+    Ok(())
+}
+
+fn run_update(args: UpdateArgs) -> Result<()> {
+    ensure_intake_config(&args.config, &[])?;
+    let config_model = load_shiplog_config(&args.config)?;
+    ensure_supported_config_version(&config_model)?;
+    let base_dir = config_base_dir(&args.config);
+    let out = args
+        .out
+        .clone()
+        .unwrap_or_else(|| config_default_out(&config_model, &base_dir));
+    let had_prior_run = status::resolve_latest_review_loop_receipts(&out)
+        .latest_run
+        .is_some();
+
+    run_intake(IntakeArgs {
+        config: args.config,
+        out: Some(out.clone()),
+        sources: Vec::new(),
+        profile: None,
+        redact_key: None,
+        no_open: args.no_open,
+        explain: args.explain,
+        conflict: MergeConflict::MostRecent,
+        window: ConfigWindowArgs {
+            dates: DateArgs::default(),
+            period: args.period,
+        },
+    })?;
+
+    println!();
+    println!("Update comparison:");
+    if had_prior_run {
+        run_quality_diff_command(&out, true, None, None)?;
+    } else {
+        println!("No prior run was available for comparison.");
+        println!("Next update will compare against this packet.");
+    }
     Ok(())
 }
 

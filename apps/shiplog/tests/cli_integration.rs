@@ -2884,6 +2884,34 @@ fn no_argument_home_is_read_only_and_useful_before_and_after_setup() -> CliTestR
 }
 
 #[test]
+fn update_rebuilds_packet_and_compares_against_prior_run() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let out = tmp.path().join("out");
+    let out_arg = out.to_string_lossy().to_string();
+
+    run_intake_without_provider_tokens(tmp.path(), &out);
+    let before_update = file_tree_manifest(tmp.path());
+    let update = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args(["update", "--out", out_arg.as_str(), "--no-open"])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(update.get_output().stdout.clone())?;
+
+    assert!(stdout.contains("Review intake complete."));
+    assert!(stdout.contains("Update comparison:"));
+    assert!(stdout.contains("Packet quality diff:"));
+    assert!(stdout.contains("Next:"));
+    assert!(
+        all_run_dirs(&out).len() >= 2,
+        "update should create a new run alongside the prior packet"
+    );
+    assert_ne!(before_update, file_tree_manifest(tmp.path()));
+    Ok(())
+}
+
+#[test]
 fn github_activity_plan_writes_static_receipt_without_provider_calls() -> CliTestResult {
     let tmp = TempDir::new()?;
     let config = tmp.path().join("shiplog-github-full.toml");

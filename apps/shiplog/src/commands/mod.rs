@@ -88,6 +88,10 @@ pub(super) fn dispatch() -> Result<()> {
             run_next(args)?;
         }
 
+        Command::Update(args) => {
+            run_update(args)?;
+        }
+
         Command::Github { cmd } => match cmd {
             GithubCommand::Activity { cmd } => match cmd {
                 GithubActivityCommand::Plan(args) => github_activity::run_plan(args)?,
