@@ -22,10 +22,17 @@ For setup troubleshooting, use the read-only diagnostic loop:
 
 ```bash
 shiplog doctor --setup
+shiplog doctor --setup --for manager-share
+shiplog doctor --setup --for public-share
+shiplog doctor --setup --for all
 shiplog sources status
 shiplog doctor --setup --json
 shiplog status --latest
 ```
+
+The default `doctor --setup` objective is `intake`, so missing share redaction
+does not prevent a local packet from being collected. Request a share objective
+when you want its redaction and verification prerequisites to be blocking.
 
 `doctor --setup`, `sources status`, `status --latest`, and `share explain` are
 read-only surfaces. They do not query providers, render share packets, mutate
