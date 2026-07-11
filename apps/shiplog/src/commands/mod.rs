@@ -67,6 +67,12 @@ pub(super) fn dispatch() -> Result<()> {
             }
         },
 
+        Command::Auth { cmd } => match cmd {
+            AuthCommand::Github { cmd } => match cmd {
+                GithubAuthCommand::Status(args) => run_github_auth_status(&args)?,
+            },
+        },
+
         Command::Status(args) => {
             run_status(args)?;
         }

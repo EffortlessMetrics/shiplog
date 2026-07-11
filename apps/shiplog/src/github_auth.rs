@@ -18,11 +18,33 @@ pub enum GithubAuthSource {
     Unavailable,
 }
 
+impl GithubAuthSource {
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::GhToken => "GH_TOKEN",
+            Self::GithubToken => "GITHUB_TOKEN",
+            Self::GhEnterpriseToken => "GH_ENTERPRISE_TOKEN",
+            Self::GithubEnterpriseToken => "GITHUB_ENTERPRISE_TOKEN",
+            Self::GhCli => "gh_cli",
+            Self::Unavailable => "unavailable",
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum GithubAuthAvailability {
     Ready,
     Unavailable,
+}
+
+impl GithubAuthAvailability {
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Ready => "ready",
+            Self::Unavailable => "unavailable",
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -36,6 +58,21 @@ pub enum GithubAuthReason {
     GhCommandFailed,
     GhTimedOut,
     GhHostAmbiguous,
+}
+
+impl GithubAuthReason {
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::InvalidApiBase => "invalid_api_base",
+            Self::MissingCredential => "missing_credential",
+            Self::GhUnavailable => "gh_unavailable",
+            Self::GhLoggedOut => "gh_logged_out",
+            Self::GhMalformedOutput => "gh_malformed_output",
+            Self::GhCommandFailed => "gh_command_failed",
+            Self::GhTimedOut => "gh_timed_out",
+            Self::GhHostAmbiguous => "gh_host_ambiguous",
+        }
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -203,6 +240,12 @@ fn resolve_from_gh(host: String) -> GithubAuthResolution {
             ));
         }
     };
+    if status.hosts.is_empty() {
+        return GithubAuthResolution::Unavailable(metadata(
+            None,
+            Some(GithubAuthReason::GhLoggedOut),
+        ));
+    }
     let account = status
         .hosts
         .iter()
@@ -347,6 +390,25 @@ mod tests {
     fn rejects_invalid_api_hosts() -> Result<()> {
         ensure!(github_host(Some("github.example.com")).is_err());
         ensure!(github_host(Some("https://")).is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn safe_metadata_does_not_serialize_credential_material() -> Result<()> {
+        let resolution = GithubAuthResolution::Available(GithubCredential {
+            secret: "SHIPLOG_SECRET_SENTINEL".to_owned(),
+            metadata: GithubAuthMetadata {
+                source: GithubAuthSource::GhToken,
+                host: "github.com".to_owned(),
+                account: None,
+                availability: GithubAuthAvailability::Ready,
+                reason: None,
+            },
+        });
+        let json = serde_json::to_string(resolution.metadata())?;
+        ensure!(!json.contains("SHIPLOG_SECRET_SENTINEL"));
+        ensure!(json.contains("gh_token"));
+        ensure!(json.contains("github.com"));
         Ok(())
     }
 }

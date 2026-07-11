@@ -420,6 +420,12 @@ enum Command {
         cmd: SourcesCommand,
     },
 
+    /// Inspect safe GitHub authentication readiness without provider calls.
+    Auth {
+        #[command(subcommand)]
+        cmd: AuthCommand,
+    },
+
     /// Inspect review-loop state across setup, evidence, repair, diff, and share receipts.
     #[command(
         about = "Inspect review-loop state across setup, evidence, repair, diff, and share receipts.",
@@ -828,6 +834,21 @@ enum SourcesCommand {
 }
 
 #[derive(Subcommand, Debug)]
+enum AuthCommand {
+    /// Inspect GitHub credential provenance without provider calls or writes.
+    Github {
+        #[command(subcommand)]
+        cmd: GithubAuthCommand,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum GithubAuthCommand {
+    /// Print safe GitHub authentication metadata.
+    Status(GithubAuthStatusArgs),
+}
+
+#[derive(Subcommand, Debug)]
 enum GithubCommand {
     /// Plan a GitHub activity harvest without making provider API calls.
     #[command(
@@ -935,6 +956,16 @@ struct SourcesStatusArgs {
     #[arg(long = "source", value_enum)]
     sources: Vec<InitSource>,
     /// Print source setup readiness as JSON for agent/script consumers.
+    #[arg(long)]
+    json: bool,
+}
+
+#[derive(Args, Debug)]
+struct GithubAuthStatusArgs {
+    /// Path to shiplog.toml.
+    #[arg(long, default_value = CONFIG_FILENAME)]
+    config: PathBuf,
+    /// Print authentication metadata as JSON.
     #[arg(long)]
     json: bool,
 }
@@ -7787,6 +7818,43 @@ fn run_sources_status(config_path: &Path, sources: &[InitSource], json: bool) ->
     Ok(())
 }
 
+fn run_github_auth_status(args: &GithubAuthStatusArgs) -> Result<()> {
+    let api_base = if args.config.exists() {
+        let text = std::fs::read_to_string(&args.config)
+            .with_context(|| format!("read config {}", args.config.display()))?;
+        let config = toml::from_str::<ShiplogConfig>(&text)
+            .with_context(|| format!("parse config {}", args.config.display()))?;
+        config
+            .sources
+            .github
+            .as_ref()
+            .and_then(|source| optional_config_string(source.api_base.as_deref()))
+    } else {
+        None
+    };
+    let resolution = github_auth::resolve(api_base.as_deref());
+    let metadata = resolution.metadata();
+    if args.json {
+        serde_json::to_writer_pretty(std::io::stdout(), metadata)
+            .context("serialize GitHub authentication json")?;
+        println!();
+    } else {
+        println!("GitHub authentication: {}", metadata.availability.label());
+        println!("Source: {}", metadata.source.label());
+        println!("Host: {}", metadata.host);
+        if let Some(account) = metadata.account.as_deref() {
+            println!("Account: {account}");
+        }
+        if let Some(reason) = metadata.reason {
+            println!("Reason: {}", reason.label());
+        }
+    }
+    if metadata.availability == github_auth::GithubAuthAvailability::Unavailable {
+        anyhow::bail!("GitHub authentication is unavailable");
+    }
+    Ok(())
+}
+
 fn run_status(args: StatusArgs) -> Result<()> {
     let _explicit_latest = args.latest;
     let setup_status =
@@ -7906,32 +7974,14 @@ fn review_setup_status(setup_status: &doctor::SetupStatus) -> status::SetupSumma
     {
         return status::SetupSummaryStatus::NeedsSetup;
     }
-    let any_ready_source = setup_status
-        .sources
-        .iter()
-        .any(|item| matches!(item.status, doctor::SetupItemStatus::Ready));
-    if !any_ready_source {
-        return status::SetupSummaryStatus::NeedsSetup;
+    match setup_status.requested_status {
+        doctor::SetupOverallStatus::Ready => status::SetupSummaryStatus::Ready,
+        doctor::SetupOverallStatus::ReadyWithCaveats => {
+            status::SetupSummaryStatus::ReadyWithCaveats
+        }
+        doctor::SetupOverallStatus::NeedsSetup => status::SetupSummaryStatus::NeedsSetup,
+        doctor::SetupOverallStatus::Blocked => status::SetupSummaryStatus::Blocked,
     }
-    if setup_status
-        .sources
-        .iter()
-        .any(setup_item_needs_review_setup)
-        || setup_status
-            .credentials
-            .iter()
-            .any(source_credential_item_needs_review_setup)
-    {
-        return status::SetupSummaryStatus::NeedsSetup;
-    }
-    if setup_status
-        .sources
-        .iter()
-        .any(|item| matches!(item.status, doctor::SetupItemStatus::Disabled))
-    {
-        return status::SetupSummaryStatus::ReadyWithCaveats;
-    }
-    status::SetupSummaryStatus::Ready
 }
 
 fn setup_item_blocks_review(item: &doctor::SetupItem) -> bool {
@@ -7977,6 +8027,9 @@ fn review_setup_reason(
     {
         return format!("{}: {}", item.label, item.reason);
     }
+    if setup_summary_status == status::SetupSummaryStatus::ReadyWithCaveats {
+        return "setup can collect evidence, with optional source caveats".to_string();
+    }
     if !setup_status
         .sources
         .iter()
@@ -7996,9 +8049,6 @@ fn review_setup_reason(
         })
     {
         return format!("{}: {}", item.label, item.reason);
-    }
-    if setup_summary_status == status::SetupSummaryStatus::ReadyWithCaveats {
-        return "setup can collect evidence, with optional source caveats".to_string();
     }
     "setup can collect evidence".to_string()
 }

@@ -1411,6 +1411,8 @@ fn status_latest_json(
     let out_arg = out.to_string_lossy().to_string();
     let assert = shiplog_cmd()
         .current_dir(tmp)
+        .env_remove("GITHUB_TOKEN")
+        .env("GH_CONFIG_DIR", tmp.join("gh-config"))
         .env_remove("SHIPLOG_REDACT_KEY")
         .args(["status", "--out", out_arg.as_str(), "--latest", "--json"])
         .assert()
@@ -4700,6 +4702,7 @@ user = "octo"
     let doctor = shiplog_cmd()
         .current_dir(tmp.path())
         .env_remove("GITHUB_TOKEN")
+        .env("GH_CONFIG_DIR", tmp.path().join("gh-config"))
         .env_remove("SHIPLOG_REDACT_KEY")
         .args(["doctor", "--setup", "--json"])
         .assert()
@@ -4710,6 +4713,7 @@ user = "octo"
     let sources = shiplog_cmd()
         .current_dir(tmp.path())
         .env_remove("GITHUB_TOKEN")
+        .env("GH_CONFIG_DIR", tmp.path().join("gh-config"))
         .args(["sources", "status"])
         .assert()
         .failure();
@@ -4722,6 +4726,7 @@ user = "octo"
     shiplog_cmd()
         .current_dir(tmp.path())
         .env_remove("GITHUB_TOKEN")
+        .env("GH_CONFIG_DIR", tmp.path().join("gh-config"))
         .env_remove("GITLAB_TOKEN")
         .env_remove("JIRA_TOKEN")
         .env_remove("LINEAR_API_KEY")
@@ -4739,20 +4744,23 @@ user = "octo"
     let status_json = status_latest_json(tmp.path(), &out)?;
 
     assert_eq!(
-        status_json["setup_summary"]["status"], doctor_json["overall_status"],
-        "status setup blocker should match doctor JSON"
+        status_json["setup_summary"]["status"], doctor_json["requested_status"],
+        "status setup result should match doctor intake requested status"
     );
+    assert_eq!(status_json["setup_summary"]["status"], "ready_with_caveats");
     assert!(
         status_json["setup_summary"]["reason"]
             .as_str()
-            .is_some_and(|reason| reason.contains("GitHub") && reason.contains("GITHUB_TOKEN")),
-        "setup blocker should be the missing source credential, not share redaction: {status_json}"
+            .is_some_and(|reason| reason.contains("optional source caveats")),
+        "intake setup should remain usable while source caveats are visible: {status_json}"
     );
     assert_eq!(github_row.status, "unavailable");
     assert!(github_row.enabled);
     assert!(
-        github_row.reason.contains("GITHUB_TOKEN not set"),
-        "sources status should name missing GitHub token: {sources_stdout}"
+        github_row
+            .reason
+            .contains("GitHub authentication unavailable"),
+        "sources status should name unavailable GitHub authentication: {sources_stdout}"
     );
     assert!(
         status_json["source_summary"]["unavailable"]
@@ -4768,11 +4776,11 @@ user = "octo"
     assert!(
         status_json["next_actions"]
             .as_array()
-            .is_some_and(|actions| actions.iter().all(|action| !action["command"]
+            .is_some_and(|actions| actions.iter().any(|action| action["command"]
                 .as_str()
                 .unwrap_or_default()
-                .contains("journal add --from-repair"))),
-        "setup-blocked status should not offer evidence-repair writes"
+                .contains("repair plan"))),
+        "intake-ready status should expose the receipt-derived repair plan"
     );
     assert_eq!(
         before,
@@ -6562,8 +6570,10 @@ events = "./manual_events.yaml"
         .args(["doctor", "--setup"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("GitHub token"))
-        .stdout(predicate::str::contains("GITHUB_TOKEN present"));
+        .stdout(predicate::str::contains("GitHub authentication"))
+        .stdout(predicate::str::contains(
+            "GitHub authentication ready via GITHUB_TOKEN",
+        ));
     let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
 
     assert!(
@@ -6654,14 +6664,17 @@ user = "octo"
     shiplog_cmd()
         .current_dir(tmp.path())
         .env_remove("GITHUB_TOKEN")
+        .env("GH_CONFIG_DIR", tmp.path().join("gh-config"))
         .args(["sources", "status"])
         .assert()
         .failure()
         .stdout(predicate::str::contains("github"))
         .stdout(predicate::str::contains("GitHub"))
         .stdout(predicate::str::contains("unavailable"))
-        .stdout(predicate::str::contains("GITHUB_TOKEN not set"))
-        .stdout(predicate::str::contains("set GITHUB_TOKEN"))
+        .stdout(predicate::str::contains(
+            "GitHub authentication unavailable",
+        ))
+        .stdout(predicate::str::contains("shiplog auth github status"))
         .stdout(predicate::str::contains("[read-only]"));
 
     assert!(
@@ -6698,13 +6711,42 @@ user = "octo"
         .success()
         .stdout(predicate::str::contains("github"))
         .stdout(predicate::str::contains("ready"))
-        .stdout(predicate::str::contains("token present"));
+        .stdout(predicate::str::contains(
+            "GitHub authentication ready via GITHUB_TOKEN",
+        ));
     let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
 
     assert!(
         !stdout.contains("shiplog-source-secret-token"),
         "sources status should report token presence without printing values"
     );
+    Ok(())
+}
+
+#[test]
+fn auth_github_status_reports_safe_environment_metadata_without_writes() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let before = file_tree_manifest(tmp.path());
+    let primary = "shiplog-auth-primary-sentinel";
+    let secondary = "shiplog-auth-secondary-sentinel";
+    let assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env("GH_TOKEN", primary)
+        .env("GITHUB_TOKEN", secondary)
+        .args(["auth", "github", "status", "--json"])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
+    let after = file_tree_manifest(tmp.path());
+    assert_eq!(before, after, "auth status should not write local files");
+    assert!(!stdout.contains(primary));
+    assert!(!stdout.contains(secondary));
+
+    let json: serde_json::Value = serde_json::from_str(&stdout)?;
+    assert_eq!(json["source"], "gh_token");
+    assert_eq!(json["host"], "github.com");
+    assert_eq!(json["availability"], "ready");
+    assert!(json["account"].is_null());
     Ok(())
 }
 
@@ -6744,6 +6786,7 @@ user = "octo"
     let assert = shiplog_cmd()
         .current_dir(tmp.path())
         .env_remove("GITHUB_TOKEN")
+        .env("GH_CONFIG_DIR", tmp.path().join("gh-config"))
         .env_remove("SHIPLOG_REDACT_KEY")
         .args(["doctor", "--setup", "--json"])
         .assert()
@@ -6781,9 +6824,12 @@ user = "octo"
         github["reason"]
             .as_str()
             .unwrap()
-            .contains("GITHUB_TOKEN not set")
+            .contains("GitHub authentication unavailable")
     );
-    assert_eq!(github["next_action"]["command"], "set GITHUB_TOKEN");
+    assert_eq!(
+        github["next_action"]["command"],
+        "shiplog auth github status"
+    );
     assert_eq!(github["next_action"]["writes"], false);
 
     let redaction = setup_json_item(&json, "credentials", "redaction_key");
@@ -6808,9 +6854,9 @@ user = "octo"
         .as_array()
         .expect("next_actions should be an array");
     assert!(
-        next_actions
-            .iter()
-            .any(|action| { action["command"] == "set GITHUB_TOKEN" && action["writes"] == false }),
+        next_actions.iter().any(|action| {
+            action["command"] == "shiplog auth github status" && action["writes"] == false
+        }),
         "agent JSON should expose read-only credential setup next action"
     );
     assert!(
@@ -6823,6 +6869,7 @@ user = "octo"
     let manager_assert = shiplog_cmd()
         .current_dir(tmp.path())
         .env_remove("GITHUB_TOKEN")
+        .env("GH_CONFIG_DIR", tmp.path().join("gh-config"))
         .env_remove("SHIPLOG_REDACT_KEY")
         .args(["doctor", "--setup", "--for", "manager-share", "--json"])
         .assert()
@@ -6835,6 +6882,7 @@ user = "octo"
     let assert = shiplog_cmd()
         .current_dir(tmp.path())
         .env_remove("GITHUB_TOKEN")
+        .env("GH_CONFIG_DIR", tmp.path().join("gh-config"))
         .env_remove("SHIPLOG_REDACT_KEY")
         .args(["doctor", "--setup", "--json"])
         .assert()
@@ -6890,7 +6938,7 @@ user = "octo"
     );
     assert_eq!(
         setup_json_item(&json, "credentials", "github_token")["reason"],
-        "GITHUB_TOKEN present"
+        "GitHub authentication ready via GITHUB_TOKEN for github.com"
     );
     assert!(
         setup_json_item(&json, "share_profiles", "manager")["reason"]
@@ -6935,6 +6983,7 @@ user = "octo"
     let doctor_assert = shiplog_cmd()
         .current_dir(tmp.path())
         .env_remove("GITHUB_TOKEN")
+        .env("GH_CONFIG_DIR", tmp.path().join("gh-config"))
         .env_remove("SHIPLOG_REDACT_KEY")
         .args(["doctor", "--setup", "--json"])
         .assert()
@@ -6945,6 +6994,7 @@ user = "octo"
     let sources_assert = shiplog_cmd()
         .current_dir(tmp.path())
         .env_remove("GITHUB_TOKEN")
+        .env("GH_CONFIG_DIR", tmp.path().join("gh-config"))
         .env_remove("SHIPLOG_REDACT_KEY")
         .args(["sources", "status"])
         .assert()
@@ -6989,7 +7039,7 @@ user = "octo"
     assert!(
         sources_rows["github"]
             .reason
-            .contains("GITHUB_TOKEN not set")
+            .contains("GitHub authentication unavailable")
     );
 
     assert!(
@@ -7031,6 +7081,7 @@ user = "octo"
     let text_assert = shiplog_cmd()
         .current_dir(tmp.path())
         .env_remove("GITHUB_TOKEN")
+        .env("GH_CONFIG_DIR", tmp.path().join("gh-config"))
         .env_remove("SHIPLOG_REDACT_KEY")
         .args(["sources", "status"])
         .assert()
@@ -7042,6 +7093,7 @@ user = "octo"
     let json_assert = shiplog_cmd()
         .current_dir(tmp.path())
         .env_remove("GITHUB_TOKEN")
+        .env("GH_CONFIG_DIR", tmp.path().join("gh-config"))
         .env_remove("SHIPLOG_REDACT_KEY")
         .args(["sources", "status", "--json"])
         .assert()
@@ -7084,7 +7136,10 @@ user = "octo"
         .find(|source| source["key"] == "github")
         .expect("sources status JSON should include github");
     assert_eq!(github["status"], "unavailable");
-    assert_eq!(github["next_action"]["command"], "set GITHUB_TOKEN");
+    assert_eq!(
+        github["next_action"]["command"],
+        "shiplog auth github status"
+    );
 
     let next_commands: Vec<&str> = json["next_actions"]
         .as_array()
@@ -7093,8 +7148,8 @@ user = "octo"
         .filter_map(|action| action["command"].as_str())
         .collect();
     assert!(
-        next_commands.contains(&"set GITHUB_TOKEN"),
-        "next_actions should surface the missing-token action: {next_commands:?}"
+        next_commands.contains(&"shiplog auth github status"),
+        "next_actions should surface the auth-status action: {next_commands:?}"
     );
 
     assert!(
@@ -7140,6 +7195,7 @@ user = "octo"
     let assert = shiplog_cmd()
         .current_dir(tmp.path())
         .env_remove("GITHUB_TOKEN")
+        .env("GH_CONFIG_DIR", tmp.path().join("gh-config"))
         .env_remove("SHIPLOG_REDACT_KEY")
         .args(["doctor", "--setup", "--json"])
         .assert()
@@ -7187,9 +7243,12 @@ user = "octo"
         github["reason"]
             .as_str()
             .unwrap()
-            .contains("GITHUB_TOKEN not set")
+            .contains("GitHub authentication unavailable")
     );
-    assert_eq!(github["next_action"]["command"], "set GITHUB_TOKEN");
+    assert_eq!(
+        github["next_action"]["command"],
+        "shiplog auth github status"
+    );
     assert_eq!(github["next_action"]["writes"], false);
 
     let manager = setup_json_item(&json, "share_profiles", "manager");
@@ -7224,8 +7283,8 @@ user = "octo"
         "agent JSON should route broken setup back to doctor before repair"
     );
     assert!(
-        next_commands.contains(&"set GITHUB_TOKEN"),
-        "agent JSON should expose missing provider credential setup"
+        next_commands.contains(&"shiplog auth github status"),
+        "agent JSON should expose GitHub auth diagnostics"
     );
     assert!(
         next_commands.contains(&"set SHIPLOG_REDACT_KEY"),
@@ -7294,6 +7353,7 @@ coverage = "./missing.coverage.json"
     let assert = shiplog_cmd()
         .current_dir(tmp.path())
         .env_remove("GITHUB_TOKEN")
+        .env("GH_CONFIG_DIR", tmp.path().join("gh-config"))
         .env_remove("SHIPLOG_REDACT_KEY")
         .args(["doctor", "--setup", "--json"])
         .assert()
@@ -7337,7 +7397,7 @@ coverage = "./missing.coverage.json"
         github["reason"]
             .as_str()
             .unwrap_or_default()
-            .contains("GITHUB_TOKEN not set")
+            .contains("GitHub authentication unavailable")
     );
 
     let json_source = setup_json_item(&json, "sources", "json");
@@ -10483,6 +10543,7 @@ user = "Tester"
     let assert = shiplog_cmd()
         .current_dir(tmp.path())
         .env_remove("GITHUB_TOKEN")
+        .env("GH_CONFIG_DIR", tmp.path().join("gh-config"))
         .env_remove("GITLAB_TOKEN")
         .env_remove("JIRA_TOKEN")
         .env_remove("LINEAR_API_KEY")
