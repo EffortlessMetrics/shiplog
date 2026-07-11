@@ -131,15 +131,15 @@ fn config_reference_documents_current_surface() {
 }
 
 #[test]
-fn changelog_curates_0_9_as_review_loop_cockpit_release_notes() {
+fn changelog_curates_0_10_as_source_ergonomics_release_notes() {
     let doc_path = repo_root().join("CHANGELOG.md");
     let doc = std::fs::read_to_string(&doc_path)
         .unwrap_or_else(|err| panic!("read {}: {err}", doc_path.display()));
 
-    let unreleased = section_between(&doc, "## [Unreleased]", "## [0.9.0]");
+    let unreleased = section_between(&doc, "## [Unreleased]", "## [0.10.0]");
     assert!(
-        unreleased.contains("No user-facing changes yet after 0.9.0."),
-        "Unreleased should stay empty after 0.9.0"
+        unreleased.contains("No user-facing changes yet after 0.10.0."),
+        "Unreleased should stay empty after 0.10.0"
     );
     assert!(
         !unreleased.contains("#424")
@@ -147,6 +147,12 @@ fn changelog_curates_0_9_as_review_loop_cockpit_release_notes() {
             && !unreleased.contains("#444")
             && !unreleased.contains("#455"),
         "candidate receipts belong in the 0.9 candidate section, not Unreleased"
+    );
+
+    let release = section_between(&doc, "## [0.10.0]", "## [0.9.0]");
+    assert!(
+        release.contains("source configuration ergonomics and security"),
+        "0.10.0 should describe its release theme"
     );
 
     let candidate = section_between(&doc, "## [0.9.0]", "## [0.8.0]");
