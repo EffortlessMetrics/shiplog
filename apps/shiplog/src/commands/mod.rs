@@ -683,13 +683,13 @@ pub(super) fn dispatch() -> Result<()> {
                 print_review(&run_dir, &options.out, options.strict)?;
             }
         },
-        Command::Open { cmd } => match cmd {
-            OpenCommand::Packet {
+        Command::Open { cmd, print_path } => match cmd {
+            Some(OpenCommand::Packet {
                 out,
                 run,
                 latest,
                 print_path,
-            } => {
+            }) => {
                 let run_dir = resolve_render_run_dir(&out, run, latest)?;
                 let packet = run_dir.join("packet.md");
                 open_existing_path(
@@ -699,12 +699,12 @@ pub(super) fn dispatch() -> Result<()> {
                     print_path,
                 )?;
             }
-            OpenCommand::Workstreams {
+            Some(OpenCommand::Workstreams {
                 out,
                 run,
                 latest,
                 print_path,
-            } => {
+            }) => {
                 let run_dir = resolve_render_run_dir(&out, run, latest)?;
                 let (_, _, path) = load_effective_workstreams_for_run(&run_dir)?;
                 open_existing_path(
@@ -714,12 +714,12 @@ pub(super) fn dispatch() -> Result<()> {
                     print_path,
                 )?;
             }
-            OpenCommand::Out {
+            Some(OpenCommand::Out {
                 out,
                 run,
                 latest,
                 print_path,
-            } => {
+            }) => {
                 let run_dir = resolve_render_run_dir(&out, run, latest)?;
                 open_existing_path(
                     &run_dir,
@@ -728,12 +728,12 @@ pub(super) fn dispatch() -> Result<()> {
                     print_path,
                 )?;
             }
-            OpenCommand::IntakeReport {
+            Some(OpenCommand::IntakeReport {
                 out,
                 run,
                 latest,
                 print_path,
-            } => {
+            }) => {
                 let run_dir = resolve_render_run_dir(&out, run, latest)?;
                 let report = run_dir.join("intake.report.md");
                 open_existing_path(
@@ -742,6 +742,12 @@ pub(super) fn dispatch() -> Result<()> {
                     "Run `shiplog intake` first.",
                     print_path,
                 )?;
+            }
+            None => {
+                let out = PathBuf::from("./out");
+                let run_dir = resolve_render_run_dir(&out, None, true)?;
+                let packet = run_dir.join("packet.md");
+                open_existing_path(&packet, "Packet", "Run `shiplog intake` first.", print_path)?;
             }
         },
         Command::Report { cmd } => match cmd {
