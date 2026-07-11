@@ -624,7 +624,10 @@ enum Command {
     /// Open generated artifacts for a run, or print their paths when unavailable.
     Open {
         #[command(subcommand)]
-        cmd: OpenCommand,
+        cmd: Option<OpenCommand>,
+        /// Print the latest packet path without launching a platform opener.
+        #[arg(long)]
+        print_path: bool,
     },
 
     /// Inspect durable machine-readable run reports.

@@ -12952,6 +12952,33 @@ fn open_packet_latest_prints_packet_path_when_forced() {
 }
 
 #[test]
+fn open_without_artifact_defaults_to_latest_packet() {
+    let tmp = TempDir::new().unwrap();
+    let out = tmp.path().join("out");
+    collect_json_into(&out);
+
+    let before = file_tree_manifest(&out);
+    let assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["open", "--print-path"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("run_fixture"))
+        .stdout(predicate::str::contains("packet.md"));
+    let stdout = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
+    let after = file_tree_manifest(&out);
+
+    assert_eq!(
+        before, after,
+        "open --print-path should not write or rewrite files"
+    );
+    assert!(
+        !stdout.contains(r"\\?\"),
+        "open --print-path should not expose a Windows verbatim path prefix: {stdout}"
+    );
+}
+
+#[test]
 fn open_packet_latest_selects_lexicographically_newest_run() {
     let tmp = TempDir::new().unwrap();
     let out = tmp.path();
