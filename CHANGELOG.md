@@ -7,7 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No user-facing changes yet after 0.9.0.
+No user-facing changes yet after 0.10.0.
+
+## [0.10.0] - 2026-07-10
+
+shiplog 0.10.0 is the **source configuration ergonomics and security
+hardening release**.
+
+### Added
+
+- Added `shiplog sources list`, including `--json`, to show which canonical
+  source sections are present and enabled without provider calls (#619).
+- Added `shiplog sources enable --source <name>` and
+  `shiplog sources disable --source <name>` with repeatable source selection,
+  idempotent output, and comment-preserving config edits (#619).
+
+### Changed
+
+- Source toggles change only the `enabled` assignment in `shiplog.toml` and
+  never rewrite provider records or tokens (#619).
+- Workspace package versions moved from `0.9.0` to `0.10.0`.
+
+### Fixed
+
+- LLM clustering now rejects malformed and non-HTTPS OpenAI-compatible
+  endpoints before constructing a client or sending an authorization header
+  (#625; security finding recorded in #623).
+
+### Documentation and proof
+
+- Added the `0.10.0` release decision, readiness ledger, and execution handoff
+  for the final merged-main preflight and release steps.
+- The sources ergonomics slice carries unit and CLI integration coverage for
+  listing, toggling, idempotency, formatting preservation, and failed writes.
+- The LLM endpoint guard has focused feature-gated tests, package Clippy proof,
+  no-panic proof, and green routed CI.
 
 ## [0.9.0] - 2026-05-20
 
@@ -698,7 +732,8 @@ rollout map and the 18-PR ladder (#140–#157).
 - Basic workspace configuration with Cargo
 - MIT/Apache-2.0 dual licensing
 
-[Unreleased]: https://github.com/EffortlessMetrics/shiplog/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/EffortlessMetrics/shiplog/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/EffortlessMetrics/shiplog/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/EffortlessMetrics/shiplog/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/EffortlessMetrics/shiplog/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/EffortlessMetrics/shiplog/compare/v0.6.0...v0.7.0
