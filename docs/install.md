@@ -1,12 +1,26 @@
 # Install shiplog
 
-Use the GitHub release binary when you need shiplog quickly and do not already
-have Rust installed. Use `cargo install` when you already have a Rust toolchain
-or want optional Cargo features.
+Use a prebuilt binary when you want shiplog without installing Rust. The
+versionless installers select the latest GitHub release, verify its SHA-256
+checksum, and install to a user-local directory.
 
 Current shipped release: `v0.10.0`.
 
-Latest shipped release assets:
+## Prebuilt binary
+
+### Linux and macOS
+
+```bash
+curl --proto '=https' --tlsv1.2 -fsSL \
+  https://raw.githubusercontent.com/EffortlessMetrics/shiplog/main/scripts/install.sh \
+  | bash
+```
+
+The installer supports Linux x86_64, macOS Intel, and macOS Apple Silicon.
+Set `SHIPLOG_INSTALL_DIR` to choose another user-local directory or
+`SHIPLOG_RELEASE_REPO=owner/repo` to use a fork.
+
+The release asset names are:
 
 ```text
 shiplog-x86_64-unknown-linux-gnu
@@ -16,180 +30,82 @@ shiplog-x86_64-pc-windows-msvc.exe
 SHA256SUMS.txt
 ```
 
-## GitHub release binary
-
 ### Windows PowerShell
 
 ```powershell
-$asset = "shiplog-x86_64-pc-windows-msvc.exe"
-$base = "https://github.com/EffortlessMetrics/shiplog/releases/latest/download"
-$bin = "$HOME\bin"
-
-New-Item -ItemType Directory -Force $bin | Out-Null
-Invoke-WebRequest "$base/$asset" -OutFile "$bin\shiplog.exe"
-Invoke-WebRequest "$base/SHA256SUMS.txt" -OutFile "$bin\SHA256SUMS.txt"
-
-$expected = (Select-String -Path "$bin\SHA256SUMS.txt" -Pattern $asset).Line.Split(" ")[0]
-$actual = (Get-FileHash "$bin\shiplog.exe" -Algorithm SHA256).Hash.ToLowerInvariant()
-if ($actual -ne $expected) {
-  throw "checksum mismatch for $asset"
-}
-
-$env:Path = "$bin;$env:Path"
-shiplog --version
-shiplog intake --help
+& ([scriptblock]::Create((Invoke-WebRequest -UseBasicParsing `
+  https://raw.githubusercontent.com/EffortlessMetrics/shiplog/main/scripts/install.ps1).Content))
 ```
 
-Add `$HOME\bin` to your user `PATH` if you want `shiplog` to be available in
-new shells.
+Or run the checked-out script directly:
 
-### macOS
-
-Pick the asset for your CPU:
-
-```bash
-# Apple Silicon
-asset=shiplog-aarch64-apple-darwin
-
-# Intel
-asset=shiplog-x86_64-apple-darwin
+```powershell
+.\scripts\install.ps1
 ```
 
-Then download, verify, and install:
+Set `SHIPLOG_INSTALL_DIR` or pass `-InstallDir` to choose the destination.
+The installer does not modify PATH automatically; it prints the directory to
+add when the destination is not already on PATH.
 
-```bash
-base="https://github.com/EffortlessMetrics/shiplog/releases/latest/download"
+The installers download only over HTTPS and refuse a checksum mismatch. They
+do not require Rust, Cargo, provider tokens, or a Shiplog service. On Unix,
+the installer uses `sha256sum shiplog` or `shasum -a 256 shiplog`; on Windows
+it uses `Get-FileHash`.
 
-curl -fsSLo shiplog "$base/$asset"
-curl -fsSLo SHA256SUMS.txt "$base/SHA256SUMS.txt"
+## Cargo installation
 
-expected="$(grep "$asset$" SHA256SUMS.txt | awk '{print $1}')"
-actual="$(shasum -a 256 shiplog | awk '{print $1}')"
-test "$actual" = "$expected"
-
-chmod +x shiplog
-mkdir -p "$HOME/bin"
-mv shiplog "$HOME/bin/shiplog"
-"$HOME/bin/shiplog" --version
-"$HOME/bin/shiplog" intake --help
-```
-
-### Linux x86_64
-
-```bash
-asset=shiplog-x86_64-unknown-linux-gnu
-base="https://github.com/EffortlessMetrics/shiplog/releases/latest/download"
-
-curl -fsSLo shiplog "$base/$asset"
-curl -fsSLo SHA256SUMS.txt "$base/SHA256SUMS.txt"
-
-expected="$(grep "$asset$" SHA256SUMS.txt | awk '{print $1}')"
-actual="$(sha256sum shiplog | awk '{print $1}')"
-test "$actual" = "$expected"
-
-chmod +x shiplog
-mkdir -p "$HOME/bin"
-mv shiplog "$HOME/bin/shiplog"
-"$HOME/bin/shiplog" --version
-"$HOME/bin/shiplog" intake --help
-```
-
-Add `$HOME/bin` to your shell `PATH` if needed.
-
-## Cargo install
-
-Use this when Rust is already installed:
+With Rust already installed:
 
 ```bash
 cargo install shiplog --locked
-shiplog --version
-shiplog intake --help
 ```
 
-Install the optional LLM-assisted workstream clustering feature explicitly:
+For a prebuilt Cargo installation without compiling from source, install
+[`cargo-binstall`](https://github.com/cargo-bins/cargo-binstall) and run:
 
 ```bash
-cargo install shiplog --locked --features llm
+cargo binstall shiplog --no-confirm
 ```
 
-## From source
+Shiplog publishes raw target-named release binaries for Linux x86_64, macOS
+Intel, macOS Apple Silicon, and Windows x86_64. The package metadata disables
+source compilation fallback so a failed prebuilt lookup is explicit.
+
+## First use
+
+From a work directory:
 
 ```bash
-git clone https://github.com/EffortlessMetrics/shiplog.git
-cd shiplog
-cargo install --path apps/shiplog
+shiplog
 ```
 
-Developers working inside the repository can run:
+This is read-only when no packet exists and points to the first useful action.
+To collect the first packet explicitly:
 
 ```bash
-cargo run -p shiplog -- <subcommand>
+shiplog intake
 ```
 
-## Package-manager status
+Local Git, manual evidence, and imported JSON work without provider credentials.
+When an authenticated `gh` session is available, Shiplog can reuse it without
+storing the credential. Setup and sharing diagnostics remain available through
+`shiplog doctor`, `shiplog sources`, and `shiplog auth`. These commands do not
+write intake evidence or render share artifacts automatically.
 
-These channels are not the primary install path yet:
-
-- `cargo-binstall`: planned tracking item; use GitHub release binaries or
-  `cargo install` for now.
-- Homebrew: planned tap work; no official tap is documented here yet.
-- Scoop and winget: planned Windows distribution work; use the GitHub release
-  binary until those manifests exist.
-
-Do not install a third-party package unless you trust its publisher and version.
-
-## Smoke test
-
-After any install method:
+After installation, verify the binary and inspect the primary workflows:
 
 ```bash
 shiplog --version
 shiplog --help
-shiplog init --dry-run
-shiplog doctor --setup --help
-shiplog status --latest --help
-shiplog intake --last-6-months --explain --help
-shiplog repair plan --latest --help
-shiplog repair diff --latest --help
-shiplog runs diff --latest --help
-shiplog share explain manager --latest --help
+shiplog intake --help
 ```
-
-This first smoke is help-only except for `init --dry-run`; it should not require
-provider tokens, write intake evidence, or render share artifacts. It checks that
-the installed binary exposes the same setup, status, intake, repair, diff, and
-read-only share explanation path documented below.
-
-Then start the review loop:
-
-```bash
-shiplog init --guided
-shiplog doctor --setup
-shiplog status --latest
-shiplog intake --last-6-months --explain
-shiplog status --latest
-shiplog repair plan --latest
-shiplog journal add --from-repair <repair_id>
-shiplog intake --last-6-months --explain
-shiplog repair diff --latest
-shiplog runs diff --latest
-shiplog share explain manager --latest
-```
-
-Use `open intake-report --latest` and `open packet --latest` when you want to
-inspect the generated files after any intake run. Use the read-first repair
-handoff before writing manual evidence: `repair plan` chooses the safe repair
-ID, `journal add --from-repair` writes local manual evidence only, and the
-diff/share commands read receipts before any explicit share rendering.
-
-For the current shipped release, run the release-install smoke against v0.10.0 when verifying a downloaded binary.
 
 ## Release binary smoke
 
-Developers verifying a shipped release from a repository checkout can use the
-binary-only smoke scripts. They download the current-platform GitHub release
-asset, verify `SHA256SUMS.txt`, run the first-run help checks, and run the
-fixture-backed review rescue demo without provider tokens or Rust installed.
+To verify a specific published release from a repository checkout, use the
+binary-only smoke scripts. They download the current-platform asset, verify
+`SHA256SUMS.txt`, and run the no-network review-rescue fixture without Rust or
+provider tokens.
 
 Linux and macOS:
 
@@ -203,19 +119,19 @@ Windows PowerShell:
 pwsh -File .\scripts\release-install-smoke.ps1 v0.10.0
 ```
 
-The smoke path runs:
+These commands intentionally name the release under test. Ordinary install
+instructions above are versionless.
 
-```bash
-shiplog --version
-shiplog init --dry-run
-shiplog doctor --setup --help
-shiplog status --help
-shiplog intake --help
-shiplog share verify public --help
-scripts/demo-review-rescue.sh --out ./out/demo-review-rescue
-```
+## Package-manager status
 
-On Windows, use `pwsh -File .\scripts\demo-review-rescue.ps1` for the same
-no-network fixture path. The demo uses
-`examples/configs/local-git-json-manual.toml` so it can exercise local git,
-JSON, and manual evidence without live provider credentials.
+The supported binary channels are the versionless installers, GitHub release
+assets, cargo-binstall, and `cargo install`. Homebrew is not an official tap,
+and Scoop and winget manifests are not official channels yet; do not treat
+third-party packages as Shiplog releases.
+
+## Safety boundaries
+
+Shiplog is local-first and account-optional. Installation does not create a
+cloud account, enable telemetry, or store provider credentials. Evidence
+collection and manager/public sharing are separate operations; missing sharing
+configuration should not prevent a local first packet.
