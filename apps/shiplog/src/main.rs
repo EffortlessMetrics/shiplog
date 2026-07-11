@@ -352,7 +352,7 @@ Safety posture:
 )]
 struct Cli {
     #[command(subcommand)]
-    cmd: Command,
+    cmd: Option<Command>,
 }
 
 #[derive(Subcommand, Debug)]
@@ -7947,6 +7947,36 @@ fn run_next(args: NextArgs) -> Result<()> {
         print_review_status_receipts(&status, &resolution);
     }
 
+    Ok(())
+}
+
+fn run_home() -> Result<()> {
+    let config = Path::new(CONFIG_FILENAME);
+    let out = Path::new("./out");
+    let resolution = status::resolve_latest_review_loop_receipts(out);
+
+    if !config.exists() && resolution.latest_run.is_none() {
+        println!("No packet exists yet.");
+        println!("Start: shiplog intake");
+        return Ok(());
+    }
+
+    let (review_status, resolution) = build_review_loop_status(config, out);
+    println!(
+        "Status: {}",
+        review_overall_status_label(review_status.overall_status)
+    );
+    if let Some(run) = resolution.latest_run.as_ref() {
+        let packet = Path::new(&run.run_dir).join("packet.md");
+        println!("Latest packet: {}", display_path_for_cli(&packet));
+    } else {
+        println!("No packet exists yet.");
+    }
+
+    match status::select_next_action(&review_status.next_actions) {
+        Some(action) => println!("Next: {}", action.command),
+        None => println!("Next: none"),
+    }
     Ok(())
 }
 

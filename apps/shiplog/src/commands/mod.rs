@@ -15,8 +15,15 @@ use crate::*;
 
 pub(super) fn dispatch() -> Result<()> {
     let cli = Cli::parse();
+    let command = match cli.cmd {
+        Some(command) => command,
+        None => {
+            run_home()?;
+            return Ok(());
+        }
+    };
 
-    match cli.cmd {
+    match command {
         Command::Init {
             sources,
             dry_run,

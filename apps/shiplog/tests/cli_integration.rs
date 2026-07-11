@@ -2851,6 +2851,39 @@ fn next_is_read_only_and_projects_the_status_action() -> CliTestResult {
 }
 
 #[test]
+fn no_argument_home_is_read_only_and_useful_before_and_after_setup() -> CliTestResult {
+    let empty = TempDir::new()?;
+    let before_empty = file_tree_manifest(empty.path());
+    shiplog_cmd()
+        .current_dir(empty.path())
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("No packet exists yet."))
+        .stdout(predicate::str::contains("Start: shiplog intake"));
+    assert_eq!(before_empty, file_tree_manifest(empty.path()));
+
+    let established = TempDir::new()?;
+    shiplog_cmd()
+        .current_dir(established.path())
+        .args(["init", "--guided"])
+        .assert()
+        .success();
+    let before_established = file_tree_manifest(established.path());
+    shiplog_cmd()
+        .current_dir(established.path())
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Status: Ready to collect"))
+        .stdout(predicate::str::contains("No packet exists yet."))
+        .stdout(predicate::str::contains("Next: shiplog intake"));
+    assert_eq!(before_established, file_tree_manifest(established.path()));
+
+    Ok(())
+}
+
+#[test]
 fn github_activity_plan_writes_static_receipt_without_provider_calls() -> CliTestResult {
     let tmp = TempDir::new()?;
     let config = tmp.path().join("shiplog-github-full.toml");
@@ -17793,11 +17826,12 @@ fn invalid_subcommand_returns_error() {
 }
 
 #[test]
-fn no_subcommand_returns_error() {
+fn no_subcommand_shows_home_screen() {
     shiplog_cmd()
         .assert()
-        .failure()
-        .stderr(predicate::str::is_empty().not());
+        .success()
+        .stdout(predicate::str::contains("No packet exists yet."))
+        .stdout(predicate::str::contains("Start: shiplog intake"));
 }
 
 // ── 8. missing required args return helpful error messages ─────────────────
