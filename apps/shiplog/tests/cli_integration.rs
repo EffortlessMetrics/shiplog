@@ -2899,6 +2899,8 @@ fn update_rebuilds_packet_and_compares_against_prior_run() -> CliTestResult {
         .success();
     let stdout = String::from_utf8(update.get_output().stdout.clone())?;
 
+    assert!(stdout.contains("Packet ready"));
+    assert!(stdout.contains("Path: "));
     assert!(stdout.contains("Review intake complete."));
     assert!(stdout.contains("Update comparison:"));
     assert!(stdout.contains("Packet quality diff:"));

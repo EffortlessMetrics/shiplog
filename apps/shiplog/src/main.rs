@@ -3120,6 +3120,7 @@ fn run_intake(args: IntakeArgs) -> Result<()> {
     let include_footer_out = intake_footer_should_include_out(args.out.as_ref(), &config_model);
     let include_footer_config = intake_footer_should_include_config(&args.config);
 
+    print_packet_hero(&result.outputs.packet_md, &report);
     println!("Review intake complete.");
     if config_setup.created {
         println!("Config: created {}", args.config.display());
@@ -3179,6 +3180,21 @@ fn run_intake(args: IntakeArgs) -> Result<()> {
     }
 
     Ok(())
+}
+
+fn print_packet_hero(packet: &Path, report: &IntakeReport) {
+    let headline = if report.readiness == "Ready for review" {
+        "Packet ready"
+    } else {
+        "Packet ready with caveats"
+    };
+    println!("{headline}");
+    println!("Path: {}", display_path_for_cli(packet));
+    if report.readiness != "Ready for review" {
+        println!("Needs attention: {}", report.readiness);
+    }
+    println!("Next: shiplog next");
+    println!();
 }
 
 fn run_update(args: UpdateArgs) -> Result<()> {
