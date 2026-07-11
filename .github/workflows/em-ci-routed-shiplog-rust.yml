@@ -235,20 +235,22 @@ jobs:
           set -euo pipefail
           if ! ci-disk-guard /mnt/ci-scratch 45; then
             echo "fallback_reason=disk_guard" >> "$GITHUB_OUTPUT"
-            exit 75
+            exit 0
           fi
           if ! ci-disk-guard /mnt/ci-cache 10; then
             echo "fallback_reason=disk_guard" >> "$GITHUB_OUTPUT"
-            exit 75
+            exit 0
           fi
           mkdir -p "$TMPDIR" "$CARGO_TARGET_DIR"
 
       - uses: dtolnay/rust-toolchain@v1
+        if: steps.prepare.outputs.fallback_reason != 'disk_guard'
         with:
           toolchain: 1.95.0
           components: rustfmt, clippy
 
       - name: Preflight disk and toolchain
+        if: steps.prepare.outputs.fallback_reason != 'disk_guard'
         run: |
           set -euo pipefail
           df -h /mnt/ci-scratch /mnt/ci-cache || true
@@ -258,6 +260,7 @@ jobs:
           if command -v sccache >/dev/null 2>&1; then sccache --show-stats || true; fi
 
       - name: Run Shiplog Rust Small checks
+        if: steps.prepare.outputs.fallback_reason != 'disk_guard'
         run: |
           set -euo pipefail
           export HOME="$TMPDIR/home"
@@ -298,30 +301,33 @@ jobs:
         run: |
           if ! ci-disk-guard /mnt/ci-scratch 80; then
             echo "fallback_reason=disk_guard" >> "$GITHUB_OUTPUT"
-            exit 75
+            exit 0
           fi
           if ! ci-disk-guard /mnt/docker 20; then
             echo "fallback_reason=disk_guard" >> "$GITHUB_OUTPUT"
-            exit 75
+            exit 0
           fi
           if ! ci-disk-guard /mnt/ci-cache 20; then
             echo "fallback_reason=disk_guard" >> "$GITHUB_OUTPUT"
-            exit 75
+            exit 0
           fi
           mkdir -p "$CARGO_TARGET_DIR" "$TMPDIR"
 
       - name: Install Rust toolchain
+        if: steps.prepare.outputs.fallback_reason != 'disk_guard'
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: "1.95.0"
           components: rustfmt, clippy
 
       - uses: Swatinem/rust-cache@v2
+        if: steps.prepare.outputs.fallback_reason != 'disk_guard'
         with:
           shared-key: "shiplog-rust-small-cx43"
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Run Shiplog Rust Small checks
+        if: steps.prepare.outputs.fallback_reason != 'disk_guard'
         run: |
           cargo fmt --all -- --check
           cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
@@ -353,30 +359,33 @@ jobs:
         run: |
           if ! ci-disk-guard /mnt/ci-scratch 100; then
             echo "fallback_reason=disk_guard" >> "$GITHUB_OUTPUT"
-            exit 75
+            exit 0
           fi
           if ! ci-disk-guard /mnt/docker 20; then
             echo "fallback_reason=disk_guard" >> "$GITHUB_OUTPUT"
-            exit 75
+            exit 0
           fi
           if ! ci-disk-guard /mnt/ci-cache 20; then
             echo "fallback_reason=disk_guard" >> "$GITHUB_OUTPUT"
-            exit 75
+            exit 0
           fi
           mkdir -p "$CARGO_TARGET_DIR" "$TMPDIR"
 
       - name: Install Rust toolchain
+        if: steps.prepare.outputs.fallback_reason != 'disk_guard'
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: "1.95.0"
           components: rustfmt, clippy
 
       - uses: Swatinem/rust-cache@v2
+        if: steps.prepare.outputs.fallback_reason != 'disk_guard'
         with:
           shared-key: "shiplog-rust-small-cx53"
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Run Shiplog Rust Small checks
+        if: steps.prepare.outputs.fallback_reason != 'disk_guard'
         run: |
           cargo fmt --all -- --check
           cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
@@ -534,7 +543,7 @@ jobs:
               if name == effective_target:
                   if value != "success":
                       failures.append(f"selected {name} job result was {value}")
-              elif fallback_used and name == target and value == "failure":
+              elif fallback_used and name == target:
                   continue
               elif value != "skipped":
                   failures.append(f"unselected {name} job result was {value}")
