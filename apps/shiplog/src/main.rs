@@ -167,7 +167,10 @@ API-budget posture:
 const DOCTOR_AFTER_HELP: &str = "\
 Setup-first path:
   shiplog init --guided
-  shiplog doctor --setup
+  shiplog doctor --setup --for intake
+  shiplog doctor --setup --for manager-share
+  shiplog doctor --setup --for public-share
+  shiplog doctor --setup --for all
   shiplog sources status
   shiplog status --latest
   shiplog intake --last-6-months --explain
@@ -176,7 +179,9 @@ Safety posture:
   doctor --setup reads local setup state without provider network calls or writes.
   doctor --repair-plan prints setup repair guidance, not evidence repair commands.
   sources status shows source readiness without collecting evidence.
-  Run doctor --setup before intake when setup or redaction state is uncertain.";
+  Run doctor --setup before intake when setup or redaction state is uncertain.
+  The default objective is intake; use --for manager-share or --for public-share
+  when those later sharing tasks are the requested objective.";
 
 const SOURCES_AFTER_HELP: &str = "\
 Source setup path:
@@ -403,6 +408,9 @@ enum Command {
         /// Print setup readiness as JSON for agent/control-plane consumers.
         #[arg(long, requires = "setup")]
         json: bool,
+        /// Scope setup readiness to an objective.
+        #[arg(long = "for", value_enum, default_value = "intake")]
+        objective: doctor::SetupObjective,
     },
 
     /// Run a guided best-effort review intake and print next steps.
@@ -7791,8 +7799,13 @@ fn run_doctor(config_path: &Path, sources: &[InitSource]) -> Result<()> {
     Ok(())
 }
 
-fn run_doctor_setup(config_path: &Path, sources: &[InitSource], json: bool) -> Result<()> {
-    let status = doctor::build_setup_status(config_path, sources);
+fn run_doctor_setup(
+    config_path: &Path,
+    sources: &[InitSource],
+    objective: doctor::SetupObjective,
+    json: bool,
+) -> Result<()> {
+    let status = doctor::build_setup_status_for(config_path, sources, objective);
     if json {
         serde_json::to_writer_pretty(std::io::stdout(), &status)
             .context("serialize setup readiness json")?;
@@ -7803,7 +7816,7 @@ fn run_doctor_setup(config_path: &Path, sources: &[InitSource], json: bool) -> R
     if doctor::setup_status_needs_action(&status) {
         anyhow::bail!(
             "doctor setup found {}",
-            doctor::setup_overall_status_label(status.overall_status)
+            doctor::setup_overall_status_label(status.requested_status)
         );
     }
     Ok(())
@@ -7938,7 +7951,8 @@ fn yes_no(value: bool) -> &'static str {
 
 fn run_status(args: StatusArgs) -> Result<()> {
     let _explicit_latest = args.latest;
-    let setup_status = doctor::build_setup_status(&args.config, &[]);
+    let setup_status =
+        doctor::build_setup_status_for(&args.config, &[], doctor::SetupObjective::Intake);
     let resolution = status::resolve_latest_review_loop_receipts(&args.out);
     let report_json = load_status_report_json(&resolution);
     let mut status = status::ReviewLoopStatus::from_inputs(review_loop_status_inputs(

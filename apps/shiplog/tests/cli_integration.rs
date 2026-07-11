@@ -2787,8 +2787,10 @@ fn init_guided_creates_local_first_setup_without_token_providers() -> CliTestRes
         .env_remove("SHIPLOG_REDACT_KEY")
         .args(["doctor", "--setup"])
         .assert()
-        .failure()
-        .stdout(predicate::str::contains("Setup readiness: Needs setup"))
+        .success()
+        .stdout(predicate::str::contains(
+            "Setup readiness for intake: Ready with caveats",
+        ))
         .stdout(predicate::str::contains("Local git"))
         .stdout(predicate::str::contains("Manual journal"))
         .stdout(predicate::str::contains("Manager share"))
@@ -4859,7 +4861,7 @@ user = "octo"
         .env_remove("SHIPLOG_REDACT_KEY")
         .args(["doctor", "--setup", "--json"])
         .assert()
-        .failure();
+        .success();
     let doctor_stdout = String::from_utf8(doctor.get_output().stdout.clone())?;
     let doctor_json: serde_json::Value = serde_json::from_str(&doctor_stdout)?;
 
@@ -5156,8 +5158,10 @@ fn guided_setup_prevents_dead_end_manual_repair_loop() -> CliTestResult {
         .env_remove("SHIPLOG_REDACT_KEY")
         .args(["doctor", "--setup"])
         .assert()
-        .failure()
-        .stdout(predicate::str::contains("Setup readiness: Needs setup"))
+        .success()
+        .stdout(predicate::str::contains(
+            "Setup readiness for intake: Ready with caveats",
+        ))
         .stdout(predicate::str::contains("Manager share"))
         .stdout(predicate::str::contains("Public share"))
         .stdout(predicate::str::contains("SHIPLOG_REDACT_KEY not set"));
@@ -5207,7 +5211,7 @@ fn guided_setup_prevents_dead_end_manual_repair_loop() -> CliTestResult {
         .assert()
         .success()
         .stdout(predicate::str::contains(
-            "Setup readiness: Ready with caveats",
+            "Setup readiness for intake: Ready with caveats",
         ))
         .stdout(predicate::str::contains("Manual journal"))
         .stdout(predicate::str::contains("Manager share"))
@@ -6545,7 +6549,7 @@ events = "./manual_events.yaml"
         .assert()
         .success()
         .stdout(predicate::str::contains(
-            "Setup readiness: Ready with caveats",
+            "Setup readiness for intake: Ready with caveats",
         ))
         .stdout(predicate::str::contains("Ready:"))
         .stdout(predicate::str::contains("Local git"))
@@ -6594,10 +6598,12 @@ events = "./manual_events.yaml"
     let assert = shiplog_cmd()
         .current_dir(tmp.path())
         .env_remove("SHIPLOG_REDACT_KEY")
-        .args(["doctor", "--setup"])
+        .args(["doctor", "--setup", "--for", "manager-share"])
         .assert()
         .failure()
-        .stdout(predicate::str::contains("Setup readiness: Needs setup"))
+        .stdout(predicate::str::contains(
+            "Setup readiness for manager-share: Blocked",
+        ))
         .stdout(predicate::str::contains("Blocked:"))
         .stdout(predicate::str::contains("Manager share"))
         .stdout(predicate::str::contains(
@@ -6658,7 +6664,9 @@ events = "./manual_events.yaml"
         .args(["doctor", "--setup"])
         .assert()
         .failure()
-        .stdout(predicate::str::contains("Setup readiness: Blocked"))
+        .stdout(predicate::str::contains(
+            "Setup readiness for intake: Blocked",
+        ))
         .stdout(predicate::str::contains("Blocked:"))
         .stdout(predicate::str::contains("Manual journal"))
         .stdout(predicate::str::contains("manual_events.yaml malformed"))
@@ -6897,7 +6905,7 @@ user = "octo"
         .env_remove("SHIPLOG_REDACT_KEY")
         .args(["doctor", "--setup", "--json"])
         .assert()
-        .failure();
+        .success();
     let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
     let after = file_tree_manifest(tmp.path());
     assert_eq!(
@@ -6911,6 +6919,8 @@ user = "octo"
 
     let json: serde_json::Value = serde_json::from_str(&stdout)?;
     assert_eq!(json["overall_status"], "needs_setup");
+    assert_eq!(json["requested_objective"], "intake");
+    assert_eq!(json["requested_status"], "ready_with_caveats");
 
     let git = setup_json_item(&json, "sources", "git");
     assert_eq!(git["label"], "Local git");
@@ -6968,13 +6978,25 @@ user = "octo"
         "agent JSON should expose read-only redaction setup next action"
     );
 
+    let manager_assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args(["doctor", "--setup", "--for", "manager-share", "--json"])
+        .assert()
+        .failure();
+    let manager_stdout = String::from_utf8(manager_assert.get_output().stdout.clone())?;
+    let manager_json: serde_json::Value = serde_json::from_str(&manager_stdout)?;
+    assert_eq!(manager_json["requested_objective"], "manager-share");
+    assert_eq!(manager_json["requested_status"], "blocked");
+
     let assert = shiplog_cmd()
         .current_dir(tmp.path())
         .env_remove("GITHUB_TOKEN")
         .env_remove("SHIPLOG_REDACT_KEY")
         .args(["doctor", "--setup", "--json"])
         .assert()
-        .failure();
+        .success();
     let stdout_again = String::from_utf8(assert.get_output().stdout.clone())?;
     assert_eq!(
         stdout, stdout_again,
@@ -7330,7 +7352,7 @@ coverage = "./missing.coverage.json"
         .env_remove("SHIPLOG_REDACT_KEY")
         .args(["doctor", "--setup", "--json"])
         .assert()
-        .failure();
+        .success();
     let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
     let after = file_tree_manifest(tmp.path());
     assert_eq!(
@@ -7340,6 +7362,8 @@ coverage = "./missing.coverage.json"
 
     let json: serde_json::Value = serde_json::from_str(&stdout)?;
     assert_eq!(json["overall_status"], "needs_setup");
+    assert_eq!(json["requested_objective"], "intake");
+    assert_eq!(json["requested_status"], "ready_with_caveats");
     assert_eq!(
         setup_json_item(&json, "local_files", "config")["status"],
         "ready"
@@ -16630,7 +16654,7 @@ coverage = "./run_fixture/coverage.manifest.json"
     let doctor = shiplog_cmd()
         .current_dir(tmp.path())
         .env_remove("SHIPLOG_REDACT_KEY")
-        .args(["doctor", "--setup"])
+        .args(["doctor", "--setup", "--for", "manager-share"])
         .assert()
         .failure();
     let doctor_stdout = String::from_utf8(doctor.get_output().stdout.clone())?;

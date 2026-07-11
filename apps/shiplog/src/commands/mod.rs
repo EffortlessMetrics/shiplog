@@ -32,11 +32,14 @@ pub(super) fn dispatch() -> Result<()> {
             setup,
             repair_plan,
             json,
+            objective,
         } => {
             if setup {
-                run_doctor_setup(&config, &sources, json)?;
+                run_doctor_setup(&config, &sources, objective, json)?;
             } else if repair_plan {
                 run_doctor_repair_plan(&config, &sources)?;
+            } else if objective != doctor::SetupObjective::Intake {
+                anyhow::bail!("doctor --for requires --setup");
             } else {
                 run_doctor(&config, &sources)?;
             }
