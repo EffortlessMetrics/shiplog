@@ -9,6 +9,12 @@ hook_path="$hooks_dir/pre-commit"
 
 mkdir -p "$hooks_dir"
 
+if [[ -e "$hook_path" ]] && ! grep -q "Installed by scripts/install-hooks.sh" "$hook_path" 2>/dev/null; then
+  backup_path="$hook_path.bak.$(date +%Y%m%d%H%M%S 2>/dev/null || echo pre-shiplog)"
+  cp "$hook_path" "$backup_path"
+  echo "Existing pre-commit hook backed up to $backup_path"
+fi
+
 cat > "$hook_path" <<'HOOK'
 #!/usr/bin/env bash
 # Installed by scripts/install-hooks.sh. Skip with SHIPLOG_SKIP_HOOKS=1 or `git commit --no-verify`.
