@@ -1,6 +1,6 @@
 # shiplog - Handoff
 
-*Last updated: 2026-02-17*
+*Last updated: 2026-07-04*
 
 ## 0) One sentence
 
@@ -16,7 +16,8 @@ It is intentionally **not** an engineering analytics dashboard and **not** an "A
 
 This is what users "buy" (even when it is OSS):
 
-- one workflow: **collect -> curate -> render**
+- one loop: **setup -> status -> intake -> repair -> rerun -> diff -> share**
+  (with **collect -> curate -> render** as the data flow underneath)
 - one artifact set: **packet + ledger + coverage + bundles**
 - one mental model: **narrative is human; receipts are machine**
 
@@ -80,6 +81,24 @@ out/<run_id>/
 ---
 
 ## 3) User workflows (what "done" feels like)
+
+### 3.0 The guided review-readiness loop (primary, since 0.9)
+
+```bash
+shiplog init --guided
+shiplog doctor --setup          # setup preflight (read-only; --json for agents)
+shiplog status --latest         # review cockpit (read-only; --json for agents)
+shiplog intake --last-6-months --explain
+shiplog repair plan --latest
+shiplog journal add --from-repair <repair_id>
+shiplog repair diff --latest
+shiplog runs diff --latest
+shiplog share explain manager --latest
+```
+
+`sources status` (and `sources status --json`) reports source setup readiness
+without provider calls. The subsections below describe the collect/curate/render
+substrate the loop drives.
 
 ### 3.1 Collect (GitHub)
 
@@ -316,21 +335,29 @@ Goal: reduce onboarding friction:
 
 ---
 
-## 9) Roadmap (near-term, confirmed)
+## 9) Roadmap
 
-**Now (v0.2.x)**
+**Shipped through v0.9.x**
 
-- Binary releases (CI)
 - ✅ Local git ingest adapter
 - ✅ GitLab adapter
 - ✅ Jira + Linear adapters
 - ✅ Configurable packet templates
-- Cache improvements (TTL config, size limits)
+- ✅ Multi-source collection (`collect multi`) and run merging (`merge`)
+- ✅ Provider identity discovery (`identify`)
+- ✅ Guided review-readiness loop (`init --guided`, `doctor --setup`,
+  `status`, `intake`, `repair`, `journal`, `runs diff`, `share explain`)
+- ✅ Read-only JSON agent surfaces (`doctor --setup --json`,
+  `status --latest --json`, `sources status --json`)
+- ✅ Executable GitHub activity harvest profiles
+  (`github activity plan|scout|run|status|report|merge`)
+- ✅ Release workflow in CI
 
-**Next (v0.3.x)**
+**Next**
 
-- Multi-source merging with identity resolution
+- Deeper identity resolution across sources
 - Better non-code work capture (manual lane ergonomics)
+- Cache improvements (TTL config, size limits)
 
 **Non-goals**
 

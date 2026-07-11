@@ -15,8 +15,15 @@ use crate::*;
 
 pub(super) fn dispatch() -> Result<()> {
     let cli = Cli::parse();
+    let command = match cli.cmd {
+        Some(command) => command,
+        None => {
+            run_home()?;
+            return Ok(());
+        }
+    };
 
-    match cli.cmd {
+    match command {
         Command::Init {
             sources,
             dry_run,
@@ -62,7 +69,9 @@ pub(super) fn dispatch() -> Result<()> {
         },
 
         Command::Sources { cmd } => match cmd {
-            SourcesCommand::Status(args) => run_sources_status(&args.config, &args.sources)?,
+            SourcesCommand::Status(args) => {
+                run_sources_status(&args.config, &args.sources, args.json)?
+            }
             SourcesCommand::List(args) => run_sources_list(&args.config, args.json)?,
             SourcesCommand::Enable(args) => {
                 run_sources_set_enabled(&args.config, &args.sources, true)?
@@ -72,8 +81,26 @@ pub(super) fn dispatch() -> Result<()> {
             }
         },
 
+        Command::Auth { cmd } => match cmd {
+            AuthCommand::Github { cmd } => match cmd {
+                GithubAuthCommand::Status(args) => run_github_auth_status(&args)?,
+            },
+        },
+
         Command::Status(args) => {
             run_status(args)?;
+        }
+
+        Command::Next(args) => {
+            run_next(args)?;
+        }
+
+        Command::Update(args) => {
+            run_update(args)?;
+        }
+
+        Command::Add(args) => {
+            run_add(args)?;
         }
 
         Command::Github { cmd } => match cmd {

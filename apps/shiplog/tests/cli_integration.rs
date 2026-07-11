@@ -23,10 +23,15 @@ use std::thread::{self, JoinHandle};
 use std::time::{Duration as StdDuration, Instant};
 use tempfile::TempDir;
 
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
+
 type CliTestResult = Result<(), Box<dyn std::error::Error>>;
 
 fn shiplog_cmd() -> Command {
-    Command::from_std(std::process::Command::new(env!("CARGO_BIN_EXE_shiplog")))
+    let mut command = Command::from_std(std::process::Command::new(env!("CARGO_BIN_EXE_shiplog")));
+    command.env("GH_CONFIG_DIR", ".shiplog-test-gh-config");
+    command
 }
 
 fn fixture_dir() -> PathBuf {
@@ -596,6 +601,14 @@ fn assert_github_activity_api_ledger_schema_contract(api_ledger_json: &serde_jso
             api_ledger_json["github_api"].get(field).is_some(),
             "generated GitHub activity API ledger github_api should contain {field}"
         );
+    }
+    if let Some(auth) = api_ledger_json.get("auth") {
+        for field in ["source", "host", "account"] {
+            assert!(
+                auth.get(field).is_some(),
+                "GitHub activity API ledger auth should contain {field}"
+            );
+        }
     }
     for field in ["requested_owners", "query_strategy", "kept", "dropped"] {
         assert!(
@@ -1411,6 +1424,8 @@ fn status_latest_json(
     let out_arg = out.to_string_lossy().to_string();
     let assert = shiplog_cmd()
         .current_dir(tmp)
+        .env_remove("GITHUB_TOKEN")
+        .env("GH_CONFIG_DIR", tmp.join("gh-config"))
         .env_remove("SHIPLOG_REDACT_KEY")
         .args(["status", "--out", out_arg.as_str(), "--latest", "--json"])
         .assert()
@@ -1668,6 +1683,70 @@ fn file_tree_manifest(root: &Path) -> Vec<(String, u64, Option<std::time::System
     entries
 }
 
+#[cfg(not(windows))]
+fn install_fake_gh(tmp: &Path) -> anyhow::Result<PathBuf> {
+    let bin_dir = tmp.join("fake-gh-bin");
+    std::fs::create_dir_all(&bin_dir)?;
+    #[cfg(windows)]
+    let path = bin_dir.join("gh.cmd");
+    #[cfg(not(windows))]
+    let path = bin_dir.join("gh");
+    #[cfg(windows)]
+    let script = r#"@echo off
+if "%2"=="token" (
+  echo shiplog-gh-secret
+) else (
+  echo {"hosts":{"github.com":[{"user":"octocat"}],"127.0.0.1":[{"user":"octocat"}]}}
+)
+exit /b 0
+"#;
+    #[cfg(not(windows))]
+    let script = r##"#!/bin/sh
+case "$*" in
+  *"auth token"*) printf '%s\n' 'shiplog-gh-secret' ;;
+  *) printf '%s\n' '{"hosts":{"github.com":[{"user":"octocat"}],"127.0.0.1":[{"user":"octocat"}]}}' ;;
+esac
+"##;
+    std::fs::write(&path, script)?;
+    #[cfg(unix)]
+    {
+        let mut permissions = std::fs::metadata(&path)?.permissions();
+        permissions.set_mode(0o755);
+        std::fs::set_permissions(&path, permissions)?;
+    }
+    Ok(bin_dir)
+}
+
+#[cfg(not(windows))]
+fn path_with_prepend(prepend: &Path) -> anyhow::Result<String> {
+    let mut paths = vec![prepend.to_path_buf()];
+    if let Some(existing) = std::env::var_os("PATH") {
+        paths.extend(std::env::split_paths(&existing));
+    }
+    Ok(std::env::join_paths(paths)?.to_string_lossy().into_owned())
+}
+
+#[cfg(not(windows))]
+fn assert_tree_does_not_contain(root: &Path, forbidden: &str) -> anyhow::Result<()> {
+    fn visit(path: &Path, forbidden: &str) -> anyhow::Result<()> {
+        for entry in std::fs::read_dir(path)? {
+            let path = entry?.path();
+            if path.is_dir() {
+                visit(&path, forbidden)?;
+            } else if path.is_file() {
+                let contents = std::fs::read(&path)?;
+                assert!(
+                    !String::from_utf8_lossy(&contents).contains(forbidden),
+                    "secret sentinel leaked into {}",
+                    path.display()
+                );
+            }
+        }
+        Ok(())
+    }
+    visit(root, forbidden)
+}
+
 // ── 1. --version flag ──────────────────────────────────────────────────────
 
 #[test]
@@ -1705,6 +1784,12 @@ fn help_shows_all_subcommands() {
         .stdout(predicate::str::contains("merge"))
         .stdout(predicate::str::contains("import"))
         .stdout(predicate::str::contains("run"))
+        .stdout(predicate::str::contains("Start here:"))
+        .stdout(predicate::str::contains("shiplog add \"what changed\""))
+        .stdout(predicate::str::contains("shiplog update"))
+        .stdout(predicate::str::contains("shiplog next"))
+        .stdout(predicate::str::contains("shiplog open"))
+        .stdout(predicate::str::contains("shiplog share manager"))
         .stdout(predicate::str::contains("Review-ready loop:"))
         .stdout(predicate::str::contains("shiplog init --guided"))
         .stdout(predicate::str::contains("shiplog doctor --setup"))
@@ -2765,9 +2850,11 @@ fn init_guided_creates_local_first_setup_without_token_providers() -> CliTestRes
     let config = std::fs::read_to_string(tmp.path().join("shiplog.toml"))?;
     assert!(config.contains("[sources.git]\nenabled = true"));
     assert!(config.contains("[sources.manual]\nenabled = true"));
-    assert!(config.contains("[sources.github]\n# Set GITHUB_TOKEN"));
     assert!(config.contains(
-        "[sources.github]\n# Set GITHUB_TOKEN. Use either user or me = true.\nenabled = false"
+        "[sources.github]\n# GitHub auth uses environment credentials or an authenticated gh CLI session."
+    ));
+    assert!(config.contains(
+        "[sources.github]\n# GitHub auth uses environment credentials or an authenticated gh CLI session.\n# Use either user or me = true.\nenabled = false"
     ));
     assert!(config.contains(
         "[sources.gitlab]\n# Set GITLAB_TOKEN. Use either user or me = true.\nenabled = false"
@@ -2879,6 +2966,147 @@ fn status_latest_ready_setup_without_run_routes_to_intake() -> CliTestResult {
         file_tree_manifest(tmp.path()),
         "status should be read-only after guided init"
     );
+    Ok(())
+}
+
+#[test]
+fn next_is_read_only_and_projects_the_status_action() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let out = tmp.path().join("custom-out");
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["init", "--guided"])
+        .assert()
+        .success();
+
+    let before = file_tree_manifest(tmp.path());
+    let out_arg = out.to_string_lossy().to_string();
+    let assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args(["next", "--out", out_arg.as_str(), "--json"])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
+    let json: serde_json::Value = serde_json::from_str(&stdout)?;
+
+    assert_eq!(json["overall_status"], "ready_to_collect");
+    assert_eq!(json["action"]["key"], "intake");
+    assert_eq!(json["action"]["writes"], true);
+    assert!(json["action"]["command"].as_str().is_some_and(|command| {
+        command.starts_with("shiplog intake --out ")
+            && command.ends_with("--last-6-months --explain")
+    }));
+    assert!(json["receipt_refs"].is_array());
+    assert_eq!(before, file_tree_manifest(tmp.path()));
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args(["next", "--out", out_arg.as_str()])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Next: Collect evidence"))
+        .stdout(predicate::str::contains("Writes: yes"))
+        .stdout(predicate::str::contains("Reason:"));
+
+    Ok(())
+}
+
+#[test]
+fn no_argument_home_is_read_only_and_useful_before_and_after_setup() -> CliTestResult {
+    let empty = TempDir::new()?;
+    let before_empty = file_tree_manifest(empty.path());
+    shiplog_cmd()
+        .current_dir(empty.path())
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("No packet exists yet."))
+        .stdout(predicate::str::contains("Start: shiplog intake"));
+    assert_eq!(before_empty, file_tree_manifest(empty.path()));
+
+    let established = TempDir::new()?;
+    shiplog_cmd()
+        .current_dir(established.path())
+        .args(["init", "--guided"])
+        .assert()
+        .success();
+    let before_established = file_tree_manifest(established.path());
+    shiplog_cmd()
+        .current_dir(established.path())
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Status: Ready to collect"))
+        .stdout(predicate::str::contains("No packet exists yet."))
+        .stdout(predicate::str::contains("Next: shiplog intake"));
+    assert_eq!(before_established, file_tree_manifest(established.path()));
+
+    Ok(())
+}
+
+#[test]
+fn update_rebuilds_packet_and_compares_against_prior_run() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let out = tmp.path().join("out");
+    let out_arg = out.to_string_lossy().to_string();
+
+    run_intake_without_provider_tokens(tmp.path(), &out);
+    let before_update = file_tree_manifest(tmp.path());
+    let update = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args(["update", "--out", out_arg.as_str(), "--no-open"])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(update.get_output().stdout.clone())?;
+
+    assert!(stdout.contains("Packet ready"));
+    assert!(stdout.contains("Path: "));
+    assert!(stdout.contains("Review intake complete."));
+    assert!(stdout.contains("Update comparison:"));
+    assert!(stdout.contains("Packet quality diff:"));
+    assert!(stdout.contains("Next:"));
+    assert!(
+        all_run_dirs(&out).len() >= 2,
+        "update should create a new run alongside the prior packet"
+    );
+    assert_ne!(before_update, file_tree_manifest(tmp.path()));
+    Ok(())
+}
+
+#[test]
+fn add_records_positional_title_and_suggests_update() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let before = file_tree_manifest(tmp.path());
+    let assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .args([
+            "add",
+            "Resolved the customer import incident",
+            "--date",
+            "2026-03-15",
+            "--impact",
+            "Protected the next import window",
+            "--workstream",
+            "Customer Reliability",
+            "--tag",
+            "incident",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Added manual event"))
+        .stdout(predicate::str::contains("shiplog update"));
+    let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
+    assert!(stdout.contains("Resolved the customer import incident"));
+
+    let manual = std::fs::read_to_string(tmp.path().join("manual_events.yaml"))?;
+    assert!(manual.contains("Resolved the customer import incident"));
+    assert!(manual.contains("Protected the next import window"));
+    assert!(manual.contains("Customer Reliability"));
+    assert_ne!(before, file_tree_manifest(tmp.path()));
     Ok(())
 }
 
@@ -3791,6 +4019,107 @@ fn cli_target_has_query_param(target: &str, key: &str, value: &str) -> bool {
         .unwrap_or(false)
 }
 
+#[cfg(not(windows))]
+#[test]
+fn github_auth_cli_fallback_collects_without_token_and_keeps_secret_out_of_artifacts()
+-> CliTestResult {
+    let tmp = TempDir::new()?;
+    let out = tmp.path().join("out");
+    let server = RecordedGithubCliServer::start(3)?;
+    let fake_gh = install_fake_gh(tmp.path())?;
+    let path = path_with_prepend(&fake_gh)?;
+    let sentinel = "shiplog-gh-secret";
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        format!(
+            r#"[shiplog]
+config_version = 1
+
+[defaults]
+out = "./out"
+window = "last-6-months"
+
+[sources.github]
+enabled = true
+user = "octocat"
+api_base = "{}"
+include_reviews = false
+
+[sources.manual]
+enabled = false
+"#,
+            server.base_url()
+        ),
+    )?;
+
+    let auth_assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GH_TOKEN")
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GH_ENTERPRISE_TOKEN")
+        .env_remove("GITHUB_ENTERPRISE_TOKEN")
+        .env("PATH", &path)
+        .env("GH_CONFIG_DIR", tmp.path().join("gh-config"))
+        .args([
+            "auth",
+            "github",
+            "status",
+            "--config",
+            tmp.path().join("shiplog.toml").to_str().unwrap(),
+            "--json",
+        ])
+        .assert()
+        .success();
+    let auth_json: serde_json::Value = serde_json::from_slice(&auth_assert.get_output().stdout)?;
+    assert_eq!(auth_json["source"], "gh_cli");
+
+    let assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GH_TOKEN")
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("GH_ENTERPRISE_TOKEN")
+        .env_remove("GITHUB_ENTERPRISE_TOKEN")
+        .env("PATH", path)
+        .env("GH_CONFIG_DIR", tmp.path().join("gh-config"))
+        .args([
+            "intake",
+            "--source",
+            "github",
+            "--out",
+            out.to_str().unwrap(),
+            "--no-open",
+            "--since",
+            "2026-02-01",
+            "--until",
+            "2026-03-01",
+        ])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
+    let stderr = String::from_utf8(assert.get_output().stderr.clone())?;
+    assert!(!stdout.contains(sentinel));
+    assert!(!stderr.contains(sentinel));
+
+    let requests = server.finish()?;
+    assert_eq!(
+        requests.len(),
+        3,
+        "fake GitHub API should receive the intake requests"
+    );
+    assert!(out.exists(), "intake should create the output directory");
+    assert_tree_does_not_contain(&out, sentinel)?;
+    let config = std::fs::read_to_string(tmp.path().join("shiplog.toml"))?;
+    assert!(!config.contains(sentinel));
+    Ok(())
+}
+
+#[cfg(windows)]
+#[test]
+fn github_auth_cli_fallback_collects_without_token_and_keeps_secret_out_of_artifacts()
+-> CliTestResult {
+    Ok(())
+}
+
 #[test]
 fn github_activity_scout_writes_checkpoint_progress_on_budget_stop() -> CliTestResult {
     let tmp = TempDir::new()?;
@@ -3872,6 +4201,9 @@ mode = "created"
         "github.activity.api-ledger.v1"
     );
     assert_github_activity_api_ledger_schema_contract(&api_ledger);
+    assert_eq!(api_ledger["auth"]["source"], "GITHUB_TOKEN");
+    assert_eq!(api_ledger["auth"]["host"], "github.com");
+    assert_eq!(api_ledger["auth"]["account"], serde_json::Value::Null);
     assert_eq!(api_ledger["profile"], "scout");
     assert_eq!(api_ledger["stop_reason"], "budget_exhausted");
     assert_eq!(api_ledger["github_api"]["requests"]["search"], 0);
@@ -4858,6 +5190,7 @@ user = "octo"
     let doctor = shiplog_cmd()
         .current_dir(tmp.path())
         .env_remove("GITHUB_TOKEN")
+        .env("GH_CONFIG_DIR", tmp.path().join("gh-config"))
         .env_remove("SHIPLOG_REDACT_KEY")
         .args(["doctor", "--setup", "--json"])
         .assert()
@@ -4868,6 +5201,7 @@ user = "octo"
     let sources = shiplog_cmd()
         .current_dir(tmp.path())
         .env_remove("GITHUB_TOKEN")
+        .env("GH_CONFIG_DIR", tmp.path().join("gh-config"))
         .args(["sources", "status"])
         .assert()
         .failure();
@@ -4880,6 +5214,7 @@ user = "octo"
     shiplog_cmd()
         .current_dir(tmp.path())
         .env_remove("GITHUB_TOKEN")
+        .env("GH_CONFIG_DIR", tmp.path().join("gh-config"))
         .env_remove("GITLAB_TOKEN")
         .env_remove("JIRA_TOKEN")
         .env_remove("LINEAR_API_KEY")
@@ -4897,20 +5232,23 @@ user = "octo"
     let status_json = status_latest_json(tmp.path(), &out)?;
 
     assert_eq!(
-        status_json["setup_summary"]["status"], doctor_json["overall_status"],
-        "status setup blocker should match doctor JSON"
+        status_json["setup_summary"]["status"], doctor_json["requested_status"],
+        "status setup result should match doctor intake requested status"
     );
+    assert_eq!(status_json["setup_summary"]["status"], "ready_with_caveats");
     assert!(
         status_json["setup_summary"]["reason"]
             .as_str()
-            .is_some_and(|reason| reason.contains("GitHub") && reason.contains("GITHUB_TOKEN")),
-        "setup blocker should be the missing source credential, not share redaction: {status_json}"
+            .is_some_and(|reason| reason.contains("optional source caveats")),
+        "intake setup should remain usable while source caveats are visible: {status_json}"
     );
     assert_eq!(github_row.status, "unavailable");
     assert!(github_row.enabled);
     assert!(
-        github_row.reason.contains("GITHUB_TOKEN not set"),
-        "sources status should name missing GitHub token: {sources_stdout}"
+        github_row
+            .reason
+            .contains("GitHub authentication unavailable"),
+        "sources status should name unavailable GitHub authentication: {sources_stdout}"
     );
     assert!(
         status_json["source_summary"]["unavailable"]
@@ -4919,18 +5257,18 @@ user = "octo"
                 source["source_key"] == "github"
                     && source["reason"]
                         .as_str()
-                        .is_some_and(|reason| reason.contains("GITHUB_TOKEN"))
+                        .is_some_and(|reason| reason.contains("GitHub authentication"))
             })),
         "status source summary should carry the GitHub blocker from receipts"
     );
     assert!(
         status_json["next_actions"]
             .as_array()
-            .is_some_and(|actions| actions.iter().all(|action| !action["command"]
+            .is_some_and(|actions| actions.iter().any(|action| action["command"]
                 .as_str()
                 .unwrap_or_default()
-                .contains("journal add --from-repair"))),
-        "setup-blocked status should not offer evidence-repair writes"
+                .contains("repair plan"))),
+        "intake-ready status should expose the receipt-derived repair plan"
     );
     assert_eq!(
         before,
@@ -5337,7 +5675,7 @@ fn init_force_overwrites_existing_files() {
         "[sources.linear]\n# Set LINEAR_API_KEY and user_id before enabling.\nenabled = true"
     ));
     assert!(config.contains(
-        "[sources.github]\n# Set GITHUB_TOKEN. Use either user or me = true.\nenabled = false"
+        "[sources.github]\n# GitHub auth uses environment credentials or an authenticated gh CLI session.\n# Use either user or me = true.\nenabled = false"
     ));
     assert!(config.contains("[sources.manual]\nenabled = false"));
 }
@@ -6720,8 +7058,10 @@ events = "./manual_events.yaml"
         .args(["doctor", "--setup"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("GitHub token"))
-        .stdout(predicate::str::contains("GITHUB_TOKEN present"));
+        .stdout(predicate::str::contains("GitHub authentication"))
+        .stdout(predicate::str::contains(
+            "GitHub authentication ready via GITHUB_TOKEN",
+        ));
     let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
 
     assert!(
@@ -6812,14 +7152,17 @@ user = "octo"
     shiplog_cmd()
         .current_dir(tmp.path())
         .env_remove("GITHUB_TOKEN")
+        .env("GH_CONFIG_DIR", tmp.path().join("gh-config"))
         .args(["sources", "status"])
         .assert()
         .failure()
         .stdout(predicate::str::contains("github"))
         .stdout(predicate::str::contains("GitHub"))
         .stdout(predicate::str::contains("unavailable"))
-        .stdout(predicate::str::contains("GITHUB_TOKEN not set"))
-        .stdout(predicate::str::contains("set GITHUB_TOKEN"))
+        .stdout(predicate::str::contains(
+            "GitHub authentication unavailable",
+        ))
+        .stdout(predicate::str::contains("shiplog auth github status"))
         .stdout(predicate::str::contains("[read-only]"));
 
     assert!(
@@ -6856,13 +7199,42 @@ user = "octo"
         .success()
         .stdout(predicate::str::contains("github"))
         .stdout(predicate::str::contains("ready"))
-        .stdout(predicate::str::contains("token present"));
+        .stdout(predicate::str::contains(
+            "GitHub authentication ready via GITHUB_TOKEN",
+        ));
     let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
 
     assert!(
         !stdout.contains("shiplog-source-secret-token"),
         "sources status should report token presence without printing values"
     );
+    Ok(())
+}
+
+#[test]
+fn auth_github_status_reports_safe_environment_metadata_without_writes() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let before = file_tree_manifest(tmp.path());
+    let primary = "shiplog-auth-primary-sentinel";
+    let secondary = "shiplog-auth-secondary-sentinel";
+    let assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env("GH_TOKEN", primary)
+        .env("GITHUB_TOKEN", secondary)
+        .args(["auth", "github", "status", "--json"])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
+    let after = file_tree_manifest(tmp.path());
+    assert_eq!(before, after, "auth status should not write local files");
+    assert!(!stdout.contains(primary));
+    assert!(!stdout.contains(secondary));
+
+    let json: serde_json::Value = serde_json::from_str(&stdout)?;
+    assert_eq!(json["source"], "gh_token");
+    assert_eq!(json["host"], "github.com");
+    assert_eq!(json["availability"], "ready");
+    assert!(json["account"].is_null());
     Ok(())
 }
 
@@ -6902,6 +7274,7 @@ user = "octo"
     let assert = shiplog_cmd()
         .current_dir(tmp.path())
         .env_remove("GITHUB_TOKEN")
+        .env("GH_CONFIG_DIR", tmp.path().join("gh-config"))
         .env_remove("SHIPLOG_REDACT_KEY")
         .args(["doctor", "--setup", "--json"])
         .assert()
@@ -6939,9 +7312,12 @@ user = "octo"
         github["reason"]
             .as_str()
             .unwrap()
-            .contains("GITHUB_TOKEN not set")
+            .contains("GitHub authentication unavailable")
     );
-    assert_eq!(github["next_action"]["command"], "set GITHUB_TOKEN");
+    assert_eq!(
+        github["next_action"]["command"],
+        "shiplog auth github status"
+    );
     assert_eq!(github["next_action"]["writes"], false);
 
     let redaction = setup_json_item(&json, "credentials", "redaction_key");
@@ -6966,9 +7342,9 @@ user = "octo"
         .as_array()
         .expect("next_actions should be an array");
     assert!(
-        next_actions
-            .iter()
-            .any(|action| { action["command"] == "set GITHUB_TOKEN" && action["writes"] == false }),
+        next_actions.iter().any(|action| {
+            action["command"] == "shiplog auth github status" && action["writes"] == false
+        }),
         "agent JSON should expose read-only credential setup next action"
     );
     assert!(
@@ -6981,6 +7357,7 @@ user = "octo"
     let manager_assert = shiplog_cmd()
         .current_dir(tmp.path())
         .env_remove("GITHUB_TOKEN")
+        .env("GH_CONFIG_DIR", tmp.path().join("gh-config"))
         .env_remove("SHIPLOG_REDACT_KEY")
         .args(["doctor", "--setup", "--for", "manager-share", "--json"])
         .assert()
@@ -6993,6 +7370,7 @@ user = "octo"
     let assert = shiplog_cmd()
         .current_dir(tmp.path())
         .env_remove("GITHUB_TOKEN")
+        .env("GH_CONFIG_DIR", tmp.path().join("gh-config"))
         .env_remove("SHIPLOG_REDACT_KEY")
         .args(["doctor", "--setup", "--json"])
         .assert()
@@ -7048,7 +7426,7 @@ user = "octo"
     );
     assert_eq!(
         setup_json_item(&json, "credentials", "github_token")["reason"],
-        "GITHUB_TOKEN present"
+        "GitHub authentication ready via GITHUB_TOKEN for github.com"
     );
     assert!(
         setup_json_item(&json, "share_profiles", "manager")["reason"]
@@ -7093,6 +7471,7 @@ user = "octo"
     let doctor_assert = shiplog_cmd()
         .current_dir(tmp.path())
         .env_remove("GITHUB_TOKEN")
+        .env("GH_CONFIG_DIR", tmp.path().join("gh-config"))
         .env_remove("SHIPLOG_REDACT_KEY")
         .args(["doctor", "--setup", "--json"])
         .assert()
@@ -7103,6 +7482,7 @@ user = "octo"
     let sources_assert = shiplog_cmd()
         .current_dir(tmp.path())
         .env_remove("GITHUB_TOKEN")
+        .env("GH_CONFIG_DIR", tmp.path().join("gh-config"))
         .env_remove("SHIPLOG_REDACT_KEY")
         .args(["sources", "status"])
         .assert()
@@ -7147,7 +7527,7 @@ user = "octo"
     assert!(
         sources_rows["github"]
             .reason
-            .contains("GITHUB_TOKEN not set")
+            .contains("GitHub authentication unavailable")
     );
 
     assert!(
@@ -7157,6 +7537,114 @@ user = "octo"
     assert!(
         !sources_stdout.contains("Redaction key") && !sources_stdout.contains("SHIPLOG_REDACT_KEY"),
         "sources status should not include redaction/share credential noise"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn sources_status_json_matches_text_projection_without_writing_outputs() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    git2::Repository::init(tmp.path())?;
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        r#"[shiplog]
+config_version = 1
+
+[defaults]
+out = "./out"
+window = "last-6-months"
+profile = "internal"
+
+[sources.git]
+enabled = true
+repo = "."
+
+[sources.github]
+enabled = true
+user = "octo"
+"#,
+    )?;
+
+    let text_assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env("GH_CONFIG_DIR", tmp.path().join("gh-config"))
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args(["sources", "status"])
+        .assert()
+        .failure();
+    let text_stdout = String::from_utf8(text_assert.get_output().stdout.clone())?;
+    let text_rows = parse_sources_status_rows(&text_stdout);
+
+    let before = file_tree_manifest(tmp.path());
+    let json_assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("GITHUB_TOKEN")
+        .env("GH_CONFIG_DIR", tmp.path().join("gh-config"))
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args(["sources", "status", "--json"])
+        .assert()
+        .failure();
+    let json_stdout = String::from_utf8(json_assert.get_output().stdout.clone())?;
+    let after = file_tree_manifest(tmp.path());
+    assert_eq!(
+        before, after,
+        "sources status --json should be a read-only setup projection"
+    );
+
+    let json: serde_json::Value = serde_json::from_str(&json_stdout)?;
+    assert_eq!(
+        json["needs_action"].as_bool(),
+        Some(true),
+        "missing GitHub token should require source setup action"
+    );
+
+    let json_sources = json["sources"]
+        .as_array()
+        .expect("sources status JSON should include sources array");
+    assert_eq!(
+        json_sources.len(),
+        text_rows.len(),
+        "sources status --json should mirror the printed source rows"
+    );
+    for source in json_sources {
+        let key = source["key"].as_str().expect("source should include key");
+        let row = text_rows
+            .get(key)
+            .unwrap_or_else(|| panic!("text rows should include {key}"));
+        assert_eq!(row.label, source["label"].as_str().unwrap_or_default());
+        assert_eq!(row.enabled, source["enabled"].as_bool().unwrap_or_default());
+        assert_eq!(row.status, source["status"].as_str().unwrap_or_default());
+        assert_eq!(row.reason, source["reason"].as_str().unwrap_or_default());
+    }
+
+    let github = json_sources
+        .iter()
+        .find(|source| source["key"] == "github")
+        .expect("sources status JSON should include github");
+    assert_eq!(github["status"], "unavailable");
+    assert_eq!(
+        github["next_action"]["command"],
+        "shiplog auth github status"
+    );
+
+    let next_commands: Vec<&str> = json["next_actions"]
+        .as_array()
+        .expect("sources status JSON should include next_actions array")
+        .iter()
+        .filter_map(|action| action["command"].as_str())
+        .collect();
+    assert!(
+        next_commands.contains(&"shiplog auth github status"),
+        "next_actions should surface the auth-status action: {next_commands:?}"
+    );
+
+    assert!(
+        !json_stdout.contains("Manager share")
+            && !json_stdout.contains("SHIPLOG_REDACT_KEY")
+            && !json_stdout.contains("redaction_key"),
+        "sources status --json should stay source-scoped without share/credential noise"
     );
 
     Ok(())
@@ -7195,6 +7683,7 @@ user = "octo"
     let assert = shiplog_cmd()
         .current_dir(tmp.path())
         .env_remove("GITHUB_TOKEN")
+        .env("GH_CONFIG_DIR", tmp.path().join("gh-config"))
         .env_remove("SHIPLOG_REDACT_KEY")
         .args(["doctor", "--setup", "--json"])
         .assert()
@@ -7242,9 +7731,12 @@ user = "octo"
         github["reason"]
             .as_str()
             .unwrap()
-            .contains("GITHUB_TOKEN not set")
+            .contains("GitHub authentication unavailable")
     );
-    assert_eq!(github["next_action"]["command"], "set GITHUB_TOKEN");
+    assert_eq!(
+        github["next_action"]["command"],
+        "shiplog auth github status"
+    );
     assert_eq!(github["next_action"]["writes"], false);
 
     let manager = setup_json_item(&json, "share_profiles", "manager");
@@ -7279,8 +7771,8 @@ user = "octo"
         "agent JSON should route broken setup back to doctor before repair"
     );
     assert!(
-        next_commands.contains(&"set GITHUB_TOKEN"),
-        "agent JSON should expose missing provider credential setup"
+        next_commands.contains(&"shiplog auth github status"),
+        "agent JSON should expose GitHub auth diagnostics"
     );
     assert!(
         next_commands.contains(&"set SHIPLOG_REDACT_KEY"),
@@ -7349,6 +7841,7 @@ coverage = "./missing.coverage.json"
     let assert = shiplog_cmd()
         .current_dir(tmp.path())
         .env_remove("GITHUB_TOKEN")
+        .env("GH_CONFIG_DIR", tmp.path().join("gh-config"))
         .env_remove("SHIPLOG_REDACT_KEY")
         .args(["doctor", "--setup", "--json"])
         .assert()
@@ -7392,7 +7885,7 @@ coverage = "./missing.coverage.json"
         github["reason"]
             .as_str()
             .unwrap_or_default()
-            .contains("GITHUB_TOKEN not set")
+            .contains("GitHub authentication unavailable")
     );
 
     let json_source = setup_json_item(&json, "sources", "json");
@@ -10304,7 +10797,7 @@ fn intake_summary_and_report_skipped_sources_mirror_skipped_decisions() {
         .success();
     let stdout = String::from_utf8(assert.get_output().stdout.clone()).unwrap();
 
-    assert!(stdout.contains("Skipped:\n- GitHub: GITHUB_TOKEN not found"));
+    assert!(stdout.contains("Skipped:\n- GitHub: GitHub authentication unavailable"));
     assert!(
         !stdout.contains("Skipped:\n- None\n\nSource decisions:\n- GitHub: skipped"),
         "summary should not say no sources were skipped while source decisions list skipped sources"
@@ -10343,7 +10836,7 @@ fn intake_summary_and_report_skipped_sources_mirror_skipped_decisions() {
         );
     }
     assert!(
-        packet.contains("Skipped:\n- GitHub: GITHUB_TOKEN not found"),
+        packet.contains("Skipped:\n- GitHub: GitHub authentication unavailable"),
         "packet coverage summary should mirror skipped source decisions. packet:\n{packet}"
     );
     assert!(
@@ -10538,6 +11031,7 @@ user = "Tester"
     let assert = shiplog_cmd()
         .current_dir(tmp.path())
         .env_remove("GITHUB_TOKEN")
+        .env("GH_CONFIG_DIR", tmp.path().join("gh-config"))
         .env_remove("GITLAB_TOKEN")
         .env_remove("JIRA_TOKEN")
         .env_remove("LINEAR_API_KEY")
@@ -10755,10 +11249,12 @@ fn intake_explain_reports_source_decisions_for_rescue_config() {
         .success()
         .stdout(predicate::str::contains("Source decisions:"))
         .stdout(predicate::str::contains(
-            "- GitHub: skipped, GITHUB_TOKEN not found",
+            "- GitHub: skipped, GitHub authentication unavailable",
         ))
         .stdout(predicate::str::contains("Fix:"))
-        .stdout(predicate::str::contains("export GITHUB_TOKEN=..."))
+        .stdout(predicate::str::contains(
+            "Set sources.github.user explicitly",
+        ))
         .stdout(predicate::str::contains(
             "- Local git: skipped, current directory is not a git repo",
         ))
@@ -13887,7 +14383,7 @@ user = "octo"
         "missing provider token should route through setup status before repair plan. stdout:\n{stdout}"
     );
     assert!(
-        stdout.contains("GitHub: missing GITHUB_TOKEN"),
+        stdout.contains("GitHub: GitHub authentication unavailable"),
         "intake should still explain the concrete provider setup gap. stdout:\n{stdout}"
     );
 
@@ -16504,7 +17000,7 @@ fn share_explain_manager_surfaces_open_source_repairs_without_writing() -> CliTe
 
     assert!(
         stdout.contains("Open source repair:")
-            && stdout.contains("GitHub needs repair: GITHUB_TOKEN not found"),
+            && stdout.contains("GitHub needs repair: GitHub authentication unavailable"),
         "share explain should name source repairs that remain open after journal-only repair. stdout:\n{stdout}"
     );
     assert!(
@@ -17557,11 +18053,12 @@ fn invalid_subcommand_returns_error() {
 }
 
 #[test]
-fn no_subcommand_returns_error() {
+fn no_subcommand_shows_home_screen() {
     shiplog_cmd()
         .assert()
-        .failure()
-        .stderr(predicate::str::is_empty().not());
+        .success()
+        .stdout(predicate::str::contains("No packet exists yet."))
+        .stdout(predicate::str::contains("Start: shiplog intake"));
 }
 
 // ── 8. missing required args return helpful error messages ─────────────────

@@ -70,6 +70,19 @@ Read source-only state when you do not want share or credential noise:
 shiplog sources status
 ```
 
+Read the source-only state as JSON when an agent or script only needs source
+readiness and the next source-setup action:
+
+```bash
+shiplog sources status --json
+```
+
+`sources status --json` is the source-scoped projection of the same setup model:
+a `needs_action` flag, the `sources[]` rows, and the deduplicated source
+`next_actions[]`. Like the text view it stays read-only and exits non-zero when a
+source needs setup, so agents parse stdout and treat the exit status as the stop
+signal.
+
 Read the same setup state as JSON when an agent or script needs to decide the
 next safe command without scraping terminal text:
 

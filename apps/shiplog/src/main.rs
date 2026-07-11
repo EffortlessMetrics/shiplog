@@ -47,6 +47,14 @@ mod status;
 use intake_report_builder::build_intake_report;
 
 const TOP_LEVEL_AFTER_HELP: &str = "\
+Start here:
+  shiplog
+  shiplog add \"what changed\"
+  shiplog update
+  shiplog next
+  shiplog open
+  shiplog share manager
+
 Review-ready loop:
   shiplog init --guided
   shiplog doctor --setup
@@ -365,7 +373,7 @@ Safety posture:
 )]
 struct Cli {
     #[command(subcommand)]
-    cmd: Command,
+    cmd: Option<Command>,
 }
 
 #[derive(Subcommand, Debug)]
@@ -438,6 +446,12 @@ enum Command {
         cmd: SourcesCommand,
     },
 
+    /// Inspect safe GitHub authentication readiness without provider calls.
+    Auth {
+        #[command(subcommand)]
+        cmd: AuthCommand,
+    },
+
     /// Inspect review-loop state across setup, evidence, repair, diff, and share receipts.
     #[command(
         about = "Inspect review-loop state across setup, evidence, repair, diff, and share receipts.",
@@ -445,6 +459,15 @@ enum Command {
         after_help = STATUS_AFTER_HELP
     )]
     Status(StatusArgs),
+
+    /// Show the safest useful next action without executing it.
+    Next(NextArgs),
+
+    /// Refresh evidence, rebuild the packet, and compare against the prior run.
+    Update(UpdateArgs),
+
+    /// Record one short factual note without the full journal syntax.
+    Add(AddArgs),
 
     /// Plan and inspect GitHub activity harvests without provider mutation.
     Github {
@@ -852,6 +875,21 @@ enum SourcesCommand {
 }
 
 #[derive(Subcommand, Debug)]
+enum AuthCommand {
+    /// Inspect GitHub credential provenance without provider calls or writes.
+    Github {
+        #[command(subcommand)]
+        cmd: GithubAuthCommand,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum GithubAuthCommand {
+    /// Print safe GitHub authentication metadata.
+    Status(GithubAuthStatusArgs),
+}
+
+#[derive(Subcommand, Debug)]
 enum GithubCommand {
     /// Plan a GitHub activity harvest without making provider API calls.
     #[command(
@@ -958,6 +996,19 @@ struct SourcesStatusArgs {
     /// Limit status to one or more sources.
     #[arg(long = "source", value_enum)]
     sources: Vec<InitSource>,
+    /// Print source setup readiness as JSON for agent/script consumers.
+    #[arg(long)]
+    json: bool,
+}
+
+#[derive(Args, Debug)]
+struct GithubAuthStatusArgs {
+    /// Path to shiplog.toml.
+    #[arg(long, default_value = CONFIG_FILENAME)]
+    config: PathBuf,
+    /// Print authentication metadata as JSON.
+    #[arg(long)]
+    json: bool,
 }
 
 #[derive(Args, Debug)]
@@ -994,6 +1045,78 @@ struct StatusArgs {
     /// Print review-loop status as JSON for agent/control-plane consumers.
     #[arg(long)]
     json: bool,
+}
+
+#[derive(Args, Debug)]
+struct NextArgs {
+    /// Path to shiplog.toml.
+    #[arg(long, default_value = CONFIG_FILENAME)]
+    config: PathBuf,
+    /// Output directory containing run folders.
+    #[arg(long, default_value = "./out")]
+    out: PathBuf,
+    /// Print the selected action and receipt references as JSON.
+    #[arg(long)]
+    json: bool,
+}
+
+#[derive(Args, Debug)]
+struct UpdateArgs {
+    /// Path to shiplog.toml. Created with rescue-mode defaults if missing.
+    #[arg(long, default_value = CONFIG_FILENAME)]
+    config: PathBuf,
+    /// Output directory (a run folder will be created inside).
+    #[arg(long)]
+    out: Option<PathBuf>,
+    /// Use a named `periods.<name>` window from shiplog.toml.
+    #[arg(long)]
+    period: Option<String>,
+    /// Explain why update used or skipped each source.
+    #[arg(long)]
+    explain: bool,
+    /// Do not launch the packet after update; print paths only.
+    #[arg(long)]
+    no_open: bool,
+}
+
+#[derive(Args, Debug)]
+struct AddArgs {
+    /// Factual title for the work.
+    title: String,
+    /// Path to shiplog.toml used to resolve the configured manual journal.
+    #[arg(long, default_value = CONFIG_FILENAME)]
+    config: PathBuf,
+    /// Single event date, in YYYY-MM-DD format. Defaults to today.
+    #[arg(long)]
+    date: Option<NaiveDate>,
+    /// Manual event type.
+    #[arg(long = "type", value_enum, default_value = "note")]
+    event_type: JournalEventType,
+    /// Optional factual context.
+    #[arg(long)]
+    description: Option<String>,
+    /// Workstream to associate with this evidence.
+    #[arg(long)]
+    workstream: Option<String>,
+    /// Optional outcome or impact note.
+    #[arg(long)]
+    impact: Option<String>,
+    /// Tag to attach. Repeat for multiple tags.
+    #[arg(long = "tag")]
+    tags: Vec<String>,
+    /// Receipt link as LABEL=URL. Repeat for multiple receipts.
+    #[arg(long = "receipt", value_name = "LABEL=URL")]
+    receipts: Vec<String>,
+    /// Print the entry that would be added without writing.
+    #[arg(long)]
+    dry_run: bool,
+}
+
+#[derive(serde::Serialize)]
+struct NextOutput {
+    overall_status: status::ReviewLoopOverallStatus,
+    action: Option<status::StatusNextAction>,
+    receipt_refs: Vec<status::StatusReceiptRef>,
 }
 
 #[derive(Subcommand, Debug)]
@@ -1130,6 +1253,8 @@ struct JournalAddArgs {
     /// Print the entry that would be added without writing.
     #[arg(long)]
     dry_run: bool,
+    #[arg(skip)]
+    quick: bool,
 }
 
 #[derive(Args, Debug)]
@@ -3057,6 +3182,7 @@ fn run_intake(args: IntakeArgs) -> Result<()> {
     let include_footer_out = intake_footer_should_include_out(args.out.as_ref(), &config_model);
     let include_footer_config = intake_footer_should_include_config(&args.config);
 
+    print_packet_hero(&result.outputs.packet_md, &report);
     println!("Review intake complete.");
     if config_setup.created {
         println!("Config: created {}", args.config.display());
@@ -3116,6 +3242,85 @@ fn run_intake(args: IntakeArgs) -> Result<()> {
     }
 
     Ok(())
+}
+
+fn print_packet_hero(packet: &Path, report: &IntakeReport) {
+    let headline = if report.readiness == "Ready for review" {
+        "Packet ready"
+    } else {
+        "Packet ready with caveats"
+    };
+    println!("{headline}");
+    println!("Path: {}", display_path_for_cli(packet));
+    if report.readiness != "Ready for review" {
+        println!("Needs attention: {}", report.readiness);
+    }
+    println!("Next: shiplog next");
+    println!();
+}
+
+fn run_update(args: UpdateArgs) -> Result<()> {
+    ensure_intake_config(&args.config, &[])?;
+    let config_model = load_shiplog_config(&args.config)?;
+    ensure_supported_config_version(&config_model)?;
+    let base_dir = config_base_dir(&args.config);
+    let out = args
+        .out
+        .clone()
+        .unwrap_or_else(|| config_default_out(&config_model, &base_dir));
+    let had_prior_run = status::resolve_latest_review_loop_receipts(&out)
+        .latest_run
+        .is_some();
+
+    run_intake(IntakeArgs {
+        config: args.config,
+        out: Some(out.clone()),
+        sources: Vec::new(),
+        profile: None,
+        redact_key: None,
+        no_open: args.no_open,
+        explain: args.explain,
+        conflict: MergeConflict::MostRecent,
+        window: ConfigWindowArgs {
+            dates: DateArgs::default(),
+            period: args.period,
+        },
+    })?;
+
+    println!();
+    println!("Update comparison:");
+    if had_prior_run {
+        run_quality_diff_command(&out, true, None, None)?;
+    } else {
+        println!("No prior run was available for comparison.");
+        println!("Next update will compare against this packet.");
+    }
+    Ok(())
+}
+
+fn run_add(args: AddArgs) -> Result<()> {
+    let events = configured_manual_events_path(&args.config, true)
+        .unwrap_or_else(|| PathBuf::from(MANUAL_EVENTS_FILENAME));
+    run_journal_add(JournalAddArgs {
+        events,
+        from_repair: None,
+        out: None,
+        run: None,
+        latest: false,
+        id: None,
+        event_type: args.event_type,
+        date: args.date,
+        start: None,
+        end: None,
+        title: Some(args.title),
+        description: args.description,
+        workstream: args.workstream,
+        tags: args.tags,
+        receipts: args.receipts,
+        impact: args.impact,
+        dry_run: args.dry_run,
+        quick: true,
+    })
 }
 
 fn print_intake_next_step_footer(
@@ -6181,7 +6386,7 @@ fn selected_intake_sources(requested_sources: &[InitSource]) -> Vec<InitSource> 
     }
 
     let mut selected = Vec::new();
-    if env_var_present("GITHUB_TOKEN") {
+    if github_auth_is_available(None) {
         selected.push(InitSource::Github);
     }
     if env_var_present("GITLAB_TOKEN") {
@@ -6221,7 +6426,7 @@ fn intake_autodetect_explanations(
             &mut explanations,
             "github",
             IntakeSourceDecision::Skipped,
-            "GITHUB_TOKEN not found",
+            github_auth_unavailable_reason(None),
         );
     }
     if !init_source_enabled(selected, InitSource::Gitlab) {
@@ -6280,39 +6485,52 @@ fn prepare_intake_sources(
         if !intake_source_in_scope(explicit_sources, InitSource::Github) {
             source.enabled = false;
         } else if source.enabled {
+            let api_base = optional_config_string(source.api_base.as_deref())
+                .unwrap_or_else(|| "https://api.github.com".to_string());
+            let credential = match resolve_github_credential(&api_base) {
+                Ok(credential) => Some(credential),
+                Err(err) => {
+                    source.enabled = false;
+                    push_intake_skip(&mut plan, "github", err.to_string());
+                    None
+                }
+            };
             if optional_config_string(source.user.as_deref()).is_some() && source.me {
                 source.enabled = false;
                 push_intake_skip(&mut plan, "github", "configured both user and me");
-            } else if !env_var_present("GITHUB_TOKEN") {
-                source.enabled = false;
-                push_intake_skip(&mut plan, "github", "missing GITHUB_TOKEN");
-            } else if source.me {
-                let api_base = optional_config_string(source.api_base.as_deref())
-                    .unwrap_or_else(|| "https://api.github.com".to_string());
-                match discover_github_user(&api_base, None) {
-                    Ok(user) => {
-                        push_intake_include(
-                            &mut plan,
-                            "github",
-                            format!("GITHUB_TOKEN found; --me resolved as {user}"),
-                        );
-                        source.user = Some(user);
-                        source.me = false;
+            } else if let Some(credential) = credential {
+                if source.me {
+                    match discover_github_user(&api_base, Some(credential.secret())) {
+                        Ok(user) => {
+                            push_intake_include(
+                                &mut plan,
+                                "github",
+                                format!(
+                                    "GitHub authentication ready via {}; --me resolved as {user}",
+                                    credential.metadata().source.label()
+                                ),
+                            );
+                            source.user = Some(user);
+                            source.me = false;
+                        }
+                        Err(err) => {
+                            source.enabled = false;
+                            push_intake_skip(&mut plan, "github", err.to_string());
+                        }
                     }
-                    Err(err) => {
-                        source.enabled = false;
-                        push_intake_skip(&mut plan, "github", err.to_string());
-                    }
+                } else if optional_config_string(source.user.as_deref()).is_none() {
+                    source.enabled = false;
+                    push_intake_skip(&mut plan, "github", "set sources.github.user or me = true");
+                } else if let Some(user) = optional_config_string(source.user.as_deref()) {
+                    push_intake_include(
+                        &mut plan,
+                        "github",
+                        format!(
+                            "GitHub authentication ready via {}; user configured as {user}",
+                            credential.metadata().source.label()
+                        ),
+                    );
                 }
-            } else if optional_config_string(source.user.as_deref()).is_none() && !source.me {
-                source.enabled = false;
-                push_intake_skip(&mut plan, "github", "set sources.github.user or me = true");
-            } else if let Some(user) = optional_config_string(source.user.as_deref()) {
-                push_intake_include(
-                    &mut plan,
-                    "github",
-                    format!("GITHUB_TOKEN found; user configured as {user}"),
-                );
             }
         }
     }
@@ -6905,9 +7123,10 @@ fn render_init_config_with_git_repo(selected: &[InitSource], git_repo: &str) -> 
     format!(
         r#"# shiplog local configuration.
 # Tokens stay in environment variables:
-# GITHUB_TOKEN, GITLAB_TOKEN, JIRA_TOKEN, LINEAR_API_KEY, SHIPLOG_REDACT_KEY.
-# Enable token-backed sources only after the matching env var and identity
-# fields below are configured.
+# GH_TOKEN, GITHUB_TOKEN, GH_ENTERPRISE_TOKEN, GITHUB_ENTERPRISE_TOKEN,
+# GITLAB_TOKEN, JIRA_TOKEN, LINEAR_API_KEY, SHIPLOG_REDACT_KEY.
+# GitHub can also reuse an authenticated gh CLI session. Credential values
+# are never written here.
 
 [shiplog]
 config_version = 1
@@ -6925,7 +7144,8 @@ preset = "last-6-months"
 label = "Your Name"
 
 [sources.github]
-# Set GITHUB_TOKEN. Use either user or me = true.
+# GitHub auth uses environment credentials or an authenticated gh CLI session.
+# Use either user or me = true.
 enabled = {github}
 user = ""
 me = {github}
@@ -7058,6 +7278,7 @@ fn run_journal_add(args: JournalAddArgs) -> Result<()> {
         receipts,
         impact,
         dry_run,
+        quick,
     } = args;
 
     let date = if date.is_none() && start.is_none() && end.is_none() {
@@ -7150,6 +7371,9 @@ fn run_journal_add(args: JournalAddArgs) -> Result<()> {
         println!("Next:");
         println!("  {}", repair.rerun_command);
         println!("  {}", repair.repair_plan_command);
+    } else if quick {
+        println!("Next:");
+        println!("  shiplog update");
     } else {
         println!("Next:");
         println!("  shiplog collect multi --last-6-months");
@@ -7822,9 +8046,16 @@ fn run_doctor_setup(
     Ok(())
 }
 
-fn run_sources_status(config_path: &Path, sources: &[InitSource]) -> Result<()> {
+fn run_sources_status(config_path: &Path, sources: &[InitSource], json: bool) -> Result<()> {
     let status = doctor::build_setup_status(config_path, sources);
-    doctor::print_sources_status(&status);
+    if json {
+        let view = doctor::build_sources_status_view(&status);
+        serde_json::to_writer_pretty(std::io::stdout(), &view)
+            .context("serialize sources status json")?;
+        println!();
+    } else {
+        doctor::print_sources_status(&status);
+    }
     if doctor::source_status_needs_action(&status) {
         anyhow::bail!("source status found setup action(s)");
     }
@@ -7904,6 +8135,10 @@ fn run_sources_list(config_path: &Path, json: bool) -> Result<()> {
     Ok(())
 }
 
+fn yes_no(value: bool) -> &'static str {
+    if value { "yes" } else { "no" }
+}
+
 fn run_sources_set_enabled(
     config_path: &Path,
     sources: &[InitSource],
@@ -7945,22 +8180,46 @@ fn run_sources_set_enabled(
     Ok(())
 }
 
-fn yes_no(value: bool) -> &'static str {
-    if value { "yes" } else { "no" }
+fn run_github_auth_status(args: &GithubAuthStatusArgs) -> Result<()> {
+    let api_base = if args.config.exists() {
+        let text = std::fs::read_to_string(&args.config)
+            .with_context(|| format!("read config {}", args.config.display()))?;
+        let config = toml::from_str::<ShiplogConfig>(&text)
+            .with_context(|| format!("parse config {}", args.config.display()))?;
+        config
+            .sources
+            .github
+            .as_ref()
+            .and_then(|source| optional_config_string(source.api_base.as_deref()))
+    } else {
+        None
+    };
+    let resolution = github_auth::resolve(api_base.as_deref());
+    let metadata = resolution.metadata();
+    if args.json {
+        serde_json::to_writer_pretty(std::io::stdout(), metadata)
+            .context("serialize GitHub authentication json")?;
+        println!();
+    } else {
+        println!("GitHub authentication: {}", metadata.availability.label());
+        println!("Source: {}", metadata.source.label());
+        println!("Host: {}", metadata.host);
+        if let Some(account) = metadata.account.as_deref() {
+            println!("Account: {account}");
+        }
+        if let Some(reason) = metadata.reason {
+            println!("Reason: {}", reason.label());
+        }
+    }
+    if metadata.availability == github_auth::GithubAuthAvailability::Unavailable {
+        anyhow::bail!("GitHub authentication is unavailable");
+    }
+    Ok(())
 }
 
 fn run_status(args: StatusArgs) -> Result<()> {
     let _explicit_latest = args.latest;
-    let setup_status =
-        doctor::build_setup_status_for(&args.config, &[], doctor::SetupObjective::Intake);
-    let resolution = status::resolve_latest_review_loop_receipts(&args.out);
-    let report_json = load_status_report_json(&resolution);
-    let mut status = status::ReviewLoopStatus::from_inputs(review_loop_status_inputs(
-        &setup_status,
-        &resolution,
-        report_json.as_ref(),
-    ));
-    apply_status_output_context(&mut status, &args.out);
+    let (status, resolution) = build_review_loop_status(&args.config, &args.out);
 
     if args.json {
         serde_json::to_writer_pretty(std::io::stdout(), &status)
@@ -7970,6 +8229,99 @@ fn run_status(args: StatusArgs) -> Result<()> {
         print_review_loop_status(&status, &resolution);
     }
     Ok(())
+}
+
+fn run_next(args: NextArgs) -> Result<()> {
+    let (status, resolution) = build_review_loop_status(&args.config, &args.out);
+    let action = status::select_next_action(&status.next_actions);
+
+    if args.json {
+        serde_json::to_writer_pretty(
+            std::io::stdout(),
+            &NextOutput {
+                overall_status: status.overall_status,
+                action,
+                receipt_refs: status.receipt_refs.clone(),
+            },
+        )
+        .context("serialize next action json")?;
+        println!();
+    } else {
+        println!(
+            "Status: {}",
+            review_overall_status_label(status.overall_status)
+        );
+        match action {
+            Some(action) => {
+                println!("Next: {}", action.label);
+                println!("Command: {}", action.command);
+                println!("Writes: {}", if action.writes { "yes" } else { "no" });
+                println!("Reason: {}", action.reason);
+                if !action.preconditions.is_empty() {
+                    println!("Preconditions: {}", action.preconditions.join(", "));
+                }
+            }
+            None => {
+                println!("Next: none");
+                println!("Reason: no safe typed action is available");
+            }
+        }
+        println!();
+        println!("Receipts:");
+        print_review_status_receipts(&status, &resolution);
+    }
+
+    Ok(())
+}
+
+fn run_home() -> Result<()> {
+    let config = Path::new(CONFIG_FILENAME);
+    let out = Path::new("./out");
+    let resolution = status::resolve_latest_review_loop_receipts(out);
+
+    if !config.exists() && resolution.latest_run.is_none() {
+        println!("No packet exists yet.");
+        println!("Start: shiplog intake");
+        return Ok(());
+    }
+
+    let (review_status, resolution) = build_review_loop_status(config, out);
+    println!(
+        "Status: {}",
+        review_overall_status_label(review_status.overall_status)
+    );
+    if let Some(run) = resolution.latest_run.as_ref() {
+        let packet = Path::new(&run.run_dir).join("packet.md");
+        println!("Latest packet: {}", display_path_for_cli(&packet));
+    } else {
+        println!("No packet exists yet.");
+    }
+
+    match status::select_next_action(&review_status.next_actions) {
+        Some(action) => println!("Next: {}", action.command),
+        None => println!("Next: none"),
+    }
+    Ok(())
+}
+
+fn build_review_loop_status(
+    config_path: &Path,
+    out_dir: &Path,
+) -> (
+    status::ReviewLoopStatus,
+    status::ReviewLoopReceiptResolution,
+) {
+    let setup_status =
+        doctor::build_setup_status_for(config_path, &[], doctor::SetupObjective::Intake);
+    let resolution = status::resolve_latest_review_loop_receipts(out_dir);
+    let report_json = load_status_report_json(&resolution);
+    let mut status = status::ReviewLoopStatus::from_inputs(review_loop_status_inputs(
+        &setup_status,
+        &resolution,
+        report_json.as_ref(),
+    ));
+    apply_status_output_context(&mut status, out_dir);
+    (status, resolution)
 }
 
 fn review_loop_status_inputs(
@@ -8068,32 +8420,14 @@ fn review_setup_status(setup_status: &doctor::SetupStatus) -> status::SetupSumma
     {
         return status::SetupSummaryStatus::NeedsSetup;
     }
-    let any_ready_source = setup_status
-        .sources
-        .iter()
-        .any(|item| matches!(item.status, doctor::SetupItemStatus::Ready));
-    if !any_ready_source {
-        return status::SetupSummaryStatus::NeedsSetup;
+    match setup_status.requested_status {
+        doctor::SetupOverallStatus::Ready => status::SetupSummaryStatus::Ready,
+        doctor::SetupOverallStatus::ReadyWithCaveats => {
+            status::SetupSummaryStatus::ReadyWithCaveats
+        }
+        doctor::SetupOverallStatus::NeedsSetup => status::SetupSummaryStatus::NeedsSetup,
+        doctor::SetupOverallStatus::Blocked => status::SetupSummaryStatus::Blocked,
     }
-    if setup_status
-        .sources
-        .iter()
-        .any(setup_item_needs_review_setup)
-        || setup_status
-            .credentials
-            .iter()
-            .any(source_credential_item_needs_review_setup)
-    {
-        return status::SetupSummaryStatus::NeedsSetup;
-    }
-    if setup_status
-        .sources
-        .iter()
-        .any(|item| matches!(item.status, doctor::SetupItemStatus::Disabled))
-    {
-        return status::SetupSummaryStatus::ReadyWithCaveats;
-    }
-    status::SetupSummaryStatus::Ready
 }
 
 fn setup_item_blocks_review(item: &doctor::SetupItem) -> bool {
@@ -8139,6 +8473,9 @@ fn review_setup_reason(
     {
         return format!("{}: {}", item.label, item.reason);
     }
+    if setup_summary_status == status::SetupSummaryStatus::ReadyWithCaveats {
+        return "setup can collect evidence, with optional source caveats".to_string();
+    }
     if !setup_status
         .sources
         .iter()
@@ -8158,9 +8495,6 @@ fn review_setup_reason(
         })
     {
         return format!("{}: {}", item.label, item.reason);
-    }
-    if setup_summary_status == status::SetupSummaryStatus::ReadyWithCaveats {
-        return "setup can collect evidence, with optional source caveats".to_string();
     }
     "setup can collect evidence".to_string()
 }
@@ -10990,33 +11324,35 @@ fn collect_configured_sources(
     {
         let api_base = optional_config_string(source.api_base.as_deref())
             .unwrap_or_else(|| "https://api.github.com".to_string());
-        let user = resolve_user_or_me(
-            "GitHub",
-            optional_config_string(source.user.as_deref()),
-            source.me,
-            || discover_github_user(&api_base, None),
-        )?;
         let cache_dir = resolve_config_cache_dir(
             &base_dir,
             out_root,
             source.cache_dir.as_ref(),
             source.no_cache,
         );
-        let ing = make_github_ingestor(
-            &user,
-            window.since,
-            window.until,
-            source.mode.as_deref().unwrap_or("merged"),
-            source.repo_owners.clone(),
-            source.include_reviews.unwrap_or(default_include_reviews),
-            source.no_details,
-            source.throttle_ms,
-            None,
-            &api_base,
-            cache_dir,
-        )
-        .context("create configured GitHub ingestor")
-        .and_then(|ing| ing.ingest().context("collect configured GitHub source"));
+        let ing = resolve_github_credential(&api_base).and_then(|credential| {
+            let user = resolve_user_or_me(
+                "GitHub",
+                optional_config_string(source.user.as_deref()),
+                source.me,
+                || discover_github_user(&api_base, Some(credential.secret())),
+            )?;
+            make_github_ingestor(
+                &user,
+                window.since,
+                window.until,
+                source.mode.as_deref().unwrap_or("merged"),
+                source.repo_owners.clone(),
+                source.include_reviews.unwrap_or(default_include_reviews),
+                source.no_details,
+                source.throttle_ms,
+                Some(credential.secret().to_owned()),
+                &api_base,
+                cache_dir,
+            )
+            .context("create configured GitHub ingestor")
+            .and_then(|ing| ing.ingest().context("collect configured GitHub source"))
+        });
         push_configured_source_result(&mut successes, &mut failures, "github", ing);
     }
 
@@ -12268,8 +12604,6 @@ fn make_github_ingestor(
     api_base: &str,
     cache_dir: Option<PathBuf>,
 ) -> Result<GithubIngestor> {
-    let token = token.or_else(|| std::env::var("GITHUB_TOKEN").ok());
-
     let mut ing = GithubIngestor::new(user.to_string(), since, until);
     ing.mode = mode.to_string();
     ing = ing.with_repo_owners(repo_owners);
@@ -12286,6 +12620,52 @@ fn make_github_ingestor(
     }
 
     Ok(ing)
+}
+
+fn resolve_github_credential(api_base: &str) -> Result<github_auth::GithubCredential> {
+    match github_auth::resolve(Some(api_base)) {
+        github_auth::GithubAuthResolution::Available(credential) => Ok(credential),
+        github_auth::GithubAuthResolution::Unavailable(metadata) => {
+            let reason = metadata
+                .reason
+                .map(github_auth::GithubAuthReason::label)
+                .unwrap_or("unknown");
+            anyhow::bail!(
+                "GitHub authentication unavailable via {} for {}: {}",
+                metadata.source.label(),
+                metadata.host,
+                reason
+            )
+        }
+    }
+}
+
+fn github_auth_is_available(api_base: Option<&str>) -> bool {
+    matches!(
+        github_auth::resolve(api_base),
+        github_auth::GithubAuthResolution::Available(_)
+    )
+}
+
+fn github_auth_unavailable_reason(api_base: Option<&str>) -> String {
+    match github_auth::resolve(api_base) {
+        github_auth::GithubAuthResolution::Available(credential) => format!(
+            "GitHub authentication available via {}",
+            credential.metadata().source.label()
+        ),
+        github_auth::GithubAuthResolution::Unavailable(metadata) => {
+            let reason = metadata
+                .reason
+                .map(github_auth::GithubAuthReason::label)
+                .unwrap_or("unknown");
+            format!(
+                "GitHub authentication unavailable via {} for {}: {}",
+                metadata.source.label(),
+                metadata.host,
+                reason
+            )
+        }
+    }
 }
 
 #[expect(clippy::too_many_arguments, reason = "policy:clippy-0001")]
@@ -17501,3 +17881,4 @@ mod tests {
         assert_eq!(toml_table_header("enabled = true"), None);
     }
 }
+pub mod github_auth;
