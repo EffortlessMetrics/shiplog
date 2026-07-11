@@ -10771,33 +10771,35 @@ fn collect_configured_sources(
     {
         let api_base = optional_config_string(source.api_base.as_deref())
             .unwrap_or_else(|| "https://api.github.com".to_string());
-        let user = resolve_user_or_me(
-            "GitHub",
-            optional_config_string(source.user.as_deref()),
-            source.me,
-            || discover_github_user(&api_base, None),
-        )?;
         let cache_dir = resolve_config_cache_dir(
             &base_dir,
             out_root,
             source.cache_dir.as_ref(),
             source.no_cache,
         );
-        let ing = make_github_ingestor(
-            &user,
-            window.since,
-            window.until,
-            source.mode.as_deref().unwrap_or("merged"),
-            source.repo_owners.clone(),
-            source.include_reviews.unwrap_or(default_include_reviews),
-            source.no_details,
-            source.throttle_ms,
-            None,
-            &api_base,
-            cache_dir,
-        )
-        .context("create configured GitHub ingestor")
-        .and_then(|ing| ing.ingest().context("collect configured GitHub source"));
+        let ing = resolve_github_credential(&api_base).and_then(|credential| {
+            let user = resolve_user_or_me(
+                "GitHub",
+                optional_config_string(source.user.as_deref()),
+                source.me,
+                || discover_github_user(&api_base, Some(credential.secret())),
+            )?;
+            make_github_ingestor(
+                &user,
+                window.since,
+                window.until,
+                source.mode.as_deref().unwrap_or("merged"),
+                source.repo_owners.clone(),
+                source.include_reviews.unwrap_or(default_include_reviews),
+                source.no_details,
+                source.throttle_ms,
+                Some(credential.secret().to_owned()),
+                &api_base,
+                cache_dir,
+            )
+            .context("create configured GitHub ingestor")
+            .and_then(|ing| ing.ingest().context("collect configured GitHub source"))
+        });
         push_configured_source_result(&mut successes, &mut failures, "github", ing);
     }
 
@@ -12049,8 +12051,6 @@ fn make_github_ingestor(
     api_base: &str,
     cache_dir: Option<PathBuf>,
 ) -> Result<GithubIngestor> {
-    let token = token.or_else(|| std::env::var("GITHUB_TOKEN").ok());
-
     let mut ing = GithubIngestor::new(user.to_string(), since, until);
     ing.mode = mode.to_string();
     ing = ing.with_repo_owners(repo_owners);
@@ -12067,6 +12067,24 @@ fn make_github_ingestor(
     }
 
     Ok(ing)
+}
+
+fn resolve_github_credential(api_base: &str) -> Result<github_auth::GithubCredential> {
+    match github_auth::resolve(Some(api_base)) {
+        github_auth::GithubAuthResolution::Available(credential) => Ok(credential),
+        github_auth::GithubAuthResolution::Unavailable(metadata) => {
+            let reason = metadata
+                .reason
+                .map(github_auth::GithubAuthReason::label)
+                .unwrap_or("unknown");
+            anyhow::bail!(
+                "GitHub authentication unavailable via {} for {}: {}",
+                metadata.source.label(),
+                metadata.host,
+                reason
+            )
+        }
+    }
 }
 
 #[expect(clippy::too_many_arguments, reason = "policy:clippy-0001")]

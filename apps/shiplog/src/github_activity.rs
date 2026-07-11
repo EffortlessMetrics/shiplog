@@ -497,6 +497,12 @@ fn run_activity_profile(
     }
 
     let execution = activity_execution(&config, &base_dir, &out_dir, plan.profile_enum()?)?;
+    let credential = resolve_github_credential(&execution.api_base)?;
+    let auth = GithubActivityAuthMetadata {
+        source: credential.metadata().source.label().to_string(),
+        host: credential.metadata().host.clone(),
+        account: credential.metadata().account.clone(),
+    };
     let start_state = match plan.profile_enum()? {
         GithubActivityProfile::Scout => "scouting",
         GithubActivityProfile::Authored | GithubActivityProfile::Full => "running",
@@ -561,7 +567,7 @@ fn run_activity_profile(
             execution.include_reviews,
             execution.no_details,
             execution.throttle_ms,
-            None,
+            Some(credential.secret().to_owned()),
             &execution.api_base,
             execution.cache_dir.clone(),
         )
@@ -603,7 +609,12 @@ fn run_activity_profile(
                 });
                 write_json_receipt(&progress_path, GITHUB_ACTIVITY_PROGRESS_FILENAME, &progress)?;
                 let owner_filter = owner_filter_from_outputs(&plan, &window_outputs);
-                let api_ledger = api_accumulator.to_ledger(&plan, Some(stop_reason), owner_filter);
+                let api_ledger = api_accumulator.to_ledger(
+                    &plan,
+                    Some(stop_reason),
+                    owner_filter,
+                    Some(auth.clone()),
+                );
                 write_json_receipt(
                     &api_ledger_path,
                     GITHUB_ACTIVITY_API_LEDGER_FILENAME,
@@ -652,7 +663,7 @@ fn run_activity_profile(
     ingest.coverage.mode = execution.mode.clone();
 
     let owner_filter = OwnerFilterLedger::from_coverage(&plan, &ingest.coverage);
-    let api_ledger = api_accumulator.to_ledger(&plan, None, owner_filter);
+    let api_ledger = api_accumulator.to_ledger(&plan, None, owner_filter, Some(auth));
     write_json_receipt(
         &api_ledger_path,
         GITHUB_ACTIVITY_API_LEDGER_FILENAME,
@@ -1581,6 +1592,7 @@ fn api_ledger_receipt(
     secondary_limit_events: Vec<GithubSecondaryLimitEvent>,
     stop_reason: Option<String>,
     owner_filter: OwnerFilterLedger,
+    auth: Option<GithubActivityAuthMetadata>,
 ) -> GithubActivityApiLedgerReceipt {
     GithubActivityApiLedgerReceipt {
         schema_version: GITHUB_ACTIVITY_API_LEDGER_SCHEMA_VERSION.to_string(),
@@ -1593,6 +1605,7 @@ fn api_ledger_receipt(
         repo_owners: plan.repo_owners.clone(),
         profile: plan.profile.clone(),
         stop_reason,
+        auth,
         github_api: GithubActivityApiLedgerGithub {
             requests,
             cache,
@@ -1959,6 +1972,7 @@ impl GithubActivityApiAccumulator {
         plan: &GithubActivityPlanReceipt,
         stop_reason: Option<String>,
         owner_filter: OwnerFilterLedger,
+        auth: Option<GithubActivityAuthMetadata>,
     ) -> GithubActivityApiLedgerReceipt {
         api_ledger_receipt(
             plan,
@@ -1968,6 +1982,7 @@ impl GithubActivityApiAccumulator {
             self.secondary_limit_events.clone(),
             stop_reason,
             owner_filter,
+            auth,
         )
     }
 }
@@ -2104,9 +2119,18 @@ struct GithubActivityApiLedgerReceipt {
     repo_owners: Vec<String>,
     profile: String,
     stop_reason: Option<String>,
+    #[serde(default)]
+    auth: Option<GithubActivityAuthMetadata>,
     github_api: GithubActivityApiLedgerGithub,
     owner_filter: OwnerFilterLedger,
     receipt_refs: Vec<String>,
+}
+
+#[derive(Clone, Deserialize, Serialize)]
+struct GithubActivityAuthMetadata {
+    source: String,
+    host: String,
+    account: Option<String>,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -2390,6 +2414,7 @@ user = "octocat"
                     "owner_filter:dropped=OtherOrg=3".to_string(),
                 ],
             ),
+            None,
         );
 
         assert_eq!(ledger.schema_version, "github.activity.api-ledger.v1");

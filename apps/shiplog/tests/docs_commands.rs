@@ -1666,6 +1666,7 @@ fn assert_github_activity_api_ledger_example_matches_schema_shape(
             "repo_owners",
             "profile",
             "stop_reason",
+            "auth",
             "github_api",
             "owner_filter",
             "receipt_refs",
@@ -1695,6 +1696,16 @@ fn assert_github_activity_api_ledger_example_matches_schema_shape(
         "{} stop_reason should be string or null",
         path.display()
     );
+    if let Some(auth) = json.get("auth") {
+        assert_allowed_object_keys(auth, &["source", "host", "account"], path);
+        assert_non_empty_string(auth, "source", path);
+        assert_non_empty_string(auth, "host", path);
+        assert!(
+            auth["account"].is_null() || auth["account"].as_str().is_some(),
+            "{} auth.account should be string or null",
+            path.display()
+        );
+    }
     assert_github_api_matches_activity_report_schema_shape(&json["github_api"], path);
     assert_owner_filter_matches_activity_report_schema_shape(&json["owner_filter"], path);
     assert_string_array(&json["receipt_refs"], "receipt_refs", path);

@@ -12,6 +12,11 @@
   ],
   "profile": "full",
   "stop_reason": null,
+  "auth": {
+    "source": "gh_cli",
+    "host": "github.com",
+    "account": "EffortlessSteven"
+  },
   "github_api": {
     "requests": {
       "search": 84,

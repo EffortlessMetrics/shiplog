@@ -1,6 +1,7 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use std::net::IpAddr;
 use std::process::{Child, Command, Output, Stdio};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -155,10 +156,18 @@ fn github_host(api_base: Option<&str>) -> Result<String, GithubAuthReason> {
         .next()
         .filter(|value| !value.is_empty())
         .ok_or(GithubAuthReason::InvalidApiBase)?;
-    if host.contains(':') || host.chars().any(char::is_whitespace) {
+    if host.chars().any(char::is_whitespace) {
         return Err(GithubAuthReason::InvalidApiBase);
     }
-    let host = host.to_ascii_lowercase();
+    let host = host
+        .rsplit_once(':')
+        .filter(|(host, port)| {
+            !host.contains(':') && !port.is_empty() && port.chars().all(|ch| ch.is_ascii_digit())
+        })
+        .map(|(host, _)| host)
+        .unwrap_or(host)
+        .trim_matches(['[', ']'])
+        .to_ascii_lowercase();
     Ok(if host == "api.github.com" {
         "github.com".to_owned()
     } else {
@@ -170,7 +179,7 @@ fn environment_credential(
     host: &str,
     environment: &BTreeMap<String, String>,
 ) -> Option<(GithubAuthSource, String)> {
-    let candidates = if host == "github.com" {
+    let candidates = if host == "github.com" || is_local_test_host(host) {
         [
             ("GH_TOKEN", GithubAuthSource::GhToken),
             ("GITHUB_TOKEN", GithubAuthSource::GithubToken),
@@ -191,6 +200,14 @@ fn environment_credential(
         let value = environment.get(*name)?.trim();
         (!value.is_empty()).then(|| (*source, value.to_owned()))
     })
+}
+
+fn is_local_test_host(host: &str) -> bool {
+    host == "localhost"
+        || host == "::1"
+        || host
+            .parse::<IpAddr>()
+            .is_ok_and(|address| address.is_loopback())
 }
 
 #[derive(Debug, Deserialize)]

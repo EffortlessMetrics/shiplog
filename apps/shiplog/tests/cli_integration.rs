@@ -597,6 +597,14 @@ fn assert_github_activity_api_ledger_schema_contract(api_ledger_json: &serde_jso
             "generated GitHub activity API ledger github_api should contain {field}"
         );
     }
+    if let Some(auth) = api_ledger_json.get("auth") {
+        for field in ["source", "host", "account"] {
+            assert!(
+                auth.get(field).is_some(),
+                "GitHub activity API ledger auth should contain {field}"
+            );
+        }
+    }
     for field in ["requested_owners", "query_strategy", "kept", "dropped"] {
         assert!(
             api_ledger_json["owner_filter"].get(field).is_some(),
@@ -3716,6 +3724,9 @@ mode = "created"
         "github.activity.api-ledger.v1"
     );
     assert_github_activity_api_ledger_schema_contract(&api_ledger);
+    assert_eq!(api_ledger["auth"]["source"], "GITHUB_TOKEN");
+    assert_eq!(api_ledger["auth"]["host"], "github.com");
+    assert_eq!(api_ledger["auth"]["account"], serde_json::Value::Null);
     assert_eq!(api_ledger["profile"], "scout");
     assert_eq!(api_ledger["stop_reason"], "budget_exhausted");
     assert_eq!(api_ledger["github_api"]["requests"]["search"], 0);
