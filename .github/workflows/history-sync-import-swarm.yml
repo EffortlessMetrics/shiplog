@@ -4,6 +4,13 @@ on:
   push:
     branches:
       - agent/history-sync-import-swarm-20260712
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - reopened
+      - synchronize
 
 permissions:
   contents: write
@@ -53,4 +60,3 @@ Preserve the released shiplog tree while recording shiplog-swarm/main as the sec
           fi
 
           git push --force-with-lease origin HEAD:refs/heads/sync/history-preserving-shiplog-swarm-20260712
-          git push origin --delete agent/history-sync-import-swarm-20260712 || true
