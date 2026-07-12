@@ -50,7 +50,7 @@ jobs:
             -m "Keep shiplog-swarm/main as the first parent, record shiplog/main as the second parent, and use the released shiplog tree as the merged result. Remove the one-time import workflow and trigger marker from that result." \
             -m "[skip ci]"
 
-          git push --force-with-lease origin HEAD:refs/heads/sync/history-preserving-shiplog-20260712
+          git push origin HEAD:refs/heads/sync/history-preserving-shiplog-20260712
 
           if git push origin HEAD:refs/heads/main; then
             echo "Fast-forwarded shiplog-swarm/main directly"
@@ -60,3 +60,4 @@ jobs:
 
           git push origin --delete agent/bootstrap-source-history-import-20260712 || true
           git push origin --delete agent/run-source-history-import-20260712 || true
+          git push origin --delete agent/retry-source-history-import-20260712 || true
