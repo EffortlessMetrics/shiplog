@@ -19,43 +19,43 @@
 </p>
 
 <p align="center">
-  <em>Review readiness with receipts: setup, status, intake, repair, rerun, diff, and share safely.</em>
+  <em>Review readiness with receipts: capture evidence, refresh it, and share safely.</em>
 </p>
 
 shiplog turns work evidence into a review-readiness loop: diagnose setup,
 inspect status, collect receipts, repair gaps, rerun, compare, and share
 safely.
 
-Current shipped release: `v0.10.0`.
+Current shipped release: `v0.11.0`.
 
 ## The problem
 
 Performance reviews ask what shipped, what mattered, and what evidence supports
 it. Most people discover missing evidence too late.
 
-shiplog keeps the loop receipt-backed:
+shiplog keeps the evidence loop receipt-backed:
 
 ```text
-setup -> status -> intake -> repair -> rerun -> diff -> share explain
+capture -> update -> packet -> curate -> share safely
 ```
 
 It is for individual contributors, tech leads, and anyone who wants a
 repeatable evidence trail for self-reviews, promo packets, or brag documents.
 
-## What works in 0.10
+## What works in 0.11
 
 | Surface | Status | Command |
 |---------|--------|---------|
-| Setup preflight | Ready | `shiplog doctor --setup` |
-| Agent setup state | Ready | `shiplog doctor --setup --json` |
-| Review cockpit | Ready | `shiplog status --latest` |
+| First packet | Ready | `shiplog intake` |
+| Home screen | Ready | `shiplog` |
+| Quick evidence capture | Ready | `shiplog add "what changed"` |
+| Evidence refresh | Ready | `shiplog update` |
+| Safe next action | Ready | `shiplog next` |
+| Current packet | Ready | `shiplog open` |
+| Manager/public share | Ready | `shiplog share manager` / `shiplog share public` |
+| Objective setup readiness | Ready | `shiplog doctor --setup --for intake` |
 | Agent review state | Ready | `shiplog status --latest --json` |
-| Evidence collection | Ready | `shiplog intake --last-6-months --explain` |
-| Repair queue | Ready | `shiplog repair plan --latest` |
-| Local repair | Ready | `shiplog journal add --from-repair <repair_id>` |
-| Repair movement | Ready | `shiplog repair diff --latest` |
-| Packet movement | Ready | `shiplog runs diff --latest` |
-| Share posture | Ready | `shiplog share explain manager --latest` |
+| Reminder/CI gate | Ready | `shiplog status --check` |
 | Advanced GitHub harvest | Ready | `shiplog github activity plan` |
 
 ## Quick start
@@ -74,8 +74,26 @@ you want per-source decisions in the terminal.
 Open the packet after intake when you want the rendered artifact immediately:
 
 ```bash
-shiplog open packet --latest
+shiplog open
 ```
+
+## Normal workflow
+
+Once the first packet exists, ordinary use is short:
+
+```bash
+shiplog add "Resolved the customer import retry incident" \
+  --impact "Protected the next import window"
+shiplog update
+shiplog open
+shiplog
+shiplog share manager
+```
+
+`shiplog` is read-only and shows packet age, source caveats, evidence gaps,
+and one receipt-derived next action. `shiplog update` is the explicit write
+command for refreshing evidence and rebuilding the packet. Sharing remains an
+explicit command and explains and verifies its profile before rendering.
 
 ## Install
 
@@ -135,7 +153,7 @@ Collect usable evidence from the default six-month window:
 
 ```bash
 shiplog intake
-shiplog open packet --latest
+shiplog open
 ```
 
 `intake` writes run artifacts under `out/<run_id>/`, including
@@ -143,6 +161,13 @@ shiplog open packet --latest
 `ledger.events.jsonl`, `coverage.manifest.json`, and a bundle manifest.
 `status --latest` reads those receipts and tells you whether the next safe
 step is repair, rerun, diff, or share explanation.
+
+For a quick human note that automation cannot infer, use:
+
+```bash
+shiplog add "Led the rollback review" --impact "Reduced recovery risk"
+shiplog update
+```
 
 ## Repair and share
 
@@ -173,6 +198,10 @@ shiplog status --latest --json
 shiplog status --check
 ```
 
+For a read-only home screen, run `shiplog`. For a read-only typed next-action
+projection, run `shiplog next` or `shiplog next --json`. For cron or CI, use
+`shiplog status --check`; it does not contact providers or write evidence.
+
 `status --check` is a cron/CI gate: it prints the usual status (add `--json`
 for the model) and exits `0` when the loop is ready or `1` when it needs
 action, so a scheduled job can alert only when there is work to do.
@@ -202,7 +231,7 @@ deterministic ordering, no secret values, and no Markdown scraping.
 | Evidence repair | [docs/guides/evidence-repair-loop.md](docs/guides/evidence-repair-loop.md) |
 | Packet interpretation and share posture | [docs/guides/review-ready-packet.md](docs/guides/review-ready-packet.md) |
 | Full configuration reference | [docs/config-reference.md](docs/config-reference.md) |
-| 0.10 release readiness | [docs/release/0.10.0-readiness.md](docs/release/0.10.0-readiness.md) |
+| 0.11 release readiness | [docs/release/0.11.0-readiness.md](docs/release/0.11.0-readiness.md) |
 | Changelog | [CHANGELOG.md](CHANGELOG.md) |
 
 Machine-readable contracts:

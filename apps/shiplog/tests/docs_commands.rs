@@ -136,10 +136,10 @@ fn changelog_curates_0_10_as_source_ergonomics_release_notes() {
     let doc = std::fs::read_to_string(&doc_path)
         .unwrap_or_else(|err| panic!("read {}: {err}", doc_path.display()));
 
-    let unreleased = section_between(&doc, "## [Unreleased]", "## [0.10.0]");
+    let unreleased = section_between(&doc, "## [Unreleased]", "## [0.11.0]");
     assert!(
-        unreleased.contains("shiplog sources status --json"),
-        "Unreleased should record the sources status --json surface"
+        unreleased.contains("No unreleased changes."),
+        "Unreleased should be empty after the 0.11.0 release cut"
     );
     assert!(
         !unreleased.contains("#424")
@@ -149,9 +149,29 @@ fn changelog_curates_0_10_as_source_ergonomics_release_notes() {
         "candidate receipts belong in the 0.9 candidate section, not Unreleased"
     );
 
-    let release = section_between(&doc, "## [0.10.0]", "## [0.9.0]");
+    let release = section_between(&doc, "## [0.11.0]", "## [0.10.0]");
+    for needle in [
+        "low-friction review-readiness release",
+        "objective-scoped setup readiness",
+        "GitHub credential discovery",
+        "shiplog update",
+        "shiplog add",
+        "default `shiplog open`",
+        "shiplog status --check",
+        "versionless verified installers",
+        "Homebrew",
+        "Scoop",
+        "Routine CI is Linux-first",
+    ] {
+        assert!(
+            release.contains(needle),
+            "0.11 changelog should mention {needle:?}"
+        );
+    }
+
+    let previous_release = section_between(&doc, "## [0.10.0]", "## [0.9.0]");
     assert!(
-        release.contains("source configuration ergonomics and security"),
+        previous_release.contains("source configuration ergonomics and security"),
         "0.10.0 should describe its release theme"
     );
 
@@ -240,8 +260,20 @@ fn docs_teach_intake_as_the_one_command_front_door() -> anyhow::Result<()> {
     assert_contains_in_order(
         quick_start,
         "README.md quick start",
-        &["shiplog intake", "shiplog open packet --latest"],
+        &["shiplog intake", "shiplog open"],
     );
+    let normal_workflow = section_between(&root_readme, "## Normal workflow", "## Install");
+    for needle in [
+        "shiplog add",
+        "shiplog update",
+        "shiplog open",
+        "shiplog share manager",
+    ] {
+        assert!(
+            normal_workflow.contains(needle),
+            "README normal workflow should mention {needle:?}"
+        );
+    }
     assert!(
         !quick_start.contains("shiplog init --guided"),
         "README.md quick start should not require setup ceremony"
@@ -2337,7 +2369,7 @@ fn crate_readme_documents_first_loop_for_crates_io() {
 }
 
 #[test]
-fn root_readme_documents_0_10_review_loop_front_door() {
+fn root_readme_documents_0_11_review_loop_front_door() {
     let doc_path = repo_root().join("README.md");
     let doc = std::fs::read_to_string(&doc_path)
         .unwrap_or_else(|err| panic!("read {}: {err}", doc_path.display()));
@@ -2351,9 +2383,15 @@ fn root_readme_documents_0_10_review_loop_front_door() {
         "GitHub release",
         "crates.io downloads",
         "MSRV 1.95",
-        "Review readiness with receipts: setup, status, intake, repair, rerun, diff, and share safely.",
-        "What works in 0.10",
-        "Current shipped release: `v0.10.0`",
+        "Review readiness with receipts: capture evidence, refresh it, and share safely.",
+        "What works in 0.11",
+        "Current shipped release: `v0.11.0`",
+        "## Normal workflow",
+        "shiplog add \"what changed\"",
+        "shiplog update",
+        "shiplog open",
+        "shiplog next",
+        "shiplog share manager",
         "## Quick start",
         "shiplog intake",
         "shiplog turns work evidence into a review-readiness loop",
@@ -2400,7 +2438,7 @@ fn root_readme_documents_0_10_review_loop_front_door() {
     assert_contains_in_order(
         quick_start,
         "root README quick start",
-        &["shiplog intake", "shiplog open packet --latest"],
+        &["shiplog intake", "shiplog open"],
     );
     assert!(
         !quick_start.contains("shiplog init --guided"),
@@ -2456,21 +2494,22 @@ fn active_docs_match_package_and_changelog_version() -> anyhow::Result<()> {
     }
 
     for path in [
-        "docs/release/0.10.0-readiness.md",
-        "docs/release/0.10.0-release-decision.md",
+        format!("docs/release/{version}-readiness.md"),
+        format!("docs/release/{version}-release-decision.md"),
     ] {
-        let doc = std::fs::read_to_string(repo_root().join(path))?;
-        let marker = format!("**Latest shipped release:** `v{version}`");
+        let doc = std::fs::read_to_string(repo_root().join(&path))?;
+        let marker = format!("**Release target:** `v{version}`");
         assert!(
             doc.contains(&marker),
             "{path} should contain the shipped-release marker {marker:?}"
         );
     }
 
-    let handoff = std::fs::read_to_string(repo_root().join("RELEASE_HANDOFF_0.10.0.md"))?;
+    let handoff =
+        std::fs::read_to_string(repo_root().join(format!("RELEASE_HANDOFF_{version}.md")))?;
     assert!(
-        handoff.contains(&format!("**Shipped tag:** `v{version}`")),
-        "release handoff should identify the shipped tag"
+        handoff.contains(&format!("**Release target:** `v{version}`")),
+        "release handoff should identify the release target"
     );
 
     for stale_phrase in [
@@ -2529,8 +2568,8 @@ fn install_guide_documents_current_install_paths() {
         "shiplog doctor",
         "shiplog sources",
         "shiplog auth",
-        "scripts/release-install-smoke.sh v0.10.0",
-        "pwsh -File .\\scripts\\release-install-smoke.ps1 v0.10.0",
+        "scripts/release-install-smoke.sh v0.11.0",
+        "pwsh -File .\\scripts\\release-install-smoke.ps1 v0.11.0",
         "no-network review-rescue fixture",
     ] {
         assert!(

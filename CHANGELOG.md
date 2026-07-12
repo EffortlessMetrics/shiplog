@@ -7,13 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [0.11.0] - 2026-07-11
+
+shiplog 0.11.0 is the **low-friction review-readiness release**. It keeps the
+receipt-backed evidence model while making first use, recurring updates, and
+safe sharing practical from the normal command surface.
+
 ### Added
 
-- Added `shiplog sources status --json`, the source-scoped projection of the
-  setup-readiness model for agents and scripts. It emits a `needs_action` exit
-  signal, the `sources[]` rows, and deduplicated source `next_actions[]`, derived
-  from the same model as `doctor --setup --json` so the JSON and text views
-  cannot drift.
+- Added objective-scoped setup readiness so `doctor --setup` answers whether
+  intake can proceed without treating later share setup as an intake blocker.
+- Added GitHub credential discovery through supported environment variables and
+  an authenticated `gh` session without storing token material.
+- Added a read-only no-argument home screen and `shiplog next` for the safest
+  receipt-derived next action.
+- Added `shiplog update` for one-command evidence refresh, comparison, and
+  packet rebuild.
+- Added `shiplog add` for quick factual manual evidence with today's date by
+  default.
+- Added packet-first summaries, default `shiplog open`, and direct share
+  preflight before manager/public rendering.
+- Added `shiplog status --check` for local reminders and CI-friendly exit
+  codes without provider calls.
+- Added versionless verified installers plus official Homebrew and Scoop
+  package channels.
+
+### Changed
+
+- Reworked the primary workflow around `shiplog`, `add`, `update`, `open`, and
+  explicit share commands while retaining the diagnostic and audit commands.
+- Routine CI is Linux-first; macOS remains covered by release asset builds and
+  package-specific validation rather than ordinary pull-request runs.
+
+### Documentation and proof
+
+- Updated the README and first-use/recurring guides to teach the one-command
+  packet and the recurring evidence habit.
+- Added release validation for the packet-first command surface, credential
+  safety, objective readiness, installers, and package channels.
 - Added `scripts/dev-check.sh` (runs the CI fmt/clippy/test gate locally in
   one command) and `scripts/install-hooks.sh` (installs an opt-in git
   pre-commit hook running fmt + clippy) to catch quality-gate failures

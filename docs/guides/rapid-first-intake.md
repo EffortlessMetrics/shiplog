@@ -88,7 +88,20 @@ shiplog intake
 That is the whole happy path. `intake` uses the default six-month window,
 creates starter setup files when needed, and produces the first packet without
 provider credentials. Add `--explain` for per-source decisions and repair
-hints, or run `shiplog open packet --latest` to open the rendered artifact.
+hints, or run `shiplog open` to open the rendered artifact.
+
+After the first packet, the normal habit is:
+
+```bash
+shiplog add "Resolved the customer import retry incident" \
+  --impact "Protected the next import window"
+shiplog update
+shiplog open
+shiplog
+```
+
+Use the detailed report and repair commands only when the home screen or packet
+identifies a gap that needs curation.
 
 Use `shiplog doctor --setup` or `shiplog status --latest` when you need to
 diagnose malformed local files, disabled sources, or later share redaction
@@ -219,10 +232,15 @@ the repair ID preserved as a receipt. This is the safest path when the report
 already knows what repair would improve the packet.
 
 If you are adding a manual event that is not tied to a repair item, use
-`shiplog journal add` directly. It writes to `manual_events.yaml` with a
-normalised shape — no hand-editing under deadline pressure.
+`shiplog add` for the short path, or `shiplog journal add` for the full form.
+The short command writes to `manual_events.yaml` with a normalised shape — no
+hand-editing under deadline pressure.
 
 ```bash
+shiplog add "Debugged customer import incident" \
+  --workstream "Customer Reliability" \
+  --impact "Identified the upstream export shape before the next import window"
+
 shiplog journal add \
   --date 2026-05-08 \
   --title "Debugged customer import incident" \

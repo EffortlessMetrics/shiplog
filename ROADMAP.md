@@ -10,10 +10,14 @@ This roadmap is organized by product posture, not calendar date.
 - **Single supported public crate** - `shiplog` is the forward public package.
   Historical implementation crates remain historical artifacts; internal seams
   now live as modules.
+- **v0.11.0 Low-Friction Review Readiness** - the one-command front door,
+  objective setup, GitHub credential reuse, home/next/update/add/open workflow,
+  packet-first output, safe share preflight, installers, Homebrew, and Scoop
+  are merged and ready for release.
 
-Current shipped release: `v0.10.0`.
+Current shipped release: `v0.11.0`.
 
-## Shipped
+## Previous shipped release
 
 `v0.10.0` shipped the source configuration ergonomics and LLM endpoint
 security slices. The public release, crates.io package, checksums, and install
@@ -31,14 +35,13 @@ Release scope on `main`:
 
 ## Next Candidates
 
-These are future lanes, not `0.10.0` release promises.
+These are future lanes, not `0.11.0` release promises.
 
-- **Guided provider readiness** - improve token/setup guidance without OAuth or
-  live provider probing by default.
-- **Public-share happy path proof** - dogfood public share with redaction setup
-  and strict verification once release priorities justify it.
-- **Recurring workflow support** - use `status --latest --json` as the safe
-  primitive for future reminders or scheduled checks.
+- **Guided first use** - add an explicit confirmed `shiplog start` command.
+- **Provider connection** - add task-level GitLab, Jira, and Linear connection
+  flows that preserve non-secret configuration.
+- **Share setup ergonomics** - provide safe local/OS-backed redaction-key
+  setup without weakening fail-closed rendering.
 
 ## Later
 
@@ -62,6 +65,6 @@ These are future lanes, not `0.10.0` release promises.
 
 See:
 
-- [`docs/release/0.10.0-readiness.md`](docs/release/0.10.0-readiness.md)
-- [`docs/release/0.10.0-release-decision.md`](docs/release/0.10.0-release-decision.md)
-- [`RELEASE_HANDOFF_0.10.0.md`](RELEASE_HANDOFF_0.10.0.md)
+- [`docs/release/0.11.0-readiness.md`](docs/release/0.11.0-readiness.md)
+- [`docs/release/0.11.0-release-decision.md`](docs/release/0.11.0-release-decision.md)
+- [`RELEASE_HANDOFF_0.11.0.md`](RELEASE_HANDOFF_0.11.0.md)
