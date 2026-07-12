@@ -1,12 +1,12 @@
 # shiplog 0.11.0 - Release Execution Handoff
 
 **Release target:** `v0.11.0`
-**Status:** release preparation
+**Status:** released on 2026-07-12
 **Readiness ledger:** [`docs/release/0.11.0-readiness.md`](docs/release/0.11.0-readiness.md)
 **Release decision:** [`docs/release/0.11.0-release-decision.md`](docs/release/0.11.0-release-decision.md)
 
-This handoff records the bounded usability release path. Do not tag or publish
-until the merged-main preflight and routed release checks pass.
+This handoff records the bounded usability release path and its completed
+public-state proof.
 
 ## Release contents
 
@@ -17,7 +17,7 @@ until the merged-main preflight and routed release checks pass.
 - Direct share preflight, `status --check`, verified installers, Homebrew, and
   Scoop.
 
-## Execution
+## Completed execution
 
 ```text
 rtk git tag -a v0.11.0 -m "shiplog v0.11.0"
@@ -26,5 +26,11 @@ rtk cargo publish -p shiplog --locked
 rtk gh release edit v0.11.0 --draft=false --latest
 ```
 
-Afterward, verify the installed crate, release assets/checksums, Linux,
-Windows, Homebrew, Scoop, and the packaged first-packet smoke path.
+Verified after publication:
+
+- crates.io install reports `shiplog 0.11.0`;
+- GitHub release assets and checksums are public;
+- Linux and Windows release-install smoke paths pass;
+- Homebrew native macOS/Linux validation passes;
+- Scoop native Windows validation passes;
+- release-mode integration tests pass.
