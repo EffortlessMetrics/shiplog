@@ -79,6 +79,24 @@ reason = "No-network review-rescue demo path."
 created = "2026-05-09"
 expires = "permanent"
 
+[[allow]]
+id = "exec-dev-check-sh"
+path = "scripts/dev-check.sh"
+interpreter = "bash"
+owner = "devex"
+reason = "Runs the CI fmt/clippy/test gate locally in one command."
+created = "2026-07-11"
+expires = "permanent"
+
+[[allow]]
+id = "exec-install-hooks-sh"
+path = "scripts/install-hooks.sh"
+interpreter = "bash"
+owner = "devex"
+reason = "Installs an opt-in git pre-commit hook that runs fmt + clippy before each commit."
+created = "2026-07-11"
+expires = "permanent"
+
 # Note: Windows .ps1 scripts (release-install-smoke.ps1, demo-review-rescue.ps1)
 # are listed in non-rust-allowlist.toml under the `scripts/*.ps1` glob but NOT
 # here, because PowerShell scripts are invoked as `pwsh path/to/script.ps1`

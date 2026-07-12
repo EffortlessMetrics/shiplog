@@ -7,42 +7,88 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
+No unreleased changes.
 
-- Added `shiplog sources status --json`, the source-scoped projection of the
-  setup-readiness model for agents and scripts. It emits a `needs_action` exit
-  signal, the `sources[]` rows, and deduplicated source `next_actions[]`, derived
-  from the same model as `doctor --setup --json` so the JSON and text views
-  cannot drift.
+## [0.11.0] - 2026-07-11
 
-## [0.10.0] - 2026-07-11
-
-shiplog 0.10.0 is the **usable review front door release**.
-
-It keeps the receipt-backed review loop while making first use and recurring
-maintenance much shorter: collect a first packet, reuse existing GitHub CLI
-authentication, inspect the safest next action, record human context quickly,
-and refresh the packet with one command.
+shiplog 0.11.0 is the **low-friction review-readiness release**. It keeps the
+receipt-backed evidence model while making first use, recurring updates, and
+safe sharing practical from the normal command surface.
 
 ### Added
 
-- Added objective-scoped setup readiness for intake, manager sharing, public
-  sharing, and the full setup surface.
-- Added GitHub credential discovery with environment-variable precedence and
-  authenticated `gh` CLI fallback without persisting secrets.
-- Added `shiplog auth github status`, `shiplog next`, no-argument status, and
-  the recurring `shiplog update` workflow.
-- Added positional `shiplog add` for quick factual evidence capture.
-- Added versionless checksum-verifying installers and cargo-binstall metadata
-  for prebuilt release assets.
+- Added objective-scoped setup readiness so `doctor --setup` answers whether
+  intake can proceed without treating later share setup as an intake blocker.
+- Added GitHub credential discovery through supported environment variables and
+  an authenticated `gh` session without storing token material.
+- Added a read-only no-argument home screen and `shiplog next` for the safest
+  receipt-derived next action.
+- Added `shiplog update` for one-command evidence refresh, comparison, and
+  packet rebuild.
+- Added `shiplog add` for quick factual manual evidence with today's date by
+  default.
+- Added packet-first summaries, default `shiplog open`, and direct share
+  preflight before manager/public rendering.
+- Added `shiplog status --check` for local reminders and CI-friendly exit
+  codes without provider calls.
+- Added versionless verified installers plus official Homebrew and Scoop
+  package channels.
 
 ### Changed
 
-- Made `shiplog intake` the documented one-command first-use path and made the
-  packet the primary human artifact.
-- Organized the short help surface around starting, updating, capturing,
-  opening, and sharing while retaining advanced commands.
+- Reworked the primary workflow around `shiplog`, `add`, `update`, `open`, and
+  explicit share commands while retaining the diagnostic and audit commands.
+- Routine CI is Linux-first; macOS remains covered by release asset builds and
+  package-specific validation rather than ordinary pull-request runs.
 
+### Documentation and proof
+
+- Updated the README and first-use/recurring guides to teach the one-command
+  packet and the recurring evidence habit.
+- Added release validation for the packet-first command surface, credential
+  safety, objective readiness, installers, and package channels.
+- Added `scripts/dev-check.sh` (runs the CI fmt/clippy/test gate locally in
+  one command) and `scripts/install-hooks.sh` (installs an opt-in git
+  pre-commit hook running fmt + clippy) to catch quality-gate failures
+  before pushing.
+- Added `shiplog status --check`, a cron/CI-friendly gate that exits `0` when the
+  review loop is ready (ready-to-share, ready-to-explain-share, or
+  ready-with-caveats) and `1` when it needs action. It emits the normal text or
+  `--json` status output first and reads receipts only, never provider state.
+
+## [0.10.0] - 2026-07-10
+
+shiplog 0.10.0 is the **source configuration ergonomics and security
+hardening release**.
+
+### Added
+
+- Added `shiplog sources list`, including `--json`, to show which canonical
+  source sections are present and enabled without provider calls (#619).
+- Added `shiplog sources enable --source <name>` and
+  `shiplog sources disable --source <name>` with repeatable source selection,
+  idempotent output, and comment-preserving config edits (#619).
+
+### Changed
+
+- Source toggles change only the `enabled` assignment in `shiplog.toml` and
+  never rewrite provider records or tokens (#619).
+- Workspace package versions moved from `0.9.0` to `0.10.0`.
+
+### Fixed
+
+- LLM clustering now rejects malformed and non-HTTPS OpenAI-compatible
+  endpoints before constructing a client or sending an authorization header
+  (#625; security finding recorded in #623).
+
+### Documentation and proof
+
+- Added the `0.10.0` release decision, readiness ledger, and execution handoff
+  for the final merged-main preflight and release steps.
+- The sources ergonomics slice carries unit and CLI integration coverage for
+  listing, toggling, idempotency, formatting preservation, and failed writes.
+- The LLM endpoint guard has focused feature-gated tests, package Clippy proof,
+  no-panic proof, and green routed CI.
 ## [0.9.0] - 2026-05-20
 
 shiplog 0.9.0 is the **review-loop cockpit release**.

@@ -94,6 +94,13 @@ pub(super) fn dispatch() -> Result<()> {
             SourcesCommand::Status(args) => {
                 run_sources_status(&args.config, &args.sources, args.json)?
             }
+            SourcesCommand::List(args) => run_sources_list(&args.config, args.json)?,
+            SourcesCommand::Enable(args) => {
+                run_sources_set_enabled(&args.config, &args.sources, true)?
+            }
+            SourcesCommand::Disable(args) => {
+                run_sources_set_enabled(&args.config, &args.sources, false)?
+            }
         },
 
         Command::Auth { cmd } => match cmd {

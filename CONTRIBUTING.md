@@ -54,6 +54,20 @@ cargo clippy --workspace --all-targets --all-features -- -D warnings
 cargo test --workspace
 ```
 
+Or run all three in one shot with `scripts/dev-check.sh` — it mirrors the
+CI `check` job's fmt/clippy/test gate.
+
+To catch formatting and lint issues before they hit CI, install the
+optional pre-commit hook once per clone:
+
+```bash
+scripts/install-hooks.sh
+```
+
+This runs `cargo fmt --all -- --check` and `cargo clippy` before each
+commit. Skip it for a single commit with `git commit --no-verify`, or
+disable it for a session with `SHIPLOG_SKIP_HOOKS=1`.
+
 4. Open a pull request against `main`.
 
 ## Code style

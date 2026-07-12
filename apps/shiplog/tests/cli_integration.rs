@@ -2072,7 +2072,10 @@ fn sources_help_shows_status_options() {
         .args(["sources", "--help"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("status"));
+        .stdout(predicate::str::contains("status"))
+        .stdout(predicate::str::contains("list"))
+        .stdout(predicate::str::contains("enable"))
+        .stdout(predicate::str::contains("disable"));
 
     shiplog_cmd()
         .args(["sources", "status", "--help"])
@@ -2080,6 +2083,161 @@ fn sources_help_shows_status_options() {
         .success()
         .stdout(predicate::str::contains("--config"))
         .stdout(predicate::str::contains("--source"));
+
+    shiplog_cmd()
+        .args(["sources", "list", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--config"))
+        .stdout(predicate::str::contains("--json"));
+
+    shiplog_cmd()
+        .args(["sources", "enable", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--source"));
+}
+
+#[test]
+fn sources_list_reports_present_and_enabled_state() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["init", "--source", "github", "--source", "git"])
+        .assert()
+        .success();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["sources", "list"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Configured sources:"))
+        .stdout(predicate::str::contains("github      yes      yes"))
+        .stdout(predicate::str::contains("gitlab      yes      no"))
+        .stdout(predicate::str::contains("git         yes      yes"));
+
+    let assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["sources", "list", "--json"])
+        .assert()
+        .success();
+    let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
+    let report: serde_json::Value = serde_json::from_str(&stdout)?;
+    let sources = report["sources"].as_array().expect("sources array");
+    assert_eq!(sources.len(), 7, "all source keys are listed");
+    let github = sources
+        .iter()
+        .find(|entry| entry["source"] == "github")
+        .expect("github entry");
+    assert_eq!(github["present"], true);
+    assert_eq!(github["enabled"], true);
+    let jira = sources
+        .iter()
+        .find(|entry| entry["source"] == "jira")
+        .expect("jira entry");
+    assert_eq!(jira["enabled"], false);
+    Ok(())
+}
+
+#[test]
+fn sources_enable_and_disable_flip_only_enabled_flag() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["init", "--source", "github"])
+        .assert()
+        .success();
+
+    let config_path = tmp.path().join("shiplog.toml");
+    let before = std::fs::read_to_string(&config_path)?;
+
+    // Enable a source that ships disabled by default.
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["sources", "enable", "--source", "jira"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("jira: enabled"));
+
+    let after_enable = std::fs::read_to_string(&config_path)?;
+    assert!(
+        after_enable.contains("# Set JIRA_TOKEN"),
+        "enable preserves provider-record comments"
+    );
+    assert!(
+        after_enable.contains("user = \"your-jira-account-id-or-email\""),
+        "enable does not mutate provider-record fields"
+    );
+
+    // Only the jira `enabled` line should change versus the original config.
+    let changed_lines: Vec<(&str, &str)> = before
+        .lines()
+        .zip(after_enable.lines())
+        .filter(|(a, b)| a != b)
+        .collect();
+    assert_eq!(
+        changed_lines,
+        vec![("enabled = false", "enabled = true")],
+        "exactly one enabled flag flips: {changed_lines:?}"
+    );
+
+    // Re-enabling is idempotent and reported as a no-op change.
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["sources", "enable", "--source", "jira"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("jira: already enabled"));
+
+    // Disabling flips it back.
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["sources", "disable", "--source", "jira"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("jira: disabled"));
+    let after_disable = std::fs::read_to_string(&config_path)?;
+    assert_eq!(
+        before, after_disable,
+        "enable then disable round-trips to the original config"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn sources_enable_missing_section_errors_without_writing() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let config_path = tmp.path().join("shiplog.toml");
+    std::fs::write(
+        &config_path,
+        "[shiplog]\nconfig_version = 1\n\n[sources.github]\nenabled = false\n",
+    )?;
+    let before = std::fs::read_to_string(&config_path)?;
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["sources", "enable", "--source", "manual"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("no [sources.manual] section"));
+
+    assert_eq!(
+        before,
+        std::fs::read_to_string(&config_path)?,
+        "a failed enable leaves the config untouched"
+    );
+    Ok(())
+}
+
+#[test]
+fn sources_enable_requires_a_source() {
+    shiplog_cmd()
+        .args(["sources", "enable"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("--source"));
 }
 
 #[test]
@@ -2764,6 +2922,84 @@ fn status_latest_missing_setup_prints_init_guidance_without_writing() -> CliTest
         file_tree_manifest(tmp.path()),
         "status should not write setup or run artifacts"
     );
+    Ok(())
+}
+
+#[test]
+fn status_check_exits_nonzero_when_review_loop_needs_action() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let before = file_tree_manifest(tmp.path());
+
+    // Text output still prints, and the process exits 1 for a needs-action loop.
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args(["status", "--check"])
+        .assert()
+        .failure()
+        .code(1)
+        .stdout(predicate::str::contains("Review loop status: Needs setup"));
+
+    // --check composes with --json: JSON is still emitted and the exit is 1.
+    let assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env_remove("SHIPLOG_REDACT_KEY")
+        .args(["status", "--check", "--json"])
+        .assert()
+        .failure()
+        .code(1);
+    let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
+    let json: serde_json::Value = serde_json::from_str(&stdout)?;
+    assert_eq!(json["overall_status"], "needs_setup");
+
+    assert_eq!(
+        before,
+        file_tree_manifest(tmp.path()),
+        "status --check should not write setup or run artifacts"
+    );
+    Ok(())
+}
+
+#[test]
+fn status_check_exits_zero_when_review_loop_ready() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    let out = tmp.path().join("out");
+    let run = out.join("run_ready_caveats");
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["init", "--guided"])
+        .assert()
+        .success();
+    std::fs::create_dir_all(&run)?;
+    std::fs::write(
+        run.join("intake.report.json"),
+        serde_json::to_string_pretty(&serde_json::json!({
+            "run_id": "run_ready_caveats",
+            "included_sources": [
+                {
+                    "source_key": "manual",
+                    "source_label": "Manual journal",
+                    "event_count": 1
+                }
+            ],
+            "skipped_sources": [],
+            "repair_items": [],
+            "packet_quality": {
+                "packet_readiness": {
+                    "status": "ready_with_caveats",
+                    "summary": "manual-only packet is ready with caveats"
+                }
+            }
+        }))?,
+    )?;
+
+    let out_arg = out.to_string_lossy().to_string();
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .env("SHIPLOG_REDACT_KEY", "stable-redact-key")
+        .args(["status", "--out", out_arg.as_str(), "--latest", "--check"])
+        .assert()
+        .success();
     Ok(())
 }
 

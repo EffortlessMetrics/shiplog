@@ -19,41 +19,81 @@
 </p>
 
 <p align="center">
-  <em>Review readiness with receipts: setup, status, intake, repair, rerun, diff, and share safely.</em>
+  <em>Review readiness with receipts: capture evidence, refresh it, and share safely.</em>
 </p>
 
 shiplog turns work evidence into a review-readiness loop: diagnose setup,
 inspect status, collect receipts, repair gaps, rerun, compare, and share
 safely.
 
+Current shipped release: `v0.11.0`.
+
 ## The problem
 
 Performance reviews ask what shipped, what mattered, and what evidence supports
 it. Most people discover missing evidence too late.
 
-shiplog keeps the loop receipt-backed:
+shiplog keeps the evidence loop receipt-backed:
 
 ```text
-setup -> status -> intake -> repair -> rerun -> diff -> share explain
+capture -> update -> packet -> curate -> share safely
 ```
 
 It is for individual contributors, tech leads, and anyone who wants a
 repeatable evidence trail for self-reviews, promo packets, or brag documents.
 
-## Current product
-
-Shiplog 0.10.0 is the current shipped release. The normal first-use path is
-one command from a work directory, with local Git and manual evidence available
-even when no provider credentials are configured.
+## What works in 0.11
 
 | Surface | Status | Command |
 |---------|--------|---------|
 | First packet | Ready | `shiplog intake` |
-| Review cockpit | Ready | `shiplog status --latest` |
+| Home screen | Ready | `shiplog` |
+| Quick evidence capture | Ready | `shiplog add "what changed"` |
+| Evidence refresh | Ready | `shiplog update` |
 | Safe next action | Ready | `shiplog next` |
-| Human context | Ready | `shiplog add "..."` |
-| Recurring refresh | Ready | `shiplog update` |
-| Share posture | Ready | `shiplog share explain manager --latest` |
+| Current packet | Ready | `shiplog open` |
+| Manager/public share | Ready | `shiplog share manager` / `shiplog share public` |
+| Objective setup readiness | Ready | `shiplog doctor --setup --for intake` |
+| Agent review state | Ready | `shiplog status --latest --json` |
+| Reminder/CI gate | Ready | `shiplog status --check` |
+| Advanced GitHub harvest | Ready | `shiplog github activity plan` |
+
+## Quick start
+
+From a work directory, run the one command that creates the first packet:
+
+```bash
+shiplog intake
+```
+
+Intake uses the default six-month window, discovers usable local evidence,
+creates `shiplog.toml` and `manual_events.yaml` when needed, and records
+missing optional providers without requiring credentials. Add `--explain` when
+you want per-source decisions in the terminal.
+
+Open the packet after intake when you want the rendered artifact immediately:
+
+```bash
+shiplog open
+```
+
+## Normal workflow
+
+Once the first packet exists, ordinary use is short:
+
+```bash
+shiplog add "Resolved the customer import retry incident" \
+  --impact "Protected the next import window"
+shiplog update
+shiplog open
+shiplog
+shiplog share manager
+```
+
+`shiplog` is read-only and shows packet age, source caveats, evidence gaps,
+and one receipt-derived next action. `shiplog update` is the explicit write
+command for refreshing evidence and rebuilding the packet. Sharing remains an
+explicit command and explains and verifies its profile before rendering.
 
 ## Install
 
@@ -84,25 +124,36 @@ Prerequisites:
   `GITHUB_TOKEN`, `GITLAB_TOKEN`, `JIRA_TOKEN`, or `LINEAR_API_KEY`
 - `SHIPLOG_REDACT_KEY` only when rendering manager/public share packets
 
-## First use
+## Setup troubleshooting
 
-From an empty or existing work directory:
+Setup commands are optional for the first packet. Use them when you want to
+inspect or repair configuration before collecting evidence:
+
+```bash
+shiplog init --guided
+shiplog doctor --setup
+shiplog sources status
+shiplog doctor --setup --json
+shiplog status --latest
+```
+
+`init --guided` writes local setup files. `doctor --setup`, `sources status`,
+`doctor --setup --json`, and `status --latest` are read-only. They do not query
+providers, render share packets, or mutate provider records.
+
+Use `shiplog sources list` to see which sources are configured and enabled, and
+`shiplog sources enable --source <name>` / `shiplog sources disable --source <name>`
+to toggle a source on or off. The toggle flips only the `enabled` flag in
+`shiplog.toml`, keeps your comments and provider records intact, and never
+writes tokens.
+
+## First packet
+
+Collect usable evidence from the default six-month window:
 
 ```bash
 shiplog intake
-shiplog open packet --latest
-```
-
-`intake` creates safe local setup, uses the default six-month window, collects
-available evidence, and produces the packet. Provider credentials are optional.
-If a source needs attention, the packet explains the gap and the next action.
-
-Setup and diagnostics are troubleshooting tools, not prerequisites:
-
-```bash
-shiplog doctor --setup --for intake
-shiplog sources status
-shiplog status --latest --json
+shiplog open
 ```
 
 `intake` writes run artifacts under `out/<run_id>/`, including
@@ -110,6 +161,13 @@ shiplog status --latest --json
 `ledger.events.jsonl`, `coverage.manifest.json`, and a bundle manifest.
 `status --latest` reads those receipts and tells you whether the next safe
 step is repair, rerun, diff, or share explanation.
+
+For a quick human note that automation cannot infer, use:
+
+```bash
+shiplog add "Led the rollback review" --impact "Reduced recovery risk"
+shiplog update
+```
 
 ## Repair and share
 
@@ -137,7 +195,16 @@ Use status as the cockpit for recurring review work:
 ```bash
 shiplog status --latest
 shiplog status --latest --json
+shiplog status --check
 ```
+
+For a read-only home screen, run `shiplog`. For a read-only typed next-action
+projection, run `shiplog next` or `shiplog next --json`. For cron or CI, use
+`shiplog status --check`; it does not contact providers or write evidence.
+
+`status --check` is a cron/CI gate: it prints the usual status (add `--json`
+for the model) and exits `0` when the loop is ready or `1` when it needs
+action, so a scheduled job can alert only when there is work to do.
 
 Human output answers:
 
@@ -164,7 +231,7 @@ deterministic ordering, no secret values, and no Markdown scraping.
 | Evidence repair | [docs/guides/evidence-repair-loop.md](docs/guides/evidence-repair-loop.md) |
 | Packet interpretation and share posture | [docs/guides/review-ready-packet.md](docs/guides/review-ready-packet.md) |
 | Full configuration reference | [docs/config-reference.md](docs/config-reference.md) |
-| Current release posture | [docs/install.md](docs/install.md) |
+| 0.11 release readiness | [docs/release/0.11.0-readiness.md](docs/release/0.11.0-readiness.md) |
 | Changelog | [CHANGELOG.md](CHANGELOG.md) |
 
 Machine-readable contracts:

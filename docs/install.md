@@ -4,7 +4,7 @@ Use a prebuilt binary when you want shiplog without installing Rust. The
 versionless installers select the latest GitHub release, verify its SHA-256
 checksum, and install to a user-local directory.
 
-Current shipped release: `v0.10.0`.
+Current shipped release: `v0.11.0`.
 
 ## Prebuilt binary
 
@@ -110,13 +110,13 @@ provider tokens.
 Linux and macOS:
 
 ```bash
-scripts/release-install-smoke.sh v0.10.0
+scripts/release-install-smoke.sh v0.11.0
 ```
 
 Windows PowerShell:
 
 ```powershell
-pwsh -File .\scripts\release-install-smoke.ps1 v0.10.0
+pwsh -File .\scripts\release-install-smoke.ps1 v0.11.0
 ```
 
 These commands intentionally name the release under test. Ordinary install

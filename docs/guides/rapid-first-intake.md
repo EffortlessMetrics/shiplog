@@ -63,43 +63,49 @@ scaffolds a starter `manual_events.yaml` and treats your own typed
 notes as the one working source — see
 [Add manual evidence](#add-manual-evidence) below.
 
-No setup command is required before the first packet. From the directory whose
-history you want to capture:
+No preflight is required for the first packet. If setup is uncertain, use the
+read-only diagnostics `shiplog doctor --setup`, `shiplog sources status`,
+`shiplog doctor --setup --json`, or `shiplog status --latest` before or after
+intake.
+Use `shiplog init --guided` only when you want to explicitly recreate the
+starter setup files.
 
-```bash
-shiplog intake
-shiplog open packet --latest
-```
-
-`intake` scaffolds safe local files, uses the default six-month window, and
-produces the packet. `doctor --setup`, `sources status`, and
-`status --latest --json` remain available when you need diagnostics or machine
-readiness details. On an established workspace, `status` is the read-only
-review-loop cockpit for the latest packet.
-
-For automation, the setup model is also available as JSON:
-
-```bash
-shiplog doctor --setup --json
-```
+`init --guided` writes the local setup files. `doctor --setup` and
+`sources status` are read-only checks that explain which sources are
+ready, disabled, unavailable, or blocked before intake spends a run.
+`doctor --setup --json` exposes the same setup state for agents and
+scripts. `status --latest` is the review-loop cockpit. Before the first intake,
+it should route you to collection only when setup is safe enough to proceed.
 
 ## One-command cold-start
 
-From an empty directory, the same two-command path applies:
+From an empty directory:
 
 ```bash
 shiplog intake
-shiplog open packet --latest
 ```
 
-That is the whole happy path. `intake` does the work, then `open` launches the
-packet in your platform's default markdown viewer. Use `--explain` when you
-want per-source decisions and repair hints in the terminal.
+That is the whole happy path. `intake` uses the default six-month window,
+creates starter setup files when needed, and produces the first packet without
+provider credentials. Add `--explain` for per-source decisions and repair
+hints, or run `shiplog open` to open the rendered artifact.
 
-If you skipped the setup preflight, `intake` still creates starter setup
-files when needed. Prefer `doctor --setup` first when you want to avoid
-discovering malformed local files, disabled sources, or missing share
-redaction setup in the finished packet.
+After the first packet, the normal habit is:
+
+```bash
+shiplog add "Resolved the customer import retry incident" \
+  --impact "Protected the next import window"
+shiplog update
+shiplog open
+shiplog
+```
+
+Use the detailed report and repair commands only when the home screen or packet
+identifies a gap that needs curation.
+
+Use `shiplog doctor --setup` or `shiplog status --latest` when you need to
+diagnose malformed local files, disabled sources, or later share redaction
+setup. Those are troubleshooting surfaces, not first-use prerequisites.
 
 The first run creates the following under `./out/<run_id>/`:
 
@@ -119,8 +125,9 @@ shiplog will not overwrite them.
 
 ## How to read `intake.report.md`
 
-Open the report first — it is the reviewer's view of "what is in this
-pack and what's missing." Read the sections in this order:
+Open the packet first — it is the human artifact you give to a reviewer.
+Use the report when you need diagnostic detail about what is in the pack and
+what is missing. Read the packet first, then inspect these report sections:
 
 1. **Header** — run id, packet readiness, window, config path, packet path.
 2. **Redaction profile** — one line saying which profile rendered this run.
@@ -225,10 +232,15 @@ the repair ID preserved as a receipt. This is the safest path when the report
 already knows what repair would improve the packet.
 
 If you are adding a manual event that is not tied to a repair item, use
-`shiplog journal add` directly. It writes to `manual_events.yaml` with a
-normalised shape — no hand-editing under deadline pressure.
+`shiplog add` for the short path, or `shiplog journal add` for the full form.
+The short command writes to `manual_events.yaml` with a normalised shape — no
+hand-editing under deadline pressure.
 
 ```bash
+shiplog add "Debugged customer import incident" \
+  --workstream "Customer Reliability" \
+  --impact "Identified the upstream export shape before the next import window"
+
 shiplog journal add \
   --date 2026-05-08 \
   --title "Debugged customer import incident" \

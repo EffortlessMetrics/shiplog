@@ -191,6 +191,19 @@ Safety posture:
   The default objective is intake; use --for manager-share or --for public-share
   when those later sharing tasks are the requested objective.";
 
+const SOURCES_AFTER_HELP: &str = "\
+Source setup path:
+  shiplog sources list
+  shiplog sources enable --source github
+  shiplog sources status
+  shiplog sources disable --source jira
+
+Safety posture:
+  sources list and sources status read local config without provider network calls.
+  sources enable/disable flip only the enabled flag in shiplog.toml.
+  They never edit provider records (user, instance, owners) or write tokens.
+  Add a [sources.<name>] section with `shiplog init` before enabling it.";
+
 const STATUS_AFTER_HELP: &str = "\
 Review-loop cockpit:
   shiplog doctor --setup
@@ -422,7 +435,12 @@ enum Command {
         cmd: ConfigCommand,
     },
 
-    /// Inspect source setup readiness without collecting data.
+    /// Inspect, list, and enable or disable sources without collecting data.
+    #[command(
+        about = "Inspect, list, and enable or disable sources without collecting data.",
+        long_about = "Inspect source setup readiness, list configured sources, and toggle their enabled flag in shiplog.toml without provider network calls.",
+        after_help = SOURCES_AFTER_HELP
+    )]
     Sources {
         #[command(subcommand)]
         cmd: SourcesCommand,
@@ -851,6 +869,12 @@ enum ConfigCommand {
 enum SourcesCommand {
     /// Print source setup readiness without provider network calls or writes.
     Status(SourcesStatusArgs),
+    /// List configured sources and their enabled state without provider calls.
+    List(SourcesListArgs),
+    /// Enable one or more sources by setting their enabled flag to true.
+    Enable(SourcesToggleArgs),
+    /// Disable one or more sources by setting their enabled flag to false.
+    Disable(SourcesToggleArgs),
 }
 
 #[derive(Subcommand, Debug)]
@@ -991,6 +1015,26 @@ struct GithubAuthStatusArgs {
 }
 
 #[derive(Args, Debug)]
+struct SourcesListArgs {
+    /// Path to shiplog.toml.
+    #[arg(long, default_value = CONFIG_FILENAME)]
+    config: PathBuf,
+    /// Emit the configured-source inventory as JSON.
+    #[arg(long)]
+    json: bool,
+}
+
+#[derive(Args, Debug)]
+struct SourcesToggleArgs {
+    /// Path to shiplog.toml.
+    #[arg(long, default_value = CONFIG_FILENAME)]
+    config: PathBuf,
+    /// Source(s) to toggle. Repeat --source to toggle several at once.
+    #[arg(long = "source", value_enum, required = true)]
+    sources: Vec<InitSource>,
+}
+
+#[derive(Args, Debug)]
 struct StatusArgs {
     /// Path to shiplog.toml.
     #[arg(long, default_value = CONFIG_FILENAME)]
@@ -1004,6 +1048,10 @@ struct StatusArgs {
     /// Print review-loop status as JSON for agent/control-plane consumers.
     #[arg(long)]
     json: bool,
+    /// Exit 0 when the review loop is ready, 1 when it needs action. For cron/CI
+    /// gating; composes with --json. Reads receipts only, never provider state.
+    #[arg(long)]
+    check: bool,
 }
 
 #[derive(Args, Debug)]
@@ -1381,6 +1429,16 @@ enum InitSource {
 }
 
 impl InitSource {
+    const ALL: [InitSource; 7] = [
+        Self::Github,
+        Self::Gitlab,
+        Self::Jira,
+        Self::Linear,
+        Self::Git,
+        Self::Json,
+        Self::Manual,
+    ];
+
     fn as_str(self) -> &'static str {
         match self {
             Self::Github => "github",
@@ -8011,6 +8069,124 @@ fn run_sources_status(config_path: &Path, sources: &[InitSource], json: bool) ->
     Ok(())
 }
 
+#[derive(Debug, Serialize)]
+struct SourcesListReport {
+    config: String,
+    sources: Vec<SourceListEntry>,
+}
+
+#[derive(Debug, Serialize)]
+struct SourceListEntry {
+    source: &'static str,
+    present: bool,
+    enabled: bool,
+}
+
+/// Read a source's `enabled` flag from parsed config.
+///
+/// Returns `None` when the `[sources.<name>]` section is absent.
+fn config_source_enabled(config: &ShiplogConfig, source: InitSource) -> Option<bool> {
+    let sources = &config.sources;
+    match source {
+        InitSource::Github => sources.github.as_ref().map(|s| s.enabled),
+        InitSource::Gitlab => sources.gitlab.as_ref().map(|s| s.enabled),
+        InitSource::Jira => sources.jira.as_ref().map(|s| s.enabled),
+        InitSource::Linear => sources.linear.as_ref().map(|s| s.enabled),
+        InitSource::Git => sources.git.as_ref().map(|s| s.enabled),
+        InitSource::Json => sources.json.as_ref().map(|s| s.enabled),
+        InitSource::Manual => sources.manual.as_ref().map(|s| s.enabled),
+    }
+}
+
+fn sources_list_report(config_path: &Path, config: &ShiplogConfig) -> SourcesListReport {
+    let sources = InitSource::ALL
+        .into_iter()
+        .map(|source| {
+            let state = config_source_enabled(config, source);
+            SourceListEntry {
+                source: source.as_str(),
+                present: state.is_some(),
+                enabled: state.unwrap_or(false),
+            }
+        })
+        .collect();
+    SourcesListReport {
+        config: config_path.display().to_string(),
+        sources,
+    }
+}
+
+fn run_sources_list(config_path: &Path, json: bool) -> Result<()> {
+    let config = load_config_for_command(config_path)?;
+    ensure_supported_config_version(&config)?;
+    let report = sources_list_report(config_path, &config);
+
+    if json {
+        serde_json::to_writer_pretty(std::io::stdout(), &report)
+            .context("serialize sources list json")?;
+        println!();
+        return Ok(());
+    }
+
+    println!("Configured sources:");
+    println!("Config: {}", report.config);
+    println!("source_key  present  enabled");
+    for entry in &report.sources {
+        println!(
+            "{:<11} {:<8} {}",
+            entry.source,
+            yes_no(entry.present),
+            yes_no(entry.enabled)
+        );
+    }
+    Ok(())
+}
+
+fn yes_no(value: bool) -> &'static str {
+    if value { "yes" } else { "no" }
+}
+
+fn run_sources_set_enabled(
+    config_path: &Path,
+    sources: &[InitSource],
+    enabled: bool,
+) -> Result<()> {
+    let config = load_config_for_command(config_path)?;
+    ensure_supported_config_version(&config)?;
+    let text = read_config_for_command(config_path)?;
+
+    // Deduplicate while preserving the order the user requested.
+    let mut requested: Vec<InitSource> = Vec::new();
+    for source in sources {
+        if !requested.contains(source) {
+            requested.push(*source);
+        }
+    }
+
+    let mut updated = text.clone();
+    let mut changes: Vec<(InitSource, bool)> = Vec::new();
+    for source in &requested {
+        let already = config_source_enabled(&config, *source) == Some(enabled);
+        updated = set_source_enabled_in_text(&updated, *source, enabled)?;
+        changes.push((*source, already));
+    }
+
+    let verb = if enabled { "enabled" } else { "disabled" };
+    if updated != text {
+        std::fs::write(config_path, &updated)
+            .with_context(|| format!("write {}", config_path.display()))?;
+    }
+    println!("Config: {}", config_path.display());
+    for (source, already) in changes {
+        if already {
+            println!("{}: already {verb}", source.as_str());
+        } else {
+            println!("{}: {verb}", source.as_str());
+        }
+    }
+    Ok(())
+}
+
 fn run_github_auth_status(args: &GithubAuthStatusArgs) -> Result<()> {
     let api_base = if args.config.exists() {
         let text = std::fs::read_to_string(&args.config)
@@ -8058,6 +8234,14 @@ fn run_status(args: StatusArgs) -> Result<()> {
         println!();
     } else {
         print_review_loop_status(&status, &resolution);
+    }
+
+    if args.check {
+        // Automation gate: exit 0 when the loop is ready, 1 when it needs
+        // action, after emitting the normal (text or JSON) status output.
+        std::io::Write::flush(&mut std::io::stdout()).ok();
+        let code = i32::from(!status.overall_status.check_is_ready());
+        std::process::exit(code);
     }
     Ok(())
 }
@@ -9535,6 +9719,113 @@ fn add_config_version_to_text(text: &str) -> Result<String> {
 fn is_shiplog_table_header(line: &str) -> bool {
     let before_comment = line.split('#').next().unwrap_or("").trim();
     before_comment == "[shiplog]"
+}
+
+/// Return the whitespace-normalized table header (e.g. `[sources.github]`) for
+/// a line, or `None` when the line is not a table header. Internal whitespace is
+/// stripped so hand-edited variants like `[ sources.github ]` still match.
+fn toml_table_header(line: &str) -> Option<String> {
+    let code = line.split('#').next().unwrap_or("").trim();
+    if code.len() >= 2 && code.starts_with('[') && code.ends_with(']') {
+        Some(code.chars().filter(|c| !c.is_whitespace()).collect())
+    } else {
+        None
+    }
+}
+
+/// Return the bare key (e.g. `enabled`) for a `key = value` line, or `None`
+/// when the line is blank, a comment, a table header, or lacks an `=`.
+fn toml_line_key(line: &str) -> Option<&str> {
+    let code = line.split('#').next().unwrap_or("").trim();
+    if code.is_empty() || code.starts_with('[') {
+        return None;
+    }
+    let mut parts = code.splitn(2, '=');
+    let key = parts.next()?.trim();
+    // Require a value side so a bare `enabled` token (no `=`) does not match.
+    parts.next()?;
+    (!key.is_empty()).then_some(key)
+}
+
+/// Rewrite an `enabled = <bool>` line, preserving indentation, any trailing
+/// comment, and the original line ending.
+fn rewrite_enabled_line(line: &str, enabled: bool) -> String {
+    let newline = if line.ends_with("\r\n") {
+        "\r\n"
+    } else if line.ends_with('\n') {
+        "\n"
+    } else {
+        ""
+    };
+    let content = line.trim_end_matches(['\r', '\n']);
+    let indent_len = content.len() - content.trim_start().len();
+    let indent = &content[..indent_len];
+    let comment = content.find('#').map(|pos| content[pos..].trim_end());
+
+    let mut rebuilt = format!("{indent}enabled = {enabled}");
+    if let Some(comment) = comment {
+        rebuilt.push_str("  ");
+        rebuilt.push_str(comment);
+    }
+    rebuilt.push_str(newline);
+    rebuilt
+}
+
+/// Flip a single source's `enabled` flag in the raw config text without
+/// touching any other field (the "provider record"), preserving comments and
+/// formatting.
+fn set_source_enabled_in_text(text: &str, source: InitSource, enabled: bool) -> Result<String> {
+    let header = format!("[sources.{}]", source.as_str());
+    let lines: Vec<&str> = text.split_inclusive('\n').collect();
+
+    let Some(header_idx) = lines
+        .iter()
+        .position(|line| toml_table_header(line).as_deref() == Some(header.as_str()))
+    else {
+        anyhow::bail!(
+            "no [sources.{}] section in {}; run `shiplog init` or add it before enable/disable",
+            source.as_str(),
+            CONFIG_FILENAME
+        );
+    };
+
+    // Find the first `enabled` key inside the target table (until the next
+    // table header or end of file).
+    let enabled_idx = lines
+        .iter()
+        .enumerate()
+        .skip(header_idx + 1)
+        .take_while(|(_, line)| toml_table_header(line).is_none())
+        .find(|(_, line)| toml_line_key(line) == Some("enabled"))
+        .map(|(idx, _)| idx);
+
+    let mut out = String::with_capacity(text.len() + 16);
+    match enabled_idx {
+        Some(idx) => {
+            for (i, line) in lines.iter().enumerate() {
+                if i == idx {
+                    out.push_str(&rewrite_enabled_line(line, enabled));
+                } else {
+                    out.push_str(line);
+                }
+            }
+        }
+        None => {
+            // The section exists but has no `enabled` key; insert one directly
+            // under the header, matching the header line's own line ending.
+            for (i, line) in lines.iter().enumerate() {
+                out.push_str(line);
+                if i == header_idx {
+                    let newline = if line.ends_with("\r\n") { "\r\n" } else { "\n" };
+                    if !line.ends_with('\n') {
+                        out.push_str(newline);
+                    }
+                    out.push_str(&format!("enabled = {enabled}{newline}"));
+                }
+            }
+        }
+    }
+    Ok(out)
 }
 
 fn validate_config_output_path(out: &Path) -> Result<()> {
@@ -17504,6 +17795,105 @@ mod tests {
         assert_eq!(ing.until, until);
         assert_eq!(ing.author.as_deref(), Some("dev@example.com"));
         assert!(ing.include_merges);
+    }
+
+    #[test]
+    fn set_source_enabled_flips_only_the_target_flag() -> Result<()> {
+        let text =
+            "[sources.github]\nenabled = false\nuser = \"\"\n\n[sources.git]\nenabled = false\n";
+        let enabled = set_source_enabled_in_text(text, InitSource::Github, true)?;
+        assert_eq!(
+            enabled,
+            "[sources.github]\nenabled = true\nuser = \"\"\n\n[sources.git]\nenabled = false\n"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn set_source_enabled_preserves_indentation_and_trailing_comment() -> Result<()> {
+        let text = "[sources.git]\n  enabled = false  # toggle me\n";
+        let enabled = set_source_enabled_in_text(text, InitSource::Git, true)?;
+        assert_eq!(enabled, "[sources.git]\n  enabled = true  # toggle me\n");
+        Ok(())
+    }
+
+    #[test]
+    fn set_source_enabled_preserves_crlf_line_endings() -> Result<()> {
+        let text = "[sources.git]\r\nenabled = false\r\n";
+        let enabled = set_source_enabled_in_text(text, InitSource::Git, true)?;
+        assert_eq!(enabled, "[sources.git]\r\nenabled = true\r\n");
+        Ok(())
+    }
+
+    #[test]
+    fn set_source_enabled_inserts_flag_when_section_lacks_one() -> Result<()> {
+        let text = "[sources.git]\nrepo = \".\"\n";
+        let enabled = set_source_enabled_in_text(text, InitSource::Git, true)?;
+        assert_eq!(enabled, "[sources.git]\nenabled = true\nrepo = \".\"\n");
+        Ok(())
+    }
+
+    #[test]
+    fn set_source_enabled_ignores_enabled_keys_in_other_sections() -> Result<()> {
+        let text = "[sources.github]\nenabled = true\n\n[sources.git]\nenabled = false\n";
+        let disabled = set_source_enabled_in_text(text, InitSource::Git, false)?;
+        assert_eq!(disabled, text, "git already disabled, github untouched");
+        Ok(())
+    }
+
+    #[test]
+    fn set_source_enabled_errors_when_section_absent() {
+        let text = "[sources.github]\nenabled = false\n";
+        let result = set_source_enabled_in_text(text, InitSource::Manual, true);
+        assert!(
+            result.is_err_and(|err| err.to_string().contains("no [sources.manual] section")),
+            "missing section should error"
+        );
+    }
+
+    #[test]
+    fn set_source_enabled_matches_hand_spaced_header() -> Result<()> {
+        let text = "[ sources.git ]\nenabled = false\n";
+        let enabled = set_source_enabled_in_text(text, InitSource::Git, true)?;
+        assert_eq!(enabled, "[ sources.git ]\nenabled = true\n");
+        Ok(())
+    }
+
+    #[test]
+    fn set_source_enabled_inserts_with_crlf_when_section_lacks_flag() -> Result<()> {
+        let text = "[sources.git]\r\nrepo = \".\"\r\n";
+        let enabled = set_source_enabled_in_text(text, InitSource::Git, true)?;
+        assert_eq!(
+            enabled,
+            "[sources.git]\r\nenabled = true\r\nrepo = \".\"\r\n"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn set_source_enabled_skips_bare_token_without_equals() -> Result<()> {
+        // A stray `enabled` word (no `=`) must not be treated as the flag; the
+        // real `enabled = false` assignment below it is the one that flips.
+        let text = "[sources.git]\nenabled\nenabled = false\n";
+        let enabled = set_source_enabled_in_text(text, InitSource::Git, true)?;
+        assert_eq!(enabled, "[sources.git]\nenabled\nenabled = true\n");
+        Ok(())
+    }
+
+    #[test]
+    fn toml_line_key_requires_an_assignment() {
+        assert_eq!(toml_line_key("enabled = false"), Some("enabled"));
+        assert_eq!(toml_line_key("enabled"), None);
+        assert_eq!(toml_line_key("# enabled = false"), None);
+    }
+
+    #[test]
+    fn toml_table_header_normalizes_internal_whitespace() {
+        assert_eq!(
+            toml_table_header("[ sources.git ]").as_deref(),
+            Some("[sources.git]")
+        );
+        assert_eq!(toml_table_header("enabled = true"), None);
     }
 }
 pub mod github_auth;

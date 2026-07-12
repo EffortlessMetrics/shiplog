@@ -6,9 +6,10 @@
 
 > Review evidence loop for people who need receipts, not review prose.
 
-shiplog turns work evidence into a review-readiness loop: diagnose setup,
-inspect status, collect receipts, repair gaps, rerun, compare, and share
-safely.
+Current shipped release: `v0.11.0`.
+
+shiplog turns work evidence into a review-readiness habit: capture context,
+refresh receipts, inspect gaps, and share safely.
 
 ## Install
 
@@ -30,39 +31,43 @@ JSON, and manual evidence can run without provider tokens.
 
 | Surface | Command |
 |---------|---------|
-| Setup preflight | `shiplog doctor --setup` |
-| Agent setup state | `shiplog doctor --setup --json` |
+| First packet | `shiplog intake` |
+| Home screen | `shiplog` |
+| Quick context | `shiplog add "what changed"` |
+| Evidence refresh | `shiplog update` |
+| Safe next action | `shiplog next` |
+| Current packet | `shiplog open` |
+| Manager/public share | `shiplog share manager` / `shiplog share public` |
 | Review-loop status | `shiplog status --latest` |
-| Agent review state | `shiplog status --latest --json` |
-| Evidence intake | `shiplog intake --last-6-months --explain` |
-| Repair queue | `shiplog repair plan --latest` |
-| Local journal repair | `shiplog journal add --from-repair <repair_id>` |
-| Repair movement | `shiplog repair diff --latest` |
-| Packet movement | `shiplog runs diff --latest` |
-| Share posture | `shiplog share explain manager --latest` |
 | Full GitHub history | `shiplog github activity plan` |
 
 ## First useful loop
 
-Start from the directory that contains the work you want to capture:
+Start with the first packet. Setup files are created automatically when they
+are needed, and provider credentials are optional:
 
 ```bash
 shiplog intake
-shiplog open packet --latest
 ```
 
-`intake` creates safe local setup, collects available evidence using the default
-window, and produces the packet. Provider credentials are optional; missing or
-unavailable sources are recorded as caveats instead of blocking local/manual
-use.
-
-Setup and status commands are troubleshooting and automation surfaces:
+Open the packet when you want to read it immediately:
 
 ```bash
-shiplog doctor --setup --for intake
-shiplog sources status
-shiplog status --latest --json
+shiplog open
 ```
+
+Normal recurring use:
+
+```bash
+shiplog add "Resolved the customer import retry incident" \
+  --impact "Protected the next import window"
+shiplog update
+shiplog open
+shiplog
+```
+
+For setup troubleshooting or agent automation, use `doctor --setup`,
+`sources status`, and `status --latest --json` as read-only diagnostics.
 
 Repair and compare when status says the packet needs evidence:
 
@@ -84,6 +89,8 @@ Read-only commands:
 - `shiplog doctor --setup --json`
 - `shiplog status --latest`
 - `shiplog status --latest --json`
+- `shiplog next` / `shiplog next --json`
+- `shiplog`
 - `shiplog repair plan --latest`
 - `shiplog repair diff --latest`
 - `shiplog runs diff --latest`
@@ -94,6 +101,8 @@ Write-producing commands:
 
 - `shiplog init --guided`
 - `shiplog intake --last-6-months --explain`
+- `shiplog add "what changed"`
+- `shiplog update`
 - `shiplog journal add --from-repair <repair_id>`
 - `shiplog github activity report --out ./out/github-full`
 - `shiplog github activity merge --out ./out/github-full`

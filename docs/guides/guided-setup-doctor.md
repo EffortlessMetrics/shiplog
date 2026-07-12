@@ -5,16 +5,22 @@ repair/share command looks blocked by setup. The goal is to make setup state
 explicit before you spend time on an intake run or try a repair command that
 cannot succeed.
 
-This is the canonical front door for new setups. Use the repair and share
-guides after doctor has told you whether the next command is safe.
+Most users should start with `shiplog intake`; it creates the local setup
+files it needs. Use this guide when setup is malformed, a source is blocked,
+or a repair/share command needs diagnosis.
 
 For the current operational proof ledger, see the
 [`Setup-readiness dogfood matrix`](../product/setup-readiness-dogfood-matrix.md).
 
-The front-door loop is:
+The first-use path is:
 
 ```bash
-shiplog init --guided
+shiplog intake
+```
+
+For setup troubleshooting, use the read-only diagnostic loop:
+
+```bash
 shiplog doctor --setup
 shiplog doctor --setup --for manager-share
 shiplog doctor --setup --for public-share
@@ -22,10 +28,6 @@ shiplog doctor --setup --for all
 shiplog sources status
 shiplog doctor --setup --json
 shiplog status --latest
-shiplog intake --last-6-months --explain
-shiplog status --latest
-shiplog repair plan --latest
-shiplog share explain manager --latest
 ```
 
 The default `doctor --setup` objective is `intake`, so missing share redaction

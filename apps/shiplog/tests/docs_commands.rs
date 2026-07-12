@@ -19,6 +19,16 @@ fn example_config(name: &str) -> PathBuf {
     repo_root().join("examples/configs").join(name)
 }
 
+fn assert_contains_in_order(doc: &str, doc_label: &str, needles: &[&str]) {
+    let mut cursor = 0;
+    for needle in needles {
+        let Some(offset) = doc[cursor..].find(needle) else {
+            panic!("{doc_label} should mention {needle:?} after the prior ordered command");
+        };
+        cursor += offset + needle.len();
+    }
+}
+
 fn normalize_newlines(doc: &str) -> String {
     doc.replace("\r\n", "\n")
 }
@@ -121,15 +131,15 @@ fn config_reference_documents_current_surface() {
 }
 
 #[test]
-fn changelog_curates_0_9_as_review_loop_cockpit_release_notes() {
+fn changelog_curates_0_10_as_source_ergonomics_release_notes() {
     let doc_path = repo_root().join("CHANGELOG.md");
     let doc = std::fs::read_to_string(&doc_path)
         .unwrap_or_else(|err| panic!("read {}: {err}", doc_path.display()));
 
-    let unreleased = section_between(&doc, "## [Unreleased]", "## [0.9.0]");
+    let unreleased = section_between(&doc, "## [Unreleased]", "## [0.11.0]");
     assert!(
-        unreleased.contains("shiplog sources status --json"),
-        "Unreleased should record the sources status --json surface"
+        unreleased.contains("No unreleased changes."),
+        "Unreleased should be empty after the 0.11.0 release cut"
     );
     assert!(
         !unreleased.contains("#424")
@@ -137,6 +147,32 @@ fn changelog_curates_0_9_as_review_loop_cockpit_release_notes() {
             && !unreleased.contains("#444")
             && !unreleased.contains("#455"),
         "candidate receipts belong in the 0.9 candidate section, not Unreleased"
+    );
+
+    let release = section_between(&doc, "## [0.11.0]", "## [0.10.0]");
+    for needle in [
+        "low-friction review-readiness release",
+        "objective-scoped setup readiness",
+        "GitHub credential discovery",
+        "shiplog update",
+        "shiplog add",
+        "default `shiplog open`",
+        "shiplog status --check",
+        "versionless verified installers",
+        "Homebrew",
+        "Scoop",
+        "Routine CI is Linux-first",
+    ] {
+        assert!(
+            release.contains(needle),
+            "0.11 changelog should mention {needle:?}"
+        );
+    }
+
+    let previous_release = section_between(&doc, "## [0.10.0]", "## [0.9.0]");
+    assert!(
+        previous_release.contains("source configuration ergonomics and security"),
+        "0.10.0 should describe its release theme"
     );
 
     let candidate = section_between(&doc, "## [0.9.0]", "## [0.8.0]");
@@ -197,102 +233,53 @@ fn changelog_curates_0_9_as_review_loop_cockpit_release_notes() {
 }
 
 #[test]
-fn docs_teach_one_command_front_door_before_setup_details() {
+fn docs_teach_intake_as_the_one_command_front_door() -> anyhow::Result<()> {
     let root = repo_root();
-
     for relative_path in [
         "README.md",
         "apps/shiplog/README.md",
         "docs/guides/rapid-first-intake.md",
+        "docs/guides/guided-setup-doctor.md",
+        "docs/guides/review-ready-packet.md",
     ] {
         let path = root.join(relative_path);
         let doc = std::fs::read_to_string(&path)
             .unwrap_or_else(|err| panic!("read {}: {err}", path.display()));
-        let first_use_offset = doc
-            .find("## First useful loop")
-            .or_else(|| doc.find("## First use"))
-            .or_else(|| doc.find("## One-command cold-start"))
-            .unwrap_or_else(|| panic!("{relative_path} should have a first-use section"));
-        let first_use = &doc[first_use_offset..];
-        let intake_offset = first_use
-            .find("shiplog intake")
-            .unwrap_or_else(|| panic!("{relative_path} should teach shiplog intake"));
         assert!(
-            first_use.contains("shiplog open packet --latest"),
-            "{relative_path} should identify the packet as the first human artifact"
+            doc.contains("shiplog intake"),
+            "{relative_path} should document intake as the first useful command"
         );
-        for setup_command in [
-            "shiplog init --guided",
-            "shiplog doctor --setup",
-            "shiplog sources status",
-            "shiplog status --latest",
-        ] {
-            assert!(
-                !first_use[..intake_offset].contains(setup_command),
-                "{relative_path} should not make {setup_command:?} a prerequisite"
-            );
-        }
         assert!(
-            doc.contains("doctor --setup") && doc.contains("status --latest --json"),
-            "{relative_path} should retain setup and status as troubleshooting surfaces"
+            doc.contains("shiplog status --latest"),
+            "{relative_path} should retain status as the review-loop diagnostic"
         );
     }
-}
 
-#[test]
-fn active_docs_match_package_and_changelog_version() {
-    let root = repo_root();
-    let metadata = StdCommand::new("cargo")
-        .args([
-            "metadata",
-            "--no-deps",
-            "--format-version",
-            "1",
-            "--manifest-path",
-            "apps/shiplog/Cargo.toml",
-        ])
-        .current_dir(&root)
-        .output()
-        .expect("cargo metadata should run");
-    assert!(
-        metadata.status.success(),
-        "cargo metadata failed: {}",
-        String::from_utf8_lossy(&metadata.stderr)
+    let root_readme = std::fs::read_to_string(root.join("README.md"))?;
+    let quick_start = section_between(&root_readme, "## Quick start", "## Install");
+    assert_contains_in_order(
+        quick_start,
+        "README.md quick start",
+        &["shiplog intake", "shiplog open"],
     );
-    let metadata: serde_json::Value =
-        serde_json::from_slice(&metadata.stdout).expect("cargo metadata should emit JSON");
-    let version = metadata["packages"]
-        .as_array()
-        .and_then(|packages| packages.iter().find(|package| package["name"] == "shiplog"))
-        .and_then(|package| package["version"].as_str())
-        .expect("workspace metadata should contain the shiplog package version");
-    let versioned_heading = format!("## [{version}]");
-
-    let changelog = std::fs::read_to_string(root.join("CHANGELOG.md"))
-        .expect("CHANGELOG.md should be readable");
-    assert!(
-        changelog.contains(&versioned_heading),
-        "CHANGELOG.md should contain the package version heading {versioned_heading:?}"
-    );
-
-    for (relative_path, marker) in [
-        (
-            "README.md",
-            format!("Shiplog {version} is the current shipped release"),
-        ),
-        (
-            "docs/install.md",
-            format!("Current shipped release: `v{version}`"),
-        ),
-        ("ROADMAP.md", format!("**v{version} ")),
+    let normal_workflow = section_between(&root_readme, "## Normal workflow", "## Install");
+    for needle in [
+        "shiplog add",
+        "shiplog update",
+        "shiplog open",
+        "shiplog share manager",
     ] {
-        let doc = std::fs::read_to_string(root.join(relative_path))
-            .unwrap_or_else(|err| panic!("read {relative_path}: {err}"));
         assert!(
-            doc.contains(&marker),
-            "{relative_path} should identify the current package version with {marker:?}"
+            normal_workflow.contains(needle),
+            "README normal workflow should mention {needle:?}"
         );
     }
+    assert!(
+        !quick_start.contains("shiplog init --guided"),
+        "README.md quick start should not require setup ceremony"
+    );
+
+    Ok(())
 }
 
 #[test]
@@ -484,7 +471,6 @@ fn setup_readiness_schema_docs_and_examples_describe_v1_contract() {
     for needle in [
         "contracts/schemas/setup-readiness.v1.schema.json",
         "shiplog doctor --setup --json",
-        "status --latest --json",
         "examples/setup-readiness/blocked.json",
         "examples/setup-readiness/needs-setup.json",
         "examples/setup-readiness/ready-with-caveats.json",
@@ -2383,7 +2369,7 @@ fn crate_readme_documents_first_loop_for_crates_io() {
 }
 
 #[test]
-fn root_readme_documents_current_review_front_door() {
+fn root_readme_documents_0_11_review_loop_front_door() {
     let doc_path = repo_root().join("README.md");
     let doc = std::fs::read_to_string(&doc_path)
         .unwrap_or_else(|err| panic!("read {}: {err}", doc_path.display()));
@@ -2397,23 +2383,31 @@ fn root_readme_documents_current_review_front_door() {
         "GitHub release",
         "crates.io downloads",
         "MSRV 1.95",
-        "Review readiness with receipts: setup, status, intake, repair, rerun, diff, and share safely.",
-        "Current product",
-        "Shiplog 0.10.0 is the current shipped release",
-        "shiplog turns work evidence into a review-readiness loop",
-        "shiplog intake",
-        "shiplog open packet --latest",
-        "shiplog next",
-        "shiplog add \"...\"",
+        "Review readiness with receipts: capture evidence, refresh it, and share safely.",
+        "What works in 0.11",
+        "Current shipped release: `v0.11.0`",
+        "## Normal workflow",
+        "shiplog add \"what changed\"",
         "shiplog update",
-        "shiplog doctor --setup --for intake",
+        "shiplog open",
+        "shiplog next",
+        "shiplog share manager",
+        "## Quick start",
+        "shiplog intake",
+        "shiplog turns work evidence into a review-readiness loop",
+        "shiplog init --guided",
+        "shiplog doctor --setup",
         "shiplog sources status",
+        "shiplog doctor --setup --json",
+        "shiplog status --latest",
         "shiplog status --latest --json",
+        "shiplog intake --last-6-months --explain",
         "shiplog repair plan --latest",
         "shiplog journal add --from-repair <repair_id>",
         "shiplog repair diff --latest",
         "shiplog runs diff --latest",
         "shiplog share explain manager --latest",
+        "shiplog github activity plan",
         "Status at a glance",
         "Docs map",
         "Machine-readable contracts",
@@ -2440,6 +2434,16 @@ fn root_readme_documents_current_review_front_door() {
         !doc.contains("contracted for 0.7"),
         "root README should not carry stale 0.7 crate-surface wording"
     );
+    let quick_start = section_between(&doc, "## Quick start", "## Install");
+    assert_contains_in_order(
+        quick_start,
+        "root README quick start",
+        &["shiplog intake", "shiplog open"],
+    );
+    assert!(
+        !quick_start.contains("shiplog init --guided"),
+        "root README quick start should not require setup ceremony"
+    );
     for needle in [
         "\"schemaVersion\": 1",
         "\"label\": \"ripr+\"",
@@ -2451,6 +2455,86 @@ fn root_readme_documents_current_review_front_door() {
             "ripr+ badge endpoint should mention {needle:?}"
         );
     }
+}
+
+#[test]
+fn active_docs_match_package_and_changelog_version() -> anyhow::Result<()> {
+    let manifest = std::fs::read_to_string(repo_root().join("Cargo.toml"))?;
+    let version = manifest
+        .lines()
+        .find_map(|line| {
+            line.trim()
+                .strip_prefix("version = \"")
+                .and_then(|value| value.strip_suffix('"'))
+        })
+        .context("workspace package version should be declared")?;
+    let changelog = std::fs::read_to_string(repo_root().join("CHANGELOG.md"))?;
+    let expected_heading = format!("## [{version}]");
+    let latest_heading = changelog
+        .lines()
+        .find(|line| line.starts_with("## [") && !line.starts_with("## [Unreleased]"))
+        .context("changelog should contain a released version heading")?;
+    assert!(
+        latest_heading.starts_with(&expected_heading),
+        "latest changelog heading should match package version {version:?}, got {latest_heading:?}"
+    );
+
+    let current_marker = format!("Current shipped release: `v{version}`");
+    for path in [
+        "README.md",
+        "apps/shiplog/README.md",
+        "docs/install.md",
+        "ROADMAP.md",
+    ] {
+        let doc = std::fs::read_to_string(repo_root().join(path))?;
+        assert!(
+            doc.contains(&current_marker),
+            "{path} should contain the current-release marker {current_marker:?}"
+        );
+    }
+
+    for path in [
+        format!("docs/release/{version}-readiness.md"),
+        format!("docs/release/{version}-release-decision.md"),
+    ] {
+        let doc = std::fs::read_to_string(repo_root().join(&path))?;
+        let marker = format!("**Release target:** `v{version}`");
+        assert!(
+            doc.contains(&marker),
+            "{path} should contain the shipped-release marker {marker:?}"
+        );
+    }
+
+    let handoff =
+        std::fs::read_to_string(repo_root().join(format!("RELEASE_HANDOFF_{version}.md")))?;
+    assert!(
+        handoff.contains(&format!("**Release target:** `v{version}`")),
+        "release handoff should identify the release target"
+    );
+
+    for stale_phrase in [
+        "What works in 0.9",
+        "Latest shipped release assets for `v0.8.0`",
+        "release-prep in progress",
+        "release-prep PR pending final merged-main preflight",
+        "Do not tag, publish",
+    ] {
+        assert!(
+            ![
+                "README.md",
+                "apps/shiplog/README.md",
+                "docs/install.md",
+                "ROADMAP.md"
+            ]
+            .iter()
+            .map(|path| repo_root().join(path))
+            .filter_map(|path| std::fs::read_to_string(path).ok())
+            .any(|doc| doc.contains(stale_phrase)),
+            "active docs should not contain stale release phrase {stale_phrase:?}"
+        );
+    }
+
+    Ok(())
 }
 
 #[test]
@@ -2484,8 +2568,8 @@ fn install_guide_documents_current_install_paths() {
         "shiplog doctor",
         "shiplog sources",
         "shiplog auth",
-        "scripts/release-install-smoke.sh v0.10.0",
-        "pwsh -File .\\scripts\\release-install-smoke.ps1 v0.10.0",
+        "scripts/release-install-smoke.sh v0.11.0",
+        "pwsh -File .\\scripts\\release-install-smoke.ps1 v0.11.0",
         "no-network review-rescue fixture",
     ] {
         assert!(
@@ -2505,7 +2589,7 @@ fn rapid_first_intake_guide_routes_manual_evidence_through_repair_plan() {
         "Repair Items",
         "read-first handoff",
         "shiplog repair plan --latest",
-        "shiplog intake",
+        "shiplog init --guided",
         "shiplog doctor --setup",
         "shiplog sources status",
         "shiplog doctor --setup --json",
@@ -2635,7 +2719,7 @@ fn recurring_review_loop_guide_documents_status_first_practice() {
         "shiplog share explain manager --latest",
         "shiplog share verify public --latest --strict",
         "status first, then the next receipt-producing command",
-        "flagship 0.9 guide",
+        "receipt-backed recurring loop",
         "Weekly self-review",
         "Monthly manager prep",
         "Promotion packet prep",

@@ -1,13 +1,16 @@
 # Recurring review-loop guide
 
 Start here if you want to use Shiplog weekly, monthly, or for manager/promotion
-packet prep. This is the flagship 0.9 guide for the status-first loop.
+packet prep. First use is intentionally shorter: run `shiplog intake`, then
+use the normal `add` and `update` workflow to keep the receipt-backed packet
+current. The detailed sections below remain the receipt-backed recurring loop
+for diagnosis and audit.
 
 The goal is not to generate a report once. The goal is to keep review readiness
 visible:
 
 ```text
-status -> collect -> status -> repair -> rerun -> compare -> explain share
+add -> update -> open -> next -> share explicitly
 ```
 
 `doctor --setup` remains the setup preflight. `status --latest` is the review
@@ -48,18 +51,17 @@ prose.
 Use this when you are preparing a manager packet or keeping a review cycle warm.
 
 ```bash
-shiplog status --latest
-shiplog intake --last-6-months --explain
-shiplog status --latest
-shiplog repair plan --latest
-shiplog journal add --from-repair <repair_id>
-shiplog status --latest
-shiplog intake --last-6-months --explain
-shiplog repair diff --latest
-shiplog runs diff --latest
-shiplog share explain manager --latest
-shiplog status --latest
+shiplog add "Resolved the customer import retry incident" \
+  --impact "Protected the next import window"
+shiplog update
+shiplog open
+shiplog
 ```
+
+`shiplog update` collects current evidence, compares it with the prior run,
+rebuilds the packet, and prints the next useful action. It does not add manual
+evidence, apply repairs, or render a share profile. Add context first while it
+is fresh; use the diagnostic loop below when the home screen reports a gap.
 
 The important rule is:
 
@@ -67,7 +69,7 @@ The important rule is:
 status first, then the next receipt-producing command.
 ```
 
-If status says `ready_to_collect`, run intake. If it says `needs_repair`, run
+If status says `ready_to_collect`, run intake or update. If it says `needs_repair`, run
 `repair plan` before copying write commands. If it says `repair_in_progress`,
 rerun intake before asking for diff. If it says `share_blocked`, do not render a
 manager or public packet.
@@ -75,6 +77,13 @@ manager or public packet.
 ## Weekly self-review
 
 Weekly use can be lighter. You are looking for drift, not finishing a packet.
+
+```bash
+shiplog add "Led rollback review" --impact "Reduced recovery risk"
+shiplog update
+```
+
+For a detailed weekly diagnostic pass:
 
 ```bash
 shiplog status --latest
