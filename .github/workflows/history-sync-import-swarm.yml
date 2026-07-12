@@ -1,0 +1,56 @@
+name: Import shiplog-swarm history
+
+on:
+  push:
+    branches:
+      - agent/history-sync-import-swarm-20260712
+
+permissions:
+  contents: write
+
+concurrency:
+  group: history-sync-import-swarm
+  cancel-in-progress: false
+
+jobs:
+  import-history:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out bootstrap branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: agent/history-sync-import-swarm-20260712
+
+      - name: Join shiplog-swarm history without changing the released tree
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git config user.name "EffortlessSteven"
+          git config user.email "git@effortlesssteven.com"
+
+          git remote add swarm https://github.com/EffortlessMetrics/shiplog-swarm.git
+          git fetch --no-tags origin main
+          git fetch --no-tags swarm main
+
+          git checkout -B sync/history-preserving-shiplog-swarm-20260712 origin/main
+
+          if git merge-base --is-ancestor swarm/main HEAD; then
+            echo "shiplog-swarm/main is already contained in shiplog/main"
+          else
+            swarm_sha="$(git rev-parse swarm/main)"
+            git merge \
+              --no-ff \
+              --allow-unrelated-histories \
+              -s ours \
+              swarm/main \
+              -m "merge(sync): join shiplog-swarm history through ${swarm_sha:0:12}
+
+Preserve the released shiplog tree while recording shiplog-swarm/main as the second parent.
+
+[skip ci]"
+          fi
+
+          git push --force-with-lease origin HEAD:refs/heads/sync/history-preserving-shiplog-swarm-20260712
+          git push origin --delete agent/history-sync-import-swarm-20260712 || true
