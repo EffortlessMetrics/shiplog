@@ -16,7 +16,7 @@ jobs:
   import-history:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out the merged bootstrap commit
+      - name: Check out the merged trigger commit
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -37,7 +37,7 @@ jobs:
 
           if git merge-base --is-ancestor swarm/main HEAD; then
             echo "shiplog-swarm/main is already contained in shiplog/main"
-            git rm .github/workflows/history-sync-import-swarm.yml
+            git rm .github/workflows/history-sync-import-swarm.yml .history-sync-trigger
             git commit -m "ci(sync): remove completed history-import bootstrap [skip ci]"
           else
             swarm_sha="$(git rev-parse swarm/main)"
@@ -47,13 +47,14 @@ jobs:
               --allow-unrelated-histories \
               -s ours \
               swarm/main
-            git rm .github/workflows/history-sync-import-swarm.yml
+            git rm .github/workflows/history-sync-import-swarm.yml .history-sync-trigger
             git commit -m "merge(sync): join shiplog-swarm history through ${swarm_sha:0:12}
 
-Preserve the released shiplog tree while recording shiplog-swarm/main as the second parent. Remove the one-time import workflow in the same commit so the resulting tree matches the pre-bootstrap source tree.
+Preserve the released shiplog tree while recording shiplog-swarm/main as the second parent. Remove the one-time import workflow and trigger marker in the same commit so the resulting tree matches the pre-bootstrap source tree.
 
 [skip ci]"
           fi
 
-          git push origin HEAD:refs/heads/sync/history-preserving-shiplog-swarm-20260712
+          git push --force-with-lease origin HEAD:refs/heads/sync/history-preserving-shiplog-swarm-20260712
           git push origin --delete agent/history-sync-import-swarm-20260712 || true
+          git push origin --delete agent/history-sync-trigger-20260712 || true
