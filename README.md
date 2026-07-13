@@ -22,6 +22,11 @@
   <em>Review readiness with receipts: capture evidence, refresh it, and share safely.</em>
 </p>
 
+> **Development repository.** Contributors open pull requests in
+> [`EffortlessMetrics/shiplog-swarm`](https://github.com/EffortlessMetrics/shiplog-swarm).
+> End users should install releases and report release-facing issues through
+> [`EffortlessMetrics/shiplog`](https://github.com/EffortlessMetrics/shiplog).
+
 shiplog turns work evidence into a review-readiness loop: diagnose setup,
 inspect status, collect receipts, repair gaps, rerun, compare, and share
 safely.

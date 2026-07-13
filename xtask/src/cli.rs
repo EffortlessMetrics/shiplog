@@ -66,6 +66,9 @@ enum Command {
     /// CI economics commands (forecast, actuals).
     Ci(CiArgs),
 
+    /// Run the canonical local and hosted small gate.
+    CiSmall(CiSmallArgs),
+
     /// Verify the non-Rust file allowlist (`policy/non-rust-allowlist.toml`).
     CheckFilePolicy(FilePolicyModeArgs),
 
@@ -294,6 +297,14 @@ pub struct ActualsArgs {
     pub output: PathBuf,
 }
 
+#[derive(Debug, Args)]
+pub struct CiSmallArgs {
+    /// Run one named step instead of the complete sequence. CI uses this to
+    /// expose the exact failing command while local wrappers run all steps.
+    #[arg(long)]
+    pub step: Option<String>,
+}
+
 impl Cli {
     pub fn run(self) -> Result<()> {
         let workspace_root = match self.workspace_root {
@@ -336,6 +347,7 @@ impl Cli {
                 handoff_output: args.handoff_output,
                 archive_output: args.archive_output,
             }),
+            Command::CiSmall(args) => tasks::ci_small::run(&workspace_root, args.step.as_deref()),
             Command::Ci(ci) => match ci.command {
                 CiCommand::Plan(args) => tasks::ci_plan::run(tasks::ci_plan::PlanInputs {
                     workspace_root,

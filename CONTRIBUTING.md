@@ -14,13 +14,28 @@ The project pins its toolchain in `rust-toolchain.toml`, so `rustup` will automa
 ## Getting started
 
 ```bash
-git clone https://github.com/EffortlessMetrics/shiplog.git
-cd shiplog
+git clone https://github.com/EffortlessMetrics/shiplog-swarm.git
+cd shiplog-swarm
 cargo build --workspace
-cargo test --workspace
+cargo xtask ci-small
 ```
 
 All workspace crates should build and pass tests on a clean checkout.
+
+Normal development targets `shiplog-swarm`. Maintainers who need the release
+source can add a second remote named `source` for
+`https://github.com/EffortlessMetrics/shiplog.git`; ordinary contributors do
+not need the promotion topology.
+
+The shortest contributor path is:
+
+```bash
+git clone https://github.com/EffortlessMetrics/shiplog-swarm.git
+cd shiplog-swarm
+cargo build --workspace
+cargo xtask ci-small
+gh pr create
+```
 
 ## Project structure
 
@@ -44,18 +59,17 @@ promoting a package.
 
 ## Development workflow
 
-1. Fork the repository and create a feature branch from `main`.
+1. Fork `shiplog-swarm` and create a feature branch from `main`.
 2. Make your changes.
 3. Run the quality gates:
 
 ```bash
-cargo fmt --all -- --check
-cargo clippy --workspace --all-targets --all-features -- -D warnings
-cargo test --workspace
+cargo xtask ci-small
 ```
 
-Or run all three in one shot with `scripts/dev-check.sh` — it mirrors the
-CI `check` job's fmt/clippy/test gate.
+On Windows PowerShell, use `pwsh -NoProfile -File scripts/dev-check.ps1`.
+On Linux or macOS, use `bash scripts/dev-check.sh`. Both wrappers call the
+same Rust-native gate as CI.
 
 To catch formatting and lint issues before they hit CI, install the
 optional pre-commit hook once per clone:
@@ -68,7 +82,7 @@ This runs `cargo fmt --all -- --check` and `cargo clippy` before each
 commit. Skip it for a single commit with `git commit --no-verify`, or
 disable it for a session with `SHIPLOG_SKIP_HOOKS=1`.
 
-4. Open a pull request against `main`.
+4. Open a pull request against `shiplog-swarm/main`.
 
 ## Code style
 

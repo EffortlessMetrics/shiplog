@@ -8,6 +8,7 @@ pub mod check_risk_pack_integrity;
 pub mod check_support_tiers;
 pub mod ci_actuals;
 pub mod ci_plan;
+pub mod ci_small;
 pub mod clippy_policy;
 pub mod closeout;
 pub mod file_policy;

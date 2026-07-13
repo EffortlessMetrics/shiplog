@@ -163,6 +163,12 @@ jobs:
               set_output("github", f"unknown_forced_route_{force_route}")
               sys.exit(0)
 
+          # Required PR and main checks use hosted execution by default.
+          # Self-hosted capacity remains available for explicit dispatch
+          # proofs through force_route.
+          set_output("github", "hosted_default")
+          sys.exit(0)
+
           if not runner_read_token:
               set_unavailable("runner_token_missing")
               sys.exit(0)
@@ -418,13 +424,25 @@ jobs:
           toolchain: "1.95.0"
           components: rustfmt, clippy
 
-      - name: Run Shiplog Rust Small checks
-        run: |
-          cargo fmt --all -- --check
-          cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
-          cargo test --workspace --all-features --locked -- --test-threads=4
-          cargo xtask check-no-panic-family --mode blocking-allowlist
-          git diff --check
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "shiplog-rust-small-github"
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Format
+        run: cargo xtask ci-small --step format
+
+      - name: Clippy
+        run: cargo xtask ci-small --step clippy
+
+      - name: Workspace tests
+        run: cargo xtask ci-small --step tests
+
+      - name: No-panic policy
+        run: cargo xtask ci-small --step no-panic
+
+      - name: Whitespace/diff validation
+        run: cargo xtask ci-small --step diff
 
   rust_small_github_fallback:
     name: Shiplog Rust Small on GitHub Hosted Fallback
