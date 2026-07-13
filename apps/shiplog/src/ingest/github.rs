@@ -1494,6 +1494,49 @@ struct ReviewUser {
     login: String,
 }
 
+/// Validate that an `api_base` URL uses the `https` scheme.
+///
+/// Mirrors [`cluster_llm::client::validate_https_endpoint`] so that the
+/// GitHub adapter enforces the same HTTPS-only policy as the LLM
+/// clustering backend. Returning the parser error here lets the CLI
+/// surface a clear "GitHub API base must use https" error before any
+/// bearer token or PR payload is transmitted.
+///
+/// This is intentionally stricter than [`html_base_url`], which only
+/// derives a human-facing URL for receipt rendering and may legitimately
+/// preserve an `http://` scheme for an internal GHES instance behind a
+/// reverse proxy. The bearer-authenticated request path is never
+/// allowed to use cleartext.
+pub fn validate_https_api_base(api_base: &str) -> Result<()> {
+    let parsed = Url::parse(api_base).context("parse GitHub API base URL")?;
+    let host_str = parsed
+        .host_str()
+        .ok_or_else(|| anyhow::anyhow!("GitHub API base must include a host"))?;
+
+    // Allow HTTP for loopback addresses (local mock servers used by
+    // integration tests). The protection here is against exfiltrating
+    // bearer tokens to remote hosts, not against loopback connections.
+    let host = parsed
+        .host()
+        .ok_or_else(|| anyhow::anyhow!("GitHub API base must include a host"))?;
+    let host_ip: Option<std::net::IpAddr> = match host {
+        url::Host::Domain(_) => None,
+        url::Host::Ipv4(ip) => Some(std::net::IpAddr::V4(ip)),
+        url::Host::Ipv6(ip) => Some(std::net::IpAddr::V6(ip)),
+    };
+    let is_loopback =
+        host_str.eq_ignore_ascii_case("localhost") || host_ip.is_some_and(|ip| ip.is_loopback());
+
+    if parsed.scheme() != "https" && !is_loopback {
+        anyhow::bail!(
+            "GitHub API base must use https, got {}://{}",
+            parsed.scheme(),
+            host_str
+        );
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2579,6 +2622,54 @@ mod tests {
         let mut ing = make_ingestor("octocat");
         ing.api_base = "http://internal-ghes.corp/api/v3".to_string();
         assert_eq!(ing.html_base_url(), "http://internal-ghes.corp");
+    }
+
+    // -- validate_https_api_base --
+
+    #[test]
+    fn validate_https_api_base_accepts_default() {
+        assert!(validate_https_api_base("https://api.github.com").is_ok());
+    }
+
+    #[test]
+    fn validate_https_api_base_accepts_enterprise() {
+        assert!(validate_https_api_base("https://github.enterprise.local/api/v3").is_ok());
+        assert!(validate_https_api_base("https://ghes.local:8443/api/v3").is_ok());
+    }
+
+    #[test]
+    fn api_base_rejects_http_scheme() {
+        let error = validate_https_api_base("http://internal-ghes.corp/api/v3")
+            .expect_err("http:// should be rejected");
+        assert!(
+            error.to_string().contains("must use https"),
+            "unexpected validation error: {error}"
+        );
+    }
+
+    #[test]
+    fn api_base_rejects_cleartext_attacker() {
+        let error = validate_https_api_base("http://attacker.example.com/api/v3")
+            .expect_err("attacker http:// should be rejected");
+        assert!(error.to_string().contains("must use https"));
+    }
+
+    #[test]
+    fn api_base_rejects_invalid_url() {
+        assert!(validate_https_api_base("not-a-valid-url").is_err());
+        assert!(validate_https_api_base("https://").is_err());
+        assert!(validate_https_api_base("").is_err());
+    }
+
+    #[test]
+    fn api_base_allows_loopback_http() {
+        // Local mock servers used by integration tests run over HTTP.
+        // The validation only protects against exfiltrating tokens to
+        // remote hosts; loopback connections are fine.
+        assert!(validate_https_api_base("http://127.0.0.1:9999").is_ok());
+        assert!(validate_https_api_base("http://127.0.0.1:9999/api/v3").is_ok());
+        assert!(validate_https_api_base("http://localhost:9999/api/v3").is_ok());
+        assert!(validate_https_api_base("http://[::1]:9999/api/v3").is_ok());
     }
 
     // -- github_inclusive_range edge cases --

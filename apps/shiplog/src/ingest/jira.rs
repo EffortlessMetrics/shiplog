@@ -248,7 +248,7 @@ impl JiraIngestor {
 
         // Build JQL query
         let jql = format!(
-            "assignee = '{}' AND created >= '{}' AND created <= '{}'",
+            "assignee = '{}' AND created >= '{}' AND created < '{}'",
             self.user,
             self.since.format("%Y-%m-%d"),
             self.until.format("%Y-%m-%d")

@@ -12627,6 +12627,8 @@ fn make_github_ingestor(
     ing.throttle_ms = throttle_ms;
     ing.token = token;
     ing.api_base = api_base.to_string();
+    shiplog::ingest::github::validate_https_api_base(&ing.api_base)
+        .context("GitHub API base URL failed validation")?;
 
     if let Some(cache_dir) = cache_dir {
         ing = ing
