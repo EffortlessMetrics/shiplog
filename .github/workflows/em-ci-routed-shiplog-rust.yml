@@ -145,6 +145,12 @@ jobs:
               set_output("github", "fork_pr")
               sys.exit(0)
 
+          if event_name == "pull_request" and (
+              "allow-github-hosted" in labels or "ci-budget-ack" in labels
+          ):
+              set_output("github", "label_forced_github")
+              sys.exit(0)
+
           if force_route == "github":
               set_output("github", "forced_github")
               sys.exit(0)
@@ -463,7 +469,7 @@ jobs:
       - name: Fail fast when self-hosted routing is unavailable
         run: |
           echo "Self-hosted routing unavailable: ${{ needs.route.outputs.reason }}"
-          echo "Use label 'allow-github-hosted' or 'ci-budget-ack' to permit GitHub-hosted fallback."
+          echo "Use label 'allow-github-hosted' or 'ci-budget-ack' to route directly to GitHub-hosted CI."
           exit 1
 
   result:
