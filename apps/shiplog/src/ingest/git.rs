@@ -110,10 +110,10 @@ impl LocalGitIngestor {
             .unwrap_or_else(|| DateTime::from_timestamp(0, 0).unwrap())
     }
 
-    /// Check if a commit is within the date range.
+    /// Check if a commit is within the date range. `since` is inclusive, `until` is exclusive.
     fn is_in_date_range(&self, commit_time: &DateTime<Utc>) -> bool {
         let commit_date = commit_time.date_naive();
-        commit_date >= self.since && commit_date <= self.until
+        commit_date >= self.since && commit_date < self.until
     }
 
     /// Check if a commit matches the author filter.
@@ -649,7 +649,7 @@ mod tests {
 
         #[test]
         fn is_in_date_range_boundary_inclusive(
-            day_offset in 0u32..365,
+            day_offset in 0u32..366,
         ) {
             let since = NaiveDate::from_ymd_opt(2025, 1, 1).unwrap();
             let until = NaiveDate::from_ymd_opt(2025, 12, 31).unwrap();
@@ -659,7 +659,7 @@ mod tests {
             // Build a DateTime at midnight UTC on that date
             let dt = test_date.and_hms_opt(0, 0, 0).unwrap().and_utc();
 
-            if test_date >= since && test_date <= until {
+            if test_date >= since && test_date < until {
                 prop_assert!(ingestor.is_in_date_range(&dt));
             } else {
                 prop_assert!(!ingestor.is_in_date_range(&dt));
