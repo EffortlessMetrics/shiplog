@@ -1,0 +1,47 @@
+name: One-time import of swarm promotion ref
+
+on:
+  push:
+    branches:
+      - agent/import-swarm-promotion-20260713
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - reopened
+      - synchronize
+
+permissions:
+  contents: write
+
+concurrency:
+  group: import-swarm-promotion-20260713
+  cancel-in-progress: false
+
+jobs:
+  import-ref:
+    if: >-
+      github.ref == 'refs/heads/agent/import-swarm-promotion-20260713' ||
+      github.head_ref == 'agent/import-swarm-promotion-20260713'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out bootstrap branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fast-forward exact swarm main into the source promotion branch
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git remote add swarm https://github.com/EffortlessMetrics/shiplog-swarm.git
+          git fetch --quiet --no-tags swarm main
+          swarm_sha="$(git rev-parse refs/remotes/swarm/main)"
+
+          git push --quiet origin \
+            "refs/remotes/swarm/main:refs/heads/promote/swarm-20260713-2862863"
+
+          echo "Imported shiplog-swarm/main ${swarm_sha} into source promotion ref"
