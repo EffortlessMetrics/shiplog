@@ -84,7 +84,7 @@ impl SourceSystem {
             "local_git" | "localgit" => Self::LocalGit,
             "manual" => Self::Manual,
             "unknown" => Self::Unknown,
-            _ => Self::Other(s.to_string()),
+            other => Self::Other(other.to_string()),
         }
     }
 }
@@ -136,7 +136,7 @@ impl<'de> Deserialize<'de> for SourceSystem {
                     }
                     _ => {
                         let _: serde::de::IgnoredAny = map.next_value()?;
-                        SourceSystem::Other(key)
+                        SourceSystem::from_str_lossy(&key)
                     }
                 };
 
@@ -472,6 +472,30 @@ mod tests {
     fn source_system_other_does_not_collide_with_known() {
         let back: SourceSystem = serde_json::from_str(r#""github""#).unwrap();
         assert_eq!(back, SourceSystem::Github);
+    }
+
+    #[test]
+    fn source_system_other_normalises_case() -> anyhow::Result<()> {
+        // Other must be canonicalised to lowercase, same as known variants,
+        // so equality and re-serialisation stay case-insensitive.
+        let mixed = SourceSystem::from_str_lossy("PagerDuty");
+        let lower = SourceSystem::from_str_lossy("pagerduty");
+        assert_eq!(mixed, lower);
+        assert_eq!(mixed, SourceSystem::Other("pagerduty".into()));
+
+        let json = serde_json::to_string(&mixed)?;
+        assert_eq!(json, r#""pagerduty""#);
+        Ok(())
+    }
+
+    #[test]
+    fn source_system_backward_compat_object_form_unknown_key_normalises_case() -> anyhow::Result<()>
+    {
+        // Arbitrary (non-"Other") object keys also flow through the Other
+        // fallback and must be lowercased for the same reason.
+        let back: SourceSystem = serde_json::from_str(r#"{"PagerDuty":null}"#)?;
+        assert_eq!(back, SourceSystem::Other("pagerduty".into()));
+        Ok(())
     }
 
     #[test]
