@@ -60,6 +60,9 @@ enum Command {
     /// Generate a source promotion pull request body from source/swarm refs.
     PromotionBody(PromotionBodyArgs),
 
+    /// Verify and prepare an idempotent source promotion branch.
+    Promote(PromoteArgs),
+
     /// Generate source-of-truth closeout and archived-goal artifacts.
     Closeout(CloseoutArgs),
 
@@ -205,6 +208,37 @@ pub struct PromotionBodyArgs {
 }
 
 #[derive(Debug, Args)]
+pub struct PromoteArgs {
+    /// Exact swarm main commit to promote.
+    #[arg(long)]
+    pub swarm_sha: String,
+
+    /// Verify and print the planned operations without changing refs or files.
+    #[arg(long)]
+    pub dry_run: bool,
+
+    /// Source/public main ref in the release-maintainer checkout.
+    #[arg(long, default_value = "origin/main")]
+    pub source_ref: String,
+
+    /// Swarm development main ref in the release-maintainer checkout.
+    #[arg(long, default_value = "swarm/main")]
+    pub swarm_ref: String,
+
+    /// Remote that owns the source promotion branch.
+    #[arg(long, default_value = "origin")]
+    pub source_remote: String,
+
+    /// Promotion branch name. Defaults to a stable name derived from the swarm SHA.
+    #[arg(long)]
+    pub branch: Option<String>,
+
+    /// Generated promotion body path.
+    #[arg(long, default_value = "target/source-of-truth/promotion-body.md")]
+    pub output: PathBuf,
+}
+
+#[derive(Debug, Args)]
 pub struct CloseoutArgs {
     /// Goal ID expected in `.codex/goals/active.toml`.
     #[arg(long)]
@@ -340,6 +374,16 @@ impl Cli {
                     output: args.output,
                 })
             }
+            Command::Promote(args) => tasks::promote::run(tasks::promote::PromoteInputs {
+                workspace_root,
+                swarm_sha: args.swarm_sha,
+                dry_run: args.dry_run,
+                source_ref: args.source_ref,
+                swarm_ref: args.swarm_ref,
+                source_remote: args.source_remote,
+                branch: args.branch,
+                output: args.output,
+            }),
             Command::Closeout(args) => tasks::closeout::run(tasks::closeout::CloseoutInputs {
                 workspace_root,
                 goal: args.goal,
