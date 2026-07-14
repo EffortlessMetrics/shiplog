@@ -253,6 +253,22 @@ swarm PRs, swarm/source proof slots, and the release-authority claim boundary.
 It is a derived draft only: it does not call GitHub, open or edit PRs, merge,
 change branch protection, tag, release, publish, or move release authority.
 
+### `cargo xtask promote`
+
+Verifies an exact swarm head before preparing an idempotent source promotion
+branch. Run it from a release-maintainer checkout with origin=shiplog and
+swarm=shiplog-swarm:
+
+    rtk cargo xtask promote --swarm-sha <exact-swarm-sha> --dry-run
+    rtk cargo xtask promote --swarm-sha <exact-swarm-sha>
+
+The command checks shared ancestry and a completed successful
+Shiplog Rust Small Result run for the exact SHA, then creates or fast-forwards
+promote/swarm-current-<sha> on the source remote and writes the existing
+promotion-body contract. It never merges, squashes, tags, publishes, or
+deploys. Open the generated PR with a regular merge commit and verify it with
+cargo xtask repo-contract-report after merge.
+
 ### `cargo xtask closeout`
 
 Generates source-of-truth closeout artifacts from

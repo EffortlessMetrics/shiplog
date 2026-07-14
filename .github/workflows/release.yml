@@ -326,6 +326,41 @@ jobs:
           echo "- Help subcommand: **PASSED**" >> $GITHUB_STEP_SUMMARY
           echo "- Product command help: **PASSED**" >> $GITHUB_STEP_SUMMARY
 
+  # Prove the published binaries from the outside on every supported target.
+  release-binary-acceptance:
+    name: First-use ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    needs: [release-preflight, create-release]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux x86_64
+            os: ubuntu-latest
+            shell: bash
+          - name: macOS Intel
+            os: macos-15-intel
+            shell: bash
+          - name: macOS Apple Silicon
+            os: macos-15
+            shell: bash
+          - name: Windows x86_64
+            os: windows-latest
+            shell: pwsh
+
+    steps:
+      - name: Checkout release scripts
+        uses: actions/checkout@v7.0.0
+        with:
+          ref: ${{ needs.release-preflight.outputs.release_tag }}
+
+      - name: Run published-binary first-use acceptance
+        shell: ${{ matrix.shell }}
+        env:
+          SHIPLOG_RELEASE_REPO: ${{ github.repository }}
+        run: |
+          ${{ matrix.shell == 'pwsh' && 'pwsh -NoProfile -File scripts/release-install-smoke.ps1' || 'bash scripts/release-install-smoke.sh' }} "${{ needs.release-preflight.outputs.release_tag }}"
+
   # Run integration tests
   release-test:
     name: Release Integration Tests
