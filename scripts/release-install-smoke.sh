@@ -6,8 +6,8 @@ usage() {
 usage: scripts/release-install-smoke.sh <version>
 
 Downloads the current-platform GitHub release binary, verifies SHA256SUMS.txt,
-and runs the no-network review rescue smoke path. This script is intended to
-work without Rust or Cargo installed.
+proves the no-token first-use path and runs the no-network review rescue smoke
+path. This script is intended to work without Rust or Cargo installed.
 
 Set SHIPLOG_RELEASE_REPO=owner/repo to verify a fork.
 Set SHIPLOG_RELEASE_SMOKE_DIR=path to override the scratch directory.
@@ -107,9 +107,47 @@ chmod +x "$binary_path" 2>/dev/null || true
 
 echo "==> smoking downloaded binary"
 "$binary_path" --version | grep -Fxq "shiplog $version"
-"$binary_path" init --dry-run >/dev/null
-"$binary_path" intake --help >/dev/null
-"$binary_path" share verify public --help >/dev/null
+"$binary_path" --help >/dev/null
+
+echo "==> proving the no-token first-use path"
+cold_start_dir="$work_dir/cold-start"
+rm -rf "$cold_start_dir"
+mkdir -p "$cold_start_dir/gh-config"
+unset GITHUB_TOKEN GH_TOKEN GITLAB_TOKEN JIRA_TOKEN LINEAR_API_KEY SHIPLOG_REDACT_KEY || true
+export GH_CONFIG_DIR="$cold_start_dir/gh-config"
+
+(
+  cd "$cold_start_dir"
+  "$binary_path" >/dev/null
+  "$binary_path" intake >/dev/null
+  open_path="$("$binary_path" open --print-path)"
+  [[ -n "$open_path" && -f "$open_path" ]]
+  "$binary_path" status --latest --json > "$cold_start_dir/status.latest.json"
+  [[ -s "$cold_start_dir/status.latest.json" ]]
+  event_date="$(date -u +%F)"
+  "$binary_path" add "Published binary cold-start proof" \
+    --date "$event_date" \
+    --description "Verified the release binary from an empty directory without provider credentials." \
+    >/dev/null
+  "$binary_path" update --no-open >/dev/null
+)
+
+latest_run="$(find "$cold_start_dir/out" -mindepth 1 -maxdepth 1 -type d -name 'merge_*' -print | sort | tail -n 1)"
+if [[ "$latest_run" == "" ]]; then
+  echo "no cold-start run directory produced under $cold_start_dir/out" >&2
+  exit 1
+fi
+for artifact in \
+  packet.md \
+  intake.report.json \
+  ledger.events.jsonl \
+  coverage.manifest.json \
+  bundle.manifest.json; do
+  if [[ ! -f "$latest_run/$artifact" ]]; then
+    echo "missing cold-start artifact: $latest_run/$artifact" >&2
+    exit 1
+  fi
+done
 
 echo "==> running no-network review rescue fixture"
 rm -rf "$demo_out"

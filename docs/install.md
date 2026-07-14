@@ -120,7 +120,21 @@ pwsh -File .\scripts\release-install-smoke.ps1 v0.11.0
 ```
 
 These commands intentionally name the release under test. Ordinary install
-instructions above are versionless.
+instructions above are versionless. The first-use check starts in an empty
+directory without provider credentials, runs `shiplog`, `shiplog intake`,
+`shiplog open --print-path`, `shiplog status --latest --json`, one manual
+event, and `shiplog update --no-open`, then verifies these receipt artifacts:
+
+```text
+packet.md
+intake.report.json
+ledger.events.jsonl
+coverage.manifest.json
+bundle.manifest.json
+```
+
+Release validation runs this binary-only path on Linux x86_64, macOS Intel,
+macOS Apple Silicon, and Windows x86_64.
 
 ## Package-manager status
 

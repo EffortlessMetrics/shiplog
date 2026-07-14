@@ -58,9 +58,9 @@ if ($Version -eq "-h" -or $Version -eq "--help") {
     @"
 usage: scripts/release-install-smoke.ps1 <version>
 
-Downloads the Windows GitHub release binary, verifies SHA256SUMS.txt, and runs
-the no-network review rescue smoke path. This script is intended to work without
-Rust or Cargo installed.
+Downloads the Windows GitHub release binary, verifies SHA256SUMS.txt, proves the
+no-token first-use path and runs the no-network review rescue smoke path. This
+script is intended to work without Rust or Cargo installed.
 
 Set SHIPLOG_RELEASE_REPO=owner/repo to verify a fork.
 Set SHIPLOG_RELEASE_SMOKE_DIR=path to override the scratch directory.
@@ -110,9 +110,70 @@ $versionOutput = & $binaryPath --version
 if ($LASTEXITCODE -ne 0 -or $versionOutput.Trim() -ne "shiplog $versionNumber") {
     throw "unexpected version output: $versionOutput"
 }
-Invoke-Shiplog $binaryPath @("init", "--dry-run") | Out-Null
-Invoke-Shiplog $binaryPath @("intake", "--help") | Out-Null
-Invoke-Shiplog $binaryPath @("share", "verify", "public", "--help") | Out-Null
+Invoke-Shiplog $binaryPath @("--help") | Out-Null
+
+Invoke-Step "proving the no-token first-use path"
+$coldStartDir = Join-Path $workDir "cold-start"
+Remove-Item -Recurse -Force $coldStartDir -ErrorAction SilentlyContinue
+$ghConfigDir = Join-Path $coldStartDir "gh-config"
+New-Item -ItemType Directory -Force $ghConfigDir | Out-Null
+foreach ($name in @("GITHUB_TOKEN", "GH_TOKEN", "GITLAB_TOKEN", "JIRA_TOKEN", "LINEAR_API_KEY", "SHIPLOG_REDACT_KEY")) {
+    Remove-Item "Env:$name" -ErrorAction SilentlyContinue
+}
+$env:GH_CONFIG_DIR = $ghConfigDir
+
+Push-Location -LiteralPath $coldStartDir
+try {
+    & $binaryPath | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        throw "shiplog command failed: $binaryPath"
+    }
+    Invoke-Shiplog $binaryPath @("intake") | Out-Null
+    $openPath = & $binaryPath open --print-path
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace(($openPath -join "").Trim())) {
+        throw "shiplog open --print-path did not return a packet path"
+    }
+    if (-not (Test-Path -LiteralPath ($openPath -join "").Trim())) {
+        throw "shiplog open --print-path returned a missing path: $openPath"
+    }
+    $statusJson = & $binaryPath status --latest --json
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace(($statusJson -join "").Trim())) {
+        throw "shiplog status --latest --json returned no JSON"
+    }
+    $statusJson | Set-Content -LiteralPath (Join-Path $coldStartDir "status.latest.json") -Encoding utf8
+    $eventDate = (Get-Date).ToUniversalTime().ToString("yyyy-MM-dd")
+    Invoke-Shiplog $binaryPath @(
+        "add",
+        "Published binary cold-start proof",
+        "--date",
+        $eventDate,
+        "--description",
+        "Verified the release binary from an empty directory without provider credentials."
+    ) | Out-Null
+    Invoke-Shiplog $binaryPath @("update", "--no-open") | Out-Null
+}
+finally {
+    Pop-Location
+}
+
+$latestRun = Get-ChildItem -LiteralPath (Join-Path $coldStartDir "out") -Directory |
+    Sort-Object LastWriteTime -Descending |
+    Select-Object -First 1
+if (-not $latestRun) {
+    throw "no cold-start run directory produced under $coldStartDir\out"
+}
+foreach ($artifact in @(
+    "packet.md",
+    "intake.report.json",
+    "ledger.events.jsonl",
+    "coverage.manifest.json",
+    "bundle.manifest.json"
+)) {
+    $artifactPath = Join-Path $latestRun.FullName $artifact
+    if (-not (Test-Path -LiteralPath $artifactPath)) {
+        throw "missing cold-start artifact: $artifactPath"
+    }
+}
 
 Invoke-Step "running no-network review rescue fixture"
 Remove-Item -Recurse -Force $demoOut -ErrorAction SilentlyContinue
