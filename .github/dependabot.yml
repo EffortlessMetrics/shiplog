@@ -1,20 +1,5 @@
+# Product-changing dependency automation is authoritative in
+# EffortlessMetrics/shiplog-swarm. This release/source repository verifies the
+# promoted tree and owns release operations; it must not open code PRs.
 version: 2
-updates:
-  - package-ecosystem: "cargo"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-    commit-message:
-      prefix: "deps"
-    labels:
-      - "dependencies"
-
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-    commit-message:
-      prefix: "ci"
-    labels:
-      - "dependencies"
-      - "ci"
+updates: []
