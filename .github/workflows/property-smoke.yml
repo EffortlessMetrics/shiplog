@@ -1,21 +1,7 @@
 name: Property Smoke
 
-# Bounded property-test smoke for the PR-fast lane.
-#
-# Lane: lane.property_smoke (advisory, default_pr=true). Runs proptest
-# at PROPTEST_CASES=64 with a deterministic seed against the foundation
-# surfaces (shiplog::ids, shiplog::schema, shiplog::coverage, shiplog::redact)
-# whose invariants are most load-bearing. The broad property sweep
-# (lane.property, .github/workflows/property-testing.yml) keeps running
-# on PR at PROPTEST_CASES=256 until PR #155 routes the broad form to
-# nightly + label.
-#
-# Scope rationale (see docs/ci/test-evidence-lanes.md#bounded-vs-broad-stochastic):
-# fast stochastic tests are good PR tests; the waste comes from running
-# them too broadly. 64 cases on the foundation modules catches counter-
-# examples that show up at small sizes (where most do) at a fraction of
-# the broad lane's cost. The deterministic seed makes every PR run see
-# the same case sequence so flakes don't masquerade as regressions.
+# Hosted-only bounded property smoke. Optional self-hosted admission was
+# removed, so runner_unavailable and disk_guard cannot obscure product signal.
 
 on:
   push:
@@ -35,34 +21,63 @@ env:
   PROPTEST_CASES: "64"
   PROPTEST_MAX_LOCAL_REJECTS: "2048"
   PROPTEST_MAX_GLOBAL_REJECTS: "8192"
-  # Deterministic seed so PR runs share a stable case sequence; the
-  # broad nightly sweep continues to vary.
   PROPTEST_RNG_ALGORITHM: "xorshift"
   PROPTEST_RNG_SEED: "shiplog-pr-fast-v1"
 
 jobs:
   smoke:
     name: smoke
-    runs-on: ${{ github.repository == 'EffortlessMetrics/shiplog-swarm' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && 'self-hosted' || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     timeout-minutes: 20
-
     steps:
       - uses: actions/checkout@v7.0.0
-
+        id: setup-checkout
+        continue-on-error: true
       - uses: dtolnay/rust-toolchain@master
+        id: setup-toolchain
+        if: steps.setup-checkout.outcome == 'success'
+        continue-on-error: true
         with:
           toolchain: "1.95.0"
-
       - name: Ensure native Rust build dependencies
+        id: setup-native-deps
+        if: steps.setup-checkout.outcome == 'success' && steps.setup-toolchain.outcome == 'success'
+        continue-on-error: true
         uses: ./.github/actions/native-build-deps
-
       - uses: Swatinem/rust-cache@v2
+        id: setup-cache
+        if: steps.setup-checkout.outcome == 'success' && steps.setup-toolchain.outcome == 'success' && steps.setup-native-deps.outcome == 'success'
+        continue-on-error: true
         with:
           shared-key: property-smoke
           save-if: ${{ github.ref == 'refs/heads/main' }}
-
       - name: Foundation property tests (bounded, deterministic)
+        id: smoke-tests
+        if: steps.setup-checkout.outcome == 'success' && steps.setup-toolchain.outcome == 'success' && steps.setup-native-deps.outcome == 'success' && steps.setup-cache.outcome == 'success'
+        continue-on-error: true
         run: |
           cargo test -p shiplog --test ids --test schema -- --test-threads=4
           cargo test -p shiplog --test redact -- --test-threads=4
           cargo test -p shiplog --test coverage_property -- --test-threads=4
+      - name: Auxiliary smoke execution summary
+        if: always()
+        shell: bash
+        env:
+          TEST_STATUS: ${{ steps.smoke-tests.outcome }}
+          SETUP_STATUS: ${{ join(steps.*.outcome, ',') }}
+        run: |
+          terminal="ok"
+          if [[ "$SETUP_STATUS" == *failure* ]] && [ "$TEST_STATUS" = "skipped" ]; then terminal="setup_failed";
+          elif [ "$TEST_STATUS" = "failure" ]; then terminal="test_failed";
+          elif [ "$TEST_STATUS" = "cancelled" ]; then terminal="cancelled_as_superseded";
+          elif [ "$TEST_STATUS" = "skipped" ]; then terminal="setup_failed"; fi
+          {
+            echo "## Auxiliary lane summary (property-smoke)"
+            echo "- lane: property-smoke"
+            echo "- executed_runner: github-hosted"
+            echo "- fallback_used: false"
+            echo "- fallback_reason: not_applicable"
+            echo "- normalized_terminal: $terminal"
+            echo "- test_step_outcome: $TEST_STATUS"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$terminal" = "setup_failed" ] || [ "$terminal" = "test_failed" ]; then exit 1; fi

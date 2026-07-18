@@ -1,13 +1,7 @@
 name: PR Plan
 
-# Advisory LEM PR Plan: emits target/ci/ci-plan.json against
-# contracts/schemas/ci-plan.v1.schema.json. Reads
-# policy/ci-budget.toml + policy/ci-lanes.toml + policy/ci-risk-packs.toml.
-#
-# Always advisory in v0.5.0: never blocks merge. Hard enforcement is a
-# follow-up release decision after PR #148 records actuals.
-#
-# See docs/ci/ci-plan-json.md.
+# Advisory hosted-only PR plan. Optional self-hosted admission was removed, so
+# runner_unavailable and disk_guard cannot obscure the plan result.
 
 on:
   pull_request:
@@ -27,53 +21,51 @@ env:
 jobs:
   forecast:
     name: forecast
-    runs-on: ${{ github.repository == 'EffortlessMetrics/shiplog-swarm' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && 'self-hosted' || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     timeout-minutes: 10
-
     steps:
       - uses: actions/checkout@v7.0.0
+        id: setup-checkout
+        continue-on-error: true
         with:
-          # Full history so `git diff base..head` resolves on PR refs.
           fetch-depth: 0
-
       - name: Install Rust toolchain
+        id: setup-toolchain
+        if: steps.setup-checkout.outcome == 'success'
+        continue-on-error: true
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: "1.95.0"
-
       - uses: Swatinem/rust-cache@v2
+        id: setup-cache
+        if: steps.setup-toolchain.outcome == 'success'
+        continue-on-error: true
         with:
           shared-key: pr-plan
           save-if: ${{ github.ref == 'refs/heads/main' }}
-
       - name: Resolve PR metadata
         id: meta
-        if: github.event_name == 'pull_request'
+        if: steps.setup-cache.outcome == 'success' && github.event_name == 'pull_request'
+        continue-on-error: true
         run: |
           set -euo pipefail
           echo "base_sha=${{ github.event.pull_request.base.sha }}" >> "$GITHUB_OUTPUT"
           echo "head_sha=${{ github.event.pull_request.head.sha }}" >> "$GITHUB_OUTPUT"
           echo "pr_number=${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
-          # Comma-join PR label names. join() handles the empty-array case.
           echo "labels=${{ join(github.event.pull_request.labels.*.name, ',') }}" >> "$GITHUB_OUTPUT"
-
-      - name: Run PR plan (PR event)
-        if: github.event_name == 'pull_request'
-        env:
-          GITHUB_BASE_SHA: ${{ steps.meta.outputs.base_sha }}
-          GITHUB_HEAD_SHA: ${{ steps.meta.outputs.head_sha }}
-          GITHUB_PR_NUMBER: ${{ steps.meta.outputs.pr_number }}
-          GITHUB_PR_LABELS: ${{ steps.meta.outputs.labels }}
+      - name: Run PR plan
+        id: plan
+        if: steps.setup-cache.outcome == 'success' && (github.event_name != 'pull_request' || steps.meta.outcome == 'success')
+        continue-on-error: true
         run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            export GITHUB_BASE_SHA="${{ steps.meta.outputs.base_sha }}"
+            export GITHUB_HEAD_SHA="${{ steps.meta.outputs.head_sha }}"
+            export GITHUB_PR_NUMBER="${{ steps.meta.outputs.pr_number }}"
+            export GITHUB_PR_LABELS="${{ steps.meta.outputs.labels }}"
+          fi
           mkdir -p target/ci
           cargo xtask ci plan --output target/ci/ci-plan.json
-
-      - name: Run PR plan (manual dispatch)
-        if: github.event_name == 'workflow_dispatch'
-        run: |
-          mkdir -p target/ci
-          cargo xtask ci plan --output target/ci/ci-plan.json
-
       - name: Upload plan artifact
         if: always()
         uses: actions/upload-artifact@v7
@@ -82,3 +74,25 @@ jobs:
           path: target/ci/ci-plan.json
           retention-days: 30
           if-no-files-found: warn
+      - name: Auxiliary plan execution summary
+        if: always()
+        shell: bash
+        env:
+          TEST_STATUS: ${{ steps.plan.outcome }}
+          SETUP_STATUS: ${{ join(steps.*.outcome, ',') }}
+        run: |
+          terminal="ok"
+          if [[ "$SETUP_STATUS" == *failure* ]] && [ "$TEST_STATUS" = "skipped" ]; then terminal="setup_failed";
+          elif [ "$TEST_STATUS" = "failure" ]; then terminal="test_failed";
+          elif [ "$TEST_STATUS" = "cancelled" ]; then terminal="cancelled_as_superseded";
+          elif [ "$TEST_STATUS" = "skipped" ]; then terminal="setup_failed"; fi
+          {
+            echo "## Auxiliary lane summary (pr-plan)"
+            echo "- lane: pr-plan"
+            echo "- executed_runner: github-hosted"
+            echo "- fallback_used: false"
+            echo "- fallback_reason: not_applicable"
+            echo "- normalized_terminal: $terminal"
+            echo "- test_step_outcome: $TEST_STATUS"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$terminal" = "setup_failed" ] || [ "$terminal" = "test_failed" ]; then exit 1; fi
