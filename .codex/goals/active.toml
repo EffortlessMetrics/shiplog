@@ -58,4 +58,7 @@ receipts = [
   "EffortlessMetrics/shiplog#649 closed after pre-receipt source proof because its standalone-repository head was pinned",
   "EffortlessMetrics/shiplog#650 closed as superseded by stable source-local promotion #652",
   "EffortlessMetrics/shiplog#651 closed as unused issue-to-PR transport handle",
+  "EffortlessMetrics/shiplog-swarm#238",
+  "EffortlessMetrics/shiplog#655",
+  "EffortlessMetrics/shiplog#656",
 ]

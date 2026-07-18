@@ -27,6 +27,7 @@ the master rollout doc at
 | `network-allowlist.toml` | policy | file-policy checker (#149) |
 | `publish-allowlist.toml` | release | package-boundary audit and publish scripts |
 | `ripr-suppressions.toml` | policy | ripr lane (#153) |
+| `source-only-paths.toml` | repo-infra/release | `repo-contract-report`; exact-path source governance classification |
 
 ## Common receipt fields
 
@@ -50,6 +51,9 @@ Every entry uses the schema documented in
 - `expires` — ISO date or `"permanent"`
 
 Plus per-ledger extension fields documented in each ledger's header comment.
+`source-only-paths.toml` is a blocking exact-path governance ledger: its entries
+use `path`, `classification`, and `review_after` instead of generic `id` and
+`expires` fields, and an overdue `review_after` fails closed.
 
 ## Historical status
 

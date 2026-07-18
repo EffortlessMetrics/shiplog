@@ -152,6 +152,14 @@ shiplog remains release authority until explicit release cutover
 shiplog receives periodic promotion merge commits from shiplog-swarm
 ```
 
+Source may carry a narrow release/governance difference only when its exact
+repository-relative path is current in `policy/source-only-paths.toml`. Broad
+directory patterns are not an approval mechanism. `repo-contract-report`
+must report raw tree identity, product-tree alignment, approved governance
+differences, and unknown drift separately. Expired, malformed, or unlisted
+entries fail closed; a governance-looking commit subject never overrides a
+changed product path.
+
 ## Runner Access Contract
 
 `shiplog-swarm` may be added to a small Rust runner group such as

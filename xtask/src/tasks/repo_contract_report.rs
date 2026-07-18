@@ -2,7 +2,8 @@
 //!
 //! Writes a compact repo-contract inspection report for humans and agents.
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, bail};
+use chrono::{NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::fs;
@@ -28,6 +29,28 @@ const DISALLOWED_BRANCH_PROTECTION_CHECKS: &[&str] = &[
 struct DocArtifactsPolicy {
     #[serde(default)]
     artifact: Vec<Artifact>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct SourceOnlyPathsPolicy {
+    schema_version: u32,
+    policy: String,
+    owner: String,
+    status: String,
+    #[serde(default)]
+    allow: Vec<SourceOnlyPathEntry>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct SourceOnlyPathEntry {
+    path: String,
+    owner: String,
+    reason: String,
+    classification: String,
+    created: String,
+    review_after: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -171,9 +194,14 @@ struct GitTopologyReport {
     swarm_head: Option<String>,
     merge_base: Option<String>,
     trees_aligned: Option<bool>,
+    product_trees_aligned: Option<bool>,
+    approved_source_only_differences: Vec<String>,
+    unapproved_source_only_differences: Vec<String>,
+    product_drift_paths: Vec<String>,
     source_ahead: Vec<String>,
     source_ahead_classification: String,
     source_ahead_promotion_merges: Vec<String>,
+    source_ahead_approved_governance_commits: Vec<String>,
     source_ahead_other_commits: Vec<String>,
     swarm_ahead: Vec<String>,
     status: String,
@@ -326,7 +354,8 @@ pub fn run(workspace_root: &Path) -> Result<()> {
     let artifacts = load_doc_artifacts(workspace_root)?;
     let goal = load_active_goal(workspace_root)?;
     let support_tiers = load_support_tiers(workspace_root)?;
-    let git_topology = inspect_git_topology(workspace_root);
+    let source_only_paths = load_source_only_paths_policy(workspace_root)?;
+    let git_topology = inspect_git_topology(workspace_root, &source_only_paths);
     let local_checkout = inspect_local_checkout(workspace_root);
     let remote_queue_hygiene = inspect_remote_queue_hygiene(workspace_root);
     let remote_branch_hygiene =
@@ -384,6 +413,88 @@ fn load_doc_artifacts(workspace_root: &Path) -> Result<Vec<Artifact>> {
     let policy: DocArtifactsPolicy =
         toml::from_str(&text).with_context(|| format!("parse {}", path.display()))?;
     Ok(policy.artifact)
+}
+
+fn load_source_only_paths_policy(workspace_root: &Path) -> Result<Vec<SourceOnlyPathEntry>> {
+    let path = workspace_root.join("policy").join("source-only-paths.toml");
+    let text = fs::read_to_string(&path).with_context(|| format!("read {}", path.display()))?;
+    let policy: SourceOnlyPathsPolicy =
+        toml::from_str(&text).with_context(|| format!("parse {}", path.display()))?;
+    if policy.schema_version != 1
+        || policy.policy != "source-only-paths"
+        || policy.owner.trim().is_empty()
+        || policy.status != "blocking"
+    {
+        bail!(
+            "{} requires schema_version=1, policy=source-only-paths, non-empty owner, and status=blocking",
+            path.display()
+        );
+    }
+    validate_source_only_paths_policy(&policy.allow, Utc::now().date_naive())
+        .with_context(|| format!("validate {}", path.display()))?;
+    Ok(policy.allow)
+}
+
+fn validate_source_only_paths_policy(
+    entries: &[SourceOnlyPathEntry],
+    today: NaiveDate,
+) -> Result<()> {
+    let mut seen = BTreeSet::new();
+    for entry in entries {
+        if entry.path.trim().is_empty()
+            || entry.path.starts_with('/')
+            || entry.path.contains('\\')
+            || entry
+                .path
+                .split('/')
+                .any(|part| part.is_empty() || part == "." || part == "..")
+        {
+            bail!(
+                "source-only path must be a normalized, non-empty repository-relative path: {:?}",
+                entry.path
+            );
+        }
+        if !seen.insert(entry.path.as_str()) {
+            bail!("duplicate source-only path {:?}", entry.path);
+        }
+        if entry.owner.trim().is_empty() || entry.reason.trim().is_empty() {
+            bail!(
+                "source-only path {:?} requires non-empty owner and reason",
+                entry.path
+            );
+        }
+        if entry.classification != "release-governance" {
+            bail!(
+                "source-only path {:?} has unsupported classification {:?}",
+                entry.path,
+                entry.classification
+            );
+        }
+        let created = NaiveDate::parse_from_str(&entry.created, "%Y-%m-%d").with_context(|| {
+            format!("source-only path {:?} has invalid created date", entry.path)
+        })?;
+        let review_after = NaiveDate::parse_from_str(&entry.review_after, "%Y-%m-%d")
+            .with_context(|| {
+                format!(
+                    "source-only path {:?} has invalid review_after date",
+                    entry.path
+                )
+            })?;
+        if review_after < created {
+            bail!(
+                "source-only path {:?} has review_after before created",
+                entry.path
+            );
+        }
+        if review_after < today {
+            bail!(
+                "source-only path {:?} expired for review on {}",
+                entry.path,
+                entry.review_after
+            );
+        }
+    }
+    Ok(())
 }
 
 fn load_active_goal(workspace_root: &Path) -> Result<ActiveGoal> {
@@ -664,7 +775,10 @@ fn recommended_next_slice_from_statuses(
     }
 }
 
-fn inspect_git_topology(workspace_root: &Path) -> GitTopologyReport {
+fn inspect_git_topology(
+    workspace_root: &Path,
+    source_only_paths: &[SourceOnlyPathEntry],
+) -> GitTopologyReport {
     const SOURCE_REF: &str = "origin/main";
     const SWARM_REF: &str = "swarm/main";
 
@@ -676,40 +790,96 @@ fn inspect_git_topology(workspace_root: &Path) -> GitTopologyReport {
         &["merge-base", SOURCE_REF, SWARM_REF],
         &mut notes,
     );
-    let source_ahead = git_lines(
+    let source_ahead_result = git_lines_checked(
         workspace_root,
         &["log", "--oneline", &format!("{SWARM_REF}..{SOURCE_REF}")],
         &mut notes,
     );
-    let swarm_ahead = git_lines(
+    let swarm_ahead_result = git_lines_checked(
         workspace_root,
         &["log", "--oneline", &format!("{SOURCE_REF}..{SWARM_REF}")],
         &mut notes,
     );
-    let source_ahead_summary = classify_source_ahead(&source_ahead);
+    let source_ahead = source_ahead_result.clone().unwrap_or_default();
+    let swarm_ahead = swarm_ahead_result.clone().unwrap_or_default();
+    let (mut source_ahead_summary, commit_paths_available) = classify_source_ahead_with_git(
+        workspace_root,
+        &source_ahead,
+        source_only_paths,
+        &mut notes,
+    );
     let trees_aligned = git_trees_aligned(workspace_root, SOURCE_REF, SWARM_REF, &mut notes);
+    let differing_paths = git_lines_checked(
+        workspace_root,
+        &["diff", "--name-only", SOURCE_REF, SWARM_REF],
+        &mut notes,
+    );
+    let source_changed_paths = merge_base.as_deref().and_then(|base| {
+        git_lines_checked(
+            workspace_root,
+            &["diff", "--name-only", base, SOURCE_REF],
+            &mut notes,
+        )
+    });
+    let swarm_changed_paths = merge_base.as_deref().and_then(|base| {
+        git_lines_checked(
+            workspace_root,
+            &["diff", "--name-only", base, SWARM_REF],
+            &mut notes,
+        )
+    });
+    let path_classification = differing_paths
+        .as_deref()
+        .zip(source_changed_paths.as_deref())
+        .zip(swarm_changed_paths.as_deref())
+        .map(|((differing, source_changed), swarm_changed)| {
+            classify_differing_paths(
+                differing,
+                &source_changed.iter().cloned().collect(),
+                &swarm_changed.iter().cloned().collect(),
+                source_only_paths,
+            )
+        });
+    let product_trees_aligned = path_classification
+        .as_ref()
+        .map(|classification| classification.product_drift_paths.is_empty());
+    let path_classification = path_classification.unwrap_or_default();
+    if source_ahead_result.is_none() || swarm_ahead_result.is_none() || !commit_paths_available {
+        source_ahead_summary.classification = "unavailable".to_string();
+    }
     let status = match (
         source_head.as_ref(),
         swarm_head.as_ref(),
         merge_base.as_ref(),
         trees_aligned,
-        source_ahead.is_empty(),
-        swarm_ahead.is_empty(),
+        product_trees_aligned,
+        source_ahead_result.as_ref().map(Vec::is_empty),
+        swarm_ahead_result.as_ref().map(Vec::is_empty),
     ) {
-        (Some(source), Some(swarm), Some(_), Some(true), true, true) if source == swarm => {
+        (Some(source), Some(swarm), Some(_), Some(true), Some(true), Some(true), Some(true))
+            if source == swarm =>
+        {
             "identical".to_string()
         }
-        (Some(_), Some(_), Some(_), Some(true), _, _) => "tree-aligned".to_string(),
-        (Some(_), Some(_), Some(_), Some(false), false, false) => "diverged".to_string(),
-        (Some(_), Some(_), Some(_), Some(false), true, false) => "swarm-ahead".to_string(),
-        (Some(_), Some(_), Some(_), Some(false), false, true) => "source-ahead".to_string(),
-        (Some(_), Some(_), Some(_), Some(false), true, true) => "tree-drift".to_string(),
+        (Some(_), Some(_), Some(_), _, Some(true), Some(_), Some(_)) => "tree-aligned".to_string(),
+        (Some(_), Some(_), Some(_), _, Some(false), Some(false), Some(false)) => {
+            "diverged".to_string()
+        }
+        (Some(_), Some(_), Some(_), _, Some(false), Some(true), Some(false)) => {
+            "swarm-ahead".to_string()
+        }
+        (Some(_), Some(_), Some(_), _, Some(false), Some(false), Some(true)) => {
+            "source-ahead".to_string()
+        }
+        (Some(_), Some(_), Some(_), _, Some(false), Some(true), Some(true)) => {
+            "tree-drift".to_string()
+        }
         _ => "unavailable".to_string(),
     };
 
     let next_actions = topology_next_actions(
         &status,
-        trees_aligned,
+        product_trees_aligned,
         &source_ahead_summary.classification,
         &source_ahead_summary.other_commits,
         &swarm_ahead,
@@ -722,9 +892,14 @@ fn inspect_git_topology(workspace_root: &Path) -> GitTopologyReport {
         swarm_head,
         merge_base,
         trees_aligned,
+        product_trees_aligned,
+        approved_source_only_differences: path_classification.approved_source_only,
+        unapproved_source_only_differences: path_classification.unapproved_source_only,
+        product_drift_paths: path_classification.product_drift_paths,
         source_ahead,
         source_ahead_classification: source_ahead_summary.classification,
         source_ahead_promotion_merges: source_ahead_summary.promotion_merges,
+        source_ahead_approved_governance_commits: source_ahead_summary.approved_governance_commits,
         source_ahead_other_commits: source_ahead_summary.other_commits,
         swarm_ahead,
         status,
@@ -1593,6 +1768,16 @@ fn inspect_promotion_pr_contract(
     }
 
     let latest_promotion_merge = git_topology.source_ahead_promotion_merges.first();
+    let expected_source_head = latest_promotion_merge
+        .and_then(|merge| extract_commit_hash(merge))
+        .map(ToOwned::to_owned);
+    let expected_swarm_head = expected_source_head.as_deref().and_then(|head| {
+        git_line(
+            workspace_root,
+            &["rev-parse", &format!("{head}^2")],
+            &mut notes,
+        )
+    });
     let Some(pr_number) = latest_promotion_merge
         .and_then(|merge| extract_merge_pull_request_number(merge))
         .or_else(|| {
@@ -1608,8 +1793,8 @@ fn inspect_promotion_pr_contract(
             actual_title: None,
             state: None,
             merge_commit: None,
-            expected_source_head: git_topology.source_head.clone(),
-            expected_swarm_head: git_topology.swarm_head.clone(),
+            expected_source_head,
+            expected_swarm_head,
             notes,
         });
     };
@@ -1629,20 +1814,20 @@ fn inspect_promotion_pr_contract(
         return promotion_pr_contract_from_parts(PromotionPrContractParts {
             latest_promotion_pr: Some(github_receipt(SOURCE_REPO, pr_number)),
             latest_promotion_url: None,
-            expected_title: expected_promotion_title(git_topology.swarm_head.as_deref()),
+            expected_title: expected_promotion_title(expected_swarm_head.as_deref()),
             actual_title: None,
             state: None,
             merge_commit: None,
-            expected_source_head: git_topology.source_head.clone(),
-            expected_swarm_head: git_topology.swarm_head.clone(),
+            expected_source_head,
+            expected_swarm_head,
             notes,
         });
     };
 
     promotion_pr_contract_from_json(
         pr_number,
-        git_topology.source_head.clone(),
-        git_topology.swarm_head.clone(),
+        expected_source_head,
+        expected_swarm_head,
         value,
         notes,
     )
@@ -2386,39 +2571,136 @@ fn receipt_freshness_next_actions(status: &str) -> Vec<String> {
 struct SourceAheadSummary {
     classification: String,
     promotion_merges: Vec<String>,
+    approved_governance_commits: Vec<String>,
     other_commits: Vec<String>,
 }
 
+#[derive(Default)]
+struct PathClassification {
+    approved_source_only: Vec<String>,
+    unapproved_source_only: Vec<String>,
+    product_drift_paths: Vec<String>,
+}
+
+fn classify_differing_paths(
+    differing_paths: &[String],
+    source_changed_paths: &BTreeSet<String>,
+    swarm_changed_paths: &BTreeSet<String>,
+    policy: &[SourceOnlyPathEntry],
+) -> PathClassification {
+    let approved = policy
+        .iter()
+        .map(|entry| entry.path.as_str())
+        .collect::<BTreeSet<_>>();
+    let mut result = PathClassification {
+        approved_source_only: Vec::new(),
+        unapproved_source_only: Vec::new(),
+        product_drift_paths: Vec::new(),
+    };
+    for path in differing_paths {
+        if approved.contains(path.as_str())
+            && source_changed_paths.contains(path)
+            && !swarm_changed_paths.contains(path)
+        {
+            result.approved_source_only.push(path.clone());
+        } else {
+            if source_changed_paths.contains(path) && !swarm_changed_paths.contains(path) {
+                result.unapproved_source_only.push(path.clone());
+            }
+            result.product_drift_paths.push(path.clone());
+        }
+    }
+    result
+}
+
+fn classify_source_ahead_with_git(
+    workspace_root: &Path,
+    commits: &[String],
+    policy: &[SourceOnlyPathEntry],
+    notes: &mut Vec<String>,
+) -> (SourceAheadSummary, bool) {
+    let approved = policy
+        .iter()
+        .map(|entry| entry.path.as_str())
+        .collect::<BTreeSet<_>>();
+    let mut paths_available = true;
+    let summary = classify_source_ahead_by(commits, |commit| {
+        let paths = commit_paths(workspace_root, commit, notes);
+        match paths {
+            Some(paths) => {
+                !paths.is_empty() && paths.iter().all(|path| approved.contains(path.as_str()))
+            }
+            None => {
+                paths_available = false;
+                false
+            }
+        }
+    });
+    (summary, paths_available)
+}
+
+#[cfg(test)]
 fn classify_source_ahead(commits: &[String]) -> SourceAheadSummary {
+    classify_source_ahead_by(commits, |_| false)
+}
+
+fn classify_source_ahead_by(
+    commits: &[String],
+    mut is_approved_governance: impl FnMut(&str) -> bool,
+) -> SourceAheadSummary {
     let mut promotion_merges = Vec::new();
+    let mut approved_governance_commits = Vec::new();
     let mut other_commits = Vec::new();
 
     for commit in commits {
         if is_source_promotion_merge(commit) {
             promotion_merges.push(commit.clone());
+        } else if is_approved_governance(commit) {
+            approved_governance_commits.push(commit.clone());
         } else {
             other_commits.push(commit.clone());
         }
     }
 
-    let classification = match (
-        promotion_merges.is_empty(),
-        other_commits.is_empty(),
-        commits.is_empty(),
-    ) {
-        (_, _, true) => "none",
-        (false, true, false) => "promotion-merge-only",
-        (true, false, false) => "non-promotion",
-        (false, false, false) => "mixed",
-        (true, true, false) => "none",
+    let classification = if commits.is_empty() {
+        "none"
+    } else if !other_commits.is_empty() {
+        if promotion_merges.is_empty() {
+            "non-promotion"
+        } else {
+            "mixed"
+        }
+    } else if promotion_merges.is_empty() {
+        "approved-governance-only"
+    } else if approved_governance_commits.is_empty() {
+        "promotion-merge-only"
+    } else {
+        "promotion-and-approved-governance"
     }
     .to_string();
 
     SourceAheadSummary {
         classification,
         promotion_merges,
+        approved_governance_commits,
         other_commits,
     }
+}
+
+fn commit_paths(
+    workspace_root: &Path,
+    commit: &str,
+    notes: &mut Vec<String>,
+) -> Option<Vec<String>> {
+    let Some(hash) = extract_commit_hash(commit) else {
+        notes.push(format!("could not extract commit hash from {commit:?}"));
+        return None;
+    };
+    git_lines_checked(
+        workspace_root,
+        &["diff-tree", "--no-commit-id", "--name-only", "-r", hash],
+        notes,
+    )
 }
 
 fn is_source_promotion_merge(commit: &str) -> bool {
@@ -2465,6 +2747,11 @@ fn topology_next_actions(
                     .to_string(),
             );
         }
+        ("tree-aligned", Some(true), "promotion-and-approved-governance" | "approved-governance-only")
+            if swarm_ahead.is_empty() => actions.push(
+                "Continue normal development in `EffortlessMetrics/shiplog-swarm`; source-only differences are approved governance."
+                    .to_string(),
+            ),
         ("tree-aligned", Some(true), "none") if swarm_ahead.is_empty() => actions.push(
             "Continue normal development in `EffortlessMetrics/shiplog-swarm`; source and swarm trees are aligned."
                 .to_string(),
@@ -2474,8 +2761,8 @@ fn topology_next_actions(
                 .to_string(),
         ),
         ("swarm-ahead", _, _) if !swarm_ahead.is_empty() => {}
-        ("source-ahead", _, "promotion-merge-only") => actions.push(
-            "No swarm promotion is pending; source is ahead only by promotion merge commits."
+        ("source-ahead", _, _) => actions.push(
+            "Stop normal promotion and inspect the source/swarm product diff before merging more work."
                 .to_string(),
         ),
         ("unavailable", _, _) => actions.push(
@@ -2500,18 +2787,28 @@ fn git_line(workspace_root: &Path, args: &[&str], notes: &mut Vec<String>) -> Op
 }
 
 fn git_lines(workspace_root: &Path, args: &[&str], notes: &mut Vec<String>) -> Vec<String> {
+    git_lines_checked(workspace_root, args, notes).unwrap_or_default()
+}
+
+fn git_lines_checked(
+    workspace_root: &Path,
+    args: &[&str],
+    notes: &mut Vec<String>,
+) -> Option<Vec<String>> {
     match Command::new("git")
         .arg("-C")
         .arg(workspace_root)
         .args(args)
         .output()
     {
-        Ok(output) if output.status.success() => String::from_utf8_lossy(&output.stdout)
-            .lines()
-            .map(str::trim)
-            .filter(|line| !line.is_empty())
-            .map(ToOwned::to_owned)
-            .collect(),
+        Ok(output) if output.status.success() => Some(
+            String::from_utf8_lossy(&output.stdout)
+                .lines()
+                .map(str::trim)
+                .filter(|line| !line.is_empty())
+                .map(ToOwned::to_owned)
+                .collect(),
+        ),
         Ok(output) => {
             let detail = String::from_utf8_lossy(&output.stderr).trim().to_string();
             notes.push(format!(
@@ -2523,11 +2820,11 @@ fn git_lines(workspace_root: &Path, args: &[&str], notes: &mut Vec<String>) -> V
                     detail
                 }
             ));
-            Vec::new()
+            None
         }
         Err(err) => {
             notes.push(format!("git {} failed: {err}", args.join(" ")));
-            Vec::new()
+            None
         }
     }
 }
@@ -2754,6 +3051,15 @@ fn render_markdown(report: &RepoContractReport) -> String {
     );
     push_row(
         &mut out,
+        "Product trees aligned",
+        &report
+            .git_topology
+            .product_trees_aligned
+            .map(|value| value.to_string())
+            .unwrap_or_else(|| "-".to_string()),
+    );
+    push_row(
+        &mut out,
         "Source ahead",
         &format!("{} commit(s)", report.git_topology.source_ahead.len()),
     );
@@ -2768,6 +3074,17 @@ fn render_markdown(report: &RepoContractReport) -> String {
         &format!(
             "{} commit(s)",
             report.git_topology.source_ahead_promotion_merges.len()
+        ),
+    );
+    push_row(
+        &mut out,
+        "Approved source governance commits",
+        &format!(
+            "{} commit(s)",
+            report
+                .git_topology
+                .source_ahead_approved_governance_commits
+                .len()
         ),
     );
     push_row(
@@ -2798,10 +3115,31 @@ fn render_markdown(report: &RepoContractReport) -> String {
         "Source ahead non-promotion commits",
         &report.git_topology.source_ahead_other_commits,
     );
+    push_markdown_list(
+        &mut out,
+        "Approved source-only governance differences",
+        &report.git_topology.approved_source_only_differences,
+    );
+    push_markdown_list(
+        &mut out,
+        "Unapproved source-only differences",
+        &report.git_topology.unapproved_source_only_differences,
+    );
+    push_markdown_list(
+        &mut out,
+        "Product drift paths",
+        &report.git_topology.product_drift_paths,
+    );
     push_markdown_list_limited(
         &mut out,
         "Source promotion merge commits",
         &report.git_topology.source_ahead_promotion_merges,
+        12,
+    );
+    push_markdown_list_limited(
+        &mut out,
+        "Approved source governance commits",
+        &report.git_topology.source_ahead_approved_governance_commits,
         12,
     );
     push_markdown_list(
@@ -3954,6 +4292,10 @@ linked_spec = "SHIPLOG-SPEC-0010"
 "#,
         );
         write(
+            &dir.path().join("policy/source-only-paths.toml"),
+            "schema_version = 1\npolicy = \"source-only-paths\"\nowner = \"repo-infra/release\"\nstatus = \"blocking\"\n",
+        );
+        write(
             &dir.path().join(".codex/goals/active.toml"),
             r#"
 id = "shiplog-source-of-truth-stack"
@@ -4011,6 +4353,10 @@ receipts = [
         assert!(json.contains("\"repo-contract-report\""));
         assert!(json.contains("\"recommended_next_slice\""));
         assert!(json.contains("\"git_topology\""));
+        assert!(json.contains("\"product_trees_aligned\""));
+        assert!(json.contains("\"approved_source_only_differences\""));
+        assert!(json.contains("\"unapproved_source_only_differences\""));
+        assert!(json.contains("\"product_drift_paths\""));
         assert!(json.contains("\"local_checkout\""));
         assert!(json.contains("\"unprotected_local_branches\""));
         assert!(json.contains("\"local_merged_cleanup_candidates\""));
@@ -4046,6 +4392,11 @@ receipts = [
         assert!(markdown.contains("## Promotion PR contract"));
         assert!(markdown.contains("## Branch protection contract"));
         assert!(markdown.contains("## Receipt freshness"));
+
+        run(dir.path()).unwrap();
+        let repeated_json =
+            fs::read_to_string(dir.path().join("target/source-of-truth/graph.json")).unwrap();
+        assert_eq!(json, repeated_json, "report JSON must be deterministic");
     }
 
     #[test]
@@ -4545,6 +4896,194 @@ Merge this PR with a regular merge commit; do not squash.
     }
 
     #[test]
+    fn classifies_approved_source_governance_after_promotion() {
+        let governance = "abc1234 chore: disable source dependabot".to_string();
+        let promotion =
+            "84485cc Merge pull request #655 from EffortlessMetrics/promote/swarm-20260714-deadbee"
+                .to_string();
+        let commits = vec![governance.clone(), promotion.clone()];
+
+        let summary = classify_source_ahead_by(&commits, |commit| commit == governance);
+
+        assert_eq!(summary.classification, "promotion-and-approved-governance");
+        assert_eq!(summary.promotion_merges, vec![promotion]);
+        assert_eq!(summary.approved_governance_commits, vec![governance]);
+        assert!(summary.other_commits.is_empty());
+    }
+
+    #[test]
+    fn approved_exact_path_does_not_create_product_drift() {
+        let policy = vec![source_only_entry(".github/dependabot.yml", "2027-01-01")];
+        let source_paths = BTreeSet::from([".github/dependabot.yml".to_string()]);
+        let classification = classify_differing_paths(
+            &[".github/dependabot.yml".to_string()],
+            &source_paths,
+            &BTreeSet::new(),
+            &policy,
+        );
+
+        assert_eq!(
+            classification.approved_source_only,
+            vec![".github/dependabot.yml"]
+        );
+        assert!(classification.unapproved_source_only.is_empty());
+        assert!(classification.product_drift_paths.is_empty());
+    }
+
+    #[test]
+    fn unlisted_source_path_is_both_unapproved_and_product_drift() {
+        let source_paths = BTreeSet::from(["src/lib.rs".to_string()]);
+        let classification = classify_differing_paths(
+            &["src/lib.rs".to_string()],
+            &source_paths,
+            &BTreeSet::new(),
+            &[],
+        );
+
+        assert_eq!(classification.unapproved_source_only, vec!["src/lib.rs"]);
+        assert_eq!(classification.product_drift_paths, vec!["src/lib.rs"]);
+    }
+
+    #[test]
+    fn approved_path_changed_on_both_sides_is_product_drift() {
+        let path = ".github/dependabot.yml".to_string();
+        let policy = vec![source_only_entry(&path, "2027-01-01")];
+        let source_paths = BTreeSet::from([path.clone()]);
+        let swarm_paths = BTreeSet::from([path.clone()]);
+
+        let classification = classify_differing_paths(
+            std::slice::from_ref(&path),
+            &source_paths,
+            &swarm_paths,
+            &policy,
+        );
+
+        assert!(classification.approved_source_only.is_empty());
+        assert!(classification.unapproved_source_only.is_empty());
+        assert_eq!(classification.product_drift_paths, vec![path]);
+    }
+
+    #[test]
+    fn malformed_and_expired_source_only_policy_fail_closed() {
+        let today = NaiveDate::from_ymd_opt(2026, 7, 17).expect("valid date");
+        let malformed = source_only_entry("../dependabot.yml", "2027-01-01");
+        let expired = source_only_entry(".github/dependabot.yml", "2026-07-16");
+        let current_dir = source_only_entry(".github/./dependabot.yml", "2027-01-01");
+
+        assert!(validate_source_only_paths_policy(&[malformed], today).is_err());
+        assert!(validate_source_only_paths_policy(&[expired], today).is_err());
+        assert!(validate_source_only_paths_policy(&[current_dir], today).is_err());
+    }
+
+    #[test]
+    fn source_only_policy_rejects_unknown_envelope_and_entry_fields() {
+        let dir = tempdir().expect("tempdir");
+        write(
+            &dir.path().join("policy/source-only-paths.toml"),
+            "schema_version = 1\npolicy = \"source-only-paths\"\nowner = \"x\"\nstatus = \"blocking\"\nunknown = true\n",
+        );
+        assert!(load_source_only_paths_policy(dir.path()).is_err());
+
+        write(
+            &dir.path().join("policy/source-only-paths.toml"),
+            "schema_version = 1\npolicy = \"source-only-paths\"\nowner = \"x\"\nstatus = \"blocking\"\n\n[[allow]]\npath = \".github/dependabot.yml\"\nowner = \"x\"\nreason = \"governance\"\nclassification = \"release-governance\"\ncreated = \"2026-07-14\"\nreview_after = \"2027-01-14\"\nunknown = true\n",
+        );
+        assert!(load_source_only_paths_policy(dir.path()).is_err());
+    }
+
+    #[test]
+    fn git_fixture_classifies_source_only_direction_without_hiding_swarm_product_work() {
+        let dir = git_fixture();
+        write(&dir.path().join(".github/dependabot.yml"), "version: 2\n");
+        git_ok(dir.path(), &["add", ".github/dependabot.yml"]);
+        git_ok(dir.path(), &["commit", "-m", "chore: source governance"]);
+        git_ok(
+            dir.path(),
+            &["update-ref", "refs/remotes/origin/main", "HEAD"],
+        );
+        let base = git_output(dir.path(), &["rev-parse", "HEAD^"]);
+        git_ok(dir.path(), &["checkout", "-b", "swarm", &base]);
+        write(&dir.path().join("Cargo.lock"), "version = 4\n");
+        git_ok(dir.path(), &["add", "Cargo.lock"]);
+        git_ok(dir.path(), &["commit", "-m", "deps: swarm product work"]);
+        git_ok(
+            dir.path(),
+            &["update-ref", "refs/remotes/swarm/main", "HEAD"],
+        );
+
+        let policy = vec![source_only_entry(".github/dependabot.yml", "2027-01-01")];
+        let report = inspect_git_topology(dir.path(), &policy);
+
+        assert_eq!(report.product_trees_aligned, Some(false));
+        assert_eq!(
+            report.approved_source_only_differences,
+            vec![".github/dependabot.yml"]
+        );
+        assert_eq!(report.product_drift_paths, vec!["Cargo.lock"]);
+    }
+
+    #[test]
+    fn git_path_enumeration_failure_makes_topology_unavailable() {
+        let dir = git_fixture();
+        git_ok(
+            dir.path(),
+            &["update-ref", "refs/remotes/origin/main", "HEAD"],
+        );
+
+        let report = inspect_git_topology(dir.path(), &[]);
+
+        assert_eq!(report.status, "unavailable");
+        assert_eq!(report.product_trees_aligned, None);
+        assert!(report.notes.iter().any(|note| note.contains("swarm/main")));
+    }
+
+    fn git_fixture() -> tempfile::TempDir {
+        let dir = tempdir().expect("tempdir");
+        git_ok(dir.path(), &["init"]);
+        git_ok(dir.path(), &["config", "user.email", "test@example.com"]);
+        git_ok(dir.path(), &["config", "user.name", "Test"]);
+        write(&dir.path().join("README.md"), "fixture\n");
+        git_ok(dir.path(), &["add", "README.md"]);
+        git_ok(dir.path(), &["commit", "-m", "fixture base"]);
+        dir
+    }
+
+    fn git_ok(root: &Path, args: &[&str]) {
+        let status = Command::new("git")
+            .arg("-C")
+            .arg(root)
+            .args(args)
+            .status()
+            .expect("run fixture git");
+        assert!(status.success(), "git {} failed", args.join(" "));
+    }
+
+    fn git_output(root: &Path, args: &[&str]) -> String {
+        let output = Command::new("git")
+            .arg("-C")
+            .arg(root)
+            .args(args)
+            .output()
+            .expect("run fixture git");
+        assert!(output.status.success(), "git {} failed", args.join(" "));
+        String::from_utf8(output.stdout)
+            .expect("git output utf-8")
+            .trim()
+            .to_string()
+    }
+
+    fn source_only_entry(path: &str, review_after: &str) -> SourceOnlyPathEntry {
+        SourceOnlyPathEntry {
+            path: path.to_string(),
+            owner: "repo-infra/release".to_string(),
+            reason: "source governance".to_string(),
+            classification: "release-governance".to_string(),
+            created: "2026-07-14".to_string(),
+            review_after: review_after.to_string(),
+        }
+    }
+
+    #[test]
     fn next_actions_continue_when_tree_aligned_after_promotions() {
         let actions =
             topology_next_actions("tree-aligned", Some(true), "promotion-merge-only", &[], &[]);
@@ -4553,6 +5092,24 @@ Merge this PR with a regular merge commit; do not squash.
             actions,
             vec![
                 "Continue normal development in `EffortlessMetrics/shiplog-swarm`; no source promotion is pending."
+            ]
+        );
+    }
+
+    #[test]
+    fn next_actions_stop_when_source_ahead_has_product_drift() {
+        let actions = topology_next_actions(
+            "source-ahead",
+            Some(false),
+            "promotion-merge-only",
+            &[],
+            &[],
+        );
+
+        assert_eq!(
+            actions,
+            vec![
+                "Stop normal promotion and inspect the source/swarm product diff before merging more work."
             ]
         );
     }

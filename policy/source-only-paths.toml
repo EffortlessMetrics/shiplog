@@ -1,0 +1,16 @@
+schema_version = 1
+policy = "source-only-paths"
+owner = "repo-infra/release"
+status = "blocking"
+
+# Exact source-repository paths that may intentionally differ from the swarm
+# product tree. Directory globs are deliberately unsupported: unknown paths
+# fail closed as product/control-plane drift.
+
+[[allow]]
+path = ".github/dependabot.yml"
+owner = "repo-infra/release"
+reason = "The public source repository disables routine dependency mutation while shiplog-swarm remains the development trunk."
+classification = "release-governance"
+created = "2026-07-14"
+review_after = "2027-01-14"
