@@ -482,7 +482,8 @@ deferred_receipt_carry = ["EffortlessMetrics/shiplog-swarm#240"]
         let state = load(workspace_root).expect("load checked-in promotion-state manifest");
         let expected = render_markdown(&state);
         let actual = fs::read_to_string(workspace_root.join(GENERATED_REL))
-            .expect("read checked-in current-promotion.md");
+            .expect("read checked-in current-promotion.md")
+            .replace("\r\n", "\n");
         assert_eq!(
             actual, expected,
             "plans/shiplog-swarm/current-promotion.md is out of sync with promotion-state.toml; \
