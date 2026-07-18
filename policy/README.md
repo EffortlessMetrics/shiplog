@@ -28,6 +28,7 @@ the master rollout doc at
 | `publish-allowlist.toml` | release | package-boundary audit and publish scripts |
 | `ripr-suppressions.toml` | policy | ripr lane (#153) |
 | `source-only-paths.toml` | repo-infra/release | `repo-contract-report`; exact-path source governance classification |
+| `automation-authority.toml` | repo-infra/release | Explicit swarm/source automation effects; `check-automation-authority --repository-role <swarm\|source>` |
 
 ## Common receipt fields
 

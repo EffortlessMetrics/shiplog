@@ -134,16 +134,15 @@ expires = "permanent"
 [[entry]]
 path = ".github/workflows/release.yml"
 owner = "release/ci"
-reason = "Tag-triggered release pipeline; multi-platform binary build + crates.io readiness."
-permissions = ["contents:write"]
-secrets_used = ["GITHUB_TOKEN"]
+reason = "Swarm release-verification pipeline; builds and retains candidate artifacts but has no GitHub Release write authority. Canonical source restores explicitly authorized release writers as source-only governance."
+permissions = ["contents:read"]
+secrets_used = []
 external_actions = [
   "actions/checkout@v7.0.0",
   "dtolnay/rust-toolchain@master",
-  "actions/upload-artifact@v7",
+  "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a",
   "actions/download-artifact@v8",
   "actions/cache@v6",
-  "softprops/action-gh-release@v3",
   "Swatinem/rust-cache@v2",
   "taiki-e/install-action@v2",
 ]

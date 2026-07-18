@@ -1,3 +1,4 @@
+pub mod automation_authority;
 pub mod check_actuals_coverage;
 pub mod check_doc_artifacts;
 pub mod check_goals;

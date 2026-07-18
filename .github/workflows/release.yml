@@ -20,7 +20,7 @@ env:
   CARGO_TERM_COLOR: always
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   # Prove the package surface before building release assets
@@ -162,7 +162,7 @@ jobs:
           cp "$src" "$dest"
 
       - name: Upload binary
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: shiplog-${{ matrix.target }}
           path: dist/shiplog-${{ matrix.target }}${{ matrix.ext }}
@@ -189,15 +189,10 @@ jobs:
           VERSION=${VERSION#v}
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Create Release
-        id: create_release
-        uses: softprops/action-gh-release@v3
-        with:
-          tag_name: ${{ needs.release-preflight.outputs.release_tag }}
-          draft: true
-          generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Record source release handoff
+        run: |
+          echo "Swarm verifies release inputs but cannot create a GitHub release."
+          echo "Promote this exact proven tree to EffortlessMetrics/shiplog for authorized release execution." >> "$GITHUB_STEP_SUMMARY"
 
   # Upload binaries to release
   upload-assets:
@@ -217,20 +212,17 @@ jobs:
           find . -maxdepth 2 -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
           cat SHA256SUMS.txt
 
-      - name: Upload assets
-        uses: softprops/action-gh-release@v3
+      - name: Retain verified release candidates
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          tag_name: ${{ needs.release-preflight.outputs.release_tag }}
-          fail_on_unmatched_files: true
-          overwrite_files: true
-          files: |
+          name: verified-release-candidates
+          path: |
             artifacts/shiplog-x86_64-unknown-linux-gnu/shiplog-x86_64-unknown-linux-gnu
             artifacts/shiplog-x86_64-apple-darwin/shiplog-x86_64-apple-darwin
             artifacts/shiplog-aarch64-apple-darwin/shiplog-aarch64-apple-darwin
             artifacts/shiplog-x86_64-pc-windows-msvc/shiplog-x86_64-pc-windows-msvc.exe
             artifacts/SHA256SUMS.txt
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          retention-days: 5
 
   # Validate the release
   release-validation:

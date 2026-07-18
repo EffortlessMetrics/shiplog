@@ -88,6 +88,9 @@ enum Command {
     /// Verify the workflow allowlist (`policy/workflow-allowlist.toml`).
     CheckWorkflows(FilePolicyModeArgs),
 
+    /// Verify repository-role automation authority boundaries.
+    CheckAutomationAuthority(AutomationAuthorityArgs),
+
     /// Verify the dependency-surface allowlist (`policy/dependency-surface-allowlist.toml`).
     CheckDependencySurfaces(FilePolicyModeArgs),
 
@@ -159,6 +162,13 @@ pub struct FilePolicyModeArgs {
     /// failing; `blocking-allowlist` exits non-zero on any finding.
     #[arg(long, default_value = "advisory")]
     pub mode: String,
+}
+
+#[derive(Debug, Args)]
+pub struct AutomationAuthorityArgs {
+    /// Explicit repository role; never inferred from remote naming.
+    #[arg(long, value_parser = ["swarm", "source"])]
+    pub repository_role: String,
 }
 
 #[derive(Debug, Args)]
@@ -452,6 +462,10 @@ impl Cli {
             Command::CheckWorkflows(args) => {
                 tasks::file_policy::check_workflows(&workspace_root, parse_mode(&args.mode)?)
             }
+            Command::CheckAutomationAuthority(args) => tasks::automation_authority::run(
+                &workspace_root,
+                tasks::automation_authority::RepositoryRole::parse(&args.repository_role)?,
+            ),
             Command::CheckDependencySurfaces(args) => {
                 tasks::file_policy::check_dependency_surfaces(
                     &workspace_root,
