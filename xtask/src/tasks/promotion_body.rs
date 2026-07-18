@@ -36,7 +36,20 @@ struct PromotionBodyData {
 }
 
 pub fn run(inputs: PromotionBodyInputs) -> Result<()> {
-    let swarm_head = match inputs.swarm_head {
+    let body = render(&inputs)?;
+    write_rendered(&inputs.workspace_root, &inputs.output, &body)?;
+    println!(
+        "promotion-body: wrote {}",
+        display_path(
+            &inputs.workspace_root,
+            &resolve_output_path(&inputs.workspace_root, &inputs.output)
+        )
+    );
+    Ok(())
+}
+
+pub(crate) fn render(inputs: &PromotionBodyInputs) -> Result<String> {
+    let swarm_head = match inputs.swarm_head.as_deref() {
         Some(value) if !value.trim().is_empty() => value.trim().to_string(),
         _ => git_output(&inputs.workspace_root, &["rev-parse", &inputs.swarm_ref])
             .with_context(|| format!("promotion-body: resolve {}", inputs.swarm_ref))?,
@@ -53,28 +66,25 @@ pub fn run(inputs: PromotionBodyInputs) -> Result<()> {
     };
 
     let data = PromotionBodyData {
-        source_ref: inputs.source_ref,
-        swarm_ref: inputs.swarm_ref,
+        source_ref: inputs.source_ref.clone(),
+        swarm_ref: inputs.swarm_ref.clone(),
         swarm_head,
         included_swarm_prs,
-        swarm_pr_run: inputs.swarm_pr_run,
-        swarm_main_run: inputs.swarm_main_run,
-        source_pr_run: inputs.source_pr_run,
-        source_post_merge_run: inputs.source_post_merge_run,
+        swarm_pr_run: inputs.swarm_pr_run.clone(),
+        swarm_main_run: inputs.swarm_main_run.clone(),
+        source_pr_run: inputs.source_pr_run.clone(),
+        source_post_merge_run: inputs.source_post_merge_run.clone(),
     };
+    Ok(render_promotion_body(&data))
+}
 
-    let output_path = resolve_output_path(&inputs.workspace_root, &inputs.output);
+pub(crate) fn write_rendered(workspace_root: &Path, output: &Path, body: &str) -> Result<PathBuf> {
+    let output_path = resolve_output_path(workspace_root, output);
     if let Some(parent) = output_path.parent() {
         fs::create_dir_all(parent).with_context(|| format!("create {}", parent.display()))?;
     }
-    fs::write(&output_path, render_promotion_body(&data))
-        .with_context(|| format!("write {}", output_path.display()))?;
-
-    println!(
-        "promotion-body: wrote {}",
-        display_path(&inputs.workspace_root, &output_path)
-    );
-    Ok(())
+    fs::write(&output_path, body).with_context(|| format!("write {}", output_path.display()))?;
+    Ok(output_path)
 }
 
 fn git_output(workspace_root: &Path, args: &[&str]) -> Result<String> {
@@ -250,6 +260,10 @@ fn render_promotion_body(data: &PromotionBodyData) -> String {
     out.push_str(
         "Promotion only. No release, tag, publish, branch-protection, runner-policy, or release-authority changes.\n",
     );
+    out.push_str("\n## Rollback\n\n");
+    out.push_str(
+        "If the promotion must be reversed, revert the regular merge commit in the source repository and pause further promotions. Investigate and reconcile the source/swarm divergence; resume promotion only after alignment and source truth are restored. This tool does not perform rollback.\n",
+    );
     out
 }
 
@@ -400,5 +414,10 @@ mod tests {
         );
         assert!(body.contains("Source PR routed run: pending until source PR checks complete"));
         assert!(body.contains("No release, tag, publish"));
+        assert!(body.contains("## Rollback"));
+        assert!(body.contains("revert the regular merge commit in the source repository"));
+        assert!(body.contains("pause further promotions"));
+        assert!(body.contains("Investigate and reconcile the source/swarm divergence"));
+        assert!(body.contains("This tool does not perform rollback"));
     }
 }

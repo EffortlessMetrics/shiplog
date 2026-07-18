@@ -247,10 +247,6 @@ pub struct PromoteArgs {
     #[arg(long, default_value = "origin")]
     pub source_remote: String,
 
-    /// Promotion branch name. Defaults to a stable name derived from the swarm SHA.
-    #[arg(long)]
-    pub branch: Option<String>,
-
     /// Generated promotion body path.
     #[arg(long, default_value = "target/source-of-truth/promotion-body.md")]
     pub output: PathBuf,
@@ -407,7 +403,6 @@ impl Cli {
                 source_ref: args.source_ref,
                 swarm_ref: args.swarm_ref,
                 source_remote: args.source_remote,
-                branch: args.branch,
                 output: args.output,
                 allow_historical: args.allow_historical,
             }),

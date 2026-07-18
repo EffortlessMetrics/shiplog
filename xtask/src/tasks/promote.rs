@@ -23,7 +23,6 @@ pub struct PromoteInputs {
     pub source_ref: String,
     pub swarm_ref: String,
     pub source_remote: String,
-    pub branch: Option<String>,
     pub output: PathBuf,
     pub allow_historical: bool,
 }
@@ -102,7 +101,7 @@ struct PromotePlan {
     ci_job: JobReceipt,
     last_promoted_swarm_head: String,
     included_swarm_prs: Vec<String>,
-    source_pr: Option<String>,
+    source_pr: Option<SourcePullRequest>,
     dry_run: bool,
     next_actions: Vec<String>,
     planned_mutations: Vec<PlannedMutation>,
@@ -128,7 +127,7 @@ enum PlannedMutation {
         repository: String,
         base: String,
         head: String,
-        disposition: MutationDisposition,
+        action: PullRequestAction,
     },
 }
 
@@ -137,7 +136,48 @@ enum PlannedMutation {
 enum MutationDisposition {
     Required,
     AlreadyCurrent,
-    Deferred,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+enum PullRequestAction {
+    Create,
+    Update,
+    AlreadyCurrent,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+struct SourcePullRequest {
+    number: u64,
+    url: String,
+    #[serde(rename = "headRefName")]
+    head_ref_name: String,
+    #[serde(rename = "headRefOid")]
+    head_ref_oid: String,
+    #[serde(rename = "baseRefName")]
+    base_ref_name: String,
+    #[serde(rename = "headRepository")]
+    head_repository: RepositoryIdentity,
+    #[serde(rename = "headRepositoryOwner")]
+    head_repository_owner: RepositoryOwner,
+    title: String,
+    body: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+struct RepositoryIdentity {
+    #[serde(rename = "nameWithOwner")]
+    name_with_owner: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+struct RepositoryOwner {
+    login: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct CompareReceipt {
+    status: String,
 }
 
 pub fn run(inputs: PromoteInputs) -> Result<()> {
@@ -202,9 +242,7 @@ fn run_with_port_to(
     )?;
     let (receipt, job) = green_swarm_receipt(port, &swarm_sha)?;
 
-    let branch = inputs
-        .branch
-        .unwrap_or_else(|| format!("promote/swarm-current-{}", &swarm_sha[..12]));
+    let branch = format!("promote/swarm-current-{}", &swarm_sha[..12]);
     let existing = port.git_output(
         &inputs.workspace_root,
         &[
@@ -214,14 +252,8 @@ fn run_with_port_to(
         ],
     )?;
     let existing_sha = existing.split_whitespace().next().unwrap_or_default();
-    if !existing_sha.is_empty() {
-        ensure_ancestor_with_port(
-            port,
-            &inputs.workspace_root,
-            existing_sha,
-            &swarm_sha,
-            "existing promotion branch is not fast-forwardable to the requested swarm head",
-        )?;
+    if !existing_sha.is_empty() && existing_sha != swarm_sha {
+        ensure_remote_fast_forward(port, existing_sha, &swarm_sha)?;
     }
 
     let merge_base = port
@@ -243,6 +275,41 @@ fn run_with_port_to(
         &state.latest_promotion.promoted_swarm_head,
         &swarm_sha,
     )?;
+    let body_inputs = promotion_body::PromotionBodyInputs {
+        workspace_root: inputs.workspace_root.clone(),
+        source_ref: inputs.source_ref.clone(),
+        swarm_ref: inputs.swarm_ref.clone(),
+        swarm_head: Some(swarm_sha.clone()),
+        included_swarm_prs: included_swarm_prs.clone(),
+        swarm_pr_run: None,
+        swarm_main_run: Some(receipt.database_id.to_string()),
+        source_pr_run: None,
+        source_post_merge_run: None,
+        output: inputs.output.clone(),
+    };
+    let promotion_body = promotion_body::render(&body_inputs)?;
+    let title = format!(
+        "merge(swarm): promote shiplog-swarm through {}",
+        &swarm_sha[..12]
+    );
+    let source_pr = discover_source_pr(port, &branch)?;
+    if let Some(pr) = source_pr.as_ref()
+        && (existing_sha.is_empty() || pr.head_ref_oid != existing_sha)
+    {
+        bail!(
+            "promote: open source PR #{} head {} does not match remote branch target {:?}",
+            pr.number,
+            pr.head_ref_oid,
+            existing_sha
+        );
+    }
+    let pr_action = match source_pr.as_ref() {
+        None => PullRequestAction::Create,
+        Some(pr) if pr.title == title && pr.body == promotion_body => {
+            PullRequestAction::AlreadyCurrent
+        }
+        Some(_) => PullRequestAction::Update,
+    };
 
     let next_actions = vec![
         format!(
@@ -275,10 +342,10 @@ fn run_with_port_to(
             repository: SOURCE_REPO.to_string(),
             base: "main".to_string(),
             head: branch.clone(),
-            disposition: MutationDisposition::Deferred,
+            action: pr_action,
         },
     ];
-    let plan = PromotePlan {
+    let mut plan = PromotePlan {
         swarm_head: swarm_sha.clone(),
         source_ref: inputs.source_ref.clone(),
         source_head,
@@ -289,7 +356,7 @@ fn run_with_port_to(
         ci_job: job,
         last_promoted_swarm_head: state.latest_promotion.promoted_swarm_head,
         included_swarm_prs: included_swarm_prs.clone(),
-        source_pr: None,
+        source_pr: source_pr.clone(),
         dry_run: inputs.dry_run,
         next_actions,
         planned_mutations,
@@ -319,12 +386,8 @@ fn run_with_port_to(
         }
     )?;
 
-    let receipt_path = write_plan_receipt(&inputs.workspace_root, &inputs.output, &plan)?;
-    writeln!(
-        output,
-        "promote: wrote plan receipt {}",
-        display_path(&inputs.workspace_root, &receipt_path)
-    )?;
+    let body_path =
+        promotion_body::write_rendered(&inputs.workspace_root, &inputs.output, &promotion_body)?;
 
     if existing_sha != swarm_sha {
         port.git_status(
@@ -340,18 +403,23 @@ fn run_with_port_to(
         writeln!(output, "promote: branch already points at requested head")?;
     }
 
-    promotion_body::run(promotion_body::PromotionBodyInputs {
-        workspace_root: inputs.workspace_root.clone(),
-        source_ref: inputs.source_ref,
-        swarm_ref: inputs.swarm_ref,
-        swarm_head: Some(swarm_sha),
-        included_swarm_prs,
-        swarm_pr_run: None,
-        swarm_main_run: Some(receipt.database_id.to_string()),
-        source_pr_run: None,
-        source_post_merge_run: None,
-        output: inputs.output,
-    })?;
+    let executed_pr = execute_source_pr(
+        port,
+        pr_action,
+        source_pr.as_ref(),
+        &branch,
+        &swarm_sha,
+        &title,
+        &promotion_body,
+        &body_path,
+    )?;
+    plan.source_pr = Some(executed_pr);
+    let receipt_path = write_plan_receipt(&inputs.workspace_root, &inputs.output, &plan)?;
+    writeln!(
+        output,
+        "promote: wrote plan receipt {}",
+        display_path(&inputs.workspace_root, &receipt_path)
+    )?;
 
     writeln!(output, "promote: open a regular merge PR; do not squash")?;
     writeln!(
@@ -384,6 +452,142 @@ fn included_swarm_prs(
             format!("promote: enumerate swarm PRs {last_promoted_swarm_head}..{swarm_sha}")
         })?;
     Ok(extract_swarm_pr_receipts(log.lines()))
+}
+
+fn ensure_remote_fast_forward(
+    port: &impl PromotePort,
+    current_target: &str,
+    requested_target: &str,
+) -> Result<()> {
+    let comparison = format!("{current_target}...{requested_target}");
+    let output = port
+        .gh_output(&["api", &format!("repos/{SWARM_REPO}/compare/{comparison}")])
+        .with_context(|| {
+            format!(
+                "promote: compare remote branch target {current_target} to requested swarm head {requested_target} in swarm authority"
+            )
+        })?;
+    let receipt: CompareReceipt = serde_json::from_slice(&output)
+        .context("promote: parse source branch ancestry comparison")?;
+    if !matches!(receipt.status.as_str(), "ahead" | "identical") {
+        bail!(
+            "promote: existing promotion branch target {current_target} is not fast-forwardable to {requested_target} (compare status {:?})",
+            receipt.status
+        );
+    }
+    Ok(())
+}
+
+fn discover_source_pr(port: &impl PromotePort, branch: &str) -> Result<Option<SourcePullRequest>> {
+    let output = port.gh_output(&[
+        "pr",
+        "list",
+        "--repo",
+        SOURCE_REPO,
+        "--state",
+        "open",
+        "--head",
+        branch,
+        "--json",
+        "number,url,headRefName,headRefOid,baseRefName,headRepository,headRepositoryOwner,title,body",
+    ])?;
+    let mut prs: Vec<SourcePullRequest> =
+        serde_json::from_slice(&output).context("promote: parse canonical source PR list")?;
+    if prs.len() > 1 {
+        bail!("promote: multiple open source PRs use deterministic branch {branch:?}");
+    }
+    let pr = prs.pop();
+    if let Some(pr) = pr.as_ref()
+        && (pr.head_ref_name != branch
+            || pr.base_ref_name != "main"
+            || pr.head_repository.name_with_owner != SOURCE_REPO
+            || pr.head_repository_owner.login != "EffortlessMetrics")
+    {
+        bail!(
+            "promote: open source PR #{} is incompatible with deterministic {branch:?} -> main identity",
+            pr.number
+        );
+    }
+    Ok(pr)
+}
+
+fn execute_source_pr(
+    port: &impl PromotePort,
+    action: PullRequestAction,
+    existing: Option<&SourcePullRequest>,
+    branch: &str,
+    swarm_sha: &str,
+    title: &str,
+    body: &str,
+    body_path: &Path,
+) -> Result<SourcePullRequest> {
+    let body_path = body_path
+        .to_str()
+        .context("promote: promotion body path is not UTF-8")?;
+    match action {
+        PullRequestAction::Create => {
+            let output = port.gh_output(&[
+                "pr",
+                "create",
+                "--repo",
+                SOURCE_REPO,
+                "--base",
+                "main",
+                "--head",
+                branch,
+                "--title",
+                title,
+                "--body-file",
+                body_path,
+            ])?;
+            let url = String::from_utf8(output)
+                .context("promote: source PR create output is not UTF-8")?
+                .trim()
+                .to_string();
+            let number = url
+                .rsplit('/')
+                .next()
+                .and_then(|value| value.parse::<u64>().ok())
+                .with_context(|| format!("promote: parse created source PR URL {url:?}"))?;
+            Ok(SourcePullRequest {
+                number,
+                url,
+                head_ref_name: branch.to_string(),
+                head_ref_oid: swarm_sha.to_string(),
+                base_ref_name: "main".to_string(),
+                head_repository: RepositoryIdentity {
+                    name_with_owner: SOURCE_REPO.to_string(),
+                },
+                head_repository_owner: RepositoryOwner {
+                    login: "EffortlessMetrics".to_string(),
+                },
+                title: title.to_string(),
+                body: body.to_string(),
+            })
+        }
+        PullRequestAction::Update => {
+            let pr = existing.context("promote: update action lacks existing source PR")?;
+            port.gh_output(&[
+                "pr",
+                "edit",
+                &pr.number.to_string(),
+                "--repo",
+                SOURCE_REPO,
+                "--title",
+                title,
+                "--body-file",
+                body_path,
+            ])?;
+            let mut updated = pr.clone();
+            updated.head_ref_oid = swarm_sha.to_string();
+            updated.title = title.to_string();
+            updated.body = body.to_string();
+            Ok(updated)
+        }
+        PullRequestAction::AlreadyCurrent => existing
+            .cloned()
+            .context("promote: already-current action lacks source PR"),
+    }
 }
 
 /// Extract `owner/repo#N` receipts from squash-merge commit subjects, keeping
@@ -689,6 +893,7 @@ mod tests {
     struct StubPort {
         gh: RefCell<VecDeque<std::result::Result<Vec<u8>, String>>>,
         gh_calls: RefCell<Vec<Vec<String>>>,
+        git_mutations: RefCell<Vec<Vec<String>>>,
         remote_target: Option<String>,
         fail_merge_base: bool,
     }
@@ -709,6 +914,12 @@ mod tests {
         }
 
         fn git_status(&self, workspace_root: &Path, args: &[&str]) -> Result<()> {
+            if args.first() == Some(&"push") {
+                self.git_mutations
+                    .borrow_mut()
+                    .push(args.iter().map(|arg| (*arg).to_string()).collect());
+                return Ok(());
+            }
             SystemPort.git_status(workspace_root, args)
         }
 
@@ -832,8 +1043,10 @@ mod tests {
                     "{{\"jobs\":[{{\"databaseId\":84,\"name\":\"{REQUIRED_RESULT}\",\"status\":\"completed\",\"conclusion\":\"{job_conclusion}\"}}]}}"
                 )
                 .into_bytes()),
+                Ok(b"[]".to_vec()),
             ])),
             gh_calls: RefCell::new(Vec::new()),
+            git_mutations: RefCell::new(Vec::new()),
             remote_target: None,
             fail_merge_base: false,
         }
@@ -847,10 +1060,24 @@ mod tests {
             source_ref: "source".to_string(),
             swarm_ref: "swarm".to_string(),
             source_remote: "origin".to_string(),
-            branch: None,
             output: PathBuf::from("target/source-of-truth/promotion-body.md"),
             allow_historical: false,
         }
+    }
+
+    fn replace_pr_list(port: &StubPort, prs: serde_json::Value) -> Result<()> {
+        let mut responses = port.gh.borrow_mut();
+        let _previous = responses
+            .pop_back()
+            .context("expected default PR-list response")?;
+        responses.push_back(Ok(serde_json::to_vec(&prs)?));
+        Ok(())
+    }
+
+    fn recorded_pr(receipt: &serde_json::Value) -> Result<serde_json::Value> {
+        let pr = receipt["source_pr"].clone();
+        ensure!(!pr.is_null());
+        Ok(pr)
     }
 
     #[test]
@@ -887,11 +1114,16 @@ mod tests {
                         "repository": "EffortlessMetrics/shiplog",
                         "base": "main",
                         "head": branch,
-                        "disposition": "deferred"
+                        "action": "create"
                     }
                 ])
         );
         ensure!(!target.exists());
+        ensure!(port.git_mutations.borrow().is_empty());
+        ensure!(!port.gh_calls.borrow().iter().any(|call| {
+            call.get(1)
+                .is_some_and(|action| action == "create" || action == "edit")
+        }));
         Ok(())
     }
 
@@ -917,6 +1149,221 @@ mod tests {
         let push = &plan["planned_mutations"][2];
         ensure!(push["current_target"] == fixture.current);
         ensure!(push["disposition"] == "already-current");
+        ensure!(!fixture.dir.path().join("target").exists());
+        Ok(())
+    }
+
+    #[test]
+    fn execution_creates_once_then_exact_rerun_is_a_noop() -> Result<()> {
+        let fixture = fixture_git()?;
+        let port = stub_port(&fixture, true, true);
+        port.gh.borrow_mut().push_back(Ok(
+            b"https://github.com/EffortlessMetrics/shiplog/pull/700\n".to_vec(),
+        ));
+        let mut inputs = fixture_inputs(&fixture);
+        inputs.dry_run = false;
+        let mut output = Vec::new();
+        run_with_port_to(&port, inputs, &mut output)?;
+        ensure!(port.git_mutations.borrow().len() == 1);
+        ensure!(
+            port.gh_calls
+                .borrow()
+                .iter()
+                .any(|call| { call.starts_with(&["pr".to_string(), "create".to_string()]) })
+        );
+        let receipt_path = fixture
+            .dir
+            .path()
+            .join("target/source-of-truth/promote-receipt.json");
+        let first: serde_json::Value = serde_json::from_str(&fs::read_to_string(&receipt_path)?)?;
+        ensure!(first["source_pr"]["number"] == 700);
+        ensure!(first["planned_mutations"][3]["action"] == "create");
+        let promotion_body = fs::read_to_string(
+            fixture
+                .dir
+                .path()
+                .join("target/source-of-truth/promotion-body.md"),
+        )?;
+        ensure!(promotion_body.contains("## Rollback"));
+        ensure!(promotion_body.contains("pause further promotions"));
+        ensure!(promotion_body.contains("reconcile the source/swarm divergence"));
+        ensure!(promotion_body.contains("This tool does not perform rollback"));
+
+        let mut rerun = stub_port(&fixture, true, true);
+        rerun.remote_target = Some(fixture.current.clone());
+        replace_pr_list(&rerun, serde_json::json!([recorded_pr(&first)?]))?;
+        let mut inputs = fixture_inputs(&fixture);
+        inputs.dry_run = false;
+        run_with_port_to(&rerun, inputs, &mut Vec::new())?;
+        ensure!(rerun.git_mutations.borrow().is_empty());
+        ensure!(!rerun.gh_calls.borrow().iter().any(|call| {
+            call.get(1)
+                .is_some_and(|action| action == "create" || action == "edit")
+        }));
+        let second: serde_json::Value = serde_json::from_str(&fs::read_to_string(&receipt_path)?)?;
+        ensure!(second["source_pr"]["number"] == 700);
+        ensure!(second["planned_mutations"][2]["disposition"] == "already-current");
+        ensure!(second["planned_mutations"][3]["action"] == "already-current");
+        Ok(())
+    }
+
+    #[test]
+    fn execution_updates_one_compatible_stale_pr() -> Result<()> {
+        let fixture = fixture_git()?;
+        let mut port = stub_port(&fixture, true, true);
+        port.remote_target = Some(fixture.current.clone());
+        let branch = format!("promote/swarm-current-{}", &fixture.current[..12]);
+        replace_pr_list(
+            &port,
+            serde_json::json!([{
+                "number": 701,
+                "url": "https://github.com/EffortlessMetrics/shiplog/pull/701",
+                "headRefName": branch,
+                "headRefOid": fixture.current,
+                "baseRefName": "main",
+                "headRepository": {"nameWithOwner": "EffortlessMetrics/shiplog"},
+                "headRepositoryOwner": {"login": "EffortlessMetrics"},
+                "title": "stale title",
+                "body": "stale body"
+            }]),
+        )?;
+        port.gh.borrow_mut().push_back(Ok(Vec::new()));
+        let mut inputs = fixture_inputs(&fixture);
+        inputs.dry_run = false;
+        run_with_port_to(&port, inputs, &mut Vec::new())?;
+        ensure!(port.git_mutations.borrow().is_empty());
+        ensure!(port.gh_calls.borrow().iter().any(|call| {
+            call.starts_with(&["pr".to_string(), "edit".to_string()])
+                && call.get(2).is_some_and(|number| number == "701")
+        }));
+        let receipt: serde_json::Value = serde_json::from_str(&fs::read_to_string(
+            fixture
+                .dir
+                .path()
+                .join("target/source-of-truth/promote-receipt.json"),
+        )?)?;
+        ensure!(receipt["planned_mutations"][3]["action"] == "update");
+        Ok(())
+    }
+
+    #[test]
+    fn planner_rejects_duplicate_or_wrong_base_source_prs() -> Result<()> {
+        let fixture = fixture_git()?;
+        let mut port = stub_port(&fixture, true, true);
+        port.remote_target = Some(fixture.current.clone());
+        let branch = format!("promote/swarm-current-{}", &fixture.current[..12]);
+        let candidate = serde_json::json!({
+            "number": 702,
+            "url": "https://github.com/EffortlessMetrics/shiplog/pull/702",
+            "headRefName": branch,
+            "headRefOid": fixture.current,
+            "baseRefName": "main",
+            "headRepository": {"nameWithOwner": "EffortlessMetrics/shiplog"},
+            "headRepositoryOwner": {"login": "EffortlessMetrics"},
+            "title": "title",
+            "body": "body"
+        });
+        replace_pr_list(&port, serde_json::json!([candidate.clone(), candidate]))?;
+        let error = run_with_port(&port, fixture_inputs(&fixture))
+            .err()
+            .context("expected duplicate rejection")?;
+        ensure!(error.to_string().contains("multiple open source PRs"));
+
+        let fixture = fixture_git()?;
+        let mut port = stub_port(&fixture, true, true);
+        port.remote_target = Some(fixture.current.clone());
+        let branch = format!("promote/swarm-current-{}", &fixture.current[..12]);
+        replace_pr_list(
+            &port,
+            serde_json::json!([{
+                "number": 703,
+                "url": "https://github.com/EffortlessMetrics/shiplog/pull/703",
+                "headRefName": branch,
+                "headRefOid": fixture.current,
+                "baseRefName": "release",
+                "headRepository": {"nameWithOwner": "EffortlessMetrics/shiplog"},
+                "headRepositoryOwner": {"login": "EffortlessMetrics"},
+                "title": "title",
+                "body": "body"
+            }]),
+        )?;
+        let error = run_with_port(&port, fixture_inputs(&fixture))
+            .err()
+            .context("expected base rejection")?;
+        ensure!(error.to_string().contains("incompatible"));
+        Ok(())
+    }
+
+    #[test]
+    fn planner_rejects_fork_pr_with_matching_branch_base_and_oid() -> Result<()> {
+        let fixture = fixture_git()?;
+        let mut port = stub_port(&fixture, true, true);
+        port.remote_target = Some(fixture.current.clone());
+        let branch = format!("promote/swarm-current-{}", &fixture.current[..12]);
+        replace_pr_list(
+            &port,
+            serde_json::json!([{
+                "number": 704,
+                "url": "https://github.com/EffortlessMetrics/shiplog/pull/704",
+                "headRefName": branch,
+                "headRefOid": fixture.current,
+                "baseRefName": "main",
+                "headRepository": {"nameWithOwner": "fork-owner/shiplog"},
+                "headRepositoryOwner": {"login": "fork-owner"},
+                "title": "matching title is irrelevant",
+                "body": "matching body is irrelevant"
+            }]),
+        )?;
+        let error = run_with_port(&port, fixture_inputs(&fixture))
+            .err()
+            .context("expected fork identity rejection")?;
+        ensure!(error.to_string().contains("incompatible"));
+        ensure!(port.git_mutations.borrow().is_empty());
+        ensure!(!port.gh_calls.borrow().iter().any(|call| {
+            call.get(1)
+                .is_some_and(|action| action == "create" || action == "edit")
+        }));
+        ensure!(!fixture.dir.path().join("target").exists());
+        Ok(())
+    }
+
+    #[test]
+    fn planner_rejects_non_fast_forward_remote_without_mutation() -> Result<()> {
+        let fixture = fixture_git()?;
+        let mut port = stub_port(&fixture, true, true);
+        port.remote_target = Some("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".to_string());
+        let mut responses = port.gh.borrow_mut();
+        let _previous = responses.pop_back().context("expected PR-list response")?;
+        responses.push_back(Ok(b"{\"status\":\"diverged\"}".to_vec()));
+        drop(responses);
+        let error = run_with_port(&port, fixture_inputs(&fixture))
+            .err()
+            .context("expected non-fast-forward rejection")?;
+        ensure!(error.to_string().contains("not fast-forwardable"));
+        ensure!(port.gh_calls.borrow().iter().any(|call| {
+            call.get(1).is_some_and(|path| {
+                path.starts_with("repos/EffortlessMetrics/shiplog-swarm/compare/")
+            })
+        }));
+        ensure!(port.git_mutations.borrow().is_empty());
+        ensure!(!fixture.dir.path().join("target").exists());
+        Ok(())
+    }
+
+    #[test]
+    fn planner_rejects_remote_head_absent_from_swarm_authority() -> Result<()> {
+        let fixture = fixture_git()?;
+        let mut port = stub_port(&fixture, true, true);
+        port.remote_target = Some("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".to_string());
+        let mut responses = port.gh.borrow_mut();
+        let _previous = responses.pop_back().context("expected PR-list response")?;
+        responses.push_back(Err("HTTP 404 comparison commit not found".to_string()));
+        drop(responses);
+        let error = run_with_port(&port, fixture_inputs(&fixture))
+            .err()
+            .context("expected absent remote-head rejection")?;
+        ensure!(error.to_string().contains("in swarm authority"));
+        ensure!(port.git_mutations.borrow().is_empty());
         ensure!(!fixture.dir.path().join("target").exists());
         Ok(())
     }
@@ -978,6 +1425,7 @@ mod tests {
         let port = StubPort {
             gh: RefCell::new(VecDeque::from([Ok(b"not-json".to_vec())])),
             gh_calls: RefCell::new(Vec::new()),
+            git_mutations: RefCell::new(Vec::new()),
             remote_target: None,
             fail_merge_base: false,
         };
