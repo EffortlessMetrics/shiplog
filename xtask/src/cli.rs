@@ -231,6 +231,10 @@ pub struct PromoteArgs {
     #[arg(long)]
     pub dry_run: bool,
 
+    /// Permit planning a reachable swarm commit older than current swarm/main.
+    #[arg(long)]
+    pub allow_historical: bool,
+
     /// Source/public main ref in the release-maintainer checkout.
     #[arg(long, default_value = "origin/main")]
     pub source_ref: String,
@@ -405,6 +409,7 @@ impl Cli {
                 source_remote: args.source_remote,
                 branch: args.branch,
                 output: args.output,
+                allow_historical: args.allow_historical,
             }),
             Command::PromotionState(args) => {
                 tasks::promotion_state::run(&workspace_root, args.check)
