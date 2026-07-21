@@ -15,7 +15,7 @@ use shiplog::schema::event::EventEnvelope;
 use shiplog::schema::freshness::SourceFreshness;
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::{BufRead, BufReader, Write};
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 use crate::*;
 
@@ -348,6 +348,7 @@ pub(super) fn run_merge(args: GithubActivityStatusArgs) -> Result<()> {
         .run_ref
         .as_deref()
         .ok_or_else(|| anyhow::anyhow!("cannot merge GitHub activity without progress.run_ref"))?;
+    let run_ref = validate_github_activity_run_ref(run_ref)?;
     let api_ledger = receipts.api_ledger.as_ref().ok_or_else(|| {
         anyhow::anyhow!("cannot merge GitHub activity without github.activity.api-ledger.json")
     })?;
@@ -423,6 +424,19 @@ pub(super) fn run_merge(args: GithubActivityStatusArgs) -> Result<()> {
     );
 
     Ok(())
+}
+
+fn validate_github_activity_run_ref(run_ref: &str) -> Result<&str> {
+    if run_ref.is_empty() {
+        anyhow::bail!("cannot merge GitHub activity without progress.run_ref");
+    }
+    if Path::new(run_ref)
+        .components()
+        .any(|component| !matches!(component, Component::Normal(_)))
+    {
+        anyhow::bail!("cannot merge GitHub activity without progress.run_ref");
+    }
+    Ok(run_ref)
 }
 
 fn load_activity_receipts(
@@ -2440,5 +2454,30 @@ user = "octocat"
         );
 
         Ok(())
+    }
+
+    #[test]
+    fn github_activity_run_merge_rejects_unsafe_run_ref() {
+        let valid = ["run_123", "abc-DEF_456", "2026-07-20"];
+        for run_ref in valid {
+            assert!(validate_github_activity_run_ref(run_ref).is_ok());
+        }
+
+        let invalid = [
+            "",
+            "..",
+            "../run_123",
+            "/run_123",
+            "run_123/..",
+            "run_123/../../bad",
+        ];
+        for run_ref in invalid {
+            let err = validate_github_activity_run_ref(run_ref)
+                .expect_err("expected run_ref validation failure");
+            assert!(
+                err.to_string()
+                    .contains("cannot merge GitHub activity without progress.run_ref")
+            );
+        }
     }
 }

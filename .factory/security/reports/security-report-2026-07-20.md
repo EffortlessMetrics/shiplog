@@ -137,7 +137,7 @@ severity threshold but are worth re-checking in future scans.
 
 | ID | Class | File | Note |
 |----|-------|------|------|
-| OBS-1 | Loopback HTTP exception | `apps/shiplog/src/ingest/github.rs:1497` | `validate_https_api_base` intentionally permits HTTP scheme only when the host is `localhost`, `127.0.0.1`, or `[::1]`. This is required by the integration-test fixtures (`apps/shiplog/src/ingest/github.rs:2053-2062` `RecordedGithubServer::start`) which spin up `TcpListener::bind("127.0.0.1:0")`. The exception is bounded to genuine loopback addresses that cannot be reached from a remote attacker on a correctly configured host; remote attackers cannot trigger it because `Url::parse` preserves the literal host string before DNS resolution, so DNS-rebinding against `localhost` cannot route the bearer token to a non-loopback IP. Carried forward from the VULN-002 fix in 2026-07-13. |
+| OBS-1 | Loopback HTTP exception | `apps/shiplog/src/ingest/github.rs:1497` | `validate_https_api_base` intentionally permits HTTP scheme only when the host is `localhost`, `127.0.0.1`, or `[::1]`. This is required by the integration-test fixtures (`apps/shiplog/src/ingest/github.rs:2053-2062` `RecordedGithubServer::start`) which spin up `TcpListener::bind("127.0.0.1:0")`. The exception is defensive and intended to remain scoped to known loopback test hostnames; it is not a DNS-safe guarantee of loopback if local name resolution changes. `Url::parse` preserves the literal host string before request construction, so the code does not intentionally follow DNS rebinding, but token safety still depends on the local network and resolver configuration. Carried forward from the VULN-002 fix in 2026-07-13. |
 | OBS-2 | User-controlled regex | `apps/shiplog/src/main.rs:13703` | `RegexBuilder::new(pattern)` for `workstreams split --matching`. The pattern is a local CLI arg (self-DoS); not exploitable by an external attacker. Suggest documenting as such in `--help` text. Carried forward from 2026-07-06. |
 | OBS-3 | Markdown link escaping | `apps/shiplog/src/render/md/receipt.rs` | URLs from API responses or `manual_events.yaml` are interpolated unescaped into `[label](url)`. A URL containing `)` or backslash sequences could break markdown link parsing. Output is a file (`packet.md`) the user opens locally, not rendered to HTML in-process, so impact is limited to local renderer behavior. Consider URL-encoding on `link.url` if this becomes user-facing. Carried forward from 2026-07-06. |
 | OBS-4 | `serde_yaml` | `Cargo.toml` workspace deps | Forks to `serde_yaml_ng = "0.10.0"`. Good practice; keep tracking upstream patch cadence. Carried forward from 2026-07-06. |
@@ -196,7 +196,7 @@ severity threshold but are worth re-checking in future scans.
 
 ### Validation Signals
 
-- **Observed**: 1 commit in the past 7 days (`6fe7b66`); no `unsafe`
+- **Observed**: 1 commit in the past 7 days (`d579cfd`); no `unsafe`
   blocks in any Rust source; `validate_https_api_base` is still called from
   `make_github_ingestor` (`apps/shiplog/src/main.rs:12630`) and has
   loopback coverage via `api_base_allows_loopback_http`
