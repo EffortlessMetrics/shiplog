@@ -6,8 +6,8 @@ Thank you for your interest in contributing. This document covers setup, convent
 
 - **Rust 1.95+** (edition 2024) — install via [rustup](https://rustup.rs/)
 - **Git**
-- **cargo-insta** for reviewing snapshot tests: `cargo install cargo-insta`
-- A `GITHUB_TOKEN` if you plan to test GitHub ingestion against live APIs
+- **cargo-insta** only when reviewing snapshot changes: `cargo install cargo-insta`
+- A `GITHUB_TOKEN` only when explicitly testing GitHub ingestion against live APIs
 
 The project pins its toolchain in `rust-toolchain.toml`, so `rustup` will automatically install the correct version (including `rustfmt` and `clippy`).
 
@@ -16,7 +16,7 @@ The project pins its toolchain in `rust-toolchain.toml`, so `rustup` will automa
 ```bash
 git clone https://github.com/EffortlessMetrics/shiplog-swarm.git
 cd shiplog-swarm
-cargo build --workspace
+cargo build --workspace --locked
 cargo xtask ci-small
 ```
 
@@ -32,10 +32,17 @@ The shortest contributor path is:
 ```bash
 git clone https://github.com/EffortlessMetrics/shiplog-swarm.git
 cd shiplog-swarm
-cargo build --workspace
+cargo build --workspace --locked
 cargo xtask ci-small
-gh pr create
 ```
+
+Then create a branch, make the focused edit, run `cargo xtask ci-small`, push
+the branch to your fork, and open a pull request against
+`EffortlessMetrics/shiplog-swarm/main`. GitHub CLI is optional.
+
+The public checkout must be acquired first. After that, building and running
+the gate do not need a retained checkout credential, provider token, or the
+GitHub CLI.
 
 ## Project structure
 

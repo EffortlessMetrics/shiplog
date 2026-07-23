@@ -185,6 +185,10 @@ linked_spec = "SHIPLOG-SPEC-0010"
             "SHIPLOG-PLAN-0010\n\n## Work item: active-goal-checker\n",
         ),
         (
+            "policy/source-only-paths.toml",
+            "schema_version = 1\npolicy = \"source-only-paths\"\nowner = \"repo-infra/release\"\nstatus = \"blocking\"\n",
+        ),
+        (
             ".codex/goals/active.toml",
             r#"
 schema_version = 1
@@ -477,6 +481,10 @@ fn policy_report_empty_dir_is_ok() {
 #[test]
 fn repo_contract_report_writes_graph_outputs() {
     let dir = fixture_workspace(&[
+        (
+            "policy/source-only-paths.toml",
+            "schema_version = 1\npolicy = \"source-only-paths\"\nowner = \"repo-infra/release\"\nstatus = \"blocking\"\n",
+        ),
         (
             "policy/doc-artifacts.toml",
             r#"

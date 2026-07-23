@@ -1,32 +1,7 @@
 name: Fuzz Smoke
 
-# Bounded touched-target fuzz smoke for the PR-fast lane.
-#
-# Lane: lane.fuzz_smoke (advisory, default_pr=true). Runs only the fuzz
-# targets whose parser inputs the diff actually touches, at 30s each
-# (capped). The broad quick-fuzz sweep (lane.fuzz_quick,
-# .github/workflows/fuzzing.yml#quick-fuzz) keeps running all 9 targets
-# on PR until PR #155 routes the full matrix to nightly + label.
-#
-# Scope rationale (see docs/ci/test-evidence-lanes.md#bounded-vs-broad-stochastic):
-# parser robustness is cheap and high-value, but running every target
-# on every PR (broad lane today) is unnecessary when most diffs touch
-# at most one parser surface. Touched-target routing keeps the signal
-# while shedding ~80% of the cost on the typical PR.
-#
-# Path-to-target map (ordered to match the actual fuzz targets in
-# fuzz/fuzz_targets/):
-#   apps/shiplog/src/cache/                              -> parse_jsonl
-#   apps/shiplog/src/engine/                             -> parse_jsonl
-#   apps/shiplog/src/workstreams/                        -> parse_workstreams
-#   apps/shiplog/src/ingest/github.rs                    -> parse_github_api
-#   apps/shiplog/src/ingest/gitlab.rs                    -> parse_gitlab_api
-#   apps/shiplog/src/ingest/jira.rs                      -> parse_jira_linear_api
-#   apps/shiplog/src/ingest/linear.rs                    -> parse_jira_linear_api
-#   apps/shiplog/src/ingest/manual/                      -> parse_manual_events
-#   apps/shiplog/src/template.rs (any template parsing)  -> parse_template
-#   apps/shiplog/src/**/config*.rs                       -> parse_config
-#   crates/shiplog-plugin-manifest/                      -> parse_plugin_manifest
+# Hosted-only touched-target fuzz smoke. Optional self-hosted admission was
+# removed, so runner_unavailable and disk_guard cannot obscure product signal.
 
 on:
   push:
@@ -36,6 +11,9 @@ on:
       - "docs/**"
       - "*.md"
       - "**/*.md"
+
+permissions:
+  contents: read
 
 concurrency:
   group: fuzz-smoke-${{ github.event.pull_request.number || github.ref }}
@@ -47,127 +25,125 @@ env:
 jobs:
   smoke:
     name: smoke
-    runs-on: ${{ github.repository == 'EffortlessMetrics/shiplog-swarm' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && 'self-hosted' || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     timeout-minutes: 15
-
     steps:
       - uses: actions/checkout@v7.0.0
+        id: setup-checkout
+        continue-on-error: true
         with:
           fetch-depth: 0
-
       - name: Resolve touched fuzz targets
         id: targets
+        if: steps.setup-checkout.outcome == 'success'
+        continue-on-error: true
         run: |
           set -euo pipefail
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            base="${{ github.event.pull_request.base.sha }}"
-            head="${{ github.event.pull_request.head.sha }}"
-            changed=$(git diff --name-only "$base..$head")
+            changed=$(git diff --name-only "${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}")
           else
             changed=$(git diff --name-only HEAD~1..HEAD || true)
           fi
-
-          echo "Changed files:"
-          echo "$changed" | sed 's/^/  /'
-
           targets=()
-          if echo "$changed" | grep -qE '^apps/shiplog/src/cache/|^apps/shiplog/src/engine/'; then
-            targets+=("parse_jsonl")
-          fi
-          if echo "$changed" | grep -qE '^apps/shiplog/src/workstreams/'; then
-            targets+=("parse_workstreams")
-          fi
-          if echo "$changed" | grep -qE '^apps/shiplog/src/ingest/github\.rs'; then
-            targets+=("parse_github_api")
-          fi
-          if echo "$changed" | grep -qE '^apps/shiplog/src/ingest/gitlab\.rs'; then
-            targets+=("parse_gitlab_api")
-          fi
-          if echo "$changed" | grep -qE '^apps/shiplog/src/ingest/(jira|linear)\.rs'; then
-            targets+=("parse_jira_linear_api")
-          fi
-          if echo "$changed" | grep -qE '^apps/shiplog/src/ingest/manual/'; then
-            targets+=("parse_manual_events")
-          fi
-          if echo "$changed" | grep -qE '^apps/shiplog/src/.*config'; then
-            targets+=("parse_config")
-          fi
-          if echo "$changed" | grep -qE 'template\.rs|^apps/shiplog/templates/'; then
-            targets+=("parse_template")
-          fi
-          if echo "$changed" | grep -qE '^crates/shiplog-plugin'; then
-            targets+=("parse_plugin_manifest")
-          fi
-
-          # Deduplicate while preserving order.
+          if echo "$changed" | grep -qE '^apps/shiplog/src/cache/|^apps/shiplog/src/engine/'; then targets+=("parse_jsonl"); fi
+          if echo "$changed" | grep -qE '^apps/shiplog/src/workstreams/'; then targets+=("parse_workstreams"); fi
+          if echo "$changed" | grep -qE '^apps/shiplog/src/ingest/github\.rs'; then targets+=("parse_github_api"); fi
+          if echo "$changed" | grep -qE '^apps/shiplog/src/ingest/gitlab\.rs'; then targets+=("parse_gitlab_api"); fi
+          if echo "$changed" | grep -qE '^apps/shiplog/src/ingest/(jira|linear)\.rs'; then targets+=("parse_jira_linear_api"); fi
+          if echo "$changed" | grep -qE '^apps/shiplog/src/ingest/manual/'; then targets+=("parse_manual_events"); fi
+          if echo "$changed" | grep -qE '^apps/shiplog/src/.*config'; then targets+=("parse_config"); fi
+          if echo "$changed" | grep -qE 'template\.rs|^apps/shiplog/templates/'; then targets+=("parse_template"); fi
+          if echo "$changed" | grep -qE '^crates/shiplog-plugin'; then targets+=("parse_plugin_manifest"); fi
           if [ ${#targets[@]} -gt 0 ]; then
             uniq_targets=$(printf '%s\n' "${targets[@]}" | awk '!seen[$0]++' | paste -sd, -)
           else
             uniq_targets=""
           fi
-          echo "targets=${uniq_targets}" >> "$GITHUB_OUTPUT"
-          echo "Selected targets: ${uniq_targets:-<none>}"
-
-      - name: No parser surfaces touched — nothing to fuzz
-        if: steps.targets.outputs.targets == ''
-        run: echo "No fuzz targets selected for this diff; lane completes as a no-op."
-
+          echo "targets=$uniq_targets" >> "$GITHUB_OUTPUT"
+      - name: No parser surfaces touched
+        if: steps.targets.outcome == 'success' && steps.targets.outputs.targets == ''
+        run: echo "No fuzz targets selected; lane is not applicable."
       - name: Install Rust nightly toolchain
-        if: steps.targets.outputs.targets != ''
+        id: setup-toolchain
+        if: steps.targets.outcome == 'success' && steps.targets.outputs.targets != ''
+        continue-on-error: true
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: nightly-2026-05-20
           components: llvm-tools-preview
-
       - name: Ensure native Rust build dependencies
-        if: steps.targets.outputs.targets != ''
+        id: setup-native-deps
+        if: steps.setup-toolchain.outcome == 'success'
+        continue-on-error: true
         uses: ./.github/actions/native-build-deps
-
       - name: Cache cargo binaries
-        if: steps.targets.outputs.targets != ''
+        id: setup-cargo-bin-cache
+        if: steps.setup-native-deps.outcome == 'success'
+        continue-on-error: true
         uses: actions/cache@v6
         with:
           path: ~/.cargo/bin
           key: ${{ runner.os }}-cargo-bin-nightly-2026-05-20
-
       - name: Cache Rust build artifacts
-        if: steps.targets.outputs.targets != ''
+        id: setup-rust-cache
+        if: steps.setup-cargo-bin-cache.outcome == 'success'
+        continue-on-error: true
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: fuzz
           shared-key: fuzz-smoke
           save-if: ${{ github.ref == 'refs/heads/main' }}
-
       - name: Install cargo-fuzz
-        if: steps.targets.outputs.targets != ''
-        run: |
-          if ! command -v cargo-fuzz >/dev/null 2>&1; then
-            cargo install cargo-fuzz --locked
-          fi
-
+        id: setup-cargo-fuzz
+        if: steps.setup-rust-cache.outcome == 'success'
+        continue-on-error: true
+        run: if ! command -v cargo-fuzz >/dev/null 2>&1; then cargo install cargo-fuzz --locked; fi
       - name: Run touched-target fuzz (30s each)
-        if: steps.targets.outputs.targets != ''
+        id: smoke-tests
+        if: steps.setup-cargo-fuzz.outcome == 'success'
+        continue-on-error: true
         run: |
           set -euo pipefail
           IFS=',' read -ra TARGETS <<< "${{ steps.targets.outputs.targets }}"
           cd fuzz
-          for t in "${TARGETS[@]}"; do
-            case "$t" in
+          for target in "${TARGETS[@]}"; do
+            case "$target" in
               parse_jsonl|parse_github_api|parse_gitlab_api|parse_jira_linear_api|parse_plugin_manifest) dict=json.dict ;;
               parse_workstreams|parse_config|parse_manual_events|parse_template) dict=yaml.dict ;;
               *) dict="" ;;
             esac
-            if [ -n "$dict" ]; then
-              cargo +nightly-2026-05-20 fuzz run "$t" -- -max_total_time=30 -dict=dictionaries/"$dict"
-            else
-              cargo +nightly-2026-05-20 fuzz run "$t" -- -max_total_time=30
-            fi
+            args=(-max_total_time=30)
+            if [ -n "$dict" ]; then args+=("-dict=dictionaries/$dict"); fi
+            cargo +nightly-2026-05-20 fuzz run "$target" -- "${args[@]}"
           done
-
       - name: Upload fuzz artifacts on failure
-        if: failure() && steps.targets.outputs.targets != ''
+        if: steps.smoke-tests.outcome == 'failure'
         uses: actions/upload-artifact@v7
         with:
           name: fuzz-smoke-crash-artifacts
           path: fuzz/artifacts/**
           retention-days: 30
+      - name: Auxiliary smoke execution summary
+        if: always()
+        shell: bash
+        env:
+          TEST_STATUS: ${{ steps.smoke-tests.outcome }}
+          TARGETS: ${{ steps.targets.outputs.targets }}
+          SETUP_STATUS: ${{ join(steps.*.outcome, ',') }}
+        run: |
+          terminal="ok"
+          if [ "${{ steps.targets.outcome }}" = "success" ] && [ -z "$TARGETS" ]; then terminal="not_applicable";
+          elif [[ "$SETUP_STATUS" == *failure* ]] && [ "$TEST_STATUS" = "skipped" ]; then terminal="setup_failed";
+          elif [ "$TEST_STATUS" = "failure" ]; then terminal="test_failed";
+          elif [ "$TEST_STATUS" = "cancelled" ]; then terminal="cancelled_as_superseded";
+          elif [ "$TEST_STATUS" = "skipped" ]; then terminal="setup_failed"; fi
+          {
+            echo "## Auxiliary lane summary (fuzz-smoke)"
+            echo "- lane: fuzz-smoke"
+            echo "- executed_runner: github-hosted"
+            echo "- fallback_used: false"
+            echo "- fallback_reason: not_applicable"
+            echo "- normalized_terminal: $terminal"
+            echo "- test_step_outcome: $TEST_STATUS"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$terminal" = "setup_failed" ] || [ "$terminal" = "test_failed" ]; then exit 1; fi

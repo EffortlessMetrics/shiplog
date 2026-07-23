@@ -28,34 +28,25 @@ status = "active"
 proposal = "SHIPLOG-PROP-0010"
 spec = "SHIPLOG-SPEC-0011"
 adr = "SHIPLOG-ADR-0011"
-plan = "plans/shiplog-swarm/current-promotion.md"
+plan = "plans/shiplog-swarm/implementation-plan.md"
 commands = [
   "rtk git fetch origin --prune",
   "rtk git fetch swarm --prune",
   "rtk git merge-base origin/main swarm/main",
   "rtk git log --oneline origin/main..swarm/main",
-  "rtk gh pr list --repo EffortlessMetrics/shiplog-swarm --state open --limit 30",
-  "rtk gh pr list --repo EffortlessMetrics/shiplog --state open --limit 30",
-  "rtk gh issue list --repo EffortlessMetrics/shiplog-swarm --state open --limit 30",
-  "rtk gh issue list --repo EffortlessMetrics/shiplog --state open --limit 30",
-  "rtk gh run list --repo EffortlessMetrics/shiplog-swarm --branch main --limit 10",
-  "rtk gh run list --repo EffortlessMetrics/shiplog --branch main --limit 10",
+  "rtk cargo xtask promotion-state --check",
   "rtk cargo xtask repo-contract-report",
   "rtk git diff --check",
 ]
 
-# Historical promotion receipts through source PR #607 remain in
-# plans/shiplog-swarm/implementation-plan.md and the Git history of this file.
-# The active manifest intentionally indexes only the current promotion slice.
+# Current promotion state is owned by the single bounded manifest
+# plans/shiplog-swarm/promotion-state.toml (generated view:
+# plans/shiplog-swarm/current-promotion.md). Historical promotion receipts
+# remain in plans/shiplog-swarm/implementation-plan.md and Git history. The
+# active goal keeps only the current promotion slice so it stays bounded as
+# promotions accumulate.
 receipts = [
-  "EffortlessMetrics/shiplog-swarm#225",
-  "EffortlessMetrics/shiplog-swarm#226",
-  "EffortlessMetrics/shiplog-swarm#233",
-  "EffortlessMetrics/shiplog#652",
-  "EffortlessMetrics/shiplog-swarm#200 closed as stale pre-reconciliation evidence",
-  "EffortlessMetrics/shiplog#632 closed as deferred source-only dependency work",
-  "EffortlessMetrics/shiplog#648 closed as unused transport bootstrap",
-  "EffortlessMetrics/shiplog#649 closed after pre-receipt source proof because its standalone-repository head was pinned",
-  "EffortlessMetrics/shiplog#650 closed as superseded by stable source-local promotion #652",
-  "EffortlessMetrics/shiplog#651 closed as unused issue-to-PR transport handle",
+  "EffortlessMetrics/shiplog-swarm#238",
+  "EffortlessMetrics/shiplog#655",
+  "EffortlessMetrics/shiplog#656",
 ]

@@ -7,7 +7,8 @@ It runs, in order:
 2. `cargo clippy --workspace --all-targets --all-features --locked -- -D warnings`
 3. `cargo test --workspace --all-features --locked -- --test-threads=4`
 4. `cargo xtask check-no-panic-family --mode blocking-allowlist`
-5. `git diff --check`
+5. the repository-role-pinned automation-authority check
+6. `git diff --check`
 
 CI invokes the same implementation one step at a time so the required
 `Shiplog Rust Small Result` job identifies the failing command directly.

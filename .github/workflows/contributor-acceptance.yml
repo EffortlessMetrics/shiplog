@@ -1,0 +1,127 @@
+name: Contributor Acceptance
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fresh-clone:
+    name: Fresh clone (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - name: Check out the contributor repository
+        uses: actions/checkout@v7.0.0
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Select the pinned Rust toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: "1.95.0"
+          components: rustfmt, clippy
+
+      - name: Verify clean contributor checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git remote | wc -l | tr -d ' ')" = "1"
+          test "$(git remote get-url origin)" = "https://github.com/EffortlessMetrics/shiplog-swarm"
+          test -z "$(git config --local --get-regexp '^http\..*\.extraheader$' || true)"
+          test -z "$(git status --porcelain --untracked-files=all)"
+          rustc --version | grep -F "rustc 1.95.0"
+
+      - name: Make GitHub CLI unavailable (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          no_gh="$RUNNER_TEMP/shiplog-no-gh"
+          mkdir -p "$no_gh"
+          printf '#!/usr/bin/env bash\nexit 127\n' > "$no_gh/gh"
+          chmod +x "$no_gh/gh"
+          echo "$no_gh" >> "$GITHUB_PATH"
+
+      - name: Make GitHub CLI unavailable (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $noGh = Join-Path $env:RUNNER_TEMP 'shiplog-no-gh'
+          New-Item -ItemType Directory -Force -Path $noGh | Out-Null
+          "@exit /b 127`r`n" | Set-Content -LiteralPath (Join-Path $noGh 'gh.cmd') -Encoding ascii
+          $noGh | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Verify contributor commands cannot use GitHub CLI (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          if gh --version; then
+            echo "gh unexpectedly remained available" >&2
+            exit 1
+          fi
+
+      - name: Verify contributor commands cannot use GitHub CLI (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          & gh --version
+          if ($LASTEXITCODE -eq 0) {
+            throw 'gh unexpectedly remained available'
+          }
+          exit 0
+
+      - name: Build the locked workspace (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          unset GITHUB_TOKEN GH_TOKEN GITLAB_TOKEN JIRA_TOKEN LINEAR_API_KEY SHIPLOG_REDACT_KEY
+          test -z "${GITHUB_TOKEN+x}${GH_TOKEN+x}${GITLAB_TOKEN+x}${JIRA_TOKEN+x}${LINEAR_API_KEY+x}${SHIPLOG_REDACT_KEY+x}"
+          cargo build --workspace --locked
+
+      - name: Build the locked workspace (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          'GITHUB_TOKEN', 'GH_TOKEN', 'GITLAB_TOKEN', 'JIRA_TOKEN', 'LINEAR_API_KEY', 'SHIPLOG_REDACT_KEY' |
+            ForEach-Object { Remove-Item "Env:$_" -ErrorAction SilentlyContinue }
+          $retained = @('GITHUB_TOKEN', 'GH_TOKEN', 'GITLAB_TOKEN', 'JIRA_TOKEN', 'LINEAR_API_KEY', 'SHIPLOG_REDACT_KEY' |
+            Where-Object { Test-Path "Env:$_" })
+          if ($retained.Count -ne 0) {
+            throw 'contributor build environment retained a credential variable'
+          }
+          cargo build --workspace --locked
+
+      - name: Run canonical contributor gate (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          unset GITHUB_TOKEN GH_TOKEN GITLAB_TOKEN JIRA_TOKEN LINEAR_API_KEY SHIPLOG_REDACT_KEY
+          test -z "${GITHUB_TOKEN+x}${GH_TOKEN+x}${GITLAB_TOKEN+x}${JIRA_TOKEN+x}${LINEAR_API_KEY+x}${SHIPLOG_REDACT_KEY+x}"
+          bash scripts/dev-check.sh
+
+      - name: Run canonical contributor gate (PowerShell)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          'GITHUB_TOKEN', 'GH_TOKEN', 'GITLAB_TOKEN', 'JIRA_TOKEN', 'LINEAR_API_KEY', 'SHIPLOG_REDACT_KEY' |
+            ForEach-Object { Remove-Item "Env:$_" -ErrorAction SilentlyContinue }
+          $retained = @('GITHUB_TOKEN', 'GH_TOKEN', 'GITLAB_TOKEN', 'JIRA_TOKEN', 'LINEAR_API_KEY', 'SHIPLOG_REDACT_KEY' |
+            Where-Object { Test-Path "Env:$_" })
+          if ($retained.Count -ne 0) {
+            throw 'contributor gate environment retained a credential variable'
+          }
+          ./scripts/dev-check.ps1
+
+      - name: Verify checks did not generate repository state
+        shell: bash
+        run: |
+          test -z "$(git config --local --get-regexp '^http\..*\.extraheader$' || true)"
+          test -z "$(git status --porcelain --untracked-files=all)"

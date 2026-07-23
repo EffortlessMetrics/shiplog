@@ -1,5 +1,10 @@
 <h1 align="center">shiplog</h1>
 
+> **Development repository:** Contributions and normal development happen in
+> [`EffortlessMetrics/shiplog-swarm`](https://github.com/EffortlessMetrics/shiplog-swarm).
+> The `EffortlessMetrics/shiplog` repository is the public release source; new
+> contributors do not need its maintainer-only promotion setup.
+
 <p align="center">
   <a href="https://github.com/EffortlessMetrics/shiplog/actions/workflows/ci.yml"><img src="https://github.com/EffortlessMetrics/shiplog/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI" /></a>
   <a href="https://codecov.io/gh/EffortlessMetrics/shiplog"><img src="https://codecov.io/gh/EffortlessMetrics/shiplog/branch/main/graph/badge.svg" alt="Codecov" /></a>
@@ -282,8 +287,19 @@ share profiles. Rendering those profiles is explicit and fail-closed: provide
 
 ## For contributors
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions and coding
-conventions.
+Clone `shiplog-swarm` and run the same small gate required by pull requests:
+
+```bash
+git clone https://github.com/EffortlessMetrics/shiplog-swarm.git
+cd shiplog-swarm
+cargo build --workspace --locked
+cargo xtask ci-small
+```
+
+After the public checkout is acquired, the build and gate require no retained
+checkout credential, provider token, GitHub CLI installation, release remote,
+hook, or generated file. See [CONTRIBUTING.md](CONTRIBUTING.md) for the smallest
+PR loop and coding conventions.
 
 Useful local checks:
 

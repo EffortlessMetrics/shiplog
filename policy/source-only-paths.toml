@@ -1,0 +1,56 @@
+schema_version = 1
+policy = "source-only-paths"
+owner = "repo-infra/release"
+status = "blocking"
+
+# Exact source-repository paths that may intentionally differ from the swarm
+# product tree. Directory globs are deliberately unsupported: unknown paths
+# fail closed as product/control-plane drift.
+
+[[allow]]
+path = ".github/dependabot.yml"
+owner = "repo-infra/release"
+reason = "The public source repository disables routine dependency mutation while shiplog-swarm remains the development trunk."
+classification = "release-governance"
+created = "2026-07-14"
+review_after = "2027-01-14"
+
+[[allow]]
+path = "policy/automation-authority.toml"
+owner = "repo-infra/release"
+reason = "The trusted repository_role pin differs between the swarm development trunk and canonical source."
+classification = "release-governance"
+created = "2026-07-18"
+review_after = "2027-01-18"
+
+[[allow]]
+path = ".github/workflows/droid-security-scan.yml"
+owner = "repo-infra/security"
+reason = "Source keeps scheduled security verification read-only while swarm may originate remediation PRs."
+classification = "release-governance"
+created = "2026-07-18"
+review_after = "2027-01-18"
+
+[[allow]]
+path = ".github/workflows/droid-review.yml"
+owner = "repo-infra/security"
+reason = "Source review automation may publish reviews but cannot write product contents."
+classification = "release-governance"
+created = "2026-07-18"
+review_after = "2027-01-18"
+
+[[allow]]
+path = ".github/workflows/security.yml"
+owner = "repo-infra/security"
+reason = "Source scheduled security verification declares explicit read-only permissions and swarm remediation handoff."
+classification = "release-governance"
+created = "2026-07-18"
+review_after = "2027-01-18"
+
+[[allow]]
+path = ".github/workflows/release.yml"
+owner = "repo-infra/release"
+reason = "Only canonical source carries explicitly authorized GitHub Release writer jobs; swarm retains verification-only release workflow behavior."
+classification = "release-governance"
+created = "2026-07-18"
+review_after = "2027-01-18"

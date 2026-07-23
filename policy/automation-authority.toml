@@ -1,0 +1,43 @@
+schema_version = 1
+policy = "automation-authority"
+owner = "repo-infra/release"
+status = "blocking"
+repository_role = "swarm"
+
+# Product-changing automation originates only in swarm. Source verifies the
+# promoted tree and retains explicit release execution authority.
+
+[[rule]]
+automation = "dependency-updates"
+swarm = "product-pr"
+source = "verification-only"
+
+[[rule]]
+automation = "security-remediation"
+swarm = "product-pr"
+source = "verification-only"
+
+[[rule]]
+automation = "scheduled-security"
+swarm = "product-pr"
+source = "check-artifact-or-handoff"
+
+[[rule]]
+automation = "review-bots"
+swarm = "review-comment"
+source = "review-comment"
+
+[[rule]]
+automation = "promotion"
+swarm = "prepare-source-pr"
+source = "merge-checkpoint"
+
+[[rule]]
+automation = "release-execution"
+swarm = "forbidden"
+source = "explicitly-authorized"
+
+[[rule]]
+automation = "emergency-hotfix"
+swarm = "product-pr"
+source = "authorized-only-then-backport"

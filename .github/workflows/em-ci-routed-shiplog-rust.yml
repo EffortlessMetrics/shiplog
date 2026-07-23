@@ -283,6 +283,7 @@ jobs:
           cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
           cargo test --workspace --all-features --locked -- --test-threads=4
           cargo xtask check-no-panic-family --mode blocking-allowlist
+          cargo xtask ci-small --step authority
           git diff --check
 
       - name: Cleanup and final stats
@@ -345,6 +346,7 @@ jobs:
           cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
           cargo test --workspace --all-features --locked -- --test-threads=4
           cargo xtask check-no-panic-family --mode blocking-allowlist
+          cargo xtask ci-small --step authority
           git diff --check
 
       - name: Cleanup scratch
@@ -403,6 +405,7 @@ jobs:
           cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
           cargo test --workspace --all-features --locked -- --test-threads=4
           cargo xtask check-no-panic-family --mode blocking-allowlist
+          cargo xtask ci-small --step authority
           git diff --check
 
       - name: Cleanup scratch
@@ -441,6 +444,9 @@ jobs:
       - name: No-panic policy
         run: cargo xtask ci-small --step no-panic
 
+      - name: Automation authority
+        run: cargo xtask ci-small --step authority
+
       - name: Whitespace/diff validation
         run: cargo xtask ci-small --step diff
 
@@ -476,6 +482,7 @@ jobs:
           cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
           cargo test --workspace --all-features --locked -- --test-threads=4
           cargo xtask check-no-panic-family --mode blocking-allowlist
+          cargo xtask ci-small --step authority
           git diff --check
 
   no_runner_capacity:

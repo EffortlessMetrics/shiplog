@@ -13,6 +13,19 @@ status = "advisory"
 # See docs/FILE_POLICY.md.
 
 [[entry]]
+path = ".github/workflows/contributor-acceptance.yml"
+owner = "repo-infra/ci"
+reason = "Fresh Linux and Windows contributor acceptance from a credential-free shiplog-swarm checkout. Proves the pinned toolchain, locked workspace build, canonical wrapper gate, and clean post-check worktree."
+permissions = ["contents:read"]
+secrets_used = []
+external_actions = [
+  "actions/checkout@v7.0.0",
+  "dtolnay/rust-toolchain@v1",
+]
+created = "2026-07-17"
+expires = "permanent"
+
+[[entry]]
 path = ".github/workflows/pr-plan.yml"
 owner = "release/ci"
 reason = "Advisory LEM PR Plan. Emits target/ci/ci-plan.json against contracts/schemas/ci-plan.v1.schema.json. Reads policy/ci-budget.toml + policy/ci-lanes.toml + policy/ci-risk-packs.toml via `cargo xtask ci plan`. Never blocks merge in v0.5.0."
@@ -121,16 +134,15 @@ expires = "permanent"
 [[entry]]
 path = ".github/workflows/release.yml"
 owner = "release/ci"
-reason = "Tag-triggered release pipeline; multi-platform binary build + crates.io readiness."
-permissions = ["contents:write"]
-secrets_used = ["GITHUB_TOKEN"]
+reason = "Swarm release-verification pipeline; builds and retains candidate artifacts but has no GitHub Release write authority. Canonical source restores explicitly authorized release writers as source-only governance."
+permissions = ["contents:read"]
+secrets_used = []
 external_actions = [
   "actions/checkout@v7.0.0",
   "dtolnay/rust-toolchain@master",
-  "actions/upload-artifact@v7",
+  "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a",
   "actions/download-artifact@v8",
   "actions/cache@v6",
-  "softprops/action-gh-release@v3",
   "Swatinem/rust-cache@v2",
   "taiki-e/install-action@v2",
 ]

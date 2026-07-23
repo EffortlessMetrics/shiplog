@@ -118,6 +118,24 @@ release work lands directly in `EffortlessMetrics/shiplog`, back-sync that
 change into `EffortlessMetrics/shiplog-swarm` before more normal development
 lands there.
 
+Routine dependency, workflow-update, security-remediation, and documentation
+automation must propose changes in `shiplog-swarm`. Source security automation
+may fail a check, retain an artifact, or link a remediation handoff to swarm,
+but it must not create a product branch or pull request in `shiplog`.
+
+For an emergency hotfix, create and prove the fix in swarm first. If explicit
+release authority requires an immediate source hotfix, pause normal promotion,
+land the authorized source change, back-port the exact fix into swarm, and
+re-establish tree alignment before promotion resumes. Emergency authorization
+does not become standing permission for source-side product automation.
+
+Verify the role boundary explicitly rather than inferring it from remote names:
+
+```powershell
+rtk cargo xtask check-automation-authority --repository-role swarm
+# Run with `--repository-role source` in the canonical source checkout.
+```
+
 ## Rollback
 
 If a promotion merge is wrong, revert the merge commit in

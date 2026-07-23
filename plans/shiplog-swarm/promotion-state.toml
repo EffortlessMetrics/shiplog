@@ -1,0 +1,61 @@
+# Bounded current-promotion state manifest (shiplog-swarm -> shiplog).
+#
+# This is the SINGLE manually maintained current-promotion state. It records
+# only the latest completed promotion slice and the pending swarm range;
+# historical promotions stay in `plans/shiplog-swarm/implementation-plan.md`
+# and Git history.
+#
+# Truth hierarchy (highest authority first):
+#   1. Git refs and ancestry
+#   2. GitHub PR / check state
+#   3. THIS bounded current-promotion manifest
+#   4. Generated reports (target/source-of-truth/*, current-promotion.md)
+#   5. Historical documents (implementation-plan.md archive)
+#
+# The human-readable `plans/shiplog-swarm/current-promotion.md` is GENERATED
+# from this manifest. Do not edit it by hand:
+#   cargo xtask promotion-state           # regenerate current-promotion.md
+#   cargo xtask promotion-state --check   # validate manifest + generated md
+schema_version = 1
+
+[latest_promotion]
+# "completed" once the source promotion PR has merged; "pending" while it is
+# still open/being prepared.
+status = "completed"
+# Approved source-only governance follows the promotion (see
+# policy/source-only-paths.toml). "completed" or "completed-with-governance".
+disposition = "completed-with-governance"
+source_promotion_pr = "EffortlessMetrics/shiplog#655"
+# Regular-merge commit SHA on source main, once known. Empty until observed.
+source_merge_sha = ""
+promoted_swarm_head = "c4fdba223d1c5c5b99a95b159ab8123d83d4b842"
+# Approved source-only governance receipts that accompany this promotion.
+source_governance = ["EffortlessMetrics/shiplog#656"]
+# Latest source post-merge routed proof, once recorded. Empty until observed.
+source_post_merge_proof = ""
+# Merged swarm PRs included in this promotion slice (between the previous
+# promoted head and `promoted_swarm_head`).
+included_swarm_prs = ["EffortlessMetrics/shiplog-swarm#238"]
+
+[pending]
+# Merged swarm PRs after `promoted_swarm_head` that are not yet promoted.
+swarm_pr_range = [
+  "EffortlessMetrics/shiplog-swarm#247",
+  "EffortlessMetrics/shiplog-swarm#248",
+  "EffortlessMetrics/shiplog-swarm#249",
+  "EffortlessMetrics/shiplog-swarm#250",
+  "EffortlessMetrics/shiplog-swarm#251",
+  "EffortlessMetrics/shiplog-swarm#252",
+  "EffortlessMetrics/shiplog-swarm#253",
+  "EffortlessMetrics/shiplog-swarm#254",
+  "EffortlessMetrics/shiplog-swarm#255",
+  "EffortlessMetrics/shiplog-swarm#256",
+  "EffortlessMetrics/shiplog-swarm#257",
+  "EffortlessMetrics/shiplog-swarm#258",
+  "EffortlessMetrics/shiplog-swarm#259",
+  "EffortlessMetrics/shiplog-swarm#260",
+  "EffortlessMetrics/shiplog-swarm#261",
+]
+# Receipts explicitly deferred to a later substantive carry-forward. A
+# receipt listed here is treated as pending-substantive-carry, not stale.
+deferred_receipt_carry = []

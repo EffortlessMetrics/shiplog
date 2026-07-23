@@ -33,6 +33,53 @@ fn normalize_newlines(doc: &str) -> String {
     doc.replace("\r\n", "\n")
 }
 
+#[test]
+fn contributor_docs_and_wrappers_share_the_fresh_clone_contract() -> anyhow::Result<()> {
+    let root = repo_root();
+    let read = |path: &str| -> anyhow::Result<String> {
+        std::fs::read_to_string(root.join(path)).with_context(|| format!("read {path}"))
+    };
+
+    let readme = read("README.md")?;
+    let contributing = read("CONTRIBUTING.md")?;
+    let toolchain = read("rust-toolchain.toml")?;
+    let bash = normalize_newlines(&read("scripts/dev-check.sh")?);
+    let powershell = normalize_newlines(&read("scripts/dev-check.ps1")?);
+    let workflow = normalize_newlines(&read(".github/workflows/contributor-acceptance.yml")?);
+
+    for (label, doc) in [("README", &readme), ("CONTRIBUTING", &contributing)] {
+        for required in [
+            "https://github.com/EffortlessMetrics/shiplog-swarm.git",
+            "cargo build --workspace --locked",
+            "cargo xtask ci-small",
+        ] {
+            assert!(
+                doc.contains(required),
+                "{label} should contain {required:?}"
+            );
+        }
+    }
+    assert!(toolchain.contains("channel = \"1.95.0\""));
+    assert_eq!(bash.matches("cargo xtask ci-small").count(), 1);
+    assert_eq!(powershell.matches("cargo xtask ci-small").count(), 1);
+    assert!(workflow.contains("ubuntu-latest, windows-latest"));
+    assert!(workflow.contains("pull_request:\n  workflow_dispatch:"));
+    assert!(!workflow.contains("pull_request:\n    paths:"));
+    assert!(workflow.contains("persist-credentials: false"));
+    assert!(workflow.contains("extraheader"));
+    assert!(workflow.contains("unset GITHUB_TOKEN GH_TOKEN GITLAB_TOKEN"));
+    assert!(workflow.contains("Remove-Item \"Env:$_\""));
+    assert!(!workflow.contains("SHIPLOG_REDACT_KEY: \"\""));
+    assert!(workflow.contains("shiplog-no-gh"));
+    assert!(workflow.contains("if gh --version"));
+    assert!(workflow.contains("& gh --version"));
+    assert!(workflow.contains("git status --porcelain --untracked-files=all"));
+    assert!(!contributing.contains("origin=shiplog"));
+    assert!(!contributing.contains("swarm=shiplog-swarm"));
+
+    Ok(())
+}
+
 fn section_between<'a>(doc: &'a str, start: &str, end: &str) -> &'a str {
     let start_index = doc
         .find(start)

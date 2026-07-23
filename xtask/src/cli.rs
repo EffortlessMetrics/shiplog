@@ -63,6 +63,10 @@ enum Command {
     /// Verify and prepare an idempotent source promotion branch.
     Promote(PromoteArgs),
 
+    /// Validate the bounded promotion-state manifest and generate
+    /// `plans/shiplog-swarm/current-promotion.md` from it.
+    PromotionState(PromotionStateArgs),
+
     /// Generate source-of-truth closeout and archived-goal artifacts.
     Closeout(CloseoutArgs),
 
@@ -83,6 +87,9 @@ enum Command {
 
     /// Verify the workflow allowlist (`policy/workflow-allowlist.toml`).
     CheckWorkflows(FilePolicyModeArgs),
+
+    /// Verify repository-role automation authority boundaries.
+    CheckAutomationAuthority(AutomationAuthorityArgs),
 
     /// Verify the dependency-surface allowlist (`policy/dependency-surface-allowlist.toml`).
     CheckDependencySurfaces(FilePolicyModeArgs),
@@ -158,6 +165,13 @@ pub struct FilePolicyModeArgs {
 }
 
 #[derive(Debug, Args)]
+pub struct AutomationAuthorityArgs {
+    /// Explicit repository role; never inferred from remote naming.
+    #[arg(long, value_parser = ["swarm", "source"])]
+    pub repository_role: String,
+}
+
+#[derive(Debug, Args)]
 pub struct PrBodyArgs {
     /// Work item ID from `.codex/goals/active.toml`.
     #[arg(long)]
@@ -217,6 +231,10 @@ pub struct PromoteArgs {
     #[arg(long)]
     pub dry_run: bool,
 
+    /// Permit planning a reachable swarm commit older than current swarm/main.
+    #[arg(long)]
+    pub allow_historical: bool,
+
     /// Source/public main ref in the release-maintainer checkout.
     #[arg(long, default_value = "origin/main")]
     pub source_ref: String,
@@ -229,13 +247,17 @@ pub struct PromoteArgs {
     #[arg(long, default_value = "origin")]
     pub source_remote: String,
 
-    /// Promotion branch name. Defaults to a stable name derived from the swarm SHA.
-    #[arg(long)]
-    pub branch: Option<String>,
-
     /// Generated promotion body path.
     #[arg(long, default_value = "target/source-of-truth/promotion-body.md")]
     pub output: PathBuf,
+}
+
+#[derive(Debug, Args)]
+pub struct PromotionStateArgs {
+    /// Validate the manifest and verify the checked-in
+    /// `current-promotion.md` matches it, instead of regenerating the file.
+    #[arg(long)]
+    pub check: bool,
 }
 
 #[derive(Debug, Args)]
@@ -381,9 +403,12 @@ impl Cli {
                 source_ref: args.source_ref,
                 swarm_ref: args.swarm_ref,
                 source_remote: args.source_remote,
-                branch: args.branch,
                 output: args.output,
+                allow_historical: args.allow_historical,
             }),
+            Command::PromotionState(args) => {
+                tasks::promotion_state::run(&workspace_root, args.check)
+            }
             Command::Closeout(args) => tasks::closeout::run(tasks::closeout::CloseoutInputs {
                 workspace_root,
                 goal: args.goal,
@@ -437,6 +462,10 @@ impl Cli {
             Command::CheckWorkflows(args) => {
                 tasks::file_policy::check_workflows(&workspace_root, parse_mode(&args.mode)?)
             }
+            Command::CheckAutomationAuthority(args) => tasks::automation_authority::run(
+                &workspace_root,
+                tasks::automation_authority::RepositoryRole::parse(&args.repository_role)?,
+            ),
             Command::CheckDependencySurfaces(args) => {
                 tasks::file_policy::check_dependency_surfaces(
                     &workspace_root,
