@@ -12,7 +12,7 @@ Status values:
 - `superseded`
 
 Use `commands` for current agent proof commands. Commands in active or ready
-work items must be copyable repo commands and must start with `rtk `. Use
-`receipts` for merged PRs, CI runs, or other durable proof refs when a work item
-is already done. A blocked work item must name `blocked_by`; a superseded work
-item must name `superseded_by`.
+work items must be copyable direct repository commands; do not wrap them in an
+output-filtering proxy. Use `receipts` for merged PRs, CI runs, or other durable
+proof refs when a work item is already done. A blocked work item must name
+`blocked_by`; a superseded work item must name `superseded_by`.
