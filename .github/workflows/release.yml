@@ -32,7 +32,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7.0.0
+        uses: actions/checkout@v7.0.1
 
       - name: Resolve release tag
         id: release_tag
@@ -115,7 +115,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7.0.0
+        uses: actions/checkout@v7.0.1
         with:
           ref: ${{ needs.release-preflight.outputs.release_tag }}
 
@@ -178,7 +178,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7.0.0
+        uses: actions/checkout@v7.0.1
         with:
           ref: ${{ needs.release-preflight.outputs.release_tag }}
 
@@ -240,7 +240,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7.0.0
+        uses: actions/checkout@v7.0.1
         with:
           ref: ${{ needs.release-preflight.outputs.release_tag }}
 
@@ -350,7 +350,7 @@ jobs:
 
     steps:
       - name: Checkout release scripts
-        uses: actions/checkout@v7.0.0
+        uses: actions/checkout@v7.0.1
         with:
           ref: ${{ needs.release-preflight.outputs.release_tag }}
 
@@ -369,7 +369,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7.0.0
+        uses: actions/checkout@v7.0.1
         with:
           ref: ${{ needs.release-preflight.outputs.release_tag }}
 
