@@ -264,7 +264,7 @@ fn validate_work_items(
     workspace_root: &Path,
     by_id: &BTreeMap<&str, &ArtifactRef>,
     by_plan_path: &BTreeMap<&str, &ArtifactRef>,
-    enforce_rtk_commands: bool,
+    enforce_direct_commands: bool,
     findings: &mut Vec<String>,
 ) {
     let mut seen = BTreeSet::new();
@@ -312,8 +312,8 @@ fn validate_work_items(
         }
         validate_plan_link(item, workspace_root, by_plan_path, findings);
         validate_status_requirements(item, findings);
-        if enforce_rtk_commands {
-            validate_current_command_prefixes(item, findings);
+        if enforce_direct_commands {
+            validate_current_command_wrappers(item, findings);
         }
     }
 
@@ -325,18 +325,18 @@ fn validate_work_items(
     }
 }
 
-fn validate_current_command_prefixes(item: &WorkItem, findings: &mut Vec<String>) {
+fn validate_current_command_wrappers(item: &WorkItem, findings: &mut Vec<String>) {
     if !matches!(item.status.as_str(), "ready" | "active") {
         return;
     }
 
     for command in &item.commands {
         let command = command.trim();
-        if command.is_empty() || command.starts_with("rtk ") {
+        if command.is_empty() || command.split_whitespace().next() != Some("rtk") {
             continue;
         }
         findings.push(format!(
-            "[goal-work-item-command-missing-rtk] {} command {:?} must start with \"rtk \"",
+            "[goal-work-item-command-wrapper] {} command {:?} must be a direct repository command",
             item.id, command
         ));
     }
@@ -548,7 +548,7 @@ status = "active"
 proposal = "SHIPLOG-PROP-0008"
 spec = "SHIPLOG-SPEC-0010"
 plan = "plans/0.10.0/implementation-plan.md"
-commands = ["rtk cargo xtask check-goals", "rtk git diff --check"]
+commands = ["cargo xtask check-goals", "git diff --check"]
 "#;
 
     fn write(path: &Path, content: &str) {
@@ -630,7 +630,7 @@ commands = ["rtk cargo xtask check-goals", "rtk git diff --check"]
                     "status = \"active\"\nproposal",
                     "status = \"done\"\nproposal",
                 )
-                .replace("rtk git diff --check", "git diff --check"),
+                .replace("git diff --check", "rtk git diff --check"),
         );
         run(dir.path()).expect("archived historical command receipts should pass");
     }
@@ -666,8 +666,8 @@ commands = ["rtk cargo xtask check-goals", "rtk git diff --check"]
     #[test]
     fn multiple_active_work_items_are_finding() {
         let active_goal = ACTIVE_GOAL.replace(
-            "commands = [\"rtk cargo xtask check-goals\", \"rtk git diff --check\"]",
-            "commands = [\"rtk cargo xtask check-goals\", \"rtk git diff --check\"]\n\n[[work_item]]\nid = \"second-active\"\nstatus = \"active\"\nproposal = \"SHIPLOG-PROP-0008\"\nspec = \"SHIPLOG-SPEC-0010\"\nplan = \"plans/0.10.0/implementation-plan.md\"\ncommands = [\"rtk git diff --check\"]",
+            "commands = [\"cargo xtask check-goals\", \"git diff --check\"]",
+            "commands = [\"cargo xtask check-goals\", \"git diff --check\"]\n\n[[work_item]]\nid = \"second-active\"\nstatus = \"active\"\nproposal = \"SHIPLOG-PROP-0008\"\nspec = \"SHIPLOG-SPEC-0010\"\nplan = \"plans/0.10.0/implementation-plan.md\"\ncommands = [\"git diff --check\"]",
         );
         let dir = fixture(&active_goal, DOC_ARTIFACTS);
         let err = run(dir.path()).unwrap_err();
@@ -682,7 +682,7 @@ commands = ["rtk cargo xtask check-goals", "rtk git diff --check"]
                 "status = \"ready\"\nproposal",
             )
             .replace(
-                "commands = [\"rtk cargo xtask check-goals\", \"rtk git diff --check\"]",
+                "commands = [\"cargo xtask check-goals\", \"git diff --check\"]",
                 "",
             );
         let dir = fixture(&active_goal, DOC_ARTIFACTS);
@@ -709,7 +709,7 @@ commands = ["rtk cargo xtask check-goals", "rtk git diff --check"]
                 "status = \"done\"\nproposal",
             )
             .replace(
-                "commands = [\"rtk cargo xtask check-goals\", \"rtk git diff --check\"]",
+                "commands = [\"cargo xtask check-goals\", \"git diff --check\"]",
                 "",
             );
         let dir = fixture(&active_goal, DOC_ARTIFACTS);
@@ -718,8 +718,29 @@ commands = ["rtk cargo xtask check-goals", "rtk git diff --check"]
     }
 
     #[test]
-    fn active_work_item_commands_must_use_rtk_prefix() {
-        let active_goal = ACTIVE_GOAL.replace("rtk git diff --check", "git diff --check");
+    fn active_work_item_commands_must_be_direct() {
+        let active_goal = ACTIVE_GOAL.replace("git diff --check", "rtk git diff --check");
+        let dir = fixture(&active_goal, DOC_ARTIFACTS);
+        let err = run(dir.path()).unwrap_err();
+        assert!(err.to_string().contains("1 finding"));
+    }
+
+    #[test]
+    fn active_work_item_tab_separated_wrapper_is_finding() {
+        let active_goal = ACTIVE_GOAL.replace("git diff --check", "rtk\tgit diff --check");
+        let dir = fixture(&active_goal, DOC_ARTIFACTS);
+        let err = run(dir.path()).unwrap_err();
+        assert!(err.to_string().contains("1 finding"));
+    }
+
+    #[test]
+    fn ready_work_item_commands_must_be_direct() {
+        let active_goal = ACTIVE_GOAL
+            .replace(
+                "status = \"active\"\nproposal",
+                "status = \"ready\"\nproposal",
+            )
+            .replace("git diff --check", "rtk git diff --check");
         let dir = fixture(&active_goal, DOC_ARTIFACTS);
         let err = run(dir.path()).unwrap_err();
         assert!(err.to_string().contains("1 finding"));

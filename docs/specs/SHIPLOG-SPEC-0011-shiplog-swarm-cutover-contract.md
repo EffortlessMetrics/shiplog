@@ -367,10 +367,10 @@ This spec is enforced by the implementation-plan receipts and the active-goal
 control-plane checks:
 
 ```bash
-rtk cargo xtask check-doc-artifacts
-rtk cargo xtask check-goals
-rtk cargo xtask repo-contract-report
-rtk git diff --check
+cargo xtask check-doc-artifacts
+cargo xtask check-goals
+cargo xtask repo-contract-report
+git diff --check
 ```
 
 `repo-contract-report` may inspect live `shiplog-swarm/main` branch protection
