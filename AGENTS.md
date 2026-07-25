@@ -58,6 +58,7 @@ When no actionable findings are emitted:
 
 ```
 No actionable findings emitted.
+
 Inspected surfaces:
 Checks performed:
 Why no comments:
