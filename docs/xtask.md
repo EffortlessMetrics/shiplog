@@ -128,7 +128,6 @@ Writes repo-contract inspection reports for humans and agents:
 - `target/source-of-truth/graph.md`
 
 The report reads [`policy/doc-artifacts.toml`](../policy/doc-artifacts.toml),
-[`policy/source-only-paths.toml`](../policy/source-only-paths.toml),
 [`.codex/goals/active.toml`](../.codex/goals/active.toml), and
 [`docs/status/SUPPORT_TIERS.md`](status/SUPPORT_TIERS.md). It summarizes the
 active goal, recommended next slice, work items, artifact links,
@@ -139,13 +138,9 @@ traceability, branch-protection settings, and promotion receipt freshness. The
 recommended next slice is derived from existing report statuses so agents can
 see whether to triage queues, promote swarm work, repair blocking report state,
 carry receipts in the next substantive PR, or choose the next user-value slice.
-The topology section classifies the full source-ahead commit range and the
-changed paths. It reports raw tree identity separately from product-tree
-alignment, recognizes only exact, current entries in `source-only-paths.toml`
-as approved governance, and keeps unknown or product paths fail-closed as
-drift. This lets a later approved source governance commit coexist with the
-latest `promote/swarm-*` merge without hiding product changes. The local
-checkout section reports clean/dirty status and any local
+The topology section classifies the full source-ahead commit range so expected
+`promote/swarm-*` merge commits are not confused with source-only content
+drift. The local checkout section reports clean/dirty status and any local
 branches already merged into source or swarm so agents can clean up their own
 merged branches deliberately. Its review commands check both GitHub repos for
 matching PR heads before showing recent branch commits. The branch hygiene
@@ -264,11 +259,8 @@ Verifies an exact swarm head before preparing an idempotent source promotion
 branch. Run it from a release-maintainer checkout with origin=shiplog and
 swarm=shiplog-swarm:
 
-```bash
-cargo xtask promote --swarm-sha <exact-swarm-sha> --dry-run
-cargo xtask promote --swarm-sha <exact-swarm-sha>
-cargo xtask promote --swarm-sha <exact-swarm-sha> --verify-only
-```
+    cargo xtask promote --swarm-sha <exact-swarm-sha> --dry-run
+    cargo xtask promote --swarm-sha <exact-swarm-sha>
 
 The command checks shared ancestry and a completed successful
 Shiplog Rust Small Result run for the exact SHA, then creates or fast-forwards
@@ -276,21 +268,6 @@ promote/swarm-current-<sha> on the source remote and writes the existing
 promotion-body contract. It never merges, squashes, tags, publishes, or
 deploys. Open the generated PR with a regular merge commit and verify it with
 cargo xtask repo-contract-report after merge.
-
-`--verify-only` is a read-only post-merge check: instead of preparing a branch
-it confirms the exact swarm head already landed on `--source-ref` as a
-regular-merge (two-parent) checkpoint whose second parent is that head. It emits
-a machine-readable `mode: "verify-only"` receipt (emitted only on success; a
-failed verification exits non-zero with no receipt) and fails closed if the
-promotion has not landed or was squash-merged. The landing is recognized even
-when later commits have already landed on source, so verification does not
-depend on `promotion-state.toml` being updated first. It performs no ref, PR, or
-file mutation and makes no `gh` calls. Because a promoted head is usually no
-longer current swarm/main by the time it is verified, `--verify-only` does not
-require `--allow-historical`; it still checks the head is reachable from
-`--swarm-ref`. `--dry-run` has no additional effect in this mode (verify-only is
-already read-only). Confirming source post-merge CI and whether the source tip
-carries unapproved product drift remains the job of `repo-contract-report`.
 
 ### `cargo xtask closeout`
 
