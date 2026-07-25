@@ -185,6 +185,10 @@ linked_spec = "SHIPLOG-SPEC-0010"
             "SHIPLOG-PLAN-0010\n\n## Work item: active-goal-checker\n",
         ),
         (
+            "policy/source-only-paths.toml",
+            "schema_version = 1\npolicy = \"source-only-paths\"\nowner = \"repo-infra/release\"\nstatus = \"blocking\"\n",
+        ),
+        (
             ".codex/goals/active.toml",
             r#"
 schema_version = 1
@@ -204,7 +208,7 @@ status = "active"
 proposal = "SHIPLOG-PROP-0008"
 spec = "SHIPLOG-SPEC-0010"
 plan = "plans/0.10.0/implementation-plan.md"
-commands = ["rtk cargo xtask check-goals", "rtk git diff --check"]
+commands = ["cargo xtask check-goals", "git diff --check"]
 "#,
         ),
     ]);
@@ -277,7 +281,7 @@ status = "active"
 proposal = "SHIPLOG-PROP-0008"
 spec = "SHIPLOG-SPEC-0010"
 plan = "plans/0.10.0/implementation-plan.md"
-commands = ["rtk cargo xtask check-goals", "rtk git diff --check"]
+commands = ["cargo xtask check-goals", "git diff --check"]
 "#,
         ),
         (
@@ -375,7 +379,7 @@ status = "active"
 proposal = "SHIPLOG-PROP-0008"
 spec = "SHIPLOG-SPEC-0010"
 plan = "plans/0.10.0/implementation-plan.md"
-commands = ["rtk git diff --check"]
+commands = ["git diff --check"]
 
 [[work_item]]
 id = "two"
@@ -383,7 +387,7 @@ status = "active"
 proposal = "SHIPLOG-PROP-0008"
 spec = "SHIPLOG-SPEC-0010"
 plan = "plans/0.10.0/implementation-plan.md"
-commands = ["rtk git diff --check"]
+commands = ["git diff --check"]
 "#,
         ),
     ]);
@@ -406,8 +410,8 @@ fn check_support_tiers_passes_for_valid_claim_map() {
 
 | Surface | Tier | Claim | Proof command | Notes |
 |---|---|---|---|---|
-| Document artifact links | Stabilizing | Proposal/spec/ADR/plan artifacts are linked. | `rtk cargo xtask check-doc-artifacts` | Dedicated checker. |
-| Policy ledgers | Stable | Policy files parse. | `rtk cargo xtask check-policy-ledgers` | Required proof. |
+| Document artifact links | Stabilizing | Proposal/spec/ADR/plan artifacts are linked. | `cargo xtask check-doc-artifacts` | Dedicated checker. |
+| Policy ledgers | Stable | Policy files parse. | `cargo xtask check-policy-ledgers` | Required proof. |
 "#,
     )]);
 
@@ -429,7 +433,7 @@ fn check_support_tiers_fails_on_unknown_xtask_proof() {
 
 | Surface | Tier | Claim | Proof command | Notes |
 |---|---|---|---|---|
-| Policy ledgers | Stable | Policy files parse. | `rtk cargo xtask made-up-check` | Required proof. |
+| Policy ledgers | Stable | Policy files parse. | `cargo xtask made-up-check` | Required proof. |
 "#,
     )]);
 
@@ -477,6 +481,10 @@ fn policy_report_empty_dir_is_ok() {
 #[test]
 fn repo_contract_report_writes_graph_outputs() {
     let dir = fixture_workspace(&[
+        (
+            "policy/source-only-paths.toml",
+            "schema_version = 1\npolicy = \"source-only-paths\"\nowner = \"repo-infra/release\"\nstatus = \"blocking\"\n",
+        ),
         (
             "policy/doc-artifacts.toml",
             r#"
@@ -527,7 +535,7 @@ status = "active"
 proposal = "SHIPLOG-PROP-0008"
 spec = "SHIPLOG-SPEC-0010"
 plan = "plans/0.10.0/implementation-plan.md"
-commands = ["rtk cargo xtask repo-contract-report", "rtk git diff --check"]
+commands = ["cargo xtask repo-contract-report", "git diff --check"]
 "#,
         ),
         (
@@ -538,7 +546,7 @@ commands = ["rtk cargo xtask repo-contract-report", "rtk git diff --check"]
 
 | Surface | Tier | Claim | Proof command | Notes |
 |---|---|---|---|---|
-| Repo contract report | Stabilizing | Agents can inspect repo contract state. | `rtk cargo xtask repo-contract-report` | Writes inspection reports. |
+| Repo contract report | Stabilizing | Agents can inspect repo contract state. | `cargo xtask repo-contract-report` | Writes inspection reports. |
 "#,
         ),
     ]);
@@ -621,7 +629,7 @@ status = "active"
 proposal = "SHIPLOG-PROP-0008"
 spec = "SHIPLOG-SPEC-0010"
 plan = "plans/0.10.0/implementation-plan.md"
-commands = ["rtk cargo xtask pr-body --work-item pr-body-generator", "rtk git diff --check"]
+commands = ["cargo xtask pr-body --work-item pr-body-generator", "git diff --check"]
 "#,
         ),
         (
@@ -653,8 +661,8 @@ No GitHub API calls and no PR creation.
 ### Proof commands
 
 ```bash
-rtk cargo xtask pr-body --work-item pr-body-generator
-rtk git diff --check
+cargo xtask pr-body --work-item pr-body-generator
+git diff --check
 ```
 
 ### Rollback
@@ -755,7 +763,7 @@ status = "done"
 proposal = "SHIPLOG-PROP-0008"
 spec = "SHIPLOG-SPEC-0010"
 plan = "plans/0.10.0/implementation-plan.md"
-commands = ["rtk cargo xtask pr-body --work-item pr-body-generator", "rtk git diff --check"]
+commands = ["cargo xtask pr-body --work-item pr-body-generator", "git diff --check"]
 receipts = ["EffortlessMetrics/shiplog-swarm#36", "EffortlessMetrics/shiplog#479"]
 "#,
         ),
