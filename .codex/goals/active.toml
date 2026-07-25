@@ -30,18 +30,18 @@ spec = "SHIPLOG-SPEC-0011"
 adr = "SHIPLOG-ADR-0011"
 plan = "plans/shiplog-swarm/current-promotion.md"
 commands = [
-  "rtk git fetch origin --prune",
-  "rtk git fetch swarm --prune",
-  "rtk git merge-base origin/main swarm/main",
-  "rtk git log --oneline origin/main..swarm/main",
-  "rtk gh pr list --repo EffortlessMetrics/shiplog-swarm --state open --limit 30",
-  "rtk gh pr list --repo EffortlessMetrics/shiplog --state open --limit 30",
-  "rtk gh issue list --repo EffortlessMetrics/shiplog-swarm --state open --limit 30",
-  "rtk gh issue list --repo EffortlessMetrics/shiplog --state open --limit 30",
-  "rtk gh run list --repo EffortlessMetrics/shiplog-swarm --branch main --limit 10",
-  "rtk gh run list --repo EffortlessMetrics/shiplog --branch main --limit 10",
-  "rtk cargo xtask repo-contract-report",
-  "rtk git diff --check",
+  "git fetch origin --prune",
+  "git fetch swarm --prune",
+  "git merge-base origin/main swarm/main",
+  "git log --oneline origin/main..swarm/main",
+  "gh pr list --repo EffortlessMetrics/shiplog-swarm --state open --limit 30",
+  "gh pr list --repo EffortlessMetrics/shiplog --state open --limit 30",
+  "gh issue list --repo EffortlessMetrics/shiplog-swarm --state open --limit 30",
+  "gh issue list --repo EffortlessMetrics/shiplog --state open --limit 30",
+  "gh run list --repo EffortlessMetrics/shiplog-swarm --branch main --limit 10",
+  "gh run list --repo EffortlessMetrics/shiplog --branch main --limit 10",
+  "cargo xtask repo-contract-report",
+  "git diff --check",
 ]
 
 # Historical promotion receipts through source PR #607 remain in
