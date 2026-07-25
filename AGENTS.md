@@ -19,9 +19,9 @@ token operations.
 When working from a checkout that has both remotes:
 
 ```bash
-rtk git fetch origin --prune
-rtk git fetch swarm --prune
-rtk git switch -c <branch> swarm/main
+git fetch origin --prune
+git fetch swarm --prune
+git switch -c <branch> swarm/main
 ```
 
 Push normal development branches to `swarm` and open PRs against
@@ -58,7 +58,6 @@ When no actionable findings are emitted:
 
 ```
 No actionable findings emitted.
-
 Inspected surfaces:
 Checks performed:
 Why no comments:
