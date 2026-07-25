@@ -37,17 +37,17 @@ swarm  = git@github.com:EffortlessMetrics/shiplog-swarm.git
 ```
 
 ```powershell
-rtk git fetch origin --prune
-rtk git fetch swarm --prune
+git fetch origin --prune
+git fetch swarm --prune
 
-rtk git merge-base origin/main swarm/main
-rtk git log --oneline origin/main..swarm/main
-rtk git diff --stat origin/main..swarm/main
+git merge-base origin/main swarm/main
+git log --oneline origin/main..swarm/main
+git diff --stat origin/main..swarm/main
 
-$swarmSha = (rtk git rev-parse --short swarm/main).Trim()
+$swarmSha = (git rev-parse --short swarm/main).Trim()
 $branch = "promote/swarm-$(Get-Date -Format yyyyMMdd)-$swarmSha"
 
-rtk git push origin "swarm/main:refs/heads/$branch"
+git push origin "swarm/main:refs/heads/$branch"
 ```
 
 Stop if `git merge-base` prints nothing, if the log contains unintended work,
@@ -56,7 +56,7 @@ or if the diff is broader than the swarm PRs being promoted.
 ## Open The Source PR
 
 ```powershell
-rtk gh pr create --repo EffortlessMetrics/shiplog --base main --head $branch --title "merge(swarm): promote shiplog-swarm through $swarmSha" --body-file <body.md>
+gh pr create --repo EffortlessMetrics/shiplog --base main --head $branch --title "merge(swarm): promote shiplog-swarm through $swarmSha" --body-file <body.md>
 ```
 
 The PR body must include:
@@ -78,7 +78,7 @@ section labels, and each section must mention `Shiplog Rust Small Result`.
 Only merge after source PR checks are green.
 
 ```powershell
-rtk gh pr merge <number> --repo EffortlessMetrics/shiplog --merge --delete-branch
+gh pr merge <number> --repo EffortlessMetrics/shiplog --merge --delete-branch
 ```
 
 Do not use `--squash` for source promotion PRs. Swarm work is already squashed
@@ -89,13 +89,13 @@ at the normal development boundary; the source merge commit is the checkpoint.
 After merge, verify source `main`:
 
 ```powershell
-rtk gh run list --repo EffortlessMetrics/shiplog --branch main --limit 12 --json databaseId,workflowName,status,conclusion,headSha,createdAt,displayTitle
+gh run list --repo EffortlessMetrics/shiplog --branch main --limit 12 --json databaseId,workflowName,status,conclusion,headSha,createdAt,displayTitle
 
-rtk cargo xtask repo-contract-report
+cargo xtask repo-contract-report
 
-rtk gh pr list --repo EffortlessMetrics/shiplog --state open --limit 50
-rtk gh pr list --repo EffortlessMetrics/shiplog-swarm --state open --limit 50
-rtk gh api repos/EffortlessMetrics/shiplog-swarm/branches/main/protection/required_status_checks --jq '{strict: .strict, contexts: .contexts, checks: .checks}'
+gh pr list --repo EffortlessMetrics/shiplog --state open --limit 50
+gh pr list --repo EffortlessMetrics/shiplog-swarm --state open --limit 50
+gh api repos/EffortlessMetrics/shiplog-swarm/branches/main/protection/required_status_checks --jq '{strict: .strict, contexts: .contexts, checks: .checks}'
 ```
 
 Expected:
@@ -117,6 +117,24 @@ Avoid source-only product, docs, or CI changes after cutover. If emergency
 release work lands directly in `EffortlessMetrics/shiplog`, back-sync that
 change into `EffortlessMetrics/shiplog-swarm` before more normal development
 lands there.
+
+Routine dependency, workflow-update, security-remediation, and documentation
+automation must propose changes in `shiplog-swarm`. Source security automation
+may fail a check, retain an artifact, or link a remediation handoff to swarm,
+but it must not create a product branch or pull request in `shiplog`.
+
+For an emergency hotfix, create and prove the fix in swarm first. If explicit
+release authority requires an immediate source hotfix, pause normal promotion,
+land the authorized source change, back-port the exact fix into swarm, and
+re-establish tree alignment before promotion resumes. Emergency authorization
+does not become standing permission for source-side product automation.
+
+Verify the role boundary explicitly rather than inferring it from remote names:
+
+```powershell
+cargo xtask check-automation-authority --repository-role swarm
+# Run with `--repository-role source` in the canonical source checkout.
+```
 
 ## Rollback
 
