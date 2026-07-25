@@ -79,7 +79,7 @@ the Codex-facing execution-state manifests:
 - the plan reference is a safe repo-relative path, exists, and is ledgered as a
   plan artifact;
 - the work-item ID is listed in the referenced implementation plan;
-- ready and active work items carry proof commands;
+- ready and active work items carry direct proof commands;
 - archived manifests do not contain open `ready` or `active` work items;
 - blocked work items name a blocker; and
 - done work items carry proof commands or receipt refs.
@@ -95,7 +95,7 @@ source-of-truth map from product/governance claims to proof commands:
 - the claim map table exists and has the expected columns;
 - support-tier names are recognized;
 - stable and stabilizing claims have backticked proof commands; and
-- proof commands start with `rtk cargo xtask ...` and reference known xtask
+- proof commands start with `cargo xtask ...` and reference known xtask
   subcommands.
 
 Exits with non-zero if any finding. This is the dedicated proof command for
@@ -128,6 +128,7 @@ Writes repo-contract inspection reports for humans and agents:
 - `target/source-of-truth/graph.md`
 
 The report reads [`policy/doc-artifacts.toml`](../policy/doc-artifacts.toml),
+[`policy/source-only-paths.toml`](../policy/source-only-paths.toml),
 [`.codex/goals/active.toml`](../.codex/goals/active.toml), and
 [`docs/status/SUPPORT_TIERS.md`](status/SUPPORT_TIERS.md). It summarizes the
 active goal, recommended next slice, work items, artifact links,
@@ -138,9 +139,13 @@ traceability, branch-protection settings, and promotion receipt freshness. The
 recommended next slice is derived from existing report statuses so agents can
 see whether to triage queues, promote swarm work, repair blocking report state,
 carry receipts in the next substantive PR, or choose the next user-value slice.
-The topology section classifies the full source-ahead commit range so expected
-`promote/swarm-*` merge commits are not confused with source-only content
-drift. The local checkout section reports clean/dirty status and any local
+The topology section classifies the full source-ahead commit range and the
+changed paths. It reports raw tree identity separately from product-tree
+alignment, recognizes only exact, current entries in `source-only-paths.toml`
+as approved governance, and keeps unknown or product paths fail-closed as
+drift. This lets a later approved source governance commit coexist with the
+latest `promote/swarm-*` merge without hiding product changes. The local
+checkout section reports clean/dirty status and any local
 branches already merged into source or swarm so agents can clean up their own
 merged branches deliberately. Its review commands check both GitHub repos for
 matching PR heads before showing recent branch commits. The branch hygiene
@@ -167,7 +172,7 @@ Generates a draft pull request body from a work item in
 [`.codex/goals/active.toml`](../.codex/goals/active.toml):
 
 ```bash
-rtk cargo xtask pr-body --work-item promotion-cadence --output target/source-of-truth/pr-body.md
+cargo xtask pr-body --work-item promotion-cadence --output target/source-of-truth/pr-body.md
 ```
 
 The command reads the active goal manifest, the linked implementation plan, and
@@ -182,7 +187,7 @@ support-tier impact, policy impact, proof commands, claim boundary, and
 rollback when those fields are present in the linked plan/spec. For the proof
 section, current work-item commands from `.codex/goals/active.toml` take
 precedence over plan prose so active-agent PR drafts use the same commands
-validated by `rtk cargo xtask check-goals`; if no current commands are recorded,
+validated by `cargo xtask check-goals`; if no current commands are recorded,
 the generator falls back to the linked plan item's proof commands. When the
 work item has many receipt refs, the generated body prefers compact PR receipt
 refs such as `EffortlessMetrics/shiplog-swarm#135` over narrative closure notes
@@ -192,7 +197,7 @@ manifest-order list. It does not infer chronology from free-form receipt text.
 `pr-body` is scoped to the selected active-goal work item. It is not a generic
 PR-body generator for arbitrary local diffs. If the active work item is
 `promotion-cadence`, the generated body describes that governance work item; use
-`rtk cargo xtask promotion-body` for source promotion PRs, and write normal one-off
+`cargo xtask promotion-body` for source promotion PRs, and write normal one-off
 swarm PR bodies from the actual diff, proof commands, and claim boundary when no
 separate active work item exists.
 It is a derived draft only: it does not call the GitHub API, create a PR, mutate
@@ -203,7 +208,7 @@ source artifacts, change branch protection, or replace reviewer judgment.
 Generates a source promotion PR body from the current source/swarm refs:
 
 ```bash
-rtk cargo xtask promotion-body --output target/source-of-truth/promotion-body.md
+cargo xtask promotion-body --output target/source-of-truth/promotion-body.md
 ```
 
 By default it compares `origin/main..swarm/main`, resolves the swarm head, and
@@ -211,7 +216,7 @@ infers included swarm PRs from squash-merge commit subjects like `(#150)`. Run
 IDs can be supplied when known:
 
 ```bash
-rtk cargo xtask promotion-body \
+cargo xtask promotion-body \
   --swarm-pr-run 26803480265 \
   --swarm-main-run 26803857830 \
   --source-pr-run 26804246444 \
@@ -225,7 +230,7 @@ Pass the final source run ID to update the proof section without restating the
 swarm head or included PRs:
 
 ```bash
-rtk cargo xtask promotion-body \
+cargo xtask promotion-body \
   --source-post-merge-run 26807984200 \
   --output target/source-of-truth/promotion-body.md
 ```
@@ -235,7 +240,7 @@ different checkout state or when source/swarm refs no longer point at the
 promotion being edited:
 
 ```bash
-rtk cargo xtask promotion-body \
+cargo xtask promotion-body \
   --swarm-head cdda3746bca4ea3760c24ac9b987b8d1bdf00b61 \
   --included-swarm-pr EffortlessMetrics/shiplog-swarm#151 \
   --swarm-pr-run 26806111994 \
@@ -259,8 +264,11 @@ Verifies an exact swarm head before preparing an idempotent source promotion
 branch. Run it from a release-maintainer checkout with origin=shiplog and
 swarm=shiplog-swarm:
 
-    rtk cargo xtask promote --swarm-sha <exact-swarm-sha> --dry-run
-    rtk cargo xtask promote --swarm-sha <exact-swarm-sha>
+```bash
+cargo xtask promote --swarm-sha <exact-swarm-sha> --dry-run
+cargo xtask promote --swarm-sha <exact-swarm-sha>
+cargo xtask promote --swarm-sha <exact-swarm-sha> --verify-only
+```
 
 The command checks shared ancestry and a completed successful
 Shiplog Rust Small Result run for the exact SHA, then creates or fast-forwards
@@ -269,13 +277,28 @@ promotion-body contract. It never merges, squashes, tags, publishes, or
 deploys. Open the generated PR with a regular merge commit and verify it with
 cargo xtask repo-contract-report after merge.
 
+`--verify-only` is a read-only post-merge check: instead of preparing a branch
+it confirms the exact swarm head already landed on `--source-ref` as a
+regular-merge (two-parent) checkpoint whose second parent is that head. It emits
+a machine-readable `mode: "verify-only"` receipt (emitted only on success; a
+failed verification exits non-zero with no receipt) and fails closed if the
+promotion has not landed or was squash-merged. The landing is recognized even
+when later commits have already landed on source, so verification does not
+depend on `promotion-state.toml` being updated first. It performs no ref, PR, or
+file mutation and makes no `gh` calls. Because a promoted head is usually no
+longer current swarm/main by the time it is verified, `--verify-only` does not
+require `--allow-historical`; it still checks the head is reachable from
+`--swarm-ref`. `--dry-run` has no additional effect in this mode (verify-only is
+already read-only). Confirming source post-merge CI and whether the source tip
+carries unapproved product drift remains the job of `repo-contract-report`.
+
 ### `cargo xtask closeout`
 
 Generates source-of-truth closeout artifacts from
 [`.codex/goals/active.toml`](../.codex/goals/active.toml):
 
 ```bash
-rtk cargo xtask closeout --goal shiplog-swarm-control-plane --handoff-output target/source-of-truth/closeout.md --archive-output target/source-of-truth/active-goal-archive.toml
+cargo xtask closeout --goal shiplog-swarm-control-plane --handoff-output target/source-of-truth/closeout.md --archive-output target/source-of-truth/active-goal-archive.toml
 ```
 
 The command verifies that the requested `--goal` matches the active goal
