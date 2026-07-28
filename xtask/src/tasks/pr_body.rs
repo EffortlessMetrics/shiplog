@@ -613,7 +613,7 @@ status = "active"
 proposal = "SHIPLOG-PROP-0008"
 spec = "SHIPLOG-SPEC-0010"
 plan = "plans/0.10.0/implementation-plan.md"
-commands = ["rtk cargo xtask pr-body --work-item pr-body-generator", "rtk git diff --check"]
+commands = ["cargo xtask pr-body --work-item pr-body-generator", "git diff --check"]
 receipts = ["EffortlessMetrics/shiplog-swarm#36", "EffortlessMetrics/shiplog#479"]
 "#,
         );
@@ -707,7 +707,7 @@ Policy impact:
         assert!(body.contains("## Existing receipts"));
         assert!(body.contains("EffortlessMetrics/shiplog-swarm#36"));
         assert!(body.contains("EffortlessMetrics/shiplog#479"));
-        assert!(body.contains("rtk cargo xtask pr-body --work-item pr-body-generator"));
+        assert!(body.contains("cargo xtask pr-body --work-item pr-body-generator"));
         assert!(!body.contains("cargo xtask stale-plan-proof"));
         assert!(body.contains("This generates drafts only."));
     }
