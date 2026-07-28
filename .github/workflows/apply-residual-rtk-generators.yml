@@ -1,15 +1,15 @@
 name: Stage reviewed residual RTK generator port
 
 on:
-  push:
-    branches: [sync/residual-rtk-generators]
-    paths: [.github/workflows/apply-residual-rtk-generators.yml]
+  pull_request:
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: write
 
 jobs:
   apply:
+    if: github.event.pull_request.head.ref == 'sync/residual-rtk-generators' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout source transport branch
