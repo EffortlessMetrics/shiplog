@@ -18,22 +18,79 @@ jobs:
           ref: sync/residual-rtk-generators
           fetch-depth: 0
 
-      - name: Apply reviewed swarm cleanup
+      - name: Apply reviewed source-local cleanup
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "EffortlessSteven"
           git config user.email "git@effortlesssteven.com"
 
-          git fetch https://github.com/EffortlessMetrics/shiplog-swarm.git \
-            dcbf5b3d8fe94dbc57e816ac737677b1caed4ee4
-          git cherry-pick --no-commit dcbf5b3d8fe94dbc57e816ac737677b1caed4ee4
+          python3 - <<'PY'
+          from pathlib import Path
+
+          for name in [
+              "xtask/src/tasks/closeout.rs",
+              "xtask/src/tasks/pr_body.rs",
+              "xtask/src/tasks/repo_contract_report.rs",
+          ]:
+              path = Path(name)
+              text = path.read_text(encoding="utf-8")
+              path.write_text(text.replace("rtk ", ""), encoding="utf-8")
+
+          path = Path("plans/shiplog-swarm/implementation-plan.md")
+          lines = path.read_text(encoding="utf-8").splitlines()
+          replacements = {
+              "rtk git fetch origin main --prune --tags": "git fetch origin main --prune --tags",
+              "rtk git fetch swarm main --prune": "git fetch swarm main --prune",
+              "rtk git merge-base origin/main swarm/main": "git merge-base origin/main swarm/main",
+              "rtk git diff --stat origin/main..swarm/main": "git diff --stat origin/main..swarm/main",
+              "rtk gh api repos/EffortlessMetrics/shiplog-swarm --jq '{allow_squash_merge,allow_merge_commit,allow_rebase_merge,allow_auto_merge,delete_branch_on_merge}'": "gh api repos/EffortlessMetrics/shiplog-swarm --jq '{allow_squash_merge,allow_merge_commit,allow_rebase_merge,allow_auto_merge,delete_branch_on_merge}'",
+              "rtk gh api repos/EffortlessMetrics/shiplog --jq '{allow_merge_commit}'": "gh api repos/EffortlessMetrics/shiplog --jq '{allow_merge_commit}'",
+              "rtk cargo xtask check-workflows --mode blocking-allowlist": "cargo xtask check-workflows --mode blocking-allowlist",
+              "rtk cargo xtask check-policy-schemas": "cargo xtask check-policy-schemas",
+              "rtk gh run list --repo EffortlessMetrics/shiplog-swarm --workflow \"EM CI Routed Shiplog Rust\" --limit 10": "gh run list --repo EffortlessMetrics/shiplog-swarm --workflow \"EM CI Routed Shiplog Rust\" --limit 10",
+              "rtk gh pr checks --repo EffortlessMetrics/shiplog-swarm <proof-pr>": "gh pr checks --repo EffortlessMetrics/shiplog-swarm <proof-pr>",
+              "rtk gh api repos/EffortlessMetrics/shiplog-swarm/branches/main/protection": "gh api repos/EffortlessMetrics/shiplog-swarm/branches/main/protection",
+              "rtk gh pr checks --repo EffortlessMetrics/shiplog-swarm <post-protection-pr>": "gh pr checks --repo EffortlessMetrics/shiplog-swarm <post-protection-pr>",
+              "rtk git diff --check": "git diff --check",
+              "rtk git status --short --branch": "git status --short --branch",
+              "rtk git fetch origin --prune": "git fetch origin --prune",
+              "rtk git fetch swarm --prune": "git fetch swarm --prune",
+              "rtk gh pr list --repo EffortlessMetrics/shiplog-swarm --state open --limit 30": "gh pr list --repo EffortlessMetrics/shiplog-swarm --state open --limit 30",
+              "rtk gh pr list --repo EffortlessMetrics/shiplog --state open --limit 30": "gh pr list --repo EffortlessMetrics/shiplog --state open --limit 30",
+              "rtk gh issue list --repo EffortlessMetrics/shiplog-swarm --state open --limit 30": "gh issue list --repo EffortlessMetrics/shiplog-swarm --state open --limit 30",
+              "rtk gh issue list --repo EffortlessMetrics/shiplog --state open --limit 30": "gh issue list --repo EffortlessMetrics/shiplog --state open --limit 30",
+              "rtk cargo xtask repo-contract-report": "cargo xtask repo-contract-report",
+              "rtk cargo xtask check-goals": "cargo xtask check-goals",
+              "rtk git log --oneline origin/main..swarm/main": "git log --oneline origin/main..swarm/main",
+              "rtk gh run list --repo EffortlessMetrics/shiplog-swarm --branch main --limit 10": "gh run list --repo EffortlessMetrics/shiplog-swarm --branch main --limit 10",
+              "rtk gh run list --repo EffortlessMetrics/shiplog --branch main --limit 10": "gh run list --repo EffortlessMetrics/shiplog --branch main --limit 10",
+              "rtk gh pr create --base main --head promote/swarm-YYYYMMDD-SHA": "gh pr create --base main --head promote/swarm-YYYYMMDD-SHA",
+          }
+          changed = 0
+          rendered = []
+          for line in lines:
+              replacement = replacements.get(line.strip())
+              if replacement is None:
+                  rendered.append(line)
+                  continue
+              indent = line[: len(line) - len(line.lstrip())]
+              rendered.append(indent + replacement)
+              changed += 1
+          path.write_text("\n".join(rendered) + "\n", encoding="utf-8")
+          print(f"implementation-plan direct command replacements: {changed}")
+          PY
 
           curl -fsSL \
             https://raw.githubusercontent.com/EffortlessMetrics/shiplog-swarm/dcbf5b3d8fe94dbc57e816ac737677b1caed4ee4/plans/shiplog-swarm/current-promotion.md \
             -o plans/shiplog-swarm/current-promotion.md
 
           git diff --check
+          if git diff --quiet; then
+            echo "reviewed cleanup already staged"
+            exit 0
+          fi
+
           git add \
             plans/shiplog-swarm/current-promotion.md \
             plans/shiplog-swarm/implementation-plan.md \
