@@ -226,17 +226,17 @@ fn render_closeout(
     }
 
     out.push_str("## Source/swarm state\n\n");
-    out.push_str("- Source head: Not inspected by `rtk cargo xtask closeout`.\n");
-    out.push_str("- Swarm head: Not inspected by `rtk cargo xtask closeout`.\n");
-    out.push_str("- Trees aligned: Not inspected by `rtk cargo xtask closeout`.\n");
-    out.push_str("- Promotion PR: Not inspected by `rtk cargo xtask closeout`.\n");
+    out.push_str("- Source head: Not inspected by `cargo xtask closeout`.\n");
+    out.push_str("- Swarm head: Not inspected by `cargo xtask closeout`.\n");
+    out.push_str("- Trees aligned: Not inspected by `cargo xtask closeout`.\n");
+    out.push_str("- Promotion PR: Not inspected by `cargo xtask closeout`.\n");
     out.push_str("- Release authority: Not changed by generated closeout.\n\n");
 
     out.push_str("## Queue state\n\n");
-    out.push_str("- Source PRs: Not inspected by `rtk cargo xtask closeout`.\n");
-    out.push_str("- Swarm PRs: Not inspected by `rtk cargo xtask closeout`.\n");
-    out.push_str("- Source issues: Not inspected by `rtk cargo xtask closeout`.\n");
-    out.push_str("- Swarm issues: Not inspected by `rtk cargo xtask closeout`.\n\n");
+    out.push_str("- Source PRs: Not inspected by `cargo xtask closeout`.\n");
+    out.push_str("- Swarm PRs: Not inspected by `cargo xtask closeout`.\n");
+    out.push_str("- Source issues: Not inspected by `cargo xtask closeout`.\n");
+    out.push_str("- Swarm issues: Not inspected by `cargo xtask closeout`.\n\n");
 
     out.push_str("## Landed work items\n\n");
     let landed = goal
@@ -277,10 +277,10 @@ fn render_closeout(
     }
 
     out.push_str("## Promotion proof\n\n");
-    out.push_str("- Swarm PR run: Not inspected by `rtk cargo xtask closeout`.\n");
-    out.push_str("- Swarm main run: Not inspected by `rtk cargo xtask closeout`.\n");
-    out.push_str("- Source PR run: Not inspected by `rtk cargo xtask closeout`.\n");
-    out.push_str("- Source main run: Not inspected by `rtk cargo xtask closeout`.\n\n");
+    out.push_str("- Swarm PR run: Not inspected by `cargo xtask closeout`.\n");
+    out.push_str("- Swarm main run: Not inspected by `cargo xtask closeout`.\n");
+    out.push_str("- Source PR run: Not inspected by `cargo xtask closeout`.\n");
+    out.push_str("- Source main run: Not inspected by `cargo xtask closeout`.\n\n");
 
     out.push_str("## Receipts\n\n");
     let items_with_receipts = goal
@@ -312,7 +312,7 @@ fn render_closeout(
     }
     out.push_str(
         "\nAfter this closeout or a later promotion lands, run \
-         `rtk cargo xtask repo-contract-report` and carry any newly missing \
+         `cargo xtask repo-contract-report` and carry any newly missing \
          latest refs into the next substantive swarm PR.\n\n",
     );
 
@@ -481,7 +481,7 @@ status = "done"
 proposal = "SHIPLOG-PROP-0008"
 spec = "SHIPLOG-SPEC-0010"
 plan = "plans/0.10.0/implementation-plan.md"
-commands = ["rtk cargo xtask pr-body --work-item pr-body-generator", "rtk git diff --check"]
+commands = ["cargo xtask pr-body --work-item pr-body-generator", "git diff --check"]
 receipts = ["EffortlessMetrics/shiplog-swarm#36", "EffortlessMetrics/shiplog#479"]
 
 [[work_item]]
@@ -490,7 +490,7 @@ status = "active"
 proposal = "SHIPLOG-PROP-0008"
 spec = "SHIPLOG-SPEC-0010"
 plan = "plans/0.10.0/implementation-plan.md"
-commands = ["rtk cargo xtask closeout --goal shiplog-source-of-truth-stack", "rtk git diff --check"]
+commands = ["cargo xtask closeout --goal shiplog-source-of-truth-stack", "git diff --check"]
 "#,
         );
         write(
@@ -532,7 +532,7 @@ This generates closeout drafts only.
         .expect("read generated handoff");
         assert!(handoff.contains("# Shiplog source-of-truth stack rollout closeout"));
         assert!(handoff.contains("## Source/swarm state"));
-        assert!(handoff.contains("- Source head: Not inspected by `rtk cargo xtask closeout`."));
+        assert!(handoff.contains("- Source head: Not inspected by `cargo xtask closeout`."));
         assert!(handoff.contains("## Queue state"));
         assert!(handoff.contains("## Landed work items"));
         assert!(handoff.contains("pr-body-generator"));
