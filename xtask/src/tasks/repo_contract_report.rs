@@ -1,4 +1,4 @@
-//! `rtk cargo xtask repo-contract-report`
+//! `cargo xtask repo-contract-report`
 //!
 //! Writes a compact repo-contract inspection report for humans and agents.
 
@@ -9,7 +9,7 @@ use std::fs;
 use std::path::Path;
 use std::process::Command;
 
-const REPORT_COMMAND: &str = "rtk cargo xtask repo-contract-report";
+const REPORT_COMMAND: &str = "cargo xtask repo-contract-report";
 const SWARM_REPO: &str = "EffortlessMetrics/shiplog-swarm";
 const SOURCE_REPO: &str = "EffortlessMetrics/shiplog";
 const SWARM_BRANCH: &str = "main";
@@ -507,7 +507,7 @@ fn recommended_next_slice_from_statuses(
             reason: format!("local checkout status is `{local_checkout_status}`"),
             source: "local_checkout".to_string(),
             next_actions: vec![
-                "Run `rtk git status --short --branch` and separate user work before editing."
+                "Run `git status --short --branch` and separate user work before editing."
                     .to_string(),
             ],
             claim_boundary:
@@ -880,7 +880,7 @@ fn local_merged_cleanup_review_commands(candidates: &[String]) -> Vec<String> {
         .iter()
         .map(|branch| {
             format!(
-                "rtk gh pr list --repo {SWARM_REPO} --state all --head {branch} --limit 10 && rtk gh pr list --repo {SOURCE_REPO} --state all --head {branch} --limit 10 && rtk git log --oneline --max-count 3 {branch}"
+                "gh pr list --repo {SWARM_REPO} --state all --head {branch} --limit 10 && gh pr list --repo {SOURCE_REPO} --state all --head {branch} --limit 10 && git log --oneline --max-count 3 {branch}"
             )
         })
         .collect()
@@ -901,20 +901,20 @@ fn local_checkout_next_actions(
             ];
             if unprotected_local_branch_count >= LOCAL_BRANCH_INVENTORY_REVIEW_THRESHOLD {
                 actions.push(format!(
-                    "Local branch inventory has {unprotected_local_branch_count} unprotected branch(es); review with `rtk git branch --format=\"%(refname:short)\"` before deleting anything."
+                    "Local branch inventory has {unprotected_local_branch_count} unprotected branch(es); review with `git branch --format=\"%(refname:short)\"` before deleting anything."
                 ));
             }
             actions
         }
         Some(true) => vec![format!(
-            "Review {local_merged_cleanup_count} local branch(es) already merged into source or swarm before deleting with `rtk git branch -d <branch>`."
+            "Review {local_merged_cleanup_count} local branch(es) already merged into source or swarm before deleting with `git branch -d <branch>`."
         )],
         Some(false) => vec![
-            "Inspect `rtk git status`, keep only scoped changes, and leave no dirty or untracked files before handoff."
+            "Inspect `git status`, keep only scoped changes, and leave no dirty or untracked files before handoff."
                 .to_string(),
         ],
         None => vec![
-            "Run from a Git checkout with `origin` and `swarm` remotes available, then rerun `rtk cargo xtask repo-contract-report`."
+            "Run from a Git checkout with `origin` and `swarm` remotes available, then rerun `cargo xtask repo-contract-report`."
                 .to_string(),
         ],
     }
@@ -1100,7 +1100,7 @@ fn remote_cleanup_review_commands(candidates: &[String], remote: &str, repo: &st
         .filter_map(|candidate| remote_branch_head(candidate, remote).map(|head| (candidate, head)))
         .map(|(candidate, head)| {
             format!(
-                "rtk gh pr list --repo {repo} --state all --head {head} --limit 10 && rtk git log --oneline --max-count 3 {candidate}"
+                "gh pr list --repo {repo} --state all --head {head} --limit 10 && git log --oneline --max-count 3 {candidate}"
             )
         })
         .collect()
@@ -1172,7 +1172,7 @@ fn remote_branch_hygiene_next_actions(
             "Review {source_count} source and {swarm_count} swarm remote cleanup candidate(s); start with {source_merged_count} source and {swarm_merged_count} swarm candidate(s) already merged into their repo trunk, then inspect {source_review_count} source and {swarm_review_count} swarm unmerged candidate(s). Delete only after confirming no open PR, release need, or preserved follow-up value."
         )],
         _ => vec![
-            "Run from a Git checkout with `origin` and `swarm` remotes available, then rerun `rtk cargo xtask repo-contract-report`."
+            "Run from a Git checkout with `origin` and `swarm` remotes available, then rerun `cargo xtask repo-contract-report`."
                 .to_string(),
         ],
     }
@@ -1436,7 +1436,7 @@ fn remote_queue_hygiene_next_actions(
             "Review {source_prs} source PR(s), {swarm_prs} swarm PR(s), {source_issues} source issue(s), and {swarm_issues} swarm issue(s); merge, close, defer, or convert each item before treating the queue as boring."
         )],
         _ => vec![
-            "Verify queues with `rtk gh pr list` and `rtk gh issue list` for both source and swarm repos."
+            "Verify queues with `gh pr list` and `gh issue list` for both source and swarm repos."
                 .to_string(),
         ],
     }
@@ -1550,7 +1550,7 @@ fn routed_ci_health_next_actions(status: &str, source_ok: bool, swarm_ok: bool) 
             )]
         }
         _ => vec![format!(
-            "Verify routed CI with `rtk gh run list --repo {SOURCE_REPO} --workflow \"{ROUTED_WORKFLOW}\" --branch {SOURCE_BRANCH} --limit 3` and the matching swarm command."
+            "Verify routed CI with `gh run list --repo {SOURCE_REPO} --workflow \"{ROUTED_WORKFLOW}\" --branch {SOURCE_BRANCH} --limit 3` and the matching swarm command."
         )],
     }
 }
@@ -1886,7 +1886,7 @@ fn promotion_pr_contract_next_actions(status: &str, failed_checks: &[String]) ->
                 .to_string(),
         ],
         _ => vec![
-            "Verify the latest source promotion PR with `rtk gh pr view <number> --repo EffortlessMetrics/shiplog --json title,body,state,mergeCommit,url`."
+            "Verify the latest source promotion PR with `gh pr view <number> --repo EffortlessMetrics/shiplog --json title,body,state,mergeCommit,url`."
                 .to_string(),
         ],
     }
@@ -2079,7 +2079,7 @@ fn branch_protection_next_actions(status: &str) -> Vec<String> {
             "Repair `{SWARM_REPO}/{SWARM_BRANCH}` branch protection so the only required status check is `{SWARM_REQUIRED_CHECK}` and conditional implementation jobs are not required."
         )],
         _ => vec![format!(
-            "Verify live branch protection with `rtk gh api repos/{SWARM_REPO}/branches/{SWARM_BRANCH}/protection`."
+            "Verify live branch protection with `gh api repos/{SWARM_REPO}/branches/{SWARM_BRANCH}/protection`."
         )],
     }
 }
@@ -2479,7 +2479,7 @@ fn topology_next_actions(
                 .to_string(),
         ),
         ("unavailable", _, _) => actions.push(
-            "Fetch `origin` and `swarm`, verify both refs exist, and rerun `rtk cargo xtask repo-contract-report`."
+            "Fetch `origin` and `swarm`, verify both refs exist, and rerun `cargo xtask repo-contract-report`."
                 .to_string(),
         ),
         _ => {
@@ -3970,7 +3970,7 @@ status = "active"
 proposal = "SHIPLOG-PROP-0008"
 spec = "SHIPLOG-SPEC-0010"
 plan = "plans/0.10.0/implementation-plan.md"
-commands = ["rtk cargo xtask repo-contract-report", "rtk git diff --check"]
+commands = ["cargo xtask repo-contract-report", "git diff --check"]
 receipts = [
   "receipt-01",
   "receipt-02",
@@ -3997,7 +3997,7 @@ receipts = [
 
 | Surface | Tier | Claim | Proof command | Notes |
 |---|---|---|---|---|
-| Repo contract report | Stabilizing | Agents can inspect repo contract state. | `rtk cargo xtask repo-contract-report` | Writes inspection reports. |
+| Repo contract report | Stabilizing | Agents can inspect repo contract state. | `cargo xtask repo-contract-report` | Writes inspection reports. |
 "#,
         );
 
@@ -4033,7 +4033,7 @@ receipts = [
         assert!(markdown.contains("receipt-14 (+2 earlier/other)"));
         assert!(!markdown.contains("receipt-01"));
         assert!(markdown.contains("## Work item proof commands"));
-        assert!(markdown.contains("rtk cargo xtask repo-contract-report"));
+        assert!(markdown.contains("cargo xtask repo-contract-report"));
         assert!(markdown.contains("## Git topology"));
         assert!(markdown.contains("Git topology next actions"));
         assert!(markdown.contains("## Local checkout"));
@@ -4267,7 +4267,7 @@ receipts = [
             report
                 .next_actions
                 .iter()
-                .any(|action| action.contains("rtk gh run list"))
+                .any(|action| action.contains("gh run list"))
         );
     }
 
@@ -4390,7 +4390,7 @@ Merge this PR with a regular merge commit; do not squash.
             report
                 .next_actions
                 .iter()
-                .any(|action| action.contains("rtk gh pr view"))
+                .any(|action| action.contains("gh pr view"))
         );
     }
 
@@ -4647,7 +4647,7 @@ Merge this PR with a regular merge commit; do not squash.
             report
                 .next_actions
                 .iter()
-                .any(|action| action.contains("rtk git branch --format"))
+                .any(|action| action.contains("git branch --format"))
         );
     }
 
@@ -4669,7 +4669,7 @@ Merge this PR with a regular merge commit; do not squash.
             report
                 .next_actions
                 .iter()
-                .any(|action| action.contains("rtk git status"))
+                .any(|action| action.contains("git status"))
         );
     }
 
@@ -4704,7 +4704,7 @@ Merge this PR with a regular merge commit; do not squash.
         assert_eq!(
             report.local_merged_cleanup_review_commands,
             vec![
-                "rtk gh pr list --repo EffortlessMetrics/shiplog-swarm --state all --head codex/done --limit 10 && rtk gh pr list --repo EffortlessMetrics/shiplog --state all --head codex/done --limit 10 && rtk git log --oneline --max-count 3 codex/done"
+                "gh pr list --repo EffortlessMetrics/shiplog-swarm --state all --head codex/done --limit 10 && gh pr list --repo EffortlessMetrics/shiplog --state all --head codex/done --limit 10 && git log --oneline --max-count 3 codex/done"
             ]
         );
         assert!(
@@ -4771,8 +4771,8 @@ Merge this PR with a regular merge commit; do not squash.
         assert_eq!(
             report.source_review_cleanup_review_commands,
             vec![
-                "rtk gh pr list --repo EffortlessMetrics/shiplog --state all --head feat/stale-source-work --limit 10 && rtk git log --oneline --max-count 3 origin/feat/stale-source-work",
-                "rtk gh pr list --repo EffortlessMetrics/shiplog --state all --head promote/swarm-20260531-1046ae2 --limit 10 && rtk git log --oneline --max-count 3 origin/promote/swarm-20260531-1046ae2"
+                "gh pr list --repo EffortlessMetrics/shiplog --state all --head feat/stale-source-work --limit 10 && git log --oneline --max-count 3 origin/feat/stale-source-work",
+                "gh pr list --repo EffortlessMetrics/shiplog --state all --head promote/swarm-20260531-1046ae2 --limit 10 && git log --oneline --max-count 3 origin/promote/swarm-20260531-1046ae2"
             ]
         );
         assert_eq!(
@@ -4787,7 +4787,7 @@ Merge this PR with a regular merge commit; do not squash.
         assert_eq!(
             report.swarm_review_cleanup_review_commands,
             vec![
-                "rtk gh pr list --repo EffortlessMetrics/shiplog-swarm --state all --head codex/stale-agent-branch --limit 10 && rtk git log --oneline --max-count 3 swarm/codex/stale-agent-branch"
+                "gh pr list --repo EffortlessMetrics/shiplog-swarm --state all --head codex/stale-agent-branch --limit 10 && git log --oneline --max-count 3 swarm/codex/stale-agent-branch"
             ]
         );
         assert!(
@@ -4837,25 +4837,25 @@ Merge this PR with a regular merge commit; do not squash.
         assert_eq!(
             report.source_merged_cleanup_review_commands,
             vec![
-                "rtk gh pr list --repo EffortlessMetrics/shiplog --state all --head promote/swarm-20260531-1046ae2 --limit 10 && rtk git log --oneline --max-count 3 origin/promote/swarm-20260531-1046ae2"
+                "gh pr list --repo EffortlessMetrics/shiplog --state all --head promote/swarm-20260531-1046ae2 --limit 10 && git log --oneline --max-count 3 origin/promote/swarm-20260531-1046ae2"
             ]
         );
         assert_eq!(
             report.source_review_cleanup_review_commands,
             vec![
-                "rtk gh pr list --repo EffortlessMetrics/shiplog --state all --head feat/stale-source-work --limit 10 && rtk git log --oneline --max-count 3 origin/feat/stale-source-work"
+                "gh pr list --repo EffortlessMetrics/shiplog --state all --head feat/stale-source-work --limit 10 && git log --oneline --max-count 3 origin/feat/stale-source-work"
             ]
         );
         assert_eq!(
             report.swarm_merged_cleanup_review_commands,
             vec![
-                "rtk gh pr list --repo EffortlessMetrics/shiplog-swarm --state all --head codex/stale-agent-branch --limit 10 && rtk git log --oneline --max-count 3 swarm/codex/stale-agent-branch"
+                "gh pr list --repo EffortlessMetrics/shiplog-swarm --state all --head codex/stale-agent-branch --limit 10 && git log --oneline --max-count 3 swarm/codex/stale-agent-branch"
             ]
         );
         assert_eq!(
             report.swarm_review_cleanup_review_commands,
             vec![
-                "rtk gh pr list --repo EffortlessMetrics/shiplog-swarm --state all --head codex/unmerged-agent-branch --limit 10 && rtk git log --oneline --max-count 3 swarm/codex/unmerged-agent-branch"
+                "gh pr list --repo EffortlessMetrics/shiplog-swarm --state all --head codex/unmerged-agent-branch --limit 10 && git log --oneline --max-count 3 swarm/codex/unmerged-agent-branch"
             ]
         );
         assert!(report.next_actions.iter().any(|action| {
