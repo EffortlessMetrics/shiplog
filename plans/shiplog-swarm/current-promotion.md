@@ -1,9 +1,5 @@
+<!-- GENERATED FROM plans/shiplog-swarm/promotion-state.toml BY `cargo xtask promotion-state`. DO NOT EDIT BY HAND. -->
 # Current shiplog-swarm Promotion
-
-This is the maintained operational summary for the latest source promotion.
-Refresh it in the same source promotion PR by following
-[`implementation-plan.md`](implementation-plan.md); it is not independent
-execution authority.
 
 **Status:** completed; approved source governance follows the promotion
 **Promoted swarm head:** `c4fdba223d1c5c5b99a95b159ab8123d83d4b842`
@@ -33,12 +29,46 @@ execution authority.
 - `EffortlessMetrics/shiplog-swarm#260`
 - `EffortlessMetrics/shiplog-swarm#261`
 
+## Source-authority decisions
+
+- path: `.github/workflows/droid-review.yml`
+  - reason: The canonical source repository retains authority for the release and security automation surface during this bounded promotion.
+  - source target: `b31d5f6d9700698b463d8f2b71b9d48a191f433c`
+  - swarm target: `e0c132d363c77b15ff2b16d04b6b1e60f0c192a0`
+  - decision receipt: `EffortlessMetrics/shiplog-swarm#322` at `e0c132d363c77b15ff2b16d04b6b1e60f0c192a0`
+  - consumed by: `(active)`
+- path: `.github/workflows/droid-security-scan.yml`
+  - reason: The canonical source repository retains authority for the release and security automation surface during this bounded promotion.
+  - source target: `b31d5f6d9700698b463d8f2b71b9d48a191f433c`
+  - swarm target: `e0c132d363c77b15ff2b16d04b6b1e60f0c192a0`
+  - decision receipt: `EffortlessMetrics/shiplog-swarm#322` at `e0c132d363c77b15ff2b16d04b6b1e60f0c192a0`
+  - consumed by: `(active)`
+- path: `.github/workflows/release.yml`
+  - reason: The canonical source repository retains authority for the release and security automation surface during this bounded promotion.
+  - source target: `b31d5f6d9700698b463d8f2b71b9d48a191f433c`
+  - swarm target: `e0c132d363c77b15ff2b16d04b6b1e60f0c192a0`
+  - decision receipt: `EffortlessMetrics/shiplog-swarm#322` at `e0c132d363c77b15ff2b16d04b6b1e60f0c192a0`
+  - consumed by: `(active)`
+- path: `.github/workflows/security.yml`
+  - reason: The canonical source repository retains authority for the release and security automation surface during this bounded promotion.
+  - source target: `b31d5f6d9700698b463d8f2b71b9d48a191f433c`
+  - swarm target: `e0c132d363c77b15ff2b16d04b6b1e60f0c192a0`
+  - decision receipt: `EffortlessMetrics/shiplog-swarm#322` at `e0c132d363c77b15ff2b16d04b6b1e60f0c192a0`
+  - consumed by: `(active)`
+- path: `policy/automation-authority.toml`
+  - reason: The repository-role policy is a swarm control-plane artifact; canonical source intentionally retains its absence.
+  - source target: `b31d5f6d9700698b463d8f2b71b9d48a191f433c`
+  - swarm target: `e0c132d363c77b15ff2b16d04b6b1e60f0c192a0`
+  - decision receipt: `EffortlessMetrics/shiplog-swarm#322` at `e0c132d363c77b15ff2b16d04b6b1e60f0c192a0`
+  - consumed by: `(active)`
+
 ## Truth hierarchy
 
 1. Git refs and ancestry
-2. GitHub PR and check state
-3. This maintained summary for the latest completed promotion
-4. Historical promotion receipts in `implementation-plan.md`
+2. GitHub PR / check state
+3. `plans/shiplog-swarm/promotion-state.toml` (this promotion's source of truth)
+4. Generated reports (`target/source-of-truth/*`, this file)
+5. Historical archive (`plans/shiplog-swarm/implementation-plan.md`)
 
 ## Topology boundary
 

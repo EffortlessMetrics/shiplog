@@ -19,6 +19,8 @@ pub struct ScenarioContext {
     pub paths: HashMap<String, PathBuf>,
     /// Arbitrary data storage
     pub data: HashMap<String, Vec<u8>>,
+    /// Temporary paths that should be removed when the scenario finishes.
+    cleanup_paths: Vec<PathBuf>,
 }
 
 impl ScenarioContext {
@@ -47,6 +49,12 @@ impl ScenarioContext {
         self
     }
 
+    /// Register a directory or file for best-effort cleanup when the scenario
+    /// context is dropped, including when a step returns an error.
+    pub fn register_cleanup_path(&mut self, path: impl Into<PathBuf>) {
+        self.cleanup_paths.push(path.into());
+    }
+
     pub fn string(&self, key: &str) -> Option<&str> {
         self.strings.get(key).map(|s| s.as_str())
     }
@@ -61,6 +69,14 @@ impl ScenarioContext {
 
     pub fn path(&self, key: &str) -> Option<&Path> {
         self.paths.get(key).map(|p| p.as_path())
+    }
+}
+
+impl Drop for ScenarioContext {
+    fn drop(&mut self) {
+        for path in self.cleanup_paths.drain(..).rev() {
+            let _ = std::fs::remove_dir_all(path);
+        }
     }
 }
 
