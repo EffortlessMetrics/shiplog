@@ -5,9 +5,9 @@ repair/share command looks blocked by setup. The goal is to make setup state
 explicit before you spend time on an intake run or try a repair command that
 cannot succeed.
 
-Most users should start with `shiplog intake`; it creates the local setup
-files it needs. Use this guide when setup is malformed, a source is blocked,
-or a repair/share command needs diagnosis.
+Most users should start with `shiplog start --yes`; it explicitly creates the
+local setup scaffold before intake. Use this guide when setup is malformed, a
+source is blocked, or a repair/share command needs diagnosis.
 
 For the current operational proof ledger, see the
 [`Setup-readiness dogfood matrix`](../product/setup-readiness-dogfood-matrix.md).
@@ -15,7 +15,9 @@ For the current operational proof ledger, see the
 The first-use path is:
 
 ```bash
-shiplog intake
+shiplog start --yes
+shiplog doctor --setup
+shiplog intake --last-6-months --explain
 ```
 
 For setup troubleshooting, use the read-only diagnostic loop:
@@ -36,19 +38,20 @@ when you want its redaction and verification prerequisites to be blocking.
 
 `doctor --setup`, `sources status`, `status --latest`, and `share explain` are
 read-only surfaces. They do not query providers, render share packets, mutate
-provider records, or write profile artifacts. `init --guided`, `intake`,
-`journal add`, and `share manager|public` write local files. Doctor remains the
-setup preflight; status is the review-loop preflight once setup exists.
+provider records, or write profile artifacts. `start --yes`, `init --guided`,
+`intake`, `journal add`, and `share manager|public` write local files. Doctor
+remains the setup preflight; status is the review-loop preflight once setup
+exists.
 
 ## Start from an empty directory
 
 Create the local setup files:
 
 ```bash
-shiplog init --guided
+shiplog start --yes
 ```
 
-Guided init is non-interactive. It writes:
+`start` is non-interactive but requires `--yes` because it writes:
 
 - `shiplog.toml`
 - `manual_events.yaml`
@@ -57,6 +60,10 @@ When the current directory is a Git repository, guided init enables local Git.
 When `ledger.events.jsonl` and `coverage.manifest.json` already exist, it
 enables JSON import. Token-backed providers are scaffolded but left disabled
 until you configure credentials and identity fields.
+
+Use `shiplog start --dry-run` to preview the scaffold without writing. The
+lower-level `shiplog init --guided` command remains available when you want the
+full init options, including explicit source selection and `--force`.
 
 Read setup state before intake:
 

@@ -128,6 +128,17 @@ pub fn resolve(api_base: Option<&str>) -> GithubAuthResolution {
         }
     };
 
+    let api_base = api_base.unwrap_or("https://api.github.com");
+    if shiplog::ingest::github::validate_https_api_base(api_base).is_err() {
+        return GithubAuthResolution::Unavailable(GithubAuthMetadata {
+            source: GithubAuthSource::Unavailable,
+            host,
+            account: None,
+            availability: GithubAuthAvailability::Unavailable,
+            reason: Some(GithubAuthReason::InvalidApiBase),
+        });
+    }
+
     let environment = std::env::vars().collect::<BTreeMap<_, _>>();
     if let Some((source, secret)) = environment_credential(&host, &environment) {
         return GithubAuthResolution::Available(GithubCredential {
@@ -307,8 +318,7 @@ fn resolve_from_gh(host: String) -> GithubAuthResolution {
 }
 
 fn run_gh(arguments: &[&str]) -> Result<Output, GithubAuthReason> {
-    let mut child = Command::new("gh")
-        .args(arguments)
+    let mut child = gh_command(arguments)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
@@ -340,6 +350,25 @@ fn run_gh(arguments: &[&str]) -> Result<Output, GithubAuthReason> {
             }
         }
     }
+}
+
+fn gh_command(arguments: &[&str]) -> Command {
+    #[cfg(all(windows, debug_assertions))]
+    if let Some(test_command) = std::env::var_os("SHIPLOG_TEST_GH_COMMAND") {
+        // Windows does not execute batch files through Command::new("gh").
+        // Keep this explicit debug-test seam so the normal binary always
+        // resolves the real GitHub CLI from PATH.
+        let mut command = Command::new("cmd.exe");
+        command
+            .args(["/D", "/S", "/C"])
+            .arg(test_command)
+            .args(arguments);
+        return command;
+    }
+
+    let mut command = Command::new("gh");
+    command.args(arguments);
+    command
 }
 
 fn terminate_child(child: &mut Child) {

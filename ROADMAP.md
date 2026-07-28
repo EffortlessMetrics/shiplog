@@ -33,11 +33,18 @@ Release scope on `main`:
 - **Release contract maintenance** - package metadata, changelog, readiness,
   decision, handoff, and post-release proof describe `0.10.0`.
 
+## Implemented on swarm/main
+
+These slices are present on the development source surface but are not shipped
+in the separate `v0.11.0` release until promotion and release authority complete.
+
+- **Guided first use** - explicit confirmed `shiplog start` setup command
+  (tracked in [#283](https://github.com/EffortlessMetrics/shiplog-swarm/issues/283)).
+
 ## Next Candidates
 
 These are future lanes, not `0.11.0` release promises.
 
-- **Guided first use** - add an explicit confirmed `shiplog start` command.
 - **Provider connection** - add task-level GitLab, Jira, and Linear connection
   flows that preserve non-secret configuration.
 - **Share setup ergonomics** - provide safe local/OS-backed redaction-key

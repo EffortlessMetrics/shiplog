@@ -97,6 +97,15 @@ reason = "Installs an opt-in git pre-commit hook that runs fmt + clippy before e
 created = "2026-07-11"
 expires = "permanent"
 
+[[allow]]
+id = "exec-install-sh"
+path = "scripts/install.sh"
+interpreter = "bash"
+owner = "release"
+reason = "Verified Unix installer for the latest published shiplog binary."
+created = "2026-08-02"
+expires = "permanent"
+
 # Note: Windows .ps1 scripts (release-install-smoke.ps1, demo-review-rescue.ps1)
 # are listed in non-rust-allowlist.toml under the `scripts/*.ps1` glob but NOT
 # here, because PowerShell scripts are invoked as `pwsh path/to/script.ps1`

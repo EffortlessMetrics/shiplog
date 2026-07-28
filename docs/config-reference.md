@@ -8,6 +8,7 @@ tokens in environment variables.
 Use these commands before collecting:
 
 ```bash
+shiplog start --yes
 shiplog init --guided
 shiplog config validate --config shiplog.toml
 shiplog config explain --config shiplog.toml
@@ -23,6 +24,8 @@ shiplog status --latest --json
 shiplog doctor --config shiplog.toml --repair-plan
 ```
 
+`start --yes` creates the same local-first setup files as `init --guided` after
+explicit confirmation. `start --dry-run` previews those files without writing.
 `init --guided` creates local-first setup files: local git when the current
 directory is a repository, a valid manual journal, JSON import only when the
 expected files exist, and token-backed provider sections left disabled until

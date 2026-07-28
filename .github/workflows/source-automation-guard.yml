@@ -1,0 +1,27 @@
+name: Source Automation Guard
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize]
+
+# Metadata-only guard: no checkout, named secrets, or write access.
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  reject-routine-bot-pr:
+    if: >-
+      github.repository == 'EffortlessMetrics/shiplog' &&
+      (github.event.pull_request.user.login == 'dependabot[bot]' ||
+      github.event.pull_request.user.login == 'factory-droid[bot]')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Reject source-side routine automation
+        env:
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          echo "Source repository rejects routine bot PR #${PR_NUMBER} from ${PR_AUTHOR}."
+          echo "Create the product change in EffortlessMetrics/shiplog-swarm and promote it through the regular source merge checkpoint."
+          exit 1
