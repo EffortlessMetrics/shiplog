@@ -1,0 +1,44 @@
+name: Stage reviewed residual RTK generator port
+
+on:
+  push:
+    branches: [sync/residual-rtk-generators]
+    paths: [.github/workflows/apply-residual-rtk-generators.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout source transport branch
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: sync/residual-rtk-generators
+          fetch-depth: 0
+
+      - name: Apply reviewed swarm cleanup
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "EffortlessSteven"
+          git config user.email "git@effortlesssteven.com"
+
+          git fetch https://github.com/EffortlessMetrics/shiplog-swarm.git \
+            dcbf5b3d8fe94dbc57e816ac737677b1caed4ee4
+          git cherry-pick --no-commit dcbf5b3d8fe94dbc57e816ac737677b1caed4ee4
+
+          curl -fsSL \
+            https://raw.githubusercontent.com/EffortlessMetrics/shiplog-swarm/dcbf5b3d8fe94dbc57e816ac737677b1caed4ee4/plans/shiplog-swarm/current-promotion.md \
+            -o plans/shiplog-swarm/current-promotion.md
+
+          git diff --check
+          git add \
+            plans/shiplog-swarm/current-promotion.md \
+            plans/shiplog-swarm/implementation-plan.md \
+            xtask/src/tasks/closeout.rs \
+            xtask/src/tasks/pr_body.rs \
+            xtask/src/tasks/repo_contract_report.rs
+          git commit -m "sync: remove residual RTK generator guidance"
+          git push origin HEAD:sync/residual-rtk-generators
