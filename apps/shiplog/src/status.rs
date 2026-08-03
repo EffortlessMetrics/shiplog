@@ -996,11 +996,11 @@ pub(crate) struct StatusNextAction {
 }
 
 impl StatusNextAction {
-    pub(crate) fn init_guided(reason: impl Into<String>) -> Self {
+    pub(crate) fn start(reason: impl Into<String>) -> Self {
         Self::new(
-            "init_guided",
+            "start",
             "Create guided setup",
-            "shiplog init --guided",
+            "shiplog start --yes",
             true,
             reason,
             1,
@@ -1224,7 +1224,7 @@ mod tests {
                 "shiplog.toml is missing",
                 vec![
                     StatusNextAction::sources_status("inspect source setup after init"),
-                    StatusNextAction::init_guided("create local setup files"),
+                    StatusNextAction::start("create local setup files"),
                     StatusNextAction::doctor_setup("inspect setup after init"),
                 ],
             ),
@@ -1235,7 +1235,7 @@ mod tests {
         assert_eq!(status.blocking_reasons[0].scope, "setup");
         assert_eq!(status.next_actions[0].key, "doctor_setup");
         assert!(!status.next_actions[0].writes);
-        assert_eq!(status.next_actions[1].key, "init_guided");
+        assert_eq!(status.next_actions[1].key, "start");
         assert!(status.next_actions[1].writes);
         assert_eq!(status.next_actions[2].key, "sources_status");
     }
@@ -1457,7 +1457,7 @@ mod tests {
                 vec![
                     StatusNextAction::sources_status("inspect sources"),
                     StatusNextAction::doctor_setup("inspect setup"),
-                    StatusNextAction::init_guided("create setup"),
+                    StatusNextAction::start("create setup"),
                     StatusNextAction::doctor_setup("inspect setup"),
                 ],
             ),
@@ -1470,7 +1470,7 @@ mod tests {
             .map(|action| action.key.as_str())
             .collect();
 
-        assert_eq!(keys, ["doctor_setup", "init_guided", "sources_status"]);
+        assert_eq!(keys, ["doctor_setup", "start", "sources_status"]);
     }
 
     #[test]

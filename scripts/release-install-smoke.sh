@@ -149,6 +149,12 @@ for artifact in \
   fi
 done
 
+# Structurally validate the receipts, not merely their existence: the
+# published binary must parse its own intake.report.json/packet.md/ledger/
+# coverage/bundle receipts back into their canonical shapes.
+echo "==> structurally validating cold-start receipts"
+"$binary_path" report validate --path "$latest_run/intake.report.json" --receipts
+
 echo "==> running no-network review rescue fixture"
 rm -rf "$demo_out"
 "$script_dir/demo-review-rescue.sh" \

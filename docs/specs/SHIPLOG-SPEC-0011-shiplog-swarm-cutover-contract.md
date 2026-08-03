@@ -152,6 +152,24 @@ shiplog remains release authority until explicit release cutover
 shiplog receives periodic promotion merge commits from shiplog-swarm
 ```
 
+Source may carry a narrow release/governance difference only when its exact
+repository-relative path is current in `policy/source-only-paths.toml`. Broad
+directory patterns are not an approval mechanism. `repo-contract-report`
+must report raw tree identity, product-tree alignment, approved governance
+differences, and unknown drift separately. Expired, malformed, or unlisted
+entries fail closed; a governance-looking commit subject never overrides a
+changed product path.
+
+Transition receipts separate historical evidence from the decision made by a
+bounded promotion. `missing_in_swarm` records a source change that has no swarm
+counterpart and remains blocking unless the path also carries an explicit
+`resolution = "discard_source"`. That resolution requires a human-reviewable
+`decision_receipt`, its full merge SHA reachable from the exact swarm target, a
+non-empty reason, and exact source/swarm tree-entry bindings for the selected
+targets; it takes the swarm entry for that path only for the consuming
+promotion. It is not permanent source authority and must not be inferred from
+matching trees, commit subjects, or source-only policy.
+
 ## Runner Access Contract
 
 `shiplog-swarm` may be added to a small Rust runner group such as

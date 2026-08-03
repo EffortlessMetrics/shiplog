@@ -46,6 +46,10 @@ pub(super) fn dispatch() -> Result<()> {
     };
 
     match command {
+        Command::Start { yes, dry_run } => {
+            run_start(dry_run, yes)?;
+        }
+
         Command::Init {
             sources,
             dry_run,
@@ -756,8 +760,9 @@ pub(super) fn dispatch() -> Result<()> {
                 run,
                 latest,
                 path,
+                receipts,
             } => {
-                validate_intake_report_command(&out, run, latest, path)?;
+                validate_intake_report_command(&out, run, latest, path, receipts)?;
             }
             ReportCommand::Summarize {
                 out,

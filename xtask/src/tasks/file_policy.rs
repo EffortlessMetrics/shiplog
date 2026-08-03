@@ -441,6 +441,7 @@ pub fn check_workflows(workspace_root: &Path, mode: Mode) -> Result<()> {
         let text = fs::read_to_string(&workflow_path)
             .with_context(|| format!("read {}", workflow_path.display()))?;
         findings.extend(workflow_self_hosted_trust_findings(path, &text));
+        findings.extend(auxiliary_workflow_hosted_findings(path, &text));
         let actual_uses: BTreeSet<String> = text.lines().filter_map(extract_uses).collect();
         let declared: BTreeSet<String> = table
             .get("external_actions")
@@ -475,6 +476,98 @@ pub fn check_workflows(workspace_root: &Path, mode: Mode) -> Result<()> {
     }
 
     report("check-workflows", &findings, mode)
+}
+
+fn auxiliary_workflow_hosted_findings(path: &str, text: &str) -> Vec<Finding> {
+    const AUXILIARY_PATHS: [&str; 4] = [
+        ".github/workflows/bdd-smoke.yml",
+        ".github/workflows/property-smoke.yml",
+        ".github/workflows/fuzz-smoke.yml",
+        ".github/workflows/pr-plan.yml",
+    ];
+    if !AUXILIARY_PATHS.contains(&path) {
+        return Vec::new();
+    }
+
+    let mut findings = Vec::new();
+    for (needle, detail) in [
+        (
+            "runs-on: self-hosted",
+            "selects a self-hosted runner instead of deterministic hosted execution",
+        ),
+        (
+            "/actions/runners",
+            "queries runner availability before scheduling instead of using hosted execution",
+        ),
+        ("use_self_hosted", "retains dead runner-selection state"),
+        ("smoke-runner:", "retains a duplicate runner-selection job"),
+        ("plan-runner:", "retains a duplicate runner-selection job"),
+        (
+            "smoke-hosted:",
+            "retains a duplicate hosted implementation job",
+        ),
+        (
+            "forecast-hosted:",
+            "retains a duplicate hosted implementation job",
+        ),
+    ] {
+        if text.contains(needle) {
+            findings.push(Finding {
+                kind: "auxiliary-workflow-nondeterministic-runner".to_string(),
+                detail: format!("workflow {path:?} {detail}"),
+            });
+        }
+    }
+    let (step_id, outcome) = if path.ends_with("pr-plan.yml") {
+        ("id: plan", "steps.plan.outcome")
+    } else {
+        ("id: smoke-tests", "steps.smoke-tests.outcome")
+    };
+    for (needle, contract) in [
+        ("runs-on: ubuntu-latest", "a GitHub-hosted execution job"),
+        ("normalized_terminal", "a normalized terminal summary"),
+        (step_id, "an identified product test or plan step"),
+        (outcome, "a summary derived from the product step outcome"),
+        ("terminal=\"ok\"", "the success terminal"),
+        ("test_failed", "the product failure terminal"),
+        ("setup_failed", "the pre-product setup failure terminal"),
+        ("cancelled_as_superseded", "the superseded-run terminal"),
+        (
+            "executed_runner: github-hosted",
+            "the executed-runner summary",
+        ),
+        ("fallback_used: false", "the no-fallback summary"),
+        (
+            "cancel-in-progress:",
+            "the superseded-run cancellation policy",
+        ),
+        ("id: setup-checkout", "an identified checkout setup step"),
+        (
+            "steps.setup-checkout.outcome",
+            "a checkout outcome used to gate later work",
+        ),
+        (
+            "continue-on-error: true",
+            "captured setup and product outcomes for terminal authority",
+        ),
+        ("exit 1", "a red terminal authority for real failures"),
+    ] {
+        if !text.contains(needle) {
+            findings.push(Finding {
+                kind: "auxiliary-workflow-missing-terminal-contract".to_string(),
+                detail: format!("workflow {path:?} is missing {contract}"),
+            });
+        }
+    }
+    if path.ends_with("fuzz-smoke.yml") && !text.contains("terminal=\"not_applicable\"") {
+        findings.push(Finding {
+            kind: "auxiliary-workflow-missing-terminal-contract".to_string(),
+            detail: format!(
+                "workflow {path:?} is missing the genuine no-target not-applicable terminal"
+            ),
+        });
+    }
+    findings
 }
 
 fn workflow_self_hosted_trust_findings(path: &str, text: &str) -> Vec<Finding> {
@@ -794,6 +887,132 @@ created = "2026-05-09"
         let findings = workflow_self_hosted_trust_findings(".github/workflows/test.yml", text);
 
         assert_eq!(findings.len(), 1);
+    }
+
+    #[test]
+    fn auxiliary_workflow_contract_accepts_hosted_normalized_execution() {
+        let text = r#"
+runs-on: ubuntu-latest
+cancel-in-progress: true
+id: smoke-tests
+TEST_STATUS: ${{ steps.smoke-tests.outcome }}
+id: setup-checkout
+if: steps.setup-checkout.outcome == 'success'
+continue-on-error: true
+terminal="ok"
+terminal="test_failed"
+terminal="setup_failed"
+terminal="cancelled_as_superseded"
+executed_runner: github-hosted
+fallback_used: false
+normalized_terminal: $terminal
+if failed; then exit 1; fi
+"#;
+
+        let findings = auxiliary_workflow_hosted_findings(".github/workflows/bdd-smoke.yml", text);
+
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn auxiliary_workflow_contract_rejects_runner_preflight() {
+        let text = "runs-on: self-hosted\ncurl /actions/runners\nnormalized_terminal: ok\n";
+
+        let findings = auxiliary_workflow_hosted_findings(".github/workflows/fuzz-smoke.yml", text);
+
+        assert!(findings.len() >= 4);
+        assert!(
+            findings
+                .iter()
+                .any(|finding| { finding.kind == "auxiliary-workflow-nondeterministic-runner" })
+        );
+        assert!(
+            findings
+                .iter()
+                .any(|finding| { finding.kind == "auxiliary-workflow-missing-terminal-contract" })
+        );
+    }
+
+    #[test]
+    fn auxiliary_workflow_contract_ignores_non_auxiliary_workflows() {
+        let findings = auxiliary_workflow_hosted_findings(
+            ".github/workflows/release.yml",
+            "runs-on: self-hosted\n",
+        );
+
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn auxiliary_workflow_contract_rejects_summary_without_product_step() {
+        let text = r#"
+runs-on: ubuntu-latest
+cancel-in-progress: true
+terminal="ok"
+terminal="test_failed"
+terminal="setup_failed"
+terminal="cancelled_as_superseded"
+executed_runner: github-hosted
+fallback_used: false
+normalized_terminal: $terminal
+"#;
+
+        let findings =
+            auxiliary_workflow_hosted_findings(".github/workflows/property-smoke.yml", text);
+
+        assert!(
+            findings
+                .iter()
+                .any(|finding| { finding.detail.contains("identified product test") })
+        );
+        assert!(
+            findings
+                .iter()
+                .any(|finding| { finding.detail.contains("derived from the product step") })
+        );
+    }
+
+    #[test]
+    fn auxiliary_workflow_contract_rejects_dead_duplicate_routing() {
+        let text = "runs-on: ubuntu-latest\nsmoke-runner:\nsmoke-hosted:\nuse_self_hosted\n";
+
+        let findings = auxiliary_workflow_hosted_findings(".github/workflows/bdd-smoke.yml", text);
+
+        assert!(
+            findings
+                .iter()
+                .filter(|finding| { finding.kind == "auxiliary-workflow-nondeterministic-runner" })
+                .count()
+                >= 3
+        );
+    }
+
+    #[test]
+    fn auxiliary_workflow_contract_rejects_skipped_product_without_setup_failure_mapping() {
+        let text = r#"
+runs-on: ubuntu-latest
+cancel-in-progress: true
+id: setup-checkout
+if: steps.setup-checkout.outcome == 'success'
+continue-on-error: true
+id: smoke-tests
+TEST_STATUS: ${{ steps.smoke-tests.outcome }}
+terminal="ok"
+terminal="test_failed"
+terminal="cancelled_as_superseded"
+executed_runner: github-hosted
+fallback_used: false
+normalized_terminal: $terminal
+if failed; then exit 1; fi
+"#;
+
+        let findings = auxiliary_workflow_hosted_findings(".github/workflows/bdd-smoke.yml", text);
+
+        assert!(
+            findings
+                .iter()
+                .any(|finding| { finding.detail.contains("setup failure terminal") })
+        );
     }
 
     fn allow(glob: Option<&str>, reason: Option<&str>) -> AllowGlob {

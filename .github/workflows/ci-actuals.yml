@@ -52,8 +52,9 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - uses: actions/checkout@v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           # Policy ledgers + xtask source for the run that produced the
           # workflow we're summarizing. The workflow_run head_sha is the
           # commit being summarized.

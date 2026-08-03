@@ -14,6 +14,7 @@ history.
 - `.codex/goals/active.toml` owns current Codex execution state.
 - `docs/status/SUPPORT_TIERS.md` owns product-claim-to-proof mapping.
 - `policy/*.toml` owns enforceable ledgers and exceptions.
+- `docs/governance/` owns human guides to enforced repository-governance boundaries (e.g. [automation authority](governance/automation-authority.md)).
 - `docs/handoffs/` owns closeout outcomes and residual work.
 
 ## Linking rule
