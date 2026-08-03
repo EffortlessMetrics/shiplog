@@ -358,12 +358,21 @@ jobs:
         with:
           ref: ${{ needs.release-preflight.outputs.release_tag }}
 
-      - name: Run published-binary first-use acceptance
-        shell: ${{ matrix.shell }}
+      - name: Run published-binary first-use acceptance (Unix)
+        if: matrix.shell == 'bash'
+        shell: bash
         env:
           SHIPLOG_RELEASE_REPO: ${{ github.repository }}
         run: |
-          ${{ matrix.shell == 'pwsh' && 'pwsh -NoProfile -File scripts/release-install-smoke.ps1' || 'bash scripts/release-install-smoke.sh' }} "${{ needs.release-preflight.outputs.release_tag }}"
+          bash scripts/release-install-smoke.sh "${{ needs.release-preflight.outputs.release_tag }}"
+
+      - name: Run published-binary first-use acceptance (Windows)
+        if: matrix.shell == 'pwsh'
+        shell: pwsh
+        env:
+          SHIPLOG_RELEASE_REPO: ${{ github.repository }}
+        run: |
+          pwsh -NoProfile -File scripts/release-install-smoke.ps1 "${{ needs.release-preflight.outputs.release_tag }}"
 
   # Run integration tests
   release-test:
