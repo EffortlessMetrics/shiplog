@@ -20,8 +20,10 @@ jobs:
   reject-routine-bot-pr:
     if: >-
       github.repository == 'EffortlessMetrics/shiplog' &&
-      (github.event_name == 'pull_request_target' ||
-      github.event_name == 'workflow_dispatch')
+      (github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request_target' &&
+      (github.event.pull_request.user.login == 'dependabot[bot]' ||
+      github.event.pull_request.user.login == 'factory-droid[bot]')))
     runs-on: ubuntu-latest
     steps:
       - name: Evaluate source-side routine automation
