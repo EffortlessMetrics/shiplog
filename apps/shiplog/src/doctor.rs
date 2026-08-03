@@ -1,10 +1,11 @@
 #![allow(dead_code)]
 
 use super::{
-    ConfigGitSource, ConfigGithubSource, ConfigGitlabSource, ConfigJiraSource, ConfigJsonSource,
-    ConfigLinearSource, ConfigManualSource, InitSource, IssueStatus, LinearIssueStatus, MrState,
-    ShiplogConfig, config_base_dir, config_redaction_key_env, config_version_state,
-    env_var_present, gitlab_api_base, optional_config_string, required_config_path,
+    CONFIG_FILENAME, ConfigGitSource, ConfigGithubSource, ConfigGitlabSource, ConfigJiraSource,
+    ConfigJsonSource, ConfigLinearSource, ConfigManualSource, InitSource, IssueStatus,
+    LinearIssueStatus, MrState, ShiplogConfig, config_base_dir, config_redaction_key_env,
+    config_version_state, env_var_present, gitlab_api_base, optional_config_string,
+    required_config_path,
 };
 use crate::github_auth;
 use clap::ValueEnum;
@@ -154,9 +155,9 @@ pub(crate) fn build_setup_status_for(
 
     if !config_path.exists() {
         let action = next_action(
-            "init_guided",
+            "start",
             "Create guided setup files",
-            "shiplog init --guided",
+            "shiplog start --yes",
             true,
             "shiplog.toml is missing",
             1,
@@ -264,6 +265,8 @@ pub(crate) fn build_setup_status_for(
             ));
         }
     }
+
+    build_identity_item(&mut builder, &config);
 
     let base_dir = config_base_dir(config_path);
     build_source_items(&mut builder, &config, &base_dir, selected_sources);
@@ -677,6 +680,71 @@ fn requested_status_for_objective(
     } else {
         SetupOverallStatus::Ready
     }
+}
+
+/// Report whether the packet will be attributed to a real person.
+///
+/// The `init`/`start` scaffold seeds `[user].label` and `[sources.manual].user`
+/// with a placeholder. Those values are not inert: `label` titles the packet and
+/// `sources.manual.user` becomes the actor on every manual event and the `user`
+/// recorded in `coverage.manifest.json`. Left unedited, a packet is shipped
+/// attributed to "Your Name", which is exactly the kind of silent, undefensible
+/// claim the rest of the tool refuses to make.
+///
+/// This is a caveat rather than a blocker: the evidence is still real and the
+/// user may be mid-setup, so collection stays available and the gap is stated.
+fn build_identity_item(builder: &mut SetupStatusBuilder, config: &ShiplogConfig) {
+    let label = optional_config_string(config.user.label.as_deref());
+    let manual_user = config
+        .sources
+        .manual
+        .as_ref()
+        .and_then(|manual| optional_config_string(manual.user.as_deref()));
+
+    let mut placeholders = Vec::new();
+    if label.as_deref() == Some(crate::SCAFFOLD_USER_PLACEHOLDER) {
+        placeholders.push("user.label");
+    }
+    if manual_user.as_deref() == Some(crate::SCAFFOLD_USER_PLACEHOLDER) {
+        placeholders.push("sources.manual.user");
+    }
+
+    if placeholders.is_empty() {
+        let reason = match label {
+            Some(label) => format!("packet attributed to {label}"),
+            None => "user.label not set; packet uses source identities".to_string(),
+        };
+        builder.push_local_file(local_file_item(
+            "identity",
+            "Identity",
+            true,
+            SetupItemStatus::Ready,
+            reason,
+            None,
+            None,
+        ));
+        return;
+    }
+
+    let placeholder = crate::SCAFFOLD_USER_PLACEHOLDER;
+    let fields = placeholders.join(" and ");
+    builder.push_local_file(local_file_item(
+        "identity",
+        "Identity",
+        true,
+        SetupItemStatus::ReadyWithCaveats,
+        format!("{fields} still set to the scaffold placeholder {placeholder:?}"),
+        Some(next_action(
+            "set_identity",
+            "Set your identity",
+            &format!("edit {CONFIG_FILENAME} and replace {placeholder:?}"),
+            false,
+            "packet would be attributed to the scaffold placeholder",
+            2,
+            vec![receipt("config", Some(CONFIG_FILENAME), None)],
+        )),
+        None,
+    ));
 }
 
 fn build_source_items(
@@ -1246,9 +1314,9 @@ fn build_manual_source(
     };
     if !events.exists() {
         let action = next_action(
-            "init_guided",
+            "start",
             "Create guided setup files",
-            "shiplog init --guided",
+            "shiplog start --yes",
             true,
             "manual journal is missing",
             2,
@@ -1682,7 +1750,7 @@ mod tests {
             .next_action
             .as_ref()
             .ok_or_else(|| anyhow::anyhow!("config item should have a next action"))?;
-        assert_eq!(action.command, "shiplog init --guided");
+        assert_eq!(action.command, "shiplog start --yes");
         assert!(action.writes);
         Ok(())
     }

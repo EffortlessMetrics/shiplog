@@ -33,6 +33,53 @@ fn normalize_newlines(doc: &str) -> String {
     doc.replace("\r\n", "\n")
 }
 
+#[test]
+fn contributor_docs_and_wrappers_share_the_fresh_clone_contract() -> anyhow::Result<()> {
+    let root = repo_root();
+    let read = |path: &str| -> anyhow::Result<String> {
+        std::fs::read_to_string(root.join(path)).with_context(|| format!("read {path}"))
+    };
+
+    let readme = read("README.md")?;
+    let contributing = read("CONTRIBUTING.md")?;
+    let toolchain = read("rust-toolchain.toml")?;
+    let bash = normalize_newlines(&read("scripts/dev-check.sh")?);
+    let powershell = normalize_newlines(&read("scripts/dev-check.ps1")?);
+    let workflow = normalize_newlines(&read(".github/workflows/contributor-acceptance.yml")?);
+
+    for (label, doc) in [("README", &readme), ("CONTRIBUTING", &contributing)] {
+        for required in [
+            "https://github.com/EffortlessMetrics/shiplog-swarm.git",
+            "cargo build --workspace --locked",
+            "cargo xtask ci-small",
+        ] {
+            assert!(
+                doc.contains(required),
+                "{label} should contain {required:?}"
+            );
+        }
+    }
+    assert!(toolchain.contains("channel = \"1.95.0\""));
+    assert_eq!(bash.matches("cargo xtask ci-small").count(), 1);
+    assert_eq!(powershell.matches("cargo xtask ci-small").count(), 1);
+    assert!(workflow.contains("ubuntu-latest, windows-latest"));
+    assert!(workflow.contains("pull_request:\n  workflow_dispatch:"));
+    assert!(!workflow.contains("pull_request:\n    paths:"));
+    assert!(workflow.contains("persist-credentials: false"));
+    assert!(workflow.contains("extraheader"));
+    assert!(workflow.contains("unset GITHUB_TOKEN GH_TOKEN GITLAB_TOKEN"));
+    assert!(workflow.contains("Remove-Item \"Env:$_\""));
+    assert!(!workflow.contains("SHIPLOG_REDACT_KEY: \"\""));
+    assert!(workflow.contains("shiplog-no-gh"));
+    assert!(workflow.contains("if gh --version"));
+    assert!(workflow.contains("& gh --version"));
+    assert!(workflow.contains("git status --porcelain --untracked-files=all"));
+    assert!(!contributing.contains("origin=shiplog"));
+    assert!(!contributing.contains("swarm=shiplog-swarm"));
+
+    Ok(())
+}
+
 fn section_between<'a>(doc: &'a str, start: &str, end: &str) -> &'a str {
     let start_index = doc
         .find(start)
@@ -52,6 +99,7 @@ fn config_reference_documents_current_surface() {
         .unwrap_or_else(|err| panic!("read {}: {err}", doc_path.display()));
 
     for needle in [
+        "shiplog start --yes",
         "shiplog init --guided",
         "shiplog config validate --config shiplog.toml",
         "shiplog config explain --config shiplog.toml",
@@ -137,9 +185,16 @@ fn changelog_curates_0_10_as_source_ergonomics_release_notes() {
         .unwrap_or_else(|err| panic!("read {}: {err}", doc_path.display()));
 
     let unreleased = section_between(&doc, "## [Unreleased]", "## [0.11.0]");
+    // Either the post-release-cut marker or real Keep a Changelog subsections.
+    // Pinning this to the empty marker would make the section unwritable, so
+    // work landing after a release cut could not be recorded at all.
+    let empty = unreleased.contains("No unreleased changes.");
+    let curated = ["### Added", "### Changed", "### Fixed", "### Removed"]
+        .iter()
+        .any(|heading| unreleased.contains(heading));
     assert!(
-        unreleased.contains("No unreleased changes."),
-        "Unreleased should be empty after the 0.11.0 release cut"
+        empty ^ curated,
+        "Unreleased should be either the empty marker or curated subsections, not both or neither"
     );
     assert!(
         !unreleased.contains("#424")
@@ -233,7 +288,7 @@ fn changelog_curates_0_10_as_source_ergonomics_release_notes() {
 }
 
 #[test]
-fn docs_teach_intake_as_the_one_command_front_door() -> anyhow::Result<()> {
+fn docs_teach_explicit_setup_before_the_first_intake() -> anyhow::Result<()> {
     let root = repo_root();
     for relative_path in [
         "README.md",
@@ -247,7 +302,7 @@ fn docs_teach_intake_as_the_one_command_front_door() -> anyhow::Result<()> {
             .unwrap_or_else(|err| panic!("read {}: {err}", path.display()));
         assert!(
             doc.contains("shiplog intake"),
-            "{relative_path} should document intake as the first useful command"
+            "{relative_path} should document intake as the first evidence command"
         );
         assert!(
             doc.contains("shiplog status --latest"),
@@ -260,7 +315,7 @@ fn docs_teach_intake_as_the_one_command_front_door() -> anyhow::Result<()> {
     assert_contains_in_order(
         quick_start,
         "README.md quick start",
-        &["shiplog intake", "shiplog open"],
+        &["shiplog start --yes", "shiplog intake", "shiplog open"],
     );
     let normal_workflow = section_between(&root_readme, "## Normal workflow", "## Install");
     for needle in [
@@ -2393,6 +2448,7 @@ fn root_readme_documents_0_11_review_loop_front_door() {
         "shiplog next",
         "shiplog share manager",
         "## Quick start",
+        "shiplog start --yes",
         "shiplog intake",
         "shiplog turns work evidence into a review-readiness loop",
         "shiplog init --guided",
@@ -2438,7 +2494,7 @@ fn root_readme_documents_0_11_review_loop_front_door() {
     assert_contains_in_order(
         quick_start,
         "root README quick start",
-        &["shiplog intake", "shiplog open"],
+        &["shiplog start --yes", "shiplog intake", "shiplog open"],
     );
     assert!(
         !quick_start.contains("shiplog init --guided"),
@@ -2750,6 +2806,7 @@ fn guided_setup_doctor_guide_documents_setup_flow() {
         .unwrap_or_else(|err| panic!("read {}: {err}", doc_path.display()));
 
     for needle in [
+        "shiplog start --yes",
         "shiplog init --guided",
         "shiplog doctor --setup",
         "shiplog doctor --setup --json",
@@ -2808,6 +2865,7 @@ fn guided_setup_dogfood_matrix_documents_setup_control_plane() {
         "packet readiness",
         "repair clearance",
         "share posture",
+        "shiplog start --yes",
         "shiplog init --guided",
         "shiplog doctor --setup",
         "shiplog sources status",

@@ -1,6 +1,6 @@
 //! `shiplog` CLI entrypoint.
 //!
-//! Exposes `init`, `doctor`, `intake`, `config`, `collect`, `render`,
+//! Exposes `start`, `init`, `doctor`, `intake`, `config`, `collect`, `render`,
 //! `refresh`, `workstreams`, `runs`, `review`, `journal`, `open`, `report`, `merge`,
 //! `import`, `sources`, and `run` commands over the workspace engine and adapter crates.
 
@@ -29,7 +29,7 @@ use shiplog::render::md::{
     AppendixMode, MarkdownRenderOptions, MarkdownRenderer, SectionOrder, format_receipt_markdown,
 };
 use shiplog::schema::{
-    bundle::BundleProfile,
+    bundle::{BundleManifest, BundleProfile},
     coverage::{CoverageManifest, TimeWindow},
     event::{EventEnvelope, EventPayload},
     event::{Link, ManualDate, ManualEventEntry, ManualEventType},
@@ -48,7 +48,7 @@ use intake_report_builder::build_intake_report;
 
 const TOP_LEVEL_AFTER_HELP: &str = "\
 Start here:
-  shiplog
+  shiplog start --yes
   shiplog add \"what changed\"
   shiplog update
   shiplog next
@@ -78,6 +78,18 @@ Advanced GitHub activity:
 
 Read-first commands:
   doctor --setup, status --latest, repair plan, repair diff, runs diff, and share explain inspect setup/receipts before write-producing commands.";
+
+const START_AFTER_HELP: &str = "\
+Explicit first-use setup:
+  shiplog start --yes
+  shiplog start --dry-run
+  shiplog doctor --setup
+  shiplog intake --last-6-months --explain
+
+Safety posture:
+  start writes only the guided local setup scaffold and never collects evidence.
+  --yes confirms those local writes; --dry-run previews them without writing.
+  Existing setup files are preserved unless you explicitly use init --force.";
 
 const GITHUB_ACTIVITY_AFTER_HELP: &str = "\
 Recommended harvest path:
@@ -378,6 +390,21 @@ struct Cli {
 
 #[derive(Subcommand, Debug)]
 enum Command {
+    /// Create the guided local setup scaffold after explicit confirmation.
+    #[command(
+        about = "Create the guided local setup scaffold after explicit confirmation.",
+        long_about = "Create the local-first shiplog.toml and manual_events.yaml scaffold without collecting evidence or contacting providers.",
+        after_help = START_AFTER_HELP
+    )]
+    Start {
+        /// Confirm writing the guided setup files.
+        #[arg(long)]
+        yes: bool,
+        /// Print the guided setup files instead of writing them.
+        #[arg(long)]
+        dry_run: bool,
+    },
+
     /// Create a local shiplog.toml and manual_events.yaml scaffold.
     Init {
         /// Sources to enable in the generated config.
@@ -1632,6 +1659,12 @@ enum ReportCommand {
         /// Validate this intake.report.json directly instead of resolving a run.
         #[arg(long)]
         path: Option<PathBuf>,
+        /// Also structurally validate the run's other receipts (packet.md,
+        /// ledger.events.jsonl, coverage.manifest.json, bundle.manifest.json),
+        /// not merely check that they exist. Used by release first-use
+        /// acceptance to prove published binaries emit well-formed artifacts.
+        #[arg(long)]
+        receipts: bool,
     },
     /// Summarize intake.report.json without rewriting run artifacts.
     Summarize {
@@ -2337,6 +2370,11 @@ enum WindowLabel {
 
 const CONFIG_FILENAME: &str = "shiplog.toml";
 const MANUAL_EVENTS_FILENAME: &str = "manual_events.yaml";
+/// Identity placeholder written by the `init`/`start` scaffold. It is a
+/// prompt to the user, never a real attribution, so setup readiness reports it
+/// as a caveat until it is replaced. Shared with the scaffold template so the
+/// two cannot drift.
+const SCAFFOLD_USER_PLACEHOLDER: &str = "Your Name";
 const CURRENT_CONFIG_VERSION: i64 = 1;
 const SOURCE_FAILURES_FILENAME: &str = "source.failures.json";
 const SOURCE_FAILURES_SCHEMA_VERSION: u8 = 1;
@@ -3045,7 +3083,15 @@ fn resolve_date_window_for_today(args: DateArgs, today: NaiveDate) -> Result<Res
     let since = today
         .checked_sub_months(Months::new(6))
         .ok_or_else(|| anyhow::anyhow!("could not resolve --last-6-months"))?;
-    checked_window(since, today, WindowLabel::LastSixMonths)
+    // `until` is exclusive, so the trailing window has to end on the day after
+    // today for today's own work to be collected. Anchoring it on `today`
+    // silently dropped everything recorded today, including a fresh
+    // `shiplog add`. The `--year` preset ends on Jan 1 of the following year
+    // for the same reason.
+    let until = today
+        .succ_opt()
+        .ok_or_else(|| anyhow::anyhow!("could not resolve --last-6-months"))?;
+    checked_window(since, until, WindowLabel::LastSixMonths)
 }
 
 fn checked_window(
@@ -3074,6 +3120,16 @@ fn quarter_start(year: i32, month: u32) -> Result<NaiveDate> {
     };
     NaiveDate::from_ymd_opt(year, start_month, 1)
         .ok_or_else(|| anyhow::anyhow!("invalid quarter start for {year}-{start_month:02}"))
+}
+
+fn run_start(dry_run: bool, confirmed: bool) -> Result<()> {
+    if !dry_run && !confirmed {
+        anyhow::bail!(
+            "shiplog start requires --yes because it writes guided setup files; use --dry-run to preview them"
+        );
+    }
+
+    run_init(Vec::new(), dry_run, false, true)
 }
 
 fn run_init(sources: Vec<InitSource>, dry_run: bool, force: bool, guided: bool) -> Result<()> {
@@ -3308,6 +3364,9 @@ fn run_update(args: UpdateArgs) -> Result<()> {
 fn run_add(args: AddArgs) -> Result<()> {
     let events = configured_manual_events_path(&args.config, true)
         .unwrap_or_else(|| PathBuf::from(MANUAL_EVENTS_FILENAME));
+    // Quick add is the low-friction front door: a bare `shiplog add "<title>"`
+    // records today's work without making the user restate the date.
+    let date = Some(args.date.unwrap_or_else(|| Utc::now().date_naive()));
     run_journal_add(JournalAddArgs {
         events,
         from_repair: None,
@@ -3316,7 +3375,7 @@ fn run_add(args: AddArgs) -> Result<()> {
         latest: false,
         id: None,
         event_type: args.event_type,
-        date: args.date,
+        date,
         start: None,
         end: None,
         title: Some(args.title),
@@ -4185,6 +4244,7 @@ fn validate_intake_report_command(
     run: Option<String>,
     latest: bool,
     path: Option<PathBuf>,
+    receipts: bool,
 ) -> Result<()> {
     let report_path = resolve_intake_report_path(out_dir, run, latest, path)?;
     let validation = validate_intake_report(&report_path)?;
@@ -4203,7 +4263,71 @@ fn validate_intake_report_command(
     println!("Artifacts: {} checked", validation.artifacts_checked);
     println!("Markdown: {}", validation.markdown_path.display());
 
+    if receipts {
+        let run_dir = report_path.parent().unwrap_or_else(|| Path::new("."));
+        let checked = validate_run_receipts(run_dir)?;
+        println!("Receipts: {checked} structurally validated");
+    }
+
     Ok(())
+}
+
+/// Markdown sections every rendered `packet.md` must carry. Kept minimal and
+/// stable so structural validation survives cold-start (zero-event) runs.
+const PACKET_REQUIRED_SECTIONS: &[&str] = &["# Packet Readiness", "## Coverage and Limits"];
+
+/// Structurally validate the durable receipts a run directory must contain,
+/// beyond existence: `packet.md` carries its required sections, every
+/// `ledger.events.jsonl` line deserializes into the canonical event record,
+/// and `coverage.manifest.json` / `bundle.manifest.json` deserialize into their
+/// canonical schema types. Fails closed (with the offending path) on the first
+/// malformed receipt. Returns the number of receipts validated.
+fn validate_run_receipts(run_dir: &Path) -> Result<usize> {
+    let packet_path = run_dir.join("packet.md");
+    let packet = std::fs::read_to_string(&packet_path)
+        .with_context(|| format!("read receipt {}", packet_path.display()))?;
+    ensure_no_secret_sentinels("packet markdown", &packet)
+        .with_context(|| format!("packet receipt {}", packet_path.display()))?;
+    for section in PACKET_REQUIRED_SECTIONS {
+        if !packet.contains(section) {
+            anyhow::bail!(
+                "packet receipt {} is missing required section {section:?}",
+                packet_path.display()
+            )
+        }
+    }
+
+    let ledger_path = run_dir.join("ledger.events.jsonl");
+    let ledger = std::fs::read_to_string(&ledger_path)
+        .with_context(|| format!("read receipt {}", ledger_path.display()))?;
+    for (index, line) in ledger.lines().enumerate() {
+        if line.trim().is_empty() {
+            continue;
+        }
+        serde_json::from_str::<EventEnvelope>(line).with_context(|| {
+            format!(
+                "ledger receipt {} line {} is not a well-formed event record",
+                ledger_path.display(),
+                index + 1
+            )
+        })?;
+    }
+
+    let coverage_path = run_dir.join("coverage.manifest.json");
+    let coverage_text = std::fs::read_to_string(&coverage_path)
+        .with_context(|| format!("read receipt {}", coverage_path.display()))?;
+    serde_json::from_str::<CoverageManifest>(&coverage_text)
+        .with_context(|| format!("coverage receipt {} is malformed", coverage_path.display()))?;
+
+    let bundle_path = run_dir.join("bundle.manifest.json");
+    let bundle_text = std::fs::read_to_string(&bundle_path)
+        .with_context(|| format!("read receipt {}", bundle_path.display()))?;
+    serde_json::from_str::<BundleManifest>(&bundle_text)
+        .with_context(|| format!("bundle receipt {} is malformed", bundle_path.display()))?;
+
+    // packet.md, ledger.events.jsonl, coverage.manifest.json,
+    // bundle.manifest.json — intake.report.json is validated by the caller.
+    Ok(4)
 }
 
 fn summarize_intake_report_command(
@@ -7126,6 +7250,7 @@ fn render_init_config_with_git_repo(selected: &[InitSource], git_repo: &str) -> 
     let json = init_source_enabled(selected, InitSource::Json);
     let manual = init_source_enabled(selected, InitSource::Manual);
     let git_repo = toml_basic_string(git_repo);
+    let user = SCAFFOLD_USER_PLACEHOLDER;
 
     format!(
         r#"# shiplog local configuration.
@@ -7148,7 +7273,8 @@ include_reviews = true
 preset = "last-6-months"
 
 [user]
-label = "Your Name"
+# Replace this with how you want to be credited in the packet.
+label = "{user}"
 
 [sources.github]
 # GitHub auth uses environment credentials or an authenticated gh CLI session.
@@ -7199,7 +7325,7 @@ coverage = "./coverage.manifest.json"
 [sources.manual]
 enabled = {manual}
 events = "./manual_events.yaml"
-user = "Your Name"
+user = "{user}"
 
 [redaction]
 # Set SHIPLOG_REDACT_KEY before manager or public share rendering.
@@ -8296,7 +8422,7 @@ fn run_home() -> Result<()> {
 
     if !config.exists() && resolution.latest_run.is_none() {
         println!("No packet exists yet.");
-        println!("Start: shiplog intake");
+        println!("Start: shiplog start --yes");
         return Ok(());
     }
 
@@ -11837,6 +11963,9 @@ struct LinearViewer {
 }
 
 fn discover_github_user(api_base: &str, token: Option<&str>) -> Result<String> {
+    shiplog::ingest::github::validate_https_api_base(api_base)
+        .context("GitHub API base URL failed validation")?;
+
     let token = token
         .map(ToOwned::to_owned)
         .or_else(|| std::env::var("GITHUB_TOKEN").ok())
@@ -17104,6 +17233,13 @@ mod tests {
         }
     }
 
+    /// Build a fixture date without adding panic-family debt to `main.rs`.
+    /// See `docs/NO_PANIC_POLICY.md`.
+    fn fixture_date(year: i32, month: u32, day: u32) -> Result<NaiveDate> {
+        NaiveDate::from_ymd_opt(year, month, day)
+            .with_context(|| format!("build fixture date {year}-{month}-{day}"))
+    }
+
     #[test]
     fn resolve_cache_dir_uses_default_out_cache() {
         let out_root = Path::new("C:/tmp/shiplog-out");
@@ -17360,12 +17496,49 @@ mod tests {
         .unwrap();
 
         assert_eq!(window.since, NaiveDate::from_ymd_opt(2025, 11, 7).unwrap());
-        assert_eq!(window.until, NaiveDate::from_ymd_opt(2026, 5, 7).unwrap());
         assert_eq!(window.label, WindowLabel::LastSixMonths);
         assert_eq!(
             window.window_label(),
-            "last-6-months (2025-11-07..2026-05-07)"
+            "last-6-months (2025-11-07..2026-05-08)"
         );
+    }
+
+    /// `until` is exclusive, so the trailing preset must end the day after
+    /// today. Anchoring it on `today` dropped work recorded today — including
+    /// a `shiplog add` entered moments earlier.
+    #[test]
+    fn last_six_months_window_contains_today() -> Result<()> {
+        let today = fixture_date(2026, 5, 7)?;
+
+        let resolved = resolve_date_window_for_today(date_args(), today)?;
+
+        let window = TimeWindow {
+            since: resolved.since,
+            until: resolved.until,
+        };
+        assert_eq!(window.until, fixture_date(2026, 5, 8)?);
+        assert!(window.contains(today), "today must be collectable");
+        assert!(window.contains(today.pred_opt().context("day before today")?));
+        assert!(!window.contains(today.succ_opt().context("day after today")?));
+        Ok(())
+    }
+
+    /// The trailing preset is explicitly requestable, not only the default.
+    #[test]
+    fn explicit_last_six_months_flag_contains_today() -> Result<()> {
+        let today = fixture_date(2026, 5, 7)?;
+        let mut args = date_args();
+        args.last_6_months = true;
+
+        let resolved = resolve_date_window_for_today(args, today)?;
+
+        let window = TimeWindow {
+            since: resolved.since,
+            until: resolved.until,
+        };
+        assert_eq!(window.until, fixture_date(2026, 5, 8)?);
+        assert!(window.contains(today));
+        Ok(())
     }
 
     #[test]

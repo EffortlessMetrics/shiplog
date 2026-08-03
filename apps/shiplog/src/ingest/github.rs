@@ -1496,13 +1496,13 @@ struct ReviewUser {
 
 /// Validate that an `api_base` URL uses the `https` scheme.
 ///
-/// Mirrors [`cluster_llm::client::validate_https_endpoint`] so that the
+/// Mirrors `cluster_llm::client::validate_https_endpoint` so that the
 /// GitHub adapter enforces the same HTTPS-only policy as the LLM
 /// clustering backend. Returning the parser error here lets the CLI
 /// surface a clear "GitHub API base must use https" error before any
 /// bearer token or PR payload is transmitted.
 ///
-/// This is intentionally stricter than [`html_base_url`], which only
+/// This is intentionally stricter than `html_base_url`, which only
 /// derives a human-facing URL for receipt rendering and may legitimately
 /// preserve an `http://` scheme for an internal GHES instance behind a
 /// reverse proxy. The bearer-authenticated request path is never

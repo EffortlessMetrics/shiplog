@@ -18,6 +18,7 @@ use std::io::{ErrorKind, Read, Write};
 use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
 use std::process::Command as StdCommand;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration as StdDuration, Instant};
@@ -1683,8 +1684,21 @@ fn file_tree_manifest(root: &Path) -> Vec<(String, u64, Option<std::time::System
     entries
 }
 
-#[cfg(not(windows))]
-fn install_fake_gh(tmp: &Path) -> anyhow::Result<PathBuf> {
+/// Which `gh auth status` outcome the stubbed `gh` on `PATH` should report.
+#[derive(Clone, Copy)]
+enum FakeGhAuth {
+    /// `gh` is logged in and hands back a token.
+    ///
+    LoggedIn,
+    /// `gh` exists but has no session, so `gh auth status` exits non-zero.
+    ///
+    /// Tests need this instead of an empty `GH_CONFIG_DIR`: probing the real
+    /// `gh` binary makes the reported reason depend on how fast that process
+    /// answers (`gh_logged_out` normally, `gh_timed_out` under load).
+    LoggedOut,
+}
+
+fn install_fake_gh(tmp: &Path, auth: FakeGhAuth) -> anyhow::Result<PathBuf> {
     let bin_dir = tmp.join("fake-gh-bin");
     std::fs::create_dir_all(&bin_dir)?;
     #[cfg(windows)]
@@ -1692,21 +1706,43 @@ fn install_fake_gh(tmp: &Path) -> anyhow::Result<PathBuf> {
     #[cfg(not(windows))]
     let path = bin_dir.join("gh");
     #[cfg(windows)]
-    let script = r#"@echo off
-if "%2"=="token" (
+    let script = match auth {
+        FakeGhAuth::LoggedIn => {
+            r#"@echo off
+if defined SHIPLOG_FAKE_GH_LOG >>"%SHIPLOG_FAKE_GH_LOG%" echo fake-gh %~1 %~2
+if /I "%~2"=="token" (
   echo shiplog-gh-secret
 ) else (
   echo {"hosts":{"github.com":[{"user":"octocat"}],"127.0.0.1":[{"user":"octocat"}]}}
 )
 exit /b 0
-"#;
+"#
+        }
+        FakeGhAuth::LoggedOut => {
+            r#"@echo off
+if defined SHIPLOG_FAKE_GH_LOG >>"%SHIPLOG_FAKE_GH_LOG%" echo fake-gh %~1 %~2
+exit /b 1
+"#
+        }
+    };
     #[cfg(not(windows))]
-    let script = r##"#!/bin/sh
+    let script = match auth {
+        FakeGhAuth::LoggedIn => {
+            r##"#!/bin/sh
+if [ -n "${SHIPLOG_FAKE_GH_LOG:-}" ]; then printf '%s\n' "fake-gh $*" >> "$SHIPLOG_FAKE_GH_LOG"; fi
 case "$*" in
   *"auth token"*) printf '%s\n' 'shiplog-gh-secret' ;;
   *) printf '%s\n' '{"hosts":{"github.com":[{"user":"octocat"}],"127.0.0.1":[{"user":"octocat"}]}}' ;;
 esac
-"##;
+"##
+        }
+        FakeGhAuth::LoggedOut => {
+            r##"#!/bin/sh
+if [ -n "${SHIPLOG_FAKE_GH_LOG:-}" ]; then printf '%s\n' "fake-gh $*" >> "$SHIPLOG_FAKE_GH_LOG"; fi
+exit 1
+"##
+        }
+    };
     std::fs::write(&path, script)?;
     #[cfg(unix)]
     {
@@ -1726,7 +1762,31 @@ fn path_with_prepend(prepend: &Path) -> anyhow::Result<String> {
     Ok(std::env::join_paths(paths)?.to_string_lossy().into_owned())
 }
 
-#[cfg(not(windows))]
+fn isolated_fake_gh_path(bin_dir: &Path) -> anyhow::Result<String> {
+    #[cfg(windows)]
+    {
+        let system_root = std::env::var_os("SystemRoot")
+            .context("Windows tests require SystemRoot to locate cmd.exe")?;
+        let paths = [
+            bin_dir.to_path_buf(),
+            PathBuf::from(&system_root).join("System32"),
+            PathBuf::from(system_root).join("System"),
+        ];
+        Ok(std::env::join_paths(paths)?.to_string_lossy().into_owned())
+    }
+
+    #[cfg(not(windows))]
+    {
+        path_with_prepend(bin_dir)
+    }
+}
+
+fn configure_fake_gh_command(command: &mut Command, bin_dir: &Path) {
+    #[cfg(windows)]
+    command.env("SHIPLOG_TEST_GH_COMMAND", bin_dir.join("gh.cmd"));
+    let _ = (command, bin_dir);
+}
+
 fn assert_tree_does_not_contain(root: &Path, forbidden: &str) -> anyhow::Result<()> {
     fn visit(path: &Path, forbidden: &str) -> anyhow::Result<()> {
         for entry in std::fs::read_dir(path)? {
@@ -2895,7 +2955,7 @@ fn init_guided_creates_local_first_setup_without_token_providers() -> CliTestRes
 }
 
 #[test]
-fn status_latest_missing_setup_prints_init_guidance_without_writing() -> CliTestResult {
+fn status_latest_missing_setup_prints_start_guidance_without_writing() -> CliTestResult {
     let tmp = TempDir::new()?;
     let before = file_tree_manifest(tmp.path());
 
@@ -2910,7 +2970,7 @@ fn status_latest_missing_setup_prints_init_guidance_without_writing() -> CliTest
         .stdout(predicate::str::contains(
             "shiplog doctor --setup [read-only]",
         ))
-        .stdout(predicate::str::contains("shiplog init --guided [writes]"));
+        .stdout(predicate::str::contains("shiplog start --yes [writes]"));
     let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
 
     assert!(
@@ -3102,7 +3162,7 @@ fn no_argument_home_is_read_only_and_useful_before_and_after_setup() -> CliTestR
         .assert()
         .success()
         .stdout(predicate::str::contains("No packet exists yet."))
-        .stdout(predicate::str::contains("Start: shiplog intake"));
+        .stdout(predicate::str::contains("Start: shiplog start --yes"));
     assert_eq!(before_empty, file_tree_manifest(empty.path()));
 
     let established = TempDir::new()?;
@@ -3827,13 +3887,22 @@ repo_owners = ["acme"]
 struct RecordedGithubCliServer {
     base_url: String,
     requests: Arc<Mutex<Vec<String>>>,
+    stop: Arc<AtomicBool>,
     handle: Option<JoinHandle<anyhow::Result<()>>>,
 }
 
 const CLI_GITHUB_FIXTURE_READY_TARGET: &str = "/__shiplog_cli_fixture_ready";
 
 impl RecordedGithubCliServer {
-    fn start(expected_requests: usize) -> anyhow::Result<Self> {
+    /// Serve GitHub fixtures until [`RecordedGithubCliServer::finish`] is called.
+    ///
+    /// The server deliberately does not wait for a fixed request count: the CLI
+    /// under test is a child process, and how long it takes to issue its calls
+    /// depends on machine load, not on the behaviour being asserted. Tests call
+    /// `finish` only after the child process has exited, so every request the
+    /// CLI made has already been served and recorded by then; assertions are
+    /// made on *which* requests arrived rather than on a wall-clock race.
+    fn start() -> anyhow::Result<Self> {
         let listener =
             TcpListener::bind("127.0.0.1:0").context("bind CLI GitHub fixture server")?;
         listener
@@ -3842,21 +3911,19 @@ impl RecordedGithubCliServer {
         let addr = listener.local_addr()?;
         let base_url = format!("http://{addr}");
         let requests = Arc::new(Mutex::new(Vec::new()));
+        let stop = Arc::new(AtomicBool::new(false));
         let thread_requests = Arc::clone(&requests);
+        let thread_stop = Arc::clone(&stop);
         let thread_base_url = base_url.clone();
         let handle = thread::spawn(move || {
-            replay_cli_github_fixtures(
-                listener,
-                &thread_base_url,
-                thread_requests,
-                expected_requests,
-            )
+            replay_cli_github_fixtures(listener, &thread_base_url, thread_requests, thread_stop)
         });
         wait_for_cli_github_fixture_server(addr)?;
 
         Ok(Self {
             base_url,
             requests,
+            stop,
             handle: Some(handle),
         })
     }
@@ -3866,6 +3933,7 @@ impl RecordedGithubCliServer {
     }
 
     fn finish(mut self) -> anyhow::Result<Vec<String>> {
+        self.stop.store(true, Ordering::SeqCst);
         if let Some(handle) = self.handle.take() {
             handle
                 .join()
@@ -3882,11 +3950,9 @@ fn replay_cli_github_fixtures(
     listener: TcpListener,
     base_url: &str,
     requests: Arc<Mutex<Vec<String>>>,
-    expected_requests: usize,
+    stop: Arc<AtomicBool>,
 ) -> anyhow::Result<()> {
-    let deadline = Instant::now() + StdDuration::from_secs(10);
-
-    while cli_fixture_request_count(&requests)? < expected_requests {
+    while !stop.load(Ordering::SeqCst) {
         match listener.accept() {
             Ok((mut stream, _peer)) => {
                 stream
@@ -3910,12 +3976,6 @@ fn replay_cli_github_fixtures(
                 }
             }
             Err(err) if err.kind() == ErrorKind::WouldBlock => {
-                if Instant::now() > deadline {
-                    return Err(anyhow::anyhow!(
-                        "CLI GitHub fixture server expected {expected_requests} requests, saw {}",
-                        cli_fixture_request_count(&requests)?
-                    ));
-                }
                 thread::sleep(StdDuration::from_millis(10));
             }
             Err(err) => return Err(err).context("accept CLI GitHub fixture request"),
@@ -3978,13 +4038,6 @@ fn wait_for_cli_github_fixture_server(addr: SocketAddr) -> anyhow::Result<()> {
             Err(err) => return Err(err).context("connect CLI GitHub fixture server"),
         }
     }
-}
-
-fn cli_fixture_request_count(requests: &Arc<Mutex<Vec<String>>>) -> anyhow::Result<usize> {
-    requests
-        .lock()
-        .map_err(|_| anyhow::anyhow!("CLI GitHub fixture request log was poisoned"))
-        .map(|requests| requests.len())
 }
 
 fn handle_cli_github_fixture_request(
@@ -4097,15 +4150,16 @@ fn cli_target_has_query_param(target: &str, key: &str, value: &str) -> bool {
         .unwrap_or(false)
 }
 
-#[cfg(not(windows))]
 #[test]
 fn github_auth_cli_fallback_collects_without_token_and_keeps_secret_out_of_artifacts()
 -> CliTestResult {
     let tmp = TempDir::new()?;
     let out = tmp.path().join("out");
-    let server = RecordedGithubCliServer::start(3)?;
-    let fake_gh = install_fake_gh(tmp.path())?;
-    let path = path_with_prepend(&fake_gh)?;
+    let server = RecordedGithubCliServer::start()?;
+    let fake_gh = install_fake_gh(tmp.path(), FakeGhAuth::LoggedIn)?;
+    let fake_gh_log_dir = TempDir::new()?;
+    let fake_gh_log = fake_gh_log_dir.path().join("fake-gh.log");
+    let path = isolated_fake_gh_path(&fake_gh)?;
     let sentinel = "shiplog-gh-secret";
     std::fs::write(
         tmp.path().join("shiplog.toml"),
@@ -4130,13 +4184,15 @@ enabled = false
         ),
     )?;
 
-    let auth_assert = shiplog_cmd()
+    let mut auth_command = shiplog_cmd();
+    auth_command
         .current_dir(tmp.path())
         .env_remove("GH_TOKEN")
         .env_remove("GITHUB_TOKEN")
         .env_remove("GH_ENTERPRISE_TOKEN")
         .env_remove("GITHUB_ENTERPRISE_TOKEN")
         .env("PATH", &path)
+        .env("SHIPLOG_FAKE_GH_LOG", &fake_gh_log)
         .env("GH_CONFIG_DIR", tmp.path().join("gh-config"))
         .args([
             "auth",
@@ -4145,19 +4201,21 @@ enabled = false
             "--config",
             tmp.path().join("shiplog.toml").to_str().unwrap(),
             "--json",
-        ])
-        .assert()
-        .success();
+        ]);
+    configure_fake_gh_command(&mut auth_command, &fake_gh);
+    let auth_assert = auth_command.assert().success();
     let auth_json: serde_json::Value = serde_json::from_slice(&auth_assert.get_output().stdout)?;
     assert_eq!(auth_json["source"], "gh_cli");
 
-    let assert = shiplog_cmd()
+    let mut intake_command = shiplog_cmd();
+    intake_command
         .current_dir(tmp.path())
         .env_remove("GH_TOKEN")
         .env_remove("GITHUB_TOKEN")
         .env_remove("GH_ENTERPRISE_TOKEN")
         .env_remove("GITHUB_ENTERPRISE_TOKEN")
         .env("PATH", path)
+        .env("SHIPLOG_FAKE_GH_LOG", &fake_gh_log)
         .env("GH_CONFIG_DIR", tmp.path().join("gh-config"))
         .args([
             "intake",
@@ -4170,9 +4228,9 @@ enabled = false
             "2026-02-01",
             "--until",
             "2026-03-01",
-        ])
-        .assert()
-        .success();
+        ]);
+    configure_fake_gh_command(&mut intake_command, &fake_gh);
+    let assert = intake_command.assert().success();
     let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
     let stderr = String::from_utf8(assert.get_output().stderr.clone())?;
     assert!(!stdout.contains(sentinel));
@@ -4188,13 +4246,19 @@ enabled = false
     assert_tree_does_not_contain(&out, sentinel)?;
     let config = std::fs::read_to_string(tmp.path().join("shiplog.toml"))?;
     assert!(!config.contains(sentinel));
-    Ok(())
-}
-
-#[cfg(windows)]
-#[test]
-fn github_auth_cli_fallback_collects_without_token_and_keeps_secret_out_of_artifacts()
--> CliTestResult {
+    let fake_gh_invocations = std::fs::read_to_string(&fake_gh_log)?;
+    assert!(
+        fake_gh_invocations.lines().any(|line| line
+            .trim_end_matches('\r')
+            .starts_with("fake-gh auth status")),
+        "the isolated gh fixture must receive auth status: {fake_gh_invocations:?}"
+    );
+    assert!(
+        fake_gh_invocations.lines().any(|line| line
+            .trim_end_matches('\r')
+            .starts_with("fake-gh auth token")),
+        "the isolated gh fixture must receive auth token: {fake_gh_invocations:?}"
+    );
     Ok(())
 }
 
@@ -4309,7 +4373,7 @@ mode = "created"
 fn github_activity_run_resume_skips_completed_profile_without_refetching_details() -> CliTestResult
 {
     let tmp = TempDir::new()?;
-    let server = RecordedGithubCliServer::start(3)?;
+    let server = RecordedGithubCliServer::start()?;
     let config = tmp.path().join("shiplog-github-full.toml");
     let out = tmp.path().join("out/github-full");
     std::fs::write(
@@ -4383,7 +4447,7 @@ cache_dir = "./out/github-full/.cache"
             .filter(|line| line.contains("/search/issues?"))
             .count(),
         2,
-        "first authored run should make search meta and search page requests"
+        "first authored run should make search meta and search page requests: {requests:?}"
     );
     assert_eq!(
         requests
@@ -4391,7 +4455,14 @@ cache_dir = "./out/github-full/.cache"
             .filter(|line| line.contains("/repos/acme/widgets/pulls/1"))
             .count(),
         1,
-        "first authored run should fetch PR details once"
+        "first authored run should fetch PR details once: {requests:?}"
+    );
+    assert!(
+        requests
+            .iter()
+            .all(|line| line.contains("/search/issues?")
+                || line.contains("/repos/acme/widgets/pulls/1")),
+        "first authored run should not call any other GitHub endpoint: {requests:?}"
     );
 
     let progress_path = out.join("github.activity.progress.json");
@@ -4725,7 +4796,7 @@ cache_dir = "./out/github-full/.cache"
         }))?,
     )?;
 
-    let server = RecordedGithubCliServer::start(3)?;
+    let server = RecordedGithubCliServer::start()?;
     write_config(&server.base_url())?;
 
     shiplog_cmd()
@@ -4756,7 +4827,22 @@ cache_dir = "./out/github-full/.cache"
             .filter(|line| line.contains("/search/issues?"))
             .count(),
         2,
-        "resume should search only the pending February window"
+        "resume should search only the pending February window: {requests:?}"
+    );
+    assert_eq!(
+        requests
+            .iter()
+            .filter(|line| line.contains("/repos/acme/widgets/pulls/1"))
+            .count(),
+        1,
+        "resume should fetch details for the pending window's PR exactly once: {requests:?}"
+    );
+    assert!(
+        requests
+            .iter()
+            .all(|line| line.contains("/search/issues?")
+                || line.contains("/repos/acme/widgets/pulls/1")),
+        "resume should not call any other GitHub endpoint: {requests:?}"
     );
     assert!(
         requests.iter().all(|line| !line.contains("2025-01-01")),
@@ -4877,8 +4963,8 @@ fn status_latest_json_missing_setup_serializes_model_without_writing() -> CliTes
             && action["writes"] == false
     }));
     assert!(actions.iter().any(|action| {
-        action["key"] == "init_guided"
-            && action["command"] == "shiplog init --guided"
+        action["key"] == "start"
+            && action["command"] == "shiplog start --yes"
             && action["writes"] == true
     }));
     assert!(
@@ -5031,7 +5117,7 @@ fn status_latest_json_safe_next_actions_cover_review_loop_states() -> CliTestRes
     let missing = status_latest_json(missing_setup.path(), &missing_out)?;
     assert_eq!(missing["overall_status"], "needs_setup");
     assert_status_first_action(&missing, "doctor_setup", false);
-    assert_status_has_action(&missing, "init_guided", true);
+    assert_status_has_action(&missing, "start", true);
     assert_status_lacks_command(&missing, "journal add --from-repair");
     assert_status_lacks_share_render(&missing);
     assert_eq!(
@@ -5806,6 +5892,100 @@ fn seed_journal_list_events(path: &Path) {
         ])
         .assert()
         .success();
+}
+
+/// `shiplog add "<title>"` is the quick front-door command advertised in
+/// `shiplog --help`. It must work with no flags at all, defaulting the entry
+/// date to today so the user never has to restate it.
+#[test]
+fn quick_add_defaults_the_entry_date_to_today() {
+    let tmp = TempDir::new().unwrap();
+
+    // Bracket the run so a UTC midnight rollover mid-command cannot flake the
+    // assertion: the entry must carry whichever UTC day the command observed.
+    let before = Utc::now().date_naive();
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["add", "Shipped the billing retry path"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Added manual event:"))
+        .stdout(predicate::str::contains("shiplog update"));
+    let after = Utc::now().date_naive();
+
+    let file: ManualEventsFile = serde_yaml::from_str(
+        &std::fs::read_to_string(tmp.path().join("manual_events.yaml")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(file.events.len(), 1);
+    let entry = &file.events[0];
+
+    let ManualDate::Single(recorded) = entry.date else {
+        panic!("quick add must record a single date, got {:?}", entry.date);
+    };
+    assert!(
+        recorded == before || recorded == after,
+        "quick add recorded {recorded}, expected the command's UTC day ({before} or {after})"
+    );
+    assert_eq!(entry.title, "Shipped the billing retry path");
+    assert_eq!(
+        entry.id,
+        format!("manual-{recorded}-shipped-the-billing-retry-path")
+    );
+}
+
+/// The implicit today default must not shadow an explicit `--date`.
+#[test]
+fn quick_add_honors_an_explicit_date() {
+    let tmp = TempDir::new().unwrap();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["add", "Debugged customer import", "--date", "2026-05-08"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "Added manual event: manual-2026-05-08-debugged-customer-import",
+        ));
+
+    let file: ManualEventsFile = serde_yaml::from_str(
+        &std::fs::read_to_string(tmp.path().join("manual_events.yaml")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(file.events.len(), 1);
+    assert_eq!(
+        file.events[0].date,
+        ManualDate::Single(NaiveDate::from_ymd_opt(2026, 5, 8).unwrap())
+    );
+}
+
+/// The advertised front door is `start` -> `add` -> `update`. Work recorded
+/// today must survive that round trip: the default `--last-6-months` window is
+/// half-open, so anchoring `until` on today silently dropped the note the user
+/// had just written and left the packet reporting "Needs evidence".
+#[test]
+fn quick_add_today_is_collected_by_the_default_update_window() {
+    let tmp = TempDir::new().unwrap();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["start", "--yes"])
+        .assert()
+        .success();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["add", "Shipped the billing retry path"])
+        .assert()
+        .success();
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["update"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Manual: success, 1 event"))
+        .stdout(predicate::str::contains("Manual: 1 event(s)"));
 }
 
 #[test]
@@ -7055,6 +7235,71 @@ events = "./manual_events.yaml"
     Ok(())
 }
 
+/// The scaffold seeds the identity fields with a placeholder that is not inert:
+/// `sources.manual.user` becomes the actor on every manual event and the `user`
+/// in `coverage.manifest.json`, and `user.label` titles the packet. Setup
+/// readiness has to say so, or the first packet ships attributed to "Your Name".
+#[test]
+fn doctor_setup_reports_the_scaffold_identity_placeholder_as_a_caveat() -> CliTestResult {
+    let tmp = TempDir::new()?;
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["start", "--yes"])
+        .assert()
+        .success();
+
+    let assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["doctor", "--setup"])
+        .assert()
+        .stdout(predicate::str::contains("Identity"))
+        .stdout(predicate::str::contains("scaffold placeholder"))
+        .stdout(predicate::str::contains("Set your identity"));
+    let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
+
+    assert!(
+        stdout.contains("user.label") && stdout.contains("sources.manual.user"),
+        "both scaffolded identity fields should be named. stdout:\n{stdout}"
+    );
+    assert!(
+        !tmp.path().join("out").exists(),
+        "doctor --setup should not write run artifacts"
+    );
+    Ok(())
+}
+
+/// Once the placeholder is replaced the caveat clears and states the attribution.
+#[test]
+fn doctor_setup_reports_a_replaced_identity_as_ready() -> CliTestResult {
+    let tmp = TempDir::new()?;
+
+    shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["start", "--yes"])
+        .assert()
+        .success();
+
+    let config_path = tmp.path().join("shiplog.toml");
+    let config = std::fs::read_to_string(&config_path)?.replace("Your Name", "Ada Lovelace");
+    std::fs::write(&config_path, config)?;
+
+    let assert = shiplog_cmd()
+        .current_dir(tmp.path())
+        .args(["doctor", "--setup"])
+        .assert()
+        .stdout(predicate::str::contains(
+            "packet attributed to Ada Lovelace",
+        ));
+    let stdout = String::from_utf8(assert.get_output().stdout.clone())?;
+
+    assert!(
+        !stdout.contains("scaffold placeholder"),
+        "a replaced identity should not be reported as a placeholder. stdout:\n{stdout}"
+    );
+    Ok(())
+}
+
 #[test]
 fn doctor_setup_reports_malformed_manual_as_read_only_setup_block() -> CliTestResult {
     let tmp = TempDir::new()?;
@@ -7545,26 +7790,41 @@ user = "octo"
 "#,
     )?;
 
+    // Both invocations must observe the same GitHub auth state for their
+    // projections to be comparable. Stub `gh` on PATH instead of probing the
+    // developer's real session, which reports `gh_logged_out` or `gh_timed_out`
+    // depending on how quickly the real binary answers.
+    let fake_gh = install_fake_gh(tmp.path(), FakeGhAuth::LoggedOut)?;
+    let fake_gh_log_dir = TempDir::new()?;
+    let fake_gh_log = fake_gh_log_dir.path().join("fake-gh.log");
+    let path = isolated_fake_gh_path(&fake_gh)?;
+
     let before = file_tree_manifest(tmp.path());
-    let doctor_assert = shiplog_cmd()
+    let mut doctor_command = shiplog_cmd();
+    doctor_command
         .current_dir(tmp.path())
         .env_remove("GITHUB_TOKEN")
+        .env("PATH", &path)
+        .env("SHIPLOG_FAKE_GH_LOG", &fake_gh_log)
         .env("GH_CONFIG_DIR", tmp.path().join("gh-config"))
         .env_remove("SHIPLOG_REDACT_KEY")
-        .args(["doctor", "--setup", "--json"])
-        .assert()
-        .failure();
+        .args(["doctor", "--setup", "--json"]);
+    configure_fake_gh_command(&mut doctor_command, &fake_gh);
+    let doctor_assert = doctor_command.assert().failure();
     let doctor_stdout = String::from_utf8(doctor_assert.get_output().stdout.clone())?;
     let doctor_json: serde_json::Value = serde_json::from_str(&doctor_stdout)?;
 
-    let sources_assert = shiplog_cmd()
+    let mut sources_command = shiplog_cmd();
+    sources_command
         .current_dir(tmp.path())
         .env_remove("GITHUB_TOKEN")
+        .env("PATH", &path)
+        .env("SHIPLOG_FAKE_GH_LOG", &fake_gh_log)
         .env("GH_CONFIG_DIR", tmp.path().join("gh-config"))
         .env_remove("SHIPLOG_REDACT_KEY")
-        .args(["sources", "status"])
-        .assert()
-        .failure();
+        .args(["sources", "status"]);
+    configure_fake_gh_command(&mut sources_command, &fake_gh);
+    let sources_assert = sources_command.assert().failure();
     let sources_stdout = String::from_utf8(sources_assert.get_output().stdout.clone())?;
     let after = file_tree_manifest(tmp.path());
     assert_eq!(
@@ -7605,7 +7865,14 @@ user = "octo"
     assert!(
         sources_rows["github"]
             .reason
-            .contains("GitHub authentication unavailable")
+            .contains("GitHub authentication unavailable"),
+        "unexpected github reason: {}",
+        sources_rows["github"].reason
+    );
+    assert!(
+        sources_rows["github"].reason.contains("gh_logged_out"),
+        "stubbed gh reports no session, so the reason must be gh_logged_out: {}",
+        sources_rows["github"].reason
     );
 
     assert!(
@@ -7615,6 +7882,19 @@ user = "octo"
     assert!(
         !sources_stdout.contains("Redaction key") && !sources_stdout.contains("SHIPLOG_REDACT_KEY"),
         "sources status should not include redaction/share credential noise"
+    );
+
+    let fake_gh_invocations = std::fs::read_to_string(&fake_gh_log)?;
+    let status_invocations = fake_gh_invocations
+        .lines()
+        .filter(|line| {
+            line.trim_end_matches('\r')
+                .starts_with("fake-gh auth status")
+        })
+        .count();
+    assert!(
+        status_invocations >= 2,
+        "both projections must invoke the isolated gh fixture: {fake_gh_invocations:?}"
     );
 
     Ok(())
@@ -18163,7 +18443,7 @@ fn no_subcommand_shows_home_screen() {
         .assert()
         .success()
         .stdout(predicate::str::contains("No packet exists yet."))
-        .stdout(predicate::str::contains("Start: shiplog intake"));
+        .stdout(predicate::str::contains("Start: shiplog start --yes"));
 }
 
 // ── 8. missing required args return helpful error messages ─────────────────
@@ -18212,6 +18492,70 @@ fn collect_github_me_without_token_fails_actionably() {
         .stderr(predicate::str::contains(
             "Could not infer GitHub user: --me requires --token or GITHUB_TOKEN",
         ));
+}
+
+#[test]
+fn collect_github_me_rejects_remote_http_before_token_or_network() -> CliTestResult {
+    let listener = TcpListener::bind("0.0.0.0:0")?;
+    listener.set_nonblocking(true)?;
+    let port = listener.local_addr()?.port();
+    let requests = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let requests_for_server = Arc::clone(&requests);
+    let server = thread::spawn(move || {
+        let deadline = Instant::now() + StdDuration::from_secs(2);
+        while Instant::now() < deadline {
+            match listener.accept() {
+                Ok((mut stream, _)) => {
+                    requests_for_server.fetch_add(1, Ordering::Relaxed);
+                    let mut request = [0_u8; 1024];
+                    let _ = stream.read(&mut request);
+                    break;
+                }
+                Err(error) if error.kind() == ErrorKind::WouldBlock => {
+                    thread::sleep(StdDuration::from_millis(10));
+                }
+                Err(_) => break,
+            }
+        }
+    });
+
+    let token = "shiplog-hostile-api-base-token";
+    let api_base = format!("http://0.0.0.0:{port}/api/v3");
+    let output = shiplog_cmd()
+        .env("GITHUB_TOKEN", token)
+        .args(["collect", "github", "--me", "--api-base", &api_base])
+        .output()?;
+    server
+        .join()
+        .map_err(|_| "hostile API-base fixture thread panicked")?;
+
+    let stderr = String::from_utf8(output.stderr)?;
+    assert!(!output.status.success());
+    assert!(stderr.contains("GitHub API base URL failed validation"));
+    assert!(!stderr.contains(token));
+    assert_eq!(requests.load(Ordering::Relaxed), 0);
+    Ok(())
+}
+
+#[test]
+fn auth_github_status_rejects_remote_http_before_environment_credentials() -> CliTestResult {
+    let tmp = TempDir::new()?;
+    std::fs::write(
+        tmp.path().join("shiplog.toml"),
+        "[shiplog]\nconfig_version = 1\n\n[sources.github]\napi_base = \"http://attacker.example.com/api/v3\"\n",
+    )?;
+
+    let token = "shiplog-invalid-api-base-token";
+    let output = shiplog_cmd()
+        .current_dir(tmp.path())
+        .env("GITHUB_TOKEN", token)
+        .args(["auth", "github", "status", "--json"])
+        .output()?;
+    let stdout = String::from_utf8(output.stdout)?;
+    assert!(!output.status.success());
+    assert!(stdout.contains("invalid_api_base"));
+    assert!(!stdout.contains(token));
+    Ok(())
 }
 
 #[test]

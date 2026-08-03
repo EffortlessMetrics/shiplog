@@ -1,5 +1,10 @@
 <h1 align="center">shiplog</h1>
 
+> **Development repository:** Contributions and normal development happen in
+> [`EffortlessMetrics/shiplog-swarm`](https://github.com/EffortlessMetrics/shiplog-swarm).
+> The `EffortlessMetrics/shiplog` repository is the public release source; new
+> contributors do not need its maintainer-only promotion setup.
+
 <p align="center">
   <a href="https://github.com/EffortlessMetrics/shiplog/actions/workflows/ci.yml"><img src="https://github.com/EffortlessMetrics/shiplog/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI" /></a>
   <a href="https://codecov.io/gh/EffortlessMetrics/shiplog"><img src="https://codecov.io/gh/EffortlessMetrics/shiplog/branch/main/graph/badge.svg" alt="Codecov" /></a>
@@ -51,6 +56,7 @@ repeatable evidence trail for self-reviews, promo packets, or brag documents.
 
 | Surface | Status | Command |
 |---------|--------|---------|
+| First-use setup (next release) | Source-only | `shiplog start --yes` |
 | First packet | Ready | `shiplog intake` |
 | Home screen | Ready | `shiplog` |
 | Quick evidence capture | Ready | `shiplog add "what changed"` |
@@ -65,16 +71,21 @@ repeatable evidence trail for self-reviews, promo packets, or brag documents.
 
 ## Quick start
 
-From a work directory, run the one command that creates the first packet:
+From a current source checkout, make setup explicit and then create the first
+packet. The shipped `v0.11.0` binary does not include this unreleased command
+yet:
 
 ```bash
+shiplog start --yes
 shiplog intake
 ```
 
-Intake uses the default six-month window, discovers usable local evidence,
-creates `shiplog.toml` and `manual_events.yaml` when needed, and records
-missing optional providers without requiring credentials. Add `--explain` when
-you want per-source decisions in the terminal.
+`start --yes` writes the local-first `shiplog.toml` and `manual_events.yaml`
+scaffold. Use `shiplog start --dry-run` to preview those writes. It does not
+collect evidence or contact providers. `intake` uses the default six-month
+window, discovers usable evidence from the configured sources, and records
+source decisions. Add `--explain` when you want per-source decisions in the
+terminal.
 
 Open the packet after intake when you want the rendered artifact immediately:
 
@@ -131,18 +142,21 @@ Prerequisites:
 
 ## Setup troubleshooting
 
-Setup commands are optional for the first packet. Use them when you want to
-inspect or repair configuration before collecting evidence:
+Use the explicit setup command before collecting evidence when you want to
+inspect or repair configuration first. The lower-level `shiplog init --guided`
+command remains available as an alternative scaffold path:
 
 ```bash
-shiplog init --guided
+shiplog start --yes
 shiplog doctor --setup
 shiplog sources status
 shiplog doctor --setup --json
 shiplog status --latest
 ```
 
-`init --guided` writes local setup files. `doctor --setup`, `sources status`,
+`start --yes` writes the same local-first setup files as `init --guided` and
+requires explicit confirmation. `start --dry-run` previews them without
+writing. `doctor --setup`, `sources status`,
 `doctor --setup --json`, and `status --latest` are read-only. They do not query
 providers, render share packets, or mutate provider records.
 
@@ -282,8 +296,19 @@ share profiles. Rendering those profiles is explicit and fail-closed: provide
 
 ## For contributors
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions and coding
-conventions.
+Clone `shiplog-swarm` and run the same small gate required by pull requests:
+
+```bash
+git clone https://github.com/EffortlessMetrics/shiplog-swarm.git
+cd shiplog-swarm
+cargo build --workspace --locked
+cargo xtask ci-small
+```
+
+After the public checkout is acquired, the build and gate require no retained
+checkout credential, provider token, GitHub CLI installation, release remote,
+hook, or generated file. See [CONTRIBUTING.md](CONTRIBUTING.md) for the smallest
+PR loop and coding conventions.
 
 Useful local checks:
 
