@@ -482,10 +482,15 @@ mod tests {
         } else {
             "swarm"
         };
-        let policy = include_str!("../../../policy/automation-authority.toml").replace(
-            "repository_role = \"swarm\"",
-            &format!("repository_role = \"{role_name}\""),
-        );
+        let policy = include_str!("../../../policy/automation-authority.toml")
+            .replace(
+                "repository_role = \"swarm\"",
+                &format!("repository_role = \"{role_name}\""),
+            )
+            .replace(
+                "repository_role = \"source\"",
+                &format!("repository_role = \"{role_name}\""),
+            );
         fs::write(dir.path().join("policy/automation-authority.toml"), policy)?;
         let updates = if role == RepositoryRole::Source {
             "updates: []\n"
