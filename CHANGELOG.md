@@ -7,7 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes.
+### Added
+
+- Added an `Identity` setup readiness item so `doctor --setup` reports when
+  `user.label` or `sources.manual.user` is still the scaffold placeholder.
+  Those fields are not inert: `sources.manual.user` becomes the actor on every
+  manual event and the `user` recorded in `coverage.manifest.json`. The item is
+  a caveat rather than a blocker, so collection stays available while the gap
+  is stated.
+- Added `shiplog start`, an explicit first-use command that writes the guided
+  local setup scaffold only after `--yes` confirms the local writes. `--dry-run`
+  prints the same files instead of writing them. `start` never contacts a
+  provider or collects evidence, and existing setup files are preserved unless
+  `init --force` is used.
+- Added `shiplog report validate --receipts`, which structurally validates a
+  run's `packet.md`, `ledger.events.jsonl`, `coverage.manifest.json`, and
+  `bundle.manifest.json` rather than only checking that they exist. It fails
+  closed on the first malformed receipt and names the offending path, so
+  released binaries can be proven to emit well-formed artifacts on first use.
+
+### Fixed
+
+- Fixed source names outside the known set keeping their original case in
+  `SourceSystem::Other`, so `"Jira"` and `"jira"` compared and re-serialised as
+  different sources and broke grouping and round-trips for third-party source
+  names (#225).
+- Fixed the local git and Jira ingestors treating `--until` as inclusive. Every
+  other window in shiplog is half-open `[since, until)`, so boundary-date
+  commits and issues were counted in two adjacent periods with duplicate event
+  ids (#226).
+- Fixed GitHub `--api-base` validation so remote cleartext bases are rejected
+  before credential lookup, `gh` probing, token attachment, or payload sending.
+  HTTPS remains required for remote hosts, while loopback HTTP stays available
+  for local mock servers (#234).
+- Fixed `shiplog github activity merge` accepting a recorded `run_ref` that was
+  not a single plain path segment, which could resolve outside the intended run
+  directory. The merge now fails closed on such a receipt (#261).
+- Fixed `shiplog add "<title>"` failing with `journal add requires --date or
+  --start/--end`. The quick-add date now defaults to today, as the flag help
+  and the 0.11.0 release notes already described. An explicit `--date` still
+  wins, and `journal add` keeps its stricter contract.
+- Fixed the `--last-6-months` window excluding work recorded today. `until` is
+  exclusive, but the preset anchored it on today, so a note added through
+  `shiplog add` was never collected by the very next `shiplog update` and the
+  packet reported it as missing evidence.
 
 ## [0.11.0] - 2026-07-11
 

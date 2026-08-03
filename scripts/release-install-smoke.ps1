@@ -175,6 +175,13 @@ foreach ($artifact in @(
     }
 }
 
+# Structurally validate the receipts, not merely their existence: the
+# published binary must parse its own intake.report.json/packet.md/ledger/
+# coverage/bundle receipts back into their canonical shapes.
+Invoke-Step "structurally validating cold-start receipts"
+$reportJson = Join-Path $latestRun.FullName "intake.report.json"
+Invoke-Shiplog $binaryPath @("report", "validate", "--path", $reportJson, "--receipts") | Out-Null
+
 Invoke-Step "running no-network review rescue fixture"
 Remove-Item -Recurse -Force $demoOut -ErrorAction SilentlyContinue
 & (Join-Path $scriptDir "demo-review-rescue.ps1") -ShiplogBin $binaryPath -Out $demoOut |

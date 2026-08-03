@@ -15,7 +15,7 @@ use shiplog::schema::event::EventEnvelope;
 use shiplog::schema::freshness::SourceFreshness;
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::{BufRead, BufReader, Write};
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 use crate::*;
 
@@ -348,6 +348,7 @@ pub(super) fn run_merge(args: GithubActivityStatusArgs) -> Result<()> {
         .run_ref
         .as_deref()
         .ok_or_else(|| anyhow::anyhow!("cannot merge GitHub activity without progress.run_ref"))?;
+    let run_ref = validate_github_activity_run_ref(run_ref)?;
     let api_ledger = receipts.api_ledger.as_ref().ok_or_else(|| {
         anyhow::anyhow!("cannot merge GitHub activity without github.activity.api-ledger.json")
     })?;
@@ -423,6 +424,32 @@ pub(super) fn run_merge(args: GithubActivityStatusArgs) -> Result<()> {
     );
 
     Ok(())
+}
+
+fn validate_github_activity_run_ref(run_ref: &str) -> Result<&str> {
+    if run_ref.is_empty() {
+        anyhow::bail!("cannot merge GitHub activity without progress.run_ref");
+    }
+
+    let mut normal_component_count = 0usize;
+    for component in Path::new(run_ref).components() {
+        match component {
+            Component::Normal(_) => normal_component_count += 1,
+            _ => {
+                anyhow::bail!(
+                    "cannot merge GitHub activity with unsafe progress.run_ref; expected exactly one normal segment"
+                );
+            }
+        }
+    }
+
+    if normal_component_count != 1 {
+        anyhow::bail!(
+            "cannot merge GitHub activity with unsafe progress.run_ref; expected exactly one normal segment"
+        );
+    }
+
+    Ok(run_ref)
 }
 
 fn load_activity_receipts(
@@ -2440,5 +2467,60 @@ user = "octocat"
         );
 
         Ok(())
+    }
+
+    #[test]
+    fn github_activity_run_merge_rejects_empty_run_ref() {
+        let err = validate_github_activity_run_ref("").expect_err("expected empty run_ref to fail");
+        assert!(
+            err.to_string()
+                .contains("cannot merge GitHub activity without progress.run_ref"),
+            "unexpected error: {err:?}"
+        );
+    }
+
+    #[test]
+    fn github_activity_run_merge_rejects_unsafe_run_ref_shape() {
+        let invalid = [
+            "..",
+            "../run_123",
+            "/run_123",
+            "run_123/..",
+            "run_123/../bad",
+            "run_123/nested",
+        ];
+        for run_ref in invalid {
+            let err = validate_github_activity_run_ref(run_ref)
+                .expect_err("expected unsafe run_ref shape to fail");
+            assert!(
+                err
+                    .to_string()
+                    .contains("cannot merge GitHub activity with unsafe progress.run_ref; expected exactly one normal segment"),
+                "unexpected error for {run_ref}: {err:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn github_activity_run_merge_accepts_safe_run_ref() {
+        let valid = ["run_123", "abc-DEF_456", "2026-07-20"];
+        for run_ref in valid {
+            assert!(validate_github_activity_run_ref(run_ref).is_ok());
+        }
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn github_activity_run_merge_rejects_windows_shaped_run_refs() {
+        for run_ref in [r"C:\run_123", r"run_123\..", r"run_123\nested"] {
+            let err = validate_github_activity_run_ref(run_ref)
+                .expect_err("expected windows run_ref shape to fail");
+            assert!(
+                err
+                    .to_string()
+                    .contains("cannot merge GitHub activity with unsafe progress.run_ref; expected exactly one normal segment"),
+                "unexpected error for {run_ref}: {err:?}"
+            );
+        }
     }
 }

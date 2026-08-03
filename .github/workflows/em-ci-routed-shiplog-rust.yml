@@ -237,8 +237,9 @@ jobs:
       TMPDIR: /mnt/ci-scratch/tmp/${{ github.run_id }}-${{ github.run_attempt }}
       CARGO_TARGET_DIR: /mnt/ci-scratch/shiplog-swarm/${{ github.run_id }}-${{ github.run_attempt }}
     steps:
-      - uses: actions/checkout@v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           fetch-depth: 1
 
       - name: Prepare CPX42 scratch
@@ -283,6 +284,7 @@ jobs:
           cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
           cargo test --workspace --all-features --locked -- --test-threads=4
           cargo xtask check-no-panic-family --mode blocking-allowlist
+          cargo xtask ci-small --step authority
           git diff --check
 
       - name: Cleanup and final stats
@@ -306,7 +308,9 @@ jobs:
       CARGO_TARGET_DIR: /mnt/ci-scratch/shiplog-swarm/${{ github.run_id }}-${{ github.run_attempt }}/target
       TMPDIR: /mnt/ci-scratch/shiplog-swarm/${{ github.run_id }}-${{ github.run_attempt }}/tmp
     steps:
-      - uses: actions/checkout@v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Prepare scratch
         id: prepare
@@ -345,6 +349,7 @@ jobs:
           cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
           cargo test --workspace --all-features --locked -- --test-threads=4
           cargo xtask check-no-panic-family --mode blocking-allowlist
+          cargo xtask ci-small --step authority
           git diff --check
 
       - name: Cleanup scratch
@@ -364,7 +369,9 @@ jobs:
       CARGO_TARGET_DIR: /mnt/ci-scratch/shiplog-swarm/${{ github.run_id }}-${{ github.run_attempt }}/target
       TMPDIR: /mnt/ci-scratch/shiplog-swarm/${{ github.run_id }}-${{ github.run_attempt }}/tmp
     steps:
-      - uses: actions/checkout@v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Prepare scratch
         id: prepare
@@ -403,6 +410,7 @@ jobs:
           cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
           cargo test --workspace --all-features --locked -- --test-threads=4
           cargo xtask check-no-panic-family --mode blocking-allowlist
+          cargo xtask ci-small --step authority
           git diff --check
 
       - name: Cleanup scratch
@@ -416,7 +424,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@v1
@@ -441,6 +451,9 @@ jobs:
       - name: No-panic policy
         run: cargo xtask ci-small --step no-panic
 
+      - name: Automation authority
+        run: cargo xtask ci-small --step authority
+
       - name: Whitespace/diff validation
         run: cargo xtask ci-small --step diff
 
@@ -462,7 +475,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@v1
@@ -476,6 +491,7 @@ jobs:
           cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
           cargo test --workspace --all-features --locked -- --test-threads=4
           cargo xtask check-no-panic-family --mode blocking-allowlist
+          cargo xtask ci-small --step authority
           git diff --check
 
   no_runner_capacity:

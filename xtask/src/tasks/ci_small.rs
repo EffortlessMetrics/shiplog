@@ -5,7 +5,7 @@ use std::fs;
 use std::path::Path;
 use std::process::Command;
 
-const STEPS: &[&str] = &["format", "clippy", "tests", "no-panic", "diff"];
+const STEPS: &[&str] = &["format", "clippy", "tests", "no-panic", "authority", "diff"];
 
 /// Run the exact required small-gate sequence, or one named step for CI log
 /// granularity.
@@ -62,6 +62,10 @@ fn run_step(workspace_root: &Path, step: &str) -> Result<()> {
                 "blocking-allowlist",
             ],
         ),
+        "authority" => {
+            println!("==> check pinned automation authority");
+            return crate::tasks::automation_authority::run_pinned(workspace_root);
+        }
         "diff" => ("git", &["diff", "--check"]),
         _ => bail!("unknown ci-small step {step:?}"),
     };
@@ -106,7 +110,7 @@ mod tests {
 
     #[test]
     fn exposes_the_required_sequence_in_order() -> Result<()> {
-        if STEPS != ["format", "clippy", "tests", "no-panic", "diff"] {
+        if STEPS != ["format", "clippy", "tests", "no-panic", "authority", "diff"] {
             bail!("ci-small steps changed unexpectedly: {STEPS:?}");
         }
         Ok(())

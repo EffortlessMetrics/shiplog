@@ -1,15 +1,13 @@
+<!-- GENERATED FROM plans/shiplog-swarm/promotion-state.toml BY `cargo xtask promotion-state`. DO NOT EDIT BY HAND. -->
 # Current shiplog-swarm Promotion
-
-This is the maintained operational summary for the latest source promotion.
-Refresh it in the same source promotion PR by following
-[`implementation-plan.md`](implementation-plan.md); it is not independent
-execution authority.
 
 **Status:** completed; approved source governance follows the promotion
 **Promoted swarm head:** `c4fdba223d1c5c5b99a95b159ab8123d83d4b842`
 **Source promotion:** `EffortlessMetrics/shiplog#655`
 **Source merge commit:** `160d430f1a5af338537e35ff98b8ddda14d4673c`
 **Source governance:** `EffortlessMetrics/shiplog#656`
+**Source governance:** `EffortlessMetrics/shiplog#679`
+**Source governance:** `EffortlessMetrics/shiplog#681`
 
 ## Included work
 
@@ -33,12 +31,52 @@ execution authority.
 - `EffortlessMetrics/shiplog-swarm#260`
 - `EffortlessMetrics/shiplog-swarm#261`
 
+## Source-authority decisions
+
+- path: `.github/workflows/droid-review.yml`
+  - reason: The canonical source repository retains authority for the release and security automation surface during this bounded promotion.
+  - source target: `6471f50912d645447ebda94c3b2f1babcc24dfef`
+  - swarm target: `b75893463c466990122d51b3290287b107b0388e`
+  - decision receipt: `EffortlessMetrics/shiplog-swarm#334` at `b75893463c466990122d51b3290287b107b0388e`
+  - consumed by: `(active)`
+- path: `.github/workflows/droid-security-scan.yml`
+  - reason: The canonical source repository retains authority for the release and security automation surface during this bounded promotion.
+  - source target: `6471f50912d645447ebda94c3b2f1babcc24dfef`
+  - swarm target: `b75893463c466990122d51b3290287b107b0388e`
+  - decision receipt: `EffortlessMetrics/shiplog-swarm#334` at `b75893463c466990122d51b3290287b107b0388e`
+  - consumed by: `(active)`
+- path: `.github/workflows/release.yml`
+  - reason: The canonical source repository retains authority for the release and security automation surface during this bounded promotion.
+  - source target: `6471f50912d645447ebda94c3b2f1babcc24dfef`
+  - swarm target: `b75893463c466990122d51b3290287b107b0388e`
+  - decision receipt: `EffortlessMetrics/shiplog-swarm#334` at `b75893463c466990122d51b3290287b107b0388e`
+  - consumed by: `(active)`
+- path: `.github/workflows/droid.yml`
+  - reason: The canonical source review automation may publish comments but cannot mint identity or write product contents.
+  - source target: `6471f50912d645447ebda94c3b2f1babcc24dfef`
+  - swarm target: `b75893463c466990122d51b3290287b107b0388e`
+  - decision receipt: `EffortlessMetrics/shiplog-swarm#334` at `b75893463c466990122d51b3290287b107b0388e`
+  - consumed by: `(active)`
+- path: `.github/workflows/security.yml`
+  - reason: The canonical source repository retains authority for the release and security automation surface during this bounded promotion.
+  - source target: `6471f50912d645447ebda94c3b2f1babcc24dfef`
+  - swarm target: `b75893463c466990122d51b3290287b107b0388e`
+  - decision receipt: `EffortlessMetrics/shiplog-swarm#334` at `b75893463c466990122d51b3290287b107b0388e`
+  - consumed by: `(active)`
+- path: `policy/automation-authority.toml`
+  - reason: Canonical source now carries its explicit source-role policy from #679; this bounded decision retains that release-governance file while swarm keeps its distinct swarm-role policy.
+  - source target: `6471f50912d645447ebda94c3b2f1babcc24dfef`
+  - swarm target: `b75893463c466990122d51b3290287b107b0388e`
+  - decision receipt: `EffortlessMetrics/shiplog-swarm#334` at `b75893463c466990122d51b3290287b107b0388e`
+  - consumed by: `(active)`
+
 ## Truth hierarchy
 
 1. Git refs and ancestry
-2. GitHub PR and check state
-3. This maintained summary for the latest completed promotion
-4. Historical promotion receipts in `implementation-plan.md`
+2. GitHub PR / check state
+3. `plans/shiplog-swarm/promotion-state.toml` (this promotion's source of truth)
+4. Generated reports (`target/source-of-truth/*`, this file)
+5. Historical archive (`plans/shiplog-swarm/implementation-plan.md`)
 
 ## Topology boundary
 
