@@ -16,10 +16,9 @@ jobs:
       !contains(github.event.pull_request.title, '[skip-review]')
     runs-on: ${{ github.repository == 'EffortlessMetrics/shiplog-swarm' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && 'self-hosted' || 'ubuntu-latest' }}
     permissions:
-      contents: write
+      contents: read
       pull-requests: write
       issues: write
-      id-token: write
       actions: read
     env:
       MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}

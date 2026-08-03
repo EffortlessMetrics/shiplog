@@ -20,6 +20,9 @@ concurrency:
   group: security-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' && github.event.action == 'synchronize' }}
 
+permissions:
+  contents: read
+
 jobs:
   cargo-deny:
     name: Cargo Deny Security
