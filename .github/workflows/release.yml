@@ -20,7 +20,7 @@ env:
   CARGO_TERM_COLOR: always
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   # Prove the package surface before building release assets
@@ -173,6 +173,8 @@ jobs:
     name: Create Release
     runs-on: ${{ github.repository == 'EffortlessMetrics/shiplog-swarm' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && 'self-hosted' || 'ubuntu-latest' }}
     needs: [release-preflight, build-binary]
+    permissions:
+      contents: write
     outputs:
       version: ${{ steps.version.outputs.version }}
 
@@ -204,6 +206,8 @@ jobs:
     name: Upload Assets
     runs-on: ${{ github.repository == 'EffortlessMetrics/shiplog-swarm' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && 'self-hosted' || 'ubuntu-latest' }}
     needs: [release-preflight, build-binary, create-release]
+    permissions:
+      contents: write
 
     steps:
       - name: Download all artifacts
