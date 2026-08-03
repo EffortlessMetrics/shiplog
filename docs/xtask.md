@@ -145,7 +145,9 @@ alignment, recognizes only exact, current entries in `source-only-paths.toml`
 as approved governance, and keeps unknown or product paths fail-closed as
 drift. This lets a later approved source governance commit coexist with the
 latest `promote/swarm-*` merge without hiding product changes. The local
-checkout section reports clean/dirty status and any local
+checkout section reports clean/dirty status, preserves visible entries for the
+known protected workspace roots `.claude/` and `target-audit/`, and only treats
+tracked changes or unknown untracked paths as blocking. It also reports any local
 branches already merged into source or swarm so agents can clean up their own
 merged branches deliberately. Its review commands check both GitHub repos for
 matching PR heads before showing recent branch commits. The branch hygiene
@@ -211,9 +213,12 @@ Generates a source promotion PR body from the current source/swarm refs:
 cargo xtask promotion-body --output target/source-of-truth/promotion-body.md
 ```
 
-By default it compares `origin/main..swarm/main`, resolves the swarm head, and
-infers included swarm PRs from squash-merge commit subjects like `(#150)`. Run
-IDs can be supplied when known:
+By default it resolves the current bounded promotion manifest and uses its
+`pending.swarm_pr_range` as the included-PR receipt list. This avoids silently
+losing PRs when a squash-merge commit has a custom subject without a trailing
+`(#N)` marker. If the manifest has no pending receipts, it falls back to
+inferring PRs from `origin/main..swarm/main` commit subjects like `(#150)` and
+marks the body for completeness review. Run IDs can be supplied when known:
 
 ```bash
 cargo xtask promotion-body \
@@ -236,8 +241,9 @@ cargo xtask promotion-body \
 ```
 
 Use explicit inputs when regenerating a historical promotion body from a
-different checkout state or when source/swarm refs no longer point at the
-promotion being edited:
+different checkout state, when source/swarm refs no longer point at the
+promotion being edited, or when the pending manifest is intentionally not the
+receipt source:
 
 ```bash
 cargo xtask promotion-body \
@@ -273,9 +279,16 @@ cargo xtask promote --swarm-sha <exact-swarm-sha> --verify-only
 The command checks shared ancestry and a completed successful
 Shiplog Rust Small Result run for the exact SHA, then creates or fast-forwards
 promote/swarm-current-<sha> on the source remote and writes the existing
-promotion-body contract. It never merges, squashes, tags, publishes, or
-deploys. Open the generated PR with a regular merge commit and verify it with
-cargo xtask repo-contract-report after merge.
+promotion-body contract. Before a non-dry-run execution, it also verifies that
+source `main` has legacy branch protection or an active repository ruleset
+requiring the exact `reject-routine-bot-pr` Source Automation Guard check.
+Missing protection, malformed protection data, or a missing required guard
+stops the command before it creates an overlay, writes a receipt, pushes a
+branch, or opens/edits a PR.
+`--dry-run` remains read-only and can be used to prepare the deterministic plan
+while that external merge-control setting is pending. The command never merges,
+squashes, tags, publishes, or deploys. Open the generated PR with a regular
+merge commit and verify it with `cargo xtask repo-contract-report` after merge.
 
 `--verify-only` is a read-only post-merge check: instead of preparing a branch
 it confirms the exact swarm head already landed on `--source-ref` as a

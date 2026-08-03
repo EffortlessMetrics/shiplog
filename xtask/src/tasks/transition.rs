@@ -39,13 +39,13 @@
 //! from different content and converged on identical content by different
 //! patches, which patch identity cannot express and must not be made to.
 
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result, bail, ensure};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
 use super::promotion_state::{
-    SourceAuthorityDecision, Transition, TransitionDisposition, TransitionPath,
-    TransitionResolution, TreeEntry,
+    PROMOTION_STATE_PATH, SourceAuthorityDecision, Transition, TransitionDisposition,
+    TransitionPath, TransitionResolution, TreeEntry,
 };
 
 /// Divergence the transition receipts justify, split by the shape of the
@@ -305,11 +305,14 @@ fn check_path(
                     "discard_source requires differing source and swarm tree entries at the current promotion targets, but both are {current_source_entry:?}"
                 );
             }
-            verify_tree_entries(
+            verify_current_tree_entries(
+                path,
                 path.source_tree_entry.as_ref(),
                 path.swarm_tree_entry.as_ref(),
                 current_source_entry.as_ref(),
                 current_swarm_entry.as_ref(),
+                evidence_source_entry.as_ref(),
+                evidence_swarm_entry.as_ref(),
             )?;
             check_merged_at(
                 port,
@@ -350,6 +353,61 @@ fn check_path(
         authority
             .awaiting_swarm
             .insert(path.path.clone(), entry.source_pr.clone());
+        return Ok(());
+    }
+
+    if path.disposition == TransitionDisposition::ConvergedAtTarget {
+        let evidence_source_entry =
+            tree_entry(port, workspace_root, &entry.source_target, &path.path)?;
+        let evidence_swarm_entry =
+            tree_entry(port, workspace_root, &entry.swarm_target, &path.path)?;
+        verify_tree_entries(
+            path.source_tree_entry.as_ref(),
+            path.swarm_tree_entry.as_ref(),
+            evidence_source_entry.as_ref(),
+            evidence_swarm_entry.as_ref(),
+        )?;
+        ensure!(
+            evidence_source_entry == evidence_swarm_entry,
+            "converged_at_target requires identical source and swarm evidence entries"
+        );
+        let current_source_entry =
+            tree_entry(port, workspace_root, refs.source_target, &path.path)?;
+        let current_swarm_entry = tree_entry(port, workspace_root, refs.swarm_target, &path.path)?;
+        verify_current_tree_entries(
+            path,
+            path.source_tree_entry.as_ref(),
+            path.swarm_tree_entry.as_ref(),
+            current_source_entry.as_ref(),
+            current_swarm_entry.as_ref(),
+            evidence_source_entry.as_ref(),
+            evidence_swarm_entry.as_ref(),
+        )?;
+        check_merged_at(
+            port,
+            workspace_root,
+            refs.swarm_repo,
+            &path.decision_receipt,
+            &path.decision_merge_sha,
+            refs.swarm_target,
+        )
+        .with_context(|| {
+            format!(
+                "converged_at_target decision {}: decision receipt evidence",
+                path.decision_receipt
+            )
+        })?;
+        authority.discard_source.insert(
+            path.path.clone(),
+            DiscardSourceDecision {
+                source_pr: entry.source_pr.clone(),
+                decision_receipt: path.decision_receipt.clone(),
+                decision_merge_sha: path.decision_merge_sha.clone(),
+                reason: path.reason.clone(),
+            },
+        );
+        authority.two_sided.remove(&path.path);
+        authority.awaiting_swarm.remove(&path.path);
         return Ok(());
     }
 
@@ -476,11 +534,14 @@ fn check_path(
         evidence_source_entry.as_ref(),
         evidence_swarm_entry.as_ref(),
     )?;
-    verify_tree_entries(
+    verify_current_tree_entries(
+        path,
         path.source_tree_entry.as_ref(),
         path.swarm_tree_entry.as_ref(),
         source_entry.as_ref(),
         swarm_entry.as_ref(),
+        evidence_source_entry.as_ref(),
+        evidence_swarm_entry.as_ref(),
     )?;
     // A resolved receipt reconciles a path both sides touched. It deliberately
     // does not grant one-sided source authority: only
@@ -552,6 +613,67 @@ fn verify_tree_entries(
         );
     }
     Ok(())
+}
+
+fn verify_current_tree_entries(
+    path: &TransitionPath,
+    recorded_source: Option<&TreeEntry>,
+    recorded_swarm: Option<&TreeEntry>,
+    current_source: Option<&TreeEntry>,
+    current_swarm: Option<&TreeEntry>,
+    evidence_source: Option<&TreeEntry>,
+    evidence_swarm: Option<&TreeEntry>,
+) -> Result<()> {
+    if !path.self_referential && path.disposition != TransitionDisposition::ConvergedAtTarget {
+        return verify_tree_entries(
+            recorded_source,
+            recorded_swarm,
+            current_source,
+            current_swarm,
+        );
+    }
+
+    if path.self_referential {
+        ensure!(
+            path.path == PROMOTION_STATE_PATH,
+            "self-referential transition path {} is not the canonical promotion manifest",
+            path.path
+        );
+    } else {
+        ensure!(
+            path.disposition == TransitionDisposition::ConvergedAtTarget,
+            "unexpected current-tree exception for transition path {}",
+            path.path
+        );
+        ensure!(
+            recorded_source == recorded_swarm,
+            "converged_at_target requires identical recorded source and swarm entries"
+        );
+    }
+    ensure!(
+        recorded_source == current_source,
+        "self-referential promotion manifest source entry changed: recorded {:?}, current {:?}",
+        recorded_source,
+        current_source
+    );
+    ensure!(
+        current_swarm.is_some(),
+        "special transition path must exist at the current swarm target"
+    );
+    ensure!(
+        evidence_swarm != current_swarm,
+        "special transition path must materialize a new current swarm entry"
+    );
+    // Historical entries remain exact evidence. The current swarm entry is
+    // intentionally different either because this receipt is stored in the
+    // manifest it describes, or because swarm made a later product change
+    // after both repositories had converged at the evidence target.
+    verify_tree_entries(
+        recorded_source,
+        recorded_swarm,
+        evidence_source,
+        evidence_swarm,
+    )
 }
 
 /// Confirm the PR is merged, the recorded SHA is that merge, and the merge is
@@ -833,6 +955,15 @@ pub fn git_hash_object(content: &str) -> Result<String> {
         .context("transition: git hash-object produced no id")
 }
 
+pub(super) fn decode_git_stdout(args: &[&str], stdout: &[u8]) -> Result<String> {
+    String::from_utf8(stdout.to_vec()).with_context(|| {
+        format!(
+            "git {} produced non-UTF-8 stdout; refusing to interpret path identity",
+            args.join(" ")
+        )
+    })
+}
+
 fn run_git_with_stdin(args: &[&str], stdin: &str) -> Result<String> {
     use std::io::Write as _;
     use std::process::{Command, Stdio};
@@ -860,7 +991,7 @@ fn run_git_with_stdin(args: &[&str], stdin: &str) -> Result<String> {
             String::from_utf8_lossy(&output.stderr).trim()
         );
     }
-    Ok(String::from_utf8_lossy(&output.stdout).into_owned())
+    decode_git_stdout(args, &output.stdout)
 }
 
 fn pull_request_patch(port: &impl TransitionPort, repo: &str, receipt: &str) -> Result<String> {
@@ -868,7 +999,7 @@ fn pull_request_patch(port: &impl TransitionPort, repo: &str, receipt: &str) -> 
     let raw = port
         .gh_output(&["pr", "diff", &number, "--repo", repo, "--patch"])
         .with_context(|| format!("fetch patch for {receipt}"))?;
-    Ok(String::from_utf8_lossy(&raw).into_owned())
+    String::from_utf8(raw).with_context(|| format!("decode patch for {receipt} as UTF-8"))
 }
 
 /// PR number from `owner/repo#number`, rejecting a receipt that names a
@@ -914,6 +1045,15 @@ mod tests {
     const CARGO_LOCK: &str = "Cargo.lock";
     const SOURCE: &str = "EffortlessMetrics/shiplog";
     const SWARM: &str = "EffortlessMetrics/shiplog-swarm";
+
+    #[test]
+    fn git_stdout_rejects_non_utf8_path_identity() -> Result<()> {
+        let error = decode_git_stdout(&["ls-tree", "-rz"], &[b'1', 0xff])
+            .expect_err("invalid Git bytes must not be lossily decoded");
+        ensure!(error.to_string().contains("non-UTF-8 stdout"));
+        ensure!(error.to_string().contains("path identity"));
+        Ok(())
+    }
 
     struct StubPort {
         /// `repo#n` to the PR view JSON the forge would return.
@@ -1110,6 +1250,7 @@ mod tests {
                 decision_receipt: String::new(),
                 decision_merge_sha: String::new(),
                 reason: String::new(),
+                self_referential: false,
                 swarm_chain: chain
                     .iter()
                     .map(|(receipt, _)| (*receipt).to_string())
@@ -1315,6 +1456,93 @@ mod tests {
             &[absent_source_transition],
         )?;
         assert!(authority.discard_source.contains_key(CARGO_LOCK));
+        Ok(())
+    }
+
+    #[test]
+    fn self_referential_manifest_may_change_only_its_current_swarm_entry() -> Result<()> {
+        let path = PROMOTION_STATE_PATH;
+        let patch = section(path, "old", "new", "promotion-state");
+        let source_oid = "9f2c1b6a0d4e5f708192a3b4c5d6e7f809a1b2c3";
+        let evidence_swarm_oid = "8e1b2c3d4f5061728394a5b6c7d8e9f0a1b2c3d4";
+        let current_swarm_oid = "7d0a1b2c3d4e5f60718293a4b5c6d7e8f9a0b1c2";
+        let decision_sha = "6c9d0e1f2a3b4c5d6e7f8091a2b3c4d5e6f70819";
+        let source = format!("{SOURCE}#657");
+        let decision = format!("{SWARM}#242");
+        let mut transition = entry(TransitionDisposition::MissingInSwarm, &[]);
+        transition.source_target = "origin/evidence".to_string();
+        transition.swarm_target = "swarm/evidence".to_string();
+        let transition_path = &mut transition.path[0];
+        transition_path.path = path.to_string();
+        transition_path.resolution = Some(TransitionResolution::DiscardSource);
+        transition_path.self_referential = true;
+        transition_path.decision_receipt = decision.clone();
+        transition_path.decision_merge_sha = decision_sha.to_string();
+        transition_path.reason = "The active receipt is stored in this manifest.".to_string();
+        transition_path.source_tree_entry = Some(blob_entry(source_oid));
+        transition_path.swarm_tree_entry = Some(blob_entry(evidence_swarm_oid));
+
+        let port = StubPort::new()
+            .ancestor("origin/evidence")
+            .ancestor("swarm/evidence")
+            .merged(&source, &transition.source_merge_sha, &patch)
+            .merged(&decision, decision_sha, "")
+            .blob("origin/evidence", path, source_oid)
+            .blob("swarm/evidence", path, evidence_swarm_oid)
+            .blob("origin/main", path, source_oid)
+            .blob("swarm/main", path, current_swarm_oid);
+        let current_refs = TransitionRefs {
+            source_repo: SOURCE,
+            swarm_repo: SWARM,
+            source_target: "origin/main",
+            swarm_target: "swarm/main",
+        };
+
+        let authority = derive_authority(&port, Path::new("."), &current_refs, &[transition])?;
+        assert!(authority.discard_source.contains_key(path));
+        Ok(())
+    }
+
+    #[test]
+    fn converged_at_target_allows_a_later_swarm_product_change() -> Result<()> {
+        let path = "xtask/src/tasks/promote.rs";
+        let patch = section(path, "old", "new", "promotion");
+        let converged_oid = "9f2c1b6a0d4e5f708192a3b4c5d6e7f809a1b2c3";
+        let current_swarm_oid = "8e1b2c3d4f5061728394a5b6c7d8e9f0a1b2c3d4";
+        let decision_sha = "7d0a1b2c3d4e5f60718293a4b5c6d7e8f9a0b1c2";
+        let source = format!("{SOURCE}#657");
+        let decision = format!("{SWARM}#242");
+        let mut transition = entry(TransitionDisposition::ConvergedAtTarget, &[]);
+        transition.source_target = "origin/evidence".to_string();
+        transition.swarm_target = "swarm/evidence".to_string();
+        let transition_path = &mut transition.path[0];
+        transition_path.path = path.to_string();
+        transition_path.resolution = Some(TransitionResolution::DiscardSource);
+        transition_path.decision_receipt = decision.clone();
+        transition_path.decision_merge_sha = decision_sha.to_string();
+        transition_path.reason =
+            "A later swarm product change supersedes the converged source copy.".to_string();
+        transition_path.source_tree_entry = Some(blob_entry(converged_oid));
+        transition_path.swarm_tree_entry = Some(blob_entry(converged_oid));
+
+        let port = StubPort::new()
+            .ancestor("origin/evidence")
+            .ancestor("swarm/evidence")
+            .merged(&source, &transition.source_merge_sha, &patch)
+            .merged(&decision, decision_sha, "")
+            .blob("origin/evidence", path, converged_oid)
+            .blob("swarm/evidence", path, converged_oid)
+            .blob("origin/main", path, converged_oid)
+            .blob("swarm/main", path, current_swarm_oid);
+        let current_refs = TransitionRefs {
+            source_repo: SOURCE,
+            swarm_repo: SWARM,
+            source_target: "origin/main",
+            swarm_target: "swarm/main",
+        };
+
+        let authority = derive_authority(&port, Path::new("."), &current_refs, &[transition])?;
+        assert!(authority.discard_source.contains_key(path));
         Ok(())
     }
 

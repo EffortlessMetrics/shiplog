@@ -441,6 +441,7 @@ pub fn check_workflows(workspace_root: &Path, mode: Mode) -> Result<()> {
         let text = fs::read_to_string(&workflow_path)
             .with_context(|| format!("read {}", workflow_path.display()))?;
         findings.extend(workflow_self_hosted_trust_findings(path, &text));
+        findings.extend(workflow_shell_context_findings(path, &text));
         findings.extend(auxiliary_workflow_hosted_findings(path, &text));
         let actual_uses: BTreeSet<String> = text.lines().filter_map(extract_uses).collect();
         let declared: BTreeSet<String> = table
@@ -588,6 +589,24 @@ fn workflow_self_hosted_trust_findings(path: &str, text: &str) -> Vec<Finding> {
                 kind: "workflow-self-hosted-without-trust-boundary".to_string(),
                 detail: format!(
                     "workflow {path:?} line {} selects self-hosted for shiplog-swarm without a same-repo pull_request guard",
+                    index + 1
+                ),
+            })
+        })
+        .collect()
+}
+
+fn workflow_shell_context_findings(path: &str, text: &str) -> Vec<Finding> {
+    text.lines()
+        .enumerate()
+        .filter_map(|(index, line)| {
+            let field = line.trim().trim_start_matches('-').trim_start();
+            (field.starts_with("shell:")
+                && field.contains("${{")
+                && field.contains("matrix.")).then(|| Finding {
+                kind: "workflow-shell-matrix-context".to_string(),
+                detail: format!(
+                    "workflow {path:?} line {} uses the unsupported matrix context in a shell field; select an explicit shell per runner",
                     index + 1
                 ),
             })
@@ -887,6 +906,57 @@ created = "2026-05-09"
         let findings = workflow_self_hosted_trust_findings(".github/workflows/test.yml", text);
 
         assert_eq!(findings.len(), 1);
+    }
+
+    #[test]
+    fn workflow_shell_rejects_matrix_context() {
+        let text = "      - shell: ${{ matrix.shell }}\n";
+
+        let findings = workflow_shell_context_findings(".github/workflows/test.yml", text);
+
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].kind, "workflow-shell-matrix-context");
+        assert!(findings[0].detail.contains("line 1"));
+        assert!(findings[0].detail.contains("explicit shell"));
+    }
+
+    #[test]
+    fn workflow_shell_accepts_explicit_shells() {
+        let text = "      - shell: bash\n      - shell: pwsh\n";
+
+        let findings = workflow_shell_context_findings(".github/workflows/test.yml", text);
+
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn check_workflows_reports_matrix_shell_context() {
+        let dir = fixture(&[
+            (
+                "policy/workflow-allowlist.toml",
+                r#"
+schema_version = 1
+policy = "workflow-allowlist"
+owner = "x"
+status = "advisory"
+
+[[entry]]
+id = "test-workflow"
+path = ".github/workflows/test.yml"
+external_actions = []
+"#,
+            ),
+            (
+                ".github/workflows/test.yml",
+                "name: Test\non: workflow_dispatch\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - shell: ${{ matrix.shell }}\n        run: echo test\n",
+            ),
+        ]);
+
+        let error = check_workflows(dir.path(), Mode::BlockingAllowlist)
+            .expect_err("matrix shell context must be rejected");
+        let message = format!("{error:#}");
+        assert!(message.contains("check-workflows"));
+        assert!(message.contains("1 finding(s)"));
     }
 
     #[test]

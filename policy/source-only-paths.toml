@@ -62,3 +62,11 @@ reason = "Only canonical source carries explicitly authorized GitHub Release wri
 classification = "release-governance"
 created = "2026-07-18"
 review_after = "2027-01-18"
+
+[[allow]]
+path = ".github/workflows/source-automation-guard.yml"
+owner = "repo-infra/release"
+reason = "Canonical source owns the merge-control guard that rejects routine bot product PRs and exposes its synthetic proof dispatch."
+classification = "release-governance"
+created = "2026-08-03"
+review_after = "2027-02-03"
