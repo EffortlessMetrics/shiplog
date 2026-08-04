@@ -98,7 +98,8 @@ Remove-Item -Recurse -Force $workDir -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force $downloadDir | Out-Null
 if ($candidateDir) {
     $candidateDir = (Resolve-Path -LiteralPath $candidateDir).Path
-    $candidateAsset = Join-Path (Join-Path $candidateDir $asset) $asset
+    $candidateAssetDirectory = [System.IO.Path]::GetFileNameWithoutExtension($asset)
+    $candidateAsset = Join-Path (Join-Path $candidateDir $candidateAssetDirectory) $asset
     if (-not (Test-Path -LiteralPath $candidateAsset)) {
         $candidateAsset = Join-Path $candidateDir $asset
     }
@@ -130,13 +131,14 @@ else {
 }
 
 Invoke-Step "verifying SHA256SUMS.txt entry for $asset"
-$sumLine = Get-Content $sumsPath | ForEach-Object {
-    $fields = $_ -split "\s+"
+$sumLine = $null
+foreach ($line in Get-Content -LiteralPath $sumsPath) {
+    $fields = $line -split "\s+"
     if ($fields.Count -ge 2 -and [System.IO.Path]::GetFileName($fields[1].TrimStart("*")) -eq $asset) {
-        $_
+        $sumLine = $line
         break
     }
-} | Select-Object -First 1
+}
 if (-not $sumLine) {
     throw "no SHA256SUMS.txt entry found for $asset"
 }
