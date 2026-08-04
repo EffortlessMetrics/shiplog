@@ -23,16 +23,19 @@ permissions:
   contents: read
 
 jobs:
-  # Prove the package surface before building release assets
+  # Prove the package surface and resolve one immutable tagged source commit.
   release-preflight:
     name: Release Preflight
-    runs-on: ${{ github.repository == 'EffortlessMetrics/shiplog-swarm' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && 'self-hosted' || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     outputs:
       release_tag: ${{ steps.release_tag.outputs.release_tag }}
+      release_sha: ${{ steps.release_commit.outputs.release_sha }}
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Resolve release tag
         id: release_tag
@@ -61,28 +64,59 @@ jobs:
 
           echo "release_tag=$tag" >> "$GITHUB_OUTPUT"
 
-      - name: Release hold guard
-        run: bash scripts/check-release-hold.sh "${{ steps.release_tag.outputs.release_tag }}"
-
-      - name: Checkout manual dispatch tag
-        if: github.event_name == 'workflow_dispatch'
+      - name: Checkout exact release tag
         shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.release_tag.outputs.release_tag }}
         run: |
-          git fetch --depth=1 origin "refs/tags/${{ steps.release_tag.outputs.release_tag }}:refs/tags/${{ steps.release_tag.outputs.release_tag }}"
-          git checkout --detach "${{ steps.release_tag.outputs.release_tag }}"
+          set -euo pipefail
+          tag="$RELEASE_TAG"
+          git fetch --force --depth=1 origin "refs/tags/$tag:refs/tags/$tag"
+          git checkout --detach "$tag"
+
+      - name: Resolve immutable release commit
+        id: release_commit
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.release_tag.outputs.release_tag }}
+          EVENT_NAME: ${{ github.event_name }}
+          WEBHOOK_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          tag="$RELEASE_TAG"
+          release_sha="$(git rev-parse HEAD)"
+          tag_commit="$(git rev-list -n 1 "$tag")"
+          if [[ "$release_sha" != "$tag_commit" ]]; then
+            echo "checked out $release_sha, but $tag resolves to $tag_commit" >&2
+            exit 1
+          fi
+          if [[ "$EVENT_NAME" == "push" && "$release_sha" != "$WEBHOOK_SHA" ]]; then
+            echo "tag $tag resolved to $release_sha, but the push webhook identified $WEBHOOK_SHA" >&2
+            exit 1
+          fi
+          if [[ ! "$release_sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "release tag did not resolve to a full commit SHA" >&2
+            exit 1
+          fi
+          echo "release_sha=$release_sha" >> "$GITHUB_OUTPUT"
+
+      - name: Release hold guard
+        env:
+          RELEASE_TAG: ${{ steps.release_tag.outputs.release_tag }}
+        run: bash scripts/check-release-hold.sh "$RELEASE_TAG"
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@master
+        uses: dtolnay/rust-toolchain@2c7215f132e9ebf062739d9130488b56d53c060c # master
         with:
           toolchain: "1.95.0"
           components: rustfmt, clippy
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@c19371144df3bb6b0106d3608c7ffd4048af17c # v2.9.1
         with:
           shared-key: "release-preflight"
 
       - name: Install cargo-deny
-        uses: taiki-e/install-action@v2
+        uses: taiki-e/install-action@cb33e69fad06166ca28a42b2575e4dadabf62ee8 # v2
         with:
           tool: cargo-deny
 
@@ -92,7 +126,7 @@ jobs:
       - name: Publish dry run (allowlist)
         run: scripts/publish-dry-run.sh
 
-  # Build binaries for all platforms
+  # Build the exact tagged binary on every supported target.
   build-binary:
     name: Build ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
@@ -114,46 +148,61 @@ jobs:
             ext: .exe
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v7.0.0
+      - name: Checkout exact release tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           ref: ${{ needs.release-preflight.outputs.release_tag }}
 
+      - name: Confirm exact release commit
+        shell: bash
+        env:
+          RELEASE_SHA: ${{ needs.release-preflight.outputs.release_sha }}
+        run: test "$(git rev-parse HEAD)" = "$RELEASE_SHA"
+
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@master
+        uses: dtolnay/rust-toolchain@2c7215f132e9ebf062739d9130488b56d53c060c # master
         with:
           toolchain: "1.95.0"
 
       - name: Install Rust target
-        run: rustup target add ${{ matrix.target }}
+        env:
+          TARGET: ${{ matrix.target }}
+        run: rustup target add "$TARGET"
 
       - name: Cache cargo registry
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: ~/.cargo/registry
           key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Cache cargo index
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: ~/.cargo/git
           key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Cache cargo build
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: target
           key: ${{ runner.os }}-${{ matrix.target }}-cargo-release-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Build release
-        run: cargo build --release --target ${{ matrix.target }} -p shiplog --locked
+        env:
+          TARGET: ${{ matrix.target }}
+        run: cargo build --release --target "$TARGET" -p shiplog --locked
 
       - name: Stage binary
         shell: bash
+        env:
+          TARGET: ${{ matrix.target }}
+          EXT: ${{ matrix.ext }}
         run: |
+          set -euo pipefail
           mkdir -p dist
-          src="target/${{ matrix.target }}/release/shiplog${{ matrix.ext }}"
-          dest="dist/shiplog-${{ matrix.target }}${{ matrix.ext }}"
+          src="target/$TARGET/release/shiplog$EXT"
+          dest="dist/shiplog-$TARGET$EXT"
           if [[ ! -f "$src" ]]; then
             echo "missing expected binary: $src" >&2
             find target -maxdepth 4 -type f -name 'shiplog*' -print >&2 || true
@@ -162,132 +211,210 @@ jobs:
           cp "$src" "$dest"
 
       - name: Upload binary
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: shiplog-${{ matrix.target }}
           path: dist/shiplog-${{ matrix.target }}${{ matrix.ext }}
           retention-days: 5
 
-  # Create GitHub release
-  create-release:
-    name: Create Release
-    runs-on: ${{ github.repository == 'EffortlessMetrics/shiplog-swarm' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && 'self-hosted' || 'ubuntu-latest' }}
+  # Assemble one immutable workflow-staged candidate set before acceptance.
+  stage_release_candidate:
+    name: Stage Release Candidates
+    runs-on: ubuntu-latest
     needs: [release-preflight, build-binary]
-    permissions:
-      contents: write
     outputs:
-      version: ${{ steps.version.outputs.version }}
+      candidate_artifact_id: ${{ steps.candidates.outputs.artifact-id }}
+      candidate_artifact_digest: ${{ steps.candidates.outputs.artifact-digest }}
+      candidate_manifest_sha256: ${{ steps.candidate_manifest.outputs.candidate_manifest_sha256 }}
+      checksum_manifest_sha256: ${{ steps.candidate_manifest.outputs.checksum_manifest_sha256 }}
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v7.0.0
+      - name: Checkout exact release tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           ref: ${{ needs.release-preflight.outputs.release_tag }}
 
-      - name: Extract version
-        id: version
-        run: |
-          VERSION=${{ needs.release-preflight.outputs.release_tag }}
-          VERSION=${VERSION#v}
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Create Release
-        id: create_release
-        uses: softprops/action-gh-release@v3
-        with:
-          tag_name: ${{ needs.release-preflight.outputs.release_tag }}
-          draft: true
-          generate_release_notes: true
+      - name: Confirm exact release commit
+        shell: bash
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_SHA: ${{ needs.release-preflight.outputs.release_sha }}
+        run: test "$(git rev-parse HEAD)" = "$RELEASE_SHA"
 
-  # Upload binaries to release
-  upload-assets:
-    name: Upload Assets
-    runs-on: ${{ github.repository == 'EffortlessMetrics/shiplog-swarm' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && 'self-hosted' || 'ubuntu-latest' }}
-    needs: [release-preflight, build-binary, create-release]
-    permissions:
-      contents: write
-
-    steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v8
+      - name: Download all binary artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           path: artifacts
 
-      - name: Generate checksums
+      - name: Generate candidate manifest and checksums
+        id: candidate_manifest
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ needs.release-preflight.outputs.release_tag }}
+          RELEASE_SHA: ${{ needs.release-preflight.outputs.release_sha }}
+          REPOSITORY: ${{ github.repository }}
+          WORKFLOW_RUN_ID: ${{ github.run_id }}
+          WORKFLOW_RUN_ATTEMPT: ${{ github.run_attempt }}
         run: |
+          set -euo pipefail
           cd artifacts
-          find . -maxdepth 2 -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
+
+          expected=(
+            "shiplog-x86_64-unknown-linux-gnu/shiplog-x86_64-unknown-linux-gnu"
+            "shiplog-x86_64-apple-darwin/shiplog-x86_64-apple-darwin"
+            "shiplog-aarch64-apple-darwin/shiplog-aarch64-apple-darwin"
+            "shiplog-x86_64-pc-windows-msvc/shiplog-x86_64-pc-windows-msvc.exe"
+          )
+          for path in "${expected[@]}"; do
+            if [[ ! -f "$path" ]]; then
+              echo "missing expected staged binary: $path" >&2
+              find . -maxdepth 3 -type f -print >&2
+              exit 1
+            fi
+          done
+
+          : > SHA256SUMS.txt
+          for path in "${expected[@]}"; do
+            sha256sum "$path" >> SHA256SUMS.txt
+          done
+          checksum_manifest_sha256="$(sha256sum SHA256SUMS.txt | awk '{print $1}')"
+
+          asset_count="${#expected[@]}"
+          cat > RELEASE_CANDIDATE.txt <<EOF
+          schema_version=1
+          release_tag=$RELEASE_TAG
+          source_sha=$RELEASE_SHA
+          repository=$REPOSITORY
+          workflow_run_id=$WORKFLOW_RUN_ID
+          workflow_run_attempt=$WORKFLOW_RUN_ATTEMPT
+          asset_count=$asset_count
+          checksum_manifest_sha256=$checksum_manifest_sha256
+          EOF
+          sed -i 's/^          //' RELEASE_CANDIDATE.txt
+
+          candidate_manifest_sha256="$(sha256sum RELEASE_CANDIDATE.txt | awk '{print $1}')"
+          echo "checksum_manifest_sha256=$checksum_manifest_sha256" >> "$GITHUB_OUTPUT"
+          echo "candidate_manifest_sha256=$candidate_manifest_sha256" >> "$GITHUB_OUTPUT"
+          cat RELEASE_CANDIDATE.txt
           cat SHA256SUMS.txt
 
-      - name: Upload assets
-        uses: softprops/action-gh-release@v3
+      - name: Retain exact staged release candidates
+        id: candidates
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          tag_name: ${{ needs.release-preflight.outputs.release_tag }}
-          fail_on_unmatched_files: true
-          overwrite_files: true
-          files: |
+          name: verified-release-candidates
+          path: |
             artifacts/shiplog-x86_64-unknown-linux-gnu/shiplog-x86_64-unknown-linux-gnu
             artifacts/shiplog-x86_64-apple-darwin/shiplog-x86_64-apple-darwin
             artifacts/shiplog-aarch64-apple-darwin/shiplog-aarch64-apple-darwin
             artifacts/shiplog-x86_64-pc-windows-msvc/shiplog-x86_64-pc-windows-msvc.exe
             artifacts/SHA256SUMS.txt
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            artifacts/RELEASE_CANDIDATE.txt
+          retention-days: 30
 
-  # Validate the release
+      - name: Record staged candidate identity
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ needs.release-preflight.outputs.release_tag }}
+          RELEASE_SHA: ${{ needs.release-preflight.outputs.release_sha }}
+          ARTIFACT_ID: ${{ steps.candidates.outputs.artifact-id }}
+          ARTIFACT_DIGEST: ${{ steps.candidates.outputs.artifact-digest }}
+          CANDIDATE_MANIFEST_SHA256: ${{ steps.candidate_manifest.outputs.candidate_manifest_sha256 }}
+          CHECKSUM_MANIFEST_SHA256: ${{ steps.candidate_manifest.outputs.checksum_manifest_sha256 }}
+        run: |
+          {
+            echo "## Workflow-staged candidate"
+            echo "- Tag: \`$RELEASE_TAG\`"
+            echo "- Source commit: \`$RELEASE_SHA\`"
+            echo "- Artifact id: \`$ARTIFACT_ID\`"
+            echo "- Artifact digest: \`$ARTIFACT_DIGEST\`"
+            echo "- Candidate manifest SHA-256: \`$CANDIDATE_MANIFEST_SHA256\`"
+            echo "- Checksum manifest SHA-256: \`$CHECKSUM_MANIFEST_SHA256\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # Validate the staged candidate while retaining independent release-mode checks.
   release-validation:
     name: Release Validation
-    runs-on: ${{ github.repository == 'EffortlessMetrics/shiplog-swarm' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && 'self-hosted' || 'ubuntu-latest' }}
-    needs: [release-preflight, build-binary, create-release]
+    runs-on: ubuntu-latest
+    needs: [release-preflight, stage_release_candidate]
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v7.0.0
+      - name: Checkout exact release tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           ref: ${{ needs.release-preflight.outputs.release_tag }}
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@master
+      - name: Confirm exact release commit
+        shell: bash
+        env:
+          RELEASE_SHA: ${{ needs.release-preflight.outputs.release_sha }}
+        run: test "$(git rev-parse HEAD)" = "$RELEASE_SHA"
+
+      - name: Download staged candidate set
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: verified-release-candidates
+          path: candidate
+
+      - name: Verify staged candidate identity
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ needs.release-preflight.outputs.release_tag }}
+          RELEASE_SHA: ${{ needs.release-preflight.outputs.release_sha }}
+          CANDIDATE_MANIFEST_SHA256: ${{ needs.stage_release_candidate.outputs.candidate_manifest_sha256 }}
+        run: |
+          set -euo pipefail
+          expected_assets=(
+            shiplog-x86_64-unknown-linux-gnu/shiplog-x86_64-unknown-linux-gnu
+            shiplog-x86_64-apple-darwin/shiplog-x86_64-apple-darwin
+            shiplog-aarch64-apple-darwin/shiplog-aarch64-apple-darwin
+            shiplog-x86_64-pc-windows-msvc/shiplog-x86_64-pc-windows-msvc.exe
+          )
+          grep -Fxq "schema_version=1" candidate/RELEASE_CANDIDATE.txt
+          grep -Fxq "release_tag=$RELEASE_TAG" candidate/RELEASE_CANDIDATE.txt
+          grep -Fxq "source_sha=$RELEASE_SHA" candidate/RELEASE_CANDIDATE.txt
+          grep -Fxq "asset_count=${#expected_assets[@]}" candidate/RELEASE_CANDIDATE.txt
+          expected="$(sed -n 's/^checksum_manifest_sha256=//p' candidate/RELEASE_CANDIDATE.txt)"
+          actual="$(sha256sum candidate/SHA256SUMS.txt | awk '{print $1}')"
+          test "$actual" = "$expected"
+          test "$(sha256sum candidate/RELEASE_CANDIDATE.txt | awk '{print $1}')" = "$CANDIDATE_MANIFEST_SHA256"
+
+      - name: Smoke staged Linux candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          binary="candidate/shiplog-x86_64-unknown-linux-gnu/shiplog-x86_64-unknown-linux-gnu"
+          expected="$(awk '$2 == "shiplog-x86_64-unknown-linux-gnu/shiplog-x86_64-unknown-linux-gnu" {print $1}' candidate/SHA256SUMS.txt)"
+          actual="$(sha256sum "$binary" | awk '{print $1}')"
+          test "$actual" = "$expected"
+          chmod +x "$binary"
+          "$binary" --help
+          "$binary" --version
+          "$binary" collect --help
+          "$binary" render --help
+
+      - name: Install Rust toolchain for independent release-mode checks
+        uses: dtolnay/rust-toolchain@2c7215f132e9ebf062739d9130488b56d53c060c # master
         with:
           toolchain: "1.95.0"
 
       - name: Cache cargo build
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: target
           key: ${{ runner.os }}-cargo-release-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Download Linux x86_64 artifact
-        uses: actions/download-artifact@v8
-        with:
-          name: shiplog-x86_64-unknown-linux-gnu
-          path: artifacts/shiplog-x86_64-unknown-linux-gnu
-
-      - name: Smoke downloaded Linux artifact
-        run: |
-          chmod +x artifacts/shiplog-x86_64-unknown-linux-gnu/shiplog-x86_64-unknown-linux-gnu
-          artifacts/shiplog-x86_64-unknown-linux-gnu/shiplog-x86_64-unknown-linux-gnu --help
-          artifacts/shiplog-x86_64-unknown-linux-gnu/shiplog-x86_64-unknown-linux-gnu --version
-          artifacts/shiplog-x86_64-unknown-linux-gnu/shiplog-x86_64-unknown-linux-gnu collect --help
-          artifacts/shiplog-x86_64-unknown-linux-gnu/shiplog-x86_64-unknown-linux-gnu render --help
-
-      - name: Build release
+      - name: Build independent release-mode test binary
         run: cargo build --release -p shiplog --locked
 
-      - name: Run smoke tests
+      - name: Run independent command smoke tests
+        shell: bash
         run: |
-          echo "Testing --help..."
+          set -euo pipefail
           ./target/release/shiplog --help
-
-          echo "Testing --version..."
           ./target/release/shiplog --version
-
-          echo "Testing help subcommand..."
           ./target/release/shiplog help
-
-          echo "Testing product command help..."
           ./target/release/shiplog init --help
           ./target/release/shiplog doctor --help
           ./target/release/shiplog config --help
@@ -315,26 +442,26 @@ jobs:
           fi
 
       - name: Generate validation summary
+        shell: bash
+        env:
+          CANDIDATE_ARTIFACT_DIGEST: ${{ needs.stage_release_candidate.outputs.candidate_artifact_digest }}
+          CANDIDATE_MANIFEST_SHA256: ${{ needs.stage_release_candidate.outputs.candidate_manifest_sha256 }}
         run: |
-          echo "# Release Validation Results" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## Build Status" >> $GITHUB_STEP_SUMMARY
-          echo "- Release build: **SUCCESS**" >> $GITHUB_STEP_SUMMARY
-          echo "- Multi-platform builds: **SUCCESS** (Linux x86_64, macOS x86_64, macOS ARM64, Windows x86_64)" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## Smoke Tests" >> $GITHUB_STEP_SUMMARY
-          echo "- Downloaded Linux artifact help/version: **PASSED**" >> $GITHUB_STEP_SUMMARY
-          echo "- Downloaded Linux artifact collect/render help: **PASSED**" >> $GITHUB_STEP_SUMMARY
-          echo "- Help command: **PASSED**" >> $GITHUB_STEP_SUMMARY
-          echo "- Version command: **PASSED**" >> $GITHUB_STEP_SUMMARY
-          echo "- Help subcommand: **PASSED**" >> $GITHUB_STEP_SUMMARY
-          echo "- Product command help: **PASSED**" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "# Release Validation Results"
+            echo
+            echo "- Staged candidate artifact digest: \`$CANDIDATE_ARTIFACT_DIGEST\`"
+            echo "- Candidate manifest SHA-256: \`$CANDIDATE_MANIFEST_SHA256\`"
+            echo "- Staged Linux candidate help/version/collect/render: **PASSED**"
+            echo "- Independent release-mode command checks: **PASSED**"
+            echo "- Multi-platform candidate assembly: **PASSED**"
+          } >> "$GITHUB_STEP_SUMMARY"
 
-  # Prove the published binaries from the outside on every supported target.
+  # Prove the same workflow-staged bytes from empty directories on all targets.
   release-binary-acceptance:
     name: First-use ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
-    needs: [release-preflight, create-release]
+    needs: [release-preflight, stage_release_candidate]
     strategy:
       fail-fast: false
       matrix:
@@ -342,57 +469,196 @@ jobs:
           - name: Linux x86_64
             os: ubuntu-latest
             shell: bash
+            target: x86_64-unknown-linux-gnu
           - name: macOS Intel
             os: macos-15-intel
             shell: bash
+            target: x86_64-apple-darwin
           - name: macOS Apple Silicon
             os: macos-15
             shell: bash
+            target: aarch64-apple-darwin
           - name: Windows x86_64
             os: windows-latest
             shell: pwsh
+            target: x86_64-pc-windows-msvc
 
     steps:
       - name: Checkout release scripts
-        uses: actions/checkout@v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           ref: ${{ needs.release-preflight.outputs.release_tag }}
 
-      - name: Run published-binary first-use acceptance (Unix)
+      - name: Confirm exact release commit
+        shell: bash
+        env:
+          RELEASE_SHA: ${{ needs.release-preflight.outputs.release_sha }}
+        run: test "$(git rev-parse HEAD)" = "$RELEASE_SHA"
+
+      - name: Download exact staged candidate set
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: verified-release-candidates
+          path: ${{ runner.temp }}/release-candidate
+
+      - name: Run staged-binary first-use acceptance (Unix)
         if: matrix.shell == 'bash'
         shell: bash
         env:
-          SHIPLOG_RELEASE_REPO: ${{ github.repository }}
-        run: |
-          bash scripts/release-install-smoke.sh "${{ needs.release-preflight.outputs.release_tag }}"
+          SHIPLOG_RELEASE_CANDIDATE_DIR: ${{ runner.temp }}/release-candidate
+          SHIPLOG_RELEASE_SOURCE_SHA: ${{ needs.release-preflight.outputs.release_sha }}
+          RELEASE_TAG: ${{ needs.release-preflight.outputs.release_tag }}
+        run: bash scripts/release-install-smoke.sh "$RELEASE_TAG"
 
-      - name: Run published-binary first-use acceptance (Windows)
+      - name: Run staged-binary first-use acceptance (Windows)
         if: matrix.shell == 'pwsh'
         shell: pwsh
         env:
-          SHIPLOG_RELEASE_REPO: ${{ github.repository }}
-        run: |
-          pwsh -NoProfile -File scripts/release-install-smoke.ps1 "${{ needs.release-preflight.outputs.release_tag }}"
+          SHIPLOG_RELEASE_CANDIDATE_DIR: ${{ runner.temp }}/release-candidate
+          SHIPLOG_RELEASE_SOURCE_SHA: ${{ needs.release-preflight.outputs.release_sha }}
+          RELEASE_TAG: ${{ needs.release-preflight.outputs.release_tag }}
+        run: pwsh -NoProfile -File scripts/release-install-smoke.ps1 "$env:RELEASE_TAG"
 
-  # Run integration tests
-  release-test:
-    name: Release Integration Tests
-    runs-on: ${{ github.repository == 'EffortlessMetrics/shiplog-swarm' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && 'self-hosted' || 'ubuntu-latest' }}
-    needs: [release-preflight, build-binary, create-release]
+      - name: Upload first-use diagnostics and receipts
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: release-first-use-${{ matrix.target }}
+          path: target/release-install-smoke/${{ needs.release-preflight.outputs.release_tag }}
+          if-no-files-found: warn
+          retention-days: 14
+
+  # Prove checksum and executable failures cannot satisfy the candidate gate.
+  release-candidate-negative-controls:
+    name: Release Candidate Negative Controls
+    runs-on: ubuntu-latest
+    needs: [release-preflight, stage_release_candidate]
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v7.0.0
+      - name: Checkout release scripts
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           ref: ${{ needs.release-preflight.outputs.release_tag }}
 
+      - name: Confirm exact negative-control checkout
+        shell: bash
+        env:
+          RELEASE_SHA: ${{ needs.release-preflight.outputs.release_sha }}
+        run: test "$(git rev-parse HEAD)" = "$RELEASE_SHA"
+
+      - name: Download exact staged candidate set
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: verified-release-candidates
+          path: ${{ runner.temp }}/release-candidate
+
+      - name: Prove corrupted checksum is rejected
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ needs.release-preflight.outputs.release_tag }}
+          RELEASE_SHA: ${{ needs.release-preflight.outputs.release_sha }}
+        run: |
+          set -euo pipefail
+          root="$RUNNER_TEMP/checksum-broken"
+          rm -rf "$root"
+          mkdir -p "$root"
+          cp -a "$RUNNER_TEMP/release-candidate/." "$root/"
+          printf '\ncorrupt\n' >> "$root/shiplog-x86_64-unknown-linux-gnu/shiplog-x86_64-unknown-linux-gnu"
+
+          if SHIPLOG_RELEASE_CANDIDATE_DIR="$root" \
+             SHIPLOG_RELEASE_SOURCE_SHA="$RELEASE_SHA" \
+             SHIPLOG_RELEASE_SMOKE_DIR="$RUNNER_TEMP/checksum-control-work" \
+             bash scripts/release-install-smoke.sh "$RELEASE_TAG" \
+             >"$RUNNER_TEMP/checksum-control.log" 2>&1; then
+            echo "corrupted candidate unexpectedly passed" >&2
+            exit 1
+          fi
+          grep -q "checksum mismatch" "$RUNNER_TEMP/checksum-control.log"
+
+      - name: Prove broken executable command is rejected
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ needs.release-preflight.outputs.release_tag }}
+          RELEASE_SHA: ${{ needs.release-preflight.outputs.release_sha }}
+        run: |
+          set -euo pipefail
+          root="$RUNNER_TEMP/command-broken"
+          asset_rel="shiplog-x86_64-unknown-linux-gnu/shiplog-x86_64-unknown-linux-gnu"
+          rm -rf "$root"
+          mkdir -p "$root"
+          cp -a "$RUNNER_TEMP/release-candidate/." "$root/"
+
+          cat > "$root/$asset_rel" <<'BROKEN'
+          #!/usr/bin/env bash
+          exit 42
+          BROKEN
+          sed -i 's/^          //' "$root/$asset_rel"
+          chmod +x "$root/$asset_rel"
+
+          replacement_sha="$(sha256sum "$root/$asset_rel" | awk '{print $1}')"
+          awk -v asset="$asset_rel" -v replacement="$replacement_sha" '
+            $2 == asset { print replacement "  " asset; found=1; next }
+            { print }
+            END { if (!found) exit 1 }
+          ' "$root/SHA256SUMS.txt" > "$root/SHA256SUMS.txt.new"
+          mv "$root/SHA256SUMS.txt.new" "$root/SHA256SUMS.txt"
+
+          sums_sha="$(sha256sum "$root/SHA256SUMS.txt" | awk '{print $1}')"
+          awk -F= -v OFS== -v digest="$sums_sha" '
+            $1 == "checksum_manifest_sha256" { $2=digest }
+            { print }
+          ' "$root/RELEASE_CANDIDATE.txt" > "$root/RELEASE_CANDIDATE.txt.new"
+          mv "$root/RELEASE_CANDIDATE.txt.new" "$root/RELEASE_CANDIDATE.txt"
+
+          if SHIPLOG_RELEASE_CANDIDATE_DIR="$root" \
+             SHIPLOG_RELEASE_SOURCE_SHA="$RELEASE_SHA" \
+             SHIPLOG_RELEASE_SMOKE_DIR="$RUNNER_TEMP/command-control-work" \
+             bash scripts/release-install-smoke.sh "$RELEASE_TAG" \
+             >"$RUNNER_TEMP/command-control.log" 2>&1; then
+            echo "broken candidate executable unexpectedly passed" >&2
+            exit 1
+          fi
+          grep -q "candidate binary failed --version" "$RUNNER_TEMP/command-control.log"
+
+      - name: Upload negative-control evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: release-candidate-negative-controls
+          path: |
+            ${{ runner.temp }}/checksum-control.log
+            ${{ runner.temp }}/command-control.log
+          if-no-files-found: warn
+          retention-days: 14
+
+  # Run independent integration tests in release mode.
+  release-test:
+    name: Release Integration Tests
+    runs-on: ubuntu-latest
+    needs: [release-preflight, stage_release_candidate]
+
+    steps:
+      - name: Checkout exact release tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ needs.release-preflight.outputs.release_tag }}
+
+      - name: Confirm exact release commit
+        shell: bash
+        env:
+          RELEASE_SHA: ${{ needs.release-preflight.outputs.release_sha }}
+        run: test "$(git rev-parse HEAD)" = "$RELEASE_SHA"
+
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@master
+        uses: dtolnay/rust-toolchain@2c7215f132e9ebf062739d9130488b56d53c060c # master
         with:
           toolchain: "1.95.0"
 
       - name: Cache cargo build
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: target
           key: ${{ runner.os }}-cargo-release-${{ hashFiles('**/Cargo.lock') }}
@@ -402,7 +668,158 @@ jobs:
 
       - name: Generate test summary
         if: always()
+        shell: bash
         run: |
-          echo "# Release Integration Test Results" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "All integration tests passed in release mode!" >> $GITHUB_STEP_SUMMARY
+          echo "# Release Integration Test Results" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "All integration tests passed in release mode!" >> "$GITHUB_STEP_SUMMARY"
+
+  # One terminal authority for human source-side publication.
+  release-candidate-ready:
+    name: Release Candidate Ready
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - release-preflight
+      - stage_release_candidate
+      - release-validation
+      - release-binary-acceptance
+      - release-candidate-negative-controls
+      - release-test
+
+    steps:
+      - name: Require every candidate gate
+        shell: bash
+        env:
+          PREFLIGHT_RESULT: ${{ needs.release-preflight.result }}
+          STAGE_RESULT: ${{ needs.stage_release_candidate.result }}
+          VALIDATION_RESULT: ${{ needs.release-validation.result }}
+          FIRST_USE_RESULT: ${{ needs.release-binary-acceptance.result }}
+          NEGATIVE_CONTROL_RESULT: ${{ needs.release-candidate-negative-controls.result }}
+          RELEASE_TEST_RESULT: ${{ needs.release-test.result }}
+        run: |
+          set -euo pipefail
+          for result in \
+            "$PREFLIGHT_RESULT" \
+            "$STAGE_RESULT" \
+            "$VALIDATION_RESULT" \
+            "$FIRST_USE_RESULT" \
+            "$NEGATIVE_CONTROL_RESULT" \
+            "$RELEASE_TEST_RESULT"; do
+            if [[ "$result" != "success" ]]; then
+              echo "release candidate gate is not green: $result" >&2
+              exit 1
+            fi
+          done
+
+      - name: Record release candidate authority
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ needs.release-preflight.outputs.release_tag }}
+          RELEASE_SHA: ${{ needs.release-preflight.outputs.release_sha }}
+          CANDIDATE_ARTIFACT_ID: ${{ needs.stage_release_candidate.outputs.candidate_artifact_id }}
+          CANDIDATE_ARTIFACT_DIGEST: ${{ needs.stage_release_candidate.outputs.candidate_artifact_digest }}
+          CANDIDATE_MANIFEST_SHA256: ${{ needs.stage_release_candidate.outputs.candidate_manifest_sha256 }}
+          CHECKSUM_MANIFEST_SHA256: ${{ needs.stage_release_candidate.outputs.checksum_manifest_sha256 }}
+        run: |
+          set -euo pipefail
+          cat > release-candidate-ready.txt <<EOF
+          release_tag=$RELEASE_TAG
+          source_sha=$RELEASE_SHA
+          candidate_artifact_id=$CANDIDATE_ARTIFACT_ID
+          candidate_artifact_digest=$CANDIDATE_ARTIFACT_DIGEST
+          candidate_manifest_sha256=$CANDIDATE_MANIFEST_SHA256
+          checksum_manifest_sha256=$CHECKSUM_MANIFEST_SHA256
+          release_validation=success
+          four_platform_first_use=success
+          negative_controls=success
+          release_mode_tests=success
+          publication_authority=source_human_approval_required
+          EOF
+          sed -i 's/^          //' release-candidate-ready.txt
+          cat release-candidate-ready.txt
+
+          {
+            echo "# Release Candidate Ready"
+            echo
+            echo "- Tag: \`$RELEASE_TAG\`"
+            echo "- Source commit: \`$RELEASE_SHA\`"
+            echo "- Candidate artifact id: \`$CANDIDATE_ARTIFACT_ID\`"
+            echo "- Candidate artifact digest: \`$CANDIDATE_ARTIFACT_DIGEST\`"
+            echo "- Candidate manifest SHA-256: \`$CANDIDATE_MANIFEST_SHA256\`"
+            echo "- Checksum manifest SHA-256: \`$CHECKSUM_MANIFEST_SHA256\`"
+            echo "- Four-platform first-use acceptance: **PASSED**"
+            echo "- Deliberate checksum and executable failures: **REJECTED AS EXPECTED**"
+            echo "- Release-mode integration tests: **PASSED**"
+            echo
+            echo "This is blocking candidate proof only. Tag/publication remains an explicit source-authorized human action."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Retain release candidate ready receipt
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: release-candidate-ready
+          path: release-candidate-ready.txt
+          retention-days: 30
+
+  # Write only the draft release after every candidate gate is green.
+  create-release:
+    name: Create Draft Release
+    runs-on: ubuntu-latest
+    if: needs.release-candidate-ready.result == 'success'
+    needs: [release-candidate-ready, release-preflight, stage_release_candidate]
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout exact release tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ needs.release-preflight.outputs.release_tag }}
+
+      - name: Confirm exact release commit
+        shell: bash
+        env:
+          RELEASE_SHA: ${{ needs.release-preflight.outputs.release_sha }}
+        run: test "$(git rev-parse HEAD)" = "$RELEASE_SHA"
+
+      - name: Download exact staged candidate set
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: verified-release-candidates
+          path: candidate
+
+      - name: Create or update draft release with exact candidate bytes
+        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        with:
+          tag_name: ${{ needs.release-preflight.outputs.release_tag }}
+          draft: true
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          overwrite_files: true
+          files: |
+            candidate/shiplog-x86_64-unknown-linux-gnu/shiplog-x86_64-unknown-linux-gnu
+            candidate/shiplog-x86_64-apple-darwin/shiplog-x86_64-apple-darwin
+            candidate/shiplog-aarch64-apple-darwin/shiplog-aarch64-apple-darwin
+            candidate/shiplog-x86_64-pc-windows-msvc/shiplog-x86_64-pc-windows-msvc.exe
+            candidate/SHA256SUMS.txt
+            candidate/RELEASE_CANDIDATE.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Record source publication boundary
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ needs.release-preflight.outputs.release_tag }}
+          RELEASE_SHA: ${{ needs.release-preflight.outputs.release_sha }}
+        run: |
+          {
+            echo "## Source release writer"
+            echo "- Release Candidate Ready: **PASSED**"
+            echo "- Draft release assets: **EXACT STAGED CANDIDATE BYTES UPLOADED**"
+            echo "- Tag: `$RELEASE_TAG`"
+            echo "- Source commit: `$RELEASE_SHA`"
+            echo
+            echo "Public release, crates.io publication, signing, notarization, and package-channel publication still require explicit human authority."
+          } >> "$GITHUB_STEP_SUMMARY"

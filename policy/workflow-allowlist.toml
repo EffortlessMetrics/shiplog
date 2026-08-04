@@ -144,17 +144,18 @@ expires = "permanent"
 [[entry]]
 path = ".github/workflows/release.yml"
 owner = "release/ci"
-reason = "Swarm release-verification pipeline; builds and retains candidate artifacts but has no GitHub Release write authority. Canonical source restores explicitly authorized release writers as source-only governance."
-permissions = ["contents:read"]
-secrets_used = []
+reason = "Source release-writer pipeline; proves one immutable four-platform candidate before creating or updating a draft GitHub Release. Public release, package publication, signing, and notarization remain explicit human-authorized actions."
+permissions = ["contents:read", "contents:write"]
+secrets_used = ["GITHUB_TOKEN"]
 external_actions = [
   "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
-  "dtolnay/rust-toolchain@master",
+  "dtolnay/rust-toolchain@2c7215f132e9ebf062739d9130488b56d53c060c",
   "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a",
-  "actions/download-artifact@v8",
-  "actions/cache@v6",
-  "Swatinem/rust-cache@v2",
-  "taiki-e/install-action@v2",
+  "actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c",
+  "actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9",
+  "Swatinem/rust-cache@c19371144df3bb6b0106d3608c7ffd4048af17c",
+  "taiki-e/install-action@cb33e69fad06166ca28a42b2575e4dadabf62ee8",
+  "softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228",
 ]
 created = "2026-05-09"
 expires = "permanent"
@@ -166,7 +167,7 @@ reason = "Standalone cargo-deny on push/PR/weekly. Duplicate of ci.yml#deny on P
 permissions = ["contents:read"]
 secrets_used = []
 external_actions = [
-  "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+  "actions/checkout@v7.0.0",
   "dtolnay/rust-toolchain@stable",
   "taiki-e/install-action@v2",
 ]
@@ -276,7 +277,7 @@ reason = "Out-of-band @droid mention handler (interactive)."
 permissions = ["contents:read", "pull-requests:write", "issues:write", "id-token:write", "actions:read"]
 secrets_used = ["MINIMAX_API_KEY", "FACTORY_API_KEY"]
 external_actions = [
-  "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+  "actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0",
   "EffortlessMetrics/droid-action-safe@7c1377ccbacddc95560d1570547a5baa51de01ec",
 ]
 created = "2026-05-09"
@@ -289,7 +290,7 @@ reason = "Factory Droid auto-review on PR open/sync/ready_for_review/reopened. A
 permissions = ["contents:write", "pull-requests:write", "issues:write", "id-token:write", "actions:read"]
 secrets_used = ["MINIMAX_API_KEY", "FACTORY_API_KEY"]
 external_actions = [
-  "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+  "actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0",
   "EffortlessMetrics/droid-action-safe@7c1377ccbacddc95560d1570547a5baa51de01ec",
 ]
 created = "2026-05-09"
@@ -302,7 +303,7 @@ reason = "Factory Droid weekly security scan."
 permissions = ["contents:write", "pull-requests:write", "issues:write", "id-token:write", "actions:read"]
 secrets_used = ["MINIMAX_API_KEY", "FACTORY_API_KEY"]
 external_actions = [
-  "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+  "actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0",
   "EffortlessMetrics/droid-action-safe@7c1377ccbacddc95560d1570547a5baa51de01ec",
 ]
 created = "2026-05-09"
