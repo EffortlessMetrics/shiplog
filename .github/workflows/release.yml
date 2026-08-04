@@ -111,7 +111,7 @@ jobs:
           toolchain: "1.95.0"
           components: rustfmt, clippy
 
-      - uses: Swatinem/rust-cache@c19371144df3bb6b0106d3608c7ffd4048af17c # v2.9.1
+      - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
         with:
           shared-key: "release-preflight"
 
@@ -290,8 +290,6 @@ jobs:
           asset_count=$asset_count
           checksum_manifest_sha256=$checksum_manifest_sha256
           EOF
-          sed -i 's/^          //' RELEASE_CANDIDATE.txt
-
           candidate_manifest_sha256="$(sha256sum RELEASE_CANDIDATE.txt | awk '{print $1}')"
           echo "checksum_manifest_sha256=$checksum_manifest_sha256" >> "$GITHUB_OUTPUT"
           echo "candidate_manifest_sha256=$candidate_manifest_sha256" >> "$GITHUB_OUTPUT"
@@ -594,7 +592,6 @@ jobs:
           #!/usr/bin/env bash
           exit 42
           BROKEN
-          sed -i 's/^          //' "$root/$asset_rel"
           chmod +x "$root/$asset_rel"
 
           replacement_sha="$(sha256sum "$root/$asset_rel" | awk '{print $1}')"
@@ -736,7 +733,6 @@ jobs:
           release_mode_tests=success
           publication_authority=source_human_approval_required
           EOF
-          sed -i 's/^          //' release-candidate-ready.txt
           cat release-candidate-ready.txt
 
           {
@@ -768,6 +764,8 @@ jobs:
     runs-on: ubuntu-latest
     if: needs.release-candidate-ready.result == 'success'
     needs: [release-candidate-ready, release-preflight, stage_release_candidate]
+    # This is the workflow's only contents: write grant: it creates or updates
+    # the draft release and uploads the already-proven candidate bytes.
     permissions:
       contents: write
 
@@ -795,9 +793,7 @@ jobs:
         with:
           tag_name: ${{ needs.release-preflight.outputs.release_tag }}
           draft: true
-          generate_release_notes: true
           fail_on_unmatched_files: true
-          overwrite_files: true
           files: |
             candidate/shiplog-x86_64-unknown-linux-gnu/shiplog-x86_64-unknown-linux-gnu
             candidate/shiplog-x86_64-apple-darwin/shiplog-x86_64-apple-darwin
@@ -818,8 +814,8 @@ jobs:
             echo "## Source release writer"
             echo "- Release Candidate Ready: **PASSED**"
             echo "- Draft release assets: **EXACT STAGED CANDIDATE BYTES UPLOADED**"
-            echo "- Tag: `$RELEASE_TAG`"
-            echo "- Source commit: `$RELEASE_SHA`"
+            echo "- Tag: \`$RELEASE_TAG\`"
+            echo "- Source commit: \`$RELEASE_SHA\`"
             echo
             echo "Public release, crates.io publication, signing, notarization, and package-channel publication still require explicit human authority."
           } >> "$GITHUB_STEP_SUMMARY"

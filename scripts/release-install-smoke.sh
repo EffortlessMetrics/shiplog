@@ -5,12 +5,17 @@ usage() {
   cat >&2 <<'USAGE'
 usage: scripts/release-install-smoke.sh <version>
 
-Downloads the current-platform GitHub release binary, verifies SHA256SUMS.txt,
-proves the no-token first-use path and runs the no-network review rescue smoke
-path. This script is intended to work without Rust or Cargo installed.
+Downloads the current-platform GitHub release binary, or consumes the exact
+workflow-staged candidate when SHIPLOG_RELEASE_CANDIDATE_DIR is set, verifies
+SHA256SUMS.txt, proves the no-token first-use path and runs the no-network
+review rescue smoke path. This script is intended to work without Rust or
+Cargo installed.
 
 Set SHIPLOG_RELEASE_REPO=owner/repo to verify a fork.
 Set SHIPLOG_RELEASE_SMOKE_DIR=path to override the scratch directory.
+Set SHIPLOG_RELEASE_CANDIDATE_DIR=path to consume the retained workflow
+candidate instead of downloading release assets.
+Set SHIPLOG_RELEASE_SOURCE_SHA=sha to bind a staged candidate to its source.
 USAGE
 }
 
@@ -32,6 +37,8 @@ repo_root="$(cd -- "$script_dir/.." && pwd)"
 work_dir="${SHIPLOG_RELEASE_SMOKE_DIR:-$repo_root/target/release-install-smoke/$tag}"
 download_dir="$work_dir/download"
 demo_out="$work_dir/demo-out"
+candidate_dir="${SHIPLOG_RELEASE_CANDIDATE_DIR:-}"
+source_sha="${SHIPLOG_RELEASE_SOURCE_SHA:-}"
 
 download() {
   local url="$1"
@@ -78,21 +85,58 @@ sha256_file() {
 }
 
 asset="$(host_asset)"
-base_url="https://github.com/$repo/releases/download/$tag"
 binary_path="$download_dir/shiplog"
 if [[ "$asset" == *.exe ]]; then
   binary_path="$download_dir/shiplog.exe"
 fi
 
-echo "==> downloading $repo@$tag release asset for this platform"
 rm -rf "$work_dir"
 mkdir -p "$download_dir"
-download "$base_url/$asset" "$binary_path"
-download "$base_url/SHA256SUMS.txt" "$download_dir/SHA256SUMS.txt"
+if [[ "$candidate_dir" != "" ]]; then
+  candidate_dir="$(cd -- "$candidate_dir" && pwd)"
+  candidate_asset="$candidate_dir/$asset/$asset"
+  if [[ ! -f "$candidate_asset" ]]; then
+    candidate_asset="$candidate_dir/$asset"
+  fi
+  if [[ ! -f "$candidate_asset" ]]; then
+    echo "missing staged candidate asset: $candidate_asset" >&2
+    exit 1
+  fi
+  if [[ ! -f "$candidate_dir/SHA256SUMS.txt" ]]; then
+    echo "missing staged candidate checksum manifest: $candidate_dir/SHA256SUMS.txt" >&2
+    exit 1
+  fi
+  if [[ ! -f "$candidate_dir/RELEASE_CANDIDATE.txt" ]]; then
+    echo "missing staged candidate manifest: $candidate_dir/RELEASE_CANDIDATE.txt" >&2
+    exit 1
+  fi
+  grep -Fxq "release_tag=$tag" "$candidate_dir/RELEASE_CANDIDATE.txt"
+  if [[ "$source_sha" == "" ]]; then
+    echo "SHIPLOG_RELEASE_SOURCE_SHA is required for a staged candidate" >&2
+    exit 2
+  fi
+  grep -Fxq "source_sha=$source_sha" "$candidate_dir/RELEASE_CANDIDATE.txt"
+  echo "==> consuming exact staged candidate for $repo@$tag"
+  cp -- "$candidate_asset" "$binary_path"
+  cp -- "$candidate_dir/SHA256SUMS.txt" "$download_dir/SHA256SUMS.txt"
+else
+  base_url="https://github.com/$repo/releases/download/$tag"
+  echo "==> downloading $repo@$tag release asset for this platform"
+  download "$base_url/$asset" "$binary_path"
+  download "$base_url/SHA256SUMS.txt" "$download_dir/SHA256SUMS.txt"
+fi
 
 echo "==> verifying SHA256SUMS.txt entry for $asset"
 expected_sha="$(
-  awk -v asset="$asset" '$2 ~ "/" asset "$" { print $1; found=1 } END { if (!found) exit 1 }' \
+  awk -v asset="$asset" '
+    {
+      path=$2
+      sub(/^\*/, "", path)
+      count=split(path, parts, "/")
+      if (parts[count] == asset) { print $1; found=1; exit }
+    }
+    END { if (!found) exit 1 }
+  ' \
     "$download_dir/SHA256SUMS.txt"
 )"
 actual_sha="$(sha256_file "$binary_path")"
