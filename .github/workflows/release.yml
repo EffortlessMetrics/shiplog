@@ -788,6 +788,16 @@ jobs:
           name: verified-release-candidates
           path: candidate
 
+      - name: Verify staged checksum manifest digest
+        shell: bash
+        env:
+          EXPECTED_CHECKSUM_MANIFEST_SHA256: ${{ needs.stage_release_candidate.outputs.checksum_manifest_sha256 }}
+        run: |
+          set -euo pipefail
+          actual="$(sha256sum candidate/SHA256SUMS.txt | awk '{print $1}')"
+          test "$actual" = "$EXPECTED_CHECKSUM_MANIFEST_SHA256"
+          grep -Fxq "checksum_manifest_sha256=$actual" candidate/RELEASE_CANDIDATE.txt
+
       - name: Create or update draft release with exact candidate bytes
         uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
         with:
