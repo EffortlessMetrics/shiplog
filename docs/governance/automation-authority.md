@@ -101,8 +101,9 @@ The checker verifies, per role:
 - **Source routine-bot guard** — source-role validation requires
   `source-automation-guard.yml` to use `pull_request_target` for opened, reopened,
   and synchronized PRs, match the `dependabot[bot]` and `factory-droid[bot]`
-  identities, fail with `exit 1`, and remain metadata-only (`contents: read`,
-  `pull-requests: read`, no checkout or named secrets).
+  identities, fail with `exit 1`, expose a required `workflow_dispatch`
+  `author_login` input for synthetic actor proof, and remain metadata-only
+  (`contents: read`, `pull-requests: read`, no checkout or named secrets).
 
 Intentional per-repository configuration differences (for example, source's empty
 Dependabot list or its release-writer `release.yml`) are classified as approved
@@ -124,6 +125,11 @@ The source-side [`Source Automation Guard`](../../.github/workflows/source-autom
 also fails closed for routine product PRs authored by `dependabot[bot]` or
 `factory-droid[bot]`. It uses `pull_request_target` only to read pull-request
 metadata, never checks out the untrusted head, and grants no write permission.
+An authorized maintainer can use `workflow_dispatch` with `author_login` set to
+each bot identity to exercise the same reject path, and with an ordinary login
+to exercise the allowed path. Those runs prove actor classification and the
+workflow's fail-closed behavior; they do not prove GitHub branch protection or
+that an unprotected source branch cannot be merged.
 The guard is intentionally repository-gated, so the same workflow can travel
 through the swarm promotion tree without rejecting the swarm's authoritative
 automation. A failed guard is a handoff signal, not a source-side mutation path.

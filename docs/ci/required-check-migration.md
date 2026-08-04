@@ -11,20 +11,20 @@ migration step.
 ## The headline
 
 ```text
-Today  (post-v0.5.0):  0 required checks on `main`
-                       (`main` is not branch-protected; verified via
-                       /repos/EffortlessMetrics/shiplog/branches/main/protection)
+Today  (post-rollout): 1 required source check on `main`
+                       (`reject-routine-bot-pr` in active ruleset `main`)
 Target (steady state): 5 required checks on `main`
                        (CI / Check ubuntu, CI / Check windows,
                         CI / cargo-deny, CI / Policy gates,
                         pr-plan / forecast)
 ```
 
-The v0.5.0 ladder (#140–#157) shipped without enabling GitHub
-branch-protection on `main`. The migration rules below describe how
-required-check changes **must** be sequenced once protection is
-enabled — they are forward-looking guidance, not a retrospective
-changelog of changes that have already been applied.
+The v0.5.0 ladder (#140–#157) shipped without enabling the source
+correctness-check set. Source `main` now has an active ruleset with the
+metadata-only `reject-routine-bot-pr` guard. The migration rules below
+describe how the remaining correctness-check changes **must** be sequenced;
+they are forward-looking guidance, not a retrospective changelog of changes
+that have already been applied.
 
 Required-check renames and additions happen at specific points in the
 ladder. Required-check removals happen as separate PRs after the lane
@@ -32,8 +32,8 @@ they replace has been observed stable.
 
 ## Today (post-v0.5.0)
 
-`main` is not branch-protected; no required checks are enforced at the
-GitHub level. When protection is enabled, the target set is what
+Source `main` is governed by an active ruleset. It currently requires
+`reject-routine-bot-pr`; the future correctness-check set is what
 `policy/ci-lanes.toml` marks `blocking = true` for `default_pr = true`
 lanes:
 
@@ -86,8 +86,7 @@ the workflow. Wait until the workflow has been live on `main` for at
 least one PR cycle before adding it.
 
 `pr-plan / forecast` has been live since PR #146 merged; it is
-required-eligible but has not been added to branch-protection settings
-(branch protection is not enabled on `main`).
+required-eligible but has not been added to the active source ruleset.
 
 ## At PR #164 (MSRV job removal)
 
@@ -116,8 +115,7 @@ the blocking-allowlist checks).
 | `CI / Policy gates` | **add** as required (when protection is enabled) | Catches drift in any of the 18 policy ledgers |
 
 `CI / Policy gates` has been live since PR #165 merged; it is
-required-eligible but has not been added to branch-protection settings
-(branch protection is not enabled on `main`).
+required-eligible but has not been added to the active source ruleset.
 
 ## At SHIPLOG-SPEC-0010 source-of-truth CI wiring
 
@@ -146,8 +144,7 @@ jobs are required-eligible.
 
 Lanes for these are `[lane.bdd_smoke]`, `[lane.property_smoke]`, and
 `[lane.fuzz_smoke]` in `policy/ci-lanes.toml`. All three are live and
-required-eligible; none are enforced via branch-protection settings
-(branch protection is not enabled on `main`).
+required-eligible; none are enforced via the active source ruleset.
 
 ## At PR #155 (broad lane routing)
 
@@ -169,9 +166,9 @@ label (`bdd`, `property-tests`, `fuzz`, `mutation`, `security-audit`,
 | `Cargo Deny Security` (security.yml) | **must not be required** | Label-gated; duplicate of `CI / cargo-deny` on PR |
 | `Codecov Coverage` | **must not be required** | Label-gated; push-main + label only |
 
-`main` is not branch-protected today, so the "must not be required"
-guidance is forward-looking: it applies when/if protection is enabled
-and is a constraint on what required-checks list to choose.
+The source ruleset is active today, so the "must not be required"
+guidance applies to the current and future required-check list. It prevents
+label-gated or advisory lanes from creating pending-check deadlocks.
 
 ## Avoiding pending-check deadlocks
 

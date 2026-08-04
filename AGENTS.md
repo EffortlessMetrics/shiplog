@@ -29,12 +29,29 @@ Push normal development branches to `swarm` and open PRs against
 `EffortlessMetrics/shiplog` clone in place for new normal work; clone
 `shiplog-swarm` side-by-side when setting up a fresh agent or machine.
 
-Promotion from swarm back to source uses a regular merge-commit PR into
-`EffortlessMetrics/shiplog/main`, not a squash merge. A promotion PR should
-include the swarm head SHA, included swarm PRs, and proof that
-`Shiplog Rust Small Result` passed. Use
+Promotion from swarm back to source uses `cargo xtask promote` and a regular
+merge-commit PR into `EffortlessMetrics/shiplog/main`, never a squash merge.
+Do not push raw `swarm/main` as a source promotion branch or rebuild the
+per-path overlay manually. Run the current exact-head dry-run twice, inspect the
+machine path decisions and included receipts, execute the idempotent command,
+and verify the landed checkpoint with `--verify-only`. A fail-closed result is
+a repair queue; do not bypass it with an older source ref or historical mode.
+Use
 [`plans/shiplog-swarm/promotion-runbook.md`](plans/shiplog-swarm/promotion-runbook.md)
-for the exact promotion sequence.
+for the complete promotion and closeout sequence.
+
+Shared release-candidate preparation also belongs in swarm. Finish the release
+scope, version and lockfile, changelog freeze, README/guides, release decision,
+readiness ledger, and handoff skeleton on `shiplog-swarm/main`, then promote the
+exact proven candidate. Source work begins only after that checkpoint and is
+limited to release execution, tagging, publication, and explicitly authorized
+source-owned writer configuration. Use
+[`docs/release/release-preparation.md`](docs/release/release-preparation.md) for
+the current preparation, preflight, tag, staged-artifact, publication,
+rollback, and closeout procedure. Versioned readiness/decision files and root
+`RELEASE_HANDOFF_*` files are historical receipts, not standing command
+references. A product or shared-documentation defect found on source returns to
+swarm and is promoted again.
 
 ## Code Review Standards
 
