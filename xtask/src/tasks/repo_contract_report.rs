@@ -158,6 +158,7 @@ struct RepoContractReport {
     routed_ci_health: RoutedCiHealthReport,
     promotion_pr_contract: PromotionPrContractReport,
     branch_protection_contract: BranchProtectionContractReport,
+    source_branch_protection: SourceBranchProtectionReport,
     receipt_freshness: ReceiptFreshnessReport,
     artifacts: Vec<Artifact>,
     work_items: Vec<WorkItem>,
@@ -173,6 +174,7 @@ struct RepoInspections {
     routed_ci_health: RoutedCiHealthReport,
     promotion_pr_contract: PromotionPrContractReport,
     branch_protection_contract: BranchProtectionContractReport,
+    source_branch_protection: SourceBranchProtectionReport,
     receipt_freshness: ReceiptFreshnessReport,
 }
 
@@ -202,6 +204,7 @@ struct GitTopologyReport {
     source_ahead_classification: String,
     source_ahead_promotion_merges: Vec<String>,
     source_ahead_approved_governance_commits: Vec<String>,
+    source_ahead_transition_evidence_commits: Vec<String>,
     source_ahead_other_commits: Vec<String>,
     swarm_ahead: Vec<String>,
     status: String,
@@ -214,6 +217,7 @@ struct LocalCheckoutReport {
     branch_summary: Option<String>,
     clean: Option<bool>,
     status_entries: Vec<String>,
+    protected_workspace_entries: Vec<String>,
     local_branch_count: usize,
     unprotected_local_branch_count: usize,
     unprotected_local_branches: Vec<String>,
@@ -334,6 +338,21 @@ struct BranchProtectionContractReport {
 }
 
 #[derive(Debug, Serialize)]
+struct SourceBranchProtectionReport {
+    status: String,
+    repo: String,
+    branch: String,
+    protection_present: Option<bool>,
+    actual_required_status_checks: Vec<String>,
+    strict_required_status_checks: Option<bool>,
+    enforce_admins: Option<bool>,
+    allow_force_pushes: Option<bool>,
+    allow_deletions: Option<bool>,
+    notes: Vec<String>,
+    next_actions: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
 struct ReceiptFreshnessReport {
     status: String,
     manifest_present: bool,
@@ -361,6 +380,7 @@ pub fn run(workspace_root: &Path) -> Result<()> {
     let routed_ci_health = inspect_routed_ci_health(workspace_root);
     let promotion_pr_contract = inspect_promotion_pr_contract(workspace_root, &git_topology);
     let branch_protection_contract = inspect_branch_protection_contract(workspace_root);
+    let source_branch_protection = inspect_source_branch_protection(workspace_root);
     let receipt_freshness = inspect_receipt_freshness(workspace_root, &git_topology);
 
     let output_dir = workspace_root.join("target").join("source-of-truth");
@@ -377,6 +397,7 @@ pub fn run(workspace_root: &Path) -> Result<()> {
         routed_ci_health,
         promotion_pr_contract,
         branch_protection_contract,
+        source_branch_protection,
         receipt_freshness,
     };
     let report = build_report(
@@ -588,6 +609,7 @@ fn build_report(
         routed_ci_health: inspections.routed_ci_health,
         promotion_pr_contract: inspections.promotion_pr_contract,
         branch_protection_contract: inspections.branch_protection_contract,
+        source_branch_protection: inspections.source_branch_protection,
         receipt_freshness: inspections.receipt_freshness,
         artifacts: artifacts.to_vec(),
         work_items: goal.work_item,
@@ -609,7 +631,7 @@ fn recommended_next_slice_from_statuses(
     receipt_freshness_status: &str,
     receipt_freshness_missing_receipts: &[String],
 ) -> RecommendedNextSliceReport {
-    if local_checkout_status != "clean" {
+    if !matches!(local_checkout_status, "clean" | "protected-only") {
         return RecommendedNextSliceReport {
             status: "blocked".to_string(),
             title: "Clean the local checkout before opening new work".to_string(),
@@ -800,10 +822,13 @@ fn inspect_git_topology(
     );
     let source_ahead = source_ahead_result.clone().unwrap_or_default();
     let swarm_ahead = swarm_ahead_result.clone().unwrap_or_default();
+    let (transition_evidence_commits, transition_evidence_available) =
+        source_transition_evidence_commits(workspace_root, &mut notes);
     let (mut source_ahead_summary, commit_paths_available) = classify_source_ahead_with_git(
         workspace_root,
         &source_ahead,
         source_only_paths,
+        &transition_evidence_commits,
         &mut notes,
     );
     let trees_aligned = git_trees_aligned(workspace_root, SOURCE_REF, SWARM_REF, &mut notes);
@@ -842,7 +867,11 @@ fn inspect_git_topology(
         .as_ref()
         .map(|classification| classification.product_drift_paths.is_empty());
     let path_classification = path_classification.unwrap_or_default();
-    if source_ahead_result.is_none() || swarm_ahead_result.is_none() || !commit_paths_available {
+    if source_ahead_result.is_none()
+        || swarm_ahead_result.is_none()
+        || !commit_paths_available
+        || !transition_evidence_available
+    {
         source_ahead_summary.classification = "unavailable".to_string();
     }
     let status = match (
@@ -898,6 +927,7 @@ fn inspect_git_topology(
         source_ahead_classification: source_ahead_summary.classification,
         source_ahead_promotion_merges: source_ahead_summary.promotion_merges,
         source_ahead_approved_governance_commits: source_ahead_summary.approved_governance_commits,
+        source_ahead_transition_evidence_commits: source_ahead_summary.transition_evidence_commits,
         source_ahead_other_commits: source_ahead_summary.other_commits,
         swarm_ahead,
         status,
@@ -957,7 +987,7 @@ fn local_checkout_from_status_and_branch_lines(
     local_branch_lines: Vec<String>,
     source_merged_lines: Vec<String>,
     swarm_merged_lines: Vec<String>,
-    notes: Vec<String>,
+    mut notes: Vec<String>,
 ) -> LocalCheckoutReport {
     let branch_summary = lines
         .first()
@@ -967,9 +997,26 @@ fn local_checkout_from_status_and_branch_lines(
         .into_iter()
         .skip(usize::from(branch_summary.is_some()))
         .collect::<Vec<_>>();
-    let clean = branch_summary
-        .as_ref()
-        .map(|_| status_entries.iter().all(|entry| entry.trim().is_empty()));
+    let protected_workspace_entries = status_entries
+        .iter()
+        .filter(|entry| is_protected_workspace_entry(entry))
+        .cloned()
+        .collect::<Vec<_>>();
+    if !protected_workspace_entries.is_empty() {
+        notes.push(format!(
+            "protected workspace artifacts are visible and non-blocking: {}",
+            protected_workspace_entries.join(", ")
+        ));
+    }
+    let actionable_status_entries = status_entries
+        .iter()
+        .filter(|entry| !is_protected_workspace_entry(entry))
+        .collect::<Vec<_>>();
+    let clean = branch_summary.as_ref().map(|_| {
+        actionable_status_entries
+            .iter()
+            .all(|entry| entry.trim().is_empty())
+    });
     let local_branch_count = local_branch_lines.len();
     let current_branch = current_branch_name(branch_summary.as_deref());
     let source_merged = local_branch_set(source_merged_lines);
@@ -999,23 +1046,30 @@ fn local_checkout_from_status_and_branch_lines(
     let unprotected_local_branch_count = unprotected_local_branches.len();
     let local_merged_cleanup_review_commands =
         local_merged_cleanup_review_commands(&local_merged_cleanup_candidates);
-    let status = match (clean, local_merged_cleanup_candidates.is_empty()) {
-        (Some(true), true) => "clean",
-        (Some(true), false) => "review-needed",
-        (Some(false), _) => "dirty",
-        (None, _) => "unavailable",
+    let status = match (
+        clean,
+        local_merged_cleanup_candidates.is_empty(),
+        protected_workspace_entries.is_empty(),
+    ) {
+        (Some(true), true, true) => "clean",
+        (Some(true), true, false) => "protected-only",
+        (Some(true), false, _) => "review-needed",
+        (Some(false), _, _) => "dirty",
+        (None, _, _) => "unavailable",
     }
     .to_string();
     let next_actions = local_checkout_next_actions(
         clean,
         local_merged_cleanup_candidates.len(),
         unprotected_local_branch_count,
+        !protected_workspace_entries.is_empty(),
     );
 
     LocalCheckoutReport {
         branch_summary,
         clean,
         status_entries,
+        protected_workspace_entries,
         local_branch_count,
         unprotected_local_branch_count,
         unprotected_local_branches,
@@ -1026,6 +1080,17 @@ fn local_checkout_from_status_and_branch_lines(
         notes,
         next_actions,
     }
+}
+
+const PROTECTED_WORKSPACE_ROOTS: [&str; 2] = [".claude/", "target-audit/"];
+
+fn is_protected_workspace_entry(entry: &str) -> bool {
+    let Some(path) = entry.trim().strip_prefix("?? ") else {
+        return false;
+    };
+    PROTECTED_WORKSPACE_ROOTS
+        .iter()
+        .any(|root| path.starts_with(root))
 }
 
 fn current_branch_name(branch_summary: Option<&str>) -> Option<String> {
@@ -1063,15 +1128,23 @@ fn local_checkout_next_actions(
     clean: Option<bool>,
     local_merged_cleanup_count: usize,
     unprotected_local_branch_count: usize,
+    has_protected_workspace_entries: bool,
 ) -> Vec<String> {
     const LOCAL_BRANCH_INVENTORY_REVIEW_THRESHOLD: usize = 50;
 
     match clean {
         Some(true) if local_merged_cleanup_count == 0 => {
-            let mut actions = vec![
-                "Local checkout is clean; continue with the active source-of-truth work item."
-                    .to_string(),
-            ];
+            let mut actions = if has_protected_workspace_entries {
+                vec![
+                    "Only protected workspace artifacts are untracked; preserve them and continue with the active source-of-truth work item."
+                        .to_string(),
+                ]
+            } else {
+                vec![
+                    "Local checkout is clean; continue with the active source-of-truth work item."
+                        .to_string(),
+                ]
+            };
             if unprotected_local_branch_count >= LOCAL_BRANCH_INVENTORY_REVIEW_THRESHOLD {
                 actions.push(format!(
                     "Local branch inventory has {unprotected_local_branch_count} unprotected branch(es); review with `git branch --format=\"%(refname:short)\"` before deleting anything."
@@ -1767,15 +1840,10 @@ fn inspect_promotion_pr_contract(
 
     let latest_promotion_merge = git_topology.source_ahead_promotion_merges.first();
     let expected_source_head = latest_promotion_merge
-        .and_then(|merge| extract_commit_hash(merge))
-        .map(ToOwned::to_owned);
-    let expected_swarm_head = expected_source_head.as_deref().and_then(|head| {
-        git_line(
-            workspace_root,
-            &["rev-parse", &format!("{head}^2")],
-            &mut notes,
-        )
-    });
+        .and_then(|merge| resolve_commit_hash(workspace_root, merge, &mut notes));
+    let expected_swarm_head = expected_source_head
+        .as_deref()
+        .and_then(|head| promotion_swarm_head_from_checkpoint(workspace_root, head, &mut notes));
     let Some(pr_number) = latest_promotion_merge
         .and_then(|merge| extract_merge_pull_request_number(merge))
         .or_else(|| {
@@ -2039,13 +2107,49 @@ fn expected_promotion_title(swarm_head: Option<&str>) -> Option<String> {
     swarm_head.map(|head| {
         format!(
             "merge(swarm): promote shiplog-swarm through {}",
-            short_sha(head)
+            promotion_title_sha(head)
         )
     })
 }
 
+fn promotion_title_sha(value: &str) -> String {
+    value.chars().take(12).collect()
+}
+
 fn short_sha(value: &str) -> String {
     value.chars().take(7).collect()
+}
+
+fn resolve_commit_hash(
+    workspace_root: &Path,
+    commit: &str,
+    notes: &mut Vec<String>,
+) -> Option<String> {
+    let hash = extract_commit_hash(commit)?;
+    git_line(workspace_root, &["rev-parse", hash], notes)
+}
+
+fn promotion_swarm_head_from_checkpoint(
+    workspace_root: &Path,
+    source_merge: &str,
+    notes: &mut Vec<String>,
+) -> Option<String> {
+    let overlay = git_line(
+        workspace_root,
+        &["rev-parse", &format!("{source_merge}^2")],
+        notes,
+    )?;
+    let message = git_lines(
+        workspace_root,
+        &["show", "-s", "--format=%B", &overlay],
+        notes,
+    );
+    message
+        .iter()
+        .find_map(|line| line.strip_prefix("Shiplog-Swarm-Head:").map(str::trim))
+        .filter(|head| !head.is_empty())
+        .map(ToOwned::to_owned)
+        .or(Some(overlay))
 }
 
 fn promotion_pr_contract_next_actions(status: &str, failed_checks: &[String]) -> Vec<String> {
@@ -2072,6 +2176,329 @@ fn promotion_pr_contract_next_actions(status: &str, failed_checks: &[String]) ->
             "Verify the latest source promotion PR with `gh pr view <number> --repo EffortlessMetrics/shiplog --json title,body,state,mergeCommit,url`."
                 .to_string(),
         ],
+    }
+}
+
+fn inspect_source_branch_protection(workspace_root: &Path) -> SourceBranchProtectionReport {
+    let mut notes = Vec::new();
+
+    if !workspace_root.join(".git").exists() {
+        notes.push(
+            "not a Git checkout; live source branch protection inspection was skipped".to_string(),
+        );
+        return source_branch_protection_from_parts(
+            None,
+            Vec::new(),
+            None,
+            None,
+            None,
+            None,
+            notes,
+        );
+    }
+
+    let path = format!("repos/{SOURCE_REPO}/branches/{SOURCE_BRANCH}/protection");
+    match Command::new("gh").args(["api", &path]).output() {
+        Ok(output) if output.status.success() => {
+            match serde_json::from_slice::<serde_json::Value>(&output.stdout) {
+                Ok(value) => source_branch_protection_from_json(value),
+                Err(err) => {
+                    notes.push(format!("gh api {path} returned invalid JSON: {err}"));
+                    source_branch_protection_from_parts(
+                        None,
+                        Vec::new(),
+                        None,
+                        None,
+                        None,
+                        None,
+                        notes,
+                    )
+                }
+            }
+        }
+        Ok(output) => {
+            let detail = String::from_utf8_lossy(&output.stderr).trim().to_string();
+            let detail = if detail.is_empty() {
+                output.status.to_string()
+            } else {
+                detail
+            };
+            let rulesets_path = format!("repos/{SOURCE_REPO}/rulesets");
+            match Command::new("gh").args(["api", &rulesets_path]).output() {
+                Ok(rulesets_output) if rulesets_output.status.success() => {
+                    match serde_json::from_slice::<serde_json::Value>(&rulesets_output.stdout) {
+                        Ok(value) => source_branch_protection_from_rulesets_json(
+                            source_rulesets_with_details(value, &rulesets_path),
+                        ),
+                        Err(err) => source_branch_protection_from_parts(
+                            None,
+                            Vec::new(),
+                            None,
+                            None,
+                            None,
+                            None,
+                            vec![format!(
+                                "gh api {rulesets_path} returned invalid JSON: {err}"
+                            )],
+                        ),
+                    }
+                }
+                Ok(rulesets_output) => {
+                    let rulesets_detail = String::from_utf8_lossy(&rulesets_output.stderr)
+                        .trim()
+                        .to_string();
+                    source_branch_protection_from_error(
+                        &path,
+                        &format!("{detail}; gh api {rulesets_path} failed: {rulesets_detail}"),
+                    )
+                }
+                Err(err) => source_branch_protection_from_error(
+                    &path,
+                    &format!("{detail}; gh api {rulesets_path} failed: {err}"),
+                ),
+            }
+        }
+        Err(err) => {
+            notes.push(format!("gh api {path} failed: {err}"));
+            source_branch_protection_from_parts(None, Vec::new(), None, None, None, None, notes)
+        }
+    }
+}
+
+fn source_branch_protection_from_error(path: &str, detail: &str) -> SourceBranchProtectionReport {
+    if detail.contains("Branch not protected") || detail.contains("HTTP 404") {
+        source_branch_protection_from_parts(
+            Some(false),
+            Vec::new(),
+            None,
+            None,
+            None,
+            None,
+            vec![format!(
+                "gh api {path} reports that the source branch is not protected"
+            )],
+        )
+    } else {
+        source_branch_protection_from_parts(
+            None,
+            Vec::new(),
+            None,
+            None,
+            None,
+            None,
+            vec![format!("gh api {path} failed: {detail}")],
+        )
+    }
+}
+
+fn source_branch_protection_from_json(value: serde_json::Value) -> SourceBranchProtectionReport {
+    let actual_required_status_checks = value
+        .pointer("/required_status_checks/contexts")
+        .and_then(serde_json::Value::as_array)
+        .map(|items| {
+            items
+                .iter()
+                .filter_map(serde_json::Value::as_str)
+                .map(ToOwned::to_owned)
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    let strict_required_status_checks = value
+        .pointer("/required_status_checks/strict")
+        .and_then(serde_json::Value::as_bool);
+    let enforce_admins = value
+        .pointer("/enforce_admins/enabled")
+        .and_then(serde_json::Value::as_bool);
+    let allow_force_pushes = value
+        .pointer("/allow_force_pushes/enabled")
+        .and_then(serde_json::Value::as_bool);
+    let allow_deletions = value
+        .pointer("/allow_deletions/enabled")
+        .and_then(serde_json::Value::as_bool);
+
+    source_branch_protection_from_parts(
+        Some(true),
+        actual_required_status_checks,
+        strict_required_status_checks,
+        enforce_admins,
+        allow_force_pushes,
+        allow_deletions,
+        Vec::new(),
+    )
+}
+
+fn source_rulesets_with_details(value: serde_json::Value, list_path: &str) -> serde_json::Value {
+    let Some(ruleset) = value.as_array().and_then(|rulesets| {
+        rulesets.iter().find(|ruleset| {
+            ruleset.get("name").and_then(serde_json::Value::as_str) == Some(SOURCE_BRANCH)
+                && ruleset.get("target").and_then(serde_json::Value::as_str) == Some("branch")
+                && ruleset
+                    .get("enforcement")
+                    .and_then(serde_json::Value::as_str)
+                    == Some("active")
+        })
+    }) else {
+        return value;
+    };
+    if ruleset
+        .get("rules")
+        .and_then(serde_json::Value::as_array)
+        .is_some()
+    {
+        return value;
+    }
+    let Some(id) = ruleset.get("id").and_then(serde_json::Value::as_i64) else {
+        return value;
+    };
+    let detail_path = format!("{list_path}/{id}");
+    let Ok(output) = Command::new("gh").args(["api", &detail_path]).output() else {
+        return value;
+    };
+    if !output.status.success() {
+        return value;
+    }
+    let Ok(detail) = serde_json::from_slice::<serde_json::Value>(&output.stdout) else {
+        return value;
+    };
+    serde_json::Value::Array(vec![detail])
+}
+
+fn source_branch_protection_from_rulesets_json(
+    value: serde_json::Value,
+) -> SourceBranchProtectionReport {
+    let Some(rulesets) = value.as_array() else {
+        return source_branch_protection_from_parts(
+            None,
+            Vec::new(),
+            None,
+            None,
+            None,
+            None,
+            vec!["source rulesets response was not an array".to_string()],
+        );
+    };
+
+    let Some(ruleset) = rulesets.iter().find(|ruleset| {
+        ruleset.get("name").and_then(serde_json::Value::as_str) == Some(SOURCE_BRANCH)
+            && ruleset.get("target").and_then(serde_json::Value::as_str) == Some("branch")
+            && ruleset
+                .get("enforcement")
+                .and_then(serde_json::Value::as_str)
+                == Some("active")
+    }) else {
+        return source_branch_protection_from_parts(
+            Some(false),
+            Vec::new(),
+            None,
+            None,
+            None,
+            None,
+            vec!["no active source main repository ruleset was found".to_string()],
+        );
+    };
+
+    let required_status_checks = ruleset
+        .get("rules")
+        .and_then(serde_json::Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter(|rule| {
+            rule.get("type").and_then(serde_json::Value::as_str) == Some("required_status_checks")
+        })
+        .flat_map(|rule| {
+            rule.pointer("/parameters/required_status_checks")
+                .and_then(serde_json::Value::as_array)
+                .into_iter()
+                .flatten()
+        })
+        .filter_map(|check| {
+            check
+                .get("context")
+                .and_then(serde_json::Value::as_str)
+                .map(ToOwned::to_owned)
+        })
+        .collect::<Vec<_>>();
+    let strict_required_status_checks = ruleset
+        .get("rules")
+        .and_then(serde_json::Value::as_array)
+        .into_iter()
+        .flatten()
+        .find(|rule| {
+            rule.get("type").and_then(serde_json::Value::as_str) == Some("required_status_checks")
+        })
+        .and_then(|rule| {
+            rule.pointer("/parameters/strict_required_status_checks_policy")
+                .and_then(serde_json::Value::as_bool)
+        });
+    let has_rule = |kind: &str| {
+        ruleset
+            .get("rules")
+            .and_then(serde_json::Value::as_array)
+            .is_some_and(|rules| {
+                rules
+                    .iter()
+                    .any(|rule| rule.get("type").and_then(serde_json::Value::as_str) == Some(kind))
+            })
+    };
+
+    source_branch_protection_from_parts(
+        Some(true),
+        required_status_checks,
+        strict_required_status_checks,
+        None,
+        Some(!has_rule("non_fast_forward")),
+        Some(!has_rule("deletion")),
+        vec![format!(
+            "source uses active repository ruleset `{}` rather than the legacy branch-protection endpoint",
+            ruleset
+                .get("id")
+                .and_then(serde_json::Value::as_i64)
+                .map_or_else(|| "main".to_string(), |id| id.to_string())
+        )],
+    )
+}
+
+fn source_branch_protection_from_parts(
+    protection_present: Option<bool>,
+    actual_required_status_checks: Vec<String>,
+    strict_required_status_checks: Option<bool>,
+    enforce_admins: Option<bool>,
+    allow_force_pushes: Option<bool>,
+    allow_deletions: Option<bool>,
+    notes: Vec<String>,
+) -> SourceBranchProtectionReport {
+    let status = match protection_present {
+        Some(true) => "protected",
+        Some(false) => "unprotected",
+        None => "unavailable",
+    }
+    .to_string();
+    let next_actions = match status.as_str() {
+        "protected" => vec![
+            "Review the source required-check set and synthetic bot-event proof; this report is observational only."
+                .to_string(),
+        ],
+        "unprotected" => vec![
+            "Configure the source branch-protection/merge-control boundary through the approved release decision for issue #294, then prove synthetic Dependabot and Droid PR rejection."
+                .to_string(),
+        ],
+        _ => vec![format!(
+            "Verify live source branch protection with `gh api repos/{SOURCE_REPO}/branches/{SOURCE_BRANCH}/protection`."
+        )],
+    };
+
+    SourceBranchProtectionReport {
+        status,
+        repo: SOURCE_REPO.to_string(),
+        branch: SOURCE_BRANCH.to_string(),
+        protection_present,
+        actual_required_status_checks,
+        strict_required_status_checks,
+        enforce_admins,
+        allow_force_pushes,
+        allow_deletions,
+        notes,
+        next_actions,
     }
 }
 
@@ -2571,6 +2998,7 @@ struct SourceAheadSummary {
     classification: String,
     promotion_merges: Vec<String>,
     approved_governance_commits: Vec<String>,
+    transition_evidence_commits: Vec<String>,
     other_commits: Vec<String>,
 }
 
@@ -2616,6 +3044,7 @@ fn classify_source_ahead_with_git(
     workspace_root: &Path,
     commits: &[String],
     policy: &[SourceOnlyPathEntry],
+    transition_evidence_commits: &BTreeSet<String>,
     notes: &mut Vec<String>,
 ) -> (SourceAheadSummary, bool) {
     let approved = policy
@@ -2623,32 +3052,98 @@ fn classify_source_ahead_with_git(
         .map(|entry| entry.path.as_str())
         .collect::<BTreeSet<_>>();
     let mut paths_available = true;
-    let summary = classify_source_ahead_by(commits, |commit| {
-        let paths = commit_paths(workspace_root, commit, notes);
-        match paths {
-            Some(paths) => {
-                !paths.is_empty() && paths.iter().all(|path| approved.contains(path.as_str()))
+    let mut transition_evidence_available = true;
+    let transition_evidence_display = commits
+        .iter()
+        .filter_map(|commit| {
+            let id = commit.split_whitespace().next()?;
+            let resolved = git_line(
+                workspace_root,
+                &["rev-parse", &format!("{id}^{{commit}}")],
+                notes,
+            );
+            match resolved {
+                Some(resolved) if transition_evidence_commits.contains(&resolved) => {
+                    Some(commit.clone())
+                }
+                Some(_) => None,
+                None => {
+                    transition_evidence_available = false;
+                    None
+                }
             }
-            None => {
-                paths_available = false;
-                false
+        })
+        .collect::<BTreeSet<_>>();
+    let summary = classify_source_ahead_by(
+        commits,
+        |commit| {
+            let paths = commit_paths(workspace_root, commit, notes);
+            match paths {
+                Some(paths) => {
+                    !paths.is_empty() && paths.iter().all(|path| approved.contains(path.as_str()))
+                }
+                None => {
+                    paths_available = false;
+                    false
+                }
             }
+        },
+        |commit| transition_evidence_display.contains(commit),
+    );
+    (summary, paths_available && transition_evidence_available)
+}
+
+fn source_transition_evidence_commits(
+    workspace_root: &Path,
+    notes: &mut Vec<String>,
+) -> (BTreeSet<String>, bool) {
+    let Some(state) = (match crate::tasks::promotion_state::load_optional(workspace_root) {
+        Ok(state) => state,
+        Err(error) => {
+            notes.push(format!(
+                "load {} failed: {error:#}",
+                crate::tasks::promotion_state::MANIFEST_REL
+            ));
+            return (BTreeSet::new(), false);
         }
-    });
-    (summary, paths_available)
+    }) else {
+        return (BTreeSet::new(), true);
+    };
+
+    let mut commits = BTreeSet::new();
+    let mut available = true;
+    for source_merge_sha in active_transition_source_merge_shas(&state.transition) {
+        match git_lines_checked(workspace_root, &["rev-list", source_merge_sha], notes) {
+            Some(history) => commits.extend(history),
+            None => available = false,
+        }
+    }
+    (commits, available)
+}
+
+fn active_transition_source_merge_shas(
+    transitions: &[crate::tasks::promotion_state::Transition],
+) -> Vec<&str> {
+    transitions
+        .iter()
+        .filter(|transition| transition.consumed_by.is_empty())
+        .map(|transition| transition.source_merge_sha.as_str())
+        .collect()
 }
 
 #[cfg(test)]
 fn classify_source_ahead(commits: &[String]) -> SourceAheadSummary {
-    classify_source_ahead_by(commits, |_| false)
+    classify_source_ahead_by(commits, |_| false, |_| false)
 }
 
 fn classify_source_ahead_by(
     commits: &[String],
     mut is_approved_governance: impl FnMut(&str) -> bool,
+    mut is_transition_evidence: impl FnMut(&str) -> bool,
 ) -> SourceAheadSummary {
     let mut promotion_merges = Vec::new();
     let mut approved_governance_commits = Vec::new();
+    let mut transition_evidence_commits = Vec::new();
     let mut other_commits = Vec::new();
 
     for commit in commits {
@@ -2656,6 +3151,8 @@ fn classify_source_ahead_by(
             promotion_merges.push(commit.clone());
         } else if is_approved_governance(commit) {
             approved_governance_commits.push(commit.clone());
+        } else if is_transition_evidence(commit) {
+            transition_evidence_commits.push(commit.clone());
         } else {
             other_commits.push(commit.clone());
         }
@@ -2670,11 +3167,27 @@ fn classify_source_ahead_by(
             "mixed"
         }
     } else if promotion_merges.is_empty() {
-        "approved-governance-only"
-    } else if approved_governance_commits.is_empty() {
-        "promotion-merge-only"
+        if transition_evidence_commits.is_empty() {
+            if approved_governance_commits.is_empty() {
+                "non-promotion"
+            } else {
+                "approved-governance-only"
+            }
+        } else if approved_governance_commits.is_empty() {
+            "transition-evidence-only"
+        } else {
+            "transition-evidence-and-approved-governance"
+        }
     } else {
-        "promotion-and-approved-governance"
+        match (
+            transition_evidence_commits.is_empty(),
+            approved_governance_commits.is_empty(),
+        ) {
+            (true, true) => "promotion-merge-only",
+            (false, true) => "transition-evidence-and-promotion",
+            (true, false) => "promotion-and-approved-governance",
+            (false, false) => "promotion-transition-evidence-and-approved-governance",
+        }
     }
     .to_string();
 
@@ -2682,6 +3195,7 @@ fn classify_source_ahead_by(
         classification,
         promotion_merges,
         approved_governance_commits,
+        transition_evidence_commits,
         other_commits,
     }
 }
@@ -2740,17 +3254,29 @@ fn topology_next_actions(
             "Continue normal development in `EffortlessMetrics/shiplog-swarm` with a focused PR."
                 .to_string(),
         ),
-        ("tree-aligned", Some(true), "promotion-merge-only") if swarm_ahead.is_empty() => {
+        (
+            "tree-aligned",
+            Some(true),
+            "promotion-merge-only"
+                | "transition-evidence-only"
+                | "transition-evidence-and-promotion",
+        ) if swarm_ahead.is_empty() => {
             actions.push(
                 "Continue normal development in `EffortlessMetrics/shiplog-swarm`; no source promotion is pending."
                     .to_string(),
             );
         }
-        ("tree-aligned", Some(true), "promotion-and-approved-governance" | "approved-governance-only")
-            if swarm_ahead.is_empty() => actions.push(
-                "Continue normal development in `EffortlessMetrics/shiplog-swarm`; source-only differences are approved governance."
-                    .to_string(),
-            ),
+        (
+            "tree-aligned",
+            Some(true),
+            "promotion-and-approved-governance"
+                | "approved-governance-only"
+                | "transition-evidence-and-approved-governance"
+                | "promotion-transition-evidence-and-approved-governance",
+        ) if swarm_ahead.is_empty() => actions.push(
+            "Continue normal development in `EffortlessMetrics/shiplog-swarm`; source-only differences are approved governance."
+                .to_string(),
+        ),
         ("tree-aligned", Some(true), "none") if swarm_ahead.is_empty() => actions.push(
             "Continue normal development in `EffortlessMetrics/shiplog-swarm`; source and swarm trees are aligned."
                 .to_string(),
@@ -3096,6 +3622,17 @@ fn render_markdown(report: &RepoContractReport) -> String {
     );
     push_row(
         &mut out,
+        "Transition-evidence commits",
+        &format!(
+            "{} commit(s)",
+            report
+                .git_topology
+                .source_ahead_transition_evidence_commits
+                .len()
+        ),
+    );
+    push_row(
+        &mut out,
         "Swarm ahead",
         &format!("{} commit(s)", report.git_topology.swarm_ahead.len()),
     );
@@ -3113,6 +3650,11 @@ fn render_markdown(report: &RepoContractReport) -> String {
         &mut out,
         "Source ahead non-promotion commits",
         &report.git_topology.source_ahead_other_commits,
+    );
+    push_markdown_list(
+        &mut out,
+        "Source transition-evidence commits",
+        &report.git_topology.source_ahead_transition_evidence_commits,
     );
     push_markdown_list(
         &mut out,
@@ -3181,6 +3723,14 @@ fn render_markdown(report: &RepoContractReport) -> String {
     );
     push_row(
         &mut out,
+        "Protected workspace entries",
+        &format!(
+            "{} item(s)",
+            report.local_checkout.protected_workspace_entries.len()
+        ),
+    );
+    push_row(
+        &mut out,
         "Local branches",
         &format!("{} branch(es)", report.local_checkout.local_branch_count),
     );
@@ -3222,6 +3772,11 @@ fn render_markdown(report: &RepoContractReport) -> String {
         &mut out,
         "Local checkout status entries",
         &report.local_checkout.status_entries,
+    );
+    push_markdown_list(
+        &mut out,
+        "Protected workspace entries",
+        &report.local_checkout.protected_workspace_entries,
     );
     push_markdown_list_limited(
         &mut out,
@@ -3912,6 +4467,73 @@ fn render_markdown(report: &RepoContractReport) -> String {
         &report.branch_protection_contract.next_actions,
     );
 
+    out.push_str("\n## Source branch protection\n\n");
+    out.push_str("| Field | Value |\n|---|---|\n");
+    push_row(&mut out, "Status", &report.source_branch_protection.status);
+    push_row(&mut out, "Repo", &report.source_branch_protection.repo);
+    push_row(&mut out, "Branch", &report.source_branch_protection.branch);
+    push_row(
+        &mut out,
+        "Protection present",
+        &bool_opt(&report.source_branch_protection.protection_present),
+    );
+    push_row(
+        &mut out,
+        "Actual required checks",
+        &join_or_dash(
+            &report
+                .source_branch_protection
+                .actual_required_status_checks,
+        ),
+    );
+    push_row(
+        &mut out,
+        "Strict required checks",
+        &bool_opt(
+            &report
+                .source_branch_protection
+                .strict_required_status_checks,
+        ),
+    );
+    push_row(
+        &mut out,
+        "Enforce admins",
+        &bool_opt(&report.source_branch_protection.enforce_admins),
+    );
+    push_row(
+        &mut out,
+        "Allow force pushes",
+        &bool_opt(&report.source_branch_protection.allow_force_pushes),
+    );
+    push_row(
+        &mut out,
+        "Allow deletions",
+        &bool_opt(&report.source_branch_protection.allow_deletions),
+    );
+    push_row(
+        &mut out,
+        "Notes",
+        &format!("{} note(s)", report.source_branch_protection.notes.len()),
+    );
+    push_row(
+        &mut out,
+        "Next actions",
+        &format!(
+            "{} action(s)",
+            report.source_branch_protection.next_actions.len()
+        ),
+    );
+    push_markdown_list(
+        &mut out,
+        "Source branch protection notes",
+        &report.source_branch_protection.notes,
+    );
+    push_markdown_bullets(
+        &mut out,
+        "Source branch protection next actions",
+        &report.source_branch_protection.next_actions,
+    );
+
     out.push_str("\n## Receipt freshness\n\n");
     out.push_str("| Field | Value |\n|---|---|\n");
     push_row(&mut out, "Status", &report.receipt_freshness.status);
@@ -4345,6 +4967,7 @@ receipts = [
         assert!(json.contains("\"routed_ci_health\""));
         assert!(json.contains("\"promotion_pr_contract\""));
         assert!(json.contains("\"branch_protection_contract\""));
+        assert!(json.contains("\"source_branch_protection\""));
         assert!(json.contains("\"receipt_freshness\""));
         let markdown = fs::read_to_string(graph_md).unwrap();
         assert!(markdown.contains("# Repo contract report"));
@@ -4368,6 +4991,7 @@ receipts = [
         assert!(markdown.contains("## Routed CI health"));
         assert!(markdown.contains("## Promotion PR contract"));
         assert!(markdown.contains("## Branch protection contract"));
+        assert!(markdown.contains("## Source branch protection"));
         assert!(markdown.contains("## Receipt freshness"));
 
         run(dir.path()).unwrap();
@@ -4637,7 +5261,7 @@ Merge this PR with a regular merge commit; do not squash.
             Some("474bf93ad7f120d173136f474e8e912b08005798".to_string()),
             Some("491dd34b4f3e2fb1c7588679d6832c09f6257924".to_string()),
             serde_json::json!({
-                "title": "merge(swarm): promote shiplog-swarm through 491dd34",
+                "title": "merge(swarm): promote shiplog-swarm through 491dd34b4f3e",
                 "body": body,
                 "state": "MERGED",
                 "mergeCommit": {"oid": "474bf93ad7f120d173136f474e8e912b08005798"},
@@ -4669,7 +5293,7 @@ Merge this PR with a regular merge commit; do not squash.
             Some("474bf93ad7f120d173136f474e8e912b08005798".to_string()),
             Some("491dd34b4f3e2fb1c7588679d6832c09f6257924".to_string()),
             serde_json::json!({
-                "title": "merge(swarm): promote shiplog-swarm through 491dd34",
+                "title": "merge(swarm): promote shiplog-swarm through 491dd34b4f3e",
                 "body": "Promotes shiplog-swarm/main through 491dd34.",
                 "state": "MERGED",
                 "mergeCommit": {"oid": "474bf93ad7f120d173136f474e8e912b08005798"}
@@ -4704,7 +5328,9 @@ Merge this PR with a regular merge commit; do not squash.
         let report = promotion_pr_contract_from_parts(PromotionPrContractParts {
             latest_promotion_pr: Some("EffortlessMetrics/shiplog#556".to_string()),
             latest_promotion_url: None,
-            expected_title: Some("merge(swarm): promote shiplog-swarm through 491dd34".to_string()),
+            expected_title: Some(
+                "merge(swarm): promote shiplog-swarm through 491dd34b4f3e".to_string(),
+            ),
             actual_title: None,
             state: None,
             merge_commit: None,
@@ -4804,6 +5430,122 @@ Merge this PR with a regular merge commit; do not squash.
     }
 
     #[test]
+    fn source_branch_protection_reports_present_contract_without_claiming_alignment() {
+        let report = source_branch_protection_from_json(serde_json::json!({
+            "required_status_checks": {
+                "contexts": ["Shiplog Rust Small Result"],
+                "strict": true
+            },
+            "enforce_admins": { "enabled": false },
+            "allow_force_pushes": { "enabled": false },
+            "allow_deletions": { "enabled": false }
+        }));
+
+        assert_eq!(report.status, "protected");
+        assert_eq!(report.protection_present, Some(true));
+        assert_eq!(
+            report.actual_required_status_checks,
+            vec!["Shiplog Rust Small Result"]
+        );
+        assert_eq!(report.strict_required_status_checks, Some(true));
+        assert!(
+            report
+                .next_actions
+                .iter()
+                .any(|action| action.contains("required-check set"))
+        );
+    }
+
+    #[test]
+    fn source_ruleset_reports_required_guard_and_protection_shape() {
+        let report = source_branch_protection_from_rulesets_json(serde_json::json!([{
+            "id": 12681248,
+            "name": "main",
+            "target": "branch",
+            "enforcement": "active",
+            "rules": [
+                { "type": "deletion" },
+                { "type": "non_fast_forward" },
+                {
+                    "type": "required_status_checks",
+                    "parameters": {
+                        "strict_required_status_checks_policy": false,
+                        "required_status_checks": [
+                            { "context": "reject-routine-bot-pr" }
+                        ]
+                    }
+                }
+            ]
+        }]));
+
+        assert_eq!(report.status, "protected");
+        assert_eq!(report.protection_present, Some(true));
+        assert_eq!(
+            report.actual_required_status_checks,
+            vec!["reject-routine-bot-pr"]
+        );
+        assert_eq!(report.allow_force_pushes, Some(false));
+        assert_eq!(report.allow_deletions, Some(false));
+        assert!(report.notes.iter().any(|note| note.contains("ruleset")));
+    }
+
+    #[test]
+    fn source_ruleset_without_active_main_is_unprotected() {
+        let report = source_branch_protection_from_rulesets_json(serde_json::json!([
+            {
+                "id": 12681248,
+                "name": "main",
+                "target": "branch",
+                "enforcement": "disabled",
+                "rules": []
+            }
+        ]));
+
+        assert_eq!(report.status, "unprotected");
+        assert_eq!(report.protection_present, Some(false));
+    }
+
+    #[test]
+    fn source_branch_protection_classifies_github_404_as_unprotected() {
+        let report = source_branch_protection_from_error(
+            "repos/EffortlessMetrics/shiplog/branches/main/protection",
+            "gh: Branch not protected (HTTP 404)",
+        );
+
+        assert_eq!(report.status, "unprotected");
+        assert_eq!(report.protection_present, Some(false));
+        assert!(
+            report
+                .notes
+                .iter()
+                .any(|note| note.contains("not protected"))
+        );
+        assert!(
+            report
+                .next_actions
+                .iter()
+                .any(|action| action.contains("Configure the source"))
+        );
+    }
+
+    #[test]
+    fn source_branch_protection_keeps_other_api_failures_unavailable() {
+        let report = source_branch_protection_from_error(
+            "repos/EffortlessMetrics/shiplog/branches/main/protection",
+            "authentication required",
+        );
+
+        assert_eq!(report.status, "unavailable");
+        assert_eq!(report.protection_present, None);
+        assert!(
+            report
+                .notes
+                .iter()
+                .any(|note| note.contains("authentication"))
+        );
+    }
+
+    #[test]
     fn limits_long_markdown_lists_with_full_list_pointer() {
         let values = (1..=14)
             .map(|index| format!("commit-{index:02}"))
@@ -4880,12 +5622,78 @@ Merge this PR with a regular merge commit; do not squash.
                 .to_string();
         let commits = vec![governance.clone(), promotion.clone()];
 
-        let summary = classify_source_ahead_by(&commits, |commit| commit == governance);
+        let summary = classify_source_ahead_by(&commits, |commit| commit == governance, |_| false);
 
         assert_eq!(summary.classification, "promotion-and-approved-governance");
         assert_eq!(summary.promotion_merges, vec![promotion]);
         assert_eq!(summary.approved_governance_commits, vec![governance]);
         assert!(summary.other_commits.is_empty());
+    }
+
+    #[test]
+    fn classifies_transition_evidence_without_treating_it_as_unexplained_drift() {
+        let promotion =
+            "84485cc Merge pull request #682 from EffortlessMetrics/promote/swarm-current-deadbee"
+                .to_string();
+        let transition = "d88d59a sync: remove RTK from Shiplog proof contracts (#666)".to_string();
+        let commits = vec![promotion.clone(), transition.clone()];
+
+        let summary = classify_source_ahead_by(&commits, |_| false, |commit| commit == transition);
+
+        assert_eq!(summary.classification, "transition-evidence-and-promotion");
+        assert_eq!(summary.promotion_merges, vec![promotion]);
+        assert_eq!(summary.transition_evidence_commits, vec![transition]);
+        assert!(summary.other_commits.is_empty());
+    }
+
+    #[test]
+    fn leaves_uncovered_source_history_as_actionable_other_commits() {
+        let transition = "d88d59a sync: remove RTK from Shiplog proof contracts (#666)".to_string();
+        let unexplained = "abc1234 chore: unreviewed source change".to_string();
+        let commits = vec![transition.clone(), unexplained.clone()];
+
+        let summary = classify_source_ahead_by(&commits, |_| false, |commit| commit == transition);
+
+        assert_eq!(summary.classification, "non-promotion");
+        assert_eq!(summary.transition_evidence_commits, vec![transition]);
+        assert_eq!(summary.other_commits, vec![unexplained]);
+    }
+
+    #[test]
+    fn consumed_transition_receipts_do_not_suppress_source_drift() {
+        let transitions = vec![
+            crate::tasks::promotion_state::Transition {
+                source_pr: "EffortlessMetrics/shiplog#666".to_string(),
+                source_merge_sha: "consumed-source".to_string(),
+                source_target: String::new(),
+                swarm_target: String::new(),
+                consumed_by: "EffortlessMetrics/shiplog#682".to_string(),
+                swarm_merge_sha: std::collections::BTreeMap::new(),
+                path: Vec::new(),
+            },
+            crate::tasks::promotion_state::Transition {
+                source_pr: "EffortlessMetrics/shiplog#682".to_string(),
+                source_merge_sha: "active-source".to_string(),
+                source_target: String::new(),
+                swarm_target: String::new(),
+                consumed_by: String::new(),
+                swarm_merge_sha: std::collections::BTreeMap::new(),
+                path: Vec::new(),
+            },
+        ];
+        let evidence = active_transition_source_merge_shas(&transitions);
+        let consumed_commit = "consumed-source source history".to_string();
+        let unexplained = "abc1234 chore: unreviewed source change".to_string();
+        let commits = vec![consumed_commit.clone(), unexplained.clone()];
+
+        let summary = classify_source_ahead_by(
+            &commits,
+            |_| false,
+            |commit| evidence.iter().any(|sha| commit.starts_with(sha)),
+        );
+
+        assert!(summary.transition_evidence_commits.is_empty());
+        assert_eq!(summary.other_commits, commits);
     }
 
     #[test]
@@ -5074,6 +5882,25 @@ Merge this PR with a regular merge commit; do not squash.
     }
 
     #[test]
+    fn next_actions_continue_when_tree_aligned_with_transition_evidence() {
+        for (classification, expected) in [
+            (
+                "transition-evidence-only",
+                "Continue normal development in `EffortlessMetrics/shiplog-swarm`; no source promotion is pending.",
+            ),
+            (
+                "transition-evidence-and-approved-governance",
+                "Continue normal development in `EffortlessMetrics/shiplog-swarm`; source-only differences are approved governance.",
+            ),
+        ] {
+            let actions =
+                topology_next_actions("tree-aligned", Some(true), classification, &[], &[]);
+
+            assert_eq!(actions, vec![expected]);
+        }
+    }
+
+    #[test]
     fn next_actions_stop_when_source_ahead_has_product_drift() {
         let actions = topology_next_actions(
             "source-ahead",
@@ -5143,6 +5970,78 @@ Merge this PR with a regular merge commit; do not squash.
                 .iter()
                 .any(|action| action.contains("Local checkout is clean"))
         );
+    }
+
+    #[test]
+    fn local_checkout_keeps_protected_workspace_artifacts_visible_without_blocking() {
+        let report = local_checkout_from_status_lines(
+            vec![
+                "## HEAD (no branch)".to_string(),
+                "?? .claude/".to_string(),
+                "?? target-audit/".to_string(),
+            ],
+            Vec::new(),
+        );
+
+        assert_eq!(report.status, "protected-only");
+        assert_eq!(report.clean, Some(true));
+        assert_eq!(report.status_entries.len(), 2);
+        assert_eq!(report.protected_workspace_entries, report.status_entries);
+        assert!(
+            report
+                .notes
+                .iter()
+                .any(|note| note.contains("protected workspace artifacts"))
+        );
+        assert!(
+            report
+                .next_actions
+                .iter()
+                .any(|action| action.contains("Only protected workspace artifacts are untracked"))
+        );
+        let recommendation = recommended_next_slice_from_statuses(
+            &report.status,
+            "clean",
+            "tree-aligned",
+            0,
+            "clean",
+            "green",
+            "aligned",
+            "aligned",
+            "current",
+            &[],
+        );
+        assert_ne!(recommendation.status, "blocked");
+    }
+
+    #[test]
+    fn local_checkout_keeps_unknown_untracked_entries_blocking_with_protected_artifacts() {
+        let report = local_checkout_from_status_lines(
+            vec![
+                "## HEAD (no branch)".to_string(),
+                "?? .claude/".to_string(),
+                "?? scratch.txt".to_string(),
+            ],
+            Vec::new(),
+        );
+
+        assert_eq!(report.status, "dirty");
+        assert_eq!(report.clean, Some(false));
+        assert_eq!(report.protected_workspace_entries, vec!["?? .claude/"]);
+        assert_eq!(report.status_entries.len(), 2);
+    }
+
+    #[test]
+    fn protected_workspace_classifier_requires_an_untracked_root() {
+        assert!(is_protected_workspace_entry("?? .claude/"));
+        assert!(is_protected_workspace_entry("?? target-audit/report.json"));
+        assert!(!is_protected_workspace_entry(" M .claude/notes.md"));
+        assert!(!is_protected_workspace_entry("?? .claude"));
+        assert!(!is_protected_workspace_entry("?? .claude-copy/"));
+        assert!(!is_protected_workspace_entry("?? target-audit"));
+        assert!(!is_protected_workspace_entry(
+            "?? target-audit-copy/report.json"
+        ));
     }
 
     #[test]

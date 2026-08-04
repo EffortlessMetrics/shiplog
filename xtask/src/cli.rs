@@ -388,12 +388,24 @@ impl Cli {
                 output: args.output,
             }),
             Command::PromotionBody(args) => {
+                let current_pending_swarm_prs = if args.source_ref == "origin/main"
+                    && args.swarm_ref == "swarm/main"
+                    && args.included_swarm_pr.is_empty()
+                    && args.swarm_head.is_none()
+                {
+                    tasks::promotion_state::load_optional(&workspace_root)?
+                        .map(|state| state.pending.swarm_pr_range)
+                        .unwrap_or_default()
+                } else {
+                    Vec::new()
+                };
                 tasks::promotion_body::run(tasks::promotion_body::PromotionBodyInputs {
                     workspace_root,
                     source_ref: args.source_ref,
                     swarm_ref: args.swarm_ref,
                     swarm_head: args.swarm_head,
                     included_swarm_prs: args.included_swarm_pr,
+                    current_pending_swarm_prs,
                     swarm_pr_run: args.swarm_pr_run,
                     swarm_main_run: args.swarm_main_run,
                     source_pr_run: args.source_pr_run,

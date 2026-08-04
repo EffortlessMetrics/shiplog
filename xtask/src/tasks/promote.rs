@@ -12,11 +12,13 @@ use std::process::id as process_id;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::promotion_body;
+use super::promotion_state::TreeEntry;
 
 const SWARM_REPO: &str = "EffortlessMetrics/shiplog-swarm";
 const SOURCE_REPO: &str = "EffortlessMetrics/shiplog";
 const ROUTED_WORKFLOW: &str = "EM CI Routed Shiplog Rust";
 const REQUIRED_RESULT: &str = "Shiplog Rust Small Result";
+const SOURCE_AUTOMATION_GUARD_CHECK: &str = "reject-routine-bot-pr";
 const SOURCE_ONLY_PATH_POLICY: &str = "policy/source-only-paths.toml";
 /// Trailers giving the overlay commit machine-readable identity. The promotion
 /// checkpoint's second parent is the overlay, not the swarm head, so closeout
@@ -127,10 +129,41 @@ struct PendingPromotion {
     deferred_receipt_carry: Vec<String>,
 }
 
+#[derive(Debug, Deserialize)]
+struct SourceBranchProtection {
+    required_status_checks: Option<RequiredStatusChecks>,
+}
+
+#[derive(Debug, Deserialize)]
+struct RequiredStatusChecks {
+    #[serde(default)]
+    contexts: Vec<String>,
+    #[serde(default)]
+    checks: Vec<RequiredCheck>,
+}
+
+#[derive(Debug, Deserialize)]
+struct RequiredCheck {
+    context: String,
+}
+
 trait PromotePort {
     fn git_output(&self, workspace_root: &Path, args: &[&str]) -> Result<String>;
     fn git_status(&self, workspace_root: &Path, args: &[&str]) -> Result<()>;
     fn gh_output(&self, args: &[&str]) -> Result<Vec<u8>>;
+    fn source_branch_protection(&self) -> Result<Vec<u8>> {
+        self.gh_output(&[
+            "api",
+            "repos/EffortlessMetrics/shiplog/branches/main/protection",
+        ])
+    }
+    fn source_rulesets(&self) -> Result<Vec<u8>> {
+        self.gh_output(&["api", "repos/EffortlessMetrics/shiplog/rulesets"])
+    }
+    fn source_ruleset(&self, id: &str) -> Result<Vec<u8>> {
+        let path = format!("repos/{SOURCE_REPO}/rulesets/{id}");
+        self.gh_output(&["api", &path])
+    }
     /// `git patch-id --stable` over a patch supplied on stdin.
     fn git_patch_id(&self, patch: &str) -> Result<String> {
         super::transition::system_patch_id(patch)
@@ -324,8 +357,14 @@ fn run_with_port_to(
     // Commits the ancestry walk may step over: approved governance, plus source
     // merges an active transition receipt accounts for. Both are recorded
     // evidence; anything else following the promotion merge is unapproved.
-    let mut recorded_commits = approved_governance_commits(port, &state.latest_promotion)?;
-    recorded_commits.extend(transition_authority.source_commits.iter().cloned());
+    // The latest promotion merge is the checkpoint anchor, however, so it must
+    // remain visible to the checkpoint parser even when a transition receipt
+    // also records that merge as historical source evidence.
+    let recorded_commits = ancestry_skip_commits(
+        &state.latest_promotion,
+        approved_governance_commits(port, &state.latest_promotion)?,
+        &transition_authority.source_commits,
+    );
     find_latest_promotion_merge(
         port,
         &inputs.workspace_root,
@@ -357,6 +396,9 @@ fn run_with_port_to(
     )?;
     let take_source = overlay_plan.take_source();
     let plan_id = resolution_plan_id(&overlay_plan)?;
+    if !inputs.dry_run {
+        ensure_source_merge_control(port)?;
+    }
     let PreparedOverlay {
         sha: prepared_overlay_sha,
         cleanup_warnings: overlay_cleanup_warnings,
@@ -390,6 +432,7 @@ fn run_with_port_to(
         &inputs.workspace_root,
         &state.latest_promotion.promoted_swarm_head,
         &swarm_sha,
+        (swarm_sha == swarm_ref_sha).then_some(state.pending.swarm_pr_range.as_slice()),
     )?;
     let body_inputs = promotion_body::PromotionBodyInputs {
         workspace_root: inputs.workspace_root.clone(),
@@ -397,6 +440,7 @@ fn run_with_port_to(
         swarm_ref: inputs.swarm_ref.clone(),
         swarm_head: Some(swarm_sha.clone()),
         included_swarm_prs: included_swarm_prs.clone(),
+        current_pending_swarm_prs: Vec::new(),
         swarm_pr_run: None,
         swarm_main_run: Some(receipt.database_id.to_string()),
         source_pr_run: None,
@@ -559,6 +603,99 @@ fn run_with_port_to(
     Ok(())
 }
 
+fn ensure_source_merge_control(port: &impl PromotePort) -> Result<()> {
+    if let Ok(output) = port.source_branch_protection()
+        && let Ok(protection) = serde_json::from_slice::<SourceBranchProtection>(&output)
+        && protection.required_status_checks.is_some_and(|checks| {
+            checks
+                .contexts
+                .iter()
+                .any(|context| context == SOURCE_AUTOMATION_GUARD_CHECK)
+                || checks
+                    .checks
+                    .iter()
+                    .any(|check| check.context == SOURCE_AUTOMATION_GUARD_CHECK)
+        })
+    {
+        return Ok(());
+    }
+
+    let rulesets = port
+        .source_rulesets()
+        .context("promote: inspect source main rulesets before execution")?;
+    if !rulesets_require_source_guard(&rulesets)?
+        && let Some(id) = active_source_ruleset_id(&rulesets)?
+    {
+        let detail = port
+            .source_ruleset(&id)
+            .with_context(|| format!("promote: inspect source ruleset {id}"))?;
+        let detail: serde_json::Value =
+            serde_json::from_slice(&detail).context("promote: parse source ruleset detail")?;
+        let detail = serde_json::to_vec(&serde_json::Value::Array(vec![detail]))
+            .context("promote: encode source ruleset detail")?;
+        ensure!(
+            rulesets_require_source_guard(&detail)?,
+            "promote: source main branch protection or ruleset does not require `{SOURCE_AUTOMATION_GUARD_CHECK}`; configure the source merge-control boundary before executing promotion"
+        );
+        return Ok(());
+    }
+    ensure!(
+        rulesets_require_source_guard(&rulesets)?,
+        "promote: source main branch protection or ruleset does not require `{SOURCE_AUTOMATION_GUARD_CHECK}`; configure the source merge-control boundary before executing promotion"
+    );
+    Ok(())
+}
+
+fn active_source_ruleset_id(output: &[u8]) -> Result<Option<String>> {
+    let rulesets: Vec<serde_json::Value> =
+        serde_json::from_slice(output).context("promote: parse source repository rulesets")?;
+    Ok(rulesets.iter().find_map(|ruleset| {
+        let matches = ruleset.get("name").and_then(serde_json::Value::as_str) == Some("main")
+            && ruleset.get("target").and_then(serde_json::Value::as_str) == Some("branch")
+            && ruleset
+                .get("enforcement")
+                .and_then(serde_json::Value::as_str)
+                == Some("active");
+        matches.then(|| {
+            ruleset
+                .get("id")
+                .and_then(serde_json::Value::as_i64)
+                .map(|id| id.to_string())
+        })?
+    }))
+}
+
+fn rulesets_require_source_guard(output: &[u8]) -> Result<bool> {
+    let rulesets: Vec<serde_json::Value> =
+        serde_json::from_slice(output).context("promote: parse source repository rulesets")?;
+    Ok(rulesets.iter().any(|ruleset| {
+        ruleset.get("name").and_then(serde_json::Value::as_str) == Some("main")
+            && ruleset.get("target").and_then(serde_json::Value::as_str) == Some("branch")
+            && ruleset
+                .get("enforcement")
+                .and_then(serde_json::Value::as_str)
+                == Some("active")
+            && ruleset
+                .get("rules")
+                .and_then(serde_json::Value::as_array)
+                .is_some_and(|rules| {
+                    rules.iter().any(|rule| {
+                        rule.get("type").and_then(serde_json::Value::as_str)
+                            == Some("required_status_checks")
+                            && rule
+                                .pointer("/parameters/required_status_checks")
+                                .and_then(serde_json::Value::as_array)
+                                .is_some_and(|checks| {
+                                    checks.iter().any(|check| {
+                                        check.get("context").and_then(serde_json::Value::as_str)
+                                            == Some(SOURCE_AUTOMATION_GUARD_CHECK)
+                                    })
+                                })
+                    })
+                })
+    }))
+}
+
 /// Machine-readable receipt for `--verify-only`: confirms that an exact swarm
 /// head already landed on the source ref as a regular-merge promotion
 /// checkpoint. Emitted only on success (a failed verification bails before this
@@ -673,6 +810,7 @@ fn run_verify_only(
         &inputs.workspace_root,
         &state.latest_promotion.promoted_swarm_head,
         swarm_sha,
+        None,
     )?;
     let shape_check = match landed_merge.shape {
         CheckpointShape::RawSwarmHead => format!(
@@ -888,7 +1026,11 @@ fn included_swarm_prs(
     workspace_root: &Path,
     last_promoted_swarm_head: &str,
     swarm_sha: &str,
+    current_pending: Option<&[String]>,
 ) -> Result<Vec<String>> {
+    if let Some(receipts) = current_pending.filter(|receipts| !receipts.is_empty()) {
+        return Ok(receipts.to_vec());
+    }
     let log = port
         .git_output(
             workspace_root,
@@ -1480,23 +1622,86 @@ fn tree_blobs(
     let output = port
         .git_output(workspace_root, &["ls-tree", "-rz", "--full-tree", revision])
         .with_context(|| format!("promote: read tree of {revision}"))?;
-    Ok(parse_tree_blobs(&output))
+    Ok(parse_tree_entries(&output)?
+        .into_iter()
+        .map(|(path, entry)| (path, entry.oid))
+        .collect())
 }
 
-/// Parse `git ls-tree -rz --full-tree` output into `path -> blob oid`.
-fn parse_tree_blobs(listing: &str) -> BTreeMap<String, String> {
-    listing
-        .split('\0')
-        .filter(|entry| !entry.is_empty())
-        .filter_map(|entry| {
-            // "<mode> <type> <oid>\t<path>"
-            let (meta, path) = entry.split_once('\t')?;
-            Some((
-                path.to_string(),
-                meta.split_whitespace().nth(2)?.to_string(),
-            ))
-        })
-        .collect()
+/// Parse `git ls-tree -rz --full-tree` output into complete Git tree entries.
+fn parse_tree_entries(listing: &str) -> Result<BTreeMap<String, TreeEntry>> {
+    let mut entries = BTreeMap::new();
+    for record in listing.split('\0').filter(|entry| !entry.is_empty()) {
+        // "<mode> <type> <oid>\t<path>"
+        let (metadata, path) = record
+            .split_once('\t')
+            .context("parse tree entry: missing path separator")?;
+        let mut fields = metadata.split_whitespace();
+        let mode = fields
+            .next()
+            .context("parse tree entry: missing mode")?
+            .to_string();
+        let object_type = fields
+            .next()
+            .context("parse tree entry: missing object type")?
+            .to_string();
+        let oid = fields
+            .next()
+            .context("parse tree entry: missing object id")?
+            .to_string();
+        ensure!(
+            fields.next().is_none(),
+            "parse tree entry for {path}: unexpected metadata"
+        );
+        ensure!(
+            entries
+                .insert(
+                    path.to_string(),
+                    TreeEntry {
+                        mode,
+                        object_type,
+                        oid,
+                    },
+                )
+                .is_none(),
+            "parse tree entry for {path}: duplicate path"
+        );
+    }
+    Ok(entries)
+}
+
+fn verify_overlay_tree(
+    overlay_entries: &BTreeMap<String, TreeEntry>,
+    source_entries: &BTreeMap<String, TreeEntry>,
+    swarm_entries: &BTreeMap<String, TreeEntry>,
+    take_source: &[String],
+    overlay_sha: &str,
+) -> Result<()> {
+    let resolved_to_source = take_source.iter().cloned().collect::<BTreeSet<_>>();
+    let mut paths = BTreeSet::new();
+    paths.extend(overlay_entries.keys().cloned());
+    paths.extend(source_entries.keys().cloned());
+    paths.extend(swarm_entries.keys().cloned());
+
+    for path in paths {
+        let expected = if resolved_to_source.contains(&path) {
+            source_entries.get(&path)
+        } else {
+            swarm_entries.get(&path)
+        };
+        let actual = overlay_entries.get(&path);
+        if actual != expected {
+            let side = if resolved_to_source.contains(&path) {
+                "source"
+            } else {
+                "swarm"
+            };
+            bail!(
+                "promote: overlay {overlay_sha} holds {actual:?} at {path}, but the resolution plan requires the {side} tree entry {expected:?}"
+            );
+        }
+    }
+    Ok(())
 }
 
 fn git_diff_names(
@@ -1632,43 +1837,25 @@ fn prepare_source_overlay(
         )?;
         let overlay_sha = git(&["rev-parse", "HEAD"])?;
         // The invariant that closes the silent-discard class. Every path in any of
-        // the three trees is checked by blob, not by name: a resolved path must
-        // hold the exact source blob (or be absent exactly as source has it), and
-        // every other path must hold the exact swarm blob. Comparing which names
-        // differ would accept a resolved path holding wrong content, since its
-        // name is permitted to differ. This fully specifies the overlay tree, so
-        // anything dropped, reverted, or reintroduced surfaces here no matter
-        // which step got it wrong.
-        let read_blobs = |revision: &str| -> Result<BTreeMap<String, String>> {
-            let listing = git(&["ls-tree", "-rz", "--full-tree", revision])?;
-            Ok(parse_tree_blobs(&listing))
+        // the three trees is checked by complete tree entry, not by name or blob
+        // alone: mode and object type are part of the content the promotion must
+        // carry. This fully specifies the overlay tree, so anything dropped,
+        // reverted, reintroduced, or type-changed surfaces here no matter which
+        // step got it wrong.
+        let read_entries = |revision: &str| -> Result<BTreeMap<String, TreeEntry>> {
+            let listing = git(&["ls-tree", "-rz", "-r", "--full-tree", revision])?;
+            parse_tree_entries(&listing)
         };
-        let overlay_blobs = read_blobs(&overlay_sha)?;
-        let source_blobs = read_blobs(source_head)?;
-        let swarm_blobs = read_blobs(swarm_sha)?;
-        let resolved_to_source = take_source.iter().cloned().collect::<BTreeSet<_>>();
-        let mut paths = BTreeSet::new();
-        paths.extend(overlay_blobs.keys().cloned());
-        paths.extend(source_blobs.keys().cloned());
-        paths.extend(swarm_blobs.keys().cloned());
-        for path in paths {
-            let expected = if resolved_to_source.contains(&path) {
-                source_blobs.get(&path)
-            } else {
-                swarm_blobs.get(&path)
-            };
-            let actual = overlay_blobs.get(&path);
-            if actual != expected {
-                let side = if resolved_to_source.contains(&path) {
-                    "source"
-                } else {
-                    "swarm"
-                };
-                bail!(
-                    "promote: overlay {overlay_sha} holds {actual:?} at {path}, but the resolution plan requires the {side} blob {expected:?}"
-                );
-            }
-        }
+        let overlay_entries = read_entries(&overlay_sha)?;
+        let source_entries = read_entries(source_head)?;
+        let swarm_entries = read_entries(swarm_sha)?;
+        verify_overlay_tree(
+            &overlay_entries,
+            &source_entries,
+            &swarm_entries,
+            take_source,
+            &overlay_sha,
+        )?;
         Ok(overlay_sha)
     })();
     let cleanup_warnings = workspace.release();
@@ -2059,6 +2246,18 @@ fn approved_governance_commits(
     Ok(commits)
 }
 
+fn ancestry_skip_commits(
+    promotion: &LatestPromotion,
+    mut approved_governance: BTreeSet<String>,
+    transition_source_commits: &BTreeSet<String>,
+) -> BTreeSet<String> {
+    approved_governance.extend(transition_source_commits.iter().cloned());
+    // This merge is the checkpoint we are trying to find, not a governance
+    // commit that may be skipped while walking back through source history.
+    approved_governance.remove(&promotion.source_merge_sha);
+    approved_governance
+}
+
 fn find_latest_promotion_merge(
     port: &impl PromotePort,
     workspace_root: &Path,
@@ -2211,7 +2410,9 @@ fn git_output_with_env(
             String::from_utf8_lossy(&output.stderr).trim()
         );
     }
-    Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+    Ok(super::transition::decode_git_stdout(args, &output.stdout)?
+        .trim()
+        .to_string())
 }
 
 fn git_status(workspace_root: &Path, args: &[&str]) -> Result<()> {
@@ -2275,10 +2476,93 @@ mod tests {
     use super::*;
     use anyhow::ensure;
     use std::cell::RefCell;
-    use std::collections::VecDeque;
+    use std::collections::{BTreeMap, VecDeque};
+
+    fn test_tree_entry(mode: &str, object_type: &str, oid: &str) -> TreeEntry {
+        TreeEntry {
+            mode: mode.to_string(),
+            object_type: object_type.to_string(),
+            oid: oid.to_string(),
+        }
+    }
+
+    #[test]
+    fn parse_tree_entries_preserves_mode_type_and_oid() -> Result<()> {
+        let entries = parse_tree_entries(concat!(
+            "100755 blob same-oid\tbin\0",
+            "120000 blob link-oid\tlink\0",
+            "160000 commit commit-oid\tmodule\0",
+        ))?;
+
+        ensure!(entries.get("bin") == Some(&test_tree_entry("100755", "blob", "same-oid")));
+        ensure!(entries.get("link") == Some(&test_tree_entry("120000", "blob", "link-oid")));
+        ensure!(entries.get("module") == Some(&test_tree_entry("160000", "commit", "commit-oid")));
+        Ok(())
+    }
+
+    #[test]
+    fn overlay_tree_rejects_matching_oid_with_different_mode_or_type() -> Result<()> {
+        for (mode, object_type) in [("100755", "blob"), ("100644", "commit")] {
+            let mut source = BTreeMap::new();
+            source.insert(
+                "path".to_string(),
+                test_tree_entry("100644", "blob", "shared-oid"),
+            );
+            let mut swarm = BTreeMap::new();
+            swarm.insert(
+                "path".to_string(),
+                test_tree_entry(mode, object_type, "shared-oid"),
+            );
+            let mut overlay = BTreeMap::new();
+            overlay.insert(
+                "path".to_string(),
+                test_tree_entry("100644", "blob", "shared-oid"),
+            );
+
+            let error = verify_overlay_tree(&overlay, &source, &swarm, &[], "overlay-sha")
+                .expect_err("matching OIDs with different tree metadata must be rejected");
+            ensure!(error.to_string().contains("tree entry"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn overlay_tree_accepts_exact_entries_and_source_deletions() -> Result<()> {
+        let mut source = BTreeMap::new();
+        source.insert(
+            "source-only".to_string(),
+            test_tree_entry("100755", "blob", "source-oid"),
+        );
+        let mut swarm = BTreeMap::new();
+        swarm.insert(
+            "source-only".to_string(),
+            test_tree_entry("100644", "blob", "swarm-oid"),
+        );
+        swarm.insert(
+            "removed-by-source".to_string(),
+            test_tree_entry("100644", "blob", "removed-oid"),
+        );
+        let mut overlay = BTreeMap::new();
+        overlay.insert(
+            "source-only".to_string(),
+            test_tree_entry("100755", "blob", "source-oid"),
+        );
+
+        verify_overlay_tree(
+            &overlay,
+            &source,
+            &swarm,
+            &["source-only".to_string(), "removed-by-source".to_string()],
+            "overlay-sha",
+        )?;
+        Ok(())
+    }
 
     struct StubPort {
         gh: RefCell<VecDeque<std::result::Result<Vec<u8>, String>>>,
+        source_protection: RefCell<Option<std::result::Result<Vec<u8>, String>>>,
+        source_rulesets: RefCell<Option<std::result::Result<Vec<u8>, String>>>,
+        source_ruleset_detail: RefCell<Option<std::result::Result<Vec<u8>, String>>>,
         gh_calls: RefCell<Vec<Vec<String>>>,
         git_mutations: RefCell<Vec<Vec<String>>>,
         remote_target: Option<String>,
@@ -2337,6 +2621,42 @@ mod tests {
                 Some(Ok(output)) => Ok(output),
                 Some(Err(message)) => bail!("stub gh: {message}"),
                 None => bail!("stub gh response queue exhausted"),
+            }
+        }
+
+        fn source_branch_protection(&self) -> Result<Vec<u8>> {
+            self.gh_calls.borrow_mut().push(vec![
+                "api".to_string(),
+                "repos/EffortlessMetrics/shiplog/branches/main/protection".to_string(),
+            ]);
+            match self.source_protection.borrow_mut().take() {
+                Some(Ok(output)) => Ok(output),
+                Some(Err(message)) => bail!("stub source protection: {message}"),
+                None => bail!("stub source protection response exhausted"),
+            }
+        }
+
+        fn source_rulesets(&self) -> Result<Vec<u8>> {
+            self.gh_calls.borrow_mut().push(vec![
+                "api".to_string(),
+                "repos/EffortlessMetrics/shiplog/rulesets".to_string(),
+            ]);
+            match self.source_rulesets.borrow_mut().take() {
+                Some(Ok(output)) => Ok(output),
+                Some(Err(message)) => bail!("stub source rulesets: {message}"),
+                None => bail!("stub source rulesets response exhausted"),
+            }
+        }
+
+        fn source_ruleset(&self, _id: &str) -> Result<Vec<u8>> {
+            self.gh_calls.borrow_mut().push(vec![
+                "api".to_string(),
+                "repos/EffortlessMetrics/shiplog/rulesets/12681248".to_string(),
+            ]);
+            match self.source_ruleset_detail.borrow_mut().take() {
+                Some(Ok(output)) => Ok(output),
+                Some(Err(message)) => bail!("stub source ruleset detail: {message}"),
+                None => bail!("stub source ruleset detail response exhausted"),
             }
         }
     }
@@ -2420,6 +2740,33 @@ mod tests {
             current,
             governance,
         })
+    }
+
+    #[test]
+    fn ancestry_skip_set_keeps_latest_promotion_as_checkpoint_anchor() -> Result<()> {
+        let promotion = LatestPromotion {
+            status: "completed".to_string(),
+            disposition: "completed-with-governance".to_string(),
+            source_promotion_pr: "EffortlessMetrics/shiplog#682".to_string(),
+            source_merge_sha: "promotion-merge".to_string(),
+            promoted_swarm_head: "swarm-head".to_string(),
+            source_governance: Vec::new(),
+            source_post_merge_proof: String::new(),
+            included_swarm_prs: Vec::new(),
+        };
+        let skipped = ancestry_skip_commits(
+            &promotion,
+            BTreeSet::from(["governance-merge".to_string()]),
+            &BTreeSet::from([
+                "promotion-merge".to_string(),
+                "transition-merge".to_string(),
+            ]),
+        );
+
+        ensure!(skipped.contains("governance-merge"));
+        ensure!(skipped.contains("transition-merge"));
+        ensure!(!skipped.contains("promotion-merge"));
+        Ok(())
     }
 
     fn git_fixture(workspace_root: &Path, args: &[&str]) -> Result<String> {
@@ -3158,6 +3505,56 @@ merge-old source-parent another-swarm-head
     }
 
     #[test]
+    fn overlay_verifies_nested_source_and_swarm_paths() -> Result<()> {
+        let dir = tempfile::tempdir()?;
+        let root = dir.path();
+        git_fixture(root, &["init", "--initial-branch=main"])?;
+        git_fixture(root, &["config", "user.email", "test@example.com"])?;
+        git_fixture(root, &["config", "user.name", "Promotion Test"])?;
+        fs::create_dir_all(root.join("nested"))?;
+        fs::write(root.join("nested/source.txt"), "base source\n")?;
+        fs::write(root.join("nested/product.txt"), "base product\n")?;
+        git_fixture(root, &["add", "nested"])?;
+        git_fixture(root, &["commit", "-m", "base"])?;
+
+        git_fixture(root, &["switch", "-c", "swarm"])?;
+        fs::write(root.join("nested/source.txt"), "swarm source\n")?;
+        fs::write(root.join("nested/product.txt"), "swarm product\n")?;
+        git_fixture(root, &["add", "nested"])?;
+        git_fixture(root, &["commit", "-m", "swarm nested changes"])?;
+        let swarm_sha = git_fixture(root, &["rev-parse", "HEAD"])?;
+
+        git_fixture(root, &["switch", "main"])?;
+        fs::write(root.join("nested/source.txt"), "source authority\n")?;
+        git_fixture(root, &["add", "nested/source.txt"])?;
+        git_fixture(root, &["commit", "-m", "source nested change"])?;
+        let source_head = git_fixture(root, &["rev-parse", "HEAD"])?;
+
+        let overlay = prepare_source_overlay(
+            &SystemPort,
+            root,
+            &source_head,
+            &swarm_sha,
+            &["nested/source.txt".to_string()],
+            "1234567890abcdef1234567890abcdef12345678",
+            false,
+        )?;
+        ensure!(
+            git_fixture(
+                root,
+                &["show", &format!("{}:nested/source.txt", overlay.sha)]
+            )? == "source authority"
+        );
+        ensure!(
+            git_fixture(
+                root,
+                &["show", &format!("{}:nested/product.txt", overlay.sha)]
+            )? == "swarm product"
+        );
+        Ok(())
+    }
+
+    #[test]
     fn overlay_treats_metacharacter_paths_literally() -> Result<()> {
         let dir = tempfile::tempdir()?;
         let root = dir.path();
@@ -3627,6 +4024,12 @@ merge-old source-parent another-swarm-head
                 Ok(b"[]".to_vec()),
             ])),
             gh_calls: RefCell::new(Vec::new()),
+            source_protection: RefCell::new(Some(Ok(
+                br#"{"required_status_checks":{"contexts":["reject-routine-bot-pr"],"checks":[]}}"#
+                    .to_vec(),
+            ))),
+            source_rulesets: RefCell::new(Some(Ok(b"[]".to_vec()))),
+            source_ruleset_detail: RefCell::new(Some(Ok(b"{}".to_vec()))),
             git_mutations: RefCell::new(Vec::new()),
             remote_target: None,
             fail_merge_base: false,
@@ -4091,6 +4494,83 @@ merge-old source-parent another-swarm-head
     }
 
     #[test]
+    fn execution_rejects_missing_source_merge_control_before_mutation() -> Result<()> {
+        let fixture = fixture_git()?;
+        let port = stub_port(&fixture, true, true);
+        *port.source_protection.borrow_mut() =
+            Some(Err("HTTP 404 Branch not protected".to_string()));
+        let mut inputs = fixture_inputs(&fixture);
+        inputs.dry_run = false;
+
+        let error = run_with_port(&port, inputs)
+            .err()
+            .context("expected unprotected source main rejection")?;
+        ensure!(error.to_string().contains("source main branch protection"));
+        ensure!(port.git_mutations.borrow().is_empty());
+        ensure!(overlay_children(fixture.dir.path())?.is_empty());
+        ensure!(
+            !fixture
+                .dir
+                .path()
+                .join("target/source-of-truth/promote-receipt.json")
+                .exists()
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn source_ruleset_required_guard_replaces_legacy_protection_endpoint() -> Result<()> {
+        let fixture = fixture_git()?;
+        let port = stub_port(&fixture, true, true);
+        *port.source_protection.borrow_mut() =
+            Some(Err("HTTP 404 Branch not protected".to_string()));
+        *port.source_rulesets.borrow_mut() = Some(Ok(
+            br#"[{"id":12681248,"name":"main","target":"branch","enforcement":"active"}]"#.to_vec(),
+        ));
+        *port.source_ruleset_detail.borrow_mut() = Some(Ok(
+            br#"{"id":12681248,"name":"main","target":"branch","enforcement":"active","rules":[{"type":"required_status_checks","parameters":{"required_status_checks":[{"context":"reject-routine-bot-pr"}]}}]}"#.to_vec(),
+        ));
+
+        ensure_source_merge_control(&port)?;
+        ensure!(port.gh_calls.borrow().iter().any(|call| {
+            call.get(1)
+                .is_some_and(|path| path == "repos/EffortlessMetrics/shiplog/rulesets")
+        }));
+        Ok(())
+    }
+
+    #[test]
+    fn source_ruleset_without_guard_is_rejected() -> Result<()> {
+        ensure!(!rulesets_require_source_guard(
+            br#"[{"name":"main","target":"branch","enforcement":"active","rules":[{"type":"required_status_checks","parameters":{"required_status_checks":[{"context":"Shiplog Rust Small Result"}]}}]}]"#,
+        )?);
+        ensure!(!rulesets_require_source_guard(
+            br#"[{"name":"main","target":"branch","enforcement":"disabled","rules":[{"type":"required_status_checks","parameters":{"required_status_checks":[{"context":"reject-routine-bot-pr"}]}}]}]"#,
+        )?);
+        Ok(())
+    }
+
+    #[test]
+    fn execution_rejects_source_protection_without_guard_before_mutation() -> Result<()> {
+        let fixture = fixture_git()?;
+        let port = stub_port(&fixture, true, true);
+        *port.source_protection.borrow_mut() = Some(Ok(
+            br#"{"required_status_checks":{"contexts":["Shiplog Rust Small Result"],"checks":[]}}"#
+                .to_vec(),
+        ));
+        let mut inputs = fixture_inputs(&fixture);
+        inputs.dry_run = false;
+
+        let error = run_with_port(&port, inputs)
+            .err()
+            .context("expected missing source guard rejection")?;
+        ensure!(error.to_string().contains("reject-routine-bot-pr"));
+        ensure!(port.git_mutations.borrow().is_empty());
+        ensure!(overlay_children(fixture.dir.path())?.is_empty());
+        Ok(())
+    }
+
+    #[test]
     fn execution_updates_one_compatible_stale_pr() -> Result<()> {
         let fixture = fixture_git()?;
         let overlay = fixture_overlay_sha(&fixture)?;
@@ -4325,6 +4805,12 @@ merge-old source-parent another-swarm-head
         let fixture = fixture_git()?;
         let port = StubPort {
             gh: RefCell::new(VecDeque::from([Ok(b"not-json".to_vec())])),
+            source_protection: RefCell::new(Some(Ok(
+                br#"{"required_status_checks":{"contexts":["reject-routine-bot-pr"],"checks":[]}}"#
+                    .to_vec(),
+            ))),
+            source_rulesets: RefCell::new(Some(Ok(b"[]".to_vec()))),
+            source_ruleset_detail: RefCell::new(Some(Ok(b"{}".to_vec()))),
             gh_calls: RefCell::new(Vec::new()),
             git_mutations: RefCell::new(Vec::new()),
             remote_target: None,
@@ -4385,8 +4871,13 @@ merge-old source-parent another-swarm-head
             &["commit", "-m", "fix: almost terminal (#778) garbage"],
         )?;
         let head = git_fixture(fixture.dir.path(), &["rev-parse", "HEAD"])?;
-        let receipts =
-            included_swarm_prs(&SystemPort, fixture.dir.path(), &fixture.promoted, &head)?;
+        let receipts = included_swarm_prs(
+            &SystemPort,
+            fixture.dir.path(),
+            &fixture.promoted,
+            &head,
+            None,
+        )?;
         ensure!(receipts == ["EffortlessMetrics/shiplog-swarm#255"]);
         Ok(())
     }
@@ -4603,6 +5094,24 @@ merge-old source-parent another-swarm-head
     fn extract_swarm_pr_receipts_empty_for_no_prs() {
         let subjects = ["chore: no marker", "another plain subject"];
         assert!(extract_swarm_pr_receipts(subjects.into_iter()).is_empty());
+    }
+
+    #[test]
+    fn included_swarm_prs_prefers_current_manifest_receipts() -> Result<()> {
+        let fixture = fixture_git()?;
+        let pending = vec![
+            "EffortlessMetrics/shiplog-swarm#371".to_string(),
+            "EffortlessMetrics/shiplog-swarm#379".to_string(),
+        ];
+        let receipts = included_swarm_prs(
+            &SystemPort,
+            fixture.dir.path(),
+            &fixture.promoted,
+            &fixture.current,
+            Some(&pending),
+        )?;
+        ensure!(receipts == pending);
+        Ok(())
     }
 
     #[test]

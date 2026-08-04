@@ -1,239 +1,325 @@
 # Shiplog Swarm Promotion Runbook
 
-This runbook promotes proven `shiplog-swarm/main` work into
+This runbook promotes one proven, exact `shiplog-swarm/main` head into
 `EffortlessMetrics/shiplog/main` without moving release authority.
 
-Normal development still happens in `EffortlessMetrics/shiplog-swarm`.
-`EffortlessMetrics/shiplog` remains the release/public source surface.
+Normal development remains authoritative in `EffortlessMetrics/shiplog-swarm`.
+`EffortlessMetrics/shiplog` remains the public source and release surface.
+Promotion is a regular merge-commit checkpoint, not a second development lane.
 
-## When To Promote
+The canonical entrypoint is **`cargo xtask promote`**. Do not prepare a source
+promotion by pushing raw `swarm/main`, hand-building an overlay, or manually
+reconstructing the promotion PR body.
 
-Promote after one or more green swarm PRs when the source/release repo should
-checkpoint the current development state.
+## When to promote
 
-Promote before release preflight, release docs refreshes, source-only release
-work, or any handoff that expects `shiplog/main` to include current swarm work.
+Promote a coherent batch of green swarm work when source must checkpoint the
+current development state, especially before:
 
-Do not promote while either repo has an unexplained failing required check or
-an ambiguous open release-blocking PR.
+- release preparation;
+- source-owned release workflow or publication work;
+- a public-source handoff that expects current product behavior; or
+- a bounded source-governance transaction that depends on the current tree.
+
+Do not promote merely to keep a copied pending list cosmetically current. Batch
+coherent proven work, then record the completed transaction during closeout.
 
 ## Preconditions
 
-- `EffortlessMetrics/shiplog-swarm` open PR queue is empty or explicitly
-  deferred.
-- `EffortlessMetrics/shiplog` open PR queue is empty or explicitly deferred.
-- `shiplog-swarm/main` has green `Shiplog Rust Small Result`.
-- `shiplog/main` and `shiplog-swarm/main` share history.
-- The promotion branch contains only the intended `origin/main..swarm/main`
-  range.
+Before planning a promotion:
 
-## Prepare The Promotion Branch
+- open PRs and issues in both repositories are included, explicitly deferred,
+  closed as superseded/duplicate, or identified as blockers;
+- the exact `shiplog-swarm/main` head has a successful
+  `Shiplog Rust Small Result` aggregate;
+- `cargo xtask promotion-state --check` passes;
+- `cargo xtask repo-contract-report` reports no unexplained source product
+  commits or unknown source/swarm drift;
+- source and swarm share the expected promotion ancestry;
+- active transition and source-authority decisions are exact-target-bound,
+  reviewable, and unconsumed;
+- the source open-PR queue contains no incompatible promotion PR; and
+- source `main` legacy branch protection or its active repository ruleset
+  requires the exact `reject-routine-bot-pr` Source Automation Guard check.
 
-Run from a checkout that has:
+A required-check failure, stale decision, unexplained source commit, incomplete
+receipt range, or ambiguous path resolution is a stop condition. Treat the
+failure as evidence to repair, not friction to route around.
+
+## Maintainer checkout
+
+Run from a clean tracked checkout with both repositories available:
 
 ```text
 origin = git@github.com:EffortlessMetrics/shiplog.git
 swarm  = git@github.com:EffortlessMetrics/shiplog-swarm.git
 ```
 
-```powershell
+```bash
 git fetch origin --prune
 git fetch swarm --prune
+git status --short --branch
 
 git merge-base origin/main swarm/main
 git log --oneline origin/main..swarm/main
 git diff --stat origin/main..swarm/main
 
-$swarmSha = (git rev-parse --short swarm/main).Trim()
-$branch = "promote/swarm-$(Get-Date -Format yyyyMMdd)-$swarmSha"
-
-git push origin "swarm/main:refs/heads/$branch"
+cargo xtask promotion-state --check
+cargo xtask repo-contract-report
 ```
 
-Stop if `git merge-base` prints nothing, if the log contains unintended work,
-or if the diff is broader than the swarm PRs being promoted.
+Stop if the merge base is missing, the source head is not the current source
+main you intend to target, the log contains unintended work, or the diff does
+not match the reviewed swarm batch and bounded source-governance decisions.
 
-## Open The Source PR
+## Plan the exact promotion
+
+Resolve the exact current swarm head after fetching both remotes:
+
+```bash
+swarm_head="$(git rev-parse swarm/main)"
+```
+
+Run two read-only plans and require deterministic output:
+
+```bash
+mkdir -p target/source-of-truth
+
+cargo xtask promote --swarm-sha "$swarm_head" --dry-run \
+  > target/source-of-truth/promote-plan-1.json
+cargo xtask promote --swarm-sha "$swarm_head" --dry-run \
+  > target/source-of-truth/promote-plan-2.json
+
+cmp target/source-of-truth/promote-plan-1.json \
+    target/source-of-truth/promote-plan-2.json
+```
+
+PowerShell equivalent:
 
 ```powershell
-gh pr create --repo EffortlessMetrics/shiplog --base main --head $branch --title "merge(swarm): promote shiplog-swarm through $swarmSha" --body-file <body.md>
+$swarmHead = (git rev-parse swarm/main).Trim()
+New-Item -ItemType Directory -Force target/source-of-truth | Out-Null
+
+cargo xtask promote --swarm-sha $swarmHead --dry-run |
+  Set-Content -NoNewline target/source-of-truth/promote-plan-1.json
+cargo xtask promote --swarm-sha $swarmHead --dry-run |
+  Set-Content -NoNewline target/source-of-truth/promote-plan-2.json
+
+if ((Get-FileHash target/source-of-truth/promote-plan-1.json).Hash -ne
+    (Get-FileHash target/source-of-truth/promote-plan-2.json).Hash) {
+  throw "promotion dry-runs are not deterministic"
+}
 ```
 
-The PR body must include:
+Review the structured plan itself. Confirm:
 
-```text
-swarm head SHA
-included swarm PRs
-`## Swarm proof` section with Shiplog Rust Small Result evidence
-`## Source proof` section with Shiplog Rust Small Result evidence
-explicit note to merge with a regular merge commit, not squash
-claim boundary: no release authority movement
+- `source_head`, `swarm_head`, and merge base are the expected full SHAs;
+- the routed workflow and terminal `Shiplog Rust Small Result` belong to the
+  exact swarm SHA;
+- every included merged swarm PR appears in the receipt list;
+- every differing path records the exact source and swarm tree entries;
+- each path effect is backed by the current policy, transition evidence,
+  explicit discard-source decision, or bounded source-authority decision that
+  actually entitles it;
+- the overlay tree, resolution-plan identity, branch identity, and source PR
+  action are deterministic; and
+- neither dry-run created a branch, PR, worktree residue, durable object, or
+  source mutation.
+
+A non-zero dry-run is the exact repair queue. Do **not** make it pass by:
+
+- supplying an older `--source-ref` while targeting current source `main`;
+- using `--allow-historical` for an ordinary current promotion;
+- pushing raw `swarm/main` to source;
+- adding a path to source-only policy merely because the two repos differ;
+- guessing a receipt from commit subjects or matching file names; or
+- weakening exact tree-entry or ancestry checks.
+
+Historical mode is for explicit historical diagnosis. It is not authority to
+prepare a real PR against a different current source head.
+
+## Prepare or update the source promotion PR
+
+After the exact plan is deterministic and reviewed:
+
+```bash
+cargo xtask promote --swarm-sha "$swarm_head"
 ```
 
-`repo-contract-report` validates the exact `Swarm proof` and `Source proof`
-section labels, and each section must mention `Shiplog Rust Small Result`.
+A real execution must re-resolve live source and swarm state and then:
 
-## Merge
+- verify source merge control before any mutation;
+- create or fast-forward one deterministic source-local promotion branch;
+- create, update, or reuse one compatible source promotion PR;
+- refuse a non-fast-forward branch or incompatible/duplicate PR;
+- build the exact overlay from the same per-path decisions accepted by the
+  planner;
+- preserve source-owned release/governance paths only through current bounded
+  authority;
+- retain an always-present deterministic checkpoint commit, including when the
+  final tree would otherwise be unchanged;
+- emit the machine-readable promotion receipt; and
+- stop before merge, tag, crates.io publication, GitHub Release publication,
+  signing, or package-channel mutation.
 
-Only merge after source PR checks are green.
+Run the command again against unchanged state. It should reuse the same branch,
+PR, overlay, title, body, and receipt identity rather than create duplicates.
 
-```powershell
+Inspect the actual source PR diff and body. It must include:
+
+- the exact swarm head SHA;
+- the complete included swarm PR receipt list;
+- a `## Swarm proof` section naming `Shiplog Rust Small Result` evidence;
+- a `## Source proof` section naming the source PR proof boundary;
+- an explicit instruction to use a regular merge commit, never squash; and
+- a claim boundary stating that promotion does not move release authority.
+
+The PR body is not independent proof. Review the exact source diff, exact-head
+source CI, overlay trailers, and machine receipt.
+
+## Merge the source checkpoint
+
+Only merge after the exact source PR head is green and the actual diff matches
+the reviewed plan.
+
+```bash
 gh pr merge <number> --repo EffortlessMetrics/shiplog --merge --delete-branch
 ```
 
-Do not use `--squash` for source promotion PRs. Swarm work is already squashed
-at the normal development boundary; the source merge commit is the checkpoint.
+Do not use `--squash` or `--rebase`. Swarm PRs are already squash-merged at the
+normal development boundary; the source merge commit is the durable ancestry
+checkpoint.
 
-## Post-Merge Verification
+## Verify the landed promotion
 
-After merge, verify source `main`:
+After the regular merge lands:
 
-```powershell
-gh run list --repo EffortlessMetrics/shiplog --branch main --limit 12 --json databaseId,workflowName,status,conclusion,headSha,createdAt,displayTitle
+```bash
+git fetch origin --prune
+git fetch swarm --prune
 
+cargo xtask promote --swarm-sha "$swarm_head" --verify-only
 cargo xtask repo-contract-report
 
-gh pr list --repo EffortlessMetrics/shiplog --state open --limit 50
-gh pr list --repo EffortlessMetrics/shiplog-swarm --state open --limit 50
-gh api repos/EffortlessMetrics/shiplog-swarm/branches/main/protection/required_status_checks --jq '{strict: .strict, contexts: .contexts, checks: .checks}'
+gh run list --repo EffortlessMetrics/shiplog --branch main --limit 12 \
+  --json databaseId,workflowName,status,conclusion,headSha,createdAt,displayTitle
 ```
 
-Expected:
+Require evidence that:
 
-```text
-source post-merge EM CI Routed Shiplog Rust: success
-source post-merge CI: success
-repo-contract-report git topology: tree-aligned
-repo-contract-report source ahead classification: promotion-merge-only
-repo-contract-report source other commits: 0
-shiplog open PR queue: empty or explicitly deferred
-shiplog-swarm open PR queue: empty or explicitly deferred
-shiplog-swarm required checks: Shiplog Rust Small Result only
-```
+- the exact swarm head landed through an accepted two-parent checkpoint shape;
+- the overlay has exactly the expected source parent and carries matching
+  `Shiplog-Source-Head`, `Shiplog-Swarm-Head`, and resolution-plan identities;
+- the complete overlay tree matches the selected source/swarm tree entries,
+  including file mode, object type, object ID, and absence;
+- source post-merge routed CI succeeded at the exact landed source result;
+- the source-ahead classification contains the promotion checkpoint and only
+  approved source governance;
+- unexplained source product commits are zero; and
+- source/swarm open queues are empty or explicitly deferred.
 
-## Source-Only Changes
+`--verify-only` proves the Git topology transaction. Source post-merge CI,
+queue state, source-governance drift, and current contract alignment remain
+`repo-contract-report` responsibilities.
 
-Avoid source-only product, docs, or CI changes after cutover. If emergency
-release work lands directly in `EffortlessMetrics/shiplog`, back-sync that
-change into `EffortlessMetrics/shiplog-swarm` before more normal development
-lands there.
+## Close out the bounded promotion state
 
-Routine dependency, workflow-update, security-remediation, and documentation
-automation must propose changes in `shiplog-swarm`. Source security automation
-may fail a check, retain an artifact, or link a remediation handoff to swarm,
-but it must not create a product branch or pull request in `shiplog`.
+The completed transaction must be recorded in a substantive closeout change on
+swarm:
 
-For an emergency hotfix, create and prove the fix in swarm first. If explicit
-release authority requires an immediate source hotfix, pause normal promotion,
-land the authorized source change, back-port the exact fix into swarm, and
-re-establish tree alignment before promotion resumes. Emergency authorization
-does not become standing permission for source-side product automation.
+- update `latest_promotion` with the source promotion PR, regular-merge SHA,
+  promoted swarm head, included swarm PRs, source-governance receipts, and
+  source post-merge proof;
+- consume transition and source-authority decisions at the landed checkpoint;
+- establish the new pending range from actual merged swarm work after the
+  promoted head;
+- regenerate `plans/shiplog-swarm/current-promotion.md` with
+  `cargo xtask promotion-state`; and
+- run `promotion-state --check`, `repo-contract-report`, and the relevant
+  transition tests.
 
-## Transition Evidence And Resolution
+This required closeout records the landed transaction. It is distinct from the
+anti-pattern of opening repeated receipt-only PRs merely to chase every moving
+swarm head before a promotion exists.
 
-An active transition receipt records two separate questions for each path:
+After closeout, a new current-head dry-run must recognize the just-landed
+checkpoint and either produce a valid next plan or a precise fail-closed repair
+queue.
 
-1. What happened historically? `disposition = "missing_in_swarm"` records that
-   the source PR changed the path and no swarm chain carries that change. It
-   remains blocking evidence by itself.
-2. What is this bounded promotion allowed to do? An exceptional source-side
-   decision may explicitly set `resolution = "discard_source"`.
+## Transition evidence and per-path resolution
 
-`discard_source` is valid only with a non-empty `decision_receipt`, its full
-`decision_merge_sha` reachable from the current swarm target, a human-readable
-`reason`, exact `source_tree_entry` and `swarm_tree_entry` bindings for the
-immutable evidence targets, and differing source/swarm entries. The recorded
-`source_target` and `swarm_target` values are evidence commits, not frozen
-promotion refs: each must be an ancestor of the current promotion target, and
-the recorded complete tree entries must still match at both the evidence
-targets and the current targets. It selects the swarm tree entry for that path
-for this promotion only; it does not create permanent source authority or
-replace `source-only-paths.toml`. Unrelated tip advancement is therefore safe,
-but a later change to the governed path fails closed and requires a new
-reviewed decision.
+Promotion permission and overlay content come from one exact per-path plan.
+The following rules are non-negotiable:
 
-For dependency-only lockfile transitions, use
-`disposition = "dependency_equivalent"`. This is limited to `Cargo.lock` and
-requires one swarm PR whose parsed package `name`/`version` from/to transitions
-match the source PR exactly. It is narrower than whole-patch `equivalent` and
-does not assert that unrelated lockfile resolutions or final blobs are equal;
-those differences still require their own evidence or an explicit bounded
-resolution.
+- Only a current bounded source-authority decision may select source for a
+  source-only policy path that swarm also changed.
+- A historical `missing_in_swarm` fact grants no authority by itself.
+- Exceptional abandonment of a source change requires explicit
+  `resolution = "discard_source"`, a merged and reachable decision receipt,
+  a human-readable reason, exact immutable evidence targets, and complete
+  source/swarm tree entries.
+- `equivalent`, `tree_equivalent`, `dependency_equivalent`,
+  `superseded_in_swarm`, `converged_at_target`, and self-referential cases keep
+  their distinct evidence meanings; do not collapse them into tree similarity.
+- Current target entries and ancestry must still satisfy the recorded evidence.
+  A later change to the governed path fails closed and requires a new decision.
+- `consumed_by` retires authority while preserving history.
+- No authority is inferred from commit subjects, matching paths, branch names,
+  PR-body prose, or an old receipt that happened to mention the path.
 
-Example shape:
+The durable human decision ledger is
+[`transition-decisions.md`](transition-decisions.md); the exact active machine
+bindings live in [`promotion-state.toml`](promotion-state.toml). Keep those two
+roles separate: reviewed rationale first, exact merged receipt binding second.
 
-```toml
-[[transition.path]]
-path = "docs/xtask.md"
-disposition = "missing_in_swarm"
-resolution = "discard_source"
-decision_receipt = "EffortlessMetrics/shiplog-swarm#242"
-decision_merge_sha = "<decision-receipt-merge-sha>"
-reason = "Reviewed swarm state supersedes the source transition copy."
-source_tree_entry = { mode = "100644", object_type = "blob", oid = "<source-target-oid>" }
-swarm_tree_entry = { mode = "100644", object_type = "blob", oid = "<swarm-target-oid>" }
-```
+## Source-only and emergency source changes
 
-The promotion planner and overlay must consume this same per-path decision.
-Decision receipts are bounded by the transition entry's `consumed_by`
-promotion and must never be inferred from matching trees, commit subjects, or
-source-only policy.
+Routine dependency, workflow-update, security-remediation, documentation, and
+product automation must propose changes in swarm. Source automation may verify,
+fail a check, retain an artifact, comment, or link a remediation handoff; it
+must not originate routine product branches or PRs.
 
-### Keeping source for a source-only path
+For an emergency source hotfix:
 
-The source-only policy remains blocking when swarm changes one of its paths.
-When review confirms that the source copy must win for one bounded promotion,
-record a separate top-level `[[source_authority]]` decision in
-`promotion-state.toml`. The planner records this as a `kept-source` resolution
-basis; it is not a change to `source-only-paths.toml` and does not grant
-permanent source authority.
+1. pause ordinary promotion;
+2. obtain explicit source release authority;
+3. land the smallest source fix;
+4. back-port the exact fix into swarm immediately;
+5. record exact transition evidence and resolution where required; and
+6. re-establish a passing current-head promotion plan before normal work
+   resumes.
 
-Example shape:
+Emergency authorization does not become standing source-side product authority.
 
-```toml
-[[source_authority]]
-path = ".github/workflows/release.yml"
-source_target = "<immutable-source-evidence-sha>"
-swarm_target = "<immutable-swarm-evidence-sha>"
-decision_receipt = "EffortlessMetrics/shiplog-swarm#319"
-decision_merge_sha = "<decision-receipt-merge-sha>"
-reason = "The canonical source repository retains release-writer authority."
-source_tree_entry = { mode = "100644", object_type = "blob", oid = "<source-target-oid>" }
-swarm_tree_entry = { mode = "100644", object_type = "blob", oid = "<swarm-target-oid>" }
-```
+Verify role policy directly:
 
-An active decision must name the exact immutable evidence `source_target` and
-`swarm_target`, the merged decision receipt and full `decision_merge_sha`, a
-human-readable `reason`, and complete `source_tree_entry` /
-`swarm_tree_entry` values. The promotion verifies that the path is still
-policy-listed, each evidence target is an ancestor of the current promotion
-target, the entries still differ and match at both target pairs, and the
-decision merge is reachable from the current swarm target. After the promotion
-consumes it, set `consumed_by`; the historical record remains visible but
-grants no further authority.
-
-The same decision must appear in the structured path plan and determine the
-overlay effect. Missing, stale, unmerged, unreachable, or target-mismatched
-decisions fail closed. A later swarm change requires a new reviewed decision.
-
-Verify the role boundary explicitly rather than inferring it from remote names:
-
-```powershell
+```bash
 cargo xtask check-automation-authority --repository-role swarm
-# Run with `--repository-role source` in the canonical source checkout.
+# Run with --repository-role source in the canonical source checkout.
 ```
+
+## Release handoff
+
+Once the exact candidate promotion and closeout are green, continue with the
+living
+[`docs/release/release-preparation.md`](../../docs/release/release-preparation.md)
+procedure. Release decision, version bump, changelog freeze, tag, crates.io,
+GitHub Release publication, signing, and package-channel work remain source
+release-authority operations.
 
 ## Rollback
 
-If a promotion merge is wrong, revert the merge commit in
-`EffortlessMetrics/shiplog` and pause further promotions until the divergence is
-understood.
+If a promotion merge is wrong, revert the regular merge commit in
+`EffortlessMetrics/shiplog` and pause further promotion and release work until
+the divergence is understood.
 
-Do not rewrite `shiplog/main` history. Do not force-push source promotion
-branches after review has started.
+Do not rewrite `shiplog/main` history. Do not force-push a source promotion
+branch after review has started. Do not move release tags to compensate for an
+incorrect promotion.
 
-## Claim Boundary
+## Claim boundary
 
-Promotion keeps `shiplog/main` current with proven swarm work. It does not move
-tags, crates.io publish, GitHub Releases, signing, release branches, release
-workflows, or security-sensitive token operations to `shiplog-swarm`.
+Promotion keeps `shiplog/main` current with one exact, proven swarm transaction.
+It does not tag, publish to crates.io, create or publish a GitHub Release, sign
+artifacts, update package channels, or move security-sensitive release
+credentials to `shiplog-swarm`.
