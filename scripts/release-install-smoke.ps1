@@ -58,12 +58,17 @@ if ($Version -eq "-h" -or $Version -eq "--help") {
     @"
 usage: scripts/release-install-smoke.ps1 <version>
 
-Downloads the Windows GitHub release binary, verifies SHA256SUMS.txt, proves the
-no-token first-use path and runs the no-network review rescue smoke path. This
-script is intended to work without Rust or Cargo installed.
+Downloads the Windows GitHub release binary, or consumes the exact
+workflow-staged candidate when SHIPLOG_RELEASE_CANDIDATE_DIR is set, verifies
+SHA256SUMS.txt, proves the no-token first-use path and runs the no-network
+review rescue smoke path. This script is intended to work without Rust or
+Cargo installed.
 
 Set SHIPLOG_RELEASE_REPO=owner/repo to verify a fork.
 Set SHIPLOG_RELEASE_SMOKE_DIR=path to override the scratch directory.
+Set SHIPLOG_RELEASE_CANDIDATE_DIR=path to consume the retained workflow
+candidate instead of downloading release assets.
+Set SHIPLOG_RELEASE_SOURCE_SHA=sha to bind a staged candidate to its source.
 "@ | Write-Error
     exit 2
 }
@@ -82,20 +87,56 @@ else {
 }
 $downloadDir = Join-Path $workDir "download"
 $demoOut = Join-Path $workDir "demo-out"
+$candidateDir = $env:SHIPLOG_RELEASE_CANDIDATE_DIR
+$sourceSha = $env:SHIPLOG_RELEASE_SOURCE_SHA
 
 $asset = "shiplog-x86_64-pc-windows-msvc.exe"
-$baseUrl = "https://github.com/$repo/releases/download/$tag"
 $binaryPath = Join-Path $downloadDir "shiplog.exe"
 $sumsPath = Join-Path $downloadDir "SHA256SUMS.txt"
 
-Invoke-Step "downloading $repo@$tag release asset for Windows"
 Remove-Item -Recurse -Force $workDir -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force $downloadDir | Out-Null
-Invoke-WebRequest -UseBasicParsing -Uri "$baseUrl/$asset" -OutFile $binaryPath
-Invoke-WebRequest -UseBasicParsing -Uri "$baseUrl/SHA256SUMS.txt" -OutFile $sumsPath
+if ($candidateDir) {
+    $candidateDir = (Resolve-Path -LiteralPath $candidateDir).Path
+    $candidateAsset = Join-Path (Join-Path $candidateDir $asset) $asset
+    if (-not (Test-Path -LiteralPath $candidateAsset)) {
+        $candidateAsset = Join-Path $candidateDir $asset
+    }
+    $candidateManifest = Join-Path $candidateDir "RELEASE_CANDIDATE.txt"
+    $candidateSums = Join-Path $candidateDir "SHA256SUMS.txt"
+    foreach ($path in @($candidateAsset, $candidateManifest, $candidateSums)) {
+        if (-not (Test-Path -LiteralPath $path)) {
+            throw "missing staged candidate file: $path"
+        }
+    }
+    if (-not $sourceSha) {
+        throw "SHIPLOG_RELEASE_SOURCE_SHA is required for a staged candidate"
+    }
+    if (-not (Get-Content -LiteralPath $candidateManifest | Where-Object { $_ -eq "release_tag=$tag" })) {
+        throw "staged candidate tag does not match $tag"
+    }
+    if (-not (Get-Content -LiteralPath $candidateManifest | Where-Object { $_ -eq "source_sha=$sourceSha" })) {
+        throw "staged candidate source SHA does not match $sourceSha"
+    }
+    Invoke-Step "consuming exact staged candidate for $repo@$tag"
+    Copy-Item -LiteralPath $candidateAsset -Destination $binaryPath
+    Copy-Item -LiteralPath $candidateSums -Destination $sumsPath
+}
+else {
+    $baseUrl = "https://github.com/$repo/releases/download/$tag"
+    Invoke-Step "downloading $repo@$tag release asset for Windows"
+    Invoke-WebRequest -UseBasicParsing -Uri "$baseUrl/$asset" -OutFile $binaryPath
+    Invoke-WebRequest -UseBasicParsing -Uri "$baseUrl/SHA256SUMS.txt" -OutFile $sumsPath
+}
 
 Invoke-Step "verifying SHA256SUMS.txt entry for $asset"
-$sumLine = Get-Content $sumsPath | Where-Object { $_ -match "/$([Regex]::Escape($asset))$" } | Select-Object -First 1
+$sumLine = Get-Content $sumsPath | ForEach-Object {
+    $fields = $_ -split "\s+"
+    if ($fields.Count -ge 2 -and [System.IO.Path]::GetFileName($fields[1].TrimStart("*")) -eq $asset) {
+        $_
+        break
+    }
+} | Select-Object -First 1
 if (-not $sumLine) {
     throw "no SHA256SUMS.txt entry found for $asset"
 }
