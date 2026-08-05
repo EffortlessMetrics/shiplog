@@ -22,6 +22,8 @@ use std::path::Path;
 
 pub const MANIFEST_REL: &str = "plans/shiplog-swarm/promotion-state.toml";
 pub const GENERATED_REL: &str = "plans/shiplog-swarm/current-promotion.md";
+pub const PROMOTION_STATE_PATH: &str = MANIFEST_REL;
+pub const SELF_REFERENTIAL_PATHS: &[&str] = &[PROMOTION_STATE_PATH, GENERATED_REL];
 
 const GENERATED_BANNER: &str = "<!-- GENERATED FROM plans/shiplog-swarm/promotion-state.toml BY `cargo xtask promotion-state`. DO NOT EDIT BY HAND. -->";
 const VALID_STATUSES: &[&str] = &["completed", "pending"];
@@ -148,6 +150,13 @@ pub struct TransitionPath {
     /// Human-readable reason for the exceptional resolution.
     #[serde(default)]
     pub reason: String,
+    /// The path is the manifest that stores this receipt itself. Its
+    /// historical swarm tree entry remains exact evidence, but the current
+    /// swarm entry must change when the receipt is materialized. This escape
+    /// hatch is restricted to the canonical promotion manifest and an
+    /// explicit discard-source resolution by structural validation below.
+    #[serde(default)]
+    pub self_referential: bool,
     /// Ordered swarm PRs that carried this path. `equivalent`,
     /// `dependency_equivalent`, and `tree_equivalent` each name exactly one;
     /// `superseded_in_swarm` names the steps that continue the source history.
@@ -192,6 +201,9 @@ pub enum TransitionDisposition {
     SupersededInSwarm,
     /// Source changed it and swarm has not caught up.
     MissingInSwarm,
+    /// Both repositories had the same exact tree entry at the evidence target;
+    /// a later swarm-only product change may now replace the source copy.
+    ConvergedAtTarget,
     /// The two sides disagree; promotion must not proceed.
     Conflicting,
 }
@@ -213,6 +225,7 @@ impl std::fmt::Display for TransitionDisposition {
             Self::TreeEquivalent => "tree_equivalent",
             Self::SupersededInSwarm => "superseded_in_swarm",
             Self::MissingInSwarm => "missing_in_swarm",
+            Self::ConvergedAtTarget => "converged_at_target",
             Self::Conflicting => "conflicting",
         };
         formatter.write_str(name)
@@ -399,15 +412,25 @@ fn validate_source_authority(decisions: &[SourceAuthorityDecision]) -> Result<()
 /// merges exist, are reachable, and agree) need repository access and live in
 /// [`super::transition`].
 fn validate_transitions(transitions: &[Transition]) -> Result<()> {
-    let mut seen_source_prs = BTreeSet::new();
+    let mut active_source_merges = BTreeMap::new();
+    let mut active_paths = BTreeMap::new();
     for entry in transitions {
         validate_receipt("transition.source_pr", &entry.source_pr)?;
         validate_full_sha("transition.source_merge_sha", &entry.source_merge_sha)?;
-        if !seen_source_prs.insert(entry.source_pr.as_str()) {
-            bail!(
-                "transition.source_pr {} appears more than once; use one entry with disjoint paths",
-                entry.source_pr
-            );
+        if entry.consumed_by.is_empty() {
+            if let Some(previous_merge) = active_source_merges.get(&entry.source_pr) {
+                if previous_merge != &entry.source_merge_sha {
+                    bail!(
+                        "active transition source_pr {} has mismatched source merge SHAs: {} and {}",
+                        entry.source_pr,
+                        previous_merge,
+                        entry.source_merge_sha
+                    );
+                }
+            } else {
+                active_source_merges
+                    .insert(entry.source_pr.clone(), entry.source_merge_sha.clone());
+            }
         }
         if !entry.consumed_by.is_empty() {
             validate_receipt("transition.consumed_by", &entry.consumed_by)?;
@@ -436,8 +459,42 @@ fn validate_transitions(transitions: &[Transition]) -> Result<()> {
                     path.path
                 );
             }
+            if entry.consumed_by.is_empty() {
+                if let Some(previous_source_pr) = active_paths.get(&path.path) {
+                    bail!(
+                        "active transition path {} appears in both {} and {}",
+                        path.path,
+                        previous_source_pr,
+                        entry.source_pr
+                    );
+                }
+                active_paths.insert(path.path.clone(), entry.source_pr.clone());
+            }
+            if path.self_referential && !SELF_REFERENTIAL_PATHS.contains(&path.path.as_str()) {
+                bail!(
+                    "transition {} path {} may mark self_referential only for the promotion manifest or generated current view",
+                    entry.source_pr,
+                    path.path
+                );
+            }
+            if path.disposition == TransitionDisposition::ConvergedAtTarget
+                && path.resolution != Some(TransitionResolution::DiscardSource)
+            {
+                bail!(
+                    "transition {} path {} converged_at_target requires discard_source resolution",
+                    entry.source_pr,
+                    path.path
+                );
+            }
             match path.resolution {
                 None => {
+                    if path.self_referential {
+                        bail!(
+                            "transition {} path {} self_referential requires discard_source resolution",
+                            entry.source_pr,
+                            path.path
+                        );
+                    }
                     if !path.decision_receipt.is_empty()
                         || !path.decision_merge_sha.is_empty()
                         || !path.reason.is_empty()
@@ -450,9 +507,13 @@ fn validate_transitions(transitions: &[Transition]) -> Result<()> {
                     }
                 }
                 Some(TransitionResolution::DiscardSource) => {
-                    if path.disposition != TransitionDisposition::MissingInSwarm {
+                    if !matches!(
+                        path.disposition,
+                        TransitionDisposition::MissingInSwarm
+                            | TransitionDisposition::ConvergedAtTarget
+                    ) {
                         bail!(
-                            "transition {} path {} discard_source requires missing_in_swarm evidence",
+                            "transition {} path {} discard_source requires missing_in_swarm or converged_at_target evidence",
                             entry.source_pr,
                             path.path
                         );
@@ -524,6 +585,15 @@ fn validate_transitions(transitions: &[Transition]) -> Result<()> {
                     if path.swarm_chain.is_empty() {
                         bail!(
                             "transition {} path {} is superseded_in_swarm and must name its chain",
+                            entry.source_pr,
+                            path.path
+                        );
+                    }
+                }
+                TransitionDisposition::ConvergedAtTarget => {
+                    if !path.swarm_chain.is_empty() {
+                        bail!(
+                            "transition {} path {} is converged_at_target and must not name swarm PRs",
                             entry.source_pr,
                             path.path
                         );
@@ -866,6 +936,74 @@ swarm_tree_entry = { mode = "100644", object_type = "blob", oid = "bbbbbbbbbbbbb
     }
 
     #[test]
+    fn self_referential_transition_allows_the_manifest_and_generated_view() -> Result<()> {
+        let state = manifest_with_transition(
+            r#"
+[[transition]]
+source_pr = "EffortlessMetrics/shiplog#674"
+source_merge_sha = "b31d5f6d9700698b463d8f2b71b9d48a191f433c"
+source_target = "1111111111111111111111111111111111111111"
+swarm_target = "2222222222222222222222222222222222222222"
+[[transition.path]]
+path = "plans/shiplog-swarm/promotion-state.toml"
+disposition = "missing_in_swarm"
+resolution = "discard_source"
+self_referential = true
+decision_receipt = "EffortlessMetrics/shiplog-swarm#242"
+decision_merge_sha = "7d0a1b2c3d4e5f60718293a4b5c6d7e8f9a0b1c2"
+reason = "The active decision is stored in the promotion manifest."
+source_tree_entry = { mode = "100644", object_type = "blob", oid = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }
+swarm_tree_entry = { mode = "100644", object_type = "blob", oid = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }
+"#,
+        )?;
+        assert!(state.transition[0].path[0].self_referential);
+
+        let generated_view = manifest_with_transition(
+            r#"
+[[transition]]
+source_pr = "EffortlessMetrics/shiplog#674"
+source_merge_sha = "b31d5f6d9700698b463d8f2b71b9d48a191f433c"
+source_target = "1111111111111111111111111111111111111111"
+swarm_target = "2222222222222222222222222222222222222222"
+[[transition.path]]
+path = "plans/shiplog-swarm/current-promotion.md"
+disposition = "missing_in_swarm"
+resolution = "discard_source"
+self_referential = true
+decision_receipt = "EffortlessMetrics/shiplog-swarm#242"
+decision_merge_sha = "7d0a1b2c3d4e5f60718293a4b5c6d7e8f9a0b1c2"
+reason = "The generated view is derived from the promotion manifest."
+source_tree_entry = { mode = "100644", object_type = "blob", oid = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }
+swarm_tree_entry = { mode = "100644", object_type = "blob", oid = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }
+"#,
+        )?;
+        assert!(generated_view.transition[0].path[0].self_referential);
+
+        let error = manifest_with_transition(
+            r#"
+[[transition]]
+source_pr = "EffortlessMetrics/shiplog#674"
+source_merge_sha = "b31d5f6d9700698b463d8f2b71b9d48a191f433c"
+source_target = "1111111111111111111111111111111111111111"
+swarm_target = "2222222222222222222222222222222222222222"
+[[transition.path]]
+path = "docs/xtask.md"
+disposition = "missing_in_swarm"
+resolution = "discard_source"
+self_referential = true
+decision_receipt = "EffortlessMetrics/shiplog-swarm#242"
+decision_merge_sha = "7d0a1b2c3d4e5f60718293a4b5c6d7e8f9a0b1c2"
+reason = "This path is not the promotion manifest."
+source_tree_entry = { mode = "100644", object_type = "blob", oid = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }
+swarm_tree_entry = { mode = "100644", object_type = "blob", oid = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }
+"#,
+        )
+        .expect_err("self_referential must be restricted to generated promotion state");
+        assert!(format!("{error:#}").contains("may mark self_referential only"));
+        Ok(())
+    }
+
+    #[test]
     fn discard_source_rejects_missing_decision_receipt() {
         let error = manifest_with_transition(
             r#"
@@ -993,6 +1131,121 @@ disposition = "conflicting"
         .expect_err("a duplicated path must be rejected");
         assert!(
             format!("{error:#}").contains("more than once"),
+            "unexpected error: {error:#}"
+        );
+    }
+
+    /// A later exact-target binding may revisit one source PR, but only for a
+    /// disjoint active path set. Consumed historical entries are inert and may
+    /// overlap the later binding.
+    #[test]
+    fn transition_accepts_disjoint_active_rebind_for_same_source_pr() -> Result<()> {
+        let state = manifest_with_transition(
+            r#"
+[[transition]]
+source_pr = "EffortlessMetrics/shiplog#666"
+source_merge_sha = "d88d59a1a5af338537e35ff98b8ddda14d4673cf"
+consumed_by = "EffortlessMetrics/shiplog#682"
+[[transition.path]]
+path = "docs/xtask.md"
+disposition = "missing_in_swarm"
+[[transition]]
+source_pr = "EffortlessMetrics/shiplog#666"
+source_merge_sha = "d88d59a1a5af338537e35ff98b8ddda14d4673cf"
+source_target = "1111111111111111111111111111111111111111"
+swarm_target = "2222222222222222222222222222222222222222"
+[[transition.path]]
+path = "plans/shiplog-swarm/promotion-runbook.md"
+disposition = "missing_in_swarm"
+"#,
+        )?;
+        assert_eq!(state.transition.len(), 2);
+        Ok(())
+    }
+
+    #[test]
+    fn transition_rejects_overlapping_active_rebind_path() {
+        let error = manifest_with_transition(
+            r#"
+[[transition]]
+source_pr = "EffortlessMetrics/shiplog#666"
+source_merge_sha = "d88d59a1a5af338537e35ff98b8ddda14d4673cf"
+source_target = "1111111111111111111111111111111111111111"
+swarm_target = "2222222222222222222222222222222222222222"
+[[transition.path]]
+path = "docs/xtask.md"
+disposition = "missing_in_swarm"
+[[transition]]
+source_pr = "EffortlessMetrics/shiplog#666"
+source_merge_sha = "d88d59a1a5af338537e35ff98b8ddda14d4673cf"
+source_target = "3333333333333333333333333333333333333333"
+swarm_target = "4444444444444444444444444444444444444444"
+[[transition.path]]
+path = "docs/xtask.md"
+disposition = "missing_in_swarm"
+"#,
+        )
+        .expect_err("an active path must not have two bindings");
+        assert!(
+            format!("{error:#}").contains("appears in both"),
+            "unexpected error: {error:#}"
+        );
+    }
+
+    #[test]
+    fn transition_rejects_overlapping_active_path_across_source_prs() {
+        let error = manifest_with_transition(
+            r#"
+[[transition]]
+source_pr = "EffortlessMetrics/shiplog#666"
+source_merge_sha = "d88d59a1a5af338537e35ff98b8ddda14d4673cf"
+source_target = "1111111111111111111111111111111111111111"
+swarm_target = "2222222222222222222222222222222222222222"
+[[transition.path]]
+path = "docs/xtask.md"
+disposition = "missing_in_swarm"
+[[transition]]
+source_pr = "EffortlessMetrics/shiplog#667"
+source_merge_sha = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+source_target = "3333333333333333333333333333333333333333"
+swarm_target = "4444444444444444444444444444444444444444"
+[[transition.path]]
+path = "docs/xtask.md"
+disposition = "missing_in_swarm"
+"#,
+        )
+        .expect_err("an active path must not have two source-PR bindings");
+        assert!(
+            format!("{error:#}").contains("appears in both"),
+            "unexpected error: {error:#}"
+        );
+    }
+
+    #[test]
+    fn transition_rejects_mismatched_source_merge_on_active_rebind() {
+        let error = manifest_with_transition(
+            r#"
+[[transition]]
+source_pr = "EffortlessMetrics/shiplog#666"
+source_merge_sha = "d88d59a1a5af338537e35ff98b8ddda14d4673cf"
+source_target = "1111111111111111111111111111111111111111"
+swarm_target = "2222222222222222222222222222222222222222"
+[[transition.path]]
+path = "docs/xtask.md"
+disposition = "missing_in_swarm"
+[[transition]]
+source_pr = "EffortlessMetrics/shiplog#666"
+source_merge_sha = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+source_target = "3333333333333333333333333333333333333333"
+swarm_target = "4444444444444444444444444444444444444444"
+[[transition.path]]
+path = "plans/shiplog-swarm/promotion-runbook.md"
+disposition = "missing_in_swarm"
+"#,
+        )
+        .expect_err("an active rebind must retain the source merge identity");
+        assert!(
+            format!("{error:#}").contains("mismatched source merge SHAs"),
             "unexpected error: {error:#}"
         );
     }

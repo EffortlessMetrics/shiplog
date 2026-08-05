@@ -16,6 +16,7 @@ pub struct PromotionBodyInputs {
     pub swarm_ref: String,
     pub swarm_head: Option<String>,
     pub included_swarm_prs: Vec<String>,
+    pub current_pending_swarm_prs: Vec<String>,
     pub swarm_pr_run: Option<String>,
     pub swarm_main_run: Option<String>,
     pub source_pr_run: Option<String>,
@@ -29,6 +30,7 @@ struct PromotionBodyData {
     swarm_ref: String,
     swarm_head: String,
     included_swarm_prs: Vec<String>,
+    inferred_included_swarm_prs: bool,
     swarm_pr_run: Option<String>,
     swarm_main_run: Option<String>,
     source_pr_run: Option<String>,
@@ -54,15 +56,27 @@ pub(crate) fn render(inputs: &PromotionBodyInputs) -> Result<String> {
         _ => git_output(&inputs.workspace_root, &["rev-parse", &inputs.swarm_ref])
             .with_context(|| format!("promotion-body: resolve {}", inputs.swarm_ref))?,
     };
-    let included_swarm_prs = if inputs.included_swarm_prs.is_empty() {
-        infer_included_swarm_prs(
-            &inputs.workspace_root,
-            &inputs.source_ref,
-            &inputs.swarm_ref,
-            &swarm_head,
-        )?
+    let (included_swarm_prs, inferred_included_swarm_prs) = if !inputs.included_swarm_prs.is_empty()
+    {
+        (
+            normalize_included_swarm_prs(&inputs.included_swarm_prs),
+            false,
+        )
+    } else if !inputs.current_pending_swarm_prs.is_empty() {
+        (
+            normalize_included_swarm_prs(&inputs.current_pending_swarm_prs),
+            false,
+        )
     } else {
-        normalize_included_swarm_prs(&inputs.included_swarm_prs)
+        (
+            infer_included_swarm_prs(
+                &inputs.workspace_root,
+                &inputs.source_ref,
+                &inputs.swarm_ref,
+                &swarm_head,
+            )?,
+            true,
+        )
     };
 
     let data = PromotionBodyData {
@@ -70,6 +84,7 @@ pub(crate) fn render(inputs: &PromotionBodyInputs) -> Result<String> {
         swarm_ref: inputs.swarm_ref.clone(),
         swarm_head,
         included_swarm_prs,
+        inferred_included_swarm_prs,
         swarm_pr_run: inputs.swarm_pr_run.clone(),
         swarm_main_run: inputs.swarm_main_run.clone(),
         source_pr_run: inputs.source_pr_run.clone(),
@@ -215,6 +230,11 @@ fn render_promotion_body(data: &PromotionBodyData) -> String {
     out.push_str("\n\n");
 
     out.push_str("## Included swarm PRs\n\n");
+    if data.inferred_included_swarm_prs {
+        out.push_str(
+            "- Inferred from squash-merge subjects only; verify completeness before promotion.\n\n",
+        );
+    }
     if data.included_swarm_prs.is_empty() {
         out.push_str("- None inferred from ");
         out.push_str(&format!(
@@ -332,6 +352,35 @@ mod tests {
     }
 
     #[test]
+    fn current_pending_receipts_win_over_partial_subject_inference() {
+        let inputs = PromotionBodyInputs {
+            workspace_root: PathBuf::from("."),
+            source_ref: "origin/main".to_string(),
+            swarm_ref: "swarm/main".to_string(),
+            swarm_head: Some("e303d696bd063d8362ec30c2c0d72b2a68cf9498".to_string()),
+            included_swarm_prs: Vec::new(),
+            current_pending_swarm_prs: vec![
+                "EffortlessMetrics/shiplog-swarm#371".to_string(),
+                "#373".to_string(),
+            ],
+            swarm_pr_run: None,
+            swarm_main_run: None,
+            source_pr_run: None,
+            source_post_merge_run: None,
+            output: PathBuf::from("target/source-of-truth/promotion-body.md"),
+        };
+
+        let body = render(&inputs).expect("pending receipts should render without git inference");
+        let first = body
+            .find("EffortlessMetrics/shiplog-swarm#371")
+            .expect("first pending receipt should be present");
+        let second = body
+            .find("EffortlessMetrics/shiplog-swarm#373")
+            .expect("second pending receipt should be present");
+        assert!(first < second);
+    }
+
+    #[test]
     fn promotion_merge_parent_range_matches_swarm_second_parent() {
         let range = promotion_merge_parent_range(
             "1111111111111111111111111111111111111111 2222222222222222222222222222222222222222",
@@ -399,6 +448,7 @@ mod tests {
             swarm_ref: "swarm/main".to_string(),
             swarm_head: "e303d696bd063d8362ec30c2c0d72b2a68cf9498".to_string(),
             included_swarm_prs: vec!["EffortlessMetrics/shiplog-swarm#150".to_string()],
+            inferred_included_swarm_prs: false,
             swarm_pr_run: Some("26803480265".to_string()),
             swarm_main_run: Some("26803857830".to_string()),
             source_pr_run: None,
@@ -419,5 +469,24 @@ mod tests {
         assert!(body.contains("pause further promotions"));
         assert!(body.contains("Investigate and reconcile the source/swarm divergence"));
         assert!(body.contains("This tool does not perform rollback"));
+    }
+
+    #[test]
+    fn subject_inference_is_marked_for_completeness_review() {
+        let data = PromotionBodyData {
+            source_ref: "origin/main".to_string(),
+            swarm_ref: "swarm/main".to_string(),
+            swarm_head: "e303d696bd063d8362ec30c2c0d72b2a68cf9498".to_string(),
+            included_swarm_prs: vec!["EffortlessMetrics/shiplog-swarm#150".to_string()],
+            inferred_included_swarm_prs: true,
+            swarm_pr_run: None,
+            swarm_main_run: None,
+            source_pr_run: None,
+            source_post_merge_run: None,
+        };
+
+        let body = render_promotion_body(&data);
+
+        assert!(body.contains("verify completeness before promotion"));
     }
 }
